@@ -1,9 +1,11 @@
+//! Test that `Rc<T>` does not implement `Send`.
+
 use std::rc::Rc;
 
-fn bar<T: Send>(_: T) {}
+fn requires_send<T: Send>(_: T) {}
 
 fn main() {
-    let x = Rc::new(5);
-    bar(x);
+    let rc_value = Rc::new(5);
+    requires_send(rc_value);
     //~^ ERROR `Rc<{integer}>` cannot be sent between threads safely
 }

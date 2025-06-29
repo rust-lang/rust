@@ -1,14 +1,21 @@
+//! Test negative Sync implementation on structs.
+//!
+//! Uses the unstable `negative_impls` feature to explicitly opt-out of Sync.
+
 #![feature(negative_impls)]
 
 use std::marker::Sync;
 
-struct Foo { a: isize }
-impl !Sync for Foo {}
+struct NotSync {
+    value: isize,
+}
 
-fn bar<T: Sync>(_: T) {}
+impl !Sync for NotSync {}
+
+fn requires_sync<T: Sync>(_: T) {}
 
 fn main() {
-    let x = Foo { a: 5 };
-    bar(x);
-    //~^ ERROR `Foo` cannot be shared between threads safely [E0277]
+    let not_sync = NotSync { value: 5 };
+    requires_sync(not_sync);
+    //~^ ERROR `NotSync` cannot be shared between threads safely [E0277]
 }

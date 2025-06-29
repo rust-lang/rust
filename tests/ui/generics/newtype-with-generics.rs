@@ -1,27 +1,32 @@
+//! Test newtype pattern with generic parameters.
+
 //@ run-pass
 
-#![allow(non_camel_case_types)]
-
-
 #[derive(Clone)]
-struct myvec<X>(Vec<X> );
+struct MyVec<T>(Vec<T>);
 
-fn myvec_deref<X:Clone>(mv: myvec<X>) -> Vec<X> {
-    let myvec(v) = mv;
-    return v.clone();
+fn extract_inner_vec<T: Clone>(wrapper: MyVec<T>) -> Vec<T> {
+    let MyVec(inner_vec) = wrapper;
+    inner_vec.clone()
 }
 
-fn myvec_elt<X>(mv: myvec<X>) -> X {
-    let myvec(v) = mv;
-    return v.into_iter().next().unwrap();
+fn get_first_element<T>(wrapper: MyVec<T>) -> T {
+    let MyVec(inner_vec) = wrapper;
+    inner_vec.into_iter().next().unwrap()
 }
 
 pub fn main() {
-    let mv = myvec(vec![1, 2, 3]);
-    let mv_clone = mv.clone();
-    let mv_clone = myvec_deref(mv_clone);
-    assert_eq!(mv_clone[1], 2);
-    assert_eq!(myvec_elt(mv.clone()), 1);
-    let myvec(v) = mv;
-    assert_eq!(v[2], 3);
+    let my_vec = MyVec(vec![1, 2, 3]);
+    let cloned_vec = my_vec.clone();
+
+    // Test extracting inner vector
+    let extracted = extract_inner_vec(cloned_vec);
+    assert_eq!(extracted[1], 2);
+
+    // Test getting first element
+    assert_eq!(get_first_element(my_vec.clone()), 1);
+
+    // Test direct destructuring
+    let MyVec(inner) = my_vec;
+    assert_eq!(inner[2], 3);
 }
