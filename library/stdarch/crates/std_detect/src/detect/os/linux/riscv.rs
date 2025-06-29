@@ -25,6 +25,13 @@ struct riscv_hwprobe {
     value: u64,
 }
 
+impl riscv_hwprobe {
+    // key is overwritten to -1 if not supported by riscv_hwprobe syscall.
+    pub fn get(&self) -> Option<u64> {
+        (self.key != -1).then_some(self.value)
+    }
+}
+
 #[allow(non_upper_case_globals)]
 const __NR_riscv_hwprobe: libc::c_long = 258;
 
@@ -155,49 +162,45 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // Use riscv_hwprobe syscall to query more extensions and
     // performance-related capabilities.
     'hwprobe: {
-        let mut out = [
-            riscv_hwprobe {
-                key: RISCV_HWPROBE_KEY_BASE_BEHAVIOR,
-                value: 0,
-            },
-            riscv_hwprobe {
-                key: RISCV_HWPROBE_KEY_IMA_EXT_0,
-                value: 0,
-            },
-            riscv_hwprobe {
-                key: RISCV_HWPROBE_KEY_MISALIGNED_SCALAR_PERF,
-                value: 0,
-            },
-            riscv_hwprobe {
-                key: RISCV_HWPROBE_KEY_MISALIGNED_VECTOR_PERF,
-                value: 0,
-            },
-            riscv_hwprobe {
-                key: RISCV_HWPROBE_KEY_CPUPERF_0,
-                value: 0,
-            },
-        ];
-        if !_riscv_hwprobe(&mut out) {
+        macro_rules! init {
+            { $($name: ident : $key: expr),* $(,)? } => {
+                #[repr(usize)]
+                enum Indices { $($name),* }
+                let mut t = [$(riscv_hwprobe { key: $key, value: 0 }),*];
+                macro_rules! data_mut { () => { &mut t } }
+                macro_rules! query { [$idx: ident] => { t[Indices::$idx as usize].get() } }
+            }
+        }
+        init! {
+            BaseBehavior: RISCV_HWPROBE_KEY_BASE_BEHAVIOR,
+            Extensions:   RISCV_HWPROBE_KEY_IMA_EXT_0,
+            MisalignedScalarPerf: RISCV_HWPROBE_KEY_MISALIGNED_SCALAR_PERF,
+            MisalignedVectorPerf: RISCV_HWPROBE_KEY_MISALIGNED_VECTOR_PERF,
+            MisalignedScalarPerfFallback: RISCV_HWPROBE_KEY_CPUPERF_0,
+        };
+        if !_riscv_hwprobe(data_mut!()) {
             break 'hwprobe;
         }
 
-        // Query scalar/vector misaligned behavior.
-        if out[2].key != -1 {
+        // Query scalar misaligned behavior.
+        if let Some(value) = query![MisalignedScalarPerf] {
             enable_feature(
                 Feature::unaligned_scalar_mem,
-                out[2].value == RISCV_HWPROBE_MISALIGNED_SCALAR_FAST,
+                value == RISCV_HWPROBE_MISALIGNED_SCALAR_FAST,
             );
-        } else if out[4].key != -1 {
+        } else if let Some(value) = query![MisalignedScalarPerfFallback] {
             // Deprecated method for fallback
             enable_feature(
                 Feature::unaligned_scalar_mem,
-                out[4].value & RISCV_HWPROBE_MISALIGNED_MASK == RISCV_HWPROBE_MISALIGNED_FAST,
+                value & RISCV_HWPROBE_MISALIGNED_MASK == RISCV_HWPROBE_MISALIGNED_FAST,
             );
         }
-        if out[3].key != -1 {
+
+        // Query vector misaligned behavior.
+        if let Some(value) = query![MisalignedVectorPerf] {
             enable_feature(
                 Feature::unaligned_vector_mem,
-                out[3].value == RISCV_HWPROBE_MISALIGNED_VECTOR_FAST,
+                value == RISCV_HWPROBE_MISALIGNED_VECTOR_FAST,
             );
         }
 
@@ -207,22 +210,20 @@ pub(crate) fn detect_features() -> cache::Initializer {
         // 20240411).
         // This is a current requirement of
         // `RISCV_HWPROBE_KEY_IMA_EXT_0`-based tests.
-        let has_ima = (out[0].key != -1) && (out[0].value & RISCV_HWPROBE_BASE_BEHAVIOR_IMA != 0);
-        if !has_ima {
+        if query![BaseBehavior].is_none_or(|value| value & RISCV_HWPROBE_BASE_BEHAVIOR_IMA == 0) {
             break 'hwprobe;
         }
-        has_i |= has_ima;
-        enable_feature(Feature::zicsr, has_ima);
-        enable_feature(Feature::zicntr, has_ima);
-        enable_feature(Feature::zifencei, has_ima);
-        enable_feature(Feature::m, has_ima);
-        enable_feature(Feature::a, has_ima);
+        has_i = true;
+        enable_feature(Feature::zicsr, true);
+        enable_feature(Feature::zicntr, true);
+        enable_feature(Feature::zifencei, true);
+        enable_feature(Feature::m, true);
+        enable_feature(Feature::a, true);
 
         // Enable features based on `RISCV_HWPROBE_KEY_IMA_EXT_0`.
-        if out[1].key == -1 {
+        let Some(ima_ext_0) = query![Extensions] else {
             break 'hwprobe;
-        }
-        let ima_ext_0 = out[1].value;
+        };
         let test = |mask| (ima_ext_0 & mask) != 0;
 
         enable_feature(Feature::d, test(RISCV_HWPROBE_IMA_FD)); // F is implied.
