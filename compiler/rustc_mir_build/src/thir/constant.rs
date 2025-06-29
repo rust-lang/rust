@@ -20,7 +20,7 @@ pub(crate) fn lit_to_const<'tcx>(
 
     let trunc = |n, width: ty::UintTy| {
         let width = width
-            .normalize(tcx.data_layout.pointer_size.bits().try_into().unwrap())
+            .normalize(tcx.data_layout.pointer_size().bits().try_into().unwrap())
             .bit_width()
             .unwrap();
         let width = Size::from_bits(width);

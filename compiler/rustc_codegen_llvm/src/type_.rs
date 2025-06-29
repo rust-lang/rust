@@ -208,7 +208,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
     }
 
     fn type_ptr(&self) -> &'ll Type {
-        self.type_ptr_ext(AddressSpace::DATA)
+        self.type_ptr_ext(AddressSpace::ZERO)
     }
 
     fn type_ptr_ext(&self, address_space: AddressSpace) -> &'ll Type {
@@ -258,7 +258,7 @@ impl Type {
     }
 
     pub(crate) fn ptr_llcx(llcx: &llvm::Context) -> &Type {
-        unsafe { llvm::LLVMPointerTypeInContext(llcx, AddressSpace::DATA.0) }
+        unsafe { llvm::LLVMPointerTypeInContext(llcx, AddressSpace::ZERO.0) }
     }
 }
 
