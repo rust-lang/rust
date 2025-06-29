@@ -165,7 +165,9 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
                 maybe_uninit,
             };
 
-            storage_checker.visit_body(body);
+            for (bb, data) in traversal::reachable(body) {
+                storage_checker.visit_basic_block_data(bb, data);
+            }
 
             storage_checker.storage_to_remove
         } else {
