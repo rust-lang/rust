@@ -324,7 +324,7 @@ fn opaque_types_defined_by<'tcx>(
         // Note that we also support `SyntheticCoroutineBody` since we create
         // a MIR body for the def kind, and some MIR passes (like promotion)
         // may require doing analysis using its typing env.
-        DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody => {
+        DefKind::Closure { .. } | DefKind::InlineConst | DefKind::SyntheticCoroutineBody => {
             collector.opaques.extend(tcx.opaque_types_defined_by(tcx.local_parent(item)));
         }
         DefKind::AssocTy | DefKind::TyAlias | DefKind::GlobalAsm => {}

@@ -124,7 +124,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
     }
 
     fn closure_env_param(&self, owner_def: LocalDefId, expr_id: HirId) -> Option<Param<'tcx>> {
-        if self.tcx.def_kind(owner_def) != DefKind::Closure {
+        if !matches!(self.tcx.def_kind(owner_def), DefKind::Closure { .. }) {
             return None;
         }
 

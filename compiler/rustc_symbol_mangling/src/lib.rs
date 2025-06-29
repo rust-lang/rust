@@ -266,7 +266,7 @@ fn compute_symbol_name<'tcx>(
         tcx.def_kind(instance.def_id()),
         DefKind::Fn
             | DefKind::AssocFn
-            | DefKind::Closure
+            | DefKind::Closure { .. }
             | DefKind::SyntheticCoroutineBody
             | DefKind::Ctor(..)
     ) && matches!(

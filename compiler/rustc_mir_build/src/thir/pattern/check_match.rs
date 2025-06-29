@@ -53,7 +53,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
 
     let origin = match tcx.def_kind(def_id) {
         DefKind::AssocFn | DefKind::Fn => "function argument",
-        DefKind::Closure => "closure argument",
+        DefKind::Closure { .. } => "closure argument",
         // other types of MIR don't have function parameters, and we don't need to
         // categorize those for the irrefutable check.
         _ if thir.params.is_empty() => "",

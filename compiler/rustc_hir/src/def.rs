@@ -45,6 +45,14 @@ pub enum NonMacroAttrKind {
     DeriveHelperCompat,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
+pub enum CoroutineDefKind {
+    /// A desugared coroutine from `async` or similar
+    Desugared(hir::CoroutineDesugaring),
+    /// An explicit `#[coroutine]`
+    Coroutine,
+}
+
 /// What kind of definition something is; e.g., `mod` vs `struct`.
 /// `enum DefPathData` may need to be updated if a new variant is added here.
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
@@ -140,7 +148,9 @@ pub enum DefKind {
     /// which makes it difficult to distinguish these during def collection. Therefore,
     /// we treat them all the same, and code which needs to distinguish them can match
     /// or `hir::ClosureKind` or `type_of`.
-    Closure,
+    Closure {
+        coroutine_kind: Option<CoroutineDefKind>,
+    },
     /// The definition of a synthetic coroutine body created by the lowering of a
     /// coroutine-closure, such as an async closure.
     SyntheticCoroutineBody,
@@ -185,7 +195,17 @@ impl DefKind {
             DefKind::InlineConst => "inline constant",
             DefKind::Field => "field",
             DefKind::Impl { .. } => "implementation",
-            DefKind::Closure => "closure",
+            DefKind::Closure { coroutine_kind } => match coroutine_kind {
+                None => "closure",
+                Some(CoroutineDefKind::Desugared(hir::CoroutineDesugaring::Async)) => {
+                    "async closure"
+                }
+                Some(CoroutineDefKind::Desugared(hir::CoroutineDesugaring::Gen)) => "gen closure",
+                Some(CoroutineDefKind::Desugared(hir::CoroutineDesugaring::AsyncGen)) => {
+                    "async gen closure"
+                }
+                Some(CoroutineDefKind::Coroutine) => "coroutine",
+            },
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
             DefKind::SyntheticCoroutineBody => "synthetic mir body",
@@ -209,6 +229,15 @@ impl DefKind {
             | DefKind::InlineConst
             | DefKind::ExternCrate => "an",
             DefKind::Macro(macro_kind) => macro_kind.article(),
+
+            DefKind::Closure { coroutine_kind } => match coroutine_kind {
+                None => "a",
+                Some(CoroutineDefKind::Desugared(hir::CoroutineDesugaring::Async)) => "an",
+                Some(CoroutineDefKind::Desugared(hir::CoroutineDesugaring::Gen)) => "a",
+                Some(CoroutineDefKind::Desugared(hir::CoroutineDesugaring::AsyncGen)) => "an",
+                Some(CoroutineDefKind::Coroutine) => "a",
+            },
+
             _ => "a",
         }
     }
@@ -243,7 +272,7 @@ impl DefKind {
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::ExternCrate
-            | DefKind::Closure
+            | DefKind::Closure { .. }
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
@@ -290,7 +319,7 @@ impl DefKind {
             DefKind::OpaqueTy => DefPathData::OpaqueTy,
             DefKind::GlobalAsm => DefPathData::GlobalAsm,
             DefKind::Impl { .. } => DefPathData::Impl,
-            DefKind::Closure => DefPathData::Closure,
+            DefKind::Closure { .. } => DefPathData::Closure,
             DefKind::SyntheticCoroutineBody => DefPathData::SyntheticCoroutineBody,
         }
     }
@@ -299,7 +328,10 @@ impl DefKind {
     pub fn is_fn_like(self) -> bool {
         matches!(
             self,
-            DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::SyntheticCoroutineBody
+            DefKind::Fn
+                | DefKind::AssocFn
+                | DefKind::Closure { .. }
+                | DefKind::SyntheticCoroutineBody
         )
     }
 
@@ -309,7 +341,7 @@ impl DefKind {
             DefKind::Fn
             | DefKind::AssocFn
             | DefKind::Ctor(..)
-            | DefKind::Closure
+            | DefKind::Closure { .. }
             | DefKind::Static { .. }
             | DefKind::SyntheticCoroutineBody => true,
             DefKind::Mod

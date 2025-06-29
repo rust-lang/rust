@@ -1522,7 +1522,7 @@ impl<'v> RootCollector<'_, 'v> {
 
     fn process_nested_body(&mut self, def_id: LocalDefId) {
         match self.tcx.def_kind(def_id) {
-            DefKind::Closure => {
+            DefKind::Closure { .. } => {
                 if self.strategy == MonoItemCollectionStrategy::Eager
                     && !self
                         .tcx

@@ -24,7 +24,9 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 
     // This just reproduces the logic from Instance::requires_inline.
     match tcx.def_kind(def_id) {
-        DefKind::Ctor(..) | DefKind::Closure | DefKind::SyntheticCoroutineBody => return true,
+        DefKind::Ctor(..) | DefKind::Closure { .. } | DefKind::SyntheticCoroutineBody => {
+            return true;
+        }
         DefKind::Fn | DefKind::AssocFn => {}
         _ => return false,
     }

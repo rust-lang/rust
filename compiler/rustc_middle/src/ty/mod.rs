@@ -2087,7 +2087,10 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_const_fn(self, def_id: DefId) -> bool {
         matches!(
             self.def_kind(def_id),
-            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Closure
+            DefKind::Fn
+                | DefKind::AssocFn
+                | DefKind::Ctor(_, CtorKind::Fn)
+                | DefKind::Closure { .. }
         ) && self.constness(def_id) == hir::Constness::Const
     }
 
@@ -2137,7 +2140,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // FIXME(const_trait_impl): ATPITs could be conditionally const?
                 hir::OpaqueTyOrigin::TyAlias { .. } => false,
             },
-            DefKind::Closure => {
+            DefKind::Closure { .. } => {
                 // Closures and RPITs will eventually have const conditions
                 // for `[const]` bounds.
                 false

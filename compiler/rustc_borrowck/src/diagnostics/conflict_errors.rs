@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{CoroutineDefKind, DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr};
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, LangItem, PatField};
 use rustc_middle::bug;
@@ -2983,15 +2983,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         .map(|name| format!("function `{name}`"))
                         .unwrap_or_else(|| {
                             match &self.infcx.tcx.def_kind(self.mir_def_id()) {
-                                DefKind::Closure
-                                    if self
-                                        .infcx
-                                        .tcx
-                                        .is_coroutine(self.mir_def_id().to_def_id()) =>
-                                {
-                                    "enclosing coroutine"
-                                }
-                                DefKind::Closure => "enclosing closure",
+                                DefKind::Closure { coroutine_kind } => match coroutine_kind {
+                                    None => "enclosing closure",
+                                    Some(CoroutineDefKind::Desugared(
+                                        hir::CoroutineDesugaring::Async,
+                                    )) => "enclosing async closure",
+                                    Some(CoroutineDefKind::Desugared(
+                                        hir::CoroutineDesugaring::Gen,
+                                    )) => "enclosing gen closure",
+                                    Some(CoroutineDefKind::Desugared(
+                                        hir::CoroutineDesugaring::AsyncGen,
+                                    )) => "enclosing async gen closure",
+                                    Some(CoroutineDefKind::Coroutine) => "enclosing coroutine",
+                                },
                                 kind => bug!("expected closure or coroutine, found {:?}", kind),
                             }
                             .to_string()

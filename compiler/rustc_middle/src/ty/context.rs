@@ -2059,7 +2059,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // They have visibilities inherited from the module they are defined in.
         // Visibilities for opaque types are meaningless, but still provided
         // so that all items have visibilities.
-        if matches!(def_kind, DefKind::Closure | DefKind::OpaqueTy) {
+        if matches!(def_kind, DefKind::Closure { .. } | DefKind::OpaqueTy) {
             let parent_mod = self.parent_module_from_def_id(def_id).to_def_id();
             feed.visibility(ty::Visibility::Restricted(parent_mod));
         }

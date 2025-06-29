@@ -889,7 +889,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 }
             }
         }
-        DefKind::Closure => {
+        DefKind::Closure { .. } => {
             // This is guaranteed to be called by metadata encoding,
             // we still call it in wfcheck eagerly to ensure errors in codegen
             // attrs prevent lints from spamming the output.

@@ -19,7 +19,7 @@ pub(crate) fn check_tail_calls(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), E
         return Ok(());
     }
 
-    let is_closure = matches!(tcx.def_kind(def), DefKind::Closure);
+    let is_closure = matches!(tcx.def_kind(def), DefKind::Closure { .. });
     let caller_ty = tcx.type_of(def).skip_binder();
 
     let mut visitor = TailCallCkVisitor {
