@@ -1189,7 +1189,7 @@ fn assume_scalar_range<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let range = scalar.valid_range(bx.cx());
             bx.assume_integer_range(imm, backend_ty, range);
         }
-        abi::Primitive::Pointer(abi::AddressSpace::DATA)
+        abi::Primitive::Pointer(abi::AddressSpace::ZERO)
             if !scalar.valid_range(bx.cx()).contains(0) =>
         {
             bx.assume_nonnull(imm);

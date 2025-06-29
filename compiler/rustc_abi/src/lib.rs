@@ -274,7 +274,7 @@ impl Default for TargetDataLayout {
                 (Size::from_bits(64), AbiAlign::new(align(64))),
                 (Size::from_bits(128), AbiAlign::new(align(128))),
             ],
-            instruction_address_space: AddressSpace::DATA,
+            instruction_address_space: AddressSpace::ZERO,
             c_enum_min_size: Integer::I32,
         }
     }
@@ -1422,8 +1422,8 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
 pub struct AddressSpace(pub u32);
 
 impl AddressSpace {
-    /// The default address space, corresponding to data space.
-    pub const DATA: Self = AddressSpace(0);
+    /// LLVM's `0` address space.
+    pub const ZERO: Self = AddressSpace(0);
 }
 
 /// The way we represent values to the backend
