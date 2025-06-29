@@ -496,7 +496,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         | sym::simd_flog
         | sym::simd_flog10
         | sym::simd_flog2
-        | sym::simd_round => {
+        | sym::simd_round
+        | sym::simd_round_ties_even => {
             intrinsic_args!(fx, args => (a); intrinsic);
 
             if !a.layout().ty.is_simd() {
@@ -527,6 +528,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     (sym::simd_flog2, types::F64) => "log2",
                     (sym::simd_round, types::F32) => "roundf",
                     (sym::simd_round, types::F64) => "round",
+                    (sym::simd_round_ties_even, types::F32) => "rintf",
+                    (sym::simd_round_ties_even, types::F64) => "rint",
                     _ => unreachable!("{:?}", intrinsic),
                 };
                 fx.lib_call(

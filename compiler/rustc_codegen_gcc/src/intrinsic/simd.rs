@@ -780,6 +780,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             sym::simd_fsin => "sin",
             sym::simd_fsqrt => "sqrt",
             sym::simd_round => "round",
+            sym::simd_round_ties_even => "rint",
             sym::simd_trunc => "trunc",
             _ => return_error!(InvalidMonomorphization::UnrecognizedIntrinsic { span, name }),
         };
@@ -827,6 +828,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             | sym::simd_fsin
             | sym::simd_fsqrt
             | sym::simd_round
+            | sym::simd_round_ties_even
             | sym::simd_trunc
     ) {
         return simd_simple_float_intrinsic(name, in_elem, in_ty, in_len, bx, span, args);
