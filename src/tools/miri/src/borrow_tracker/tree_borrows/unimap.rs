@@ -327,7 +327,7 @@ mod tests {
         for i in 0..1000 {
             i.hash(&mut hasher);
             let rng = hasher.finish();
-            let op = rng % 3 == 0;
+            let op = rng.is_multiple_of(3);
             let key = (rng / 2) % 50;
             let val = (rng / 100) % 1000;
             if op {

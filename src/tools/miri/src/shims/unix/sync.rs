@@ -17,7 +17,7 @@ fn bytewise_equal_atomic_relaxed<'tcx>(
 
     // We do this in chunks of 4, so that we are okay to race with (sufficiently aligned)
     // 4-byte atomic accesses.
-    assert!(size.bytes() % 4 == 0);
+    assert!(size.bytes().is_multiple_of(4));
     for i in 0..(size.bytes() / 4) {
         let offset = Size::from_bytes(i.strict_mul(4));
         let load = |place: &MPlaceTy<'tcx>| {
