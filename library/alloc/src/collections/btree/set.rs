@@ -1517,9 +1517,7 @@ impl<T: Ord, const N: usize> From<[T; N]> for BTreeSet<T> {
 
         // use stable sort to preserve the insertion order.
         arr.sort();
-        let iter = IntoIterator::into_iter(arr).map(|k| (k, SetValZST::default()));
-        let map = BTreeMap::bulk_build_from_sorted_iter(iter, Global);
-        BTreeSet { map }
+        BTreeSet::from_sorted_iter(IntoIterator::into_iter(arr), Global)
     }
 }
 
