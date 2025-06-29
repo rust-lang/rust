@@ -176,24 +176,29 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let mut mir = tcx.instance_mir(instance.def);
 
-    let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
-    debug!("fn_abi: {:?}", fn_abi);
-
-    if tcx.features().ergonomic_clones() {
-        let monomorphized_mir = instance.instantiate_mir_and_normalize_erasing_regions(
+    mir = {
+        let mut mir = instance.instantiate_mir_and_normalize_erasing_regions(
             tcx,
             ty::TypingEnv::fully_monomorphized(),
             ty::EarlyBinder::bind(mir.clone()),
         );
-        mir = tcx.arena.alloc(optimize_use_clone::<Bx>(cx, monomorphized_mir));
-    }
+
+        if tcx.features().ergonomic_clones() {
+            mir = optimize_use_clone::<Bx>(cx, mir);
+        }
+        mir = optimize_noop_cleanup::<Bx>(cx, mir, instance);
+        tcx.arena.alloc(mir)
+    };
+
+    let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
+    debug!("fn_abi: {:?}", fn_abi);
 
     let debug_context = cx.create_function_debug_context(instance, fn_abi, llfn, &mir);
 
     let start_llbb = Bx::append_block(cx, llfn, "start");
     let mut start_bx = Bx::build(cx, start_llbb);
 
-    if mir.basic_blocks.iter().any(|bb| {
+    if mir::traversal::mono_reachable(&mir, tcx, instance).any(|(_, bb)| {
         bb.is_cleanup || matches!(bb.terminator().unwind(), Some(mir::UnwindAction::Terminate(_)))
     }) {
         start_bx.set_personality_fn(cx.eh_personality());
@@ -366,6 +371,116 @@ fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             bb.terminator_mut().kind = mir::TerminatorKind::Goto { target: destination_block };
         }
+    }
+
+    mir
+}
+
+// FIXME: Move this function to mir::transform when post-mono MIR passes land.
+//
+/// Detect cases where monomorphized MIR has a cleanup block (or series of blocks) that never does
+/// anything, just resumes unwinding.
+///
+/// This usually results from pre-mono MIR having a no-op drop(...) for a specific type.
+fn optimize_noop_cleanup<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    cx: &'a Bx::CodegenCx,
+    mut mir: Body<'tcx>,
+    instance: Instance<'tcx>,
+) -> Body<'tcx> {
+    let tcx = cx.tcx();
+
+    let mut any_action = DenseBitSet::new_empty(mir.basic_blocks.len());
+    for (bb, block) in mir.basic_blocks.iter_enumerated() {
+        if !block.is_cleanup {
+            // We don't care about non-cleanup blocks.
+            any_action.insert(bb);
+            continue;
+        }
+
+        let mut has_actions = false;
+        for stmt in &block.statements {
+            match stmt.kind {
+                mir::StatementKind::SetDiscriminant { .. }
+                | mir::StatementKind::Deinit(..)
+                | mir::StatementKind::StorageLive(..)
+                | mir::StatementKind::StorageDead(..)
+                | mir::StatementKind::Retag(..)
+                | mir::StatementKind::Coverage(..)
+                | mir::StatementKind::Intrinsic(..)
+                | mir::StatementKind::Assign(..) => {
+                    has_actions = true;
+                    break;
+                }
+                mir::StatementKind::FakeRead(..)
+                | mir::StatementKind::PlaceMention(..)
+                | mir::StatementKind::AscribeUserType(..)
+                | mir::StatementKind::ConstEvalCounter
+                | mir::StatementKind::Nop
+                | mir::StatementKind::BackwardIncompatibleDropHint { .. } => {}
+            }
+        }
+        match block.terminator().kind {
+            mir::TerminatorKind::Goto { .. }
+            | mir::TerminatorKind::SwitchInt { .. }
+            | mir::TerminatorKind::UnwindResume
+            | mir::TerminatorKind::Unreachable => {}
+
+            mir::TerminatorKind::Call { .. }
+            | mir::TerminatorKind::Assert { .. }
+            | mir::TerminatorKind::Yield { .. }
+            | mir::TerminatorKind::InlineAsm { .. }
+            | mir::TerminatorKind::CoroutineDrop
+            | mir::TerminatorKind::TailCall { .. }
+            | mir::TerminatorKind::UnwindTerminate(..)
+            | mir::TerminatorKind::Return => has_actions = true,
+
+            mir::TerminatorKind::Drop { place, .. } => {
+                let ty = place.ty(&mir, tcx).ty;
+                debug!("monomorphize: instance={:?}", instance);
+                let ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx,
+                    cx.typing_env(),
+                    ty::EarlyBinder::bind(ty),
+                );
+                let drop_fn = Instance::resolve_drop_in_place(tcx, ty);
+                if let ty::InstanceKind::DropGlue(_, None) = drop_fn.def {
+                    // no need to drop anything
+                } else {
+                    has_actions = true;
+                }
+            }
+
+            mir::TerminatorKind::FalseEdge { .. } | mir::TerminatorKind::FalseUnwind { .. } => {
+                bug!("not present in optimized mir")
+            }
+        }
+
+        if has_actions {
+            any_action.insert(bb);
+        }
+    }
+
+    let mut to_replace = vec![];
+    for (bb, block) in mir.basic_blocks.iter_enumerated() {
+        if let Some(mir::UnwindAction::Cleanup(target)) = block.terminator().unwind() {
+            let mut stack = vec![*target];
+            let mut found_action = false;
+            while let Some(next) = stack.pop() {
+                if any_action.contains(next) {
+                    found_action = true;
+                    break;
+                }
+                stack.extend(mir.basic_blocks[next].terminator().successors());
+            }
+            if !found_action {
+                to_replace.push(bb);
+            }
+        }
+    }
+
+    for bb in to_replace {
+        *mir.basic_blocks_mut()[bb].terminator_mut().unwind_mut().unwrap() =
+            mir::UnwindAction::Continue;
     }
 
     mir
