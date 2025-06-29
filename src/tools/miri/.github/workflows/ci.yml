@@ -31,6 +31,11 @@ jobs:
             os: ubuntu-24.04-arm
             multiarch: armhf
             gcc_cross: arm-linux-gnueabihf
+          - host_target: riscv64gc-unknown-linux-gnu
+            os: ubuntu-latest
+            multiarch: riscv64
+            gcc_cross: riscv64-linux-gnu
+            qemu: true
           - host_target: s390x-unknown-linux-gnu
             os: ubuntu-latest
             multiarch: s390x
