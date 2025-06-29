@@ -1,10 +1,8 @@
-// skip-filecheck
+//! Check that we do not remove the storage statements if the head
+//! is uninitialized in an unreachable block.
 //@ test-mir-pass: CopyProp
 
 #![feature(custom_mir, core_intrinsics)]
-
-// Check that we do not remove the storage statements if the head
-// is uninitialized in an unreachable block.
 
 use std::intrinsics::mir::*;
 
@@ -12,10 +10,14 @@ use std::intrinsics::mir::*;
 
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 pub fn f(_1: &mut usize) {
+    // CHECK-LABEL: fn f(
     mir! {
         let _2: usize;
         let _3: usize;
         {
+            // CHECK: StorageLive(_2);
+            // CHECK: (*_1) = copy _2;
+            // CHECK: StorageDead(_2);
             StorageLive(_2);
             _2 = 42;
             _3 = _2;
