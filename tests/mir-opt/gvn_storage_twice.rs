@@ -38,6 +38,7 @@ pub fn repeat_local_dead(_1: usize, _2: usize, _3: i32) -> i32 {
         {
             let _4 = [_3; 5];
             let _5 = &_4[_1];
+            // CHECK-NOT: StorageDead(_3);
             StorageDead(_3);
             // CHECK: _0 = copy _3;
             RET = *_5;
@@ -55,6 +56,8 @@ pub fn repeat_local_dead_live(_1: usize, _2: usize, _3: i32) -> i32 {
         {
             let _4 = [_3; 5];
             let _5 = &_4[_1];
+            // CHECK-NOT: StorageLive(_3);
+            // CHECK-NOT: StorageDead(_3);
             StorageDead(_3);
             StorageLive(_3);
             // CHECK: _0 = copy _3;
