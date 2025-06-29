@@ -335,9 +335,7 @@ impl Socket {
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         // WSARecv requires at least one buffer.
-        if bufs.is_empty() {
-            return Ok(0);
-        }
+        let bufs = if bufs.is_empty() { &mut [IoSliceMut::new(&mut [])] } else { bufs };
 
         let length = cmp::min(bufs.len(), u32::MAX as usize) as u32;
         let mut nread = 0;
@@ -429,9 +427,7 @@ impl Socket {
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         // WSASend requires at least one buffer.
-        if bufs.is_empty() {
-            return Ok(0);
-        }
+        let bufs = if bufs.is_empty() { &[IoSlice::new(&[])] } else { bufs };
 
         let length = cmp::min(bufs.len(), u32::MAX as usize) as u32;
         let mut nwritten = 0;

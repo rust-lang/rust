@@ -1636,6 +1636,7 @@ pub(crate) macro limit_slices($bufs:expr, $n:expr) {
     'slices: {
         let bufs: &[IoSlice<'_>] = $bufs;
         let n: usize = $n;
+        super let empty = &[IoSlice::new(&[])];
         // if bufs.len() > n || bufs.is_empty()
         if core::intrinsics::unlikely(bufs.len().wrapping_sub(1) >= n) {
             for (i, buf) in bufs.iter().enumerate() {
@@ -1644,10 +1645,9 @@ pub(crate) macro limit_slices($bufs:expr, $n:expr) {
                     break 'slices &bufs[i..i + len];
                 }
             }
-            // All buffers are empty. Since POSIX requires at least one buffer
-            // for [writev], but possibly bufs.is_empty(), return an empty write.
-            // [writev]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/writev.html
-            return Ok(0);
+            // POSIX requires at least one buffer for writev.
+            // https://pubs.opengroup.org/onlinepubs/9799919799/functions/writev.html
+            break 'slices empty;
         }
         bufs
     }
@@ -1663,6 +1663,7 @@ pub(crate) macro limit_slices_mut($bufs:expr, $n:expr) {
     'slices: {
         let bufs: &mut [IoSliceMut<'_>] = $bufs;
         let n: usize = $n;
+        super let empty = &mut [IoSliceMut::new(&mut [])];
         // if bufs.len() > n || bufs.is_empty()
         if core::intrinsics::unlikely(bufs.len().wrapping_sub(1) >= n) {
             for (i, buf) in bufs.iter().enumerate() {
@@ -1671,10 +1672,9 @@ pub(crate) macro limit_slices_mut($bufs:expr, $n:expr) {
                     break 'slices &mut bufs[i..i + len];
                 }
             }
-            // All buffers are empty. Since POSIX requires at least one buffer
-            // for [readv], but possibly bufs.is_empty(), return an empty read.
-            // [readv]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/readv.html
-            return Ok(0);
+            // POSIX requires at least one buffer for readv.
+            // https://pubs.opengroup.org/onlinepubs/9799919799/functions/readv.html
+            break 'slices empty;
         }
         bufs
     }
