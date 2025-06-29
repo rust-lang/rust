@@ -14,6 +14,7 @@ use itertools::Itertools;
 use regex::Regex;
 use rustc_arena::TypedArena;
 use rustc_ast::CRATE_NODE_ID;
+use rustc_attr_data_structures::NativeLibKind;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
@@ -38,7 +39,6 @@ use rustc_session::config::{
 use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
-use rustc_session::utils::NativeLibKind;
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{Session, filesearch};

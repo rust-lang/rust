@@ -3368,6 +3368,7 @@ dependencies = [
  "rustc_macros",
  "rustc_session",
  "rustc_span",
+ "rustc_target",
  "thin-vec",
 ]
 
@@ -4443,6 +4444,7 @@ dependencies = [
  "rand 0.9.1",
  "rustc_abi",
  "rustc_ast",
+ "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
