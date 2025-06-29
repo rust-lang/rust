@@ -1,5 +1,7 @@
-//@ revisions: no_feature feature nothing
-//@ edition: 2021
+//@ revisions: e2021 e2024 nothing
+//@ [e2021] edition: 2021
+//@ [e2024] edition: 2024
+//@ [nothing] edition: 2024
 // Here we test that `lowering` behaves correctly wrt. `let $pats = $expr` expressions.
 //
 // We want to make sure that `let` is banned in situations other than:
@@ -18,9 +20,6 @@
 //   ;
 //
 // To that end, we check some positions which is not part of the language above.
-
-// Avoid inflating `.stderr` with overzealous gates (or test what happens if you disable the gate)
-#![cfg_attr(not(no_feature), feature(let_chains))]
 
 #![allow(irrefutable_let_patterns)]
 
@@ -50,8 +49,8 @@ fn _if() {
     //~^ ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
-    //[no_feature]~| ERROR `let` expressions in this position are unstable
-    //[no_feature]~| ERROR `let` expressions in this position are unstable
+    //[e2021]~| ERROR let chains are only allowed in Rust 2024 or later
+    //[e2021]~| ERROR let chains are only allowed in Rust 2024 or later
 }
 
 #[cfg(not(nothing))]
@@ -76,8 +75,8 @@ fn _while() {
     //~^ ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
-    //[no_feature]~| ERROR `let` expressions in this position are unstable
-    //[no_feature]~| ERROR `let` expressions in this position are unstable
+    //[e2021]~| ERROR let chains are only allowed in Rust 2024 or later
+    //[e2021]~| ERROR let chains are only allowed in Rust 2024 or later
 }
 
 #[cfg(not(nothing))]
@@ -89,13 +88,13 @@ fn _macros() {
         }
     }
     use_expr!((let 0 = 1 && 0 == 0));
-    //[feature,no_feature]~^ ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR expected expression, found `let` statement
+    //[e2021,e2024]~^ ERROR expected expression, found `let` statement
+    //[e2021,e2024]~| ERROR expected expression, found `let` statement
+    //[e2021,e2024]~| ERROR expected expression, found `let` statement
     use_expr!((let 0 = 1));
-    //[feature,no_feature]~^ ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR expected expression, found `let` statement
+    //[e2021,e2024]~^ ERROR expected expression, found `let` statement
+    //[e2021,e2024]~| ERROR expected expression, found `let` statement
+    //[e2021,e2024]~| ERROR expected expression, found `let` statement
 }
 
 #[cfg(not(nothing))]
@@ -112,7 +111,7 @@ fn nested_within_if_expr() {
 
     fn _check_try_binds_tighter() -> Result<(), ()> {
         if let 0 = 0? {}
-        //[feature,no_feature]~^ ERROR the `?` operator can only be applied to values that implement `Try`
+        //[e2021,e2024]~^ ERROR the `?` operator can only be applied to values that implement `Try`
         Ok(())
     }
     if (let 0 = 0)? {}
@@ -133,7 +132,7 @@ fn nested_within_if_expr() {
 
     if true..(let 0 = 0) {}
     //~^ ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR mismatched types
+    //[e2021,e2024]~| ERROR mismatched types
     if ..(let 0 = 0) {}
     //~^ ERROR expected expression, found `let` statement
     if (let 0 = 0).. {}
@@ -142,22 +141,22 @@ fn nested_within_if_expr() {
     // Binds as `(let ... = true)..true &&/|| false`.
     if let Range { start: _, end: _ } = true..true && false {}
     //~^ ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR mismatched types
+    //[e2021,e2024]~| ERROR mismatched types
     if let Range { start: _, end: _ } = true..true || false {}
     //~^ ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR mismatched types
+    //[e2021,e2024]~| ERROR mismatched types
 
     // Binds as `(let Range { start: F, end } = F)..(|| true)`.
     const F: fn() -> bool = || true;
     if let Range { start: F, end } = F..|| true {}
     //~^ ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR mismatched types
+    //[e2021,e2024]~| ERROR mismatched types
 
     // Binds as `(let Range { start: true, end } = t)..(&&false)`.
     let t = &&true;
     if let Range { start: true, end } = t..&&false {}
     //~^ ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR mismatched types
+    //[e2021,e2024]~| ERROR mismatched types
 
     if let true = let true = true {}
     //~^ ERROR expected expression, found `let` statement
@@ -203,7 +202,7 @@ fn nested_within_while_expr() {
 
     fn _check_try_binds_tighter() -> Result<(), ()> {
         while let 0 = 0? {}
-        //[feature,no_feature]~^ ERROR the `?` operator can only be applied to values that implement `Try`
+        //[e2021,e2024]~^ ERROR the `?` operator can only be applied to values that implement `Try`
         Ok(())
     }
     while (let 0 = 0)? {}
@@ -224,7 +223,7 @@ fn nested_within_while_expr() {
 
     while true..(let 0 = 0) {}
     //~^ ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR mismatched types
+    //[e2021,e2024]~| ERROR mismatched types
     while ..(let 0 = 0) {}
     //~^ ERROR expected expression, found `let` statement
     while (let 0 = 0).. {}
@@ -233,22 +232,22 @@ fn nested_within_while_expr() {
     // Binds as `(let ... = true)..true &&/|| false`.
     while let Range { start: _, end: _ } = true..true && false {}
     //~^ ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR mismatched types
+    //[e2021,e2024]~| ERROR mismatched types
     while let Range { start: _, end: _ } = true..true || false {}
     //~^ ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR mismatched types
+    //[e2021,e2024]~| ERROR mismatched types
 
     // Binds as `(let Range { start: F, end } = F)..(|| true)`.
     const F: fn() -> bool = || true;
     while let Range { start: F, end } = F..|| true {}
     //~^ ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR mismatched types
+    //[e2021,e2024]~| ERROR mismatched types
 
     // Binds as `(let Range { start: true, end } = t)..(&&false)`.
     let t = &&true;
     while let Range { start: true, end } = t..&&false {}
     //~^ ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR mismatched types
+    //[e2021,e2024]~| ERROR mismatched types
 
     while let true = let true = true {}
     //~^ ERROR expected expression, found `let` statement
@@ -307,7 +306,7 @@ fn outside_if_and_while_expr() {
 
     fn _check_try_binds_tighter() -> Result<(), ()> {
         let 0 = 0?;
-        //[feature,no_feature]~^ ERROR the `?` operator can only be applied to values that implement `Try`
+        //[e2021,e2024]~^ ERROR the `?` operator can only be applied to values that implement `Try`
         Ok(())
     }
     (let 0 = 0)?;
@@ -333,7 +332,7 @@ fn outside_if_and_while_expr() {
 
     (let Range { start: _, end: _ } = true..true || false);
     //~^ ERROR expected expression, found `let` statement
-    //[feature,no_feature]~| ERROR mismatched types
+    //[e2021,e2024]~| ERROR mismatched types
 
     (let true = let true = true);
     //~^ ERROR expected expression, found `let` statement
@@ -406,7 +405,7 @@ fn with_parenthesis() {
     //~| ERROR expected expression, found `let` statement
     }
     if let Some(a) = opt && (true && true) {
-    //[no_feature]~^ ERROR `let` expressions in this position are unstable
+    //[e2021]~^ ERROR let chains are only allowed in Rust 2024 or later
     }
 
     if (let Some(a) = opt && (let Some(b) = a)) && b == 1 {
@@ -422,18 +421,18 @@ fn with_parenthesis() {
     }
 
     if (true && (true)) && let Some(a) = opt {
-    //[no_feature]~^ ERROR `let` expressions in this position are unstable
+    //[e2021]~^ ERROR let chains are only allowed in Rust 2024 or later
     }
     if (true) && let Some(a) = opt {
-    //[no_feature]~^ ERROR `let` expressions in this position are unstable
+    //[e2021]~^ ERROR let chains are only allowed in Rust 2024 or later
     }
     if true && let Some(a) = opt {
-    //[no_feature]~^ ERROR `let` expressions in this position are unstable
+    //[e2021]~^ ERROR let chains are only allowed in Rust 2024 or later
     }
 
     let fun = || true;
     if let true = (true && fun()) && (true) {
-    //[no_feature]~^ ERROR `let` expressions in this position are unstable
+    //[e2021]~^ ERROR let chains are only allowed in Rust 2024 or later
     }
 
     #[cfg(false)]
