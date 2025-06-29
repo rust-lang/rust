@@ -31,7 +31,6 @@
 
 #[unsafe(export_name)]
 //~^ ERROR malformed
-//~| ERROR malformed
 #[rustc_allow_const_fn_unstable]
 //~^ ERROR `rustc_allow_const_fn_unstable` expects a list of feature names
 #[allow_internal_unstable]
@@ -69,7 +68,6 @@
 //~^ ERROR malformed
 #[export_name()]
 //~^ ERROR malformed
-//~| ERROR malformed
 #[used()]
 //~^ ERROR malformed
 #[crate_name]
