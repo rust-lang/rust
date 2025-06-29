@@ -222,6 +222,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
                 this.write_scalar(res, dest)?;
             }
+            "pthread_threadid_np" => {
+                let [thread, tid_ptr] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let res = this.apple_pthread_threadip_np(thread, tid_ptr)?;
+                this.write_scalar(res, dest)?;
+            }
 
             // Synchronization primitives
             "os_sync_wait_on_address" => {
