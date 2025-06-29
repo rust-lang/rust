@@ -36,7 +36,7 @@ runs:
           key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}-v1
           restore-keys: cargo-${{ runner.os }}-${{ runner.arch }}
 
-      - name: Install rustup-toolchain-install-master
+      - name: Install the tools we need
         if: steps.cache.outputs.cache-hit != 'true'
         run: cargo install -f rustup-toolchain-install-master hyperfine
         shell: bash
