@@ -3,11 +3,10 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::impls::MaybeUninitializedLocals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use tracing::{debug, instrument};
 
-use crate::ssa::SsaLocals;
+use crate::ssa::{MaybeUninitializedLocals, SsaLocals};
 
 /// Unify locals that copy each other.
 ///
@@ -37,10 +36,7 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
         debug!(copy_classes = ?ssa.copy_classes());
 
         let mut any_replacement = false;
-        let fully_moved = fully_moved_locals(&ssa, body);
-        debug!(?fully_moved);
-
-        let mut storage_to_remove = DenseBitSet::new_empty(fully_moved.domain_size());
+        let mut storage_to_remove = DenseBitSet::new_empty(body.local_decls.len());
 
         for (local, &head) in ssa.copy_classes().iter_enumerated() {
             if local != head {
