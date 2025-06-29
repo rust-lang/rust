@@ -1896,10 +1896,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 });
             }
             _ => {
-                self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
-                    hint_span: repr_span,
-                    span,
-                });
+                self.dcx().emit_err(errors::AlignAttrApplication { hint_span: repr_span, span });
             }
         }
 
