@@ -520,8 +520,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.block
     }
 
-    fn append_block(cx: &'a CodegenCx<'gcc, 'tcx>, func: RValue<'gcc>, name: &str) -> Block<'gcc> {
-        let func = cx.rvalue_as_function(func);
+    fn append_block(_: &'a CodegenCx<'gcc, 'tcx>, func: Function<'gcc>, name: &str) -> Block<'gcc> {
         func.new_block(name)
     }
 
@@ -782,6 +781,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 return self.context.new_call(self.location, fmod, &[a, b]);
             }
             TypeKind::FP128 => {
+                // TODO(antoyo): use get_simple_function_f128_2args.
                 let f128_type = self.type_f128();
                 let fmodf128 = self.context.new_function(
                     None,
@@ -938,22 +938,36 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
         let block = self.llbb();
         let function = block.get_function();
+        // NOTE(FractalFir): In some cases, we *should* skip the call to get_aligned.
+        // For example, calling `get_aligned` on a i8 is pointless(since it can only be 1 aligned)
+        // Calling get_aligned on a `u128`/`i128` causes the attribute to become "stacked"
+        //
+        // From GCCs perspective:
+        // __int128_t  __attribute__((aligned(16)))  __attribute__((aligned(16)))
+        // and:
+        // __int128_t  __attribute__((aligned(16)))
+        // are 2 distinct, incompatible types.
+        //
+        // So, we skip the call to `get_aligned` in such a case. *Ideally*, we could do this for all the types,
+        // but the GCC APIs to facilitate this just aren't quite there yet.
+
+        // This checks that we only skip `get_aligned` on 128 bit ints if they have the correct alignment.
+        // Otherwise, this may be an under-aligned load, so we will still call get_aligned.
+        let mut can_skip_align = (pointee_ty == self.cx.u128_type
+            || pointee_ty == self.cx.i128_type)
+            && align == self.int128_align;
+        // We can skip the call to `get_aligned` for byte-sized types with alignment of 1.
+        can_skip_align = can_skip_align
+            || (pointee_ty == self.cx.u8_type || pointee_ty == self.cx.i8_type)
+                && align.bytes() == 1;
+        // Skip the call to `get_aligned` when possible.
+        let aligned_type =
+            if can_skip_align { pointee_ty } else { pointee_ty.get_aligned(align.bytes()) };
+
+        let ptr = self.context.new_cast(self.location, ptr, aligned_type.make_pointer());
         // NOTE: instead of returning the dereference here, we have to assign it to a variable in
         // the current basic block. Otherwise, it could be used in another basic block, causing a
         // dereference after a drop, for instance.
-        // FIXME(antoyo): this check that we don't call get_aligned() a second time on a type.
-        // Ideally, we shouldn't need to do this check.
-        // FractalFir: the `align == self.int128_align` check ensures we *do* call `get_aligned` if
-        // the alignment of a `u128`/`i128` is not the one mandated by the ABI. This ensures we handle
-        // under-aligned loads correctly.
-        let aligned_type = if (pointee_ty == self.cx.u128_type || pointee_ty == self.cx.i128_type)
-            && align == self.int128_align
-        {
-            pointee_ty
-        } else {
-            pointee_ty.get_aligned(align.bytes())
-        };
-        let ptr = self.context.new_cast(self.location, ptr, aligned_type.make_pointer());
         let deref = ptr.dereference(self.location).to_rvalue();
         let loaded_value = function.new_local(
             self.location,
@@ -1105,7 +1119,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    fn store(&mut self, val: RValue<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
+    fn store(&mut self, mut val: RValue<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
+        if self.structs_as_pointer.borrow().contains(&val) {
+            // NOTE: hack to workaround a limitation of the rustc API: see comment on
+            // CodegenCx.structs_as_pointer
+            val = val.dereference(self.location).to_rvalue();
+        }
+
         self.store_with_flags(val, ptr, align, MemFlags::empty())
     }
 
@@ -1551,16 +1571,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         aggregate_value
     }
 
-    fn set_personality_fn(&mut self, _personality: RValue<'gcc>) {
+    fn set_personality_fn(&mut self, _personality: Function<'gcc>) {
         #[cfg(feature = "master")]
-        {
-            let personality = self.rvalue_as_function(_personality);
-            self.current_func().set_personality_function(personality);
-        }
+        self.current_func().set_personality_function(_personality);
     }
 
     #[cfg(feature = "master")]
-    fn cleanup_landing_pad(&mut self, pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+    fn cleanup_landing_pad(&mut self, pers_fn: Function<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         self.set_personality_fn(pers_fn);
 
         // NOTE: insert the current block in a variable so that a later call to invoke knows to
@@ -1581,7 +1598,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(not(feature = "master"))]
-    fn cleanup_landing_pad(&mut self, _pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+    fn cleanup_landing_pad(&mut self, _pers_fn: Function<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         let value1 = self
             .current_func()
             .new_local(self.location, self.u8_type.make_pointer(), "landing_pad0")
@@ -1591,7 +1608,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         (value1, value2)
     }
 
-    fn filter_landing_pad(&mut self, pers_fn: RValue<'gcc>) {
+    fn filter_landing_pad(&mut self, pers_fn: Function<'gcc>) {
         // TODO(antoyo): generate the correct landing pad
         self.cleanup_landing_pad(pers_fn);
     }
