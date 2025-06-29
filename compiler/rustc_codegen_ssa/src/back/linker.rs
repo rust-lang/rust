@@ -1870,8 +1870,13 @@ pub(crate) fn linked_symbols(
     crate_type: CrateType,
 ) -> Vec<(String, SymbolExportKind)> {
     match crate_type {
-        CrateType::Executable | CrateType::Cdylib | CrateType::Dylib | CrateType::Sdylib => (),
-        CrateType::Staticlib | CrateType::ProcMacro | CrateType::Rlib => {
+        CrateType::Executable
+        | CrateType::ProcMacro
+        | CrateType::Cdylib
+        | CrateType::Dylib
+        | CrateType::Sdylib => (),
+        CrateType::Staticlib | CrateType::Rlib => {
+            // These are not linked, so no need to generate symbols.o for them.
             return Vec::new();
         }
     }
