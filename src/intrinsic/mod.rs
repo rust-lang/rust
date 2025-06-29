@@ -78,7 +78,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::maxnumf64 => "fmax",
         sym::copysignf32 => "copysignf",
         sym::copysignf64 => "copysign",
-        sym::copysignf128 => "copysignl",
         sym::floorf32 => "floorf",
         sym::floorf64 => "floor",
         sym::ceilf32 => "ceilf",
@@ -202,6 +201,7 @@ fn get_simple_function_f128_2args<'gcc, 'tcx>(
     let func_name = match name {
         sym::maxnumf128 => "fmaxf128",
         sym::minnumf128 => "fminf128",
+        sym::copysignf128 => "copysignf128",
         _ => return None,
     };
     Some(cx.context.new_function(
