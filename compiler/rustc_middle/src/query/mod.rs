@@ -1283,15 +1283,15 @@ rustc_queries! {
         return_result_from_ensure_ok
     }
 
-    /// Check whether the function has any recursion that could cause the inliner to trigger
-    /// a cycle.
-    query mir_callgraph_reachable(key: (ty::Instance<'tcx>, LocalDefId)) -> bool {
+    /// Return the set of (transitive) callees that may result in a recursive call to `key`.
+    query mir_callgraph_cyclic(key: LocalDefId) -> &'tcx UnordSet<LocalDefId> {
         fatal_cycle
+        arena_cache
         desc { |tcx|
-            "computing if `{}` (transitively) calls `{}`",
-            key.0,
-            tcx.def_path_str(key.1),
+            "computing (transitive) callees of `{}` that may recurse",
+            tcx.def_path_str(key),
         }
+        cache_on_disk_if { true }
     }
 
     /// Obtain all the calls into other local functions
