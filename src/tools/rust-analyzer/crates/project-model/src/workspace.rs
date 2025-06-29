@@ -636,10 +636,16 @@ impl ProjectWorkspace {
         match &self.kind {
             ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, None)), .. }
             | ProjectWorkspaceKind::Cargo { cargo, error: None, .. } => {
-                WorkspaceBuildScripts::run_for_workspace(config, cargo, progress, &self.sysroot)
-                    .with_context(|| {
-                        format!("Failed to run build scripts for {}", cargo.workspace_root())
-                    })
+                WorkspaceBuildScripts::run_for_workspace(
+                    config,
+                    cargo,
+                    progress,
+                    &self.sysroot,
+                    self.toolchain.as_ref(),
+                )
+                .with_context(|| {
+                    format!("Failed to run build scripts for {}", cargo.workspace_root())
+                })
             }
             _ => Ok(WorkspaceBuildScripts::default()),
         }
