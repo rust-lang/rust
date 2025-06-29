@@ -1334,7 +1334,7 @@ impl<'a> Markdown<'a> {
             return String::new();
         }
 
-        let mut s = String::with_capacity(self.content.len() * 3 / 2);
+        let mut s = String::new();
         html::push_html(&mut s, self.into_iter());
 
         s
@@ -1475,7 +1475,7 @@ impl MarkdownItemInfo<'_> {
             _ => event,
         });
 
-        let mut s = String::with_capacity(md.len() * 3 / 2);
+        let mut s = String::new();
 
         ids.handle_footnotes(|ids, existing_footnotes| {
             let p = HeadingLinks::new(p, None, ids, HeadingOffset::H1);
