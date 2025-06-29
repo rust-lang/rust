@@ -1102,22 +1102,6 @@ pub(crate) struct InvalidNoSanitize {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_invalid_link_ordinal_nargs)]
-#[note]
-pub(crate) struct InvalidLinkOrdinalNargs {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_illegal_link_ordinal_format)]
-#[note]
-pub(crate) struct InvalidLinkOrdinalFormat {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_target_feature_safe_trait)]
 pub(crate) struct TargetFeatureSafeTrait {
     #[primary_span]

@@ -78,6 +78,9 @@ attr_parsing_invalid_repr_hint_no_value =
 attr_parsing_invalid_since =
     'since' must be a Rust version number, such as "1.31.0"
 
+attr_parsing_link_ordinal_out_of_range = ordinal value in `link_ordinal` is too large: `{$ordinal}`
+    .note = the value may not exceed `u16::MAX`
+
 attr_parsing_missing_feature =
     missing 'feature'
 

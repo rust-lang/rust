@@ -80,9 +80,6 @@ codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extensio
 
 codegen_ssa_ignoring_output = ignoring -o because multiple .{$extension} files were produced
 
-codegen_ssa_illegal_link_ordinal_format = illegal ordinal format in `link_ordinal`
-    .note = an unsuffixed integer value, e.g., `1`, is expected
-
 codegen_ssa_incorrect_cgu_reuse_type =
     CGU-reuse for `{$cgu_user_name}` is `{$actual_reuse}` but should be {$at_least ->
     [one] {"at least "}
@@ -92,9 +89,6 @@ codegen_ssa_incorrect_cgu_reuse_type =
 codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient.
 
 codegen_ssa_invalid_instruction_set = invalid instruction set specified
-
-codegen_ssa_invalid_link_ordinal_nargs = incorrect number of arguments to `#[link_ordinal]`
-    .note = the attribute requires exactly one argument
 
 codegen_ssa_invalid_literal_value = invalid literal value
     .label = value must be an integer between `0` and `255`
