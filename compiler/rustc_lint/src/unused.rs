@@ -1285,24 +1285,32 @@ impl EarlyLintPass for UnusedParens {
                 );
             }
             ast::TyKind::Paren(r) => {
-                match &r.kind {
-                    ast::TyKind::ImplTrait(_, bounds) | ast::TyKind::TraitObject(bounds, _)
-                        if self.in_no_bounds_pos.get(&ty.id).is_some_and(|exception| {
-                            matches!(exception, NoBoundsException::None) || bounds.len() > 1
-                        }) => {}
-                    ast::TyKind::BareFn(b)
-                        if self.with_self_ty_parens && b.generic_params.len() > 0 => {}
-                    _ => {
-                        let spans = if !ty.span.from_expansion() {
+                let unused_parens = match &r.kind {
+                    ast::TyKind::ImplTrait(_, bounds) | ast::TyKind::TraitObject(bounds, _) => {
+                        match self.in_no_bounds_pos.get(&ty.id) {
+                            Some(NoBoundsException::None) => false,
+                            Some(NoBoundsException::OneBound) => bounds.len() <= 1,
+                            None => true,
+                        }
+                    }
+                    ast::TyKind::BareFn(b) => {
+                        !self.with_self_ty_parens || b.generic_params.is_empty()
+                    }
+                    _ => true,
+                };
+
+                if unused_parens {
+                    let spans = (!ty.span.from_expansion())
+                        .then(|| {
                             r.span
                                 .find_ancestor_inside(ty.span)
                                 .map(|r| (ty.span.with_hi(r.lo()), ty.span.with_lo(r.hi())))
-                        } else {
-                            None
-                        };
-                        self.emit_unused_delims(cx, ty.span, spans, "type", (false, false), false);
-                    }
+                        })
+                        .flatten();
+
+                    self.emit_unused_delims(cx, ty.span, spans, "type", (false, false), false);
                 }
+
                 self.with_self_ty_parens = false;
             }
             ast::TyKind::Ref(_, mut_ty) | ast::TyKind::Ptr(mut_ty) => {
