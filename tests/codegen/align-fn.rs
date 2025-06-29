@@ -1,4 +1,5 @@
 //@ compile-flags: -C no-prepopulate-passes -Z mir-opt-level=0 -Clink-dead-code
+//@ edition: 2024
 
 #![crate_type = "lib"]
 #![feature(fn_align)]
@@ -130,3 +131,9 @@ unsafe extern "C" {
     #[align(256)]
     fn align_unmangled();
 }
+
+// CHECK-LABEL: async_align
+// CHECK-SAME: align 64
+#[unsafe(no_mangle)]
+#[align(64)]
+pub async fn async_align() {}
