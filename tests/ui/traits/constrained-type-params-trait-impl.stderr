@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Foo<_>` for type `[isize; 0]`
-  --> $DIR/impl-unused-tps.rs:28:1
+  --> $DIR/constrained-type-params-trait-impl.rs:37:1
    |
 LL | impl<T> Foo<T> for [isize; 0] {
    | ----------------------------- first implementation here
@@ -8,7 +8,7 @@ LL | impl<T, U> Foo<T> for U {
    | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `[isize; 0]`
 
 error[E0119]: conflicting implementations of trait `Foo<[isize; 0]>` for type `[isize; 0]`
-  --> $DIR/impl-unused-tps.rs:49:1
+  --> $DIR/constrained-type-params-trait-impl.rs:57:1
    |
 LL |   impl<T> Foo<T> for [isize; 0] {
    |   ----------------------------- first implementation here
@@ -19,7 +19,7 @@ LL | |     (T, U): Bar<Out = V>,
    | |_________________________^ conflicting implementation for `[isize; 0]`
 
 error[E0119]: conflicting implementations of trait `Foo<([isize; 0], _)>` for type `[isize; 0]`
-  --> $DIR/impl-unused-tps.rs:61:1
+  --> $DIR/constrained-type-params-trait-impl.rs:67:1
    |
 LL |   impl<T> Foo<T> for [isize; 0] {
    |   ----------------------------- first implementation here
@@ -30,37 +30,37 @@ LL | |     (T, U): Bar<Out = V>,
    | |_________________________^ conflicting implementation for `[isize; 0]`
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/impl-unused-tps.rs:13:9
+  --> $DIR/constrained-type-params-trait-impl.rs:21:9
    |
 LL | impl<T, U> Foo<T> for [isize; 1] {
    |         ^ unconstrained type parameter
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/impl-unused-tps.rs:32:9
+  --> $DIR/constrained-type-params-trait-impl.rs:42:9
    |
 LL | impl<T, U> Bar for T {
    |         ^ unconstrained type parameter
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/impl-unused-tps.rs:40:9
+  --> $DIR/constrained-type-params-trait-impl.rs:48:9
    |
 LL | impl<T, U> Bar for T
    |         ^ unconstrained type parameter
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/impl-unused-tps.rs:49:9
+  --> $DIR/constrained-type-params-trait-impl.rs:57:9
    |
 LL | impl<T, U, V> Foo<T> for T
    |         ^ unconstrained type parameter
 
 error[E0207]: the type parameter `V` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/impl-unused-tps.rs:49:12
+  --> $DIR/constrained-type-params-trait-impl.rs:57:12
    |
 LL | impl<T, U, V> Foo<T> for T
    |            ^ unconstrained type parameter
 
 error[E0119]: conflicting implementations of trait `Bar`
-  --> $DIR/impl-unused-tps.rs:40:1
+  --> $DIR/constrained-type-params-trait-impl.rs:48:1
    |
 LL |   impl<T, U> Bar for T {
    |   -------------------- first implementation here
