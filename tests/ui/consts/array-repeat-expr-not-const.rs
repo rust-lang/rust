@@ -1,7 +1,9 @@
-// Check that non constant exprs fail for array repeat syntax
+//! Arrays created with `[value; length]` syntax need the length to be known at
+//! compile time. This test makes sure the compiler rejects runtime values like
+//! function parameters in the length position.
 
 fn main() {
-    fn bar(n: usize) {
+    fn create_array(n: usize) {
         let _x = [0; n];
         //~^ ERROR attempt to use a non-constant value in a constant [E0435]
     }
