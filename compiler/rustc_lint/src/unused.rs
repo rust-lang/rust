@@ -1,7 +1,7 @@
 use std::iter;
 
 use rustc_ast::util::{classify, parser};
-use rustc_ast::{self as ast, ExprKind, HasAttrs as _, StmtKind};
+use rustc_ast::{self as ast, ExprKind, FnRetTy, HasAttrs as _, StmtKind};
 use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_errors::{MultiSpan, pluralize};
 use rustc_hir::def::{DefKind, Res};
@@ -595,6 +595,7 @@ enum UnusedDelimsCtx {
     AnonConst,
     MatchArmExpr,
     IndexExpr,
+    ClosureBody,
 }
 
 impl From<UnusedDelimsCtx> for &'static str {
@@ -616,6 +617,7 @@ impl From<UnusedDelimsCtx> for &'static str {
             UnusedDelimsCtx::ArrayLenExpr | UnusedDelimsCtx::AnonConst => "const expression",
             UnusedDelimsCtx::MatchArmExpr => "match arm expression",
             UnusedDelimsCtx::IndexExpr => "index expression",
+            UnusedDelimsCtx::ClosureBody => "closure body",
         }
     }
 }
@@ -915,6 +917,11 @@ trait UnusedDelimLint {
                 let (args_to_check, ctx) = match *call_or_other {
                     Call(_, ref args) => (&args[..], UnusedDelimsCtx::FunctionArg),
                     MethodCall(ref call) => (&call.args[..], UnusedDelimsCtx::MethodArg),
+                    Closure(ref closure)
+                        if matches!(closure.fn_decl.output, FnRetTy::Default(_)) =>
+                    {
+                        (&[closure.body.clone()][..], UnusedDelimsCtx::ClosureBody)
+                    }
                     // actual catch-all arm
                     _ => {
                         return;
@@ -1398,6 +1405,7 @@ impl UnusedDelimLint for UnusedBraces {
                             && (ctx != UnusedDelimsCtx::AnonConst
                                 || (matches!(expr.kind, ast::ExprKind::Lit(_))
                                     && !expr.span.from_expansion()))
+                            && ctx != UnusedDelimsCtx::ClosureBody
                             && !cx.sess().source_map().is_multiline(value.span)
                             && value.attrs.is_empty()
                             && !value.span.from_expansion()

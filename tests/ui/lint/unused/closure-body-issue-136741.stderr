@@ -1,0 +1,62 @@
+error: unnecessary parentheses around closure body
+  --> $DIR/closure-body-issue-136741.rs:15:16
+   |
+LL |     let _ = || (0 == 0);
+   |                ^      ^
+   |
+note: the lint level is defined here
+  --> $DIR/closure-body-issue-136741.rs:3:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     let _ = || (0 == 0);
+LL +     let _ = || 0 == 0;
+   |
+
+error: unnecessary parentheses around closure body
+  --> $DIR/closure-body-issue-136741.rs:16:28
+   |
+LL |     let _ = (0..).find(|n| (n % 2 == 0));
+   |                            ^          ^
+   |
+help: remove these parentheses
+   |
+LL -     let _ = (0..).find(|n| (n % 2 == 0));
+LL +     let _ = (0..).find(|n| n % 2 == 0);
+   |
+
+error: unnecessary parentheses around closure body
+  --> $DIR/closure-body-issue-136741.rs:25:28
+   |
+LL |        let _ = (0..).find(|n| (
+   |  _____________________________^
+LL | |          n % 2 == 0
+   | | ________^__________^
+   | ||________|
+   |  |
+LL |  |     ));
+   |  |_____^
+   |
+help: remove these parentheses
+   |
+LL -     let _ = (0..).find(|n| (
+LL -         n % 2 == 0
+LL +     let _ = (0..).find(|n| n % 2 == 0);
+   |
+
+error: unnecessary parentheses around block return value
+  --> $DIR/closure-body-issue-136741.rs:31:9
+   |
+LL |         (0 == 0)
+   |         ^      ^
+   |
+help: remove these parentheses
+   |
+LL -         (0 == 0)
+LL +         0 == 0
+   |
+
+error: aborting due to 4 previous errors
+
