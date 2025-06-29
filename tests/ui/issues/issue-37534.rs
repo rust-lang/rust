@@ -1,5 +1,5 @@
 struct Foo<T: ?Hash> {}
 //~^ ERROR expected trait, found derive macro `Hash`
-//~| ERROR relaxing a default bound only does something for `?Sized`
+//~| ERROR bound modifier `?` can only be applied to `Sized`
 
 fn main() {}
