@@ -124,6 +124,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
                 AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
                 AttributeKind::LinkName { name, .. } => codegen_fn_attrs.link_name = Some(*name),
+                AttributeKind::LinkSection { name, .. } => {
+                    codegen_fn_attrs.link_section = Some(*name)
+                }
                 AttributeKind::NoMangle(attr_span) => {
                     if tcx.opt_item_name(did.to_def_id()).is_some() {
                         codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
@@ -250,16 +253,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         }
                     } else {
                         codegen_fn_attrs.linkage = linkage;
-                    }
-                }
-            }
-            sym::link_section => {
-                if let Some(val) = attr.value_str() {
-                    if val.as_str().bytes().any(|b| b == 0) {
-                        let msg = format!("illegal null byte in link_section value: `{val}`");
-                        tcx.dcx().span_err(attr.span(), msg);
-                    } else {
-                        codegen_fn_attrs.link_section = Some(val);
                     }
                 }
             }

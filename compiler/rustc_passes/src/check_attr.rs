@@ -177,6 +177,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Align { align, span: repr_span }) => {
                     self.check_align(span, target, *align, *repr_span)
                 }
+                Attribute::Parsed(AttributeKind::LinkSection { span: attr_span, .. }) => {
+                    self.check_link_section(hir_id, *attr_span, span, target)
+                }
                 Attribute::Parsed(AttributeKind::Naked(attr_span)) => {
                     self.check_naked(hir_id, *attr_span, span, target)
                 }
@@ -286,7 +289,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::ffi_const, ..] => self.check_ffi_const(attr.span(), target),
                         [sym::link_ordinal, ..] => self.check_link_ordinal(attr, span, target),
                         [sym::link, ..] => self.check_link(hir_id, attr, span, target),
-                        [sym::link_section, ..] => self.check_link_section(hir_id, attr, span, target),
                         [sym::macro_use, ..] | [sym::macro_escape, ..] => {
                             self.check_macro_use(hir_id, attr, target)
                         }
@@ -1831,7 +1833,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[link_section]` is applied to a function or static.
-    fn check_link_section(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+    fn check_link_section(&self, hir_id: HirId, attr_span: Span, span: Span, target: Target) {
         match target {
             Target::Static | Target::Fn | Target::Method(..) => {}
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
@@ -1839,7 +1841,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "link_section");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr_span, "link_section");
             }
             _ => {
                 // FIXME: #[link_section] was previously allowed on non-functions/statics and some
@@ -1847,7 +1849,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.tcx.emit_node_span_lint(
                     UNUSED_ATTRIBUTES,
                     hir_id,
-                    attr.span(),
+                    attr_span,
                     errors::LinkSection { span },
                 );
             }
