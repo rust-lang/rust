@@ -47,7 +47,6 @@ use std::ops::{Add, AddAssign, Deref, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use bitflags::bitflags;
-use rustc_data_structures::fx::FxHashMap;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
 use rustc_hashes::Hash64;
@@ -254,7 +253,7 @@ pub struct TargetDataLayout {
     pub vector_align: Vec<(Size, AbiAlign)>,
 
     pub default_address_space: AddressSpace,
-    pub address_space_info: FxHashMap<AddressSpace, AddressSpaceInfo>,
+    pub address_space_info: Vec<(AddressSpace, AddressSpaceInfo)>,
 
     pub instruction_address_space: AddressSpace,
 
@@ -286,14 +285,14 @@ impl Default for TargetDataLayout {
                 (Size::from_bits(128), AbiAlign::new(align(128))),
             ],
             default_address_space: AddressSpace::ZERO,
-            address_space_info: FxHashMap::from_iter([(
+            address_space_info: vec![(
                 AddressSpace::ZERO,
                 AddressSpaceInfo {
                     pointer_size: Size::from_bits(64),
                     pointer_align: AbiAlign::new(align(64)),
                     pointer_index: Size::from_bits(64),
                 },
-            )]),
+            )],
             instruction_address_space: AddressSpace::ZERO,
             c_enum_min_size: Integer::I32,
         }
@@ -388,11 +387,10 @@ impl TargetDataLayout {
                         pointer_size,
                         pointer_align: parse_align(a, p)?,
                     };
-
-                    dl.address_space_info
-                        .entry(addr_space)
-                        .and_modify(|v| *v = info)
-                        .or_insert(info);
+                    match dl.address_space_info.iter_mut().find(|(a, _)| *a == addr_space) {
+                        Some(e) => e.1 = info,
+                        None => dl.address_space_info.push((addr_space, info)),
+                    }
                 }
                 [p, s, _pr, i, a @ ..] if p.starts_with("p") => {
                     let p = p.strip_prefix(char::is_alphabetic).unwrap_or_default();
@@ -409,10 +407,10 @@ impl TargetDataLayout {
                         pointer_index: parse_size(i, p)?,
                     };
 
-                    dl.address_space_info
-                        .entry(addr_space)
-                        .and_modify(|v| *v = info)
-                        .or_insert(info);
+                    match dl.address_space_info.iter_mut().find(|(a, _)| *a == addr_space) {
+                        Some(e) => e.1 = info,
+                        None => dl.address_space_info.push((addr_space, info)),
+                    }
                 }
 
                 [s, a @ ..] if s.starts_with('i') => {
@@ -450,7 +448,7 @@ impl TargetDataLayout {
             }
         }
 
-        if !dl.address_space_info.contains_key(&default_address_space) {
+        if dl.address_space_info.iter().find(|(a, _)| *a == default_address_space).is_none() {
             return Err(TargetDataLayoutErrors::MissingAddressSpaceInfo {
                 addr_space: default_address_space,
             });
@@ -459,11 +457,17 @@ impl TargetDataLayout {
         // Inherit, if not given, address space informations for specific LLVM elements from the
         // default data address space.
 
-        if !dl.address_space_info.contains_key(&dl.instruction_address_space) {
-            dl.address_space_info.insert(
+        if dl.address_space_info.iter().find(|(a, _)| *a == dl.instruction_address_space).is_none()
+        {
+            dl.address_space_info.push((
                 dl.instruction_address_space,
-                dl.address_space_info.get(&default_address_space).unwrap().clone(),
-            );
+                dl.address_space_info
+                    .iter()
+                    .find(|(a, _)| *a == default_address_space)
+                    .unwrap()
+                    .1
+                    .clone(),
+            ));
         }
 
         Ok(dl)
@@ -545,8 +549,8 @@ impl TargetDataLayout {
     /// Get the pointer size in a specific address space.
     #[inline]
     pub fn pointer_size_in(&self, c: AddressSpace) -> Size {
-        if let Some(c) = self.address_space_info.get(&c) {
-            c.pointer_size
+        if let Some(e) = self.address_space_info.iter().find(|(a, _)| a == &c) {
+            e.1.pointer_size
         } else {
             panic!("Use of unknown address space {c:?}");
         }
@@ -561,8 +565,8 @@ impl TargetDataLayout {
     /// Get the pointer index in a specific address space.
     #[inline]
     pub fn pointer_index_in(&self, c: AddressSpace) -> Size {
-        if let Some(c) = self.address_space_info.get(&c) {
-            c.pointer_index
+        if let Some(e) = self.address_space_info.iter().find(|(a, _)| a == &c) {
+            e.1.pointer_index
         } else {
             panic!("Use of unknown address space {c:?}");
         }
@@ -577,8 +581,8 @@ impl TargetDataLayout {
     /// Get the pointer alignment in a specific address space.
     #[inline]
     pub fn pointer_align_in(&self, c: AddressSpace) -> AbiAlign {
-        if let Some(c) = self.address_space_info.get(&c) {
-            c.pointer_align
+        if let Some(e) = self.address_space_info.iter().find(|(a, _)| a == &c) {
+            e.1.pointer_align
         } else {
             panic!("Use of unknown address space {c:?}");
         }
