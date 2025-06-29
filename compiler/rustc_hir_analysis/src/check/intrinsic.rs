@@ -196,7 +196,12 @@ pub(crate) fn check_intrinsic_type(
         (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
     };
 
-    let safety = intrinsic_operation_unsafety(tcx, intrinsic_id);
+    // FIXME(Sa4dUs): Get the actual safety level of the diff function
+    let safety = if has_autodiff {
+        hir::Safety::Safe
+    } else {
+        intrinsic_operation_unsafety(tcx, intrinsic_id)
+    };
     let n_lts = 0;
     let (n_tps, n_cts, inputs, output) = match intrinsic_name {
         _ if has_autodiff => {

@@ -174,9 +174,16 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         span: Span,
     ) -> Result<(), ty::Instance<'tcx>> {
         let tcx = self.tcx;
+        let callee_ty = instance.ty(tcx, self.typing_env());
 
-        let name = tcx.item_name(instance.def_id());
         let fn_args = instance.args;
+
+        let sig = callee_ty.fn_sig(tcx);
+        let sig = tcx.normalize_erasing_late_bound_regions(self.typing_env(), sig);
+        let ret_ty = sig.output();
+        let name = tcx.item_name(instance.def_id());
+
+        let llret_ty = self.layout_of(ret_ty).llvm_type(self);
 
         let simple = call_simple_intrinsic(self, name, args);
         let llval = match name {
@@ -223,20 +230,14 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let fn_to_diff: Option<&'ll llvm::Value> = self.cx.get_function(&source_symbol);
                 let Some(fn_to_diff) = fn_to_diff else { bug!("could not find source function") };
 
-                // Declare target fn
-                let target_symbol =
-                    symbol_name_for_instance_in_crate(tcx, instance.clone(), LOCAL_CRATE);
-                let fn_abi = self.cx.fn_abi_of_instance(instance, ty::List::empty());
-                let outer_fn: &'ll Value =
-                    self.cx.declare_fn(&target_symbol, fn_abi, Some(instance));
-
                 // Build body
                 generate_enzyme_call(
                     self,
                     self.cx,
                     fn_to_diff,
-                    outer_fn,
-                    args, // This argument was not in the original `generate_enzyme_call`, now it's included because `get_params` is not working anymore
+                    name.as_str(),
+                    llret_ty,
+                    args,
                     diff_attrs.clone(),
                     result,
                 );

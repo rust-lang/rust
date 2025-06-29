@@ -15,7 +15,7 @@ use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
 use crate::errors::{AutoDiffWithoutEnable, LlvmError};
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{Metadata, True};
+use crate::llvm::{Metadata, True, Type};
 use crate::value::Value;
 use crate::{CodegenContext, LlvmCodegenBackend, ModuleLlvm, attributes, llvm};
 
@@ -30,7 +30,7 @@ fn _get_params(fnc: &Value) -> Vec<&Value> {
     fnc_args
 }
 
-fn has_sret(fnc: &Value) -> bool {
+fn _has_sret(fnc: &Value) -> bool {
     let num_args = llvm::LLVMCountParams(fnc) as usize;
     if num_args == 0 {
         false
@@ -56,7 +56,6 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
     args: &mut Vec<&'ll llvm::Value>,
     inputs: &[DiffActivity],
     outer_args: &[&'ll llvm::Value],
-    has_sret: bool,
 ) {
     debug!("matching autodiff arguments");
     // We now handle the issue that Rust level arguments not always match the llvm-ir level
@@ -67,14 +66,6 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
     // using iterators and peek()?
     let mut outer_pos: usize = 0;
     let mut activity_pos = 0;
-
-    if has_sret {
-        // Then the first outer arg is the sret pointer. Enzyme doesn't know about sret, so the
-        // inner function will still return something. We increase our outer_pos by one,
-        // and once we're done with all other args we will take the return of the inner call and
-        // update the sret pointer with it
-        outer_pos = 1;
-    }
 
     let enzyme_const = cx.create_metadata("enzyme_const".to_string()).unwrap();
     let enzyme_out = cx.create_metadata("enzyme_out".to_string()).unwrap();
@@ -194,92 +185,6 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
     }
 }
 
-// On LLVM-IR, we can luckily declare __enzyme_ functions without specifying the input
-// arguments. We do however need to declare them with their correct return type.
-// We already figured the correct return type out in our frontend, when generating the outer_fn,
-// so we can now just go ahead and use that. This is not always trivial, e.g. because sret.
-// Beyond sret, this article describes our challenges nicely:
-// <https://yorickpeterse.com/articles/the-mess-that-is-handling-structure-arguments-and-returns-in-llvm/>
-// I.e. (i32, f32) will get merged into i64, but we don't handle that yet.
-fn compute_enzyme_fn_ty<'ll>(
-    cx: &SimpleCx<'ll>,
-    attrs: &AutoDiffAttrs,
-    fn_to_diff: &'ll Value,
-    outer_fn: &'ll Value,
-) -> &'ll llvm::Type {
-    let fn_ty = cx.get_type_of_global(outer_fn);
-    let mut ret_ty = cx.get_return_type(fn_ty);
-
-    let has_sret = has_sret(outer_fn);
-
-    if has_sret {
-        // Now we don't just forward the return type, so we have to figure it out based on the
-        // primal return type, in combination with the autodiff settings.
-        let fn_ty = cx.get_type_of_global(fn_to_diff);
-        let inner_ret_ty = cx.get_return_type(fn_ty);
-
-        let void_ty = unsafe { llvm::LLVMVoidTypeInContext(cx.llcx) };
-        if inner_ret_ty == void_ty {
-            // This indicates that even the inner function has an sret.
-            // Right now I only look for an sret in the outer function.
-            // This *probably* needs some extra handling, but I never ran
-            // into such a case. So I'll wait for user reports to have a test case.
-            bug!("sret in inner function");
-        }
-
-        if attrs.width == 1 {
-            // Enzyme returns a struct of style:
-            // `{ original_ret(if requested), float, float, ... }`
-            let mut struct_elements = vec![];
-            if attrs.has_primal_ret() {
-                struct_elements.push(inner_ret_ty);
-            }
-            // Next, we push the list of active floats, since they will be lowered to `enzyme_out`,
-            // and therefore part of the return struct.
-            let param_tys = cx.func_params_types(fn_ty);
-            for (act, param_ty) in attrs.input_activity.iter().zip(param_tys) {
-                if matches!(act, DiffActivity::Active) {
-                    // Now find the float type at position i based on the fn_ty,
-                    // to know what (f16/f32/f64/...) to add to the struct.
-                    struct_elements.push(param_ty);
-                }
-            }
-            ret_ty = cx.type_struct(&struct_elements, false);
-        } else {
-            // First we check if we also have to deal with the primal return.
-            match attrs.mode {
-                DiffMode::Forward => match attrs.ret_activity {
-                    DiffActivity::Dual => {
-                        let arr_ty =
-                            unsafe { llvm::LLVMArrayType2(inner_ret_ty, attrs.width as u64 + 1) };
-                        ret_ty = arr_ty;
-                    }
-                    DiffActivity::DualOnly => {
-                        let arr_ty =
-                            unsafe { llvm::LLVMArrayType2(inner_ret_ty, attrs.width as u64) };
-                        ret_ty = arr_ty;
-                    }
-                    DiffActivity::Const => {
-                        todo!("Not sure, do we need to do something here?");
-                    }
-                    _ => {
-                        bug!("unreachable");
-                    }
-                },
-                DiffMode::Reverse => {
-                    todo!("Handle sret for reverse mode");
-                }
-                _ => {
-                    bug!("unreachable");
-                }
-            }
-        }
-    }
-
-    // LLVM can figure out the input types on it's own, so we take a shortcut here.
-    unsafe { llvm::LLVMFunctionType(ret_ty, ptr::null(), 0, True) }
-}
-
 /// When differentiating `fn_to_diff`, take a `outer_fn` and generate another
 /// function with expected naming and calling conventions[^1] which will be
 /// discovered by the enzyme LLVM pass and its body populated with the differentiated
@@ -293,7 +198,8 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     builder: &mut Builder<'_, 'll, 'tcx>,
     cx: &SimpleCx<'ll>,
     fn_to_diff: &'ll Value,
-    outer_fn: &'ll Value,
+    outer_name: &str,
+    ret_ty: &'ll Type,
     fn_args: &[OperandRef<'tcx, &'ll Value>],
     attrs: AutoDiffAttrs,
     dest: PlaceRef<'tcx, &'ll Value>,
@@ -306,11 +212,9 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     }
     .to_string();
 
-    // add outer_fn name to ad_name to make it unique, in case users apply autodiff to multiple
+    // add outer_name to ad_name to make it unique, in case users apply autodiff to multiple
     // functions. Unwrap will only panic, if LLVM gave us an invalid string.
-    let name = llvm::get_value_name(outer_fn);
-    let outer_fn_name = std::str::from_utf8(name).unwrap();
-    ad_name.push_str(outer_fn_name);
+    ad_name.push_str(outer_name);
 
     // Let us assume the user wrote the following function square:
     //
@@ -344,92 +248,54 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     //   ret double %0
     // }
     // ```
-    unsafe {
-        let enzyme_ty = compute_enzyme_fn_ty(cx, &attrs, fn_to_diff, outer_fn);
+    let enzyme_ty = unsafe { llvm::LLVMFunctionType(ret_ty, ptr::null(), 0, True) };
 
-        // FIXME(ZuseZ4): the CC/Addr/Vis values are best effort guesses, we should look at tests and
-        // think a bit more about what should go here.
-        let cc = llvm::LLVMGetFunctionCallConv(outer_fn);
-        let ad_fn = declare_simple_fn(
-            cx,
-            &ad_name,
-            llvm::CallConv::try_from(cc).expect("invalid callconv"),
-            llvm::UnnamedAddr::No,
-            llvm::Visibility::Default,
-            enzyme_ty,
-        );
+    // FIXME(ZuseZ4): the CC/Addr/Vis values are best effort guesses, we should look at tests and
+    // think a bit more about what should go here.
+    // FIXME(Sa4dUs): have to find a way to get the cc, using `FastCallConv` for now
+    let cc = 8;
+    let ad_fn = declare_simple_fn(
+        cx,
+        &ad_name,
+        llvm::CallConv::try_from(cc).expect("invalid callconv"),
+        llvm::UnnamedAddr::No,
+        llvm::Visibility::Default,
+        enzyme_ty,
+    );
 
-        // Otherwise LLVM might inline our temporary code before the enzyme pass has a chance to
-        // do it's work.
-        let attr = llvm::AttributeKind::NoInline.create_attr(cx.llcx);
-        attributes::apply_to_llfn(ad_fn, Function, &[attr]);
+    // Otherwise LLVM might inline our temporary code before the enzyme pass has a chance to
+    // do it's work.
+    let attr = llvm::AttributeKind::NoInline.create_attr(cx.llcx);
+    attributes::apply_to_llfn(ad_fn, Function, &[attr]);
 
-        // We add a made-up attribute just such that we can recognize it after AD to update
-        // (no)-inline attributes. We'll then also remove this attribute.
-        let enzyme_marker_attr = llvm::CreateAttrString(cx.llcx, "enzyme_marker");
-        attributes::apply_to_llfn(outer_fn, Function, &[enzyme_marker_attr]);
+    let num_args = llvm::LLVMCountParams(&fn_to_diff);
+    let mut args = Vec::with_capacity(num_args as usize + 1);
+    args.push(fn_to_diff);
 
-        let num_args = llvm::LLVMCountParams(&fn_to_diff);
-        let mut args = Vec::with_capacity(num_args as usize + 1);
-        args.push(fn_to_diff);
-
-        let enzyme_primal_ret = cx.create_metadata("enzyme_primal_return".to_string()).unwrap();
-        if matches!(attrs.ret_activity, DiffActivity::Dual | DiffActivity::Active) {
-            args.push(cx.get_metadata_value(enzyme_primal_ret));
-        }
-        if attrs.width > 1 {
-            let enzyme_width = cx.create_metadata("enzyme_width".to_string()).unwrap();
-            args.push(cx.get_metadata_value(enzyme_width));
-            args.push(cx.get_const_int(cx.type_i64(), attrs.width as u64));
-        }
-
-        let has_sret = has_sret(outer_fn);
-        let outer_args: Vec<&llvm::Value> = fn_args.iter().map(|op| op.immediate()).collect();
-        match_args_from_caller_to_enzyme(
-            &cx,
-            builder,
-            attrs.width,
-            &mut args,
-            &attrs.input_activity,
-            &outer_args,
-            has_sret,
-        );
-
-        let call = builder.call(enzyme_ty, None, None, ad_fn, &args, None, None);
-
-        builder.store_to_place(call, dest.val);
-
-        if cx.val_ty(call) == cx.type_void() || has_sret {
-            if has_sret {
-                // This is what we already have in our outer_fn (shortened):
-                // define void @_foo(ptr <..> sret([32 x i8]) initializes((0, 32)) %0, <...>) {
-                //   %7 = call [4 x double] (...) @__enzyme_fwddiff_foo(ptr @square, metadata !"enzyme_width", i64 4, <...>)
-                //   <Here we are, we want to add the following two lines>
-                //   store [4 x double] %7, ptr %0, align 8
-                //   ret void
-                // }
-
-                // now store the result of the enzyme call into the sret pointer.
-                let sret_ptr = outer_args[0];
-                let call_ty = cx.val_ty(call);
-                if attrs.width == 1 {
-                    assert_eq!(cx.type_kind(call_ty), TypeKind::Struct);
-                } else {
-                    assert_eq!(cx.type_kind(call_ty), TypeKind::Array);
-                }
-                llvm::LLVMBuildStore(&builder.llbuilder, call, sret_ptr);
-            }
-            builder.ret_void();
-        }
-
-        builder.store_to_place(call, dest.val);
-
-        // Let's crash in case that we messed something up above and generated invalid IR.
-        llvm::LLVMRustVerifyFunction(
-            outer_fn,
-            llvm::LLVMRustVerifierFailureAction::LLVMAbortProcessAction,
-        );
+    let enzyme_primal_ret = cx.create_metadata("enzyme_primal_return".to_string()).unwrap();
+    if matches!(attrs.ret_activity, DiffActivity::Dual | DiffActivity::Active) {
+        args.push(cx.get_metadata_value(enzyme_primal_ret));
     }
+    if attrs.width > 1 {
+        let enzyme_width = cx.create_metadata("enzyme_width".to_string()).unwrap();
+        args.push(cx.get_metadata_value(enzyme_width));
+        args.push(cx.get_const_int(cx.type_i64(), attrs.width as u64));
+    }
+
+    let outer_args: Vec<&llvm::Value> = fn_args.iter().map(|op| op.immediate()).collect();
+
+    match_args_from_caller_to_enzyme(
+        &cx,
+        builder,
+        attrs.width,
+        &mut args,
+        &attrs.input_activity,
+        &outer_args,
+    );
+
+    let call = builder.call(enzyme_ty, None, None, ad_fn, &args, None, None);
+
+    builder.store_to_place(call, dest.val);
 }
 
 pub(crate) fn differentiate<'ll>(
