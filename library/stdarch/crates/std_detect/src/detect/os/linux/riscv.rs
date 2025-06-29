@@ -124,8 +124,7 @@ fn _riscv_hwprobe(out: &mut [riscv_hwprobe]) -> bool {
         }
     }
 
-    let len = out.len();
-    unsafe { __riscv_hwprobe(out.as_mut_ptr(), len, 0, ptr::null_mut(), 0) == 0 }
+    unsafe { __riscv_hwprobe(out.as_mut_ptr(), out.len(), 0, ptr::null_mut(), 0) == 0 }
 }
 
 /// Read list of supported features from (1) the auxiliary vector
