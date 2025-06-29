@@ -1,0 +1,14 @@
+error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
+  --> tests/ui/four_forward_slashes_bare_cr.rs:5:1
+   |
+LL | / //// nondoc comment with bare CR: '␍'
+LL | | fn main() {}
+   | |_^
+   |
+   = help: make this a doc comment by removing one `/`
+   = note: bare CR characters are not allowed in doc comments
+   = note: `-D clippy::four-forward-slashes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::four_forward_slashes)]`
+
+error: aborting due to 1 previous error
+
