@@ -1261,7 +1261,6 @@ symbols! {
         le,
         legacy_receiver,
         len,
-        let_chains,
         let_else,
         lhs,
         lib,

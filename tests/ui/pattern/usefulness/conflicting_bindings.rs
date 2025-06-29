@@ -1,4 +1,6 @@
-#![feature(if_let_guard, let_chains)]
+//@ edition: 2024
+
+#![feature(if_let_guard)]
 
 fn main() {
     let mut x = Some(String::new());

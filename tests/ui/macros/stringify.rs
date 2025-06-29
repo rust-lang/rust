@@ -10,7 +10,6 @@
 #![feature(decl_macro)]
 #![feature(explicit_tail_calls)]
 #![feature(if_let_guard)]
-#![feature(let_chains)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
 #![feature(trait_alias)]
@@ -124,8 +123,6 @@ fn test_expr() {
 
     // ExprKind::Let
     c1!(expr, [ if let Some(a) = b { c } else { d } ], "if let Some(a) = b { c } else { d }");
-    c1!(expr, [ if let _ = true && false {} ], "if let _ = true && false {}");
-    c1!(expr, [ if let _ = (true && false) {} ], "if let _ = (true && false) {}");
     c1!(expr,
         [ match () { _ if let _ = Struct {} => {} } ],
         "match () { _ if let _ = Struct {} => {} }"
