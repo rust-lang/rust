@@ -304,6 +304,7 @@ fn emit_malformed_attribute(
             | sym::track_caller
             | sym::link_name
             | sym::export_name
+            | sym::rustc_macro_transparency
     ) {
         return;
     }

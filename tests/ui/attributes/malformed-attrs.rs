@@ -44,7 +44,6 @@
 //~| WARN this was previously accepted by the compiler
 #[rustc_macro_transparency]
 //~^ ERROR malformed
-//~| ERROR malformed
 #[repr]
 //~^ ERROR malformed
 #[rustc_as_ptr = 5]
