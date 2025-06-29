@@ -75,13 +75,13 @@ jobs:
 
       # The main test job! We don't run this in qemu as that is quite slow,
       # so those targets only get the clippy check below.
-      - name: Test Miri
+      - name: test Miri
         if: ${{ !matrix.qemu }}
         run: ./ci/ci.sh
 
       # The `style` job only runs on Linux; this makes sure the host-specific
       # code is also covered by clippy.
-      - name: Check clippy
+      - name: clippy
         run: ./miri clippy -- -D warnings
 
   style:
@@ -93,8 +93,6 @@ jobs:
 
       - name: rustfmt
         run: ./miri fmt --check
-      - name: clippy
-        run: ./miri clippy -- -D warnings
       - name: clippy (no features)
         run: ./miri clippy --no-default-features -- -D warnings
       - name: clippy (all features)
