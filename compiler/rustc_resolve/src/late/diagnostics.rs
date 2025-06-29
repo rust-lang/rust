@@ -3832,7 +3832,7 @@ fn mk_where_bound_predicate(
                 ref_id: DUMMY_NODE_ID,
             },
             span: DUMMY_SP,
-            parens: false,
+            grouping: ast::Grouping::None,
         })],
     };
 

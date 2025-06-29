@@ -1209,7 +1209,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         modifiers: TraitBoundModifiers::NONE,
                         trait_ref: TraitRef { path: path.clone(), ref_id: t.id },
                         span: t.span,
-                        parens: false,
+                        grouping: ast::Grouping::None,
                     },
                     itctx,
                 );

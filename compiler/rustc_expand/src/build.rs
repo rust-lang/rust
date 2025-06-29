@@ -195,7 +195,7 @@ impl<'a> ExtCtxt<'a> {
             },
             trait_ref: self.trait_ref(path),
             span,
-            parens: false,
+            grouping: ast::Grouping::None,
         }
     }
 

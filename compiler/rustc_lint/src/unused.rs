@@ -1344,7 +1344,7 @@ impl EarlyLintPass for UnusedParens {
                                 .map(|s| s.ident.name == kw::PathRoot)
                                 .unwrap_or(false);
 
-                        if poly_trait_ref.parens
+                        if let ast::Grouping::Parenthesized = poly_trait_ref.grouping
                             && (last || !fn_with_explicit_ret_ty)
                             && !dyn2015_exception
                         {
