@@ -248,6 +248,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::LinkName { span: attr_span, name }) => {
                     self.check_link_name(hir_id, *attr_span, *name, span, target)
                 }
+                Attribute::Parsed(AttributeKind::LinkOrdinal { span: attr_span, .. }) => {
+                    self.check_link_ordinal(*attr_span, span, target)
+                }
                 Attribute::Parsed(AttributeKind::MayDangle(attr_span)) => {
                     self.check_may_dangle(hir_id, *attr_span)
                 }
@@ -325,7 +328,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::rustc_has_incoherent_inherent_impls, ..] => {
                             self.check_has_incoherent_inherent_impls(attr, span, target)
                         }
-                        [sym::link_ordinal, ..] => self.check_link_ordinal(attr, span, target),
+                        [sym::ffi_pure, ..] => self.check_ffi_pure(attr.span(), attrs, target),
+                        [sym::ffi_const, ..] => self.check_ffi_const(attr.span(), target),
                         [sym::link, ..] => self.check_link(hir_id, attr, span, target),
                         [sym::macro_use, ..] | [sym::macro_escape, ..] => {
                             self.check_macro_use(hir_id, attr, target)
@@ -2248,11 +2252,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_link_ordinal(&self, attr: &Attribute, _span: Span, target: Target) {
+    fn check_link_ordinal(&self, attr_span: Span, _span: Span, target: Target) {
         match target {
             Target::ForeignFn | Target::ForeignStatic => {}
             _ => {
-                self.dcx().emit_err(errors::LinkOrdinal { attr_span: attr.span() });
+                self.dcx().emit_err(errors::LinkOrdinal { attr_span });
             }
         }
     }
