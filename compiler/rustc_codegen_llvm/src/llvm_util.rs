@@ -377,7 +377,7 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         ("s390x", _) => false,
         // LLVM crash without neon <https://github.com/llvm/llvm-project/issues/129394> (now fixed)
         ("aarch64", _)
-            if !sess.target_features.iter().any(|f| f.as_str() == "neon")
+            if !cfg.target_features.iter().any(|f| f.as_str() == "neon")
                 && version < (20, 1, 1) =>
         {
             false
