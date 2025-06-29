@@ -1,13 +1,19 @@
-//@compile-flags: --diagnostic-width=300
-// Check that closures do not implement `Clone` if their environment is not `Clone`.
+//! Test that closures only implement `Clone` if all captured values implement `Clone`.
+//!
+//! When a closure captures variables from its environment, it can only be cloned
+//! if all those captured variables are cloneable. This test makes sure the compiler
+//! properly rejects attempts to clone closures that capture non-Clone types.
 
-struct S(i32);
+//@ compile-flags: --diagnostic-width=300
+
+struct NonClone(i32);
 
 fn main() {
-    let a = S(5);
-    let hello = move || {
-        println!("Hello {}", a.0);
+    let captured_value = NonClone(5);
+    let closure = move || {
+        let _ = captured_value.0;
     };
 
-    let hello = hello.clone(); //~ ERROR the trait bound `S: Clone` is not satisfied
+    closure.clone();
+    //~^ ERROR the trait bound `NonClone: Clone` is not satisfied
 }
