@@ -700,7 +700,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let a = self.gcc_int_cast(a, a_type);
         let b_type = b.get_type().to_unsigned(self);
         let b = self.gcc_int_cast(b, b_type);
-        a / b
+        self.gcc_udiv(a, b)
     }
 
     fn sdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -712,8 +712,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // FIXME(antoyo): rustc_codegen_ssa::mir::intrinsic uses different types for a and b but they
         // should be the same.
         let typ = a.get_type().to_signed(self);
-        let b = self.context.new_cast(self.location, b, typ);
-        a / b
+        let b = self.gcc_int_cast(b, typ);
+        self.gcc_sdiv(a, b)
     }
 
     fn fdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
