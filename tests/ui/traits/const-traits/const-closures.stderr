@@ -1,74 +1,74 @@
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:8:10
+  --> $DIR/const-closures.rs:8:12
    |
 LL |         F: [const] FnOnce() -> u8,
-   |          ^^^^^^^^^ can't be applied to `FnOnce`
+   |            ^^^^^^^ can't be applied to `FnOnce`
    |
 note: `FnOnce` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:9:10
+  --> $DIR/const-closures.rs:9:12
    |
 LL |         F: [const] FnMut() -> u8,
-   |          ^^^^^^^^^ can't be applied to `FnMut`
+   |            ^^^^^^^ can't be applied to `FnMut`
    |
 note: `FnMut` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:10:10
+  --> $DIR/const-closures.rs:10:12
    |
 LL |         F: [const] Fn() -> u8,
-   |          ^^^^^^^^^ can't be applied to `Fn`
+   |            ^^^^^^^ can't be applied to `Fn`
    |
 note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:8:10
+  --> $DIR/const-closures.rs:8:12
    |
 LL |         F: [const] FnOnce() -> u8,
-   |          ^^^^^^^^^ can't be applied to `FnOnce`
+   |            ^^^^^^^ can't be applied to `FnOnce`
    |
 note: `FnOnce` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:9:10
+  --> $DIR/const-closures.rs:9:12
    |
 LL |         F: [const] FnMut() -> u8,
-   |          ^^^^^^^^^ can't be applied to `FnMut`
+   |            ^^^^^^^ can't be applied to `FnMut`
    |
 note: `FnMut` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:10:10
+  --> $DIR/const-closures.rs:10:12
    |
 LL |         F: [const] Fn() -> u8,
-   |          ^^^^^^^^^ can't be applied to `Fn`
+   |            ^^^^^^^ can't be applied to `Fn`
    |
 note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:23:18
+  --> $DIR/const-closures.rs:23:20
    |
 LL | const fn answer<F: [const] Fn() -> u8>(f: &F) -> u8 {
-   |                  ^^^^^^^^^ can't be applied to `Fn`
+   |                    ^^^^^^^ can't be applied to `Fn`
    |
 note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:23:18
+  --> $DIR/const-closures.rs:23:20
    |
 LL | const fn answer<F: [const] Fn() -> u8>(f: &F) -> u8 {
-   |                  ^^^^^^^^^ can't be applied to `Fn`
+   |                    ^^^^^^^ can't be applied to `Fn`
    |
 note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL

@@ -1,8 +1,8 @@
 error: `[const]` is not allowed here
-  --> $DIR/trait-where-clause.rs:8:22
+  --> $DIR/trait-where-clause.rs:8:24
    |
 LL |     fn b() where Self: [const] Bar;
-   |                      ^^^^^^^^^
+   |                        ^^^^^^^
    |
 note: this function is not `const`, so it cannot have `[const]` trait bounds
   --> $DIR/trait-where-clause.rs:8:8
@@ -11,10 +11,10 @@ LL |     fn b() where Self: [const] Bar;
    |        ^
 
 error: `[const]` is not allowed here
-  --> $DIR/trait-where-clause.rs:10:11
+  --> $DIR/trait-where-clause.rs:10:13
    |
 LL |     fn c<T: [const] Bar>();
-   |           ^^^^^^^^^
+   |             ^^^^^^^
    |
 note: this function is not `const`, so it cannot have `[const]` trait bounds
   --> $DIR/trait-where-clause.rs:10:8

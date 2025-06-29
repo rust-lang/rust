@@ -5,10 +5,10 @@ LL |     let _: &dyn const Trait;
    |                 ^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/const-trait-bounds-trait-objects.rs:10:13
+  --> $DIR/const-trait-bounds-trait-objects.rs:10:17
    |
 LL |     let _: &dyn [const] Trait;
-   |             ^^^^^^^^^^^
+   |                 ^^^^^^^
    |
    = note: trait objects cannot have `[const]` trait bounds
 
@@ -19,10 +19,10 @@ LL | const fn handle(_: &dyn const NonConst) {}
    |                         ^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/const-trait-bounds-trait-objects.rs:17:19
+  --> $DIR/const-trait-bounds-trait-objects.rs:17:23
    |
 LL | const fn take(_: &dyn [const] NonConst) {}
-   |                   ^^^^^^^^^^^
+   |                       ^^^^^^^
    |
    = note: trait objects cannot have `[const]` trait bounds
 
