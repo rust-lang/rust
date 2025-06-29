@@ -1,4 +1,3 @@
-// skip-filecheck
 //@ test-mir-pass: GVN
 //@ compile-flags: -Zlint-mir=false
 
@@ -18,10 +17,12 @@ use std::intrinsics::mir::*;
 
 #[custom_mir(dialect = "runtime")]
 pub fn repeat_local(_1: usize, _2: usize, _3: i32) -> i32 {
+    // CHECK-LABEL: fn repeat_local(
     mir! {
         {
             let _4 = [_3; 5];
             let _5 = &_4[_1];
+            // CHECK: _0 = copy _3;
             RET = *_5;
             Return()
         }
@@ -32,11 +33,13 @@ pub fn repeat_local(_1: usize, _2: usize, _3: i32) -> i32 {
 
 #[custom_mir(dialect = "runtime")]
 pub fn repeat_local_dead(_1: usize, _2: usize, _3: i32) -> i32 {
+    // CHECK-LABEL: fn repeat_local_dead(
     mir! {
         {
             let _4 = [_3; 5];
             let _5 = &_4[_1];
             StorageDead(_3);
+            // CHECK: _0 = copy _3;
             RET = *_5;
             Return()
         }
@@ -47,12 +50,14 @@ pub fn repeat_local_dead(_1: usize, _2: usize, _3: i32) -> i32 {
 
 #[custom_mir(dialect = "runtime")]
 pub fn repeat_local_dead_live(_1: usize, _2: usize, _3: i32) -> i32 {
+    // CHECK-LABEL: fn repeat_local_dead_live(
     mir! {
         {
             let _4 = [_3; 5];
             let _5 = &_4[_1];
             StorageDead(_3);
             StorageLive(_3);
+            // CHECK: _0 = copy _3;
             RET = *_5;
             Return()
         }
