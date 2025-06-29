@@ -63,7 +63,6 @@ use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind, CanonicalVarKinds};
 use crate::lint::lint_level;
-use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::{resolve_bound_vars, stability};
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
@@ -2081,9 +2080,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> {
-        // Create a dependency to the red node to be sure we re-execute this when the amount of
-        // definitions change.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        // Depend on the `analysis` query to ensure compilation if finished.
+        self.ensure_ok().analysis(());
 
         let definitions = &self.untracked.definitions;
         gen {
@@ -2103,9 +2101,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn def_path_table(self) -> &'tcx rustc_hir::definitions::DefPathTable {
-        // Create a dependency to the crate to be sure we re-execute this when the amount of
-        // definitions change.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        // Depend on the `analysis` query to ensure compilation if finished.
+        self.ensure_ok().analysis(());
 
         // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
@@ -3372,21 +3369,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self.opt_rpitit_info(def_id).is_some()
     }
 
-    /// Named module children from all kinds of items, including imports.
-    /// In addition to regular items this list also includes struct and variant constructors, and
-    /// items inside `extern {}` blocks because all of them introduce names into parent module.
-    ///
-    /// Module here is understood in name resolution sense - it can be a `mod` item,
-    /// or a crate root, or an enum, or a trait.
-    ///
-    /// This is not a query, making it a query causes perf regressions
-    /// (probably due to hashing spans in `ModChild`ren).
-    pub fn module_children_local(self, def_id: LocalDefId) -> &'tcx [ModChild] {
-        self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
-    }
-
     pub fn resolver_for_lowering(self) -> &'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)> {
         self.resolver_for_lowering_raw(()).0
+    }
+
+    pub fn metadata_dep_node(self) -> crate::dep_graph::DepNode {
+        crate::dep_graph::make_metadata(self)
     }
 
     /// Given an `impl_id`, return the trait it implements.
@@ -3436,6 +3424,8 @@ pub struct DeducedParamAttrs {
 }
 
 pub fn provide(providers: &mut Providers) {
+    providers.module_children_local =
+        |tcx, def_id| tcx.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..]);
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.names_imported_by_glob_use = |tcx, id| {
