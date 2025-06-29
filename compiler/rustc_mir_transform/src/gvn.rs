@@ -160,7 +160,7 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
                 .into_results_cursor(body);
 
             let mut storage_checker = StorageChecker {
-                storage_to_check: state.reused_locals.clone(),
+                reused_locals: &state.reused_locals,
                 storage_to_remove: DenseBitSet::new_empty(body.local_decls.len()),
                 maybe_uninit,
             };
@@ -1984,7 +1984,7 @@ impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
 }
 
 struct StorageChecker<'a, 'tcx> {
-    storage_to_check: DenseBitSet<Local>,
+    reused_locals: &'a DenseBitSet<Local>,
     storage_to_remove: DenseBitSet<Local>,
     maybe_uninit: ResultsCursor<'a, 'tcx, MaybeUninitializedLocals>,
 }
@@ -2004,18 +2004,16 @@ impl<'a, 'tcx> Visitor<'tcx> for StorageChecker<'a, 'tcx> {
             PlaceContext::MutatingUse(_) | PlaceContext::NonMutatingUse(_) => {}
         }
 
-        if self.storage_to_check.contains(local) {
-            self.maybe_uninit.seek_before_primary_effect(location);
+        // We only need to check reused locals which we haven't already removed storage for.
+        if !self.reused_locals.contains(local) || self.storage_to_remove.contains(local) {
+            return;
+        }
 
-            if self.maybe_uninit.get().contains(local) {
-                debug!(
-                    ?location,
-                    ?local,
-                    "local is maybe uninit in this location, removing storage"
-                );
-                self.storage_to_remove.insert(local);
-                self.storage_to_check.remove(local);
-            }
+        self.maybe_uninit.seek_before_primary_effect(location);
+
+        if self.maybe_uninit.get().contains(local) {
+            debug!(?location, ?local, "local is maybe uninit in this location, removing storage");
+            self.storage_to_remove.insert(local);
         }
     }
 }
