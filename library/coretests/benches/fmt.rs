@@ -162,3 +162,60 @@ fn write_u8_min(bh: &mut Bencher) {
         black_box(format!("{}", black_box(u8::MIN)));
     });
 }
+
+#[bench]
+fn write_10ints_bin(bh: &mut Bencher) {
+    bh.iter(|| {
+        black_box(format!("{:b}", black_box(u8::MIN)));
+        black_box(format!("{:b}", black_box(i8::MIN)));
+        black_box(format!("{:b}", black_box(i8::MAX)));
+
+        black_box(format!("{:b}", black_box(u32::MIN)));
+        black_box(format!("{:b}", black_box(i32::MIN)));
+        black_box(format!("{:b}", black_box(i32::MAX)));
+
+        black_box(format!("{:b}", black_box(u64::MIN)));
+        black_box(format!("{:b}", black_box(i64::MIN)));
+        black_box(format!("{:b}", black_box(i64::MAX)));
+
+        black_box(format!("{:b}", black_box(42_usize)));
+    });
+}
+
+#[bench]
+fn write_10ints_oct(bh: &mut Bencher) {
+    bh.iter(|| {
+        black_box(format!("{:o}", black_box(u8::MIN)));
+        black_box(format!("{:o}", black_box(i8::MIN)));
+        black_box(format!("{:o}", black_box(i8::MAX)));
+
+        black_box(format!("{:o}", black_box(u32::MIN)));
+        black_box(format!("{:o}", black_box(i32::MIN)));
+        black_box(format!("{:o}", black_box(i32::MAX)));
+
+        black_box(format!("{:o}", black_box(u64::MIN)));
+        black_box(format!("{:o}", black_box(i64::MIN)));
+        black_box(format!("{:o}", black_box(i64::MAX)));
+
+        black_box(format!("{:o}", black_box(42_usize)));
+    });
+}
+
+#[bench]
+fn write_10ints_hex(bh: &mut Bencher) {
+    bh.iter(|| {
+        black_box(format!("{:x}", black_box(u8::MIN)));
+        black_box(format!("{:x}", black_box(i8::MIN)));
+        black_box(format!("{:x}", black_box(i8::MAX)));
+
+        black_box(format!("{:x}", black_box(u32::MIN)));
+        black_box(format!("{:x}", black_box(i32::MIN)));
+        black_box(format!("{:x}", black_box(i32::MAX)));
+
+        black_box(format!("{:x}", black_box(u64::MIN)));
+        black_box(format!("{:x}", black_box(i64::MIN)));
+        black_box(format!("{:x}", black_box(i64::MAX)));
+
+        black_box(format!("{:x}", black_box(42_usize)));
+    });
+}
