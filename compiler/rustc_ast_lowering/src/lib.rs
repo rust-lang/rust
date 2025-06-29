@@ -1079,6 +1079,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         &*self.arena.alloc(self.ty(constraint.span, hir::TyKind::Err(guar)));
                     hir::AssocItemConstraintKind::Equality { term: err_ty.into() }
                 } else {
+                    for bound in bounds {
+                        if let ast::GenericBound::Trait(trait_ref) = bound
+                            && let ast::BoundPolarity::Maybe(_) = trait_ref.modifiers.polarity
+                        {
+                            self.dcx().struct_span_err(trait_ref.span, "<hit>").emit();
+                        }
+                    }
+
                     // Desugar `AssocTy: Bounds` into an assoc type binding where the
                     // later desugars into a trait predicate.
                     let bounds = self.lower_param_bounds(bounds, itctx);
