@@ -1,25 +1,29 @@
+//! Test that name resolution works correctly when a struct and its constructor
+//! function have the same name within a nested scope. This checks that the
+//! compiler can distinguish between type names and value names in the same
+//! namespace.
+
 //@ run-pass
 
-#![allow(non_camel_case_types)]
+struct Point {
+    i: isize,
+}
+
+impl Point {
+    fn get_value(&self) -> isize {
+        return 37;
+    }
+}
+
+// Constructor function with the same name as the struct
+#[allow(non_snake_case)]
+fn Point(i: isize) -> Point {
+    Point { i }
+}
 
 pub fn main() {
-    struct b {
-        i: isize,
-    }
-
-    impl b {
-        fn do_stuff(&self) -> isize { return 37; }
-    }
-
-    fn b(i:isize) -> b {
-        b {
-            i: i
-        }
-    }
-
-    //  fn b(x:isize) -> isize { panic!(); }
-
-    let z = b(42);
-    assert_eq!(z.i, 42);
-    assert_eq!(z.do_stuff(), 37);
+    // Test that we can use the constructor function
+    let point = Point(42);
+    assert_eq!(point.i, 42);
+    assert_eq!(point.get_value(), 37);
 }

@@ -1,15 +1,47 @@
+//! Test that mutually recursive type definitions are properly handled by the compiler.
+//! This checks that types can reference each other in their definitions through
+//! `Box` indirection, creating cycles in the type dependency graph.
+
 //@ run-pass
 
-#![allow(non_camel_case_types)]
-#![allow(dead_code)]
+#[derive(Debug, PartialEq)]
+enum Colour {
+    Red,
+    Green,
+    Blue,
+}
 
+#[derive(Debug, PartialEq)]
+enum Tree {
+    Children(Box<List>),
+    Leaf(Colour),
+}
 
-enum colour { red, green, blue, }
+#[derive(Debug, PartialEq)]
+enum List {
+    Cons(Box<Tree>, Box<List>),
+    Nil,
+}
 
-enum tree { children(Box<list>), leaf(colour), }
+#[derive(Debug, PartialEq)]
+enum SmallList {
+    Kons(isize, Box<SmallList>),
+    Neel,
+}
 
-enum list { cons(Box<tree>, Box<list>), nil, }
+pub fn main() {
+    // Construct and test all variants of Colour
+    let _ = Tree::Leaf(Colour::Red);
 
-enum small_list { kons(isize, Box<small_list>), neel, }
+    let _ = Tree::Leaf(Colour::Green);
 
-pub fn main() { }
+    let _ = Tree::Leaf(Colour::Blue);
+
+    let _ = List::Nil;
+
+    let _ = Tree::Children(Box::new(List::Nil));
+
+    let _ = List::Cons(Box::new(Tree::Leaf(Colour::Blue)), Box::new(List::Nil));
+
+    let _ = SmallList::Kons(42, Box::new(SmallList::Neel));
+}
