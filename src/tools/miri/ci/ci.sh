@@ -143,11 +143,16 @@ case $HOST_TARGET in
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
     MANY_SEEDS=64 TEST_TARGET=i686-unknown-linux-gnu run_tests
-    MANY_SEEDS=64 TEST_TARGET=aarch64-unknown-linux-gnu run_tests
     MANY_SEEDS=64 TEST_TARGET=x86_64-apple-darwin run_tests
     MANY_SEEDS=64 TEST_TARGET=x86_64-pc-windows-gnu run_tests
+    ;;
+  aarch64-unknown-linux-gnu)
+    # Host
+    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1 candidate
     MANY_SEEDS=64 TEST_TARGET=aarch64-pc-windows-msvc run_tests
+    # Custom target JSON file
+    TEST_TARGET=tests/x86_64-unknown-kernel.json MIRI_NO_STD=1 run_tests_minimal no_std
     ;;
   aarch64-apple-darwin)
     # Host
@@ -172,13 +177,10 @@ case $HOST_TARGET in
     TEST_TARGET=wasm32-wasip2          run_tests_minimal $BASIC wasm
     TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std empty_main wasm # this target doesn't really have std
     TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std
-    # Custom target JSON file
-    TEST_TARGET=tests/x86_64-unknown-kernel.json MIRI_NO_STD=1 run_tests_minimal no_std
     ;;
   i686-pc-windows-msvc)
     # Host
-    # Without GC_STRESS and with reduced many-seeds count as this is the slowest runner.
-    # (The macOS runner checks windows-msvc with full many-seeds count.)
+    # Without GC_STRESS as this is the slowest runner.
     MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 run_tests
     # Extra tier 1
     # We really want to ensure a Linux target works on a Windows host,
