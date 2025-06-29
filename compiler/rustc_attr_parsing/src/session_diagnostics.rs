@@ -500,6 +500,23 @@ pub(crate) struct NakedFunctionIncompatibleAttribute {
     pub attr: String,
 }
 
+#[derive(Diagnostic)]
+#[diag(attr_parsing_illegal_link_ordinal_format)]
+#[note]
+pub(crate) struct InvalidLinkOrdinalFormat {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_link_ordinal_out_of_range)]
+#[note]
+pub(crate) struct LinkOrdinalOutOfRange {
+    #[primary_span]
+    pub span: Span,
+    pub ordinal: u128,
+}
+
 pub(crate) enum AttributeParseErrorReason {
     ExpectedNoArgs,
     ExpectedStringLiteral { byte_string: Option<Span> },

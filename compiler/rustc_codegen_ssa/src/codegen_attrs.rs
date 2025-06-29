@@ -124,6 +124,10 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
                 AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
                 AttributeKind::LinkName { name, .. } => codegen_fn_attrs.link_name = Some(*name),
+                AttributeKind::LinkOrdinal { ordinal, span } => {
+                    codegen_fn_attrs.link_ordinal = Some(*ordinal);
+                    link_ordinal_span = Some(*span);
+                }
                 AttributeKind::NoMangle(attr_span) => {
                     if tcx.opt_item_name(did.to_def_id()).is_some() {
                         codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
@@ -261,12 +265,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     } else {
                         codegen_fn_attrs.link_section = Some(val);
                     }
-                }
-            }
-            sym::link_ordinal => {
-                link_ordinal_span = Some(attr.span());
-                if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
-                    codegen_fn_attrs.link_ordinal = ordinal;
                 }
             }
             sym::no_sanitize => {
@@ -567,45 +565,6 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 
     false
-}
-
-fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Option<u16> {
-    use rustc_ast::{LitIntType, LitKind, MetaItemLit};
-    let meta_item_list = attr.meta_item_list()?;
-    let [sole_meta_list] = &meta_item_list[..] else {
-        tcx.dcx().emit_err(errors::InvalidLinkOrdinalNargs { span: attr.span() });
-        return None;
-    };
-    if let Some(MetaItemLit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) =
-        sole_meta_list.lit()
-    {
-        // According to the table at
-        // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header, the
-        // ordinal must fit into 16 bits. Similarly, the Ordinal field in COFFShortExport (defined
-        // in llvm/include/llvm/Object/COFFImportFile.h), which we use to communicate import
-        // information to LLVM for `#[link(kind = "raw-dylib"_])`, is also defined to be uint16_t.
-        //
-        // FIXME: should we allow an ordinal of 0?  The MSVC toolchain has inconsistent support for
-        // this: both LINK.EXE and LIB.EXE signal errors and abort when given a .DEF file that
-        // specifies a zero ordinal. However, llvm-dlltool is perfectly happy to generate an import
-        // library for such a .DEF file, and MSVC's LINK.EXE is also perfectly happy to consume an
-        // import library produced by LLVM with an ordinal of 0, and it generates an .EXE.  (I
-        // don't know yet if the resulting EXE runs, as I haven't yet built the necessary DLL --
-        // see earlier comment about LINK.EXE failing.)
-        if *ordinal <= u16::MAX as u128 {
-            Some(ordinal.get() as u16)
-        } else {
-            let msg = format!("ordinal value in `link_ordinal` is too large: `{ordinal}`");
-            tcx.dcx()
-                .struct_span_err(attr.span(), msg)
-                .with_note("the value may not exceed `u16::MAX`")
-                .emit();
-            None
-        }
-    } else {
-        tcx.dcx().emit_err(errors::InvalidLinkOrdinalFormat { span: attr.span() });
-        None
-    }
 }
 
 fn check_link_name_xor_ordinal(

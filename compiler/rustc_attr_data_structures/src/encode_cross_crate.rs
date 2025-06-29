@@ -30,6 +30,7 @@ impl AttributeKind {
             Cold(..) => No,
             ConstContinue(..) => No,
             LinkName { .. } => Yes,
+            LinkOrdinal { .. } => Yes,
             LoopMatch(..) => No,
             MayDangle(..) => No,
             MustUse { .. } => Yes,

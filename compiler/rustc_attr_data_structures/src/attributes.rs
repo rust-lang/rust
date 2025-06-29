@@ -256,6 +256,9 @@ pub enum AttributeKind {
     /// Represents `#[link_name]`.
     LinkName { name: Symbol, span: Span },
 
+    /// Represents `#[link_ordinal]`.
+    LinkOrdinal { ordinal: u16, span: Span },
+
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
 
