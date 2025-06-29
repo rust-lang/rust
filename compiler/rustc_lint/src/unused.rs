@@ -1039,8 +1039,25 @@ pub(crate) struct UnusedParens {
     in_no_bounds_pos: FxHashMap<ast::NodeId, NoBoundsException>,
 }
 
+/// Whether parentheses may be omitted from a type without resulting in ambiguity.
+///
+/// ```
+/// type Example = Box<dyn Fn() -> &'static (dyn Trait) + Send>
+/// ```
+///
+/// Here, `&'static (dyn Trait) + Send` is a `TypeNoBounds`. As such, it may not directly
+/// contain `ImplTraitType` or `TraitObjectType` which is why `(dyn Trait)` is parenthesized.
+/// However, an exception is made for `ImplTraitTypeOneBound` and `TraitObjectTypeOneBound`.
+/// The following is accepted because there is no `+`.
+///
+/// ```
+/// type Example = Box<dyn Fn() -> &'static dyn Trait>
+/// ```
 enum NoBoundsException {
+    /// The type must be parenthesized.
     None,
+    /// The type is the last bound of the containing type expression. If it has exactly one bound,
+    /// parentheses around the type are unnecessary.
     OneBound,
 }
 
