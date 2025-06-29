@@ -1,8 +1,11 @@
-error: malformed `link_name` attribute input
+error[E0539]: malformed `link_name` attribute input
   --> $DIR/issue-47725.rs:17:1
    |
 LL | #[link_name]
-   | ^^^^^^^^^^^^ help: must be of the form: `#[link_name = "name"]`
+   | ^^^^^^^^^^^^
+   | |
+   | expected this to be of the form `link_name = "..."`
+   | help: must be of the form: `#[link_name = "name"]`
 
 warning: attribute should be applied to a foreign function or static
   --> $DIR/issue-47725.rs:3:1
@@ -38,23 +41,6 @@ help: try `#[link(name = "foobar")]` instead
 LL | #[link_name = "foobar"]
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: attribute should be applied to a foreign function or static
-  --> $DIR/issue-47725.rs:17:1
-   |
-LL |   #[link_name]
-   |   ^^^^^^^^^^^^
-...
-LL | / extern "C" {
-LL | |     fn bar() -> u32;
-LL | | }
-   | |_- not a foreign function or static
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-help: try `#[link(name = "...")]` instead
-  --> $DIR/issue-47725.rs:17:1
-   |
-LL | #[link_name]
-   | ^^^^^^^^^^^^
+error: aborting due to 1 previous error; 2 warnings emitted
 
-error: aborting due to 1 previous error; 3 warnings emitted
-
+For more information about this error, try `rustc --explain E0539`.

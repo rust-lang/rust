@@ -123,6 +123,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 }
                 AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
                 AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
+                AttributeKind::LinkName { name, .. } => codegen_fn_attrs.link_name = Some(*name),
                 AttributeKind::NoMangle(attr_span) => {
                     if tcx.opt_item_name(did.to_def_id()).is_some() {
                         codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
@@ -262,7 +263,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     }
                 }
             }
-            sym::link_name => codegen_fn_attrs.link_name = attr.value_str(),
             sym::link_ordinal => {
                 link_ordinal_span = Some(attr.span());
                 if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {

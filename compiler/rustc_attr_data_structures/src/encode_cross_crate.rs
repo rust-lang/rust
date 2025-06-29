@@ -29,6 +29,7 @@ impl AttributeKind {
             Stability { .. } => Yes,
             Cold(..) => No,
             ConstContinue(..) => No,
+            LinkName { .. } => Yes,
             LoopMatch(..) => No,
             MayDangle(..) => No,
             MustUse { .. } => Yes,

@@ -341,7 +341,7 @@ declare_features! (
     (accepted, pattern_parentheses, "1.31.0", Some(51087)),
     /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.
     (accepted, precise_capturing, "1.82.0", Some(123432)),
-    /// Allows `use<..>` precise capturign on impl Trait in traits.
+    /// Allows `use<..>` precise capturing on impl Trait in traits.
     (accepted, precise_capturing_in_traits, "1.87.0", Some(130044)),
     /// Allows procedural macros in `proc-macro` crates.
     (accepted, proc_macro, "1.29.0", Some(38356)),
@@ -388,7 +388,7 @@ declare_features! (
     (accepted, self_struct_ctor, "1.32.0", Some(51994)),
     /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics
     (accepted, sha512_sm_x86, "CURRENT_RUSTC_VERSION", Some(126624)),
-    /// Shortern the tail expression lifetime
+    /// Shorten the tail expression lifetime
     (accepted, shorter_tail_lifetimes, "1.84.0", Some(123739)),
     /// Allows using subslice patterns, `[a, .., b]` and `[a, xs @ .., b]`.
     (accepted, slice_patterns, "1.42.0", Some(62254)),

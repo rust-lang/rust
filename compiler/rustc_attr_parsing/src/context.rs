@@ -22,6 +22,7 @@ use crate::attributes::codegen_attrs::{
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
+use crate::attributes::link_attrs::LinkNameParser;
 use crate::attributes::lint_helpers::{AsPtrParser, PubTransparentParser};
 use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
 use crate::attributes::must_use::MustUseParser;
@@ -121,6 +122,7 @@ attribute_parsers!(
         Single<DeprecationParser>,
         Single<ExportNameParser>,
         Single<InlineParser>,
+        Single<LinkNameParser>,
         Single<LoopMatchParser>,
         Single<MayDangleParser>,
         Single<MustUseParser>,

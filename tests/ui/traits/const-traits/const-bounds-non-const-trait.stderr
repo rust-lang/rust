@@ -1,8 +1,8 @@
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-bounds-non-const-trait.rs:6:19
+  --> $DIR/const-bounds-non-const-trait.rs:6:21
    |
 LL | const fn perform<T: [const] NonConst>() {}
-   |                   ^^^^^^^^^ can't be applied to `NonConst`
+   |                     ^^^^^^^ can't be applied to `NonConst`
    |
 help: mark `NonConst` as `#[const_trait]` to allow it to have `const` implementations
    |
@@ -10,10 +10,10 @@ LL | #[const_trait] trait NonConst {}
    | ++++++++++++++
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-bounds-non-const-trait.rs:6:19
+  --> $DIR/const-bounds-non-const-trait.rs:6:21
    |
 LL | const fn perform<T: [const] NonConst>() {}
-   |                   ^^^^^^^^^ can't be applied to `NonConst`
+   |                     ^^^^^^^ can't be applied to `NonConst`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: mark `NonConst` as `#[const_trait]` to allow it to have `const` implementations
