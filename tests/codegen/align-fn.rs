@@ -1,10 +1,11 @@
 //@ compile-flags: -C no-prepopulate-passes -Z mir-opt-level=0
+//@ edition: 2024
 
 #![crate_type = "lib"]
 #![feature(fn_align)]
 
 // CHECK: align 16
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[align(16)]
 pub fn fn_align() {}
 
@@ -12,12 +13,12 @@ pub struct A;
 
 impl A {
     // CHECK: align 16
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     #[align(16)]
     pub fn method_align(self) {}
 
     // CHECK: align 16
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     #[align(16)]
     pub fn associated_fn() {}
 }
@@ -32,12 +33,12 @@ trait T: Sized {
 
 impl T for A {
     // CHECK: align 16
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     #[align(16)]
     fn trait_fn() {}
 
     // CHECK: align 16
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     #[align(16)]
     fn trait_method(self) {}
 }
@@ -50,21 +51,21 @@ pub fn foo() {
 
 // CHECK-LABEL: align_specified_twice_1
 // CHECK-SAME: align 64
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[align(32)]
 #[align(64)]
 pub fn align_specified_twice_1() {}
 
 // CHECK-LABEL: align_specified_twice_2
 // CHECK-SAME: align 128
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[align(128)]
 #[align(32)]
 pub fn align_specified_twice_2() {}
 
 // CHECK-LABEL: align_specified_twice_3
 // CHECK-SAME: align 256
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[align(32)]
 #[align(256)]
 pub fn align_specified_twice_3() {}
@@ -82,3 +83,9 @@ unsafe extern "C" {
     #[align(256)]
     fn align_unmangled();
 }
+
+// CHECK-LABEL: async_align
+// CHECK-SAME: align 64
+#[unsafe(no_mangle)]
+#[align(64)]
+pub async fn async_align() {}
