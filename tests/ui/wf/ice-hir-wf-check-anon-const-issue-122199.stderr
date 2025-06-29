@@ -32,7 +32,7 @@ LL | trait Trait<const N: dyn Trait = bar> {
    |                          ^^^^^
    |
    = note: ...which immediately requires computing type of `Trait::N` again
-note: cycle used when computing explicit predicates of trait `Trait`
+note: cycle used when checking that `Trait` is well-formed
   --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:1
    |
 LL | trait Trait<const N: dyn Trait = bar> {

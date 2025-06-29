@@ -15,6 +15,7 @@ struct ConstChunksExact<'rem, T: 'a, const N: usize> {}
 impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
 //~^ ERROR the const parameter `N` is not constrained by the impl trait, self type, or predicates
 //~^^ ERROR mismatched types
+//~| ERROR missing: `next`
     type Item = &'a [T; N];
 }
 

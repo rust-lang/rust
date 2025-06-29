@@ -1,3 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/unsized-trait-impl-self-type.rs:10:1
+   |
+LL |     fn foo(&self, z: &Z);
+   |     --------------------- `foo` from trait
+...
+LL | impl<X: ?Sized> T3<X> for S5<X> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized-trait-impl-self-type.rs:10:27
    |
@@ -23,15 +32,6 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
 LL - impl<X: ?Sized> T3<X> for S5<X> {
 LL + impl<X> T3<X> for S5<X> {
    |
-
-error[E0046]: not all trait items implemented, missing: `foo`
-  --> $DIR/unsized-trait-impl-self-type.rs:10:1
-   |
-LL |     fn foo(&self, z: &Z);
-   |     --------------------- `foo` from trait
-...
-LL | impl<X: ?Sized> T3<X> for S5<X> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
 
 error: aborting due to 2 previous errors
 

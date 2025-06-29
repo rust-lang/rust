@@ -1,8 +1,8 @@
 error: unconstrained generic constant
-  --> $DIR/issue-51892.rs:14:17
+  --> $DIR/issue-51892.rs:14:5
    |
 LL |     type Type = [u8; std::mem::size_of::<<T as Trait>::Type>()];
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^
    |
 help: try adding a `where` bound
    |

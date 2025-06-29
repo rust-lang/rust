@@ -1,9 +1,3 @@
-error[E0207]: the type parameter `S` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:9:9
-   |
-LL | impl<T, S> Trait<T> for i32 {
-   |         ^ unconstrained type parameter
-
 error[E0107]: trait takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:15:12
    |
@@ -15,6 +9,12 @@ note: trait defined here, with 1 generic parameter: `T`
    |
 LL | pub trait Trait<T> {
    |           ^^^^^ -
+
+error[E0207]: the type parameter `S` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:9:9
+   |
+LL | impl<T, S> Trait<T> for i32 {
+   |         ^ unconstrained type parameter
 
 error[E0107]: trait takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:19:12

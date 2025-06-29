@@ -11,8 +11,9 @@ pub trait Every {
     type Assoc;
 }
 impl<T: ?Sized> Every for Thing {
-//~^ ERROR the type parameter `T` is not constrained
+    //~^ ERROR the type parameter `T` is not constrained
     type Assoc = T;
+    //~^ ERROR: the size for values of type `T` cannot be known at compilation time
 }
 
 static I: <Thing as Every>::Assoc = 3;

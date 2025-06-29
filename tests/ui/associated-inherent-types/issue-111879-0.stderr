@@ -1,8 +1,8 @@
 error: overflow evaluating associated type `Carrier<'b>::Focus<i32>`
-  --> $DIR/issue-111879-0.rs:9:25
+  --> $DIR/issue-111879-0.rs:9:5
    |
 LL |     pub type Focus<T> = &'a mut for<'b> fn(Carrier<'b>::Focus<i32>);
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

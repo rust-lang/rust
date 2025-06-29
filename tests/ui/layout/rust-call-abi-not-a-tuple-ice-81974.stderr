@@ -1,4 +1,17 @@
 error[E0059]: type parameter to bare `FnOnce` trait must be a tuple
+  --> $DIR/rust-call-abi-not-a-tuple-ice-81974.rs:31:5
+   |
+LL |     extern "rust-call" fn call_once(mut self, a: A) -> Self::Output {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Tuple` is not implemented for `A`
+   |
+note: required by a bound in `FnOnce`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+help: consider further restricting type parameter `A` with unstable trait `Tuple`
+   |
+LL |     A: Eq + Hash + Clone + std::marker::Tuple,
+   |                          ++++++++++++++++++++
+
+error[E0059]: type parameter to bare `FnOnce` trait must be a tuple
   --> $DIR/rust-call-abi-not-a-tuple-ice-81974.rs:24:12
    |
 LL | impl<A, B> FnOnce<A> for CachedFun<A, B>
@@ -12,9 +25,9 @@ LL |     A: Eq + Hash + Clone + std::marker::Tuple,
    |                          ++++++++++++++++++++
 
 error[E0059]: type parameter to bare `FnOnce` trait must be a tuple
-  --> $DIR/rust-call-abi-not-a-tuple-ice-81974.rs:31:5
+  --> $DIR/rust-call-abi-not-a-tuple-ice-81974.rs:45:5
    |
-LL |     extern "rust-call" fn call_once(mut self, a: A) -> Self::Output {
+LL |     extern "rust-call" fn call_mut(&mut self, a: A) -> Self::Output {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Tuple` is not implemented for `A`
    |
 note: required by a bound in `FnOnce`
@@ -31,19 +44,6 @@ LL | impl<A, B> FnMut<A> for CachedFun<A, B>
    |            ^^^^^^^^ the trait `Tuple` is not implemented for `A`
    |
 note: required by a bound in `FnMut`
-  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
-help: consider further restricting type parameter `A` with unstable trait `Tuple`
-   |
-LL |     A: Eq + Hash + Clone + std::marker::Tuple,
-   |                          ++++++++++++++++++++
-
-error[E0059]: type parameter to bare `FnOnce` trait must be a tuple
-  --> $DIR/rust-call-abi-not-a-tuple-ice-81974.rs:45:5
-   |
-LL |     extern "rust-call" fn call_mut(&mut self, a: A) -> Self::Output {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Tuple` is not implemented for `A`
-   |
-note: required by a bound in `FnOnce`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 help: consider further restricting type parameter `A` with unstable trait `Tuple`
    |

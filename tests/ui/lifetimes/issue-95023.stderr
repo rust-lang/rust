@@ -32,6 +32,14 @@ help: parenthesized trait syntax expands to `Fn<(&isize,), Output=()>`
 LL | impl Fn(&isize) for Error {
    |      ^^^^^^^^^^
 
+error[E0046]: not all trait items implemented, missing: `call`
+  --> $DIR/issue-95023.rs:3:1
+   |
+LL | impl Fn(&isize) for Error {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ missing `call` in implementation
+   |
+   = help: implement the missing item: `fn call(&self, _: (&isize,)) -> <Self as FnOnce<(&isize,)>>::Output { todo!() }`
+
 error[E0277]: expected a `FnMut(&isize)` closure, found `Error`
   --> $DIR/issue-95023.rs:3:21
    |
@@ -41,14 +49,6 @@ LL | impl Fn(&isize) for Error {
    = help: the trait `FnMut(&isize)` is not implemented for `Error`
 note: required by a bound in `Fn`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
-
-error[E0046]: not all trait items implemented, missing: `call`
-  --> $DIR/issue-95023.rs:3:1
-   |
-LL | impl Fn(&isize) for Error {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ missing `call` in implementation
-   |
-   = help: implement the missing item: `fn call(&self, _: (&isize,)) -> <Self as FnOnce<(&isize,)>>::Output { todo!() }`
 
 error[E0220]: associated type `B` not found for `Self`
   --> $DIR/issue-95023.rs:8:44

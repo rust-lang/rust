@@ -5,12 +5,13 @@ LL | impl<'b, T, U> AsRef2 for Foo<T>
    |             ^ unconstrained type parameter
 
 error[E0309]: the parameter type `U` may not live long enough
-  --> $DIR/issue-87735.rs:34:21
+  --> $DIR/issue-87735.rs:34:3
    |
 LL |   type Output<'a> = FooRef<'a, U> where Self: 'a;
-   |               --    ^^^^^^^^^^^^^ ...so that the type `U` will meet its required lifetime bounds...
-   |               |
-   |               the parameter type `U` must be valid for the lifetime `'a` as defined here...
+   |   ^^^^^^^^^^^^--^
+   |   |           |
+   |   |           the parameter type `U` must be valid for the lifetime `'a` as defined here...
+   |   ...so that the type `U` will meet its required lifetime bounds...
    |
 note: ...that is required by this bound
   --> $DIR/issue-87735.rs:23:22
