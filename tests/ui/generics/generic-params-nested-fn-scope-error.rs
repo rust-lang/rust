@@ -1,9 +1,14 @@
-fn hd<U>(v: Vec<U> ) -> U {
-    fn hd1(w: [U]) -> U { return w[0]; }
-    //~^ ERROR can't use generic parameters from outer item
-    //~| ERROR can't use generic parameters from outer item
+//! Test that generic parameters from an outer function are not accessible
+//! in nested functions.
 
-    return hd1(v);
+fn foo<U>(v: Vec<U>) -> U {
+    fn bar(w: [U]) -> U {
+        //~^ ERROR can't use generic parameters from outer item
+        //~| ERROR can't use generic parameters from outer item
+        return w[0];
+    }
+
+    return bar(v);
 }
 
 fn main() {}
