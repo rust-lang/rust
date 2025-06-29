@@ -115,6 +115,8 @@ fn test() {
 #[proc_macro_attribute = 19]
 //~^ ERROR malformed
 //~| ERROR the `#[proc_macro_attribute]` attribute is only usable with crates of the `proc-macro` crate type
+#[must_use = 1]
+//~^ ERROR malformed
 fn test2() { }
 
 #[proc_macro_derive]
