@@ -6,7 +6,7 @@
 // Regression test for #58892, coroutine drop shims should not have blocks
 // spuriously marked as cleanup
 
-// EMIT_MIR coroutine_drop_cleanup.main-{closure#0}.coroutine_drop.0.mir
+// EMIT_MIR coroutine_drop_cleanup.main-{closure:coroutine#0}.coroutine_drop.0.mir
 fn main() {
     let gen_ = #[coroutine]
     || {

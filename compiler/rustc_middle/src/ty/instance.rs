@@ -314,7 +314,7 @@ impl<'tcx> InstanceKind<'tcx> {
         };
         matches!(
             tcx.def_key(def_id).disambiguated_data.data,
-            DefPathData::Ctor | DefPathData::Closure
+            DefPathData::Ctor | DefPathData::Closure { .. }
         )
     }
 

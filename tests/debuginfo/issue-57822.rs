@@ -12,7 +12,7 @@
 // gdb-check:$1 = issue_57822::main::{closure_env#1} {f: issue_57822::main::{closure_env#0} {x: 1}}
 
 // gdb-command:print b
-// gdb-check:$2 = issue_57822::main::{coroutine_env#3}::Unresumed{a: issue_57822::main::{coroutine_env#2}::Unresumed{y: 2}}
+// gdb-check:$2 = issue_57822::main::{coroutine_env#1}::Unresumed{a: issue_57822::main::{coroutine_env#0}::Unresumed{y: 2}}
 
 // === LLDB TESTS ==================================================================================
 
@@ -22,7 +22,7 @@
 // lldb-check:(issue_57822::main::{closure_env#1}) g = { f = { x = 1 } }
 
 // lldb-command:v b
-// lldb-check:(issue_57822::main::{coroutine_env#3}) b = { value = { a = { value = { y = 2 } $discr$ = '\x02' } } $discr$ = '\x02' }
+// lldb-check:(issue_57822::main::{coroutine_env#1}) b = { value = { a = { value = { y = 2 } $discr$ = '\x02' } } $discr$ = '\x02' }
 
 #![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait, stmt_expr_attributes)]
 #![omit_gdb_pretty_printer_section]

@@ -190,13 +190,20 @@ impl DisambiguatedDefPathData {
                     writer.write_str(name.as_str())
                 }
             }
-            DefPathDataName::Anon { namespace } => {
-                if let DefPathData::AnonAssocTy(method) = self.data {
+            DefPathDataName::Anon { namespace, kind } => match (self.data, kind) {
+                (DefPathData::AnonAssocTy(method), None) => {
                     write!(writer, "{}::{{{}#{}}}", method, namespace, self.disambiguator)
-                } else {
+                }
+                (DefPathData::AnonAssocTy(method), Some(kind)) => {
+                    write!(writer, "{}::{{{}:{}#{}}}", method, namespace, kind, self.disambiguator)
+                }
+                (_, None) => {
                     write!(writer, "{{{}#{}}}", namespace, self.disambiguator)
                 }
-            }
+                (_, Some(kind)) => {
+                    write!(writer, "{{{}:{}#{}}}", namespace, kind, self.disambiguator)
+                }
+            },
         }
     }
 }
@@ -299,7 +306,7 @@ pub enum DefPathData {
     /// Something in the lifetime namespace.
     LifetimeNs(Symbol),
     /// A closure expression.
-    Closure,
+    Closure { coroutine_kind: Option<Symbol> },
 
     // Subportions of items:
     /// Implicit constructor for a unit or tuple-like struct or enum variant.
@@ -440,7 +447,7 @@ impl Definitions {
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum DefPathDataName {
     Named(Symbol),
-    Anon { namespace: Symbol },
+    Anon { namespace: Symbol, kind: Option<Symbol> },
 }
 
 impl DefPathData {
@@ -450,12 +457,13 @@ impl DefPathData {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
             | OpaqueLifetime(name) => Some(name),
 
+            Closure { coroutine_kind } => coroutine_kind,
+
             Impl
             | ForeignMod
             | CrateRoot
             | Use
             | GlobalAsm
-            | Closure
             | Ctor
             | AnonConst
             | OpaqueTy
@@ -471,12 +479,13 @@ impl DefPathData {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) | AnonAssocTy(name)
             | OpaqueLifetime(name) => Some(name),
 
+            Closure { coroutine_kind } => coroutine_kind,
+
             Impl
             | ForeignMod
             | CrateRoot
             | Use
             | GlobalAsm
-            | Closure
             | Ctor
             | AnonConst
             | OpaqueTy
@@ -491,18 +500,22 @@ impl DefPathData {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
             | OpaqueLifetime(name) => DefPathDataName::Named(name),
             // Note that this does not show up in user print-outs.
-            CrateRoot => DefPathDataName::Anon { namespace: kw::Crate },
-            Impl => DefPathDataName::Anon { namespace: kw::Impl },
-            ForeignMod => DefPathDataName::Anon { namespace: kw::Extern },
-            Use => DefPathDataName::Anon { namespace: kw::Use },
-            GlobalAsm => DefPathDataName::Anon { namespace: sym::global_asm },
-            Closure => DefPathDataName::Anon { namespace: sym::closure },
-            Ctor => DefPathDataName::Anon { namespace: sym::constructor },
-            AnonConst => DefPathDataName::Anon { namespace: sym::constant },
-            OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },
-            AnonAssocTy(..) => DefPathDataName::Anon { namespace: sym::anon_assoc },
-            SyntheticCoroutineBody => DefPathDataName::Anon { namespace: sym::synthetic },
-            NestedStatic => DefPathDataName::Anon { namespace: sym::nested },
+            CrateRoot => DefPathDataName::Anon { namespace: kw::Crate, kind: None },
+            Impl => DefPathDataName::Anon { namespace: kw::Impl, kind: None },
+            ForeignMod => DefPathDataName::Anon { namespace: kw::Extern, kind: None },
+            Use => DefPathDataName::Anon { namespace: kw::Use, kind: None },
+            GlobalAsm => DefPathDataName::Anon { namespace: sym::global_asm, kind: None },
+            Closure { coroutine_kind } => {
+                DefPathDataName::Anon { namespace: sym::closure, kind: coroutine_kind }
+            }
+            Ctor => DefPathDataName::Anon { namespace: sym::constructor, kind: None },
+            AnonConst => DefPathDataName::Anon { namespace: sym::constant, kind: None },
+            OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque, kind: None },
+            AnonAssocTy(..) => DefPathDataName::Anon { namespace: sym::anon_assoc, kind: None },
+            SyntheticCoroutineBody => {
+                DefPathDataName::Anon { namespace: sym::synthetic, kind: None }
+            }
+            NestedStatic => DefPathDataName::Anon { namespace: sym::nested, kind: None },
         }
     }
 }
@@ -512,7 +525,10 @@ impl fmt::Display for DefPathData {
         match self.name() {
             DefPathDataName::Named(name) => f.write_str(name.as_str()),
             // FIXME(#70334): this will generate legacy {{closure}}, {{impl}}, etc
-            DefPathDataName::Anon { namespace } => write!(f, "{{{{{namespace}}}}}"),
+            DefPathDataName::Anon { namespace, kind: None } => write!(f, "{{{{{namespace}}}}}"),
+            DefPathDataName::Anon { namespace, kind: Some(n) } => {
+                write!(f, "{{{{{namespace}:{n}}}}}")
+            }
         }
     }
 }

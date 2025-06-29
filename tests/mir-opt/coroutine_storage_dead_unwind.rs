@@ -18,7 +18,7 @@ struct Bar(i32);
 
 fn take<T>(_x: T) {}
 
-// EMIT_MIR coroutine_storage_dead_unwind.main-{closure#0}.StateTransform.before.mir
+// EMIT_MIR coroutine_storage_dead_unwind.main-{closure:coroutine#0}.StateTransform.before.mir
 fn main() {
     let _gen = #[coroutine]
     || {

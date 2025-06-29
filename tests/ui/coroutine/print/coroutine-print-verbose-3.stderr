@@ -11,7 +11,7 @@ LL | |     };
    | |_____^ expected `()`, found coroutine
    |
    = note: expected unit type `()`
-              found coroutine `{main::{closure#0} upvar_tys=?4t resume_ty=() yield_ty=i32 return_ty=&'?1 str witness=?6t}`
+              found coroutine `{main::{closure:coroutine#0} upvar_tys=?4t resume_ty=() yield_ty=i32 return_ty=&'?1 str witness=?6t}`
 
 error: aborting due to 1 previous error
 

@@ -68,7 +68,7 @@ Number of file 0 mappings: 4
 - Code(Zero) at (prev + 1, 9) to (start + 0, 10)
 Highest counter ID seen: (none)
 
-Function name: holes::main::{closure#1} (unused)
+Function name: holes::main::{closure:async#0} (unused)
 Raw bytes (19): 0x[01, 01, 00, 03, 00, 4b, 09, 00, 0a, 00, 01, 0d, 00, 12, 00, 01, 09, 00, 0a]
 Number of files: 1
 - file 0 => $DIR/holes.rs

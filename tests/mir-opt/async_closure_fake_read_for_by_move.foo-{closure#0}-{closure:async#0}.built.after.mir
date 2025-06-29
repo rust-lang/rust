@@ -1,6 +1,6 @@
-// MIR for `foo::{closure#0}::{closure#0}` after built
+// MIR for `foo::{closure#0}::{closure:async#0}` after built
 
-fn foo::{closure#0}::{closure#0}(_1: {async closure body@$DIR/async_closure_fake_read_for_by_move.rs:12:27: 15:6}, _2: ResumeTy) -> ()
+fn foo::{closure#0}::{closure:async#0}(_1: {async closure body@$DIR/async_closure_fake_read_for_by_move.rs:12:27: 15:6}, _2: ResumeTy) -> ()
 yields ()
  {
     debug _task_context => _2;

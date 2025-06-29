@@ -712,7 +712,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             hir::definitions::DefPathData::ForeignMod => "F", // Not specified in v0's <namespace>
             hir::definitions::DefPathData::TypeNs(..) => "t",
             hir::definitions::DefPathData::ValueNs(..) => "v",
-            hir::definitions::DefPathData::Closure => "C",
+            hir::definitions::DefPathData::Closure { .. } => "C",
             hir::definitions::DefPathData::Ctor => "c",
             hir::definitions::DefPathData::AnonConst => "k",
             hir::definitions::DefPathData::OpaqueTy => "i",

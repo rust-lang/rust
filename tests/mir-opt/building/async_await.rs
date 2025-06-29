@@ -8,10 +8,10 @@
 
 #![crate_type = "lib"]
 
-// EMIT_MIR async_await.a-{closure#0}.coroutine_resume.0.mir
+// EMIT_MIR async_await.a-{closure:async#0}.coroutine_resume.0.mir
 async fn a() {}
 
-// EMIT_MIR async_await.b-{closure#0}.coroutine_resume.0.mir
+// EMIT_MIR async_await.b-{closure:async#0}.coroutine_resume.0.mir
 pub async fn b() {
     a().await;
     a().await

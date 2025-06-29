@@ -18,7 +18,7 @@ Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 37, 1) to (start + 0, 42)
 Highest counter ID seen: c0
 
-Function name: closure_macro_async::test::{closure#0}
+Function name: closure_macro_async::test::{closure:async#0}
 Raw bytes (66): 0x[01, 01, 01, 01, 05, 0c, 01, 25, 2b, 00, 2c, 01, 01, 05, 00, 0d, 01, 00, 0e, 00, 20, 02, 01, 09, 00, 0f, 01, 00, 12, 00, 1b, 01, 00, 1c, 00, 34, 05, 00, 54, 00, 55, 02, 02, 09, 00, 1f, 02, 00, 22, 00, 2e, 02, 01, 0d, 00, 2d, 02, 01, 05, 00, 0b, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/closure_macro_async.rs
@@ -44,7 +44,7 @@ Number of file 0 mappings: 12
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
 Highest counter ID seen: c1
 
-Function name: closure_macro_async::test::{closure#0}::{closure#0}
+Function name: closure_macro_async::test::{closure:async#0}::{closure#0}
 Raw bytes (60): 0x[01, 01, 03, 01, 05, 01, 0b, 05, 09, 0a, 01, 14, 1c, 00, 1d, 01, 02, 11, 00, 18, 01, 00, 1b, 00, 22, 01, 01, 10, 00, 21, 05, 01, 11, 00, 19, 05, 00, 1a, 00, 1e, 05, 01, 11, 00, 27, 02, 02, 11, 00, 16, 06, 00, 17, 00, 1e, 01, 02, 09, 00, 0a]
 Number of files: 1
 - file 0 => $DIR/closure_macro_async.rs

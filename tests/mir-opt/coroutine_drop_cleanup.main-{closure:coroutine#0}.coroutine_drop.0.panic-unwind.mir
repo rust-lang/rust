@@ -1,6 +1,6 @@
-// MIR for `main::{closure#0}` 0 coroutine_drop
+// MIR for `main::{closure:coroutine#0}` 0 coroutine_drop
 
-fn main::{closure#0}(_1: *mut {coroutine@$DIR/coroutine_drop_cleanup.rs:12:5: 12:7}) -> () {
+fn main::{closure:coroutine#0}(_1: *mut {coroutine@$DIR/coroutine_drop_cleanup.rs:12:5: 12:7}) -> () {
     let mut _0: ();
     let mut _2: ();
     let _3: std::string::String;

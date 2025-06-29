@@ -1,6 +1,6 @@
-// MIR for `main::{closure#0}` before StateTransform
+// MIR for `main::{closure:coroutine#0}` before StateTransform
 
-fn main::{closure#0}(_1: {coroutine@$DIR/coroutine_storage_dead_unwind.rs:24:5: 24:7}, _2: ()) -> ()
+fn main::{closure:coroutine#0}(_1: {coroutine@$DIR/coroutine_storage_dead_unwind.rs:24:5: 24:7}, _2: ()) -> ()
 yields ()
  {
     let mut _0: ();
@@ -36,7 +36,7 @@ yields ()
         StorageLive(_7);
         StorageLive(_8);
         _8 = move _3;
-        _7 = take::<Foo>(move _8) -> [return: bb2, unwind: bb10];
+        _7 = take::<Foo>(move _8) -> [return: bb2, unwind unreachable];
     }
 
     bb2: {
@@ -45,7 +45,7 @@ yields ()
         StorageLive(_9);
         StorageLive(_10);
         _10 = move _4;
-        _9 = take::<Bar>(move _10) -> [return: bb3, unwind: bb9];
+        _9 = take::<Bar>(move _10) -> [return: bb3, unwind unreachable];
     }
 
     bb3: {
@@ -58,7 +58,7 @@ yields ()
 
     bb4: {
         StorageDead(_3);
-        drop(_1) -> [return: bb5, unwind: bb14];
+        drop(_1) -> [return: bb5, unwind unreachable];
     }
 
     bb5: {
@@ -69,50 +69,15 @@ yields ()
         StorageDead(_6);
         StorageDead(_5);
         StorageDead(_4);
-        drop(_3) -> [return: bb7, unwind: bb15];
+        drop(_3) -> [return: bb7, unwind unreachable];
     }
 
     bb7: {
         StorageDead(_3);
-        drop(_1) -> [return: bb8, unwind: bb14];
+        drop(_1) -> [return: bb8, unwind unreachable];
     }
 
     bb8: {
         coroutine_drop;
-    }
-
-    bb9 (cleanup): {
-        StorageDead(_10);
-        StorageDead(_9);
-        goto -> bb12;
-    }
-
-    bb10 (cleanup): {
-        goto -> bb11;
-    }
-
-    bb11 (cleanup): {
-        StorageDead(_8);
-        StorageDead(_7);
-        goto -> bb12;
-    }
-
-    bb12 (cleanup): {
-        StorageDead(_4);
-        goto -> bb13;
-    }
-
-    bb13 (cleanup): {
-        StorageDead(_3);
-        drop(_1) -> [return: bb14, unwind terminate(cleanup)];
-    }
-
-    bb14 (cleanup): {
-        resume;
-    }
-
-    bb15 (cleanup): {
-        StorageDead(_3);
-        drop(_1) -> [return: bb14, unwind terminate(cleanup)];
     }
 }

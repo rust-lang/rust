@@ -236,6 +236,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
+                // This is the inner coroutine-ish closure, so we should include
+                // the coroutine info.
                 let def_kind =
                     DefKind::Closure { coroutine_kind: Some(coroutine_def_kind(coroutine_kind)) };
                 let coroutine_def =
@@ -368,9 +370,15 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             ExprKind::MacCall(..) => return self.visit_macro_invoc(expr.id),
             ExprKind::Closure(ref closure) => {
                 let coroutine_kind = match closure.coroutine_kind {
-                    Some(kind) => Some(coroutine_def_kind(&kind)),
+                    // A closure may actually be a coroutine if it has the `#[coroutine]` attr.
+                    // This is more like an `async {}` or `gen {}` block in that it's actually the
+                    // coroutine (instead of async/gen closures, where the desugared inner closure
+                    // is the real coroutine). So we should include the coroutine kind here.
                     None if has_coroutine_attr(&expr.attrs) => Some(CoroutineDefKind::Coroutine),
-                    None => None,
+                    // For async/gen closures (`async || ...` / `gen || ...`), the desugared inner
+                    // closure will have `coroutine_kind = Some(_)`. This is the outer closure, so
+                    // we should not include it.
+                    _ => None,
                 };
 
                 self.create_def(expr.id, None, DefKind::Closure { coroutine_kind }, expr.span)

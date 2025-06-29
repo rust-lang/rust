@@ -6,9 +6,9 @@ use rustc_ast::NodeId;
 use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_data_structures::unord::UnordMap;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
+use rustc_span::{Symbol, kw, sym};
 
 use crate::definitions::DefPathData;
 use crate::hir;
@@ -319,7 +319,21 @@ impl DefKind {
             DefKind::OpaqueTy => DefPathData::OpaqueTy,
             DefKind::GlobalAsm => DefPathData::GlobalAsm,
             DefKind::Impl { .. } => DefPathData::Impl,
-            DefKind::Closure { .. } => DefPathData::Closure,
+            DefKind::Closure { coroutine_kind } => match coroutine_kind {
+                None => DefPathData::Closure { coroutine_kind: None },
+                Some(CoroutineDefKind::Desugared(hir::CoroutineDesugaring::Async)) => {
+                    DefPathData::Closure { coroutine_kind: Some(kw::Async) }
+                }
+                Some(CoroutineDefKind::Desugared(hir::CoroutineDesugaring::Gen)) => {
+                    DefPathData::Closure { coroutine_kind: Some(kw::Gen) }
+                }
+                Some(CoroutineDefKind::Desugared(hir::CoroutineDesugaring::AsyncGen)) => {
+                    DefPathData::Closure { coroutine_kind: Some(sym::async_gen) }
+                }
+                Some(CoroutineDefKind::Coroutine) => {
+                    DefPathData::Closure { coroutine_kind: Some(sym::coroutine) }
+                }
+            },
             DefKind::SyntheticCoroutineBody => DefPathData::SyntheticCoroutineBody,
         }
     }

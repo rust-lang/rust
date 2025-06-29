@@ -30,7 +30,7 @@ pub(super) fn mangle<'tcx>(
         match key.disambiguated_data.data {
             DefPathData::TypeNs(_)
             | DefPathData::ValueNs(_)
-            | DefPathData::Closure
+            | DefPathData::Closure { .. }
             | DefPathData::SyntheticCoroutineBody => {
                 instance_ty = tcx.type_of(ty_def_id).instantiate_identity();
                 debug!(?instance_ty);

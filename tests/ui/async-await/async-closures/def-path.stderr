@@ -5,11 +5,11 @@ LL |     let x = async || {};
    |                      -- the expected `async` closure body
 LL |
 LL |     let () = x();
-   |         ^^   --- this expression has type `{static main::{closure#0}::{closure#0}<?17t> upvar_tys=?16t resume_ty=ResumeTy yield_ty=() return_ty=() witness=?5t}`
+   |         ^^   --- this expression has type `{static main::{closure#0}::{closure:async#0}<?17t> upvar_tys=?16t resume_ty=ResumeTy yield_ty=() return_ty=() witness=?5t}`
    |         |
    |         expected `async` closure body, found `()`
    |
-   = note: expected `async` closure body `{static main::{closure#0}::{closure#0}<?17t> upvar_tys=?16t resume_ty=ResumeTy yield_ty=() return_ty=() witness=?5t}`
+   = note: expected `async` closure body `{static main::{closure#0}::{closure:async#0}<?17t> upvar_tys=?16t resume_ty=ResumeTy yield_ty=() return_ty=() witness=?5t}`
                          found unit type `()`
 
 error: aborting due to 1 previous error
