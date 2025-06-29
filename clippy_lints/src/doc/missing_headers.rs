@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::ty::{get_type_diagnostic_name, implements_trait_with_env, is_type_diagnostic_item};
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{fulfill_or_allowed, is_doc_hidden, method_chain_args, return_ty};
+use clippy_utils::{fulfill_or_allowed, is_doc_hidden, is_inside_always_const_context, method_chain_args, return_ty};
 use rustc_hir::{BodyId, FnSig, OwnerId, Safety};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
@@ -99,13 +99,16 @@ fn find_panic(cx: &LateContext<'_>, body_id: BodyId) -> Option<Span> {
     let mut panic_span = None;
     let typeck = cx.tcx.typeck_body(body_id);
     for_each_expr(cx, cx.tcx.hir_body(body_id), |expr| {
+        if is_inside_always_const_context(cx.tcx, expr.hir_id) {
+            return ControlFlow::<!>::Continue(());
+        }
+
         if let Some(macro_call) = root_macro_call_first_node(cx, expr)
             && (is_panic(cx, macro_call.def_id)
                 || matches!(
                     cx.tcx.get_diagnostic_name(macro_call.def_id),
                     Some(sym::assert_macro | sym::assert_eq_macro | sym::assert_ne_macro)
                 ))
-            && !cx.tcx.hir_is_inside_const_context(expr.hir_id)
             && !fulfill_or_allowed(cx, MISSING_PANICS_DOC, [expr.hir_id])
             && panic_span.is_none()
         {
