@@ -328,8 +328,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 let module_did = mod_prefix.as_ref().and_then(Res::mod_def_id);
 
                 let mod_prefix =
-                    mod_prefix.map_or_else(String::new, |res| (format!("{} ", res.descr())));
-
+                    mod_prefix.map_or_else(String::new, |res| format!("{} ", res.descr()));
                 (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)), module_did, None)
             };
 

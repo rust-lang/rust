@@ -2206,7 +2206,7 @@ impl<'a> Parser<'a> {
 
             if self.look_ahead(1, |t| *t == token::Bang) && self.look_ahead(2, |t| t.is_ident()) {
                 return IsMacroRulesItem::Yes { has_bang: true };
-            } else if self.look_ahead(1, |t| (t.is_ident())) {
+            } else if self.look_ahead(1, |t| t.is_ident()) {
                 // macro_rules foo
                 self.dcx().emit_err(errors::MacroRulesMissingBang {
                     span: macro_rules_span,
