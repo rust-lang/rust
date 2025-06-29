@@ -233,12 +233,10 @@ impl<F: Write> TokenHandler<'_, '_, F> {
             } else {
                 None
             };
-            let mut last_pending = None;
             // To prevent opening a macro expansion span being closed right away because
             // the currently open item is replaced by a new class.
-            if let Some((_, Some(Class::Expansion))) = self.pending_elems.last() {
-                last_pending = self.pending_elems.pop();
-            }
+            let last_pending =
+                self.pending_elems.pop_if(|(_, class)| *class == Some(Class::Expansion));
             for (text, class) in self.pending_elems.iter() {
                 string(
                     self.out,
