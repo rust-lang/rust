@@ -32,30 +32,20 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
 
         let typing_env = body.typing_env(tcx);
         let ssa = SsaLocals::new(tcx, body, typing_env);
-        let borrowed_locals = ssa.borrowed_locals().clone();
 
-        debug!(?borrowed_locals);
+        debug!(borrowed_locals = ?ssa.borrowed_locals());
         debug!(copy_classes = ?ssa.copy_classes());
 
         let mut any_replacement = false;
         let fully_moved = fully_moved_locals(&ssa, body);
         debug!(?fully_moved);
 
-        let mut head_storage_to_check = DenseBitSet::new_empty(fully_moved.domain_size());
         let mut storage_to_remove = DenseBitSet::new_empty(fully_moved.domain_size());
 
         for (local, &head) in ssa.copy_classes().iter_enumerated() {
             if local != head {
                 any_replacement = true;
-                // We need to determine if we can keep the head's storage statements (which enables better optimizations).
-                // For every local's usage location, if the head is maybe-uninitialized, we'll need to remove it's storage statements.
-                head_storage_to_check.insert(head);
-
-                if borrowed_locals.contains(local) {
-                    // To keep the storage of a head, we require that none of the locals in it's copy class are borrowed,
-                    // since otherwise we cannot easily identify when it is used.
-                    storage_to_remove.insert(head);
-                }
+                storage_to_remove.insert(head);
             }
         }
 
@@ -66,8 +56,12 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
         let fully_moved = fully_moved_locals(&ssa, body);
         debug!(?fully_moved);
 
-        // Debug builds have no use for the storage statements, so avoid extra work.
-        let storage_to_remove = if any_replacement && tcx.sess.emit_lifetime_markers() {
+        // We can determine if we can keep the head's storage statements (which enables better optimizations).
+        // For every local's usage location, we'll to remove it's storage statements only if the head is maybe-uninitialized,
+        // or if the local is borrowed (since we cannot easily identify when it is used).
+        let storage_to_remove = if tcx.sess.emit_lifetime_markers() {
+            storage_to_remove.clear();
+
             let maybe_uninit = MaybeUninitializedLocals::new()
                 .iterate_to_fixpoint(tcx, body, Some("mir_opt::copy_prop"))
                 .into_results_cursor(body);
@@ -75,16 +69,18 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
             let mut storage_checker = StorageChecker {
                 maybe_uninit,
                 copy_classes: ssa.copy_classes(),
-                head_storage_to_check,
+                borrowed_locals: ssa.borrowed_locals(),
                 storage_to_remove,
             };
 
-            storage_checker.visit_body(body);
+            for (bb, data) in traversal::reachable(body) {
+                storage_checker.visit_basic_block_data(bb, data);
+            }
 
             storage_checker.storage_to_remove
         } else {
             // Conservatively remove all storage statements for the head locals.
-            head_storage_to_check
+            storage_to_remove
         };
 
         debug!(?storage_to_remove);
@@ -200,7 +196,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
 struct StorageChecker<'a, 'tcx> {
     maybe_uninit: ResultsCursor<'a, 'tcx, MaybeUninitializedLocals>,
     copy_classes: &'a IndexSlice<Local, Local>,
-    head_storage_to_check: DenseBitSet<Local>,
+    borrowed_locals: &'a DenseBitSet<Local>,
     storage_to_remove: DenseBitSet<Local>,
 }
 
@@ -222,23 +218,28 @@ impl<'a, 'tcx> Visitor<'tcx> for StorageChecker<'a, 'tcx> {
 
         let head = self.copy_classes[local];
 
-        // The head must be initialized at the location of the local, otherwise we must remove it's storage statements.
-        if self.head_storage_to_check.contains(head) {
-            self.maybe_uninit.seek_before_primary_effect(loc);
+        // If the local is the head, or if we already marked it for deletion, we do not need to check it.
+        if head == local || self.storage_to_remove.contains(head) {
+            return;
+        }
 
-            if self.maybe_uninit.get().contains(head) {
-                debug!(
-                    ?loc,
-                    ?context,
-                    ?local,
-                    ?head,
-                    "found a head at a location in which it is maybe uninit, marking head for storage statement removal"
-                );
-                self.storage_to_remove.insert(head);
+        // If the local is borrowed, we cannot easily determine if it is used, so we have to remove the storage statements.
+        if self.borrowed_locals.contains(local) {
+            self.storage_to_remove.insert(head);
+            return;
+        }
 
-                // Once we found a use of the head that is maybe uninit, we do not need to check it again.
-                self.head_storage_to_check.remove(head);
-            }
+        self.maybe_uninit.seek_before_primary_effect(loc);
+
+        if self.maybe_uninit.get().contains(head) {
+            debug!(
+                ?loc,
+                ?context,
+                ?local,
+                ?head,
+                "found a head at a location in which it is maybe uninit, marking head for storage statement removal"
+            );
+            self.storage_to_remove.insert(head);
         }
     }
 }
