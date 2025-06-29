@@ -39,10 +39,6 @@ runs:
         run: cargo install -f rustup-toolchain-install-master hyperfine
         shell: bash
 
-      - name: Install nightly toolchain
-        run: rustup toolchain install nightly --profile minimal
-        shell: bash
-
       - name: Install "master" toolchain
         run: |
           if [[ ${{ github.event_name }} == 'schedule' ]]; then
