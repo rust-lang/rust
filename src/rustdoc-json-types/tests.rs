@@ -38,3 +38,11 @@ fn test_union_info_roundtrip() {
     let decoded: ItemEnum = bincode::deserialize(&encoded).unwrap();
     assert_eq!(u, decoded);
 }
+
+#[test]
+fn magic_never_dies() {
+    // Extra check to make sure that the postcard magic header never changes.
+    // Don't change this value
+    assert_eq!(crate::postcard::MAGIC, *b"\x00\xFFRustdocJsonPostcard\xFF");
+    // Don't change that value
+}

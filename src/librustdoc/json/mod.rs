@@ -36,6 +36,12 @@ use crate::formats::cache::Cache;
 use crate::json::conversions::IntoJson;
 use crate::{clean, try_err};
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum OutputFormat {
+    Json,
+    Postcard,
+}
+
 pub(crate) struct JsonRenderer<'tcx> {
     tcx: TyCtxt<'tcx>,
     /// A mapping of IDs that contains all local items for this crate which gets output as a top
@@ -48,6 +54,7 @@ pub(crate) struct JsonRenderer<'tcx> {
     cache: Rc<Cache>,
     imported_items: DefIdSet,
     id_interner: RefCell<ids::IdInterner>,
+    output_format: OutputFormat,
 }
 
 impl<'tcx> JsonRenderer<'tcx> {
@@ -113,10 +120,30 @@ impl<'tcx> JsonRenderer<'tcx> {
         path: &str,
     ) -> Result<(), Error> {
         self.sess().time("rustdoc_json_serialize_and_write", || {
-            try_err!(
-                serde_json::ser::to_writer(&mut writer, &output_crate).map_err(|e| e.to_string()),
-                path
-            );
+            match self.output_format {
+                OutputFormat::Json => {
+                    try_err!(
+                        serde_json::ser::to_writer(&mut writer, &output_crate)
+                            .map_err(|e| e.to_string()),
+                        path
+                    );
+                }
+                OutputFormat::Postcard => {
+                    let output = (
+                        rustdoc_json_types::postcard::Header {
+                            magic: rustdoc_json_types::postcard::MAGIC,
+                            format_version: rustdoc_json_types::FORMAT_VERSION,
+                        },
+                        output_crate,
+                    );
+
+                    try_err!(
+                        postcard::to_io(&output, &mut writer).map_err(|e| e.to_string()),
+                        path
+                    );
+                }
+            }
+
             try_err!(writer.flush(), path);
             Ok(())
         })
@@ -200,6 +227,13 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 out_dir: if options.output_to_stdout { None } else { Some(options.output) },
                 cache: Rc::new(cache),
                 imported_items,
+                output_format: match options.output_format {
+                    crate::config::OutputFormat::Json => OutputFormat::Json,
+                    crate::config::OutputFormat::Postcard => OutputFormat::Postcard,
+                    crate::config::OutputFormat::Html | crate::config::OutputFormat::Doctest => {
+                        unreachable!()
+                    }
+                },
                 id_interner: Default::default(),
             },
             krate,
@@ -365,7 +399,10 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
             let mut p = out_dir.clone();
             p.push(output_crate.index.get(&output_crate.root).unwrap().name.clone().unwrap());
-            p.set_extension("json");
+            p.set_extension(match self.output_format {
+                OutputFormat::Json => "json",
+                OutputFormat::Postcard => "postcard",
+            });
 
             self.serialize_and_write(
                 output_crate,

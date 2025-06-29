@@ -31,6 +31,7 @@ use crate::{html, opts, theme};
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub(crate) enum OutputFormat {
     Json,
+    Postcard,
     #[default]
     Html,
     Doctest,
@@ -38,7 +39,7 @@ pub(crate) enum OutputFormat {
 
 impl OutputFormat {
     pub(crate) fn is_json(&self) -> bool {
-        matches!(self, OutputFormat::Json)
+        matches!(self, OutputFormat::Json | OutputFormat::Postcard)
     }
 }
 
@@ -50,6 +51,7 @@ impl TryFrom<&str> for OutputFormat {
             "json" => Ok(OutputFormat::Json),
             "html" => Ok(OutputFormat::Html),
             "doctest" => Ok(OutputFormat::Doctest),
+            "postcard" => Ok(OutputFormat::Postcard),
             _ => Err(format!("unknown output format `{value}`")),
         }
     }
@@ -302,6 +304,8 @@ pub(crate) struct RenderOptions {
     pub(crate) parts_out_dir: Option<PathToParts>,
     /// disable minification of CSS/JS
     pub(crate) disable_minification: bool,
+
+    pub(crate) output_format: OutputFormat,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -485,7 +489,7 @@ impl Options {
             // If `-Zunstable-options` is used, nothing to check after this point.
             (_, false, true) => {}
             (None | Some(OutputFormat::Html), false, _) => {}
-            (Some(OutputFormat::Json), false, false) => {
+            (Some(OutputFormat::Json | OutputFormat::Postcard), false, false) => {
                 dcx.fatal(
                     "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/76578)",
                 );
@@ -880,6 +884,7 @@ impl Options {
             include_parts_dir,
             parts_out_dir,
             disable_minification,
+            output_format,
         };
         Some((input, options, render_options))
     }
