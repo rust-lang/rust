@@ -1,0 +1,36 @@
+error[E0615]: attempted to take value of method `abs` on type `i32`
+  --> $DIR/method-value-without-call.rs:20:20
+   |
+LL |     let _f = 10i32.abs;
+   |                    ^^^ method, not a field
+   |
+help: use parentheses to call the method
+   |
+LL |     let _f = 10i32.abs();
+   |                       ++
+
+error[E0615]: attempted to take value of method `get_x` on type `Point`
+  --> $DIR/method-value-without-call.rs:24:27
+   |
+LL |     let px: isize = point.get_x;
+   |                           ^^^^^ method, not a field
+   |
+help: use parentheses to call the method
+   |
+LL |     let px: isize = point.get_x();
+   |                                ++
+
+error[E0615]: attempted to take value of method `filter_map` on type `Filter<Map<std::slice::Iter<'_, {integer}>, {closure@$DIR/method-value-without-call.rs:30:14: 30:17}>, {closure@$DIR/method-value-without-call.rs:31:17: 31:22}>`
+  --> $DIR/method-value-without-call.rs:32:10
+   |
+LL |         .filter_map;
+   |          ^^^^^^^^^^ method, not a field
+   |
+help: use parentheses to call the method
+   |
+LL |         .filter_map(_);
+   |                    +++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0615`.

@@ -65,7 +65,6 @@ This API is completely unstable and subject to change.
 #![feature(debug_closure_helpers)]
 #![feature(gen_blocks)]
 #![feature(if_let_guard)]
-#![feature(iter_from_coroutine)]
 #![feature(iter_intersperse)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]

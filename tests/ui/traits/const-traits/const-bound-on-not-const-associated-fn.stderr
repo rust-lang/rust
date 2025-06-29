@@ -1,8 +1,8 @@
 error: `[const]` is not allowed here
-  --> $DIR/const-bound-on-not-const-associated-fn.rs:11:38
+  --> $DIR/const-bound-on-not-const-associated-fn.rs:11:40
    |
 LL |     fn do_something_else() where Self: [const] MyTrait;
-   |                                      ^^^^^^^^^
+   |                                        ^^^^^^^
    |
 note: this function is not `const`, so it cannot have `[const]` trait bounds
   --> $DIR/const-bound-on-not-const-associated-fn.rs:11:8
@@ -11,10 +11,10 @@ LL |     fn do_something_else() where Self: [const] MyTrait;
    |        ^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/const-bound-on-not-const-associated-fn.rs:22:30
+  --> $DIR/const-bound-on-not-const-associated-fn.rs:22:32
    |
 LL |     pub fn foo(&self) where T: [const] MyTrait {
-   |                              ^^^^^^^^^
+   |                                ^^^^^^^
    |
 note: this function is not `const`, so it cannot have `[const]` trait bounds
   --> $DIR/const-bound-on-not-const-associated-fn.rs:22:12

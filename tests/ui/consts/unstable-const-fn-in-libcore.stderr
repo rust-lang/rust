@@ -1,17 +1,17 @@
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/unstable-const-fn-in-libcore.rs:19:30
+  --> $DIR/unstable-const-fn-in-libcore.rs:19:32
    |
 LL |     const fn unwrap_or_else<F: [const] FnOnce() -> T>(self, f: F) -> T {
-   |                              ^^^^^^^^^ can't be applied to `FnOnce`
+   |                                ^^^^^^^ can't be applied to `FnOnce`
    |
 note: `FnOnce` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/unstable-const-fn-in-libcore.rs:19:30
+  --> $DIR/unstable-const-fn-in-libcore.rs:19:32
    |
 LL |     const fn unwrap_or_else<F: [const] FnOnce() -> T>(self, f: F) -> T {
-   |                              ^^^^^^^^^ can't be applied to `FnOnce`
+   |                                ^^^^^^^ can't be applied to `FnOnce`
    |
 note: `FnOnce` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL

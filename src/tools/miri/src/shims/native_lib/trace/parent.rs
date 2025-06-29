@@ -20,14 +20,11 @@ const ARCH_MAX_ACCESS_SIZE: usize = 64;
 /// The largest arm64 simd instruction operates on 16 bytes.
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 const ARCH_MAX_ACCESS_SIZE: usize = 16;
-/// The max riscv vector instruction can access 8 consecutive 32-bit values.
-#[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
-const ARCH_MAX_ACCESS_SIZE: usize = 32;
 
 /// The default word size on a given platform, in bytes.
-#[cfg(any(target_arch = "x86", target_arch = "arm", target_arch = "riscv32"))]
+#[cfg(any(target_arch = "x86", target_arch = "arm"))]
 const ARCH_WORD_SIZE: usize = 4;
-#[cfg(any(target_arch = "x86_64", target_arch = "aarch64", target_arch = "riscv64"))]
+#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
 const ARCH_WORD_SIZE: usize = 8;
 
 /// The address of the page set to be edited, initialised to a sentinel null
@@ -80,18 +77,6 @@ impl ArchIndependentRegs for libc::user_regs_struct {
 }
 
 #[cfg(target_arch = "aarch64")]
-#[expect(clippy::as_conversions)]
-#[rustfmt::skip]
-impl ArchIndependentRegs for libc::user_regs_struct {
-    #[inline]
-    fn ip(&self) -> usize { self.pc as _ }
-    #[inline]
-    fn set_ip(&mut self, ip: usize) { self.pc = ip as _ }
-    #[inline]
-    fn set_sp(&mut self, sp: usize) { self.sp = sp as _ }
-}
-
-#[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
 #[expect(clippy::as_conversions)]
 #[rustfmt::skip]
 impl ArchIndependentRegs for libc::user_regs_struct {
@@ -341,10 +326,6 @@ fn get_disasm() -> capstone::Capstone {
         {cs_pre.arm64().mode(arch::arm64::ArchMode::Arm)}
         #[cfg(target_arch = "arm")]
         {cs_pre.arm().mode(arch::arm::ArchMode::Arm)}
-        #[cfg(target_arch = "riscv64")]
-        {cs_pre.riscv().mode(arch::riscv::ArchMode::RiscV64)}
-        #[cfg(target_arch = "riscv32")]
-        {cs_pre.riscv().mode(arch::riscv::ArchMode::RiscV32)}
     }
     .detail(true)
     .build()
@@ -501,18 +482,6 @@ fn handle_segfault(
                         }
                         _ => (),
                     },
-                #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
-                arch::ArchOperand::RiscVOperand(risc_voperand) => {
-                    match risc_voperand {
-                        arch::riscv::RiscVOperand::Mem(_) => {
-                            // We get basically no info here.
-                            let push = addr..addr.strict_add(size);
-                            acc_events.push(AccessEvent::Read(push.clone()));
-                            acc_events.push(AccessEvent::Write(push));
-                        }
-                        _ => (),
-                    }
-                }
                 _ => unimplemented!(),
             }
         }

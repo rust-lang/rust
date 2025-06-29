@@ -191,6 +191,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::AsPtr(attr_span)) => {
                     self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)
                 }
+                Attribute::Parsed(AttributeKind::LinkName { span: attr_span, name }) => {
+                    self.check_link_name(hir_id, *attr_span, *name, span, target)
+                }
                 Attribute::Parsed(AttributeKind::MayDangle(attr_span)) => {
                     self.check_may_dangle(hir_id, *attr_span)
                 }
@@ -283,7 +286,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::ffi_const, ..] => self.check_ffi_const(attr.span(), target),
                         [sym::link_ordinal, ..] => self.check_link_ordinal(attr, span, target),
                         [sym::link, ..] => self.check_link(hir_id, attr, span, target),
-                        [sym::link_name, ..] => self.check_link_name(hir_id, attr, span, target),
                         [sym::link_section, ..] => self.check_link_section(hir_id, attr, span, target),
                         [sym::macro_use, ..] | [sym::macro_escape, ..] => {
                             self.check_macro_use(hir_id, attr, target)
@@ -1604,7 +1606,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[link_name]` is applied to an item other than a foreign function or static.
-    fn check_link_name(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+    fn check_link_name(
+        &self,
+        hir_id: HirId,
+        attr_span: Span,
+        name: Symbol,
+        span: Span,
+        target: Target,
+    ) {
         match target {
             Target::ForeignFn | Target::ForeignStatic => {}
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
@@ -1612,27 +1621,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "link_name");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr_span, "link_name");
             }
             _ => {
-                // FIXME: #[cold] was previously allowed on non-functions/statics and some crates
+                // FIXME: #[link_name] was previously allowed on non-functions/statics and some crates
                 // used this, so only emit a warning.
-                let attr_span = matches!(target, Target::ForeignMod).then_some(attr.span());
-                if let Some(s) = attr.value_str() {
-                    self.tcx.emit_node_span_lint(
-                        UNUSED_ATTRIBUTES,
-                        hir_id,
-                        attr.span(),
-                        errors::LinkName { span, attr_span, value: s.as_str() },
-                    );
-                } else {
-                    self.tcx.emit_node_span_lint(
-                        UNUSED_ATTRIBUTES,
-                        hir_id,
-                        attr.span(),
-                        errors::LinkName { span, attr_span, value: "..." },
-                    );
-                };
+                let help_span = matches!(target, Target::ForeignMod).then_some(attr_span);
+                self.tcx.emit_node_span_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr_span,
+                    errors::LinkName { span, help_span, value: name.as_str() },
+                );
             }
         }
     }
