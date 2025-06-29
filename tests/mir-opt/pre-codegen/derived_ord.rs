@@ -25,7 +25,10 @@ pub fn demo_le(a: &MultiField, b: &MultiField) -> bool {
     // CHECK: Cmp(move [[A1]], move [[B1]]);
 
     // CHECK: [[D1:_[0-9]+]] = discriminant({{.+}});
-    // CHECK: _0 = Le(move [[D1]], const 0_i8);
+    // CHECK: switchInt(move [[D1]]) -> [0: bb{{[0-9]+}}, 1: bb{{[0-9]+}}, otherwise: bb{{[0-9]+}}];
+
+    // CHECK: [[D2:_[0-9]+]] = discriminant({{.+}});
+    // CHECK: _0 = Le(move [[D2]], const 0_i8);
     *a <= *b
 }
 
