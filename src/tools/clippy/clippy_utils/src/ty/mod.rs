@@ -889,7 +889,7 @@ impl AdtVariantInfo {
                     .enumerate()
                     .map(|(i, f)| (i, approx_ty_size(cx, f.ty(cx.tcx, subst))))
                     .collect::<Vec<_>>();
-                fields_size.sort_by(|(_, a_size), (_, b_size)| (a_size.cmp(b_size)));
+                fields_size.sort_by(|(_, a_size), (_, b_size)| a_size.cmp(b_size));
 
                 Self {
                     ind: i,
@@ -898,7 +898,7 @@ impl AdtVariantInfo {
                 }
             })
             .collect::<Vec<_>>();
-        variants_size.sort_by(|a, b| (b.size.cmp(&a.size)));
+        variants_size.sort_by(|a, b| b.size.cmp(&a.size));
         variants_size
     }
 }
