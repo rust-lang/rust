@@ -943,7 +943,7 @@ impl f64 {
     /// This returns NaN when *either* argument is NaN, as opposed to
     /// [`f64::max`] which only returns NaN when *both* arguments are NaN.
     ///
-    /// ```ignore-arm-unknown-linux-gnueabihf (see https://github.com/rust-lang/rust/issues/141087)
+    /// ```ignore-arm-unknown-linux-gnueabihf,ignore-i586 (see https://github.com/rust-lang/rust/issues/141087)
     /// #![feature(float_minimum_maximum)]
     /// let x = 1.0_f64;
     /// let y = 2.0_f64;
@@ -970,7 +970,7 @@ impl f64 {
     /// This returns NaN when *either* argument is NaN, as opposed to
     /// [`f64::min`] which only returns NaN when *both* arguments are NaN.
     ///
-    /// ```ignore-arm-unknown-linux-gnueabihf (see https://github.com/rust-lang/rust/issues/141087)
+    /// ```ignore-arm-unknown-linux-gnueabihf,ignore-i586 (see https://github.com/rust-lang/rust/issues/141087)
     /// #![feature(float_minimum_maximum)]
     /// let x = 1.0_f64;
     /// let y = 2.0_f64;

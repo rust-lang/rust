@@ -8,19 +8,8 @@ pub mod thread;
 mod vector_clock;
 pub mod weak_memory;
 
-// cfg(bootstrap)
-macro_rules! cfg_select_dispatch {
-    ($($tokens:tt)*) => {
-        #[cfg(bootstrap)]
-        cfg_match! { $($tokens)* }
-
-        #[cfg(not(bootstrap))]
-        cfg_select! { $($tokens)* }
-    };
-}
-
 // Import either the real genmc adapter or a dummy module.
-cfg_select_dispatch! {
+cfg_select! {
     feature = "genmc" => {
         mod genmc;
         pub use self::genmc::{GenmcCtx, GenmcConfig};

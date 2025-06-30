@@ -121,7 +121,7 @@ pub struct File {
 ///
 /// [`try_lock`]: File::try_lock
 /// [`try_lock_shared`]: File::try_lock_shared
-#[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "file_lock", since = "1.89.0")]
 pub enum TryLockError {
     /// The lock could not be acquired due to an I/O error on the file. The standard library will
     /// not return an [`ErrorKind::WouldBlock`] error inside [`TryLockError::Error`]
@@ -366,10 +366,10 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
     inner(path.as_ref(), contents.as_ref())
 }
 
-#[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "file_lock", since = "1.89.0")]
 impl error::Error for TryLockError {}
 
-#[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "file_lock", since = "1.89.0")]
 impl fmt::Debug for TryLockError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -379,7 +379,7 @@ impl fmt::Debug for TryLockError {
     }
 }
 
-#[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "file_lock", since = "1.89.0")]
 impl fmt::Display for TryLockError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -390,7 +390,7 @@ impl fmt::Display for TryLockError {
     }
 }
 
-#[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "file_lock", since = "1.89.0")]
 impl From<TryLockError> for io::Error {
     fn from(err: TryLockError) -> io::Error {
         match err {
@@ -721,7 +721,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "file_lock", since = "1.89.0")]
     pub fn lock(&self) -> io::Result<()> {
         self.inner.lock()
     }
@@ -773,7 +773,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "file_lock", since = "1.89.0")]
     pub fn lock_shared(&self) -> io::Result<()> {
         self.inner.lock_shared()
     }
@@ -837,7 +837,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "file_lock", since = "1.89.0")]
     pub fn try_lock(&self) -> Result<(), TryLockError> {
         self.inner.try_lock()
     }
@@ -901,7 +901,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "file_lock", since = "1.89.0")]
     pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
         self.inner.try_lock_shared()
     }
@@ -938,7 +938,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "file_lock", since = "1.89.0")]
     pub fn unlock(&self) -> io::Result<()> {
         self.inner.unlock()
     }
