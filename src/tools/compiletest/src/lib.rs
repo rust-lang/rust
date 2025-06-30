@@ -51,12 +51,6 @@ use crate::util::logv;
 /// some code here that inspects environment variables or even runs executables
 /// (e.g. when discovering debugger versions).
 pub fn parse_config(args: Vec<String>) -> Config {
-    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
-        eprintln!(
-            "WARNING: RUST_TEST_NOCAPTURE is not supported. Use the `--no-capture` flag instead."
-        );
-    }
-
     let mut opts = Options::new();
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
@@ -1123,6 +1117,13 @@ pub fn early_config_check(config: &Config) {
             r#"
 WARNING: profiler runtime is not available, so `.coverage` files won't be {actioned}
 help: try setting `profiler = true` in the `[build]` section of `bootstrap.toml`"#
+        );
+    }
+
+    // `RUST_TEST_NOCAPTURE` is a libtest env var, but we don't callout to libtest.
+    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
+        eprintln!(
+            "WARNING: RUST_TEST_NOCAPTURE is not supported. Use the `--no-capture` flag instead."
         );
     }
 }
