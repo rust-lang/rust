@@ -64,7 +64,7 @@ struct HaveAlias {
 
 In this example, the concrete type referred to by `Alias` is guaranteed to be the same wherever `Alias` occurs.
 
-> Orginally this feature included type aliases as an associated type of a trait. In [#110237] this was split off to [`impl_trait_in_assoc_type`].
+> Originally this feature included type aliases as an associated type of a trait. In [#110237] this was split off to [`impl_trait_in_assoc_type`].
 
 ### `type_alias_impl_trait` in argument position.
 
