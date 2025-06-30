@@ -1,16 +1,14 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::ptr::P;
-use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::{DefKind, PerNS, Res};
-use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
+use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::{self as hir, HirId, LifetimeSource, PredicateOrigin};
-use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DesugaringKind, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -21,15 +19,13 @@ use super::errors::{
 };
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
-    AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
+    FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
     ResolverAstLoweringExt,
 };
 
-pub(super) struct ItemLowerer<'a, 'hir> {
+pub(super) struct ItemLowerer<'hir> {
     pub(super) tcx: TyCtxt<'hir>,
-    pub(super) resolver: &'a mut ResolverAstLowering,
-    pub(super) ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
-    pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<'hir>>,
+    pub(super) resolver: &'hir ResolverAstLowering,
 }
 
 /// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
@@ -53,55 +49,51 @@ fn add_ty_alias_where_clause(
     generics.where_clause.span = where_clause.span;
 }
 
-impl<'a, 'hir> ItemLowerer<'a, 'hir> {
+impl<'hir> ItemLowerer<'hir> {
     fn with_lctx(
         &mut self,
         owner: NodeId,
-        f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
-    ) {
-        let mut lctx = LoweringContext::new(self.tcx, self.resolver);
-        lctx.with_hir_id_owner(owner, |lctx| f(lctx));
+        f: impl FnOnce(&mut LoweringContext<'hir>) -> hir::OwnerNode<'hir>,
+    ) -> hir::MaybeOwner<'hir> {
+        let mut lctx = LoweringContext::new(self.tcx, self.resolver, owner);
 
-        for (def_id, info) in lctx.children {
-            let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-            assert!(
-                matches!(owner, hir::MaybeOwner::Phantom),
-                "duplicate copy of {def_id:?} in lctx.children"
-            );
-            *owner = info;
-        }
+        let item = f(&mut lctx);
+        debug_assert_eq!(lctx.current_hir_id_owner, item.def_id());
+
+        let info = lctx.make_owner_info(item);
+
+        hir::MaybeOwner::Owner(lctx.arena.alloc(info))
     }
 
-    pub(super) fn lower_node(&mut self, def_id: LocalDefId) {
-        let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-        if let hir::MaybeOwner::Phantom = owner {
-            let node = self.ast_index[def_id];
-            match node {
-                AstOwner::NonOwner => {}
-                AstOwner::Crate(c) => {
-                    assert_eq!(self.resolver.node_id_to_def_id[&CRATE_NODE_ID], CRATE_DEF_ID);
-                    self.with_lctx(CRATE_NODE_ID, |lctx| {
-                        let module = lctx.lower_mod(&c.items, &c.spans);
-                        // FIXME(jdonszelman): is dummy span ever a problem here?
-                        lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs, DUMMY_SP);
-                        hir::OwnerNode::Crate(module)
-                    })
-                }
-                AstOwner::Item(item) => {
-                    self.with_lctx(item.id, |lctx| hir::OwnerNode::Item(lctx.lower_item(item)))
-                }
-                AstOwner::AssocItem(item, ctxt) => {
-                    self.with_lctx(item.id, |lctx| lctx.lower_assoc_item(item, ctxt))
-                }
-                AstOwner::ForeignItem(item) => self.with_lctx(item.id, |lctx| {
-                    hir::OwnerNode::ForeignItem(lctx.lower_foreign_item(item))
-                }),
-            }
-        }
+    #[instrument(level = "debug", skip(self, c))]
+    pub(super) fn lower_crate(&mut self, c: &Crate) -> hir::MaybeOwner<'hir> {
+        debug_assert_eq!(self.resolver.node_id_to_def_id[&CRATE_NODE_ID], CRATE_DEF_ID);
+        self.with_lctx(CRATE_NODE_ID, |lctx| {
+            let module = lctx.lower_mod(&c.items, &c.spans);
+            lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs, c.spans.inner_span);
+            hir::OwnerNode::Crate(module)
+        })
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    pub(super) fn lower_item(&mut self, item: &Item) -> hir::MaybeOwner<'hir> {
+        self.with_lctx(item.id, |lctx| hir::OwnerNode::Item(lctx.lower_item(item)))
+    }
+
+    pub(super) fn lower_trait_item(&mut self, item: &AssocItem) -> hir::MaybeOwner<'hir> {
+        self.with_lctx(item.id, |lctx| hir::OwnerNode::TraitItem(lctx.lower_trait_item(item)))
+    }
+
+    pub(super) fn lower_impl_item(&mut self, item: &AssocItem) -> hir::MaybeOwner<'hir> {
+        self.with_lctx(item.id, |lctx| hir::OwnerNode::ImplItem(lctx.lower_impl_item(item)))
+    }
+
+    pub(super) fn lower_foreign_item(&mut self, item: &ForeignItem) -> hir::MaybeOwner<'hir> {
+        self.with_lctx(item.id, |lctx| hir::OwnerNode::ForeignItem(lctx.lower_foreign_item(item)))
     }
 }
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     pub(super) fn lower_mod(
         &mut self,
         items: &[P<Item>],
@@ -137,12 +129,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_item(&mut self, i: &Item) -> &'hir hir::Item<'hir> {
+        let owner_id = self.current_hir_id_owner;
+        let hir_id: HirId = owner_id.into();
         let vis_span = self.lower_span(i.vis.span);
-        let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
         let attrs = self.lower_attrs(hir_id, &i.attrs, i.span);
         let kind = self.lower_item_kind(i.span, i.id, hir_id, attrs, vis_span, &i.kind);
         let item = hir::Item {
-            owner_id: hir_id.expect_owner(),
+            owner_id,
             kind,
             vis_span,
             span: self.lower_span(i.span),
@@ -627,21 +620,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_assoc_item(&mut self, item: &AssocItem, ctxt: AssocCtxt) -> hir::OwnerNode<'hir> {
-        // Evaluate with the lifetimes in `params` in-scope.
-        // This is used to track which lifetimes have already been defined,
-        // and which need to be replicated when lowering an async fn.
-        match ctxt {
-            AssocCtxt::Trait => hir::OwnerNode::TraitItem(self.lower_trait_item(item)),
-            AssocCtxt::Impl { of_trait } => {
-                hir::OwnerNode::ImplItem(self.lower_impl_item(item, of_trait))
-            }
-        }
-    }
-
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> &'hir hir::ForeignItem<'hir> {
-        let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
-        let owner_id = hir_id.expect_owner();
+        let owner_id = self.current_hir_id_owner;
+        let hir_id: HirId = owner_id.into();
         let attrs = self.lower_attrs(hir_id, &i.attrs, i.span);
         let (ident, kind) = match &i.kind {
             ForeignItemKind::Fn(box Fn { sig, ident, generics, define_opaque, .. }) => {
@@ -818,9 +799,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_trait_item(&mut self, i: &AssocItem) -> &'hir hir::TraitItem<'hir> {
-        let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
+        let trait_item_def_id = self.current_hir_id_owner;
+        let hir_id: HirId = trait_item_def_id.into();
         let attrs = self.lower_attrs(hir_id, &i.attrs, i.span);
-        let trait_item_def_id = hir_id.expect_owner();
 
         let (ident, generics, kind, has_default) = match &i.kind {
             AssocItemKind::Const(box ConstItem {
@@ -1004,15 +985,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(span, hir::ExprKind::Err(guar))
     }
 
-    fn lower_impl_item(
-        &mut self,
-        i: &AssocItem,
-        is_in_trait_impl: bool,
-    ) -> &'hir hir::ImplItem<'hir> {
+    fn lower_impl_item(&mut self, i: &AssocItem) -> &'hir hir::ImplItem<'hir> {
+        let owner_id = self.current_hir_id_owner;
+        let hir_id: HirId = owner_id.into();
+        let parent_id = self.tcx.local_parent(owner_id.def_id);
+        let is_in_trait_impl =
+            matches!(self.tcx.def_kind(parent_id), DefKind::Impl { of_trait: true });
+
         // Since `default impl` is not yet implemented, this is always true in impls.
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
-        let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
         let attrs = self.lower_attrs(hir_id, &i.attrs, i.span);
 
         let (ident, (generics, kind)) = match &i.kind {
@@ -1119,7 +1101,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         let item = hir::ImplItem {
-            owner_id: hir_id.expect_owner(),
+            owner_id,
             ident: self.lower_ident(ident),
             generics,
             kind,
@@ -1157,7 +1139,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
             },
             trait_item_def_id: self
-                .resolver
                 .get_partial_res(i.id)
                 .map(|r| r.expect_full_res().opt_def_id())
                 .unwrap_or(None),
@@ -1395,7 +1376,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_coroutine_body_with_moved_arguments(
         &mut self,
         decl: &FnDecl,
-        lower_body: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::Expr<'hir>,
+        lower_body: impl FnOnce(&mut LoweringContext<'hir>) -> hir::Expr<'hir>,
         fn_decl_span: Span,
         body_span: Span,
         coroutine_kind: CoroutineKind,
@@ -1532,7 +1513,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             parameters.push(new_parameter);
         }
 
-        let mkbody = |this: &mut LoweringContext<'_, 'hir>| {
+        let mkbody = |this: &mut LoweringContext<'hir>| {
             // Create a block from the user's function body:
             let user_body = lower_body(this);
 
@@ -1734,11 +1715,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             };
             let compute_is_param = || {
                 // Check if the where clause type is a plain type parameter.
-                match self
-                    .resolver
-                    .get_partial_res(bound_pred.bounded_ty.id)
-                    .and_then(|r| r.full_res())
-                {
+                match self.get_partial_res(bound_pred.bounded_ty.id).and_then(|r| r.full_res()) {
                     Some(Res::Def(DefKind::TyParam, def_id))
                         if bound_pred.bound_generic_params.is_empty() =>
                     {
@@ -1805,7 +1782,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Introduce extra lifetimes if late resolution tells us to.
         let extra_lifetimes = self.resolver.extra_lifetime_params(parent_node_id);
-        params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
+        params.extend(extra_lifetimes.into_iter().filter_map(|&(ident, node_id, res)| {
             self.lifetime_res_to_generic_param(
                 ident,
                 node_id,
@@ -1847,7 +1824,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             return;
         };
         let define_opaque = define_opaque.iter().filter_map(|(id, path)| {
-            let res = self.resolver.get_partial_res(*id);
+            let res = self.get_partial_res(*id);
             let Some(did) = res.and_then(|res| res.expect_full_res().opt_def_id()) else {
                 self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
                 return None;

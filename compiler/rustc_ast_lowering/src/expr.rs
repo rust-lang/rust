@@ -9,6 +9,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::definitions::DefPathData;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::errors::report_lit_error;
@@ -52,7 +53,7 @@ impl<'v> rustc_ast::visit::Visitor<'v> for WillCreateDefIdsVisitor {
     }
 }
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
         self.arena.alloc_from_iter(exprs.iter().map(|x| self.lower_expr_mut(x)))
     }
@@ -492,7 +493,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         for (idx, arg) in args.iter().cloned().enumerate() {
             if legacy_args_idx.contains(&idx) {
                 let node_id = self.next_node_id();
-                self.create_def(node_id, None, DefKind::AnonConst, f.span);
+                self.create_def(
+                    node_id,
+                    None,
+                    DefKind::AnonConst,
+                    DefPathData::LateAnonConst,
+                    f.span,
+                );
                 let mut visitor = WillCreateDefIdsVisitor {};
                 let const_value = if let ControlFlow::Break(span) = visitor.visit_expr(&arg) {
                     AstP(Expr {
@@ -1264,7 +1271,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         whole_span: Span,
     ) -> hir::ExprKind<'hir> {
         // Return early in case of an ordinary assignment.
-        fn is_ordinary(lower_ctx: &mut LoweringContext<'_, '_>, lhs: &Expr) -> bool {
+        fn is_ordinary(lower_ctx: &mut LoweringContext<'_>, lhs: &Expr) -> bool {
             match &lhs.kind {
                 ExprKind::Array(..)
                 | ExprKind::Struct(..)
@@ -1324,7 +1331,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> Option<(&'a Option<AstP<QSelf>>, &'a Path)> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a tuple struct/variant pattern?
-            if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
+            if let Some(partial_res) = self.get_partial_res(expr.id) {
                 if let Some(res) = partial_res.full_res()
                     && !res.expected_in_tuple_struct_pat()
                 {
@@ -1346,7 +1353,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> Option<(&'a Option<AstP<QSelf>>, &'a Path)> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a unit struct/variant pattern?
-            if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
+            if let Some(partial_res) = self.get_partial_res(expr.id) {
                 if let Some(res) = partial_res.full_res()
                     && !res.expected_in_unit_struct_pat()
                 {

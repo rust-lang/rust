@@ -4,6 +4,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::definitions::DefPathData;
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::span_bug;
 use rustc_span::source_map::{Spanned, respan};
@@ -12,10 +13,11 @@ use rustc_span::{DesugaringKind, Ident, Span};
 use super::errors::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
 };
-use super::{ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt};
-use crate::{AllowReturnTypeNotation, ImplTraitPosition};
+use super::{
+    AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
+};
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     pub(crate) fn lower_pat(&mut self, pattern: &Pat) -> &'hir hir::Pat<'hir> {
         self.arena.alloc(self.lower_pat_mut(pattern))
     }
@@ -283,7 +285,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir_id: hir::HirId,
         lower_sub: impl FnOnce(&mut Self) -> Option<&'hir hir::Pat<'hir>>,
     ) -> hir::PatKind<'hir> {
-        match self.resolver.get_partial_res(p.id).map(|d| d.expect_full_res()) {
+        match self.get_partial_res(p.id).map(|d| d.expect_full_res()) {
             // `None` can occur in body-less function signatures
             res @ (None | Some(Res::Local(_))) => {
                 let binding_id = match res {
@@ -528,7 +530,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // We're generating a range end that didn't exist in the AST,
         // so the def collector didn't create the def ahead of time. That's why we have to do
         // it here.
-        let def_id = self.create_def(node_id, None, DefKind::AnonConst, span);
+        let def_id =
+            self.create_def(node_id, None, DefKind::AnonConst, DefPathData::LateAnonConst, span);
         let hir_id = self.lower_node_id(node_id);
 
         let unstable_span = self.mark_span_with_reason(
