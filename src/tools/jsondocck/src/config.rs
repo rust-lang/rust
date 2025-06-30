@@ -1,37 +1,44 @@
+use std::cell::LazyCell;
+use std::env::Args;
+
 use getopts::Options;
 
 #[derive(Debug)]
 pub struct Config {
-    /// The directory documentation output was generated in
+    /// The directory documentation output was generated in.
     pub doc_dir: String,
-    /// The file documentation was generated for, with docck directives to check
+    /// The file documentation was generated for, with `jsondocck` directives to check.
     pub template: String,
 }
 
-/// Create a Config from a vector of command-line arguments
-pub fn parse_config(args: Vec<String>) -> Config {
-    let mut opts = Options::new();
-    opts.reqopt("", "doc-dir", "Path to the documentation directory", "PATH")
-        .reqopt("", "template", "Path to the template file", "PATH")
-        .optflag("h", "help", "show this message");
+impl Config {
+    /// Create [`Config`] from an iterator of command-line arguments.
+    pub fn parse(mut args: Args) -> Option<Config> {
+        let mut opts = Options::new();
+        opts.reqopt("", "doc-dir", "Path to the documentation output directory.", "PATH")
+            .reqopt("", "template", "Path to the input template file.", "PATH")
+            .optflag("h", "help", "Show this message.");
 
-    let (argv0, args_) = args.split_first().unwrap();
-    if args.len() == 1 {
-        let message = format!("Usage: {} <doc-dir> <template>", argv0);
-        println!("{}", opts.usage(&message));
-        std::process::exit(1);
-    }
+        let argv0 = args.next().unwrap();
+        let usage = &*LazyCell::new(|| opts.usage(&format!("Usage: {argv0} <doc-dir> <template>")));
 
-    let matches = opts.parse(args_).unwrap();
+        if args.len() == 0 {
+            print!("{usage}");
 
-    if matches.opt_present("h") || matches.opt_present("help") {
-        let message = format!("Usage: {} <doc-dir> <template>", argv0);
-        println!("{}", opts.usage(&message));
-        std::process::exit(1);
-    }
+            return None;
+        }
 
-    Config {
-        doc_dir: matches.opt_str("doc-dir").unwrap(),
-        template: matches.opt_str("template").unwrap(),
+        let matches = opts.parse(args).unwrap();
+
+        if matches.opt_present("h") || matches.opt_present("help") {
+            print!("{usage}");
+
+            return None;
+        }
+
+        Some(Config {
+            doc_dir: matches.opt_str("doc-dir").unwrap(),
+            template: matches.opt_str("template").unwrap(),
+        })
     }
 }
