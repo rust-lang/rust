@@ -7,7 +7,7 @@ mod rust;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -822,6 +822,22 @@ impl IndividualTestOptions {
     }
 }
 
+fn beautify_path(path: &Path) -> PathBuf {
+    let mut beautiful_path = PathBuf::new();
+
+    for component in path.components().filter(|c| !matches!(c, Component::CurDir)) {
+        if matches!(component, Component::ParentDir) {
+            if beautiful_path.parent().is_none() {
+                return path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+            }
+            beautiful_path.pop();
+        } else {
+            beautiful_path.push(component.as_os_str());
+        }
+    }
+    beautiful_path
+}
+
 /// A doctest scraped from the code, ready to be turned into a runnable test.
 ///
 /// The pipeline goes: [`clean`] AST -> `ScrapedDoctest` -> `RunnableDoctest`.
@@ -857,8 +873,12 @@ impl ScrapedDocTest {
         if !item_path.is_empty() {
             item_path.push(' ');
         }
-        let name =
-            format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionaly());
+        let name = match filename.remapped_path_if_available() {
+            Some(path) => format!("{} - {item_path}(line {line})", beautify_path(path).display()),
+            None => {
+                format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionaly())
+            }
+        };
 
         Self { filename, line, langstr, text, name, span, global_crate_attrs }
     }
