@@ -1,8 +1,13 @@
+//! Test that items in subscopes correctly shadow type parameters and local variables
+//!
+//! Regression test for https://github.com/rust-lang/rust/issues/23880
+
 //@ run-pass
-// Tests that items in subscopes can shadow type parameters and local variables (see issue #23880).
 
 #![allow(unused)]
-struct Foo<X> { x: Box<X> }
+struct Foo<X> {
+    x: Box<X>,
+}
 impl<Bar> Foo<Bar> {
     fn foo(&self) {
         type Bar = i32;
