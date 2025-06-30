@@ -1,5 +1,5 @@
 use cranelift_codegen::isa::TargetFrontendConfig;
-use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
+use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
 use rustc_abi::{Float, Integer, Primitive};
 use rustc_index::IndexVec;
 use rustc_middle::ty::TypeFoldable;
@@ -287,6 +287,9 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
 
     /// When `#[track_caller]` is used, the implicit caller location is stored in this variable.
     pub(crate) caller_location: Option<CValue<'tcx>>,
+
+    /// During cleanup the exception pointer will be stored in this variable.
+    pub(crate) exception_slot: Variable,
 
     pub(crate) clif_comments: crate::pretty_clif::CommentWriter,
 

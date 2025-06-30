@@ -46,6 +46,7 @@ smallvec = "1.8.1"
 unstable-features = ["jit", "inline_asm_sym"]
 jit = ["cranelift-jit", "libloading"]
 inline_asm_sym = []
+unwinding = [] # Not yet included in unstable-features for performance reasons
 
 [package.metadata.rust-analyzer]
 rustc_private = true

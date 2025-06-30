@@ -17,8 +17,10 @@ fn main() {
 
     let passed_args = std::env::args_os().skip(1).collect::<Vec<_>>();
     let mut args = vec![];
-    args.push(OsString::from("-Cpanic=abort"));
-    args.push(OsString::from("-Zpanic-abort-tests"));
+    if !cfg!(support_panic_unwind) {
+        args.push(OsString::from("-Cpanic=abort"));
+        args.push(OsString::from("-Zpanic-abort-tests"));
+    }
     if let Some(name) = option_env!("BUILTIN_BACKEND") {
         args.push(OsString::from(format!("-Zcodegen-backend={name}")))
     } else {

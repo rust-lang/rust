@@ -2,7 +2,7 @@
 
 use cranelift_codegen::CodegenError;
 use cranelift_codegen::ir::UserFuncName;
-use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
+use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
 use cranelift_module::ModuleError;
 use rustc_ast::InlineAsmOptions;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
@@ -85,6 +85,9 @@ pub(crate) fn codegen_fn<'tcx>(
         None
     };
 
+    let exception_slot = Variable::from_u32(0);
+    bcx.declare_var(exception_slot, pointer_type);
+
     let mut fx = FunctionCx {
         cx,
         module,
@@ -103,9 +106,10 @@ pub(crate) fn codegen_fn<'tcx>(
         block_map,
         local_map: IndexVec::with_capacity(mir.local_decls.len()),
         caller_location: None, // set by `codegen_fn_prelude`
+        exception_slot,
 
         clif_comments,
-        next_ssa_var: 0,
+        next_ssa_var: 1, // var0 is used for the exception slot
         inline_asm: String::new(),
         inline_asm_index: 0,
     };
@@ -304,11 +308,11 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
         }
 
         if bb_data.is_cleanup {
-            // Unwinding after panicking is not supported
-            continue;
+            if cfg!(not(feature = "unwinding")) {
+                continue;
+            }
 
-            // FIXME Once unwinding is supported and Cranelift supports marking blocks as cold, do
-            // so for cleanup blocks.
+            fx.bcx.set_cold_block(block);
         }
 
         fx.bcx.ins().nop();
@@ -542,7 +546,15 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 codegen_unwind_terminate(fx, source_info.span, *reason);
             }
             TerminatorKind::UnwindResume => {
-                // FIXME implement unwinding
+                if cfg!(feature = "unwinding") {
+                    let exception_ptr = fx.bcx.use_var(fx.exception_slot);
+                    fx.lib_call(
+                        "_Unwind_Resume",
+                        vec![AbiParam::new(fx.pointer_type)],
+                        vec![],
+                        &[exception_ptr],
+                    );
+                }
                 fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
             }
             TerminatorKind::Unreachable => {
@@ -1109,7 +1121,7 @@ fn codegen_panic_inner<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     lang_item: rustc_hir::LangItem,
     args: &[Value],
-    _unwind: UnwindAction,
+    unwind: UnwindAction,
     span: Span,
 ) {
     fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
@@ -1125,14 +1137,23 @@ fn codegen_panic_inner<'tcx>(
 
     let symbol_name = fx.tcx.symbol_name(instance).name;
 
-    // FIXME implement cleanup on exceptions
+    let sig = Signature {
+        params: args.iter().map(|&arg| AbiParam::new(fx.bcx.func.dfg.value_type(arg))).collect(),
+        returns: vec![],
+        call_conv: fx.target_config.default_call_conv,
+    };
+    let func_id = fx.module.declare_function(symbol_name, Linkage::Import, &sig).unwrap();
+    let func_ref = fx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
+    if fx.clif_comments.enabled() {
+        fx.add_comment(func_ref, format!("{:?}", symbol_name));
+    }
 
-    fx.lib_call(
-        symbol_name,
-        args.iter().map(|&arg| AbiParam::new(fx.bcx.func.dfg.value_type(arg))).collect(),
-        vec![],
-        args,
-    );
+    let nop_inst = fx.bcx.ins().nop();
+    if fx.clif_comments.enabled() {
+        fx.add_comment(nop_inst, format!("panic {}", symbol_name));
+    }
+
+    codegen_call_with_unwind_action(fx, span, CallTarget::Direct(func_ref), unwind, &args, None);
 
     fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
 }

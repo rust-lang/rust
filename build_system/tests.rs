@@ -233,6 +233,7 @@ pub(crate) fn run_tests(
     dirs: &Dirs,
     sysroot_kind: SysrootKind,
     use_unstable_features: bool,
+    panic_unwind_support: bool,
     skip_tests: &[&str],
     cg_clif_dylib: &CodegenBackend,
     bootstrap_host_compiler: &Compiler,
@@ -251,12 +252,14 @@ pub(crate) fn run_tests(
             bootstrap_host_compiler,
             rustup_toolchain_name,
             target_triple.clone(),
+            panic_unwind_support,
         );
 
         let runner = TestRunner::new(
             dirs.clone(),
             target_compiler,
             use_unstable_features,
+            panic_unwind_support,
             skip_tests,
             bootstrap_host_compiler.triple == target_triple,
             stdlib_source.clone(),
@@ -283,12 +286,14 @@ pub(crate) fn run_tests(
             bootstrap_host_compiler,
             rustup_toolchain_name,
             target_triple.clone(),
+            panic_unwind_support,
         );
 
         let mut runner = TestRunner::new(
             dirs.clone(),
             target_compiler,
             use_unstable_features,
+            panic_unwind_support,
             skip_tests,
             bootstrap_host_compiler.triple == target_triple,
             stdlib_source,
@@ -314,6 +319,7 @@ pub(crate) fn run_tests(
 struct TestRunner<'a> {
     is_native: bool,
     jit_supported: bool,
+    panic_unwind_support: bool,
     skip_tests: &'a [&'a str],
     dirs: Dirs,
     target_compiler: Compiler,
@@ -325,6 +331,7 @@ impl<'a> TestRunner<'a> {
         dirs: Dirs,
         mut target_compiler: Compiler,
         use_unstable_features: bool,
+        panic_unwind_support: bool,
         skip_tests: &'a [&'a str],
         is_native: bool,
         stdlib_source: PathBuf,
@@ -335,7 +342,15 @@ impl<'a> TestRunner<'a> {
         let jit_supported =
             use_unstable_features && is_native && !target_compiler.triple.contains("windows");
 
-        Self { is_native, jit_supported, skip_tests, dirs, target_compiler, stdlib_source }
+        Self {
+            is_native,
+            jit_supported,
+            panic_unwind_support,
+            skip_tests,
+            dirs,
+            target_compiler,
+            stdlib_source,
+        }
     }
 
     fn run_testsuite(&self, tests: &[TestCase]) {
@@ -404,7 +419,9 @@ impl<'a> TestRunner<'a> {
         cmd.arg("-Cdebuginfo=2");
         cmd.arg("--target");
         cmd.arg(&self.target_compiler.triple);
-        cmd.arg("-Cpanic=abort");
+        if !self.panic_unwind_support {
+            cmd.arg("-Cpanic=abort");
+        }
         cmd.arg("--check-cfg=cfg(jit)");
         cmd.args(args);
         cmd
