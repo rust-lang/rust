@@ -1207,7 +1207,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         split_debuginfo: tcx.sess.split_debuginfo(),
         split_dwarf_kind: tcx.sess.opts.unstable_opts.split_dwarf_kind,
         parallel: backend.supports_parallel() && !sess.opts.unstable_opts.no_parallel_backend,
-        pointer_size: tcx.data_layout.pointer_size,
+        pointer_size: tcx.data_layout.pointer_size(),
         invocation_temp: sess.invocation_temp.clone(),
     };
 

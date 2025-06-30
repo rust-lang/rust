@@ -519,7 +519,7 @@ impl Allocation {
         let mut bytes = alloc_bytes(&*self.bytes, self.align)?;
         // Adjust provenance of pointers stored in this allocation.
         let mut new_provenance = Vec::with_capacity(self.provenance.ptrs().len());
-        let ptr_size = cx.data_layout().pointer_size.bytes_usize();
+        let ptr_size = cx.data_layout().pointer_size().bytes_usize();
         let endian = cx.data_layout().endian;
         for &(offset, alloc_id) in self.provenance.ptrs().iter() {
             let idx = offset.bytes_usize();
@@ -709,7 +709,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
 
         if read_provenance {
-            assert_eq!(range.size, cx.data_layout().pointer_size);
+            assert_eq!(range.size, cx.data_layout().pointer_size());
 
             // When reading data with provenance, the easy case is finding provenance exactly where we
             // are reading, then we can put data and provenance back together and return that.
@@ -782,7 +782,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
 
         // See if we have to also store some provenance.
         if let Some(provenance) = provenance {
-            assert_eq!(range.size, cx.data_layout().pointer_size);
+            assert_eq!(range.size, cx.data_layout().pointer_size());
             self.provenance.insert_ptr(range.start, provenance, cx);
         }
 

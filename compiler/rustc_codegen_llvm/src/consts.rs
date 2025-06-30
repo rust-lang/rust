@@ -43,7 +43,7 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
     }
     let mut llvals = Vec::with_capacity(alloc.provenance().ptrs().len() + 1);
     let dl = cx.data_layout();
-    let pointer_size = dl.pointer_size.bytes() as usize;
+    let pointer_size = dl.pointer_size().bytes() as usize;
 
     // Note: this function may call `inspect_with_uninit_and_ptr_outside_interpreter`, so `range`
     // must be within the bounds of `alloc` and not contain or overlap a pointer provenance.
@@ -111,7 +111,7 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
             InterpScalar::from_pointer(Pointer::new(prov, Size::from_bytes(ptr_offset)), &cx.tcx),
             Scalar::Initialized {
                 value: Primitive::Pointer(address_space),
-                valid_range: WrappingRange::full(dl.pointer_size),
+                valid_range: WrappingRange::full(dl.pointer_size()),
             },
             cx.type_ptr_ext(address_space),
         ));

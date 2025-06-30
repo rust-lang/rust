@@ -334,7 +334,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    let xlen = cx.data_layout().pointer_size.bits();
+    let xlen = cx.data_layout().pointer_size().bits();
     let flen = match &cx.target_spec().llvm_abiname[..] {
         "ilp32f" | "lp64f" => 32,
         "ilp32d" | "lp64d" => 64,
@@ -369,7 +369,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    let grlen = cx.data_layout().pointer_size.bits();
+    let grlen = cx.data_layout().pointer_size().bits();
 
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {

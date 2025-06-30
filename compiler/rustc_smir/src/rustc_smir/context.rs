@@ -46,7 +46,7 @@ impl<'tcx> SmirCtxt<'tcx> {
         MachineInfo {
             endian: tables.tcx.data_layout.endian.stable(&mut *tables),
             pointer_width: MachineSize::from_bits(
-                tables.tcx.data_layout.pointer_size.bits().try_into().unwrap(),
+                tables.tcx.data_layout.pointer_size().bits().try_into().unwrap(),
             ),
         }
     }

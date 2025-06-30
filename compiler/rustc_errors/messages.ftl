@@ -41,5 +41,8 @@ errors_target_invalid_bits =
 
 errors_target_invalid_bits_size = {$err}
 
+errors_target_missing_addr_space_info =
+    missing address space info for address space `{$addr_space}` in "data-layout"
+
 errors_target_missing_alignment =
     missing alignment for `{$cause}` in "data-layout"
