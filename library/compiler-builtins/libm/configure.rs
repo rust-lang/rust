@@ -1,7 +1,8 @@
 // Configuration shared with both libm and libm-test
 
-use std::env;
 use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use std::{env, str};
 
 #[allow(dead_code)]
 pub struct Config {
@@ -9,6 +10,7 @@ pub struct Config {
     pub out_dir: PathBuf,
     pub opt_level: String,
     pub cargo_features: Vec<String>,
+    pub target_triple: String,
     pub target_arch: String,
     pub target_env: String,
     pub target_family: Option<String>,
@@ -16,10 +18,13 @@ pub struct Config {
     pub target_string: String,
     pub target_vendor: String,
     pub target_features: Vec<String>,
+    pub reliable_f128: bool,
+    pub reliable_f16: bool,
 }
 
 impl Config {
     pub fn from_env() -> Self {
+        let target_triple = env::var("TARGET").unwrap();
         let target_features = env::var("CARGO_CFG_TARGET_FEATURE")
             .map(|feats| feats.split(',').map(ToOwned::to_owned).collect())
             .unwrap_or_default();
@@ -28,7 +33,21 @@ impl Config {
             .map(|s| s.to_lowercase().replace("_", "-"))
             .collect();
 
+        // Query rustc for options that Cargo does not provide env for. The bootstrap hack is used
+        // to get consistent output regardless of channel (`f16`/`f128` config options are hidden
+        // on stable otherwise).
+        let mut cmd = Command::new(env::var("RUSTC").unwrap());
+        cmd.args(["--print=cfg", "--target", &target_triple])
+            .env("RUSTC_BOOTSTRAP", "1")
+            .stderr(Stdio::inherit());
+        let out = cmd
+            .output()
+            .unwrap_or_else(|e| panic!("failed to run `{cmd:?}`: {e}"));
+        assert!(out.status.success(), "failed to run `{cmd:?}`");
+        let rustc_cfg = str::from_utf8(&out.stdout).unwrap();
+
         Self {
+            target_triple,
             manifest_dir: PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()),
             out_dir: PathBuf::from(env::var("OUT_DIR").unwrap()),
             opt_level: env::var("OPT_LEVEL").unwrap(),
@@ -40,6 +59,8 @@ impl Config {
             target_string: env::var("TARGET").unwrap(),
             target_vendor: env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),
             target_features,
+            reliable_f128: rustc_cfg.lines().any(|l| l == "target_has_reliable_f128"),
+            reliable_f16: rustc_cfg.lines().any(|l| l == "target_has_reliable_f16"),
         }
     }
 }
@@ -128,62 +149,18 @@ fn emit_f16_f128_cfg(cfg: &Config) {
         return;
     }
 
-    // Set whether or not `f16` and `f128` are supported at a basic level by LLVM. This only means
-    // that the backend will not crash when using these types and generates code that can be called
-    // without crashing (no infinite recursion). This does not mean that the platform doesn't have
-    // ABI or other bugs.
-    //
-    // We do this here rather than in `rust-lang/rust` because configuring via cargo features is
-    // not straightforward.
-    //
-    // Original source of this list:
-    // <https://github.com/rust-lang/compiler-builtins/pull/652#issuecomment-2266151350>
-    let f16_enabled = match cfg.target_arch.as_str() {
-        // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
-        "arm64ec" => false,
-        // Selection failure <https://github.com/llvm/llvm-project/issues/50374>
-        "s390x" => false,
-        // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
-        // FIXME(llvm): loongarch fixed by <https://github.com/llvm/llvm-project/pull/107791>
-        "csky" => false,
-        "hexagon" => false,
-        "loongarch64" => false,
-        "mips" | "mips64" | "mips32r6" | "mips64r6" => false,
-        "powerpc" | "powerpc64" => false,
-        "sparc" | "sparc64" => false,
-        "wasm32" | "wasm64" => false,
-        // Most everything else works as of LLVM 19
-        _ => true,
-    };
+    /* See the compiler-builtins configure file for info about the meaning of these options */
 
-    let f128_enabled = match cfg.target_arch.as_str() {
-        // Unsupported (libcall is not supported) <https://github.com/llvm/llvm-project/issues/121122>
-        "amdgpu" => false,
-        // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
-        "arm64ec" => false,
-        // Selection failure <https://github.com/llvm/llvm-project/issues/96432>
-        "mips64" | "mips64r6" => false,
-        // Selection failure <https://github.com/llvm/llvm-project/issues/95471>
-        "nvptx64" => false,
-        // Selection failure <https://github.com/llvm/llvm-project/issues/101545>
-        "powerpc64" if &cfg.target_os == "aix" => false,
-        // Selection failure <https://github.com/llvm/llvm-project/issues/41838>
-        "sparc" => false,
-        // Most everything else works as of LLVM 19
-        _ => true,
-    };
-
-    // If the feature is set, disable these types.
-    let disable_both = env::var_os("CARGO_FEATURE_NO_F16_F128").is_some();
+    // If the feature is set, disable both of these types.
+    let no_f16_f128 = cfg.cargo_features.iter().any(|s| s == "no-f16-f128");
 
     println!("cargo:rustc-check-cfg=cfg(f16_enabled)");
-    println!("cargo:rustc-check-cfg=cfg(f128_enabled)");
-
-    if f16_enabled && !disable_both {
+    if cfg.reliable_f16 && !no_f16_f128 {
         println!("cargo:rustc-cfg=f16_enabled");
     }
 
-    if f128_enabled && !disable_both {
+    println!("cargo:rustc-check-cfg=cfg(f128_enabled)");
+    if cfg.reliable_f128 && !no_f16_f128 {
         println!("cargo:rustc-cfg=f128_enabled");
     }
 }
