@@ -75,6 +75,7 @@ nav.sub {
 	--function-link-color: #ad7c37;
 	--macro-link-color: #068000;
 	--keyword-link-color: #3873ad;
+	--attribute-link-color: #3873ad;
 	--mod-link-color: #3873ad;
 	--link-color: #3873ad;
 	--sidebar-link-color: #356da4;
@@ -180,6 +181,7 @@ nav.sub {
 		--function-link-color: #2bab63;
 		--macro-link-color: #09bd00;
 		--keyword-link-color: #d2991d;
+		--attribute-link-color: #d2991d;
 		--mod-link-color:  #d2991d;
 		--link-color: #d2991d;
 		--sidebar-link-color: #fdbf35;
