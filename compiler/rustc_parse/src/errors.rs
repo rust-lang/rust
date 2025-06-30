@@ -2176,7 +2176,7 @@ pub(crate) struct KeywordLifetime {
 pub(crate) struct InvalidLabel {
     #[primary_span]
     pub span: Span,
-    pub name: Symbol,
+    pub name: String,
 }
 
 #[derive(Diagnostic)]
