@@ -1,12 +1,18 @@
+//! Ensure shift operations don't mutate their right operand.
+//!
+//! This test checks that expressions like `0 << b` don't accidentally
+//! modify the variable `b` due to codegen issues with virtual registers.
+//!
+//! Regression test for <https://github.com/rust-lang/rust/issues/152>.
+
 //@ run-pass
 
-#![allow(unused_must_use)]
-// Regression test for issue #152.
 pub fn main() {
-    let mut b: usize = 1_usize;
+    let mut b: usize = 1;
     while b < std::mem::size_of::<usize>() {
-        0_usize << b;
-        b <<= 1_usize;
-        println!("{}", b);
+        // This shift operation should not mutate `b`
+        let _ = 0_usize << b;
+        b <<= 1;
     }
+    assert_eq!(8, b);
 }
