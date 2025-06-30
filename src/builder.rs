@@ -30,7 +30,7 @@ use rustc_middle::ty::{self, AtomicOrdering, Instance, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, Target, WasmCAbi, X86Abi};
+use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 
 use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
@@ -700,7 +700,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let a = self.gcc_int_cast(a, a_type);
         let b_type = b.get_type().to_unsigned(self);
         let b = self.gcc_int_cast(b, b_type);
-        a / b
+        self.gcc_udiv(a, b)
     }
 
     fn sdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -712,8 +712,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // FIXME(antoyo): rustc_codegen_ssa::mir::intrinsic uses different types for a and b but they
         // should be the same.
         let typ = a.get_type().to_signed(self);
-        let b = self.context.new_cast(self.location, b, typ);
-        a / b
+        let b = self.gcc_int_cast(b, typ);
+        self.gcc_sdiv(a, b)
     }
 
     fn fdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -916,7 +916,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn checked_binop(
         &mut self,
         oop: OverflowOp,
-        typ: Ty<'_>,
+        typ: Ty<'tcx>,
         lhs: Self::Value,
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value) {
@@ -1608,9 +1608,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         (value1, value2)
     }
 
-    fn filter_landing_pad(&mut self, pers_fn: Function<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+    fn filter_landing_pad(&mut self, pers_fn: Function<'gcc>) {
         // TODO(antoyo): generate the correct landing pad
-        self.cleanup_landing_pad(pers_fn)
+        self.cleanup_landing_pad(pers_fn);
     }
 
     #[cfg(feature = "master")]
@@ -2432,12 +2432,6 @@ impl<'tcx> HasTypingEnv<'tcx> for Builder<'_, '_, 'tcx> {
 impl<'tcx> HasTargetSpec for Builder<'_, '_, 'tcx> {
     fn target_spec(&self) -> &Target {
         self.cx.target_spec()
-    }
-}
-
-impl<'tcx> HasWasmCAbiOpt for Builder<'_, '_, 'tcx> {
-    fn wasm_c_abi_opt(&self) -> WasmCAbi {
-        self.cx.wasm_c_abi_opt()
     }
 }
 

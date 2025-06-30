@@ -18,7 +18,7 @@
 #![allow(internal_features)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![feature(rustc_private, decl_macro, never_type, trusted_len)]
+#![feature(rustc_private)]
 #![allow(broken_intra_doc_links)]
 #![recursion_limit = "256"]
 #![warn(rust_2018_idioms)]
@@ -50,7 +50,6 @@ extern crate rustc_index;
 #[cfg(feature = "master")]
 extern crate rustc_interface;
 extern crate rustc_macros;
-extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -103,12 +102,12 @@ use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::codegen_crate;
+use rustc_codegen_ssa::target_features::cfg_target_feature;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::DiagCtxtHandle;
-use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
@@ -232,20 +231,9 @@ impl CodegenBackend for GccCodegenBackend {
         providers.global_backend_features = |tcx, ()| gcc_util::global_gcc_features(tcx.sess, true)
     }
 
-    fn codegen_crate(
-        &self,
-        tcx: TyCtxt<'_>,
-        metadata: EncodedMetadata,
-        need_metadata_module: bool,
-    ) -> Box<dyn Any> {
+    fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
         let target_cpu = target_cpu(tcx.sess);
-        let res = codegen_crate(
-            self.clone(),
-            tcx,
-            target_cpu.to_string(),
-            metadata,
-            need_metadata_module,
-        );
+        let res = codegen_crate(self.clone(), tcx, target_cpu.to_string());
 
         Box::new(res)
     }
@@ -489,42 +477,21 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
 
 /// Returns the features that should be set in `cfg(target_feature)`.
 fn target_config(sess: &Session, target_info: &LockedTargetInfo) -> TargetConfig {
-    // TODO(antoyo): use global_gcc_features.
-    let f = |allow_unstable| {
-        sess.target
-            .rust_target_features()
-            .iter()
-            .filter_map(|&(feature, gate, _)| {
-                if allow_unstable
-                    || (gate.in_cfg()
-                        && (sess.is_nightly_build() || gate.requires_nightly().is_none()))
-                {
-                    Some(feature)
-                } else {
-                    None
-                }
-            })
-            .filter(|feature| {
-                // TODO: we disable Neon for now since we don't support the LLVM intrinsics for it.
-                if *feature == "neon" {
-                    return false;
-                }
-                target_info.cpu_supports(feature)
-                // cSpell:disable
-                /*
-                  adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512fp16, avx512ifma,
-                  avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,
-                  bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, gfni, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
-                  sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves
-                */
-                // cSpell:enable
-            })
-            .map(Symbol::intern)
-            .collect()
-    };
-
-    let target_features = f(false);
-    let unstable_target_features = f(true);
+    let (unstable_target_features, target_features) = cfg_target_feature(sess, |feature| {
+        // TODO: we disable Neon for now since we don't support the LLVM intrinsics for it.
+        if feature == "neon" {
+            return false;
+        }
+        target_info.cpu_supports(feature)
+        // cSpell:disable
+        /*
+          adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512fp16, avx512ifma,
+          avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,
+          bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, gfni, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
+          sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves
+        */
+        // cSpell:enable
+    });
 
     let has_reliable_f16 = target_info.supports_target_dependent_type(CType::Float16);
     let has_reliable_f128 = target_info.supports_target_dependent_type(CType::Float128);

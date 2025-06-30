@@ -1,56 +1,11 @@
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::Diagnostic;
 use rustc_span::Span;
-
-#[derive(Diagnostic)]
-#[diag(codegen_gcc_unknown_ctarget_feature_prefix)]
-#[note]
-pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
-    pub feature: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_gcc_unknown_ctarget_feature)]
-#[note]
-pub(crate) struct UnknownCTargetFeature<'a> {
-    pub feature: &'a str,
-    #[subdiagnostic]
-    pub rust_feature: PossibleFeature<'a>,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_gcc_unstable_ctarget_feature)]
-#[note]
-pub(crate) struct UnstableCTargetFeature<'a> {
-    pub feature: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_gcc_forbidden_ctarget_feature)]
-pub(crate) struct ForbiddenCTargetFeature<'a> {
-    pub feature: &'a str,
-    pub enabled: &'a str,
-    pub reason: &'a str,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum PossibleFeature<'a> {
-    #[help(codegen_gcc_possible_feature)]
-    Some { rust_feature: &'a str },
-    #[help(codegen_gcc_consider_filing_feature_request)]
-    None,
-}
 
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_unwinding_inline_asm)]
 pub(crate) struct UnwindingInlineAsm {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_gcc_invalid_minimum_alignment)]
-pub(crate) struct InvalidMinimumAlignment {
-    pub err: String,
 }
 
 #[derive(Diagnostic)]

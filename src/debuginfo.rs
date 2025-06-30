@@ -52,10 +52,6 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
     fn clear_dbg_loc(&mut self) {
         self.location = None;
     }
-
-    fn get_dbg_loc(&self) -> Option<Self::DILocation> {
-        self.location
-    }
 }
 
 /// Generate the `debug_context` in an MIR Body.
