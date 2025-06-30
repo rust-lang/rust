@@ -1,10 +1,12 @@
+//! Test basic trait implementation syntax for both simple and generic types.
+
 //@ run-pass
 
 use std::fmt;
 
 struct Thingy {
     x: isize,
-    y: isize
+    y: isize,
 }
 
 impl fmt::Debug for Thingy {
@@ -14,10 +16,10 @@ impl fmt::Debug for Thingy {
 }
 
 struct PolymorphicThingy<T> {
-    x: T
+    x: T,
 }
 
-impl<T:fmt::Debug> fmt::Debug for PolymorphicThingy<T> {
+impl<T: fmt::Debug> fmt::Debug for PolymorphicThingy<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.x)
     }
