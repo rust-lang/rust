@@ -105,7 +105,6 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
-use rustc_span::def_id::DefId;
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
@@ -155,16 +154,6 @@ newtype_index! {
     struct VnIndex {}
 }
 
-/// Computing the aggregate's type can be quite slow, so we only keep the minimal amount of
-/// information to reconstruct it when needed.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-enum AggregateTy<'tcx> {
-    /// Invariant: this must not be used for an empty array.
-    Array,
-    Tuple,
-    Def(DefId, ty::GenericArgsRef<'tcx>),
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum AddressKind {
     Ref(BorrowKind),
@@ -187,17 +176,13 @@ enum Value<'tcx> {
     },
     /// An aggregate value, either tuple/closure/struct/enum.
     /// This does not contain unions, as we cannot reason with the value.
-    Aggregate(AggregateTy<'tcx>, VariantIdx, Vec<VnIndex>),
+    Aggregate(VariantIdx, Vec<VnIndex>),
     /// A raw pointer aggregate built from a thin pointer and metadata.
     RawPtr {
         /// Thin pointer component. This is field 0 in MIR.
         pointer: VnIndex,
         /// Metadata component. This is field 1 in MIR.
         metadata: VnIndex,
-        /// Needed for cast propagation.
-        data_pointer_ty: Ty<'tcx>,
-        /// The data pointer can be anything thin, so doesn't determine the output.
-        output_pointer_ty: Ty<'tcx>,
     },
     /// This corresponds to a `[value; count]` expression.
     Repeat(VnIndex, ty::Const<'tcx>),
@@ -211,7 +196,7 @@ enum Value<'tcx> {
 
     // Extractions.
     /// This is the *value* obtained by projecting another value.
-    Projection(VnIndex, ProjectionElem<VnIndex, Ty<'tcx>>),
+    Projection(VnIndex, ProjectionElem<VnIndex, ()>),
     /// Discriminant of the given value.
     Discriminant(VnIndex),
     /// Length of an array or slice.
@@ -224,8 +209,6 @@ enum Value<'tcx> {
     Cast {
         kind: CastKind,
         value: VnIndex,
-        from: Ty<'tcx>,
-        to: Ty<'tcx>,
     },
 }
 
@@ -377,7 +360,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     }
 
     fn insert_tuple(&mut self, ty: Ty<'tcx>, values: Vec<VnIndex>) -> VnIndex {
-        self.insert(ty, Value::Aggregate(AggregateTy::Tuple, VariantIdx::ZERO, values))
+        self.insert(ty, Value::Aggregate(VariantIdx::ZERO, values))
     }
 
     fn insert_deref(&mut self, ty: Ty<'tcx>, value: VnIndex) -> VnIndex {
@@ -408,7 +391,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             Constant { ref value, disambiguator: _ } => {
                 self.ecx.eval_mir_constant(value, DUMMY_SP, None).discard_err()?
             }
-            Aggregate(_, variant, ref fields) => {
+            Aggregate(variant, ref fields) => {
                 let fields = fields
                     .iter()
                     .map(|&f| self.evaluated[f].as_ref())
@@ -440,7 +423,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     return None;
                 }
             }
-            RawPtr { pointer, metadata, output_pointer_ty: _, data_pointer_ty: _ } => {
+            RawPtr { pointer, metadata } => {
                 let pointer = self.evaluated[pointer].as_ref()?;
                 let metadata = self.evaluated[metadata].as_ref()?;
 
@@ -456,28 +439,28 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
 
             Projection(base, elem) => {
-                let value = self.evaluated[base].as_ref()?;
+                let base = self.evaluated[base].as_ref()?;
                 let elem = match elem {
                     ProjectionElem::Deref => ProjectionElem::Deref,
                     ProjectionElem::Downcast(name, read_variant) => {
                         ProjectionElem::Downcast(name, read_variant)
                     }
-                    ProjectionElem::Field(f, ty) => ProjectionElem::Field(f, ty),
+                    ProjectionElem::Field(f, ()) => ProjectionElem::Field(f, ty.ty),
                     ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
                         ProjectionElem::ConstantIndex { offset, min_length, from_end }
                     }
                     ProjectionElem::Subslice { from, to, from_end } => {
                         ProjectionElem::Subslice { from, to, from_end }
                     }
-                    ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
-                    ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty),
-                    ProjectionElem::UnwrapUnsafeBinder(ty) => {
-                        ProjectionElem::UnwrapUnsafeBinder(ty)
+                    ProjectionElem::OpaqueCast(()) => ProjectionElem::OpaqueCast(ty.ty),
+                    ProjectionElem::Subtype(()) => ProjectionElem::Subtype(ty.ty),
+                    ProjectionElem::UnwrapUnsafeBinder(()) => {
+                        ProjectionElem::UnwrapUnsafeBinder(ty.ty)
                     }
                     // This should have been replaced by a `ConstantIndex` earlier.
                     ProjectionElem::Index(_) => return None,
                 };
-                self.ecx.project(value, elem).discard_err()?
+                self.ecx.project(base, elem).discard_err()?
             }
             Address { place, kind: _, provenance: _ } => {
                 if !place.is_indirect_first_projection() {
@@ -544,7 +527,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let val = self.ecx.binary_op(bin_op, &lhs, &rhs).discard_err()?;
                 val.into()
             }
-            Cast { kind, value, from: _, to: _ } => match kind {
+            Cast { kind, value } => match kind {
                 CastKind::IntToInt | CastKind::IntToFloat => {
                     let value = self.evaluated[value].as_ref()?;
                     let value = self.ecx.read_immediate(value).discard_err()?;
@@ -633,11 +616,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 }
             }
             ProjectionElem::Downcast(name, index) => ProjectionElem::Downcast(name, index),
-            ProjectionElem::Field(f, ty) => {
-                if let Value::Aggregate(_, _, fields) = self.get(value) {
+            ProjectionElem::Field(f, _) => {
+                if let Value::Aggregate(_, fields) = self.get(value) {
                     return Some((projection_ty, fields[f.as_usize()]));
                 } else if let Value::Projection(outer_value, ProjectionElem::Downcast(_, read_variant)) = self.get(value)
-                    && let Value::Aggregate(_, written_variant, fields) = self.get(*outer_value)
+                    && let Value::Aggregate(written_variant, fields) = self.get(*outer_value)
                     // This pass is not aware of control-flow, so we do not know whether the
                     // replacement we are doing is actually reachable. We could be in any arm of
                     // ```
@@ -657,7 +640,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 {
                     return Some((projection_ty, fields[f.as_usize()]));
                 }
-                ProjectionElem::Field(f, ty)
+                ProjectionElem::Field(f, ())
             }
             ProjectionElem::Index(idx) => {
                 if let Value::Repeat(inner, _) = self.get(value) {
@@ -672,7 +655,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     Value::Repeat(inner, _) => {
                         return Some((projection_ty, *inner));
                     }
-                    Value::Aggregate(AggregateTy::Array, _, operands) => {
+                    Value::Aggregate(_, operands) => {
                         let offset = if from_end {
                             operands.len() - offset as usize
                         } else {
@@ -688,9 +671,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             ProjectionElem::Subslice { from, to, from_end } => {
                 ProjectionElem::Subslice { from, to, from_end }
             }
-            ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
-            ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty),
-            ProjectionElem::UnwrapUnsafeBinder(ty) => ProjectionElem::UnwrapUnsafeBinder(ty),
+            ProjectionElem::OpaqueCast(_) => ProjectionElem::OpaqueCast(()),
+            ProjectionElem::Subtype(_) => ProjectionElem::Subtype(()),
+            ProjectionElem::UnwrapUnsafeBinder(_) => ProjectionElem::UnwrapUnsafeBinder(()),
         };
 
         let value = self.insert(projection_ty.ty, Value::Projection(value, proj));
@@ -852,14 +835,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 self.simplify_place_projection(place, location);
                 return Some(self.new_pointer(*place, AddressKind::Address(mutbl)));
             }
-            Rvalue::WrapUnsafeBinder(ref mut op, ty) => {
+            Rvalue::WrapUnsafeBinder(ref mut op, _) => {
                 let value = self.simplify_operand(op, location)?;
-                Value::Cast {
-                    kind: CastKind::Transmute,
-                    value,
-                    from: op.ty(self.local_decls, self.tcx),
-                    to: ty,
-                }
+                Value::Cast { kind: CastKind::Transmute, value }
             }
 
             // Operations.
@@ -889,11 +867,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     }
 
     fn simplify_discriminant(&mut self, place: VnIndex) -> Option<VnIndex> {
-        if let Value::Aggregate(enum_ty, variant, _) = *self.get(place)
-            && let AggregateTy::Def(enum_did, enum_args) = enum_ty
-            && let DefKind::Enum = self.tcx.def_kind(enum_did)
+        let enum_ty = self.ty(place);
+        if enum_ty.is_enum()
+            && let Value::Aggregate(variant, _) = *self.get(place)
         {
-            let enum_ty = self.tcx.type_of(enum_did).instantiate(self.tcx, enum_args);
             let discr = self.ecx.discriminant_for_variant(enum_ty, variant).discard_err()?;
             return Some(self.insert_scalar(discr.layout.ty, discr.to_scalar()));
         }
@@ -903,12 +880,13 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     fn try_as_place_elem(
         &mut self,
-        proj: ProjectionElem<VnIndex, Ty<'tcx>>,
+        ty: Ty<'tcx>,
+        proj: ProjectionElem<VnIndex, ()>,
         loc: Location,
     ) -> Option<PlaceElem<'tcx>> {
         Some(match proj {
             ProjectionElem::Deref => ProjectionElem::Deref,
-            ProjectionElem::Field(idx, ty) => ProjectionElem::Field(idx, ty),
+            ProjectionElem::Field(idx, ()) => ProjectionElem::Field(idx, ty),
             ProjectionElem::Index(idx) => {
                 let Some(local) = self.try_as_local(idx, loc) else {
                     return None;
@@ -923,9 +901,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 ProjectionElem::Subslice { from, to, from_end }
             }
             ProjectionElem::Downcast(symbol, idx) => ProjectionElem::Downcast(symbol, idx),
-            ProjectionElem::OpaqueCast(idx) => ProjectionElem::OpaqueCast(idx),
-            ProjectionElem::Subtype(idx) => ProjectionElem::Subtype(idx),
-            ProjectionElem::UnwrapUnsafeBinder(ty) => ProjectionElem::UnwrapUnsafeBinder(ty),
+            ProjectionElem::OpaqueCast(()) => ProjectionElem::OpaqueCast(ty),
+            ProjectionElem::Subtype(()) => ProjectionElem::Subtype(ty),
+            ProjectionElem::UnwrapUnsafeBinder(()) => ProjectionElem::UnwrapUnsafeBinder(ty),
         })
     }
 
@@ -971,8 +949,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         // Allow introducing places with non-constant offsets, as those are still better than
         // reconstructing an aggregate.
-        if let Some(place) = self.try_as_place(copy_from_local_value, location, true)
-            && rvalue.ty(self.local_decls, self.tcx) == place.ty(self.local_decls, self.tcx).ty
+        if self.ty(copy_from_local_value) == rvalue.ty(self.local_decls, self.tcx)
+            && let Some(place) = self.try_as_place(copy_from_local_value, location, true)
         {
             // Avoid creating `*a = copy (*b)`, as they might be aliases resulting in overlapping assignments.
             // FIXME: This also avoids any kind of projection, not just derefs. We can add allowed projections.
@@ -1023,44 +1001,31 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             })
             .collect();
 
-        let (aty, variant_index) = match *kind {
-            AggregateKind::Array(..) => {
+        let variant_index = match *kind {
+            AggregateKind::Array(..) | AggregateKind::Tuple => {
                 assert!(!field_ops.is_empty());
-                (AggregateTy::Array, FIRST_VARIANT)
+                FIRST_VARIANT
             }
-            AggregateKind::Tuple => {
-                assert!(!field_ops.is_empty());
-                (AggregateTy::Tuple, FIRST_VARIANT)
-            }
-            AggregateKind::Closure(did, args)
-            | AggregateKind::CoroutineClosure(did, args)
-            | AggregateKind::Coroutine(did, args) => (AggregateTy::Def(did, args), FIRST_VARIANT),
-            AggregateKind::Adt(did, variant_index, args, _, None) => {
-                (AggregateTy::Def(did, args), variant_index)
-            }
+            AggregateKind::Closure(..)
+            | AggregateKind::CoroutineClosure(..)
+            | AggregateKind::Coroutine(..) => FIRST_VARIANT,
+            AggregateKind::Adt(_, variant_index, _, _, None) => variant_index,
             // Do not track unions.
             AggregateKind::Adt(_, _, _, _, Some(_)) => return None,
             AggregateKind::RawPtr(..) => {
                 assert_eq!(field_ops.len(), 2);
-                let mut data_pointer_ty = field_ops[FieldIdx::ZERO].ty(self.local_decls, self.tcx);
-
                 let [mut pointer, metadata] = fields.try_into().unwrap();
 
                 // Any thin pointer of matching mutability is fine as the data pointer.
                 let mut was_updated = false;
-                while let Value::Cast {
-                    kind: CastKind::PtrToPtr,
-                    value: cast_value,
-                    from: cast_from,
-                    to: _,
-                } = self.get(pointer)
-                    && let ty::RawPtr(from_pointee_ty, from_mtbl) = cast_from.kind()
+                while let Value::Cast { kind: CastKind::PtrToPtr, value: cast_value } =
+                    self.get(pointer)
+                    && let ty::RawPtr(from_pointee_ty, from_mtbl) = self.ty(*cast_value).kind()
                     && let ty::RawPtr(_, output_mtbl) = ty.kind()
                     && from_mtbl == output_mtbl
                     && from_pointee_ty.is_sized(self.tcx, self.typing_env())
                 {
                     pointer = *cast_value;
-                    data_pointer_ty = *cast_from;
                     was_updated = true;
                 }
 
@@ -1068,16 +1033,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     field_ops[FieldIdx::ZERO] = op;
                 }
 
-                return Some(self.insert(
-                    ty,
-                    Value::RawPtr { output_pointer_ty: ty, data_pointer_ty, pointer, metadata },
-                ));
+                return Some(self.insert(ty, Value::RawPtr { pointer, metadata }));
             }
         };
 
-        if let AggregateTy::Array = aty
-            && fields.len() > 4
-        {
+        if ty.is_array() && fields.len() > 4 {
             let first = fields[0];
             if fields.iter().all(|&v| v == first) {
                 let len = ty::Const::from_target_usize(self.tcx, fields.len().try_into().unwrap());
@@ -1088,14 +1048,13 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
-        if let AggregateTy::Def(_, _) = aty
-            && let Some(value) =
-                self.simplify_aggregate_to_copy(lhs, rvalue, location, &fields, variant_index)
+        if let Some(value) =
+            self.simplify_aggregate_to_copy(lhs, rvalue, location, &fields, variant_index)
         {
             return Some(value);
         }
 
-        Some(self.insert(ty, Value::Aggregate(aty, variant_index, fields)))
+        Some(self.insert(ty, Value::Aggregate(variant_index, fields)))
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -1106,6 +1065,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         location: Location,
     ) -> Option<VnIndex> {
         let mut arg_index = self.simplify_operand(arg_op, location)?;
+        let arg_ty = self.ty(arg_index);
+        let ret_ty = op.ty(self.tcx, arg_ty);
 
         // PtrMetadata doesn't care about *const vs *mut vs & vs &mut,
         // so start by removing those distinctions so we can update the `Operand`
@@ -1121,8 +1082,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     // we can't always know exactly what the metadata are.
                     // To allow things like `*mut (?A, ?T)` <-> `*mut (?B, ?T)`,
                     // it's fine to get a projection as the type.
-                    Value::Cast { kind: CastKind::PtrToPtr, value: inner, from, to }
-                        if self.pointers_have_same_metadata(*from, *to) =>
+                    Value::Cast { kind: CastKind::PtrToPtr, value: inner }
+                        if self.pointers_have_same_metadata(self.ty(*inner), arg_ty) =>
                     {
                         arg_index = *inner;
                         was_updated = true;
@@ -1165,19 +1126,16 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 UnOp::PtrMetadata,
                 Value::Cast {
                     kind: CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _),
-                    from,
-                    to,
-                    ..
+                    value: inner,
                 },
-            ) if let ty::Slice(..) = to.builtin_deref(true).unwrap().kind()
-                && let ty::Array(_, len) = from.builtin_deref(true).unwrap().kind() =>
+            ) if let ty::Slice(..) = arg_ty.builtin_deref(true).unwrap().kind()
+                && let ty::Array(_, len) = self.ty(*inner).builtin_deref(true).unwrap().kind() =>
             {
                 return Some(self.insert_constant(Const::Ty(self.tcx.types.usize, *len)));
             }
             _ => Value::UnaryOp(op, arg_index),
         };
-        let ty = op.ty(self.tcx, self.ty(arg_index));
-        Some(self.insert(ty, value))
+        Some(self.insert(ret_ty, value))
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -1190,25 +1148,23 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     ) -> Option<VnIndex> {
         let lhs = self.simplify_operand(lhs_operand, location);
         let rhs = self.simplify_operand(rhs_operand, location);
+
         // Only short-circuit options after we called `simplify_operand`
         // on both operands for side effect.
         let mut lhs = lhs?;
         let mut rhs = rhs?;
 
-        let lhs_ty = lhs_operand.ty(self.local_decls, self.tcx);
+        let lhs_ty = self.ty(lhs);
 
         // If we're comparing pointers, remove `PtrToPtr` casts if the from
         // types of both casts and the metadata all match.
         if let BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge = op
             && lhs_ty.is_any_ptr()
-            && let Value::Cast {
-                kind: CastKind::PtrToPtr, value: lhs_value, from: lhs_from, ..
-            } = self.get(lhs)
-            && let Value::Cast {
-                kind: CastKind::PtrToPtr, value: rhs_value, from: rhs_from, ..
-            } = self.get(rhs)
-            && lhs_from == rhs_from
-            && self.pointers_have_same_metadata(*lhs_from, lhs_ty)
+            && let Value::Cast { kind: CastKind::PtrToPtr, value: lhs_value } = self.get(lhs)
+            && let Value::Cast { kind: CastKind::PtrToPtr, value: rhs_value } = self.get(rhs)
+            && let lhs_from = self.ty(*lhs_value)
+            && lhs_from == self.ty(*rhs_value)
+            && self.pointers_have_same_metadata(lhs_from, lhs_ty)
         {
             lhs = *lhs_value;
             rhs = *rhs_value;
@@ -1223,7 +1179,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         if let Some(value) = self.simplify_binary_inner(op, lhs_ty, lhs, rhs) {
             return Some(value);
         }
-        let ty = op.ty(self.tcx, self.ty(lhs), self.ty(rhs));
+        let ty = op.ty(self.tcx, lhs_ty, self.ty(rhs));
         let value = Value::BinaryOp(op, lhs, rhs);
         Some(self.insert(ty, value))
     }
@@ -1361,9 +1317,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         use CastKind::*;
         use rustc_middle::ty::adjustment::PointerCoercion::*;
 
-        let mut from = initial_operand.ty(self.local_decls, self.tcx);
         let mut kind = *initial_kind;
         let mut value = self.simplify_operand(initial_operand, location)?;
+        let mut from = self.ty(value);
         if from == to {
             return Some(value);
         }
@@ -1394,14 +1350,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // If a cast just casts away the metadata again, then we can get it by
             // casting the original thin pointer passed to `from_raw_parts`
             if let PtrToPtr = kind
-                && let Value::RawPtr { data_pointer_ty, pointer, .. } = self.get(value)
+                && let Value::RawPtr { pointer, .. } = self.get(value)
                 && let ty::RawPtr(to_pointee, _) = to.kind()
                 && to_pointee.is_sized(self.tcx, self.typing_env())
             {
-                from = *data_pointer_ty;
+                from = self.ty(*pointer);
                 value = *pointer;
                 was_updated_this_iteration = true;
-                if *data_pointer_ty == to {
+                if from == to {
                     return Some(*pointer);
                 }
             }
@@ -1409,7 +1365,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // Aggregate-then-Transmute can just transmute the original field value,
             // so long as the bytes of a value from only from a single field.
             if let Transmute = kind
-                && let Value::Aggregate(_aggregate_ty, variant_idx, field_values) = self.get(value)
+                && let Value::Aggregate(variant_idx, field_values) = self.get(value)
                 && let Some((field_idx, field_ty)) =
                     self.value_is_all_in_one_field(from, *variant_idx)
             {
@@ -1422,13 +1378,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
 
             // Various cast-then-cast cases can be simplified.
-            if let Value::Cast {
-                kind: inner_kind,
-                value: inner_value,
-                from: inner_from,
-                to: inner_to,
-            } = *self.get(value)
-            {
+            if let Value::Cast { kind: inner_kind, value: inner_value } = *self.get(value) {
+                let inner_from = self.ty(inner_value);
                 let new_kind = match (inner_kind, kind) {
                     // Even if there's a narrowing cast in here that's fine, because
                     // things like `*mut [i32] -> *mut i32 -> *const i32` and
@@ -1437,9 +1388,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     // PtrToPtr-then-Transmute is fine so long as the pointer cast is identity:
                     // `*const T -> *mut T -> NonNull<T>` is fine, but we need to check for narrowing
                     // to skip things like `*const [i32] -> *const i32 -> NonNull<T>`.
-                    (PtrToPtr, Transmute)
-                        if self.pointers_have_same_metadata(inner_from, inner_to) =>
-                    {
+                    (PtrToPtr, Transmute) if self.pointers_have_same_metadata(inner_from, from) => {
                         Some(Transmute)
                     }
                     // Similarly, for Transmute-then-PtrToPtr. Note that we need to check different
@@ -1450,7 +1399,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     // If would be legal to always do this, but we don't want to hide information
                     // from the backend that it'd otherwise be able to use for optimizations.
                     (Transmute, Transmute)
-                        if !self.type_may_have_niche_of_interest_to_backend(inner_to) =>
+                        if !self.type_may_have_niche_of_interest_to_backend(from) =>
                     {
                         Some(Transmute)
                     }
@@ -1479,7 +1428,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             *initial_kind = kind;
         }
 
-        Some(self.insert(to, Value::Cast { kind, value, from, to }))
+        Some(self.insert(to, Value::Cast { kind, value }))
     }
 
     fn simplify_len(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {
@@ -1501,11 +1450,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         // We have an unsizing cast, which assigns the length to wide pointer metadata.
-        if let Value::Cast { kind, from, to, .. } = self.get(inner)
+        if let Value::Cast { kind, value: from } = self.get(inner)
             && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) = kind
-            && let Some(from) = from.builtin_deref(true)
+            && let Some(from) = self.ty(*from).builtin_deref(true)
             && let ty::Array(_, len) = from.kind()
-            && let Some(to) = to.builtin_deref(true)
+            && let Some(to) = self.ty(inner).builtin_deref(true)
             && let ty::Slice(..) = to.kind()
         {
             return Some(self.insert_constant(Const::Ty(self.tcx.types.usize, *len)));
@@ -1721,7 +1670,7 @@ impl<'tcx> VnState<'_, 'tcx> {
                 return Some(place);
             } else if let Value::Projection(pointer, proj) = *self.get(index)
                 && (allow_complex_projection || proj.is_stable_offset())
-                && let Some(proj) = self.try_as_place_elem(proj, loc)
+                && let Some(proj) = self.try_as_place_elem(self.ty(index), proj, loc)
             {
                 projection.push(proj);
                 index = pointer;
