@@ -117,15 +117,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
 
     fn const_undef(&self, typ: Type<'gcc>) -> RValue<'gcc> {
         let local = self.current_func.borrow().expect("func").new_local(None, typ, "undefined");
-        if typ.is_struct().is_some() {
-            // NOTE: hack to workaround a limitation of the rustc API: see comment on
-            // CodegenCx.structs_as_pointer
-            let pointer = local.get_address(None);
-            self.structs_as_pointer.borrow_mut().insert(pointer);
-            pointer
-        } else {
-            local.to_rvalue()
-        }
+        local.to_rvalue()
     }
 
     fn const_poison(&self, typ: Type<'gcc>) -> RValue<'gcc> {
