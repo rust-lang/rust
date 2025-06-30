@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/method-output-diff-issue-127263.rs:6:26
+  --> $DIR/fn-pointer-mismatch-diagnostics.rs:14:26
    |
 LL |     let b: fn() -> u32 = bar;
    |            -----------   ^^^ expected fn pointer, found fn item
@@ -10,7 +10,7 @@ LL |     let b: fn() -> u32 = bar;
                  found fn item `fn() -> () {bar}`
 
 error[E0308]: mismatched types
-  --> $DIR/method-output-diff-issue-127263.rs:7:22
+  --> $DIR/fn-pointer-mismatch-diagnostics.rs:15:22
    |
 LL |     let f: fn(i32) = foo;
    |            -------   ^^^ expected fn pointer, found fn item
