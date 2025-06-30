@@ -322,7 +322,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             lhs_expr.span,
                             format!("cannot use `{}` on type `{}`", s, lhs_ty_str),
                         );
-                        self.note_unmet_impls_on_type(&mut err, errors, false);
+                        self.note_unmet_impls_on_type(&mut err, &errors, false);
                         (err, None)
                     }
                     Op::BinOp(bin_op) => {
@@ -382,7 +382,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.span_label(rhs_expr.span, rhs_ty_str);
                         }
                         let suggest_derive = self.can_eq(self.param_env, lhs_ty, rhs_ty);
-                        self.note_unmet_impls_on_type(&mut err, errors, suggest_derive);
+                        self.note_unmet_impls_on_type(&mut err, &errors, suggest_derive);
                         (err, output_def_id)
                     }
                 };
@@ -582,22 +582,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // concatenation (e.g., "Hello " + "World!"). This means
                         // we don't want the note in the else clause to be emitted
                     } else if lhs_ty.has_non_region_param() {
-                        // Look for a TraitPredicate in the Fulfillment errors,
-                        // and use it to generate a suggestion.
-                        //
-                        // Note that lookup_op_method must be called again but
-                        // with a specific rhs_ty instead of a placeholder so
-                        // the resulting predicate generates a more specific
-                        // suggestion for the user.
-                        let errors = self
-                            .lookup_op_method(
-                                (lhs_expr, lhs_ty),
-                                Some((rhs_expr, rhs_ty)),
-                                lang_item_for_binop(self.tcx, op),
-                                op.span(),
-                                expected,
-                            )
-                            .unwrap_err();
                         if !errors.is_empty() {
                             for error in errors {
                                 if let Some(trait_pred) =
@@ -946,7 +930,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ty::Str | ty::Never | ty::Char | ty::Tuple(_) | ty::Array(_, _) => {}
                             ty::Ref(_, lty, _) if *lty.kind() == ty::Str => {}
                             _ => {
-                                self.note_unmet_impls_on_type(&mut err, errors, true);
+                                self.note_unmet_impls_on_type(&mut err, &errors, true);
                             }
                         }
                     }
