@@ -467,6 +467,15 @@
 # Whether to use the precompiled stage0 libtest with compiletest.
 #build.compiletest-use-stage0-libtest = true
 
+# Default value for the `--extra-checks` flag of tidy.
+#
+# See `./x test tidy --help` for details.
+#
+# Note that if any value is manually given to bootstrap such as
+# `./x test tidy --extra-checks=js`, this value is ignored.
+# Use `--extra-checks=''` to temporarily disable all extra checks.
+#build.tidy-extra-checks = ""
+
 # Indicates whether ccache is used when building certain artifacts (e.g. LLVM).
 # Set to `true` to use the first `ccache` in PATH, or set an absolute path to use
 # a specific version.

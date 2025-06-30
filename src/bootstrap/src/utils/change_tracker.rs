@@ -431,4 +431,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "It is no longer possible to `x build` with stage 0. All build commands have to be on stage 1+.",
     },
+    ChangeInfo {
+        change_id: 142924,
+        severity: ChangeSeverity::Info,
+        summary: "Added new option `build.tidy-extra-checks` to specify a default value for the --extra-checks cli flag.",
+    },
 ];
