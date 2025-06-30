@@ -1480,7 +1480,7 @@ impl<'a> State<'a> {
                 self.print_expr_addr_of(k, m, expr);
             }
             hir::ExprKind::Lit(lit) => {
-                self.print_literal(lit);
+                self.print_literal(&lit);
             }
             hir::ExprKind::Cast(expr, ty) => {
                 self.print_expr_cond_paren(expr, self.precedence(expr) < ExprPrecedence::Cast);

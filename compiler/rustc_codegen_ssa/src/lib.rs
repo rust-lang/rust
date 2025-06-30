@@ -310,7 +310,7 @@ impl CodegenResults {
         // `emit_raw_bytes` is used to make sure that the version representation does not depend on
         // Encoder's inner representation of `u32`.
         encoder.emit_raw_bytes(&RLINK_VERSION.to_be_bytes());
-        encoder.emit_str(sess.cfg_version);
+        encoder.emit_byte_str(sess.cfg_version.as_bytes());
         Encodable::encode(codegen_results, &mut encoder);
         Encodable::encode(metadata, &mut encoder);
         Encodable::encode(outputs, &mut encoder);

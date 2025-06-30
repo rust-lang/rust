@@ -469,8 +469,12 @@ impl<'a> State<'a> {
             ast::ExprKind::Lit(token_lit) => {
                 self.print_token_literal(*token_lit, expr.span);
             }
-            ast::ExprKind::IncludedBytes(bytes) => {
-                let lit = token::Lit::new(token::ByteStr, escape_byte_str_symbol(bytes), None);
+            ast::ExprKind::IncludedBytes(byte_sym) => {
+                let lit = token::Lit::new(
+                    token::ByteStr,
+                    escape_byte_str_symbol(byte_sym.as_byte_str()),
+                    None,
+                );
                 self.print_token_literal(lit, expr.span)
             }
             ast::ExprKind::Cast(expr, ty) => {

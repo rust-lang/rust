@@ -32,7 +32,7 @@ use rustc_session::Session;
 use rustc_session::config::TargetModifier;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
-use rustc_span::{BytePos, DUMMY_SP, Pos, SpanData, SpanDecoder, SyntaxContext, kw};
+use rustc_span::{BytePos, DUMMY_SP, Pos, SpanData, SpanDecoder, Symbol, SyntaxContext, kw};
 use tracing::debug;
 
 use crate::creader::CStore;
@@ -544,13 +544,17 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
         data.span()
     }
 
-    fn decode_symbol(&mut self) -> Symbol {
+    fn decode_symbol_index_or_byte_str<S>(
+        &mut self,
+        new: impl Fn(u32) -> S,
+        intern: impl Fn(&[u8]) -> S,
+    ) -> S {
         let tag = self.read_u8();
 
         match tag {
             SYMBOL_STR => {
-                let s = self.read_str();
-                Symbol::intern(s)
+                let s = self.read_byte_str();
+                intern(s)
             }
             SYMBOL_OFFSET => {
                 // read str offset
@@ -558,13 +562,13 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
 
                 // move to str offset and read
                 self.opaque.with_position(pos, |d| {
-                    let s = d.read_str();
-                    Symbol::intern(s)
+                    let s = d.read_byte_str();
+                    intern(s)
                 })
             }
             SYMBOL_PREDEFINED => {
                 let symbol_index = self.read_u32();
-                Symbol::new(symbol_index)
+                new(symbol_index)
             }
             _ => unreachable!(),
         }

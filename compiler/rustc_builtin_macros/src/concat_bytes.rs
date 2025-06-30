@@ -177,15 +177,15 @@ pub(crate) fn expand_concat_bytes(
                 Ok(LitKind::Byte(val)) => {
                     accumulator.push(val);
                 }
-                Ok(LitKind::ByteStr(ref bytes, _)) => {
-                    accumulator.extend_from_slice(bytes);
+                Ok(LitKind::ByteStr(ref byte_sym, _)) => {
+                    accumulator.extend_from_slice(byte_sym.as_byte_str());
                 }
                 _ => {
                     guar.get_or_insert_with(|| invalid_type_err(cx, token_lit, e.span, false));
                 }
             },
-            ExprKind::IncludedBytes(bytes) => {
-                accumulator.extend_from_slice(bytes);
+            ExprKind::IncludedBytes(byte_sym) => {
+                accumulator.extend_from_slice(byte_sym.as_byte_str());
             }
             ExprKind::Err(guarantee) => {
                 guar = Some(*guarantee);

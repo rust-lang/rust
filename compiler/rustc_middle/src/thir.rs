@@ -526,7 +526,7 @@ pub enum ExprKind<'tcx> {
     Closure(Box<ClosureExpr<'tcx>>),
     /// A literal.
     Literal {
-        lit: &'tcx hir::Lit,
+        lit: hir::Lit,
         neg: bool,
     },
     /// For literals that don't correspond to anything in the HIR

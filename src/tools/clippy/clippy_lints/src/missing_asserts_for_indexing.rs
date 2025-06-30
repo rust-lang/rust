@@ -104,7 +104,7 @@ fn len_comparison<'hir>(
 ) -> Option<(LengthComparison, usize, &'hir Expr<'hir>)> {
     macro_rules! int_lit_pat {
         ($id:ident) => {
-            ExprKind::Lit(&Spanned {
+            ExprKind::Lit(Spanned {
                 node: LitKind::Int(Pu128($id), _),
                 ..
             })
