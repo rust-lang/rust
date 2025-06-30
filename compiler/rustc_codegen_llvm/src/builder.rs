@@ -1385,6 +1385,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let cold_inline = llvm::AttributeKind::Cold.create_attr(self.llcx);
         attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[cold_inline]);
     }
+
+    fn set_tail_call(&mut self, call_inst: &'ll Value) {
+        // LLVMSetTailCall is marked as safe in the FFI definition
+        llvm::LLVMSetTailCall(call_inst, llvm::True);
+    }
 }
 
 impl<'ll> StaticBuilderMethods for Builder<'_, 'll, '_> {
