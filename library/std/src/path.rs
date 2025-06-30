@@ -3127,7 +3127,7 @@ impl Path {
     /// Returns `true` if the path points at an existing entity.
     ///
     /// Warning: this method may be error-prone, consider using [`try_exists()`] instead!
-    /// It also has a risk of introducing time-of-check to time-of-use (TOCTOU) bugs.
+    /// It also has a risk of introducing time-of-check to time-of-use ([TOCTOU]) bugs.
     ///
     /// This function will traverse symbolic links to query information about the
     /// destination file.
@@ -3148,6 +3148,7 @@ impl Path {
     /// check errors, call [`Path::try_exists`].
     ///
     /// [`try_exists()`]: Self::try_exists
+    /// [TOCTOU]: fs#time-of-check-to-time-of-use-toctou
     #[stable(feature = "path_ext", since = "1.5.0")]
     #[must_use]
     #[inline]
@@ -3167,7 +3168,7 @@ impl Path {
     /// permission is denied on one of the parent directories.
     ///
     /// Note that while this avoids some pitfalls of the `exists()` method, it still can not
-    /// prevent time-of-check to time-of-use (TOCTOU) bugs. You should only use it in scenarios
+    /// prevent time-of-check to time-of-use ([TOCTOU]) bugs. You should only use it in scenarios
     /// where those bugs are not an issue.
     ///
     /// This is an alias for [`std::fs::exists`](crate::fs::exists).
@@ -3180,6 +3181,7 @@ impl Path {
     /// assert!(Path::new("/root/secret_file.txt").try_exists().is_err());
     /// ```
     ///
+    /// [TOCTOU]: fs#time-of-check-to-time-of-use-toctou
     /// [`exists()`]: Self::exists
     #[stable(feature = "path_try_exists", since = "1.63.0")]
     #[inline]

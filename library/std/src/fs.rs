@@ -4,6 +4,27 @@
 //! filesystem. All methods in this module represent cross-platform filesystem
 //! operations. Extra platform-specific functionality can be found in the
 //! extension traits of `std::os::$platform`.
+//!
+//! # Time of Check to Time of Use (TOCTOU)
+//!
+//! Many filesystem operations are subject to a race condition known as "Time of Check to Time of Use"
+//! (TOCTOU). This occurs when a program checks a condition (like file existence or permissions)
+//! and then uses the result of that check to make a decision, but the condition may have changed
+//! between the check and the use.
+//!
+//! For example, checking if a file exists and then creating it if it doesn't is vulnerable to
+//! TOCTOU - another process could create the file between your check and creation attempt.
+//!
+//! Another example is with symbolic links: when removing a directory, if another process replaces
+//! the directory with a symbolic link between the check and the removal operation, the removal
+//! might affect the wrong location. This is why operations like [`remove_dir_all`] need to use
+//! atomic operations to prevent such race conditions.
+//!
+//! To avoid TOCTOU issues:
+//! - Be aware that metadata operations (like [`metadata`] or [`symlink_metadata`]) may be affected by
+//! changes made by other processes.
+//! - Use atomic operations when possible (like [`File::create_new`] instead of checking existence then creating).
+//! - Keep file open for the duration of operations.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -548,13 +569,14 @@ impl File {
     /// non-exhaustive list of likely errors.
     ///
     /// This option is useful because it is atomic. Otherwise between checking whether a file
-    /// exists and creating a new one, the file may have been created by another process (a TOCTOU
+    /// exists and creating a new one, the file may have been created by another process (a [TOCTOU]
     /// race condition / attack).
     ///
     /// This can also be written using
     /// `File::options().read(true).write(true).create_new(true).open(...)`.
     ///
     /// [`AlreadyExists`]: crate::io::ErrorKind::AlreadyExists
+    /// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
     ///
     /// # Examples
     ///
@@ -1610,7 +1632,7 @@ impl OpenOptions {
     ///
     /// This option is useful because it is atomic. Otherwise between checking
     /// whether a file exists and creating a new one, the file may have been
-    /// created by another process (a TOCTOU race condition / attack).
+    /// created by another process (a [TOCTOU] race condition / attack).
     ///
     /// If `.create_new(true)` is set, [`.create()`] and [`.truncate()`] are
     /// ignored.
@@ -1621,6 +1643,7 @@ impl OpenOptions {
     /// [`.create()`]: OpenOptions::create
     /// [`.truncate()`]: OpenOptions::truncate
     /// [`AlreadyExists`]: io::ErrorKind::AlreadyExists
+    /// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
     ///
     /// # Examples
     ///
@@ -2954,17 +2977,17 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// `GetFileInformationByHandleEx`, `SetFileInformationByHandle`, and `NtCreateFile`.
 ///
 /// ## Time-of-check to time-of-use (TOCTOU) race conditions
-/// On a few platforms there is no way to remove a directory's contents without following symlinks
-/// unless you perform a check and then operate on paths based on that directory.
-/// This allows concurrently-running code to replace the directory with a symlink after the check,
-/// causing a removal to instead operate on a path based on the symlink. This is a TOCTOU race.
-/// By default, `fs::remove_dir_all` protects against a symlink TOCTOU race on all platforms
-/// except the following. It should not be used in security-sensitive contexts on these platforms:
-/// - Miri: Even when emulating targets where the underlying implementation will protect against
-/// TOCTOU races, Miri will not do so.
-/// - Redox OS: This function does not protect against TOCTOU races, as Redox does not implement
-/// the required platform support to do so.
+/// See the [module-level TOCTOU explanation](self#time-of-check-to-time-of-use-toctou).
 ///
+/// On most platforms, `fs::remove_dir_all` protects against symlink TOCTOU races by default.
+/// However, on the following platforms, this protection is not provided and the function should
+/// not be used in security-sensitive contexts:
+/// - **Miri**: Even when emulating targets where the underlying implementation will protect against
+///   TOCTOU races, Miri will not do so.
+/// - **Redox OS**: This function does not protect against TOCTOU races, as Redox does not implement
+///   the required platform support to do so.
+///
+/// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
 /// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
@@ -3238,7 +3261,7 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// permission is denied on one of the parent directories.
 ///
 /// Note that while this avoids some pitfalls of the `exists()` method, it still can not
-/// prevent time-of-check to time-of-use (TOCTOU) bugs. You should only use it in scenarios
+/// prevent time-of-check to time-of-use ([TOCTOU]) bugs. You should only use it in scenarios
 /// where those bugs are not an issue.
 ///
 /// # Examples
@@ -3251,6 +3274,7 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// ```
 ///
 /// [`Path::exists`]: crate::path::Path::exists
+/// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
 #[stable(feature = "fs_try_exists", since = "1.81.0")]
 #[inline]
 pub fn exists<P: AsRef<Path>>(path: P) -> io::Result<bool> {
