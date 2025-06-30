@@ -354,15 +354,15 @@ fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             let destination_block = target.unwrap();
 
-            bb.statements.push(mir::Statement {
-                source_info: bb.terminator().source_info,
-                kind: mir::StatementKind::Assign(Box::new((
+            bb.statements.push(mir::Statement::new(
+                bb.terminator().source_info,
+                mir::StatementKind::Assign(Box::new((
                     *destination,
                     mir::Rvalue::Use(mir::Operand::Copy(
                         arg_place.project_deeper(&[mir::ProjectionElem::Deref], tcx),
                     )),
                 ))),
-            });
+            ));
 
             bb.terminator_mut().kind = mir::TerminatorKind::Goto { target: destination_block };
         }

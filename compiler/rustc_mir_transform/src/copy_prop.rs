@@ -52,7 +52,7 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
         Replacer { tcx, copy_classes: ssa.copy_classes(), fully_moved, storage_to_remove }
             .visit_body_preserves_cfg(body);
 
-        crate::simplify::remove_unused_definitions(body);
+        crate::simplify::remove_unused_definitions(body, false);
     }
 
     fn is_required(&self) -> bool {
@@ -138,7 +138,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = stmt.kind
             && self.storage_to_remove.contains(l)
         {
-            stmt.make_nop();
+            stmt.make_nop(true);
             return;
         }
 
@@ -150,7 +150,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
                 *rhs
             && lhs == rhs
         {
-            stmt.make_nop();
+            stmt.make_nop(true);
         }
     }
 }

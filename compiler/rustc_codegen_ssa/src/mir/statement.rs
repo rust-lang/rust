@@ -1,13 +1,17 @@
-use rustc_middle::mir::{self, NonDivergingIntrinsic};
-use rustc_middle::span_bug;
+use rustc_middle::mir::{self, NonDivergingIntrinsic, StmtDebugInfo};
+use rustc_middle::{bug, span_bug};
 use tracing::instrument;
 
 use super::{FunctionCx, LocalRef};
+use crate::common::TypeKind;
+use crate::mir::operand::OperandValue;
+use crate::mir::place::PlaceRef;
 use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "debug", skip(self, bx))]
     pub(crate) fn codegen_statement(&mut self, bx: &mut Bx, statement: &mir::Statement<'tcx>) {
+        self.codegen_stmt_debuginfos(bx, &statement.debuginfos);
         self.set_debug_loc(bx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(box (ref place, ref rvalue)) => {
@@ -94,6 +98,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             | mir::StatementKind::PlaceMention(..)
             | mir::StatementKind::BackwardIncompatibleDropHint { .. }
             | mir::StatementKind::Nop => {}
+        }
+    }
+
+    pub(crate) fn codegen_stmt_debuginfo(&mut self, _bx: &mut Bx, _debuginfo: &StmtDebugInfo<'tcx>) {}
+
+    pub(crate) fn codegen_stmt_debuginfos(
+        &mut self,
+        bx: &mut Bx,
+        debuginfos: &[StmtDebugInfo<'tcx>],
+    ) {
+        for debuginfo in debuginfos {
+            self.codegen_stmt_debuginfo(bx, debuginfo);
         }
     }
 }

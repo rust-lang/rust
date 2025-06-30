@@ -259,7 +259,7 @@ fn inject_statement(mir_body: &mut mir::Body<'_>, counter_kind: CoverageKind, bb
     debug!("  injecting statement {counter_kind:?} for {bb:?}");
     let data = &mut mir_body[bb];
     let source_info = data.terminator().source_info;
-    let statement = Statement { source_info, kind: StatementKind::Coverage(counter_kind) };
+    let statement = Statement::new(source_info, StatementKind::Coverage(counter_kind));
     data.statements.insert(0, statement);
 }
 

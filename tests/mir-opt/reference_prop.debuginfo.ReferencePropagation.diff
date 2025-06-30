@@ -54,16 +54,18 @@
       }
   
       bb0: {
-          StorageLive(_1);
-          StorageLive(_2);
+-         StorageLive(_1);
+-         StorageLive(_2);
           _2 = const 5_u8;
-          _1 = &mut _2;
-          StorageLive(_3);
+-         _1 = &mut _2;
+-         StorageLive(_3);
++         // DBG: AssignRef(_1, _2)
           _28 = const debuginfo::promoted[2];
-          _3 = &((*_28).0: u8);
+-         _3 = &((*_28).0: u8);
 -         StorageLive(_5);
 -         _5 = &(*_1);
 -         StorageLive(_6);
++         // DBG: AssignRef(_3, ((*_28).0: u8))
           StorageLive(_7);
           _7 = Option::<i32>::Some(const 0_i32);
           _8 = discriminant(_7);
@@ -75,11 +77,12 @@
       }
   
       bb2: {
-          StorageLive(_9);
+-         StorageLive(_9);
           _27 = const debuginfo::promoted[1];
-          _9 = &(((*_27) as Some).0: i32);
+-         _9 = &(((*_27) as Some).0: i32);
 -         _6 = const ();
-          StorageDead(_9);
+-         StorageDead(_9);
++         // DBG: AssignRef(_9, (((*_27) as Some).0: i32))
           goto -> bb4;
       }
   
@@ -114,19 +117,19 @@
       }
   
       bb6: {
-          StorageLive(_19);
+-         StorageLive(_19);
 -         _19 = &(*_11)[1 of 3];
-+         _19 = &(*_12)[1 of 3];
-          StorageLive(_20);
+-         StorageLive(_20);
 -         _20 = &(*_11)[2:-1];
-+         _20 = &(*_12)[2:-1];
-          StorageLive(_21);
+-         StorageLive(_21);
 -         _21 = &(*_11)[-1 of 3];
 -         _10 = const ();
-+         _21 = &(*_12)[-1 of 3];
-          StorageDead(_21);
-          StorageDead(_20);
-          StorageDead(_19);
+-         StorageDead(_21);
+-         StorageDead(_20);
+-         StorageDead(_19);
++         // DBG: AssignRef(_19, (*_12)[1 of 3])
++         // DBG: AssignRef(_20, (*_12)[2:-1])
++         // DBG: AssignRef(_21, (*_12)[-1 of 3])
           goto -> bb8;
       }
   
@@ -139,23 +142,26 @@
 -         StorageDead(_12);
 -         StorageDead(_11);
 -         StorageDead(_10);
-          StorageLive(_22);
-          StorageLive(_23);
-          StorageLive(_24);
-          StorageLive(_25);
+-         StorageLive(_22);
+-         StorageLive(_23);
+-         StorageLive(_24);
+-         StorageLive(_25);
           _25 = T(const 6_u8);
-          _24 = &mut (_25.0: u8);
-          _23 = &_24;
-          _22 = &_23;
+-         _24 = &mut (_25.0: u8);
+-         _23 = &_24;
+-         _22 = &_23;
++         // DBG: AssignRef(_24, (_25.0: u8))
++         // DBG: AssignRef(_23, _24)
++         // DBG: AssignRef(_22, _23)
           _0 = const ();
-          StorageDead(_25);
-          StorageDead(_24);
-          StorageDead(_23);
-          StorageDead(_22);
+-         StorageDead(_25);
+-         StorageDead(_24);
+-         StorageDead(_23);
+-         StorageDead(_22);
 -         StorageDead(_5);
-          StorageDead(_3);
-          StorageDead(_2);
-          StorageDead(_1);
+-         StorageDead(_3);
+-         StorageDead(_2);
+-         StorageDead(_1);
           return;
       }
   }

@@ -646,9 +646,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let base = self.canonical_user_type_annotations.push(annotation.clone());
                 self.cfg.push(
                     block,
-                    Statement {
-                        source_info: ty_source_info,
-                        kind: StatementKind::AscribeUserType(
+                    Statement::new(
+                        ty_source_info,
+                        StatementKind::AscribeUserType(
                             Box::new((place, UserTypeProjection { base, projs: Vec::new() })),
                             // We always use invariant as the variance here. This is because the
                             // variance field from the ascription refers to the variance to use
@@ -666,7 +666,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             // `<expr>`.
                             ty::Invariant,
                         ),
-                    },
+                    ),
                 );
 
                 self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
@@ -828,7 +828,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> Place<'tcx> {
         let local_id = self.var_local_id(var, for_guard);
         let source_info = self.source_info(span);
-        self.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(local_id) });
+        self.cfg.push(block, Statement::new(source_info, StatementKind::StorageLive(local_id)));
         // Although there is almost always scope for given variable in corner cases
         // like #92893 we might get variable with no scope.
         if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id)
@@ -2578,16 +2578,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let base = self.canonical_user_type_annotations.push(ascription.annotation);
             self.cfg.push(
                 block,
-                Statement {
+                Statement::new(
                     source_info,
-                    kind: StatementKind::AscribeUserType(
+                    StatementKind::AscribeUserType(
                         Box::new((
                             ascription.source,
                             UserTypeProjection { base, projs: Vec::new() },
                         )),
                         ascription.variance,
                     ),
-                },
+                ),
             );
         }
     }

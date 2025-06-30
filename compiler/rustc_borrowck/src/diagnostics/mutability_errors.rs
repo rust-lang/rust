@@ -1162,12 +1162,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 let opt_assignment_rhs_span =
                     self.find_assignments(local).first().map(|&location| {
                         if let Some(mir::Statement {
-                            source_info: _,
                             kind:
                                 mir::StatementKind::Assign(box (
                                     _,
                                     mir::Rvalue::Use(mir::Operand::Copy(place)),
                                 )),
+                            ..
                         }) = self.body[location.block].statements.get(location.statement_index)
                         {
                             self.body.local_decls[place.local].source_info.span

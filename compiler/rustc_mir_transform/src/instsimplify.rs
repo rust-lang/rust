@@ -240,15 +240,15 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
 
         let Some(arg_place) = arg.node.place() else { return };
 
-        statements.push(Statement {
-            source_info: terminator.source_info,
-            kind: StatementKind::Assign(Box::new((
+        statements.push(Statement::new(
+            terminator.source_info,
+            StatementKind::Assign(Box::new((
                 *destination,
                 Rvalue::Use(Operand::Copy(
                     arg_place.project_deeper(&[ProjectionElem::Deref], self.tcx),
                 )),
             ))),
-        });
+        ));
         terminator.kind = TerminatorKind::Goto { target: *destination_block };
     }
 
