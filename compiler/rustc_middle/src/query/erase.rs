@@ -266,6 +266,7 @@ trivial! {
     Option<rustc_target::spec::PanicStrategy>,
     Option<usize>,
     Option<rustc_middle::ty::IntrinsicDef>,
+    Option<rustc_abi::Align>,
     Result<(), rustc_errors::ErrorGuaranteed>,
     Result<(), rustc_middle::traits::query::NoSolution>,
     Result<rustc_middle::traits::EvaluationResult, rustc_middle::traits::OverflowError>,
