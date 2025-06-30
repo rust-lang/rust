@@ -3,7 +3,10 @@ use rustc_feature::{AttributeTemplate, template};
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
 
-use super::{AcceptMapping, AttributeOrder, AttributeParser, OnDuplicate, SingleAttributeParser};
+use super::{
+    AcceptMapping, AttributeOrder, AttributeParser, NoArgsAttributeParser, OnDuplicate,
+    SingleAttributeParser,
+};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::{NakedFunctionIncompatibleAttribute, NullOnExport};
@@ -43,19 +46,12 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
 
 pub(crate) struct ColdParser;
 
-impl<S: Stage> SingleAttributeParser<S> for ColdParser {
+impl<S: Stage> NoArgsAttributeParser<S> for ColdParser {
     const PATH: &[Symbol] = &[sym::cold];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const TEMPLATE: AttributeTemplate = template!(Word);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
-        if let Err(span) = args.no_args() {
-            cx.expected_no_args(span);
-            return None;
-        }
-
-        Some(AttributeKind::Cold(cx.attr_span))
+    fn create(span: Span) -> AttributeKind {
+        AttributeKind::Cold(span)
     }
 }
 
@@ -194,38 +190,22 @@ impl<S: Stage> AttributeParser<S> for NakedParser {
 }
 
 pub(crate) struct TrackCallerParser;
-
-impl<S: Stage> SingleAttributeParser<S> for TrackCallerParser {
+impl<S: Stage> NoArgsAttributeParser<S> for TrackCallerParser {
     const PATH: &[Symbol] = &[sym::track_caller];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const TEMPLATE: AttributeTemplate = template!(Word);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
-        if let Err(span) = args.no_args() {
-            cx.expected_no_args(span);
-            return None;
-        }
-
-        Some(AttributeKind::TrackCaller(cx.attr_span))
+    fn create(span: Span) -> AttributeKind {
+        AttributeKind::TrackCaller(span)
     }
 }
 
 pub(crate) struct NoMangleParser;
-
-impl<S: Stage> SingleAttributeParser<S> for NoMangleParser {
-    const PATH: &[rustc_span::Symbol] = &[sym::no_mangle];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
+impl<S: Stage> NoArgsAttributeParser<S> for NoMangleParser {
+    const PATH: &[Symbol] = &[sym::no_mangle];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const TEMPLATE: AttributeTemplate = template!(Word);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
-        if let Err(span) = args.no_args() {
-            cx.expected_no_args(span);
-            return None;
-        }
-
-        Some(AttributeKind::NoMangle(cx.attr_span))
+    fn create(span: Span) -> AttributeKind {
+        AttributeKind::NoMangle(span)
     }
 }
 
