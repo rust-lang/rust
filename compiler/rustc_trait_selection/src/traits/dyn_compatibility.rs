@@ -593,7 +593,7 @@ fn receiver_is_dispatchable<'tcx>(
         // will cause ambiguity that the user can't really avoid.
         //
         // We leave out certain complexities of the param-env query here. Specifically, we:
-        // 1. Do not add `~const` bounds since there are no `dyn const Trait`s.
+        // 1. Do not add `[const]` bounds since there are no `dyn const Trait`s.
         // 2. Do not add RPITIT self projection bounds for defaulted methods, since we
         //    are not constructing a param-env for "inside" of the body of the defaulted
         //    method, so we don't really care about projecting to a specific RPIT type,

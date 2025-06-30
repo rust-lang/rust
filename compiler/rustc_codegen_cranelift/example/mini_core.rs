@@ -660,7 +660,7 @@ pub mod intrinsics {
     #[rustc_intrinsic]
     pub unsafe fn ctlz_nonzero<T>(x: T) -> u32;
     #[rustc_intrinsic]
-    pub fn needs_drop<T: ?::Sized>() -> bool;
+    pub const fn needs_drop<T: ?::Sized>() -> bool;
     #[rustc_intrinsic]
     pub fn bitreverse<T>(x: T) -> T;
     #[rustc_intrinsic]

@@ -17,7 +17,6 @@
 use std::marker::PhantomData;
 
 use rustc_attr_data_structures::AttributeKind;
-use rustc_attr_data_structures::lints::AttributeLintKind;
 use rustc_feature::AttributeTemplate;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
@@ -32,11 +31,14 @@ pub(crate) mod codegen_attrs;
 pub(crate) mod confusables;
 pub(crate) mod deprecation;
 pub(crate) mod inline;
+pub(crate) mod link_attrs;
 pub(crate) mod lint_helpers;
+pub(crate) mod loop_match;
 pub(crate) mod must_use;
 pub(crate) mod repr;
 pub(crate) mod semantics;
 pub(crate) mod stability;
+pub(crate) mod traits;
 pub(crate) mod transparency;
 pub(crate) mod util;
 
@@ -189,14 +191,8 @@ impl<S: Stage> OnDuplicate<S> {
         unused: Span,
     ) {
         match self {
-            OnDuplicate::Warn => cx.emit_lint(
-                AttributeLintKind::UnusedDuplicate { this: unused, other: used, warning: false },
-                unused,
-            ),
-            OnDuplicate::WarnButFutureError => cx.emit_lint(
-                AttributeLintKind::UnusedDuplicate { this: unused, other: used, warning: true },
-                unused,
-            ),
+            OnDuplicate::Warn => cx.warn_unused_duplicate(used, unused),
+            OnDuplicate::WarnButFutureError => cx.warn_unused_duplicate_future_error(used, unused),
             OnDuplicate::Error => {
                 cx.emit_err(UnusedMultiple {
                     this: used,

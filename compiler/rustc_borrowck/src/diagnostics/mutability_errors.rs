@@ -60,7 +60,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if access_place.as_local().is_some() {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
-                    let name = self.local_names[local].expect("immutable unnamed local");
+                    let name = self.local_name(local).expect("immutable unnamed local");
                     reason = format!(", as `{name}` is not declared as mutable");
                 }
             }
@@ -285,7 +285,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     .body
                     .local_decls
                     .get(local)
-                    .is_some_and(|l| mut_borrow_of_mutable_ref(l, self.local_names[local])) =>
+                    .is_some_and(|l| mut_borrow_of_mutable_ref(l, self.local_name(local))) =>
             {
                 let decl = &self.body.local_decls[local];
                 err.span_label(span, format!("cannot {act}"));
@@ -481,7 +481,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 let (pointer_sigil, pointer_desc) =
                     if local_decl.ty.is_ref() { ("&", "reference") } else { ("*const", "pointer") };
 
-                match self.local_names[local] {
+                match self.local_name(local) {
                     Some(name) if !local_decl.from_compiler_desugaring() => {
                         err.span_label(
                             span,

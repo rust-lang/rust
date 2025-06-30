@@ -277,6 +277,12 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     if !variant.is_uninhabited() {
                         assert!(idx == *untagged_variant || niche_variants.contains(&idx));
                     }
+
+                    // Ensure that for niche encoded tags the discriminant coincides with the variant index.
+                    assert_eq!(
+                        layout.ty.discriminant_for_variant(tcx, idx).unwrap().val,
+                        u128::from(idx.as_u32()),
+                    );
                 }
             }
             for variant in variants.iter() {

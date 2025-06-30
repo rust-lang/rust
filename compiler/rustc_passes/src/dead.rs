@@ -1056,7 +1056,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                         maybe_enum.variants().iter().find(|i| i.name == dead_item.name)
                 {
                     Some(crate::errors::EnumVariantSameName {
-                        descr: tcx.def_descr(dead_item.def_id.to_def_id()),
+                        dead_descr: tcx.def_descr(dead_item.def_id.to_def_id()),
                         dead_name: dead_item.name,
                         variant_span: tcx.def_span(variant.def_id),
                     })

@@ -26,6 +26,12 @@ pub fn flagsplit(flags: &str) -> Vec<String> {
     flags.split(' ').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect()
 }
 
+/// Turns a list of features into a list of arguments to pass to cargo invocations.
+/// Each feature will go in its own argument, e.g. "--features feat1 --features feat2".
+fn features_to_args(features: &[String]) -> impl IntoIterator<Item = &str> {
+    features.iter().flat_map(|feat| ["--features", feat])
+}
+
 /// Some extra state we track for building Miri, such as the right RUSTFLAGS.
 pub struct MiriEnv {
     /// miri_dir is the root of the miri repository checkout we are working in.
@@ -116,44 +122,70 @@ impl MiriEnv {
         Ok(MiriEnv { miri_dir, toolchain, sh, sysroot, cargo_extra_flags, libdir })
     }
 
-    pub fn cargo_cmd(&self, crate_dir: impl AsRef<OsStr>, cmd: &str) -> Cmd<'_> {
+    /// Make sure the `features` you pass here exist for the specified `crate_dir`. For example, the
+    /// "--features" parameter of [crate::Command]s is intended only for the "miri" root crate.
+    pub fn cargo_cmd(
+        &self,
+        crate_dir: impl AsRef<OsStr>,
+        cmd: &str,
+        features: &[String],
+    ) -> Cmd<'_> {
         let MiriEnv { toolchain, cargo_extra_flags, .. } = self;
         let manifest_path = path!(self.miri_dir / crate_dir.as_ref() / "Cargo.toml");
+        let features = features_to_args(features);
         cmd!(
             self.sh,
-            "cargo +{toolchain} {cmd} {cargo_extra_flags...} --manifest-path {manifest_path}"
+            "cargo +{toolchain} {cmd} {cargo_extra_flags...} --manifest-path {manifest_path} {features...}"
         )
     }
 
+    /// Make sure the `features` you pass here exist for the specified `crate_dir`. For example, the
+    /// "--features" parameter of [crate::Command]s is intended only for the "miri" root crate.
     pub fn install_to_sysroot(
         &self,
-        path: impl AsRef<OsStr>,
+        crate_dir: impl AsRef<OsStr>,
+        features: &[String],
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> Result<()> {
         let MiriEnv { sysroot, toolchain, cargo_extra_flags, .. } = self;
-        let path = path!(self.miri_dir / path.as_ref());
+        let path = path!(self.miri_dir / crate_dir.as_ref());
+        let features = features_to_args(features);
         // Install binaries to the miri toolchain's `sysroot` so they do not interact with other toolchains.
         // (Not using `cargo_cmd` as `install` is special and doesn't use `--manifest-path`.)
-        cmd!(self.sh, "cargo +{toolchain} install {cargo_extra_flags...} --path {path} --force --root {sysroot} {args...}").run()?;
+        cmd!(self.sh, "cargo +{toolchain} install {cargo_extra_flags...} --path {path} --force --root {sysroot} {features...} {args...}").run()?;
         Ok(())
     }
 
-    pub fn build(&self, crate_dir: impl AsRef<OsStr>, args: &[String], quiet: bool) -> Result<()> {
+    pub fn build(
+        &self,
+        crate_dir: impl AsRef<OsStr>,
+        features: &[String],
+        args: &[String],
+        quiet: bool,
+    ) -> Result<()> {
         let quiet_flag = if quiet { Some("--quiet") } else { None };
         // We build all targets, since building *just* the bin target doesnot include
         // `dev-dependencies` and that changes feature resolution. This also gets us more
         // parallelism in `./miri test` as we build Miri and its tests together.
-        let mut cmd =
-            self.cargo_cmd(crate_dir, "build").args(&["--all-targets"]).args(quiet_flag).args(args);
+        let mut cmd = self
+            .cargo_cmd(crate_dir, "build", features)
+            .args(&["--all-targets"])
+            .args(quiet_flag)
+            .args(args);
         cmd.set_quiet(quiet);
         cmd.run()?;
         Ok(())
     }
 
     /// Returns the path to the main crate binary. Assumes that `build` has been called before.
-    pub fn build_get_binary(&self, crate_dir: impl AsRef<OsStr>) -> Result<PathBuf> {
-        let cmd =
-            self.cargo_cmd(crate_dir, "build").args(&["--all-targets", "--message-format=json"]);
+    pub fn build_get_binary(
+        &self,
+        crate_dir: impl AsRef<OsStr>,
+        features: &[String],
+    ) -> Result<PathBuf> {
+        let cmd = self
+            .cargo_cmd(crate_dir, "build", features)
+            .args(&["--all-targets", "--message-format=json"]);
         let output = cmd.output()?;
         let mut bin = None;
         for line in output.stdout.lines() {
@@ -174,23 +206,43 @@ impl MiriEnv {
         bin.ok_or_else(|| anyhow!("found no binary in cargo output"))
     }
 
-    pub fn check(&self, crate_dir: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
-        self.cargo_cmd(crate_dir, "check").arg("--all-targets").args(args).run()?;
+    pub fn check(
+        &self,
+        crate_dir: impl AsRef<OsStr>,
+        features: &[String],
+        args: &[String],
+    ) -> Result<()> {
+        self.cargo_cmd(crate_dir, "check", features).arg("--all-targets").args(args).run()?;
         Ok(())
     }
 
-    pub fn doc(&self, crate_dir: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
-        self.cargo_cmd(crate_dir, "doc").args(args).run()?;
+    pub fn doc(
+        &self,
+        crate_dir: impl AsRef<OsStr>,
+        features: &[String],
+        args: &[String],
+    ) -> Result<()> {
+        self.cargo_cmd(crate_dir, "doc", features).args(args).run()?;
         Ok(())
     }
 
-    pub fn clippy(&self, crate_dir: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
-        self.cargo_cmd(crate_dir, "clippy").arg("--all-targets").args(args).run()?;
+    pub fn clippy(
+        &self,
+        crate_dir: impl AsRef<OsStr>,
+        features: &[String],
+        args: &[String],
+    ) -> Result<()> {
+        self.cargo_cmd(crate_dir, "clippy", features).arg("--all-targets").args(args).run()?;
         Ok(())
     }
 
-    pub fn test(&self, crate_dir: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
-        self.cargo_cmd(crate_dir, "test").args(args).run()?;
+    pub fn test(
+        &self,
+        crate_dir: impl AsRef<OsStr>,
+        features: &[String],
+        args: &[String],
+    ) -> Result<()> {
+        self.cargo_cmd(crate_dir, "test", features).args(args).run()?;
         Ok(())
     }
 

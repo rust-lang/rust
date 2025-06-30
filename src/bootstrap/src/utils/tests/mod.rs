@@ -51,9 +51,35 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn paths(mut self, paths: &[&str]) -> Self {
+        for path in paths {
+            self = self.path(path);
+        }
+        self
+    }
+
+    pub fn hosts(mut self, targets: &[&str]) -> Self {
+        self.args.push("--host".to_string());
+        self.args.push(targets.join(","));
+        self
+    }
+
+    pub fn targets(mut self, targets: &[&str]) -> Self {
+        self.args.push("--target".to_string());
+        self.args.push(targets.join(","));
+        self
+    }
+
     pub fn stage(mut self, stage: u32) -> Self {
         self.args.push("--stage".to_string());
         self.args.push(stage.to_string());
+        self
+    }
+
+    pub fn args(mut self, args: &[&str]) -> Self {
+        for arg in args {
+            self.args.push(arg.to_string());
+        }
         self
     }
 

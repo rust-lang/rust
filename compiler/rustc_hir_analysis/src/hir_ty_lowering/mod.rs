@@ -51,7 +51,7 @@ use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, FulfillmentError};
 use tracing::{debug, instrument};
 
-use crate::check::check_abi_fn_ptr;
+use crate::check::check_abi;
 use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
@@ -80,10 +80,10 @@ pub enum PredicateFilter {
     /// and `<Self as Tr>::A: B`.
     SelfAndAssociatedTypeBounds,
 
-    /// Filter only the `~const` bounds, which are lowered into `HostEffect` clauses.
+    /// Filter only the `[const]` bounds, which are lowered into `HostEffect` clauses.
     ConstIfConst,
 
-    /// Filter only the `~const` bounds which are *also* in the supertrait position.
+    /// Filter only the `[const]` bounds which are *also* in the supertrait position.
     SelfConstIfConst,
 }
 
@@ -885,7 +885,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     }
                 }
                 // On the flip side, when filtering `ConstIfConst` bounds, we only need to convert
-                // `~const` bounds. All other predicates are handled in their respective queries.
+                // `[const]` bounds. All other predicates are handled in their respective queries.
                 //
                 // Note that like `PredicateFilter::SelfOnly`, we don't need to do any filtering
                 // here because we only call this on self bounds, and deal with the recursive case
@@ -2660,7 +2660,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if let hir::Node::Ty(hir::Ty { kind: hir::TyKind::BareFn(bare_fn_ty), span, .. }) =
             tcx.hir_node(hir_id)
         {
-            check_abi_fn_ptr(tcx, hir_id, *span, bare_fn_ty.abi);
+            check_abi(tcx, hir_id, *span, bare_fn_ty.abi);
         }
 
         // reject function types that violate cmse ABI requirements

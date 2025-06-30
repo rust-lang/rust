@@ -402,22 +402,22 @@ fn check_predicates<'tcx>(
 /// as some predicate on the base impl (`predicate2`).
 ///
 /// This basically just checks syntactic equivalence, but is a little more
-/// forgiving since we want to equate `T: Tr` with `T: ~const Tr` so this can work:
+/// forgiving since we want to equate `T: Tr` with `T: [const] Tr` so this can work:
 ///
 /// ```ignore (illustrative)
 /// #[rustc_specialization_trait]
 /// trait Specialize { }
 ///
 /// impl<T: Bound> Tr for T { }
-/// impl<T: ~const Bound + Specialize> const Tr for T { }
+/// impl<T: [const] Bound + Specialize> const Tr for T { }
 /// ```
 ///
 /// However, we *don't* want to allow the reverse, i.e., when the bound on the
 /// specializing impl is not as const as the bound on the base impl:
 ///
 /// ```ignore (illustrative)
-/// impl<T: ~const Bound> const Tr for T { }
-/// impl<T: Bound + Specialize> const Tr for T { } // should be T: ~const Bound
+/// impl<T: [const] Bound> const Tr for T { }
+/// impl<T: Bound + Specialize> const Tr for T { } // should be T: [const] Bound
 /// ```
 ///
 /// So we make that check in this function and try to raise a helpful error message.

@@ -1,8 +1,7 @@
 //! Basic test for calling methods on generic type parameters in `const fn`.
 
 //@ compile-flags: -Znext-solver
-//@ known-bug: #110395
-// FIXME(const_trait_impl) check-pass
+//@ check-pass
 
 #![feature(const_trait_impl)]
 
@@ -17,7 +16,7 @@ impl const PartialEq for S {
     }
 }
 
-const fn equals_self<T: ~const PartialEq>(t: &T) -> bool {
+const fn equals_self<T: [const] PartialEq>(t: &T) -> bool {
     *t == *t
 }
 

@@ -126,6 +126,40 @@ pub unsafe fn simd_shl<T>(lhs: T, rhs: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn simd_shr<T>(lhs: T, rhs: T) -> T;
 
+/// Funnel Shifts vector left elementwise, with UB on overflow.
+///
+/// Concatenates `a` and `b` elementwise (with `a` in the most significant half),
+/// creating a vector of the same length, but with each element being twice as
+/// wide. Then shift this vector left elementwise by `shift`, shifting in zeros,
+/// and extract the most significant half of each of the elements. If `a` and `b`
+/// are the same, this is equivalent to an elementwise rotate left operation.
+///
+/// `T` must be a vector of integers.
+///
+/// # Safety
+///
+/// Each element of `shift` must be less than `<int>::BITS`.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn simd_funnel_shl<T>(a: T, b: T, shift: T) -> T;
+
+/// Funnel Shifts vector right elementwise, with UB on overflow.
+///
+/// Concatenates `a` and `b` elementwise (with `a` in the most significant half),
+/// creating a vector of the same length, but with each element being twice as
+/// wide. Then shift this vector right elementwise by `shift`, shifting in zeros,
+/// and extract the least significant half of each of the elements. If `a` and `b`
+/// are the same, this is equivalent to an elementwise rotate right operation.
+///
+/// `T` must be a vector of integers.
+///
+/// # Safety
+///
+/// Each element of `shift` must be less than `<int>::BITS`.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn simd_funnel_shr<T>(a: T, b: T, shift: T) -> T;
+
 /// "Ands" vectors elementwise.
 ///
 /// `T` must be a vector of integers.
@@ -677,6 +711,14 @@ pub unsafe fn simd_floor<T>(x: T) -> T;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn simd_round<T>(x: T) -> T;
+
+/// Rounds each element to the closest integer-valued float.
+/// Ties are resolved by rounding to the number with an even least significant digit
+///
+/// `T` must be a vector of floats.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn simd_round_ties_even<T>(x: T) -> T;
 
 /// Returns the integer part of each element as an integer-valued float.
 /// In other words, non-integer values are truncated towards zero.

@@ -14,9 +14,9 @@ use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_must_use_ty;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{return_ty, trait_ref_of_method};
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
-use rustc_span::Symbol;
 use rustc_attr_data_structures::{AttributeKind, find_attr};
+use rustc_span::Symbol;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 
 use core::ops::ControlFlow;
 
@@ -34,7 +34,17 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>
         let is_public = cx.effective_visibilities.is_exported(item.owner_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if let Some((attr_span, reason)) = attr {
-            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, *attr_span, *reason, attrs, sig);
+            check_needless_must_use(
+                cx,
+                sig.decl,
+                item.owner_id,
+                item.span,
+                fn_header_span,
+                *attr_span,
+                *reason,
+                attrs,
+                sig,
+            );
         } else if is_public && !is_proc_macro(attrs) && !find_attr!(attrs, AttributeKind::NoMangle(..)) {
             check_must_use_candidate(
                 cx,
@@ -54,9 +64,20 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
         let is_public = cx.effective_visibilities.is_exported(item.owner_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         let attrs = cx.tcx.hir_attrs(item.hir_id());
-        let attr = find_attr!(cx.tcx.hir_attrs(item.hir_id()), AttributeKind::MustUse { span, reason } => (span, reason));
+        let attr =
+            find_attr!(cx.tcx.hir_attrs(item.hir_id()), AttributeKind::MustUse { span, reason } => (span, reason));
         if let Some((attr_span, reason)) = attr {
-            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, *attr_span, *reason, attrs, sig);
+            check_needless_must_use(
+                cx,
+                sig.decl,
+                item.owner_id,
+                item.span,
+                fn_header_span,
+                *attr_span,
+                *reason,
+                attrs,
+                sig,
+            );
         } else if is_public && !is_proc_macro(attrs) && trait_ref_of_method(cx, item.owner_id).is_none() {
             check_must_use_candidate(
                 cx,
@@ -77,9 +98,20 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
 
         let attrs = cx.tcx.hir_attrs(item.hir_id());
-        let attr = find_attr!(cx.tcx.hir_attrs(item.hir_id()), AttributeKind::MustUse { span, reason } => (span, reason));
+        let attr =
+            find_attr!(cx.tcx.hir_attrs(item.hir_id()), AttributeKind::MustUse { span, reason } => (span, reason));
         if let Some((attr_span, reason)) = attr {
-            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, *attr_span, *reason, attrs, sig);
+            check_needless_must_use(
+                cx,
+                sig.decl,
+                item.owner_id,
+                item.span,
+                fn_header_span,
+                *attr_span,
+                *reason,
+                attrs,
+                sig,
+            );
         } else if let hir::TraitFn::Provided(eid) = *eid {
             let body = cx.tcx.hir_body(eid);
             if attr.is_none() && is_public && !is_proc_macro(attrs) {
@@ -121,12 +153,7 @@ fn check_needless_must_use(
                 fn_header_span,
                 "this unit-returning function has a `#[must_use]` attribute",
                 |diag| {
-                    diag.span_suggestion(
-                        attr_span,
-                        "remove the attribute",
-                        "",
-                        Applicability::MachineApplicable,
-                    );
+                    diag.span_suggestion(attr_span, "remove the attribute", "", Applicability::MachineApplicable);
                 },
             );
         } else {

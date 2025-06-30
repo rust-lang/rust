@@ -3122,15 +3122,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 &mut err,
                 Some(lifetime_ref.ident.name.as_str()),
                 |err, _, span, message, suggestion, span_suggs| {
-                    err.multipart_suggestion_with_style(
+                    err.multipart_suggestion_verbose(
                         message,
                         std::iter::once((span, suggestion)).chain(span_suggs.clone()).collect(),
                         Applicability::MaybeIncorrect,
-                        if span_suggs.is_empty() {
-                            SuggestionStyle::ShowCode
-                        } else {
-                            SuggestionStyle::ShowAlways
-                        },
                     );
                     true
                 },

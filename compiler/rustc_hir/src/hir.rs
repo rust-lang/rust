@@ -3141,6 +3141,15 @@ pub enum TraitItemKind<'hir> {
     /// type.
     Type(GenericBounds<'hir>, Option<&'hir Ty<'hir>>),
 }
+impl TraitItemKind<'_> {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            TraitItemKind::Const(..) => "associated constant",
+            TraitItemKind::Fn(..) => "function",
+            TraitItemKind::Type(..) => "associated type",
+        }
+    }
+}
 
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
@@ -3201,6 +3210,15 @@ pub enum ImplItemKind<'hir> {
     Fn(FnSig<'hir>, BodyId),
     /// An associated type.
     Type(&'hir Ty<'hir>),
+}
+impl ImplItemKind<'_> {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            ImplItemKind::Const(..) => "associated constant",
+            ImplItemKind::Fn(..) => "function",
+            ImplItemKind::Type(..) => "associated type",
+        }
+    }
 }
 
 /// A constraint on an associated item.
@@ -4527,6 +4545,16 @@ pub enum ForeignItemKind<'hir> {
     Type,
 }
 
+impl ForeignItemKind<'_> {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            ForeignItemKind::Fn(..) => "function",
+            ForeignItemKind::Static(..) => "static variable",
+            ForeignItemKind::Type => "type",
+        }
+    }
+}
+
 /// A variable captured by a closure.
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub struct Upvar {
@@ -4992,9 +5020,9 @@ mod size_asserts {
     static_assert_size!(LetStmt<'_>, 72);
     static_assert_size!(Param<'_>, 32);
     static_assert_size!(Pat<'_>, 72);
+    static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(Path<'_>, 40);
     static_assert_size!(PathSegment<'_>, 48);
-    static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(QPath<'_>, 24);
     static_assert_size!(Res, 12);
     static_assert_size!(Stmt<'_>, 32);

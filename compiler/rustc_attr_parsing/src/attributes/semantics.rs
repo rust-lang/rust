@@ -13,7 +13,10 @@ impl<S: Stage> SingleAttributeParser<S> for MayDangleParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const TEMPLATE: AttributeTemplate = template!(Word);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, _args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        if let Err(span) = args.no_args() {
+            cx.expected_no_args(span);
+        }
         Some(AttributeKind::MayDangle(cx.attr_span))
     }
 }

@@ -1,20 +1,20 @@
-error[E0080]: encountered static that tried to initialize itself with itself
+error[E0080]: encountered static that tried to access itself during initialization
   --> $DIR/recursive-zst-static.rs:10:18
    |
 LL | static FOO: () = FOO;
    |                  ^^^ evaluation of `FOO` failed here
 
 error[E0391]: cycle detected when evaluating initializer of static `A`
-  --> $DIR/recursive-zst-static.rs:13:16
+  --> $DIR/recursive-zst-static.rs:13:1
    |
 LL | static A: () = B;
-   |                ^
+   | ^^^^^^^^^^^^
    |
 note: ...which requires evaluating initializer of static `B`...
-  --> $DIR/recursive-zst-static.rs:14:16
+  --> $DIR/recursive-zst-static.rs:14:1
    |
 LL | static B: () = A;
-   |                ^
+   | ^^^^^^^^^^^^
    = note: ...which again requires evaluating initializer of static `A`, completing the cycle
    = note: cycle used when running analysis passes on this crate
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information

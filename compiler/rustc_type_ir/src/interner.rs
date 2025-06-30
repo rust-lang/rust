@@ -133,7 +133,7 @@ pub trait Interner:
     type Const: Const<Self>;
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
     type BoundConst: BoundVarLike<Self>;
-    type PlaceholderConst: PlaceholderLike<Self, Bound = Self::BoundConst>;
+    type PlaceholderConst: PlaceholderConst<Self>;
     type ValueConst: ValueConst<Self>;
     type ExprConst: ExprConst<Self>;
     type ValTree: Copy + Debug + Hash + Eq;
@@ -271,6 +271,13 @@ pub trait Interner:
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
 
+    /// This is equivalent to computing the super-predicates of the trait for this impl
+    /// and filtering them to the outlives predicates. This is purely for performance.
+    fn impl_super_outlives(
+        self,
+        impl_def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+
     fn impl_is_const(self, def_id: Self::DefId) -> bool;
     fn fn_is_const(self, def_id: Self::DefId) -> bool;
     fn alias_has_const_conditions(self, def_id: Self::DefId) -> bool;
@@ -340,12 +347,6 @@ pub trait Interner:
 
     type UnsizingParams: Deref<Target = DenseBitSet<u32>>;
     fn unsizing_params_for_adt(self, adt_def_id: Self::DefId) -> Self::UnsizingParams;
-
-    fn find_const_ty_from_env(
-        self,
-        param_env: Self::ParamEnv,
-        placeholder: Self::PlaceholderConst,
-    ) -> Self::Ty;
 
     fn anonymize_bound_vars<T: TypeFoldable<Self>>(
         self,

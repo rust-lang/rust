@@ -39,7 +39,7 @@ use super::coherence::{self, Conflict};
 use super::project::ProjectionTermObligation;
 use super::util::closure_trait_ref_and_return_type;
 use super::{
-    ImplDerivedCause, Normalized, Obligation, ObligationCause, ObligationCauseCode, Overflow,
+    ImplDerivedCause, Normalized, Obligation, ObligationCause, ObligationCauseCode,
     PolyTraitObligation, PredicateObligation, Selection, SelectionError, SelectionResult,
     TraitQueryMode, const_evaluatable, project, util, wf,
 };
@@ -48,9 +48,7 @@ use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::solve::InferCtxtSelectExt as _;
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::project::{ProjectAndUnifyResult, ProjectionCacheKeyExt};
-use crate::traits::{
-    EvaluateConstErr, ProjectionCacheKey, Unimplemented, effects, sizedness_fast_path,
-};
+use crate::traits::{EvaluateConstErr, ProjectionCacheKey, effects, sizedness_fast_path};
 
 mod _match;
 mod candidate_assembly;
@@ -454,8 +452,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     Ok(Some(EvaluatedCandidate { candidate: c, evaluation: eval }))
                 }
                 Ok(_) => Ok(None),
-                Err(OverflowError::Canonical) => Err(Overflow(OverflowError::Canonical)),
-                Err(OverflowError::Error(e)) => Err(Overflow(OverflowError::Error(e))),
+                Err(OverflowError::Canonical) => {
+                    Err(SelectionError::Overflow(OverflowError::Canonical))
+                }
+                Err(OverflowError::Error(e)) => {
+                    Err(SelectionError::Overflow(OverflowError::Error(e)))
+                }
             })
             .flat_map(Result::transpose)
             .collect::<Result<Vec<_>, _>>()?;
@@ -479,7 +481,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 debug!(?stack.obligation.predicate, "found error type in predicate, treating as ambiguous");
                 Ok(None)
             } else {
-                Err(Unimplemented)
+                Err(SelectionError::Unimplemented)
             }
         } else {
             let has_non_region_infer = stack.obligation.predicate.has_non_region_infer();
@@ -660,6 +662,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                    if term.is_trivially_wf(self.tcx()) {
+                        return Ok(EvaluatedToOk);
+                    }
+
                     // So, there is a bit going on here. First, `WellFormed` predicates
                     // are coinductive, like trait predicates with auto traits.
                     // This means that we need to detect if we have recursively
@@ -979,7 +985,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                         ty::ConstKind::Bound(_, _) => bug!("escaping bound vars in {:?}", ct),
                         ty::ConstKind::Param(param_ct) => {
-                            param_ct.find_ty_from_env(obligation.param_env)
+                            param_ct.find_const_ty_from_env(obligation.param_env)
                         }
                     };
 
@@ -1222,7 +1228,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.candidate_from_obligation(stack) {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
             Ok(None) => Ok(EvaluatedToAmbig),
-            Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
+            Err(SelectionError::Overflow(OverflowError::Canonical)) => {
+                Err(OverflowError::Canonical)
+            }
             Err(..) => Ok(EvaluatedToErr),
         }
     }
@@ -1536,7 +1544,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 return Some(res);
             } else if cfg!(debug_assertions) {
                 match infcx.selection_cache.get(&(param_env, pred), tcx) {
-                    None | Some(Err(Overflow(OverflowError::Canonical))) => {}
+                    None | Some(Err(SelectionError::Overflow(OverflowError::Canonical))) => {}
                     res => bug!("unexpected local cache result: {res:?}"),
                 }
             }
@@ -1592,7 +1600,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         if self.can_use_global_caches(param_env, cache_fresh_trait_pred) {
-            if let Err(Overflow(OverflowError::Canonical)) = candidate {
+            if let Err(SelectionError::Overflow(OverflowError::Canonical)) = candidate {
                 // Don't cache overflow globally; we only produce this in certain modes.
             } else {
                 debug!(?pred, ?candidate, "insert_candidate_cache global");

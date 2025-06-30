@@ -174,7 +174,14 @@ pub(crate) struct ImportData<'ra> {
 
     pub parent_scope: ParentScope<'ra>,
     pub module_path: Vec<Segment>,
-    /// The resolution of `module_path`.
+    /// The resolution of `module_path`:
+    ///
+    /// | `module_path` | `imported_module` | remark |
+    /// |-|-|-|
+    /// |`use prefix::foo`| `ModuleOrUniformRoot::Module(prefix)`               | - |
+    /// |`use ::foo`      | `ModuleOrUniformRoot::ExternPrelude`                | 2018+ editions |
+    /// |`use ::foo`      | `ModuleOrUniformRoot::CrateRootAndExternPrelude`    | a special case in 2015 edition |
+    /// |`use foo`        | `ModuleOrUniformRoot::CurrentScope`                 | - |
     pub imported_module: Cell<Option<ModuleOrUniformRoot<'ra>>>,
     pub vis: ty::Visibility,
 }
@@ -608,7 +615,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        self.throw_unresolved_import_error(errors, glob_error);
+        if !errors.is_empty() {
+            self.throw_unresolved_import_error(errors, glob_error);
+        }
     }
 
     pub(crate) fn check_hidden_glob_reexports(
@@ -688,14 +697,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Some(def_id) if self.mods_with_parse_errors.contains(&def_id) => false,
             _ => true,
         });
+        errors.retain(|(_import, err)| {
+            // If we've encountered something like `use _;`, we've already emitted an error stating
+            // that `_` is not a valid identifier, so we ignore that resolve error.
+            err.segment != Some(kw::Underscore)
+        });
+
         if errors.is_empty() {
+            self.tcx.dcx().delayed_bug("expected a parse or \"`_` can't be an identifier\" error");
             return;
         }
 
-        /// Upper limit on the number of `span_label` messages.
-        const MAX_LABEL_COUNT: usize = 10;
-
         let span = MultiSpan::from_spans(errors.iter().map(|(_, err)| err.span).collect());
+
         let paths = errors
             .iter()
             .map(|(import, err)| {
@@ -714,6 +728,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.iter().last() {
             diag.note(note.clone());
         }
+
+        /// Upper limit on the number of `span_label` messages.
+        const MAX_LABEL_COUNT: usize = 10;
 
         for (import, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
             if let Some(label) = err.label {

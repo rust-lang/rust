@@ -16,7 +16,7 @@ use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
-    BoundRegion, BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin,
+    BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
 };
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
@@ -794,7 +794,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     };
 
                     self.infcx.next_region_var(
-                        BoundRegion(
+                        RegionVariableOrigin::BoundRegion(
                             term.source_info.span,
                             br.kind,
                             BoundRegionConversionTime::FnCall,

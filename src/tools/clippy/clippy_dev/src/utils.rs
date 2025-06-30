@@ -383,21 +383,6 @@ impl FileUpdater {
         self.update_file_checked_inner(tool, mode, path.as_ref(), update);
     }
 
-    #[expect(clippy::type_complexity)]
-    pub fn update_files_checked(
-        &mut self,
-        tool: &str,
-        mode: UpdateMode,
-        files: &mut [(
-            impl AsRef<Path>,
-            &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus,
-        )],
-    ) {
-        for (path, update) in files {
-            self.update_file_checked_inner(tool, mode, path.as_ref(), update);
-        }
-    }
-
     pub fn update_file(
         &mut self,
         path: impl AsRef<Path>,

@@ -784,7 +784,7 @@ impl<'a> State<'a> {
         match constness {
             hir::BoundConstness::Never => {}
             hir::BoundConstness::Always(_) => self.word("const"),
-            hir::BoundConstness::Maybe(_) => self.word("~const"),
+            hir::BoundConstness::Maybe(_) => self.word("[const]"),
         }
         match polarity {
             hir::BoundPolarity::Positive => {}
@@ -1333,6 +1333,10 @@ impl<'a> State<'a> {
             hir::BorrowKind::Ref => self.print_mutability(mutability, false),
             hir::BorrowKind::Raw => {
                 self.word_nbsp("raw");
+                self.print_mutability(mutability, true);
+            }
+            hir::BorrowKind::Pin => {
+                self.word_nbsp("pin");
                 self.print_mutability(mutability, true);
             }
         }

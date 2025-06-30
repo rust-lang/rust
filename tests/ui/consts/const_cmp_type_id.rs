@@ -6,11 +6,10 @@ use std::any::TypeId;
 fn main() {
     const {
         assert!(TypeId::of::<u8>() == TypeId::of::<u8>());
-        //~^ ERROR cannot call non-const operator in constants
+        //~^ ERROR the trait bound `TypeId: const PartialEq` is not satisfied
         assert!(TypeId::of::<()>() != TypeId::of::<u8>());
-        //~^ ERROR cannot call non-const operator in constants
+        //~^ ERROR the trait bound `TypeId: const PartialEq` is not satisfied
         let _a = TypeId::of::<u8>() < TypeId::of::<u16>();
-        //~^ ERROR cannot call non-const operator in constants
         // can't assert `_a` because it is not deterministic
         // FIXME(const_trait_impl) make it pass
     }

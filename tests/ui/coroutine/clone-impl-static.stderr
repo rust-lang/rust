@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `{static coroutine@$DIR/clone-impl-static.rs:11:5: 11:19}: Copy` is not satisfied
   --> $DIR/clone-impl-static.rs:14:16
    |
-LL |     check_copy(&gen);
-   |     ---------- ^^^^ the trait `Copy` is not implemented for `{static coroutine@$DIR/clone-impl-static.rs:11:5: 11:19}`
+LL |     check_copy(&generator);
+   |     ---------- ^^^^^^^^^^ the trait `Copy` is not implemented for `{static coroutine@$DIR/clone-impl-static.rs:11:5: 11:19}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -15,8 +15,8 @@ LL | fn check_copy<T: Copy>(_x: &T) {}
 error[E0277]: the trait bound `{static coroutine@$DIR/clone-impl-static.rs:11:5: 11:19}: Clone` is not satisfied
   --> $DIR/clone-impl-static.rs:16:17
    |
-LL |     check_clone(&gen);
-   |     ----------- ^^^^ the trait `Clone` is not implemented for `{static coroutine@$DIR/clone-impl-static.rs:11:5: 11:19}`
+LL |     check_clone(&generator);
+   |     ----------- ^^^^^^^^^^ the trait `Clone` is not implemented for `{static coroutine@$DIR/clone-impl-static.rs:11:5: 11:19}`
    |     |
    |     required by a bound introduced by this call
    |

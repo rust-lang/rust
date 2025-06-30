@@ -25,6 +25,6 @@ fn downcast<'a, W: ?Sized>() -> std::io::Result<&'a W> {
 struct Other;
 
 fn main() -> std::io::Result<()> {
-    let other: Other = downcast()?;//~ERROR 28:24: 28:35: `?` operator has incompatible types
+    let other: Other = downcast()?; //~ ERROR `?` operator has incompatible types
     Ok(())
 }

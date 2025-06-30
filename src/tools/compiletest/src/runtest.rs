@@ -11,7 +11,7 @@ use std::{env, iter, str};
 
 use build_helper::fs::remove_and_create_dir_all;
 use camino::{Utf8Path, Utf8PathBuf};
-use colored::Colorize;
+use colored::{Color, Colorize};
 use regex::{Captures, Regex};
 use tracing::*;
 
@@ -677,9 +677,6 @@ impl<'test> TestCx<'test> {
             return;
         }
 
-        // On Windows, translate all '\' path separators to '/'
-        let file_name = self.testpaths.file.to_string().replace(r"\", "/");
-
         // On Windows, keep all '\' path separators to match the paths reported in the JSON output
         // from the compiler
         let diagnostic_file_name = if self.props.remap_src_base {
@@ -704,6 +701,7 @@ impl<'test> TestCx<'test> {
             .map(|e| Error { msg: self.normalize_output(&e.msg, &[]), ..e });
 
         let mut unexpected = Vec::new();
+        let mut unimportant = Vec::new();
         let mut found = vec![false; expected_errors.len()];
         for actual_error in actual_errors {
             for pattern in &self.props.error_patterns {
@@ -738,14 +736,9 @@ impl<'test> TestCx<'test> {
                         && expected_kinds.contains(&actual_error.kind)
                         && !self.props.dont_require_annotations.contains(&actual_error.kind)
                     {
-                        self.error(&format!(
-                            "{}:{}: unexpected {}: '{}'",
-                            file_name,
-                            actual_error.line_num_str(),
-                            actual_error.kind,
-                            actual_error.msg
-                        ));
                         unexpected.push(actual_error);
+                    } else {
+                        unimportant.push(actual_error);
                     }
                 }
             }
@@ -755,39 +748,140 @@ impl<'test> TestCx<'test> {
         // anything not yet found is a problem
         for (index, expected_error) in expected_errors.iter().enumerate() {
             if !found[index] {
-                self.error(&format!(
-                    "{}:{}: expected {} not found: {}",
-                    file_name,
-                    expected_error.line_num_str(),
-                    expected_error.kind,
-                    expected_error.msg
-                ));
                 not_found.push(expected_error);
             }
         }
 
         if !unexpected.is_empty() || !not_found.is_empty() {
             self.error(&format!(
-                "{} unexpected errors found, {} expected errors not found",
+                "{} unexpected diagnostics reported, {} expected diagnostics not reported",
                 unexpected.len(),
                 not_found.len()
             ));
-            println!("status: {}\ncommand: {}\n", proc_res.status, proc_res.cmdline);
+
+            // Emit locations in a format that is short (relative paths) but "clickable" in editors.
+            // Also normalize path separators to `/`.
+            let file_name = self
+                .testpaths
+                .file
+                .strip_prefix(self.config.src_root.as_str())
+                .unwrap_or(&self.testpaths.file)
+                .to_string()
+                .replace(r"\", "/");
+            let line_str = |e: &Error| {
+                let line_num = e.line_num.map_or("?".to_string(), |line_num| line_num.to_string());
+                // `file:?:NUM` may be confusing to editors and unclickable.
+                let opt_col_num = match e.column_num {
+                    Some(col_num) if line_num != "?" => format!(":{col_num}"),
+                    _ => "".to_string(),
+                };
+                format!("{file_name}:{line_num}{opt_col_num}")
+            };
+            let print_error = |e| println!("{}: {}: {}", line_str(e), e.kind, e.msg.cyan());
+            let push_suggestion =
+                |suggestions: &mut Vec<_>, e: &Error, kind, line, msg, color, rank| {
+                    let mut ret = String::new();
+                    if kind {
+                        ret += &format!("{} {}", "with kind".color(color), e.kind);
+                    }
+                    if line {
+                        if !ret.is_empty() {
+                            ret.push(' ');
+                        }
+                        ret += &format!("{} {}", "on line".color(color), line_str(e));
+                    }
+                    if msg {
+                        if !ret.is_empty() {
+                            ret.push(' ');
+                        }
+                        ret += &format!("{} {}", "with message".color(color), e.msg.cyan());
+                    }
+                    suggestions.push((ret, rank));
+                };
+            let show_suggestions = |mut suggestions: Vec<_>, prefix: &str, color| {
+                // Only show suggestions with the highest rank.
+                suggestions.sort_by_key(|(_, rank)| *rank);
+                if let Some(&(_, top_rank)) = suggestions.first() {
+                    for (suggestion, rank) in suggestions {
+                        if rank == top_rank {
+                            println!("  {} {suggestion}", prefix.color(color));
+                        }
+                    }
+                }
+            };
+
+            // Fuzzy matching quality:
+            // - message and line / message and kind - great, suggested
+            // - only message - good, suggested
+            // - known line and kind - ok, suggested
+            // - only known line - meh, but suggested
+            // - others are not worth suggesting
             if !unexpected.is_empty() {
-                println!("{}", "--- unexpected errors (from JSON output) ---".green());
+                let header = "--- reported in JSON output but not expected in test file ---";
+                println!("{}", header.green());
                 for error in &unexpected {
-                    println!("{}", error.render_for_expected());
+                    print_error(error);
+                    let mut suggestions = Vec::new();
+                    for candidate in &not_found {
+                        let mut push_red_suggestion = |line, msg, rank| {
+                            push_suggestion(
+                                &mut suggestions,
+                                candidate,
+                                candidate.kind != error.kind,
+                                line,
+                                msg,
+                                Color::Red,
+                                rank,
+                            )
+                        };
+                        if error.msg.contains(&candidate.msg) {
+                            push_red_suggestion(candidate.line_num != error.line_num, false, 0);
+                        } else if candidate.line_num.is_some()
+                            && candidate.line_num == error.line_num
+                        {
+                            push_red_suggestion(false, true, 1);
+                        }
+                    }
+
+                    show_suggestions(suggestions, "expected", Color::Red);
                 }
                 println!("{}", "---".green());
             }
             if !not_found.is_empty() {
-                println!("{}", "--- not found errors (from test file) ---".red());
+                let header = "--- expected in test file but not reported in JSON output ---";
+                println!("{}", header.red());
                 for error in &not_found {
-                    println!("{}", error.render_for_expected());
+                    print_error(error);
+                    let mut suggestions = Vec::new();
+                    for candidate in unexpected.iter().chain(&unimportant) {
+                        let mut push_green_suggestion = |line, msg, rank| {
+                            push_suggestion(
+                                &mut suggestions,
+                                candidate,
+                                candidate.kind != error.kind,
+                                line,
+                                msg,
+                                Color::Green,
+                                rank,
+                            )
+                        };
+                        if candidate.msg.contains(&error.msg) {
+                            push_green_suggestion(candidate.line_num != error.line_num, false, 0);
+                        } else if candidate.line_num.is_some()
+                            && candidate.line_num == error.line_num
+                        {
+                            push_green_suggestion(false, true, 1);
+                        }
+                    }
+
+                    show_suggestions(suggestions, "reported", Color::Green);
                 }
-                println!("{}", "---\n".red());
+                println!("{}", "---".red());
             }
-            panic!("errors differ from expected");
+            panic!(
+                "errors differ from expected\nstatus: {}\ncommand: {}\n",
+                proc_res.status, proc_res.cmdline
+            );
         }
     }
 
@@ -2073,7 +2167,6 @@ impl<'test> TestCx<'test> {
             println!("{}", String::from_utf8_lossy(&output.stdout));
             eprintln!("{}", String::from_utf8_lossy(&output.stderr));
         } else {
-            use colored::Colorize;
             eprintln!("warning: no pager configured, falling back to unified diff");
             eprintln!(
                 "help: try configuring a git pager (e.g. `delta`) with `git config --global core.pager delta`"

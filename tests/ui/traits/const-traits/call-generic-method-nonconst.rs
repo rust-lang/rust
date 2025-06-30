@@ -14,7 +14,7 @@ impl Foo for S {
     }
 }
 
-const fn equals_self<T: ~const Foo>(t: &T) -> bool {
+const fn equals_self<T: [const] Foo>(t: &T) -> bool {
     true
 }
 

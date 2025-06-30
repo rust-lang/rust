@@ -1,33 +1,15 @@
-error[E0015]: cannot call non-const operator in constants
+error[E0277]: the trait bound `TypeId: const PartialEq` is not satisfied
   --> $DIR/const_cmp_type_id.rs:8:17
    |
 LL |         assert!(TypeId::of::<u8>() == TypeId::of::<u8>());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: impl defined here, but it is not `const`
-  --> $SRC_DIR/core/src/any.rs:LL:COL
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: cannot call non-const operator in constants
+error[E0277]: the trait bound `TypeId: const PartialEq` is not satisfied
   --> $DIR/const_cmp_type_id.rs:10:17
    |
 LL |         assert!(TypeId::of::<()>() != TypeId::of::<u8>());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: impl defined here, but it is not `const`
-  --> $SRC_DIR/core/src/any.rs:LL:COL
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: cannot call non-const operator in constants
-  --> $DIR/const_cmp_type_id.rs:12:18
-   |
-LL |         let _a = TypeId::of::<u8>() < TypeId::of::<u16>();
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: impl defined here, but it is not `const`
-  --> $SRC_DIR/core/src/any.rs:LL:COL
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0277`.

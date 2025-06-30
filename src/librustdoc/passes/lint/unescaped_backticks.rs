@@ -42,13 +42,15 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
 
                 // If we can't get a span of the backtick, because it is in a `#[doc = ""]` attribute,
                 // use the span of the entire attribute as a fallback.
-                let span = source_span_for_markdown_range(
+                let span = match source_span_for_markdown_range(
                     tcx,
                     dox,
                     &(backtick_index..backtick_index + 1),
                     &item.attrs.doc_strings,
-                )
-                .unwrap_or_else(|| item.attr_span(tcx));
+                ) {
+                    Some((sp, _)) => sp,
+                    None => item.attr_span(tcx),
+                };
 
                 tcx.node_span_lint(crate::lint::UNESCAPED_BACKTICKS, hir_id, span, |lint| {
                     lint.primary_message("unescaped backtick");
@@ -419,7 +421,7 @@ fn suggest_insertion(
     /// Maximum bytes of context to show around the insertion.
     const CONTEXT_MAX_LEN: usize = 80;
 
-    if let Some(span) = source_span_for_markdown_range(
+    if let Some((span, _)) = source_span_for_markdown_range(
         cx.tcx,
         dox,
         &(insert_index..insert_index),

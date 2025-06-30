@@ -14,8 +14,10 @@ impl<S: Stage> SingleAttributeParser<S> for AsPtrParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(Word);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, _args: &ArgParser<'_>) -> Option<AttributeKind> {
-        // FIXME: check that there's no args (this is currently checked elsewhere)
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        if let Err(span) = args.no_args() {
+            cx.expected_no_args(span);
+        }
         Some(AttributeKind::AsPtr(cx.attr_span))
     }
 }
@@ -27,8 +29,10 @@ impl<S: Stage> SingleAttributeParser<S> for PubTransparentParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(Word);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, _args: &ArgParser<'_>) -> Option<AttributeKind> {
-        // FIXME: check that there's no args (this is currently checked elsewhere)
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        if let Err(span) = args.no_args() {
+            cx.expected_no_args(span);
+        }
         Some(AttributeKind::PubTransparent(cx.attr_span))
     }
 }

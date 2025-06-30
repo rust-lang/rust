@@ -71,6 +71,7 @@ pub fn check(
                                 if !ignore {
                                     get_test_spans(&item, *ident, &mut test_attr_spans);
                                 }
+
                                 let is_async = matches!(sig.header.coroutine_kind, Some(CoroutineKind::Async { .. }));
                                 let returns_nothing = match &sig.decl.output {
                                     FnRetTy::Default(..) => true,
@@ -89,9 +90,14 @@ pub fn check(
                             // Another function was found; this case is ignored for needless_doctest_main
                             ItemKind::Fn(fn_) => {
                                 eligible = false;
-                                if !ignore {
-                                    get_test_spans(&item, fn_.ident, &mut test_attr_spans);
+                                if ignore {
+                                    // If ignore is active invalidating one lint,
+                                    // and we already found another function thus
+                                    // invalidating the other one, we have no
+                                    // business continuing.
+                                    return (false, test_attr_spans);
                                 }
+                                get_test_spans(&item, fn_.ident, &mut test_attr_spans);
                             },
                             // Tests with one of these items are ignored
                             ItemKind::Static(..)
@@ -104,7 +110,10 @@ pub fn check(
                         },
                         Ok(None) => break,
                         Err(e) => {
-                            e.cancel();
+                            // See issue #15041. When calling `.cancel()` on the `Diag`, Clippy will unexpectedly panic
+                            // when the `Diag` is unwinded. Meanwhile, we can just call `.emit()`, since the `DiagCtxt`
+                            // is just a sink, nothing will be printed.
+                            e.emit();
                             return (false, test_attr_spans);
                         },
                     }
@@ -118,6 +127,18 @@ pub fn check(
     }
 
     let trailing_whitespace = text.len() - text.trim_end().len();
+
+    // We currently only test for "fn main". Checking for the real
+    // entrypoint (with tcx.entry_fn(())) in each block would be unnecessarily
+    // expensive, as those are probably intended and relevant. Same goes for
+    // macros and other weird ways of declaring a main function.
+    //
+    // Also, as we only check for attribute names and don't do macro expansion,
+    // we can check only for #[test]
+
+    if !((text.contains("main") && text.contains("fn")) || text.contains("#[test]")) {
+        return;
+    }
 
     // Because of the global session, we need to create a new session in a different thread with
     // the edition we need.

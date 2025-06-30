@@ -7,7 +7,7 @@ pub trait Tr {
 
     fn b(&self) {
         ().a()
-        //~^ ERROR the trait bound `(): ~const Tr` is not satisfied
+        //~^ ERROR the trait bound `(): [const] Tr` is not satisfied
     }
 }
 

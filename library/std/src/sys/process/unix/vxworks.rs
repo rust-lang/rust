@@ -151,8 +151,8 @@ impl Process {
     }
 
     pub fn send_signal(&self, signal: i32) -> io::Result<()> {
-        // If we've already waited on this process then the pid can be recycled
-        // and used for another process, and we probably shouldn't be killing
+        // If we've already waited on this process then the pid can be recycled and
+        // used for another process, and we probably shouldn't be sending signals to
         // random processes, so return Ok because the process has exited already.
         if self.status.is_some() {
             Ok(())

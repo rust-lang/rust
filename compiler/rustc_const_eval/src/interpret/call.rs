@@ -6,7 +6,7 @@ use std::borrow::Cow;
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiOf, IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::sym;

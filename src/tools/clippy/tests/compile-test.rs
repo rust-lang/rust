@@ -7,9 +7,9 @@ use askama::filters::Safe;
 use cargo_metadata::Message;
 use cargo_metadata::diagnostic::{Applicability, Diagnostic};
 use clippy_config::ClippyConfiguration;
-use clippy_lints::LintInfo;
 use clippy_lints::declared_lints::LINTS;
 use clippy_lints::deprecated_lints::{DEPRECATED, DEPRECATED_VERSION, RENAMED};
+use declare_clippy_lint::LintInfo;
 use pulldown_cmark::{Options, Parser, html};
 use serde::Deserialize;
 use test_utils::IS_RUSTC_TEST_SUITE;
@@ -568,10 +568,10 @@ impl LintMetadata {
         Self {
             id: name,
             id_location: Some(lint.location),
-            group: lint.category_str(),
+            group: lint.category.name(),
             level: lint.lint.default_level.as_str(),
             docs,
-            version: lint.version.unwrap(),
+            version: lint.version,
             applicability,
         }
     }

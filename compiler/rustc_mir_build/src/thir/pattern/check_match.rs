@@ -331,7 +331,11 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | WrapUnsafeBinder { source } => self.is_known_valid_scrutinee(&self.thir()[*source]),
 
             // These diverge.
-            Become { .. } | Break { .. } | Continue { .. } | Return { .. } => true,
+            Become { .. }
+            | Break { .. }
+            | Continue { .. }
+            | ConstContinue { .. }
+            | Return { .. } => true,
 
             // These are statements that evaluate to `()`.
             Assign { .. } | AssignOp { .. } | InlineAsm { .. } | Let { .. } => true,
@@ -353,6 +357,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | Literal { .. }
             | LogicalOp { .. }
             | Loop { .. }
+            | LoopMatch { .. }
             | Match { .. }
             | NamedConst { .. }
             | NonHirLiteral { .. }
@@ -685,8 +690,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             let span = self.tcx.def_span(def_id);
             let variable = self.tcx.item_name(def_id).to_string();
             // When we encounter a constant as the binding name, point at the `const` definition.
-            interpreted_as_const = Some(span);
-            interpreted_as_const_sugg = Some(InterpretedAsConst { span: pat.span, variable });
+            interpreted_as_const = Some(InterpretedAsConst { span, variable: variable.clone() });
+            interpreted_as_const_sugg = Some(InterpretedAsConstSugg { span: pat.span, variable });
         } else if let PatKind::Constant { .. } = unpeeled_pat.kind
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
         {
@@ -738,6 +743,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             false
         };
 
+        let witness_1 = cx.print_witness_pat(witnesses.get(0).unwrap());
+
         self.error = Err(self.tcx.dcx().emit_err(PatternNotCovered {
             span: pat.span,
             origin,
@@ -746,6 +753,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             interpreted_as_const,
             interpreted_as_const_sugg,
             witness_1_is_privately_uninhabited,
+            witness_1,
             _p: (),
             pattern_ty,
             let_suggestion,

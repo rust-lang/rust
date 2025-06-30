@@ -432,7 +432,9 @@ pub(crate) mod rustc {
                     if variant_layout.is_uninhabited() {
                         return Ok(Self::uninhabited());
                     }
-                    let tag = cx.tcx().tag_for_variant((cx.tcx().erase_regions(ty), index));
+                    let tag = cx.tcx().tag_for_variant(
+                        cx.typing_env.as_query_input((cx.tcx().erase_regions(ty), index)),
+                    );
                     let variant_def = Def::Variant(def.variant(index));
                     Self::from_variant(
                         variant_def,

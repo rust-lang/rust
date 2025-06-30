@@ -421,7 +421,9 @@ fn const_evaluatable_predicates_of<'tcx>(
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ConstCollector<'tcx> {
         fn visit_const(&mut self, c: ty::Const<'tcx>) {
             if let ty::ConstKind::Unevaluated(uv) = c.kind() {
-                if is_const_param_default(self.tcx, uv.def.expect_local()) {
+                if let Some(local) = uv.def.as_local()
+                    && is_const_param_default(self.tcx, local)
+                {
                     // Do not look into const param defaults,
                     // these get checked when they are actually instantiated.
                     //
@@ -666,7 +668,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
                 item.span,
             );
         }
-        //`ConstIfConst` is only interested in `~const` bounds.
+        //`ConstIfConst` is only interested in `[const]` bounds.
         PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {}
     }
 
@@ -821,7 +823,7 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
                         assert_eq!(
                             pred.constness,
                             ty::BoundConstness::Maybe,
-                            "expected `~const` predicate when computing `{filter:?}` \
+                            "expected `[const]` predicate when computing `{filter:?}` \
                             implied bounds: {clause:?}",
                         );
                         assert_eq!(
@@ -1009,7 +1011,7 @@ pub(super) fn const_conditions<'tcx>(
             }
             _ => bug!("const_conditions called on wrong item: {def_id:?}"),
         },
-        // While associated types are not really const, we do allow them to have `~const`
+        // While associated types are not really const, we do allow them to have `[const]`
         // bounds and where clauses. `const_conditions` is responsible for gathering
         // these up so we can check them in `compare_type_predicate_entailment`, and
         // in `HostEffect` goal computation.

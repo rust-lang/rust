@@ -31,12 +31,12 @@ use cc::Tool;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
-use utils::execution_context::ExecutionContext;
+use utils::exec::ExecutionContext;
 
 use crate::core::builder;
 use crate::core::builder::Kind;
 use crate::core::config::{DryRun, LldMode, LlvmLibunwind, TargetSelection, flags};
-use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, command};
+use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
     self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo, symlink_dir,
 };
@@ -383,7 +383,7 @@ impl Build {
         let in_tree_gcc_info = config.in_tree_gcc_info.clone();
 
         let initial_target_libdir = command(&config.initial_rustc)
-            .run_always()
+            .run_in_dry_run()
             .args(["--print", "target-libdir"])
             .run_capture_stdout(&config)
             .stdout()
@@ -490,7 +490,7 @@ impl Build {
         // If local-rust is the same major.minor as the current version, then force a
         // local-rebuild
         let local_version_verbose = command(&build.initial_rustc)
-            .run_always()
+            .run_in_dry_run()
             .args(["--version", "--verbose"])
             .run_capture_stdout(&build)
             .stdout();
@@ -518,7 +518,7 @@ impl Build {
 
             // Make sure we update these before gathering metadata so we don't get an error about missing
             // Cargo.toml files.
-            let rust_submodules = ["library/backtrace", "library/stdarch"];
+            let rust_submodules = ["library/backtrace"];
             for s in rust_submodules {
                 build.require_submodule(
                     s,
@@ -949,7 +949,7 @@ impl Build {
         static SYSROOT_CACHE: OnceLock<PathBuf> = OnceLock::new();
         SYSROOT_CACHE.get_or_init(|| {
             command(&self.initial_rustc)
-                .run_always()
+                .run_in_dry_run()
                 .args(["--print", "sysroot"])
                 .run_capture_stdout(self)
                 .stdout()
@@ -1512,7 +1512,7 @@ impl Build {
                     "refs/remotes/origin/{}..HEAD",
                     self.config.stage0_metadata.config.nightly_branch
                 ))
-                .run_always()
+                .run_in_dry_run()
                 .run_capture(self)
                 .stdout()
         });
