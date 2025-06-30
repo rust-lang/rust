@@ -361,6 +361,23 @@ mod tests {
     }
 
     #[test]
+    fn test_fold_func_with_multiline_param_list() {
+        check(
+            r#"
+<fold function>fn func<fold arglist>(
+    a: i32,
+    b: i32,
+    c: i32,
+)</fold> <fold block>{
+
+
+
+}</fold></fold>
+"#,
+        );
+    }
+
+    #[test]
     fn test_fold_comments() {
         check(
             r#"
@@ -572,10 +589,10 @@ const _: S = S <fold block>{
     fn fold_multiline_params() {
         check(
             r#"
-fn foo<fold arglist>(
+<fold function>fn foo<fold arglist>(
     x: i32,
     y: String,
-) {}</fold>
+)</fold> {}</fold>
 "#,
         )
     }
