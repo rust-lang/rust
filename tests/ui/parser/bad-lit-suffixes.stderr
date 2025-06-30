@@ -150,5 +150,15 @@ LL |     1.0e10suffix;
    |
    = help: valid suffixes are `f32` and `f64`
 
-error: aborting due to 20 previous errors; 2 warnings emitted
+error[E0805]: malformed `rustc_layout_scalar_valid_range_start` attribute input
+  --> $DIR/bad-lit-suffixes.rs:42:1
+   |
+LL | #[rustc_layout_scalar_valid_range_start(0suffix)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------^
+   | |                                      |
+   | |                                      expected a single argument here
+   | help: must be of the form: `#[rustc_layout_scalar_valid_range_start(start)]`
 
+error: aborting due to 21 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0805`.
