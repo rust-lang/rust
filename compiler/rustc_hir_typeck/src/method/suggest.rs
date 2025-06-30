@@ -1725,7 +1725,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if unsatisfied_predicates.is_empty()
                 // ...or if we already suggested that name because of `rustc_confusable` annotation
                 && Some(similar_candidate.name()) != confusable_suggested
-                // and if the we aren't in an expansion.
+                // and if we aren't in an expansion.
                 && !span.from_expansion()
             {
                 self.find_likely_intended_associated_item(
@@ -3481,9 +3481,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         item_name: Ident,
-        valid_out_of_scope_traits: Vec<DefId>,
+        mut valid_out_of_scope_traits: Vec<DefId>,
         explain: bool,
     ) -> bool {
+        valid_out_of_scope_traits.retain(|id| self.tcx.is_user_visible_dep(id.krate));
         if !valid_out_of_scope_traits.is_empty() {
             let mut candidates = valid_out_of_scope_traits;
             candidates.sort_by_key(|id| self.tcx.def_path_str(id));
@@ -4388,7 +4389,7 @@ pub(crate) struct TraitInfo {
 /// Retrieves all traits in this crate and any dependent crates,
 /// and wraps them into `TraitInfo` for custom sorting.
 pub(crate) fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
-    tcx.all_traits().map(|def_id| TraitInfo { def_id }).collect()
+    tcx.all_traits_including_private().map(|def_id| TraitInfo { def_id }).collect()
 }
 
 fn print_disambiguation_help<'tcx>(
