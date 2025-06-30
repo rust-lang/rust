@@ -51,7 +51,6 @@ declare_lint_pass!(IfNotElse => [IF_NOT_ELSE]);
 impl LateLintPass<'_> for IfNotElse {
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &Expr<'_>) {
         if let ExprKind::If(cond, cond_inner, Some(els)) = e.kind
-            && let ExprKind::DropTemps(cond) = cond.kind
             && let ExprKind::Block(..) = els.kind
         {
             let (msg, help) = match cond.kind {
