@@ -263,9 +263,6 @@ const_eval_non_const_try_block_from_output =
 const_eval_not_enough_caller_args =
     calling a function with fewer arguments than it requires
 
-const_eval_nullary_intrinsic_fail =
-    could not evaluate nullary intrinsic
-
 const_eval_offset_from_different_allocations =
     `{$name}` called on two different pointers that are not both derived from the same allocation
 const_eval_offset_from_out_of_bounds =

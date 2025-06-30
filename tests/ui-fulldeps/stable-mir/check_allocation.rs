@@ -19,12 +19,6 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use stable_mir::crate_def::CrateDef;
-use stable_mir::mir::alloc::GlobalAlloc;
-use stable_mir::mir::mono::{Instance, InstanceKind, StaticDef};
-use stable_mir::mir::{Body, TerminatorKind};
-use stable_mir::ty::{Allocation, ConstantKind, RigidTy, TyKind};
-use stable_mir::{CrateItem, CrateItems, ItemKind};
 use std::ascii::Char;
 use std::assert_matches::assert_matches;
 use std::cmp::{max, min};
@@ -32,6 +26,13 @@ use std::collections::HashMap;
 use std::ffi::CStr;
 use std::io::Write;
 use std::ops::ControlFlow;
+
+use stable_mir::crate_def::CrateDef;
+use stable_mir::mir::Body;
+use stable_mir::mir::alloc::GlobalAlloc;
+use stable_mir::mir::mono::{Instance, StaticDef};
+use stable_mir::ty::{Allocation, ConstantKind};
+use stable_mir::{CrateItem, CrateItems, ItemKind};
 
 const CRATE_NAME: &str = "input";
 
@@ -44,7 +45,6 @@ fn test_stable_mir() -> ControlFlow<()> {
     check_len(*get_item(&items, (ItemKind::Static, "LEN")).unwrap());
     check_cstr(*get_item(&items, (ItemKind::Static, "C_STR")).unwrap());
     check_other_consts(*get_item(&items, (ItemKind::Fn, "other_consts")).unwrap());
-    check_type_id(*get_item(&items, (ItemKind::Fn, "check_type_id")).unwrap());
     ControlFlow::Continue(())
 }
 
@@ -107,7 +107,9 @@ fn check_other_consts(item: CrateItem) {
     // Instance body will force constant evaluation.
     let body = Instance::try_from(item).unwrap().body().unwrap();
     let assigns = collect_consts(&body);
-    assert_eq!(assigns.len(), 8);
+    assert_eq!(assigns.len(), 10);
+    let mut char_id = None;
+    let mut bool_id = None;
     for (name, alloc) in assigns {
         match name.as_str() {
             "_max_u128" => {
@@ -149,35 +151,21 @@ fn check_other_consts(item: CrateItem) {
                 assert_eq!(max(first, second) as u32, u32::MAX);
                 assert_eq!(min(first, second), 10);
             }
+            "_bool_id" => {
+                bool_id = Some(alloc);
+            }
+            "_char_id" => {
+                char_id = Some(alloc);
+            }
             _ => {
                 unreachable!("{name} -- {alloc:?}")
             }
         }
     }
-}
-
-/// Check that we can retrieve the type id of char and bool, and that they have different values.
-fn check_type_id(item: CrateItem) {
-    let body = Instance::try_from(item).unwrap().body().unwrap();
-    let mut ids: Vec<u128> = vec![];
-    for term in body.blocks.iter().map(|bb| &bb.terminator) {
-        match &term.kind {
-            TerminatorKind::Call { func, destination, .. } => {
-                let TyKind::RigidTy(ty) = func.ty(body.locals()).unwrap().kind() else {
-                    unreachable!()
-                };
-                let RigidTy::FnDef(def, args) = ty else { unreachable!() };
-                let instance = Instance::resolve(def, &args).unwrap();
-                assert_eq!(instance.kind, InstanceKind::Intrinsic);
-                let dest_ty = destination.ty(body.locals()).unwrap();
-                let alloc = instance.try_const_eval(dest_ty).unwrap();
-                ids.push(alloc.read_uint().unwrap());
-            }
-            _ => { /* Do nothing */ }
-        }
-    }
-    assert_eq!(ids.len(), 2);
-    assert_ne!(ids[0], ids[1]);
+    let bool_id = bool_id.unwrap();
+    let char_id = char_id.unwrap();
+    // FIXME(stable_mir): add `read_ptr` to `Allocation`
+    assert_ne!(bool_id, char_id);
 }
 
 /// Collects all the constant assignments.
@@ -235,6 +223,7 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         file,
         r#"
     #![feature(core_intrinsics)]
+    #![expect(internal_features)]
     use std::intrinsics::type_id;
 
     static LEN: usize = 2;
@@ -254,11 +243,8 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         let _ptr = &BAR;
         let _null_ptr: *const u8 = NULL;
         let _tuple = TUPLE;
-    }}
-
-    fn check_type_id() {{
-        let _char_id = type_id::<char>();
-        let _bool_id = type_id::<bool>();
+        let _char_id = const {{ type_id::<char>() }};
+        let _bool_id = const {{ type_id::<bool>() }};
     }}
 
     pub fn main() {{
