@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `abcdef` in this scope
-  --> $DIR/hygiene.rs:5:10
+  --> $DIR/concat-hygiene.rs:5:10
    |
 LL |         ${concat($lhs, $rhs)}
    |          ^^^^^^^^^^^^^^^^^^^^ not found in this scope

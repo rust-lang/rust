@@ -1,17 +1,17 @@
 error: invalid syntax
-  --> $DIR/repetitions.rs:14:20
+  --> $DIR/concat-repetitions.rs:14:20
    |
 LL |             const ${concat($a, Z)}: i32 = 3;
    |                    ^^^^^^^^^^^^^^^
 
 error: invalid syntax
-  --> $DIR/repetitions.rs:22:17
+  --> $DIR/concat-repetitions.rs:22:17
    |
 LL |         read::<${concat($t, $en)}>()
    |                 ^^^^^^^^^^^^^^^^^
 
 error: invalid syntax
-  --> $DIR/repetitions.rs:22:17
+  --> $DIR/concat-repetitions.rs:22:17
    |
 LL |         read::<${concat($t, $en)}>()
    |                 ^^^^^^^^^^^^^^^^^

@@ -109,9 +109,6 @@ expand_malformed_feature_attribute =
 
 expand_meta_var_dif_seq_matchers = {$msg}
 
-expand_meta_var_expr_unrecognized_var =
-    variable `{$key}` is not recognized in meta-variable expression
-
 expand_missing_fragment_specifier = missing fragment specifier
     .note = fragment specifiers must be provided
     .suggestion_add_fragspec = try adding a specifier here
@@ -135,6 +132,59 @@ expand_module_multiple_candidates =
 
 expand_must_repeat_once =
     this must repeat at least once
+
+expand_mve_concat_invalid_in =
+    invalid item within a {"`${concat(..)}`"} expression
+    .metavar_label = expanding this metavariable
+    .float_lit = float literals cannot be concatenated
+    .c_str_lit = C string literals cannot be concatenated
+    .b_str_lit = byte literals cannot be concatenated
+    .raw_ident = raw identifiers cannot be concatenated
+    .unsupported = unsupported input for `concat(..)`
+    .valid_types = `concat` can join {$valid}
+    .expected_metavar = expected an identifier
+    .expected_metavar_dollar = `$` indicates the start of a metavariable
+    .invalid_metavar = expanding something
+    .valid_metavars = {"`${concat(..)}`"} can join metavariables of type {$valid}
+
+expand_mve_concat_invalid_out =
+    invalid item within a {"`${concat(..)}`"} would produce an invalid identifier
+    .label = todo
+
+expand_mve_expected_ident =
+    expected an identifier
+    .not_ident = not a valid identifier
+    .expr_name = expected a metavariable expression name: `{"${expr( /* ... */ )}"}`
+    .expr_name_note = valid metavariable expressions are {$valid_expr_list}
+    .ignore_expr_note = `ignore` takes a metavariable argument
+    .count_expr_note = `count` takes a metavariable argument
+
+expand_mve_extra_tokens_in_braces =
+    unexpected trailing tokens in metavariable expression braces
+    .suggestion = try removing these tokens
+
+expand_mve_extra_tokens_in_expr =
+    unexpected trailing tokens in metavariable expression
+    .label = for this metavariable expression
+    .note= the `{$name}` metavariable expression takes up to {$max} arguments
+    .suggestion = try removing {$count ->
+        [one] this token
+        *[other] these tokens
+    }
+
+expand_mve_missing_paren =
+    expected `(`
+    .label = for this this metavariable expression
+    .note = metavariable expressions use function-like parentheses syntax
+    .suggestion = try adding parentheses
+
+expand_mve_unrecognized_expr =
+    unrecognized metavariable expression
+    .label = not a valid metavariable expression
+    .note = valid metavariable expressions are {$valid_expr_list}
+
+expand_mve_unrecognized_var =
+    variable `{$key}` is not recognized in meta-variable expression
 
 expand_non_inline_modules_in_proc_macro_input_are_unstable =
     non-inline modules in proc macro input are unstable

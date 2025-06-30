@@ -1,0 +1,32 @@
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-trace-errors.rs:9:24
+   |
+LL |         ${concat("hi", " bye ")};
+   |                        ^^^^^^^
+
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-trace-errors.rs:11:24
+   |
+LL |         ${concat("hi", "-", "bye")};
+   |                        ^^^
+
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-trace-errors.rs:13:22
+   |
+LL |         ${concat($a, "-")};
+   |                      ^^^
+
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-trace-errors.rs:25:17
+   |
+LL | post_expansion!("!");
+   |                 ^^^
+
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-trace-errors.rs:34:31
+   |
+LL | post_expansion_many!(a, b, c, ".d", e);
+   |                               ^^^^
+
+error: aborting due to 5 previous errors
+

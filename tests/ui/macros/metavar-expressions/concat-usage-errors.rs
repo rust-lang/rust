@@ -1,15 +1,17 @@
+//@ edition: 2021
+
 #![feature(macro_metavar_expr_concat)]
 
-macro_rules! wrong_concat_declarations {
+macro_rules! syntax_errors {
     ($ex:expr) => {
         ${concat()}
-        //~^ ERROR expected identifier
+        //~^ ERROR `concat` must have at least two elements
 
         ${concat(aaaa)}
         //~^ ERROR `concat` must have at least two elements
 
         ${concat(aaaa,)}
-        //~^ ERROR expected identifier
+        //~^ ERROR `concat` must have at least two elements
 
         ${concat(_, aaaa)}
 
@@ -20,13 +22,12 @@ macro_rules! wrong_concat_declarations {
         //~^ ERROR `concat` must have at least two elements
 
         ${concat($ex, aaaa)}
-        //~^ ERROR metavariables of `${concat(..)}` must be of type
+        //~^ ERROR invalid item within a `${concat(..)}` expression
 
         ${concat($ex, aaaa 123)}
         //~^ ERROR expected comma
 
         ${concat($ex, aaaa,)}
-        //~^ ERROR expected identifier
     };
 }
 
@@ -53,7 +54,8 @@ macro_rules! starting_valid_unicode {
 macro_rules! starting_invalid_unicode {
     ($ident:ident) => {{
         let ${concat("\u{00BD}", $ident)}: () = ();
-        //~^ ERROR `${concat(..)}` is not generating a valid identifier
+        //~^ ERROR invalid item within a `${concat(..)}` expression
+        //~| ERROR expected pattern
     }};
 }
 
@@ -72,7 +74,8 @@ macro_rules! ending_valid_unicode {
 macro_rules! ending_invalid_unicode {
     ($ident:ident) => {{
         let ${concat($ident, "\u{00BD}")}: () = ();
-        //~^ ERROR `${concat(..)}` is not generating a valid identifier
+        //~^ ERROR invalid item within a `${concat(..)}` expression
+        //~| ERROR expected pattern
     }};
 }
 
@@ -85,16 +88,28 @@ macro_rules! empty {
 
 macro_rules! unsupported_literals {
     ($ident:ident) => {{
-        let ${concat(_a, 'b')}: () = ();
-        //~^ ERROR expected identifier or string literal
+        let ${concat(_a, 1.5)}: () = ();
+        //~^ ERROR invalid item within a `${concat(..)}` expression
         //~| ERROR expected pattern
-        let ${concat(_a, 1)}: () = ();
-        //~^ ERROR expected identifier or string literal
+        let ${concat(_a, c"hi")}: () = ();
+        //~^ ERROR invalid item within a `${concat(..)}` expression
+        let ${concat(_a, b"hi")}: () = ();
+        //~^ ERROR invalid item within a `${concat(..)}` expression
+        let ${concat(_a, b'b')}: () = ();
+        //~^ ERROR invalid item within a `${concat(..)}` expression
+        let ${concat(_a, b'b')}: () = ();
+        //~^ ERROR invalid item within a `${concat(..)}` expression
 
-        let ${concat($ident, 'b')}: () = ();
-        //~^ ERROR expected identifier or string literal
-        let ${concat($ident, 1)}: () = ();
-        //~^ ERROR expected identifier or string literal
+        let ${concat($ident, 1.5)}: () = ();
+        //~^ ERROR invalid item within a `${concat(..)}` expression
+        let ${concat($ident, c"hi")}: () = ();
+        //~^ ERROR invalid item within a `${concat(..)}` expression
+        let ${concat($ident, b"hi")}: () = ();
+        //~^ ERROR invalid item within a `${concat(..)}` expression
+        let ${concat($ident, b'b')}: () = ();
+        //~^ ERROR invalid item within a `${concat(..)}` expression
+        let ${concat($ident, b'b')}: () = ();
+        //~^ ERROR invalid item within a `${concat(..)}` expression
     }};
 }
 
@@ -132,7 +147,7 @@ macro_rules! bad_tt_literal {
 }
 
 fn main() {
-    wrong_concat_declarations!(1);
+    syntax_errors!(1);
 
     dollar_sign_without_referenced_ident!(VAR);
 
