@@ -49,12 +49,17 @@ fn opt(x: Option<u32>) {
     }
 }
 
-macro_rules! this_is_a_really_really_long_macro_name {
+macro_rules! long_name_that_fits_on_a_single_line {
+    () => {}
+}
+long_name_that_fits_on_a_single_line!();
+
+macro_rules! long_name_that_doesnt_fit_on_one_line {
     ($t:ty) => {
         fn f(_: $t) {}
     }
 }
-this_is_a_really_really_long_macro_name!(u32!()); // AstFragmentKind::{Items,Ty}
+long_name_that_doesnt_fit_on_one_line!(u32!()); // AstFragmentKind::{Items,Ty}
 
 macro_rules! trait_tys {
     () => {
