@@ -26,6 +26,7 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
     }
 
     bb0: {
+        StorageLive(_5);
         StorageLive(_4);
         StorageLive(_2);
         _2 = copy ((*_1).0: u32);
@@ -54,6 +55,7 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
 
     bb3: {
         StorageDead(_4);
+        StorageDead(_5);
         return;
     }
 }
