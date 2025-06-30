@@ -536,8 +536,6 @@ impl TtParser {
                         // The separator matches the current token. Advance past it.
                         mp.idx += 1;
                         self.next_mps.push(mp);
-                    } else {
-                        track.set_expected_token(separator);
                     }
                 }
                 &MatcherLoc::SequenceKleeneOpAfterSep { idx_first } => {

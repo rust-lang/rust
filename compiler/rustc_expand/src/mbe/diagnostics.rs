@@ -195,38 +195,6 @@ impl<'dcx> CollectTrackerAndEmitter<'dcx, '_> {
     }
 }
 
-/// Currently used by macro_rules! compilation to extract a little information from the `Failure`
-/// case.
-pub(crate) struct FailureForwarder<'matcher> {
-    expected_token: Option<&'matcher Token>,
-}
-
-impl<'matcher> FailureForwarder<'matcher> {
-    pub(crate) fn new() -> Self {
-        Self { expected_token: None }
-    }
-}
-
-impl<'matcher> Tracker<'matcher> for FailureForwarder<'matcher> {
-    type Failure = (Token, u32, &'static str);
-
-    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure {
-        (tok, position, msg)
-    }
-
-    fn description() -> &'static str {
-        "failure-forwarder"
-    }
-
-    fn set_expected_token(&mut self, tok: &'matcher Token) {
-        self.expected_token = Some(tok);
-    }
-
-    fn get_expected_token(&self) -> Option<&'matcher Token> {
-        self.expected_token
-    }
-}
-
 pub(super) fn emit_frag_parse_err(
     mut e: Diag<'_>,
     parser: &Parser<'_>,
@@ -321,7 +289,7 @@ enum ExplainDocComment {
     },
 }
 
-pub(super) fn annotate_doc_comment(err: &mut Diag<'_>, sm: &SourceMap, span: Span) {
+fn annotate_doc_comment(err: &mut Diag<'_>, sm: &SourceMap, span: Span) {
     if let Ok(src) = sm.span_to_snippet(span) {
         if src.starts_with("///") || src.starts_with("/**") {
             err.subdiagnostic(ExplainDocComment::Outer { span });
@@ -333,7 +301,7 @@ pub(super) fn annotate_doc_comment(err: &mut Diag<'_>, sm: &SourceMap, span: Spa
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
 /// other tokens, this is "unexpected token...".
-pub(super) fn parse_failure_msg(tok: &Token, expected_token: Option<&Token>) -> Cow<'static, str> {
+fn parse_failure_msg(tok: &Token, expected_token: Option<&Token>) -> Cow<'static, str> {
     if let Some(expected_token) = expected_token {
         Cow::from(format!("expected {}, found {}", token_descr(expected_token), token_descr(tok)))
     } else {

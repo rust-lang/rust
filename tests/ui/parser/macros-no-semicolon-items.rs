@@ -1,5 +1,5 @@
 macro_rules! foo()  //~ ERROR semicolon
-                    //~| ERROR unexpected end of macro
+                    //~| ERROR macros must contain at least one rule
 
 macro_rules! bar {
     ($($tokens:tt)*) => {}
