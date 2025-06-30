@@ -590,6 +590,7 @@ impl FileTimesExt for fs::FileTimes {
 /// the process as an administrator.
 ///
 /// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
+#[doc(alias = "CreateSymbolicLink", alias = "CreateSymbolicLinkW")]
 #[stable(feature = "symlink", since = "1.1.0")]
 pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     sys::fs::symlink_inner(original.as_ref(), link.as_ref(), false)
@@ -629,6 +630,7 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io:
 /// the process as an administrator.
 ///
 /// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
+#[doc(alias = "CreateSymbolicLink", alias = "CreateSymbolicLinkW")]
 #[stable(feature = "symlink", since = "1.1.0")]
 pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     sys::fs::symlink_inner(original.as_ref(), link.as_ref(), true)
