@@ -448,7 +448,7 @@ even run the resulting program. Just add one of the following
   - `//@ build-pass` — compilation and linking should succeed but do
     not run the resulting binary.
   - `//@ run-pass` — compilation should succeed and running the resulting
-    binary should also succeed.
+    binary should make it exit with code 0 which indicates success.
 - Fail directives:
   - `//@ check-fail` — compilation should fail (the codegen phase is skipped).
     This is the default for UI tests.
@@ -457,7 +457,10 @@ even run the resulting program. Just add one of the following
     without the codegen phase, then a second time the full compile should
     fail.
   - `//@ run-fail` — compilation should succeed, but running the resulting
-    binary should fail.
+    binary should make it exit with a code in the range `1..=127` which
+    indicates regular failure.
+  - `//@ run-crash` — compilation should succeed, but running the resulting
+    binary should fail with a crash (e.g. `SIGABRT` or `SIGSEGV`).
 
 For `run-pass` and `run-fail` tests, by default the output of the program itself
 is not checked.

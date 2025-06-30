@@ -6,8 +6,8 @@ use rustfix::{Filter, apply_suggestions, get_suggestions_from_json};
 use tracing::debug;
 
 use super::{
-    AllowUnused, Emit, FailMode, LinkToAux, PassMode, TargetLocation, TestCx, TestOutput,
-    Truncated, UI_FIXED, WillExecute,
+    AllowUnused, Emit, FailMode, LinkToAux, PassMode, RunFailMode, TargetLocation, TestCx,
+    TestOutput, Truncated, UI_FIXED, WillExecute,
 };
 use crate::json;
 
@@ -140,12 +140,51 @@ impl TestCx<'_> {
                     &proc_res,
                 );
             }
+            let code = proc_res.status.code();
+            let exit_with_success = proc_res.status.success();
+            // A normal failure exit code is between 1 and 127. If we don't have
+            // an exit code or if it is outside that range (and not 0) we
+            // consider it a crash.
+            let exit_with_failure = code.is_some_and(|c| c >= 1 && c <= 127);
+            let exit_with_crash = !exit_with_success && !exit_with_failure;
             if self.should_run_successfully(pm) {
-                if !proc_res.status.success() {
-                    self.fatal_proc_rec("test run failed!", &proc_res);
+                if !exit_with_success {
+                    self.fatal_proc_rec(
+                        &format!("test did not exit with success! code={code:?}"),
+                        &proc_res,
+                    );
                 }
-            } else if proc_res.status.success() {
-                self.fatal_proc_rec("test run succeeded!", &proc_res);
+            } else if self.props.fail_mode == Some(FailMode::Run(RunFailMode::ExitWithFailure)) {
+                // If the test is marked as `run-fail` but do not support
+                // unwinding we allow it to crash, since a panic will trigger an
+                // abort (crash) instead of unwind (exit with code 101).
+                let crash_is_ok = !self.config.can_unwind();
+                let exit_with_failure_or_crash_if_ok =
+                    exit_with_failure || (exit_with_crash && crash_is_ok);
+
+                let extra_failure_msg = if crash_is_ok {
+                    &format!(
+                        " or crash (crash allowed since `{}` does not support unwinding)",
+                        self.config.target
+                    )
+                } else {
+                    ""
+                };
+
+                if !exit_with_failure_or_crash_if_ok {
+                    self.fatal_proc_rec(
+                        &format!(
+                            "test did not exit with failure code 1..=127{extra_failure_msg}! code={code:?}",
+                        ),
+                        &proc_res,
+                    );
+                }
+            } else {
+                // If we get here it means we should not run successfully and we
+                // should not exit with failure. So we should crash.
+                if !exit_with_crash {
+                    self.fatal_proc_rec(&format!("test did not crash! code={code:?}"), &proc_res);
+                }
             }
 
             self.get_output(&proc_res)

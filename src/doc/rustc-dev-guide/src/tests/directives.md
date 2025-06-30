@@ -75,8 +75,9 @@ expectations](ui.md#controlling-passfail-expectations).
 | `check-fail`                | Building (no codegen) should fail           | `ui`, `crashes`                           | N/A             |
 | `build-pass`                | Building should pass                        | `ui`, `crashes`, `codegen`, `incremental` | N/A             |
 | `build-fail`                | Building should fail                        | `ui`, `crashes`                           | N/A             |
-| `run-pass`                  | Running the test binary should pass         | `ui`, `crashes`, `incremental`            | N/A             |
-| `run-fail`                  | Running the test binary should fail         | `ui`, `crashes`                           | N/A             |
+| `run-pass`                  | Program must exit with code `0`             | `ui`, `crashes`, `incremental`            | N/A             |
+| `run-fail`                  | Program must exit with code `1..=127`       | `ui`, `crashes`                           | N/A             |
+| `run-crash`                 | Program must crash                          | `ui`,                                     | N/A             |
 | `ignore-pass`               | Ignore `--pass` flag                        | `ui`, `crashes`, `codegen`, `incremental` | N/A             |
 | `dont-check-failure-status` | Don't check exact failure status (i.e. `1`) | `ui`, `incremental`                       | N/A             |
 | `failure-status`            | Check                                       | `ui`, `crashes`                           | Any `u16`       |

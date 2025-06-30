@@ -241,6 +241,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "regex-error-pattern",
     "remap-src-base",
     "revisions",
+    "run-crash",
     "run-fail",
     "run-flags",
     "run-pass",
