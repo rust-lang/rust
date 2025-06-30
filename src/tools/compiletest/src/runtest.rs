@@ -27,7 +27,7 @@ use crate::errors::{Error, ErrorKind, load_errors};
 use crate::header::TestProps;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::util::{Utf8PathBufExt, add_dylib_path, logv, static_regex};
-use crate::{ColorConfig, json, stamp_file_path};
+use crate::{ColorConfig, help, json, stamp_file_path, warning};
 
 mod debugger;
 
@@ -485,12 +485,15 @@ impl<'test> TestCx<'test> {
                 .windows(2)
                 .any(|args| args == cfg_arg || args[0] == arg || args[1] == arg)
             {
-                panic!(
-                    "error: redundant cfg argument `{normalized_revision}` is already created by the revision"
+                error!(
+                    "redundant cfg argument `{normalized_revision}` is already created by the \
+                    revision"
                 );
+                panic!("redundant cfg argument");
             }
             if self.config.builtin_cfg_names().contains(&normalized_revision) {
-                panic!("error: revision `{normalized_revision}` collides with a builtin cfg");
+                error!("revision `{normalized_revision}` collides with a built-in cfg");
+                panic!("revision collides with built-in cfg");
             }
             cmd.args(cfg_arg);
         }
@@ -2167,9 +2170,10 @@ impl<'test> TestCx<'test> {
             println!("{}", String::from_utf8_lossy(&output.stdout));
             eprintln!("{}", String::from_utf8_lossy(&output.stderr));
         } else {
-            eprintln!("warning: no pager configured, falling back to unified diff");
-            eprintln!(
-                "help: try configuring a git pager (e.g. `delta`) with `git config --global core.pager delta`"
+            warning!("no pager configured, falling back to unified diff");
+            help!(
+                "try configuring a git pager (e.g. `delta`) with \
+                `git config --global core.pager delta`"
             );
             let mut out = io::stdout();
             let mut diff = BufReader::new(File::open(&diff_filename).unwrap());
