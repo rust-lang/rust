@@ -159,7 +159,7 @@ pub enum VendoredLibrariesConfig<'a> {
 impl StaticIndex<'_> {
     fn add_file(&mut self, file_id: FileId) {
         let current_crate = crates_for(self.db, file_id).pop().map(Into::into);
-        let folds = self.analysis.folding_ranges(file_id).unwrap();
+        let folds = self.analysis.folding_ranges(file_id, true).unwrap();
         let inlay_hints = self
             .analysis
             .inlay_hints(

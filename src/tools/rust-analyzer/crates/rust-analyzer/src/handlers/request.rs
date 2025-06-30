@@ -1264,11 +1264,15 @@ pub(crate) fn handle_folding_range(
     params: FoldingRangeParams,
 ) -> anyhow::Result<Option<Vec<FoldingRange>>> {
     let _p = tracing::info_span!("handle_folding_range").entered();
+
     let file_id = try_default!(from_proto::file_id(&snap, &params.text_document.uri)?);
-    let folds = snap.analysis.folding_ranges(file_id)?;
+    let collapsed_text = snap.config.folding_range_collapsed_text();
+    let folds = snap.analysis.folding_ranges(file_id, collapsed_text)?;
+
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.file_line_index(file_id)?;
     let line_folding_only = snap.config.line_folding_only();
+
     let res = folds
         .into_iter()
         .map(|it| to_proto::folding_range(&text, &line_index, line_folding_only, it))
