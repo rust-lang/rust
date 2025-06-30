@@ -1191,11 +1191,6 @@ impl AstPass {
 /// The kind of compiler desugaring.
 #[derive(Clone, Copy, PartialEq, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum DesugaringKind {
-    /// We desugar `if c { i } else { e }` to `match $ExprKind::Use(c) { true => i, _ => e }`.
-    /// However, we do not want to blame `c` for unreachability but rather say that `i`
-    /// is unreachable. This desugaring kind allows us to avoid blaming `c`.
-    /// This also applies to `while` loops.
-    CondTemporary,
     QuestionMark,
     TryBlock,
     YeetExpr,
@@ -1230,7 +1225,6 @@ impl DesugaringKind {
     /// The description wording should combine well with "desugaring of {}".
     pub fn descr(self) -> &'static str {
         match self {
-            DesugaringKind::CondTemporary => "`if` or `while` condition",
             DesugaringKind::Async => "`async` block or function",
             DesugaringKind::Await => "`await` expression",
             DesugaringKind::QuestionMark => "operator `?`",
@@ -1253,7 +1247,6 @@ impl DesugaringKind {
     /// like `from_desugaring = "QuestionMark"`
     pub fn matches(&self, value: &str) -> bool {
         match self {
-            DesugaringKind::CondTemporary => value == "CondTemporary",
             DesugaringKind::Async => value == "Async",
             DesugaringKind::Await => value == "Await",
             DesugaringKind::QuestionMark => value == "QuestionMark",
