@@ -1122,7 +1122,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty_pat(variant);
                 }
             },
-            TyPatKind::Err(_) => {},
+            TyPatKind::NotNull | TyPatKind::Err(_) => {},
         }
     }
 
