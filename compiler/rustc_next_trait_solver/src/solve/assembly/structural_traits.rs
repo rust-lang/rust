@@ -997,12 +997,12 @@ where
     }
 
     fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Ambiguous> {
-        if let ty::Alias(ty::Projection, alias_ty) = ty.kind() {
-            if let Some(term) = self.try_eagerly_replace_alias(alias_ty.into())? {
-                return Ok(term.expect_ty());
-            }
+        if let ty::Alias(ty::Projection, alias_ty) = ty.kind()
+            && let Some(term) = self.try_eagerly_replace_alias(alias_ty.into())?
+        {
+            Ok(term.expect_ty())
+        } else {
+            ty.try_super_fold_with(self)
         }
-
-        ty.try_super_fold_with(self)
     }
 }
