@@ -9,7 +9,7 @@
 //@ has - '//li[@id="fn1"]/p/sup[@id="fnref2"]/a[@href="#fn2"]' '2'
 //@ has - '//li[@id="fn1"]//a[@href="#fn2"]' '2'
 //@ has - '//li[@id="fn2"]/p' 'uwu'
-//@ has - '//li[@id="fn2"]/p/sup[@id="fnref1"]/a[@href="#fn1"]' '1'
+//@ has - '//li[@id="fn2"]/p/sup[@id="fnref1-2"]/a[@href="#fn1"]' '1'
 //@ has - '//li[@id="fn2"]//a[@href="#fn1"]' '1'
 
 //! # footnote-hell
