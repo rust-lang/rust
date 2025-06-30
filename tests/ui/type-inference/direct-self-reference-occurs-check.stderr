@@ -1,5 +1,5 @@
 error[E0275]: overflow assigning `Box<_>` to `_`
-  --> $DIR/occurs-check.rs:3:18
+  --> $DIR/direct-self-reference-occurs-check.rs:7:18
    |
 LL |     f = Box::new(f);
    |                  ^

@@ -1,3 +1,5 @@
+//! Test that `Copy` cannot be implemented if any field doesn't implement `Copy`.
+
 struct CantCopyThis;
 
 struct IWantToCopyThis {

@@ -1,5 +1,5 @@
 error[E0204]: the trait `Copy` cannot be implemented for this type
-  --> $DIR/opt-in-copy.rs:7:15
+  --> $DIR/copy-requires-all-fields-copy.rs:9:15
    |
 LL |     but_i_cant: CantCopyThis,
    |     ------------------------ this field does not implement `Copy`
@@ -8,7 +8,7 @@ LL | impl Copy for IWantToCopyThis {}
    |               ^^^^^^^^^^^^^^^
 
 error[E0204]: the trait `Copy` cannot be implemented for this type
-  --> $DIR/opt-in-copy.rs:19:15
+  --> $DIR/copy-requires-all-fields-copy.rs:21:15
    |
 LL |     ButICant(CantCopyThisEither),
    |              ------------------ this field does not implement `Copy`

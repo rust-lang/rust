@@ -1,5 +1,5 @@
 error[E0275]: overflow assigning `Box<_>` to `_`
-  --> $DIR/occurs-check-2.rs:6:9
+  --> $DIR/infinite-type-occurs-check.rs:9:9
    |
 LL |     g = f;
    |         ^
