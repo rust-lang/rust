@@ -291,13 +291,14 @@ fn handle_control_flow_keywords(
     token: &SyntaxToken,
 ) -> Option<Vec<NavigationTarget>> {
     match token.kind() {
-        // For `fn` / `loop` / `while` / `for` / `async`, return the keyword it self,
+        // For `fn` / `loop` / `while` / `for` / `async` / `match`, return the keyword it self,
         // so that VSCode will find the references when using `ctrl + click`
         T![fn] | T![async] | T![try] | T![return] => nav_for_exit_points(sema, token),
         T![loop] | T![while] | T![break] | T![continue] => nav_for_break_points(sema, token),
         T![for] if token.parent().and_then(ast::ForExpr::cast).is_some() => {
             nav_for_break_points(sema, token)
         }
+        T![match] | T![=>] | T![if] => nav_for_branch_exit_points(sema, token),
         _ => None,
     }
 }
@@ -403,6 +404,91 @@ fn nav_for_exit_points(
         })
         .flatten()
         .collect_vec();
+
+    Some(navs)
+}
+
+pub(crate) fn find_branch_root(
+    sema: &Semantics<'_, RootDatabase>,
+    token: &SyntaxToken,
+) -> Vec<SyntaxNode> {
+    let find_nodes = |node_filter: fn(SyntaxNode) -> Option<SyntaxNode>| {
+        sema.descend_into_macros(token.clone())
+            .into_iter()
+            .filter_map(|token| node_filter(token.parent()?))
+            .collect_vec()
+    };
+
+    match token.kind() {
+        T![match] => find_nodes(|node| Some(ast::MatchExpr::cast(node)?.syntax().clone())),
+        T![=>] => find_nodes(|node| Some(ast::MatchArm::cast(node)?.syntax().clone())),
+        T![if] => find_nodes(|node| {
+            let if_expr = ast::IfExpr::cast(node)?;
+
+            let root_if = iter::successors(Some(if_expr.clone()), |if_expr| {
+                let parent_if = if_expr.syntax().parent().and_then(ast::IfExpr::cast)?;
+                let ast::ElseBranch::IfExpr(else_branch) = parent_if.else_branch()? else {
+                    return None;
+                };
+
+                (else_branch.syntax() == if_expr.syntax()).then_some(parent_if)
+            })
+            .last()?;
+
+            Some(root_if.syntax().clone())
+        }),
+        _ => vec![],
+    }
+}
+
+fn nav_for_branch_exit_points(
+    sema: &Semantics<'_, RootDatabase>,
+    token: &SyntaxToken,
+) -> Option<Vec<NavigationTarget>> {
+    let db = sema.db;
+
+    let navs = match token.kind() {
+        T![match] => find_branch_root(sema, token)
+            .into_iter()
+            .filter_map(|node| {
+                let file_id = sema.hir_file_for(&node);
+                let match_expr = ast::MatchExpr::cast(node)?;
+                let focus_range = match_expr.match_token()?.text_range();
+                let match_expr_in_file = InFile::new(file_id, match_expr.into());
+                Some(expr_to_nav(db, match_expr_in_file, Some(focus_range)))
+            })
+            .flatten()
+            .collect_vec(),
+
+        T![=>] => find_branch_root(sema, token)
+            .into_iter()
+            .filter_map(|node| {
+                let match_arm = ast::MatchArm::cast(node)?;
+                let match_expr = sema
+                    .ancestors_with_macros(match_arm.syntax().clone())
+                    .find_map(ast::MatchExpr::cast)?;
+                let file_id = sema.hir_file_for(match_expr.syntax());
+                let focus_range = match_arm.fat_arrow_token()?.text_range();
+                let match_expr_in_file = InFile::new(file_id, match_expr.into());
+                Some(expr_to_nav(db, match_expr_in_file, Some(focus_range)))
+            })
+            .flatten()
+            .collect_vec(),
+
+        T![if] => find_branch_root(sema, token)
+            .into_iter()
+            .filter_map(|node| {
+                let file_id = sema.hir_file_for(&node);
+                let if_expr = ast::IfExpr::cast(node)?;
+                let focus_range = if_expr.if_token()?.text_range();
+                let if_expr_in_file = InFile::new(file_id, if_expr.into());
+                Some(expr_to_nav(db, if_expr_in_file, Some(focus_range)))
+            })
+            .flatten()
+            .collect_vec(),
+
+        _ => return Some(Vec::new()),
+    };
 
     Some(navs)
 }
@@ -3612,6 +3698,157 @@ fn foo() {
     let _ = core::mem::offset_of!(Bar, 0.Ab$0c.0.field);
 }
         "#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_match_keyword() {
+        check(
+            r#"
+fn main() {
+    match$0 0 {
+ // ^^^^^
+        0 => {},
+        _ => {},
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_match_arm_fat_arrow() {
+        check(
+            r#"
+fn main() {
+    match 0 {
+        0 =>$0 {},
+       // ^^
+        _ => {},
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_if_keyword() {
+        check(
+            r#"
+fn main() {
+    if$0 true {
+ // ^^
+        ()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_match_nested_in_if() {
+        check(
+            r#"
+fn main() {
+    if true {
+        match$0 0 {
+     // ^^^^^
+            0 => {},
+            _ => {},
+        }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_multiple_match_expressions() {
+        check(
+            r#"
+fn main() {
+    match 0 {
+        0 => {},
+        _ => {},
+    };
+
+    match$0 1 {
+ // ^^^^^
+        1 => {},
+        _ => {},
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_nested_match_expressions() {
+        check(
+            r#"
+fn main() {
+    match 0 {
+        0 => match$0 1 {
+          // ^^^^^
+            1 => {},
+            _ => {},
+        },
+        _ => {},
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_if_else_chains() {
+        check(
+            r#"
+fn main() {
+    if true {
+ // ^^
+        ()
+    } else if$0 false {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_match_with_guards() {
+        check(
+            r#"
+fn main() {
+    match 42 {
+        x if x > 0 =>$0 {},
+                // ^^
+        _ => {},
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_match_with_macro_arm() {
+        check(
+            r#"
+macro_rules! arm {
+    () => { 0 => {} };
+}
+
+fn main() {
+    match$0 0 {
+ // ^^^^^
+        arm!(),
+        _ => {},
+    }
+}
+"#,
         );
     }
 }

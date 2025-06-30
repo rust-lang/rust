@@ -2250,7 +2250,7 @@ impl ExprCollector<'_> {
                         Some(ModuleDefId::ConstId(_)) => (None, Pat::Path(name.into())),
                         Some(ModuleDefId::EnumVariantId(variant))
                         // FIXME: This can cause a cycle if the user is writing invalid code
-                            if self.db.variant_fields(variant.into()).shape != FieldsShape::Record =>
+                            if variant.fields(self.db).shape != FieldsShape::Record =>
                         {
                             (None, Pat::Path(name.into()))
                         }
@@ -2825,14 +2825,7 @@ impl ExprCollector<'_> {
         let use_format_args_since_1_89_0 = fmt_args().is_some() && fmt_unsafe_arg().is_none();
 
         let idx = if use_format_args_since_1_89_0 {
-            self.collect_format_args_impl(
-                syntax_ptr,
-                fmt,
-                hygiene,
-                argmap,
-                lit_pieces,
-                format_options,
-            )
+            self.collect_format_args_impl(syntax_ptr, fmt, argmap, lit_pieces, format_options)
         } else {
             self.collect_format_args_before_1_89_0_impl(
                 syntax_ptr,
@@ -2962,7 +2955,6 @@ impl ExprCollector<'_> {
         &mut self,
         syntax_ptr: AstPtr<ast::Expr>,
         fmt: FormatArgs,
-        hygiene: HygieneId,
         argmap: FxIndexSet<(usize, ArgumentType)>,
         lit_pieces: ExprId,
         format_options: ExprId,
@@ -2997,8 +2989,11 @@ impl ExprCollector<'_> {
             let args =
                 self.alloc_expr_desugared(Expr::Array(Array::ElementList { elements: args }));
             let args_name = Name::new_symbol_root(sym::args);
-            let args_binding =
-                self.alloc_binding(args_name.clone(), BindingAnnotation::Unannotated, hygiene);
+            let args_binding = self.alloc_binding(
+                args_name.clone(),
+                BindingAnnotation::Unannotated,
+                HygieneId::ROOT,
+            );
             let args_pat = self.alloc_pat_desugared(Pat::Bind { id: args_binding, subpat: None });
             self.add_definition_to_binding(args_binding, args_pat);
             // TODO: We don't have `super let` yet.
@@ -3008,13 +3003,16 @@ impl ExprCollector<'_> {
                 initializer: Some(args),
                 else_branch: None,
             };
-            (vec![let_stmt], self.alloc_expr_desugared(Expr::Path(Path::from(args_name))))
+            (vec![let_stmt], self.alloc_expr_desugared(Expr::Path(args_name.into())))
         } else {
             // Generate:
             //     super let args = (&arg0, &arg1, &...);
             let args_name = Name::new_symbol_root(sym::args);
-            let args_binding =
-                self.alloc_binding(args_name.clone(), BindingAnnotation::Unannotated, hygiene);
+            let args_binding = self.alloc_binding(
+                args_name.clone(),
+                BindingAnnotation::Unannotated,
+                HygieneId::ROOT,
+            );
             let args_pat = self.alloc_pat_desugared(Pat::Bind { id: args_binding, subpat: None });
             self.add_definition_to_binding(args_binding, args_pat);
             let elements = arguments
@@ -3057,8 +3055,11 @@ impl ExprCollector<'_> {
                 .collect();
             let array =
                 self.alloc_expr_desugared(Expr::Array(Array::ElementList { elements: args }));
-            let args_binding =
-                self.alloc_binding(args_name.clone(), BindingAnnotation::Unannotated, hygiene);
+            let args_binding = self.alloc_binding(
+                args_name.clone(),
+                BindingAnnotation::Unannotated,
+                HygieneId::ROOT,
+            );
             let args_pat = self.alloc_pat_desugared(Pat::Bind { id: args_binding, subpat: None });
             self.add_definition_to_binding(args_binding, args_pat);
             let let_stmt2 = Statement::Let {

@@ -21,6 +21,7 @@ use hir::{PathResolution, Semantics};
 use ide_db::{
     FileId, RootDatabase,
     defs::{Definition, NameClass, NameRefClass},
+    helpers::pick_best_token,
     search::{ReferenceCategory, SearchScope, UsageSearchResult},
 };
 use itertools::Itertools;
@@ -397,7 +398,11 @@ fn handle_control_flow_keywords(
         .attach_first_edition(file_id)
         .map(|it| it.edition(sema.db))
         .unwrap_or(Edition::CURRENT);
-    let token = file.syntax().token_at_offset(offset).find(|t| t.kind().is_keyword(edition))?;
+    let token = pick_best_token(file.syntax().token_at_offset(offset), |kind| match kind {
+        _ if kind.is_keyword(edition) => 4,
+        T![=>] => 3,
+        _ => 1,
+    })?;
 
     let references = match token.kind() {
         T![fn] | T![return] | T![try] => highlight_related::highlight_exit_points(sema, token),
@@ -408,6 +413,7 @@ fn handle_control_flow_keywords(
         T![for] if token.parent().and_then(ast::ForExpr::cast).is_some() => {
             highlight_related::highlight_break_points(sema, token)
         }
+        T![if] | T![=>] | T![match] => highlight_related::highlight_branch_exit_points(sema, token),
         _ => return None,
     }
     .into_iter()
@@ -1340,6 +1346,159 @@ impl Foo {
                 self SelfParam FileId(0) 47..51 47..51
 
                 FileId(0) 63..67 read
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_highlight_if_branches() {
+        check(
+            r#"
+fn main() {
+    let x = if$0 true {
+        1
+    } else if false {
+        2
+    } else {
+        3
+    };
+
+    println!("x: {}", x);
+}
+"#,
+            expect![[r#"
+                FileId(0) 24..26
+                FileId(0) 42..43
+                FileId(0) 55..57
+                FileId(0) 74..75
+                FileId(0) 97..98
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_highlight_match_branches() {
+        check(
+            r#"
+fn main() {
+    $0match Some(42) {
+        Some(x) if x > 0 => println!("positive"),
+        Some(0) => println!("zero"),
+        Some(_) => println!("negative"),
+        None => println!("none"),
+    };
+}
+"#,
+            expect![[r#"
+                FileId(0) 16..21
+                FileId(0) 61..81
+                FileId(0) 102..118
+                FileId(0) 139..159
+                FileId(0) 177..193
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_highlight_match_arm_arrow() {
+        check(
+            r#"
+fn main() {
+    match Some(42) {
+        Some(x) if x > 0 $0=> println!("positive"),
+        Some(0) => println!("zero"),
+        Some(_) => println!("negative"),
+        None => println!("none"),
+    }
+}
+"#,
+            expect![[r#"
+                FileId(0) 58..60
+                FileId(0) 61..81
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_highlight_nested_branches() {
+        check(
+            r#"
+fn main() {
+    let x = $0if true {
+        if false {
+            1
+        } else {
+            match Some(42) {
+                Some(_) => 2,
+                None => 3,
+            }
+        }
+    } else {
+        4
+    };
+
+    println!("x: {}", x);
+}
+"#,
+            expect![[r#"
+                FileId(0) 24..26
+                FileId(0) 65..66
+                FileId(0) 140..141
+                FileId(0) 167..168
+                FileId(0) 215..216
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_highlight_match_with_complex_guards() {
+        check(
+            r#"
+fn main() {
+    let x = $0match (x, y) {
+        (a, b) if a > b && a % 2 == 0 => 1,
+        (a, b) if a < b || b % 2 == 1 => 2,
+        (a, _) if a > 40 => 3,
+        _ => 4,
+    };
+
+    println!("x: {}", x);
+}
+"#,
+            expect![[r#"
+                FileId(0) 24..29
+                FileId(0) 80..81
+                FileId(0) 124..125
+                FileId(0) 155..156
+                FileId(0) 171..172
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_highlight_mixed_if_match_expressions() {
+        check(
+            r#"
+fn main() {
+    let x = $0if let Some(x) = Some(42) {
+        1
+    } else if let None = None {
+        2
+    } else {
+        match 42 {
+            0 => 3,
+            _ => 4,
+        }
+    };
+}
+"#,
+            expect![[r#"
+                FileId(0) 24..26
+                FileId(0) 60..61
+                FileId(0) 73..75
+                FileId(0) 102..103
+                FileId(0) 153..154
+                FileId(0) 173..174
             "#]],
         );
     }
@@ -2864,6 +3023,68 @@ const FOO$0: i32 = 0;
                 FOO Const FileId(1) 0..19 6..9
 
                 FileId(0) 45..48
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_highlight_if_let_match_combined() {
+        check(
+            r#"
+enum MyEnum { A(i32), B(String), C }
+
+fn main() {
+    let val = MyEnum::A(42);
+
+    let x = $0if let MyEnum::A(x) = val {
+        1
+    } else if let MyEnum::B(s) = val {
+        2
+    } else {
+        match val {
+            MyEnum::C => 3,
+            _ => 4,
+        }
+    };
+}
+"#,
+            expect![[r#"
+                FileId(0) 92..94
+                FileId(0) 128..129
+                FileId(0) 141..143
+                FileId(0) 177..178
+                FileId(0) 237..238
+                FileId(0) 257..258
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_highlight_nested_match_expressions() {
+        check(
+            r#"
+enum Outer { A(Inner), B }
+enum Inner { X, Y(i32) }
+
+fn main() {
+    let val = Outer::A(Inner::Y(42));
+
+    $0match val {
+        Outer::A(inner) => match inner {
+            Inner::X => println!("Inner::X"),
+            Inner::Y(n) if n > 0 => println!("Inner::Y positive: {}", n),
+            Inner::Y(_) => println!("Inner::Y non-positive"),
+        },
+        Outer::B => println!("Outer::B"),
+    }
+}
+"#,
+            expect![[r#"
+                FileId(0) 108..113
+                FileId(0) 185..205
+                FileId(0) 243..279
+                FileId(0) 308..341
+                FileId(0) 374..394
             "#]],
         );
     }

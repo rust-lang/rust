@@ -888,7 +888,7 @@ fn render_const_scalar(
                     write!(f, "{}", data.name.display(f.db, f.edition()))?;
                     let field_types = f.db.field_types(s.into());
                     render_variant_after_name(
-                        &f.db.variant_fields(s.into()),
+                        s.fields(f.db),
                         f,
                         &field_types,
                         f.db.trait_environment(adt.0.into()),
@@ -920,7 +920,7 @@ fn render_const_scalar(
                     )?;
                     let field_types = f.db.field_types(var_id.into());
                     render_variant_after_name(
-                        &f.db.variant_fields(var_id.into()),
+                        var_id.fields(f.db),
                         f,
                         &field_types,
                         f.db.trait_environment(adt.0.into()),
@@ -1394,7 +1394,7 @@ impl HirDisplay for Ty {
                         let future_trait =
                             LangItem::Future.resolve_trait(db, body.module(db).krate());
                         let output = future_trait.and_then(|t| {
-                            db.trait_items(t)
+                            t.trait_items(db)
                                 .associated_type_by_name(&Name::new_symbol_root(sym::Output))
                         });
                         write!(f, "impl ")?;
@@ -2178,6 +2178,7 @@ impl HirDisplayWithExpressionStore for TypeRefId {
                         f.write_joined(
                             generic_params
                                 .where_predicates()
+                                .iter()
                                 .filter_map(|it| match it {
                                     WherePredicate::TypeBound { target, bound }
                                     | WherePredicate::ForLifetime { lifetimes: _, target, bound }

@@ -1,6 +1,6 @@
 //! Item signature IR definitions
 
-use std::ops::Not as _;
+use std::{cell::LazyCell, ops::Not as _};
 
 use bitflags::bitflags;
 use cfg::{CfgExpr, CfgOptions};
@@ -731,29 +731,26 @@ pub struct VariantFields {
     pub store: Arc<ExpressionStore>,
     pub shape: FieldsShape,
 }
+
+#[salsa::tracked]
 impl VariantFields {
-    #[inline]
+    #[salsa::tracked(returns(clone))]
     pub(crate) fn query(
         db: &dyn DefDatabase,
         id: VariantId,
     ) -> (Arc<Self>, Arc<ExpressionStoreSourceMap>) {
-        let (shape, (fields, store, source_map)) = match id {
+        let (shape, result) = match id {
             VariantId::EnumVariantId(id) => {
                 let loc = id.lookup(db);
                 let parent = loc.parent.lookup(db);
                 let source = loc.source(db);
                 let shape = adt_shape(source.value.kind());
-                let span_map = db.span_map(source.file_id);
-                let override_visibility = visibility_from_ast(
-                    db,
-                    source.value.parent_enum().visibility(),
-                    &mut |range| span_map.span_for_range(range).ctx,
-                );
+                let enum_vis = Some(source.value.parent_enum().visibility());
                 let fields = lower_field_list(
                     db,
                     parent.container,
                     source.map(|src| src.field_list()),
-                    Some(override_visibility),
+                    enum_vis,
                 );
                 (shape, fields)
             }
@@ -777,10 +774,29 @@ impl VariantFields {
                 (FieldsShape::Record, fields)
             }
         };
-
-        (Arc::new(VariantFields { fields, store: Arc::new(store), shape }), Arc::new(source_map))
+        match result {
+            Some((fields, store, source_map)) => (
+                Arc::new(VariantFields { fields, store: Arc::new(store), shape }),
+                Arc::new(source_map),
+            ),
+            None => (
+                Arc::new(VariantFields {
+                    fields: Arena::default(),
+                    store: ExpressionStore::empty_singleton(),
+                    shape,
+                }),
+                ExpressionStoreSourceMap::empty_singleton(),
+            ),
+        }
     }
 
+    #[salsa::tracked(returns(deref))]
+    pub(crate) fn firewall(db: &dyn DefDatabase, id: VariantId) -> Arc<Self> {
+        Self::query(db, id).0
+    }
+}
+
+impl VariantFields {
     pub fn len(&self) -> usize {
         self.fields.len()
     }
@@ -798,30 +814,23 @@ fn lower_field_list(
     db: &dyn DefDatabase,
     module: ModuleId,
     fields: InFile<Option<ast::FieldList>>,
-    override_visibility: Option<RawVisibility>,
-) -> (Arena<FieldData>, ExpressionStore, ExpressionStoreSourceMap) {
+    override_visibility: Option<Option<ast::Visibility>>,
+) -> Option<(Arena<FieldData>, ExpressionStore, ExpressionStoreSourceMap)> {
     let file_id = fields.file_id;
-    match fields.value {
-        Some(ast::FieldList::RecordFieldList(fields)) => lower_fields(
+    match fields.value? {
+        ast::FieldList::RecordFieldList(fields) => lower_fields(
             db,
             module,
             InFile::new(file_id, fields.fields().map(|field| (field.ty(), field))),
             |_, field| as_name_opt(field.name()),
             override_visibility,
         ),
-        Some(ast::FieldList::TupleFieldList(fields)) => lower_fields(
+        ast::FieldList::TupleFieldList(fields) => lower_fields(
             db,
             module,
             InFile::new(file_id, fields.fields().map(|field| (field.ty(), field))),
             |idx, _| Name::new_tuple_field(idx),
             override_visibility,
-        ),
-        None => lower_fields(
-            db,
-            module,
-            InFile::new(file_id, std::iter::empty::<(Option<ast::Type>, ast::RecordField)>()),
-            |_, _| Name::missing(),
-            None,
         ),
     }
 }
@@ -831,22 +840,34 @@ fn lower_fields<Field: ast::HasAttrs + ast::HasVisibility>(
     module: ModuleId,
     fields: InFile<impl Iterator<Item = (Option<ast::Type>, Field)>>,
     mut field_name: impl FnMut(usize, &Field) -> Name,
-    override_visibility: Option<RawVisibility>,
-) -> (Arena<FieldData>, ExpressionStore, ExpressionStoreSourceMap) {
-    let mut arena = Arena::new();
+    override_visibility: Option<Option<ast::Visibility>>,
+) -> Option<(Arena<FieldData>, ExpressionStore, ExpressionStoreSourceMap)> {
     let cfg_options = module.krate.cfg_options(db);
     let mut col = ExprCollector::new(db, module, fields.file_id);
+    let override_visibility = override_visibility.map(|vis| {
+        LazyCell::new(|| {
+            let span_map = db.span_map(fields.file_id);
+            visibility_from_ast(db, vis, &mut |range| span_map.span_for_range(range).ctx)
+        })
+    });
+
+    let mut arena = Arena::new();
     let mut idx = 0;
+    let mut has_fields = false;
     for (ty, field) in fields.value {
+        has_fields = true;
         match Attrs::is_cfg_enabled_for(db, &field, col.span_map(), cfg_options) {
             Ok(()) => {
                 let type_ref =
                     col.lower_type_ref_opt(ty, &mut ExprCollector::impl_trait_error_allocator);
-                let visibility = override_visibility.clone().unwrap_or_else(|| {
-                    visibility_from_ast(db, field.visibility(), &mut |range| {
-                        col.span_map().span_for_range(range).ctx
-                    })
-                });
+                let visibility = override_visibility.as_ref().map_or_else(
+                    || {
+                        visibility_from_ast(db, field.visibility(), &mut |range| {
+                            col.span_map().span_for_range(range).ctx
+                        })
+                    },
+                    |it| RawVisibility::clone(it),
+                );
                 let is_unsafe = field
                     .syntax()
                     .children_with_tokens()
@@ -867,9 +888,12 @@ fn lower_fields<Field: ast::HasAttrs + ast::HasVisibility>(
             }
         }
     }
+    if !has_fields {
+        return None;
+    }
     let store = col.store.finish();
     arena.shrink_to_fit();
-    (arena, store, col.source_map)
+    Some((arena, store, col.source_map))
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -948,7 +972,7 @@ impl EnumVariants {
         self.variants.iter().all(|&(v, _, _)| {
             // The condition check order is slightly modified from rustc
             // to improve performance by early returning with relatively fast checks
-            let variant = &db.variant_fields(v.into());
+            let variant = v.fields(db);
             if !variant.fields().is_empty() {
                 return false;
             }

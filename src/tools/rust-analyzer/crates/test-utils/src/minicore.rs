@@ -26,7 +26,7 @@
 //!     deref: sized
 //!     derive:
 //!     discriminant:
-//!     drop:
+//!     drop: sized
 //!     env: option
 //!     eq: sized
 //!     error: fmt
@@ -37,7 +37,7 @@
 //!     future: pin
 //!     coroutine: pin
 //!     dispatch_from_dyn: unsize, pin
-//!     hash:
+//!     hash: sized
 //!     include:
 //!     index: sized
 //!     infallible:
@@ -77,33 +77,46 @@
 
 pub mod marker {
     // region:sized
+    #[lang = "pointee_sized"]
+    #[fundamental]
+    #[rustc_specialization_trait]
+    #[rustc_coinductive]
+    pub trait PointeeSized {}
+
+    #[lang = "meta_sized"]
+    #[fundamental]
+    #[rustc_specialization_trait]
+    #[rustc_coinductive]
+    pub trait MetaSized: PointeeSized {}
+
     #[lang = "sized"]
     #[fundamental]
     #[rustc_specialization_trait]
-    pub trait Sized {}
+    #[rustc_coinductive]
+    pub trait Sized: MetaSized {}
     // endregion:sized
 
     // region:send
     pub unsafe auto trait Send {}
 
-    impl<T: ?Sized> !Send for *const T {}
-    impl<T: ?Sized> !Send for *mut T {}
+    impl<T: PointeeSized> !Send for *const T {}
+    impl<T: PointeeSized> !Send for *mut T {}
     // region:sync
-    unsafe impl<T: Sync + ?Sized> Send for &T {}
-    unsafe impl<T: Send + ?Sized> Send for &mut T {}
+    unsafe impl<T: Sync + PointeeSized> Send for &T {}
+    unsafe impl<T: Send + PointeeSized> Send for &mut T {}
     // endregion:sync
     // endregion:send
 
     // region:sync
     pub unsafe auto trait Sync {}
 
-    impl<T: ?Sized> !Sync for *const T {}
-    impl<T: ?Sized> !Sync for *mut T {}
+    impl<T: PointeeSized> !Sync for *const T {}
+    impl<T: PointeeSized> !Sync for *mut T {}
     // endregion:sync
 
     // region:unsize
     #[lang = "unsize"]
-    pub trait Unsize<T: ?Sized> {}
+    pub trait Unsize<T: PointeeSized>: PointeeSized {}
     // endregion:unsize
 
     // region:unpin
@@ -120,7 +133,7 @@ pub mod marker {
     // endregion:derive
 
     mod copy_impls {
-        use super::Copy;
+        use super::{Copy, PointeeSized};
 
         macro_rules! impl_copy {
             ($($t:ty)*) => {
@@ -137,9 +150,9 @@ pub mod marker {
             bool char
         }
 
-        impl<T: ?Sized> Copy for *const T {}
-        impl<T: ?Sized> Copy for *mut T {}
-        impl<T: ?Sized> Copy for &T {}
+        impl<T: PointeeSized> Copy for *const T {}
+        impl<T: PointeeSized> Copy for *mut T {}
+        impl<T: PointeeSized> Copy for &T {}
         impl Copy for ! {}
     }
     // endregion:copy
@@ -151,7 +164,7 @@ pub mod marker {
 
     // region:phantom_data
     #[lang = "phantom_data"]
-    pub struct PhantomData<T: ?Sized>;
+    pub struct PhantomData<T: PointeeSized>;
     // endregion:phantom_data
 
     // region:discriminant
@@ -206,9 +219,11 @@ pub mod default {
 
 // region:hash
 pub mod hash {
+    use crate::marker::PointeeSized;
+
     pub trait Hasher {}
 
-    pub trait Hash {
+    pub trait Hash: PointeeSized {
         fn hash<H: Hasher>(&self, state: &mut H);
     }
 
@@ -221,10 +236,11 @@ pub mod hash {
 
 // region:cell
 pub mod cell {
+    use crate::marker::PointeeSized;
     use crate::mem;
 
     #[lang = "unsafe_cell"]
-    pub struct UnsafeCell<T: ?Sized> {
+    pub struct UnsafeCell<T: PointeeSized> {
         value: T,
     }
 
@@ -238,7 +254,7 @@ pub mod cell {
         }
     }
 
-    pub struct Cell<T: ?Sized> {
+    pub struct Cell<T: PointeeSized> {
         value: UnsafeCell<T>,
     }
 
@@ -357,7 +373,7 @@ pub mod convert {
     // endregion:from
 
     // region:as_ref
-    pub trait AsRef<T: ?Sized> {
+    pub trait AsRef<T: crate::marker::PointeeSized>: crate::marker::PointeeSized {
         fn as_ref(&self) -> &T;
     }
     // endregion:as_ref
@@ -368,9 +384,11 @@ pub mod convert {
 
 pub mod mem {
     // region:manually_drop
+    use crate::marker::PointeeSized;
+
     #[lang = "manually_drop"]
     #[repr(transparent)]
-    pub struct ManuallyDrop<T: ?Sized> {
+    pub struct ManuallyDrop<T: PointeeSized> {
         value: T,
     }
 
@@ -381,7 +399,7 @@ pub mod mem {
     }
 
     // region:deref
-    impl<T: ?Sized> crate::ops::Deref for ManuallyDrop<T> {
+    impl<T: PointeeSized> crate::ops::Deref for ManuallyDrop<T> {
         type Target = T;
         fn deref(&self) -> &T {
             &self.value
@@ -428,7 +446,7 @@ pub mod mem {
 pub mod ptr {
     // region:drop
     #[lang = "drop_in_place"]
-    pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+    pub unsafe fn drop_in_place<T: crate::marker::PointeeSized>(to_drop: *mut T) {
         unsafe { drop_in_place(to_drop) }
     }
     pub const unsafe fn read<T>(src: *const T) -> T {
@@ -444,7 +462,7 @@ pub mod ptr {
     // region:pointee
     #[lang = "pointee_trait"]
     #[rustc_deny_explicit_impl(implement_via_object = false)]
-    pub trait Pointee {
+    pub trait Pointee: crate::marker::PointeeSized {
         #[lang = "metadata_type"]
         type Metadata: Copy + Send + Sync + Ord + Hash + Unpin;
     }
@@ -452,12 +470,14 @@ pub mod ptr {
     // region:non_null
     #[rustc_layout_scalar_valid_range_start(1)]
     #[rustc_nonnull_optimization_guaranteed]
-    pub struct NonNull<T: ?Sized> {
+    pub struct NonNull<T: crate::marker::PointeeSized> {
         pointer: *const T,
     }
     // region:coerce_unsized
-    impl<T: ?Sized, U: ?Sized> crate::ops::CoerceUnsized<NonNull<U>> for NonNull<T> where
-        T: crate::marker::Unsize<U>
+    impl<T: crate::marker::PointeeSized, U: crate::marker::PointeeSized>
+        crate::ops::CoerceUnsized<NonNull<U>> for NonNull<T>
+    where
+        T: crate::marker::Unsize<U>,
     {
     }
     // endregion:coerce_unsized
@@ -478,42 +498,44 @@ pub mod ptr {
 pub mod ops {
     // region:coerce_unsized
     mod unsize {
-        use crate::marker::Unsize;
+        use crate::marker::{PointeeSized, Unsize};
 
         #[lang = "coerce_unsized"]
-        pub trait CoerceUnsized<T: ?Sized> {}
+        pub trait CoerceUnsized<T> {}
 
-        impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
-        impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b mut T {}
-        impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for &'a mut T {}
-        impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a mut T {}
+        impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a mut U> for &'a mut T {}
+        impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a U> for &'b mut T {}
+        impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<*mut U> for &'a mut T {}
+        impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<*const U> for &'a mut T {}
 
-        impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
-        impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a T {}
+        impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a U> for &'b T {}
+        impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<*const U> for &'a T {}
 
-        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
-        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
-        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
+        impl<T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<*mut U> for *mut T {}
+        impl<T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<*const U> for *mut T {}
+        impl<T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<*const U> for *const T {}
     }
     pub use self::unsize::CoerceUnsized;
     // endregion:coerce_unsized
 
     // region:deref
     mod deref {
+        use crate::marker::PointeeSized;
+
         #[lang = "deref"]
-        pub trait Deref {
+        pub trait Deref: PointeeSized {
             #[lang = "deref_target"]
             type Target: ?Sized;
             fn deref(&self) -> &Self::Target;
         }
 
-        impl<T: ?Sized> Deref for &T {
+        impl<T: PointeeSized> Deref for &T {
             type Target = T;
             fn deref(&self) -> &T {
                 loop {}
             }
         }
-        impl<T: ?Sized> Deref for &mut T {
+        impl<T: PointeeSized> Deref for &mut T {
             type Target = T;
             fn deref(&self) -> &T {
                 loop {}
@@ -521,19 +543,19 @@ pub mod ops {
         }
         // region:deref_mut
         #[lang = "deref_mut"]
-        pub trait DerefMut: Deref {
+        pub trait DerefMut: Deref + PointeeSized {
             fn deref_mut(&mut self) -> &mut Self::Target;
         }
         // endregion:deref_mut
 
         // region:receiver
         #[lang = "receiver"]
-        pub trait Receiver {
+        pub trait Receiver: PointeeSized {
             #[lang = "receiver_target"]
             type Target: ?Sized;
         }
 
-        impl<P: ?Sized, T: ?Sized> Receiver for P
+        impl<P: PointeeSized, T: PointeeSized> Receiver for P
         where
             P: Deref<Target = T>,
         {
@@ -686,7 +708,7 @@ pub mod ops {
             #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
             impl<A: Tuple, F: ?Sized> const Fn<A> for &F
             where
-                F: ~const Fn<A>,
+                F: [const] Fn<A>,
             {
                 extern "rust-call" fn call(&self, args: A) -> F::Output {
                     (**self).call(args)
@@ -697,7 +719,7 @@ pub mod ops {
             #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
             impl<A: Tuple, F: ?Sized> const FnMut<A> for &F
             where
-                F: ~const Fn<A>,
+                F: [const] Fn<A>,
             {
                 extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
                     (**self).call(args)
@@ -708,7 +730,7 @@ pub mod ops {
             #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
             impl<A: Tuple, F: ?Sized> const FnOnce<A> for &F
             where
-                F: ~const Fn<A>,
+                F: [const] Fn<A>,
             {
                 type Output = F::Output;
 
@@ -721,7 +743,7 @@ pub mod ops {
             #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
             impl<A: Tuple, F: ?Sized> const FnMut<A> for &mut F
             where
-                F: ~const FnMut<A>,
+                F: [const] FnMut<A>,
             {
                 extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
                     (*self).call_mut(args)
@@ -732,7 +754,7 @@ pub mod ops {
             #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
             impl<A: Tuple, F: ?Sized> const FnOnce<A> for &mut F
             where
-                F: ~const FnMut<A>,
+                F: [const] FnMut<A>,
             {
                 type Output = F::Output;
                 extern "rust-call" fn call_once(self, args: A) -> F::Output {
@@ -1006,18 +1028,18 @@ pub mod ops {
 
     // region:dispatch_from_dyn
     mod dispatch_from_dyn {
-        use crate::marker::Unsize;
+        use crate::marker::{PointeeSized, Unsize};
 
         #[lang = "dispatch_from_dyn"]
         pub trait DispatchFromDyn<T> {}
 
-        impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
+        impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a U> for &'a T {}
 
-        impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a mut U> for &'a mut T {}
+        impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a mut U> for &'a mut T {}
 
-        impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
+        impl<T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<*const U> for *const T {}
 
-        impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
+        impl<T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<*mut U> for *mut T {}
     }
     pub use self::dispatch_from_dyn::DispatchFromDyn;
     // endregion:dispatch_from_dyn
@@ -1025,15 +1047,17 @@ pub mod ops {
 
 // region:eq
 pub mod cmp {
+    use crate::marker::PointeeSized;
+
     #[lang = "eq"]
-    pub trait PartialEq<Rhs: ?Sized = Self> {
+    pub trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
         fn eq(&self, other: &Rhs) -> bool;
         fn ne(&self, other: &Rhs) -> bool {
             !self.eq(other)
         }
     }
 
-    pub trait Eq: PartialEq<Self> {}
+    pub trait Eq: PartialEq<Self> + PointeeSized {}
 
     // region:derive
     #[rustc_builtin_macro]
@@ -1044,11 +1068,11 @@ pub mod cmp {
 
     // region:ord
     #[lang = "partial_ord"]
-    pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
+    pub trait PartialOrd<Rhs: PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
         fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
     }
 
-    pub trait Ord: Eq + PartialOrd<Self> {
+    pub trait Ord: Eq + PartialOrd<Self> + PointeeSized {
         fn cmp(&self, other: &Self) -> Ordering;
     }
 
@@ -1071,6 +1095,8 @@ pub mod cmp {
 
 // region:fmt
 pub mod fmt {
+    use crate::marker::PointeeSized;
+
     pub struct Error;
     pub type Result = crate::result::Result<(), Error>;
     pub struct Formatter<'a>;
@@ -1106,10 +1132,10 @@ pub mod fmt {
         }
     }
 
-    pub trait Debug {
+    pub trait Debug: PointeeSized {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result;
     }
-    pub trait Display {
+    pub trait Display: PointeeSized {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result;
     }
 
@@ -1268,7 +1294,7 @@ pub mod fmt {
         }
     }
 
-    impl<T: Debug + ?Sized> Debug for &T {
+    impl<T: Debug + PointeeSized> Debug for &T {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result {
             (&**self).fmt(f)
         }
@@ -1512,6 +1538,8 @@ pub mod iter {
 
     mod traits {
         mod iterator {
+            use crate::marker::PointeeSized;
+
             #[doc(notable_trait)]
             #[lang = "iterator"]
             pub trait Iterator {
@@ -1543,7 +1571,7 @@ pub mod iter {
                 }
                 // endregion:iterators
             }
-            impl<I: Iterator + ?Sized> Iterator for &mut I {
+            impl<I: Iterator + PointeeSized> Iterator for &mut I {
                 type Item = I::Item;
                 fn next(&mut self) -> Option<I::Item> {
                     (**self).next()

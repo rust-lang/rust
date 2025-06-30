@@ -326,7 +326,7 @@ impl<'a> MirPrettyCtx<'a> {
                     w!(this, ")");
                 }
                 ProjectionElem::Field(Either::Left(field)) => {
-                    let variant_fields = this.db.variant_fields(field.parent);
+                    let variant_fields = field.parent.fields(this.db);
                     let name = &variant_fields.fields()[field.local_id].name;
                     match field.parent {
                         hir_def::VariantId::EnumVariantId(e) => {

@@ -1,6 +1,6 @@
 //! Cargo-like environment variables injection.
 use base_db::Env;
-use paths::Utf8Path;
+use paths::{Utf8Path, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use toolchain::Tool;
 
@@ -121,6 +121,26 @@ fn parse_output_cargo_config_env(manifest: &ManifestPath, stdout: &str) -> Env {
         }
     }
     env
+}
+
+pub(crate) fn cargo_config_build_target_dir(
+    manifest: &ManifestPath,
+    extra_env: &FxHashMap<String, Option<String>>,
+    sysroot: &Sysroot,
+) -> Option<Utf8PathBuf> {
+    let mut cargo_config = sysroot.tool(Tool::Cargo, manifest.parent(), extra_env);
+    cargo_config
+        .args(["-Z", "unstable-options", "config", "get", "build.target-dir"])
+        .env("RUSTC_BOOTSTRAP", "1");
+    if manifest.is_rust_manifest() {
+        cargo_config.arg("-Zscript");
+    }
+    utf8_stdout(&mut cargo_config)
+        .map(|stdout| {
+            Utf8Path::new(stdout.trim_start_matches("build.target-dir = ").trim_matches('"'))
+                .to_owned()
+        })
+        .ok()
 }
 
 #[test]
