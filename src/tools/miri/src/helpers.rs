@@ -162,7 +162,7 @@ pub fn iter_exported_symbols<'tcx>(
 
         // We can ignore `_export_info` here: we are a Rust crate, and everything is exported
         // from a Rust crate.
-        for &(symbol, _export_info) in tcx.exported_symbols(cnum) {
+        for &(symbol, _export_info) in tcx.exported_non_generic_symbols(cnum) {
             if let ExportedSymbol::NonGeneric(def_id) = symbol {
                 f(cnum, def_id)?;
             }

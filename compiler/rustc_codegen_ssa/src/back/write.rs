@@ -1124,8 +1124,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
         let copy_symbols = |cnum| {
             let symbols = tcx
-                .exported_symbols(cnum)
+                .exported_non_generic_symbols(cnum)
                 .iter()
+                .chain(tcx.exported_generic_symbols(cnum))
                 .map(|&(s, lvl)| (symbol_name_for_instance_in_crate(tcx, s, cnum), lvl))
                 .collect();
             Arc::new(symbols)
