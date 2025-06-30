@@ -23,6 +23,7 @@ pub enum FoldKind {
     WhereClause,
     ReturnType,
     MatchArm,
+    Function,
     // region: item runs
     Modules,
     Consts,
@@ -60,30 +61,31 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                 NodeOrToken::Token(token) => token.text().contains('\n'),
             };
             if is_multiline {
-                // for the arg list, we need to special handle
-                if matches!(element.kind(), ARG_LIST | PARAM_LIST) {
+                // for the func with multiline param list
+                if matches!(element.kind(), FN) {
                     if let NodeOrToken::Node(node) = &element {
-                        if let Some(fn_node) = node.parent().and_then(ast::Fn::cast) {
+                        if let Some(fn_node) = ast::Fn::cast(node.clone()) {
+                            if !fn_node
+                                .param_list()
+                                .map(|param_list| param_list.syntax().text().contains_char('\n'))
+                                .unwrap_or(false)
+                            {
+                                continue;
+                            }
+
                             if let Some(body) = fn_node.body() {
-                                // just add a big fold combine the params and body
                                 res.push(Fold {
                                     range: TextRange::new(
                                         node.text_range().start(),
-                                        body.syntax().text_range().end(),
+                                        node.text_range().end(),
                                     ),
-                                    kind: FoldKind::ArgList,
+                                    kind: FoldKind::Function,
                                 });
                                 merged_fn_bodies.insert(body.syntax().text_range());
                                 continue;
                             }
                         }
                     }
-                }
-                // skip the merged function body
-                if matches!(element.kind(), BLOCK_EXPR)
-                    && merged_fn_bodies.contains(&element.text_range())
-                {
-                    continue;
                 }
                 res.push(Fold { range: element.text_range(), kind });
                 continue;
@@ -178,6 +180,7 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
         ARG_LIST | PARAM_LIST | GENERIC_ARG_LIST | GENERIC_PARAM_LIST => Some(FoldKind::ArgList),
         ARRAY_EXPR => Some(FoldKind::Array),
         RET_TYPE => Some(FoldKind::ReturnType),
+        FN => Some(FoldKind::Function),
         WHERE_CLAUSE => Some(FoldKind::WhereClause),
         ASSOC_ITEM_LIST
         | RECORD_FIELD_LIST
@@ -349,6 +352,7 @@ mod tests {
                 FoldKind::WhereClause => "whereclause",
                 FoldKind::ReturnType => "returntype",
                 FoldKind::MatchArm => "matcharm",
+                FoldKind::Function => "function",
                 FoldKind::TraitAliases => "traitaliases",
                 FoldKind::ExternCrates => "externcrates",
             };
