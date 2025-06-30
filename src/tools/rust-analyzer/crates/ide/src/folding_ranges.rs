@@ -1,10 +1,9 @@
 use ide_db::{FxHashSet, syntax_helpers::node_ext::vis_eq};
-use itertools::Itertools;
 use syntax::{
     Direction, NodeOrToken, SourceFile, SyntaxElement,
     SyntaxKind::*,
     SyntaxNode, TextRange, TextSize,
-    ast::{self, AstNode, AstToken, HasArgList, edit::AstNodeEdit},
+    ast::{self, AstNode, AstToken},
     match_ast,
     syntax_editor::Element,
 };
@@ -14,7 +13,7 @@ use std::hash::Hash;
 const REGION_START: &str = "// region:";
 const REGION_END: &str = "// endregion";
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum FoldKind {
     Comment,
     Imports,
@@ -31,11 +30,10 @@ pub enum FoldKind {
     Consts,
     Statics,
     TypeAliases,
-    TraitAliases,
     ExternCrates,
     // endregion: item runs
-    Stmt,
-    TailExpr,
+    Stmt(ast::Stmt),
+    TailExpr(ast::Expr),
 }
 
 #[derive(Debug)]
@@ -50,8 +48,8 @@ impl Fold {
         Self { range, kind, collapsed_text: None }
     }
 
-    pub fn with_text(mut self, text: String) -> Self {
-        self.collapsed_text = Some(text);
+    pub fn with_text(mut self, text: Option<String>) -> Self {
+        self.collapsed_text = text;
         self
     }
 }
@@ -60,7 +58,7 @@ impl Fold {
 //
 // Defines folding regions for curly braced blocks, runs of consecutive use, mod, const or static
 // items, and `region` / `endregion` comment markers.
-pub(crate) fn folding_ranges(file: &SourceFile, collapsed_text: bool) -> Vec<Fold> {
+pub(crate) fn folding_ranges(file: &SourceFile, add_collapsed_text: bool) -> Vec<Fold> {
     let mut res = vec![];
     let mut visited_comments = FxHashSet::default();
     let mut visited_nodes = FxHashSet::default();
@@ -94,12 +92,17 @@ pub(crate) fn folding_ranges(file: &SourceFile, collapsed_text: bool) -> Vec<Fol
                             .fn_token()
                             .map(|token| token.text_range().start())
                             .unwrap_or(node.text_range().start());
-                        res.push(build_fold(&element, kind, collapsed_text));
+                        res.push(Fold::new(
+                            TextRange::new(fn_start, body.syntax().text_range().end()),
+                            FoldKind::Function,
+                        ));
                         continue;
                     }
                 }
 
-                res.push(build_fold(&element, kind, collapsed_text));
+                let collapsed_text = if add_collapsed_text { collapsed_text(&kind) } else { None };
+                let fold = Fold::new(element.text_range(), kind).with_text(collapsed_text);
+                res.push(fold);
                 continue;
             }
         }
@@ -160,11 +163,6 @@ pub(crate) fn folding_ranges(file: &SourceFile, collapsed_text: bool) -> Vec<Fol
                                 res.push(Fold::new(range, FoldKind::TypeAliases));
                             }
                         },
-                        ast::TraitAlias(alias) => {
-                            if let Some(range) = contiguous_range_for_item_group(alias, &mut visited_nodes) {
-                                res.push(Fold::new(range, FoldKind::TraitAliases));
-                            }
-                        },
                         ast::ExternCrate(extern_crate) => {
                             if let Some(range) = contiguous_range_for_item_group(extern_crate, &mut visited_nodes) {
                                 res.push(Fold::new(range, FoldKind::ExternCrates));
@@ -185,90 +183,63 @@ pub(crate) fn folding_ranges(file: &SourceFile, collapsed_text: bool) -> Vec<Fol
     res
 }
 
-/// Builds a fold for the given syntax element.
-///
-/// This function creates a `Fold` object that represents a collapsible region in the code.
-/// If `collapsed_text` is enabled, it generates a preview text for certain fold kinds that
-/// shows a summarized version of the folded content.
-fn build_fold(element: &SyntaxElement, kind: FoldKind, collapsed_text: bool) -> Fold {
-    if !collapsed_text {
-        return Fold::new(element.text_range(), kind);
-    }
-
-    let fold_with_collapsed_text = match kind {
-        FoldKind::TailExpr => {
-            let expr = ast::Expr::cast(element.as_node().unwrap().clone()).unwrap();
-
-            let indent_level = expr.indent_level().0;
-            let indents = "    ".repeat(indent_level as usize);
-
-            let mut fold = Fold::new(element.text_range(), kind);
-            if let Some(collapsed_expr) = collapsed_text_from_expr(expr) {
-                fold = fold.with_text(format!("{indents}{collapsed_expr}"));
-            }
-            Some(fold)
-        }
-        FoldKind::Stmt => 'blk: {
-            let node = element.as_node().unwrap();
-
-            match_ast! {
-                match node {
-                    ast::ExprStmt(expr) => {
-                        let Some(expr) = expr.expr() else {
-                            break 'blk None;
-                        };
-
-                        let indent_level = expr.indent_level().0;
-                        let indents = "    ".repeat(indent_level as usize);
-
-                        let mut fold = Fold::new(element.text_range(), kind);
-                        if let Some(collapsed_expr) = collapsed_text_from_expr(expr) {
-                            fold = fold.with_text(format!("{indents}{collapsed_expr};"));
-                        }
-                        Some(fold)
-                    },
-                    ast::LetStmt(let_stmt) => {
-                        if let_stmt.let_else().is_some() {
-                            break 'blk None;
-                        }
-
-                        let Some(expr) = let_stmt.initializer() else {
-                            break 'blk None;
-                        };
-
-                        let expr_offset =
-                            expr.syntax().text_range().start() - let_stmt.syntax().text_range().start();
-                        let text_before_expr = let_stmt.syntax().text().slice(..expr_offset);
-                        if text_before_expr.contains_char('\n') {
-                            break 'blk None;
-                        }
-
-                        let indent_level = let_stmt.indent_level().0;
-                        let indents = "    ".repeat(indent_level as usize);
-
-                        let mut fold = Fold::new(element.text_range(), kind);
-                        if let Some(collapsed_expr) = collapsed_text_from_expr(expr) {
-                            fold = fold.with_text(format!("{indents}{text_before_expr}{collapsed_expr};"));
-                        }
-                        Some(fold)
-                    },
-                    _ => None,
+fn collapsed_text(kind: &FoldKind) -> Option<String> {
+    match kind {
+        FoldKind::TailExpr(expr) => collapse_expr(expr.clone()),
+        FoldKind::Stmt(stmt) => {
+            match stmt {
+                ast::Stmt::ExprStmt(expr_stmt) => {
+                    expr_stmt.expr().and_then(collapse_expr).map(|text| format!("{text};"))
                 }
+                ast::Stmt::LetStmt(let_stmt) => 'blk: {
+                    if let_stmt.let_else().is_some() {
+                        break 'blk None;
+                    }
+
+                    let Some(expr) = let_stmt.initializer() else {
+                        break 'blk None;
+                    };
+
+                    // If the `let` statement spans multiple lines, we do not collapse it.
+                    // We use the `eq_token` to check whether the `let` statement is a single line,
+                    // as the formatter may place the initializer on a new line for better readability.
+                    //
+                    // Example:
+                    // ```rust
+                    // let complex_pat =
+                    //     complex_expr;
+                    // ```
+                    //
+                    // In this case, we should generate the collapsed text.
+                    let Some(eq_token) = let_stmt.eq_token() else {
+                        break 'blk None;
+                    };
+                    let eq_token_offset =
+                        eq_token.text_range().end() - let_stmt.syntax().text_range().start();
+                    let text_until_eq_token = let_stmt.syntax().text().slice(..eq_token_offset);
+                    if text_until_eq_token.contains_char('\n') {
+                        break 'blk None;
+                    }
+
+                    collapse_expr(expr).map(|text| format!("{text_until_eq_token} {text};"))
+                }
+                // handling `items` in external matches.
+                ast::Stmt::Item(_) => None,
             }
         }
         _ => None,
-    };
-
-    fold_with_collapsed_text.unwrap_or_else(|| Fold::new(element.text_range(), kind))
+    }
 }
 
 fn fold_kind(element: SyntaxElement) -> Option<FoldKind> {
     // handle tail_expr
     if let Some(node) = element.as_node()
-        && let Some(block) = node.parent().and_then(|it| it.parent()).and_then(ast::BlockExpr::cast) // tail_expr -> stmt_list -> block
-        && block.tail_expr().is_some_and(|tail| tail.syntax() == node)
+        // tail_expr -> stmt_list -> block
+        && let Some(block) = node.parent().and_then(|it| it.parent()).and_then(ast::BlockExpr::cast)
+        && let Some(tail_expr) = block.tail_expr()
+        && tail_expr.syntax() == node
     {
-        return Some(FoldKind::TailExpr);
+        return Some(FoldKind::TailExpr(tail_expr));
     }
 
     match element.kind() {
@@ -289,103 +260,71 @@ fn fold_kind(element: SyntaxElement) -> Option<FoldKind> {
         | MATCH_ARM_LIST
         | VARIANT_LIST
         | TOKEN_TREE => Some(FoldKind::Block),
-        EXPR_STMT | LET_STMT => Some(FoldKind::Stmt),
+        EXPR_STMT | LET_STMT => Some(FoldKind::Stmt(ast::Stmt::cast(element.as_node()?.clone())?)),
         _ => None,
     }
 }
 
-/// Generates a collapsed text representation of a chained expression.
-///
-/// This function analyzes an expression and creates a concise string representation
-/// that shows the structure of method chains, field accesses, and function calls.
-/// It's particularly useful for folding long chained expressions like:
-/// `obj.method1()?.field.method2(args)` -> `obj.method1()?.field.method2(…)`
-///
-/// The function traverses the expression tree from the outermost expression inward,
-/// collecting method names, field names, and call signatures. It accumulates try
-/// operators (`?`) and applies them to the appropriate parts of the chain.
-///
-/// # Parameters
-/// - `expr`: The expression to generate collapsed text for
-///
-/// # Returns
-/// - `Some(String)`: A dot-separated chain representation if the expression is chainable
-/// - `None`: If the expression is not suitable for collapsing (e.g., simple literals)
-///
-/// # Examples
-/// - `foo.bar().baz?` -> `"foo.bar().baz?"`
-/// - `obj.method(arg1, arg2)` -> `"obj.method(…)"`
-/// - `value?.field` -> `"value?.field"`
-fn collapsed_text_from_expr(mut expr: ast::Expr) -> Option<String> {
-    let mut names = Vec::new();
-    let mut try_marks = String::with_capacity(1);
+const COLLAPSE_EXPR_MAX_LEN: usize = 100;
 
-    let fold_general_expr = |expr: ast::Expr, try_marks: &mut String| {
-        let text = expr.syntax().text();
-        let name = if text.contains_char('\n') {
-            format!("<expr>{try_marks}")
-        } else {
-            format!("{text}{try_marks}")
-        };
-        try_marks.clear();
-        name
-    };
+fn collapse_expr(expr: ast::Expr) -> Option<String> {
+    let mut text = String::with_capacity(COLLAPSE_EXPR_MAX_LEN * 2);
 
-    loop {
-        let receiver = match expr {
-            ast::Expr::MethodCallExpr(call) => {
-                let name = call
-                    .name_ref()
-                    .map(|name| name.text().to_owned())
-                    .unwrap_or_else(|| "�".into());
-                if call.arg_list().and_then(|arg_list| arg_list.args().next()).is_some() {
-                    names.push(format!("{name}(…){try_marks}"));
-                } else {
-                    names.push(format!("{name}(){try_marks}"));
+    let mut preorder = expr.syntax().preorder_with_tokens();
+    while let Some(element) = preorder.next() {
+        match element {
+            syntax::WalkEvent::Enter(NodeOrToken::Node(node)) => {
+                if let Some(arg_list) = ast::ArgList::cast(node.clone()) {
+                    let content = if arg_list.args().next().is_some() { "(…)" } else { "()" };
+                    text.push_str(content);
+                    preorder.skip_subtree();
+                } else if let Some(expr) = ast::Expr::cast(node) {
+                    match expr {
+                        ast::Expr::AwaitExpr(_)
+                        | ast::Expr::BecomeExpr(_)
+                        | ast::Expr::BinExpr(_)
+                        | ast::Expr::BreakExpr(_)
+                        | ast::Expr::CallExpr(_)
+                        | ast::Expr::CastExpr(_)
+                        | ast::Expr::ContinueExpr(_)
+                        | ast::Expr::FieldExpr(_)
+                        | ast::Expr::IndexExpr(_)
+                        | ast::Expr::LetExpr(_)
+                        | ast::Expr::Literal(_)
+                        | ast::Expr::MethodCallExpr(_)
+                        | ast::Expr::OffsetOfExpr(_)
+                        | ast::Expr::ParenExpr(_)
+                        | ast::Expr::PathExpr(_)
+                        | ast::Expr::PrefixExpr(_)
+                        | ast::Expr::RangeExpr(_)
+                        | ast::Expr::RefExpr(_)
+                        | ast::Expr::ReturnExpr(_)
+                        | ast::Expr::TryExpr(_)
+                        | ast::Expr::UnderscoreExpr(_)
+                        | ast::Expr::YeetExpr(_)
+                        | ast::Expr::YieldExpr(_) => {}
+
+                        // Some other exprs (e.g. `while` loop) are too complex to have a collapsed text
+                        _ => return None,
+                    }
                 }
-                try_marks.clear();
-                call.receiver()
             }
-            ast::Expr::FieldExpr(field) => {
-                let name = match field.field_access() {
-                    Some(ast::FieldKind::Name(name)) => format!("{name}{try_marks}"),
-                    Some(ast::FieldKind::Index(index)) => format!("{index}{try_marks}"),
-                    None => format!("�{try_marks}"),
-                };
-                names.push(name);
-                try_marks.clear();
-                field.expr()
-            }
-            ast::Expr::TryExpr(try_expr) => {
-                try_marks.push('?');
-                try_expr.expr()
-            }
-            ast::Expr::CallExpr(call) => {
-                let name = fold_general_expr(call.expr().unwrap(), &mut try_marks);
-                if call.arg_list().and_then(|arg_list| arg_list.args().next()).is_some() {
-                    names.push(format!("{name}(…){try_marks}"));
-                } else {
-                    names.push(format!("{name}(){try_marks}"));
+            syntax::WalkEvent::Enter(NodeOrToken::Token(token)) => {
+                if !token.kind().is_trivia() {
+                    text.push_str(token.text());
                 }
-                try_marks.clear();
-                None
             }
-            e => {
-                if names.is_empty() {
-                    return None;
-                }
-                names.push(fold_general_expr(e, &mut try_marks));
-                None
-            }
-        };
-        if let Some(receiver) = receiver {
-            expr = receiver;
-        } else {
-            break;
+            syntax::WalkEvent::Leave(_) => {}
+        }
+
+        if text.len() > COLLAPSE_EXPR_MAX_LEN {
+            return None;
         }
     }
 
-    Some(names.iter().rev().join("."))
+    text.shrink_to_fit();
+
+    Some(text)
 }
 
 fn contiguous_range_for_item_group<N>(
@@ -522,7 +461,7 @@ mod tests {
 
     fn check_inner(ra_fixture: &str, enable_collapsed_text: bool) {
         let (ranges, text) = extract_tags(ra_fixture, "fold");
-        let ranges = ranges
+        let ranges: Vec<_> = ranges
             .into_iter()
             .map(|(range, text)| {
                 let (attr, collapsed_text) = match text {
@@ -536,7 +475,7 @@ mod tests {
                 };
                 (range, attr, collapsed_text)
             })
-            .collect_vec();
+            .collect();
 
         let parse = SourceFile::parse(&text, span::Edition::CURRENT);
         let mut folds = folding_ranges(&parse.tree(), enable_collapsed_text);
@@ -568,8 +507,8 @@ mod tests {
                 FoldKind::MatchArm => "matcharm",
                 FoldKind::Function => "function",
                 FoldKind::ExternCrates => "externcrates",
-                FoldKind::Stmt => "stmt",
-                FoldKind::TailExpr => "tailexpr",
+                FoldKind::Stmt(_) => "stmt",
+                FoldKind::TailExpr(_) => "tailexpr",
             };
             assert_eq!(kind, &attr.unwrap());
             if enable_collapsed_text {
@@ -784,7 +723,7 @@ fn main() <fold block>{
         check(
             r#"
 fn main() <fold block>{
-    <fold tailexpr:    frobnicate(…)>frobnicate<fold arglist>(
+    <fold tailexpr:frobnicate(…)>frobnicate<fold arglist>(
         1,
         2,
         3,
@@ -927,13 +866,15 @@ type Foo<T, U> = foo<fold arglist><
 "#,
         );
     }
+
+    #[test]
     fn test_fold_tail_expr() {
         check(
             r#"
 fn f() <fold block>{
     let x = 1;
 
-    <fold tailexpr:    some_function().chain().method()>some_function()
+    <fold tailexpr:some_function().chain().method()>some_function()
         .chain()
         .method()</fold>
 }</fold>
@@ -946,7 +887,7 @@ fn f() <fold block>{
         check(
             r#"
 fn main() <fold block>{
-    <fold stmt:    let result = some_value.method1().method2()?.method3();>let result = some_value
+    <fold stmt:let result = some_value.method1().method2()?.method3();>let result = some_value
         .method1()
         .method2()?
         .method3();</fold>
@@ -970,6 +911,6 @@ fn main() <fold block>{
     println!("{}", result);
 }</fold>
 "#,
-       )
+        )
     }
 }

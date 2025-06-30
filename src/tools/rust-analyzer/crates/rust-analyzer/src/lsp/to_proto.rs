@@ -925,8 +925,8 @@ pub(crate) fn folding_range(
         | FoldKind::ExternCrates
         | FoldKind::MatchArm
         | FoldKind::Function
-        | FoldKind::Stmt
-        | FoldKind::TailExpr => None,
+        | FoldKind::Stmt(_)
+        | FoldKind::TailExpr(_) => None,
     };
 
     let range = range(line_index, text_range);
@@ -946,6 +946,13 @@ pub(crate) fn folding_range(
         } else {
             range.end.line
         };
+
+        let collapsed_text = collapsed_text.map(|collapsed_text| {
+            let range_start = text_range.start();
+            let line_start = range_start - TextSize::from(range.start.character);
+            let text_before_range = &text[TextRange::new(line_start, range_start)];
+            format!("{text_before_range}{collapsed_text}")
+        });
 
         lsp_types::FoldingRange {
             start_line: range.start.line,
