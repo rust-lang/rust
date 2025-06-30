@@ -1,6 +1,6 @@
-//@ run-pass
-// Test that we can coerce an `@Object` to an `&Object`
+//! Tests that coercion from `&mut dyn Trait` to `&dyn Trait` works correctly.
 
+//@ run-pass
 
 trait Foo {
     fn foo(&self) -> usize;

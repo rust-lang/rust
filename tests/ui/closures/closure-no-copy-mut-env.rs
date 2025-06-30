@@ -1,4 +1,4 @@
-// Check that closures do not implement `Copy` if their environment is not `Copy`.
+//! Checks that closures do not implement `Copy` when they capture mutable references.
 
 fn main() {
     let mut a = 5;
