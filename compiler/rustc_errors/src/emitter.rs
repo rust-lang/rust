@@ -2014,6 +2014,14 @@ impl HumanEmitter {
             return Ok(());
         };
 
+        if suggestion
+            .substitutions
+            .iter()
+            .any(|s| s.parts.iter().any(|p| is_external_library(sm, p.span)))
+        {
+            return Ok(());
+        }
+
         // Render the replacements for each suggestion
         let suggestions = suggestion.splice_lines(sm);
         debug!(?suggestions);
@@ -3553,4 +3561,48 @@ pub(crate) fn should_show_source_code(
     name.local_path()
         .map(|path| ignored_directories.iter().all(|dir| !path.starts_with(dir)))
         .unwrap_or(true)
+}
+
+fn is_external_library(sm: &SourceMap, span: Span) -> bool {
+    let filename = sm.span_to_filename(span);
+    if let Some(path) = filename.into_local_path() {
+        // use env variable to get path, avoid hardcode
+        // use platform independent path
+
+        let cargo_home = match std::env::var("CARGO_HOME") {
+            Ok(dir) => std::path::PathBuf::from(dir),
+            Err(_) => {
+                if let Ok(home) = std::env::var("HOME") {
+                    std::path::PathBuf::from(home).join(".cargo")
+                } else {
+                    return false;
+                }
+            }
+        };
+
+        let rustup_home = match std::env::var("RUSTUP_HOME") {
+            Ok(dir) => std::path::PathBuf::from(dir),
+            Err(_) => {
+                if let Ok(home) = std::env::var("HOME") {
+                    std::path::PathBuf::from(home).join(".rustup")
+                } else {
+                    return false;
+                }
+            }
+        };
+
+        let sysroot = match std::env::var("RUSTC_SYSROOT") {
+            Ok(dir) => Some(std::path::PathBuf::from(dir)),
+            Err(_) => None,
+        };
+
+        let registry_path = cargo_home.join("registry").join("src");
+        let toolchain_path = rustup_home.join("toolchains");
+
+        path.starts_with(&registry_path)
+            || path.starts_with(&toolchain_path)
+            || sysroot.as_ref().map_or(false, |sr| path.starts_with(sr))
+    } else {
+        false
+    }
 }
