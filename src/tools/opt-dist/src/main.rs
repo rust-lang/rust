@@ -156,8 +156,6 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             let target_triple =
                 std::env::var("PGO_HOST").expect("PGO_HOST environment variable missing");
 
-            let is_aarch64 = target_triple.starts_with("aarch64");
-
             let checkout_dir = Utf8PathBuf::from("/checkout");
             let env = EnvironmentBuilder::default()
                 .host_tuple(target_triple)
@@ -168,7 +166,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .build_dir(checkout_dir.join("obj"))
                 .shared_llvm(true)
                 // FIXME: Enable bolt for aarch64 once it's fixed upstream. Broken as of December 2024.
-                .use_bolt(!is_aarch64)
+                .use_bolt(false)
                 .skipped_tests(vec![])
                 .run_tests(true)
                 .fast_try_build(is_fast_try_build)
