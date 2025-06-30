@@ -77,7 +77,7 @@ impl Builder<'_> {
                 *target,
             ),
             // doesn't depend on compiler, same as host compiler
-            _ => self.msg(Kind::Build, build_stage, format_args!("tool {tool}"), *host, *target),
+            _ => self.msg(kind, build_stage, format_args!("tool {tool}"), *host, *target),
         }
     }
 }
@@ -1195,7 +1195,6 @@ macro_rules! tool_extended {
                 Some(
                     StepMetadata::build($tool_name, self.target)
                         .built_by(self.compiler.with_stage(self.compiler.stage.saturating_sub(1)))
-                        .stage(self.compiler.stage)
                 )
             }
         }

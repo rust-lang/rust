@@ -153,6 +153,10 @@ impl StepMetadata {
         Self::new(name, target, Kind::Build)
     }
 
+    pub fn check(name: &'static str, target: TargetSelection) -> Self {
+        Self::new(name, target, Kind::Check)
+    }
+
     pub fn doc(name: &'static str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Doc)
     }
@@ -177,6 +181,12 @@ impl StepMetadata {
     pub fn stage(mut self, stage: u32) -> Self {
         self.stage = Some(stage);
         self
+    }
+
+    pub fn get_stage(&self) -> Option<u32> {
+        self.stage.or(self
+            .built_by
+            .map(|compiler| if self.name == "std" { compiler.stage } else { compiler.stage + 1 }))
     }
 }
 
