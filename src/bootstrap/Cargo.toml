@@ -7,7 +7,7 @@ default-run = "bootstrap"
 
 [features]
 build-metrics = ["sysinfo"]
-tracing = ["dep:tracing", "dep:tracing-chrome", "dep:tracing-subscriber", "dep:tracing-tree"]
+tracing = ["dep:tracing", "dep:tracing-chrome", "dep:tracing-subscriber", "dep:tracing-forest"]
 
 [lib]
 path = "src/lib.rs"
@@ -64,7 +64,7 @@ sysinfo = { version = "0.35.0", default-features = false, optional = true, featu
 tracing = { version = "0.1", optional = true, features = ["attributes"] }
 tracing-chrome = { version = "0.7", optional = true }
 tracing-subscriber = { version = "0.3", optional = true, features = ["env-filter", "fmt", "registry", "std"] }
-tracing-tree = { version = "0.4.0", optional = true }
+tracing-forest = { version = "0.1.6", optional = true, default-features =  false, features = ["smallvec", "ansi", "env-filter"] }
 
 [target.'cfg(windows)'.dependencies.junction]
 version = "1.0.0"
