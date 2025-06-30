@@ -526,7 +526,7 @@ impl Allocation {
             let ptr_bytes = &mut bytes[idx..idx + ptr_size];
             let bits = read_target_uint(endian, ptr_bytes).unwrap();
             let (ptr_prov, ptr_offset) =
-                adjust_ptr(Pointer::new(alloc_id, Size::from_bytes(bits)))?.into_parts();
+                adjust_ptr(Pointer::new(alloc_id, Size::from_bytes(bits)))?.into_raw_parts();
             write_target_uint(endian, ptr_bytes, ptr_offset.bytes().into()).unwrap();
             new_provenance.push((offset, ptr_prov));
         }
@@ -769,7 +769,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         // as-is into memory. This also double-checks that `val.size()` matches `range.size`.
         let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size)? {
             Right(ptr) => {
-                let (provenance, offset) = ptr.into_parts();
+                let (provenance, offset) = ptr.into_raw_parts();
                 (u128::from(offset.bytes()), Some(provenance))
             }
             Left(data) => (data, None),
