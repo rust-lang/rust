@@ -298,6 +298,16 @@ fn configure_and_expand(
 fn print_macro_stats(ecx: &ExtCtxt<'_>) {
     use std::fmt::Write;
 
+    let crate_name = ecx.ecfg.crate_name.as_str();
+    let crate_name = if crate_name == "build_script_build" {
+        // This is a build script. Get the package name from the environment.
+        let pkg_name =
+            std::env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "<unknown crate>".to_string());
+        format!("{pkg_name} build script")
+    } else {
+        crate_name.to_string()
+    };
+
     // No instability because we immediately sort the produced vector.
     #[allow(rustc::potential_query_instability)]
     let mut macro_stats: Vec<_> = ecx
@@ -327,7 +337,7 @@ fn print_macro_stats(ecx: &ExtCtxt<'_>) {
     // non-interleaving, though.
     let mut s = String::new();
     _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
-    _ = writeln!(s, "{prefix} MACRO EXPANSION STATS: {}", ecx.ecfg.crate_name);
+    _ = writeln!(s, "{prefix} MACRO EXPANSION STATS: {}", crate_name);
     _ = writeln!(
         s,
         "{prefix} {:<name_w$}{:>uses_w$}{:>lines_w$}{:>avg_lines_w$}{:>bytes_w$}{:>avg_bytes_w$}",
