@@ -87,12 +87,11 @@ fn build_pin_fut<'tcx>(
         const_: Const::zero_sized(pin_fut_new_unchecked_fn),
     }));
 
-    let storage_live =
-        Statement { source_info, kind: StatementKind::StorageLive(fut_pin_place.local) };
+    let storage_live = Statement::new(source_info, StatementKind::StorageLive(fut_pin_place.local));
 
-    let fut_ref_assign = Statement {
+    let fut_ref_assign = Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             fut_ref_place,
             Rvalue::Ref(
                 tcx.lifetimes.re_erased,
@@ -100,12 +99,12 @@ fn build_pin_fut<'tcx>(
                 fut_place,
             ),
         ))),
-    };
+    );
 
     // call Pin<FutTy>::new_unchecked(&mut fut)
-    let pin_fut_bb = body.basic_blocks_mut().push(BasicBlockData {
-        statements: [storage_live, fut_ref_assign].to_vec(),
-        terminator: Some(Terminator {
+    let pin_fut_bb = body.basic_blocks_mut().push(BasicBlockData::new_stmts(
+        [storage_live, fut_ref_assign].to_vec(),
+        Some(Terminator {
             source_info,
             kind: TerminatorKind::Call {
                 func: pin_fut_new_unchecked_fn,
@@ -117,8 +116,8 @@ fn build_pin_fut<'tcx>(
                 fn_span: span,
             },
         }),
-        is_cleanup: false,
-    });
+        false,
+    ));
     (pin_fut_bb, fut_pin_place)
 }
 
@@ -156,19 +155,15 @@ fn build_poll_switch<'tcx>(
     let source_info = SourceInfo::outermost(body.span);
     let poll_discr_place =
         Place::from(body.local_decls.push(LocalDecl::new(poll_discr_ty, source_info.span)));
-    let discr_assign = Statement {
+    let discr_assign = Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
-            poll_discr_place,
-            Rvalue::Discriminant(*poll_unit_place),
-        ))),
-    };
-    let storage_dead =
-        Statement { source_info, kind: StatementKind::StorageDead(fut_pin_place.local) };
+        StatementKind::Assign(Box::new((poll_discr_place, Rvalue::Discriminant(*poll_unit_place)))),
+    );
+    let storage_dead = Statement::new(source_info, StatementKind::StorageDead(fut_pin_place.local));
     let unreachable_block = insert_term_block(body, TerminatorKind::Unreachable);
-    body.basic_blocks_mut().push(BasicBlockData {
-        statements: [storage_dead, discr_assign].to_vec(),
-        terminator: Some(Terminator {
+    body.basic_blocks_mut().push(BasicBlockData::new_stmts(
+        [storage_dead, discr_assign].to_vec(),
+        Some(Terminator {
             source_info,
             kind: TerminatorKind::SwitchInt {
                 discr: Operand::Move(poll_discr_place),
@@ -179,8 +174,8 @@ fn build_poll_switch<'tcx>(
                 ),
             },
         }),
-        is_cleanup: false,
-    })
+        false,
+    ))
 }
 
 // Gather blocks, reachable through 'drop' targets of Yield and Drop terminators (chained)
@@ -330,10 +325,10 @@ pub(super) fn expand_async_drops<'tcx>(
         let context_ref_place =
             Place::from(body.local_decls.push(LocalDecl::new(context_mut_ref, source_info.span)));
         let arg = Rvalue::Use(Operand::Move(Place::from(CTX_ARG)));
-        body[bb].statements.push(Statement {
+        body[bb].statements.push(Statement::new(
             source_info,
-            kind: StatementKind::Assign(Box::new((context_ref_place, arg))),
-        });
+            StatementKind::Assign(Box::new((context_ref_place, arg))),
+        ));
         let yield_block = insert_term_block(body, TerminatorKind::Unreachable); // `kind` replaced later to yield
         let (pin_bb, fut_pin_place) =
             build_pin_fut(tcx, body, fut_place.clone(), UnwindAction::Continue);
@@ -551,11 +546,8 @@ pub(super) fn insert_clean_drop<'tcx>(
     };
 
     // Create a block to destroy an unresumed coroutines. This can only destroy upvars.
-    body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
-        terminator: Some(Terminator { source_info, kind: term }),
-        is_cleanup: false,
-    })
+    body.basic_blocks_mut()
+        .push(BasicBlockData::new(Some(Terminator { source_info, kind: term }), false))
 }
 
 pub(super) fn create_coroutine_drop_shim<'tcx>(
@@ -734,11 +726,7 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(poll_enum, source_info);
 
     // call coroutine_drop()
-    let call_bb = body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
-        terminator: None,
-        is_cleanup: false,
-    });
+    let call_bb = body.basic_blocks_mut().push(BasicBlockData::new(None, false));
 
     // return Poll::Ready()
     let ret_bb = insert_poll_ready_block(tcx, &mut body);

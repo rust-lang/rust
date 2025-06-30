@@ -115,10 +115,10 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
                 for bb_idx in new_targets.all_targets() {
                     storage_deads_to_insert.push((
                         *bb_idx,
-                        Statement {
-                            source_info: terminator.source_info,
-                            kind: StatementKind::StorageDead(opt.to_switch_on.local),
-                        },
+                        Statement::new(
+                            terminator.source_info,
+                            StatementKind::StorageDead(opt.to_switch_on.local),
+                        ),
                     ));
                 }
             }
