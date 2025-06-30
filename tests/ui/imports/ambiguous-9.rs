@@ -5,7 +5,8 @@ pub mod dsl {
     mod range {
         pub fn date_range() {}
     }
-    pub use self::range::*; //~ WARNING ambiguous glob re-exports
+    pub use self::range::*;
+    //~^ WARNING ambiguous glob re-exports
     use super::prelude::*;
 }
 
@@ -13,7 +14,8 @@ pub mod prelude {
     mod t {
       pub fn date_range() {}
     }
-    pub use self::t::*; //~ WARNING ambiguous glob re-exports
+    pub use self::t::*;
+    //~^ WARNING ambiguous glob re-exports
     pub use super::dsl::*;
 }
 

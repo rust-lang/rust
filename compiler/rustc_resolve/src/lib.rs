@@ -130,6 +130,13 @@ enum Scope<'ra> {
     BuiltinTypes,
 }
 
+/// Scopes used for resolving an `Ident` in a `Module`.
+#[derive(Debug, Copy, Clone, PartialEq)]
+enum ModuleScope {
+    NonGlobal,
+    Globs,
+}
+
 /// Names from different contexts may want to visit different subsets of all specific scopes
 /// with different restrictions when looking up the resolution.
 /// This enum is currently used only for early resolution (imports and macros),
@@ -640,7 +647,8 @@ impl<'ra> Module<'ra> {
         F: FnMut(&mut R, Ident, Namespace, NameBinding<'ra>),
     {
         for (key, name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
-            if let Some(binding) = name_resolution.borrow().binding {
+            let resolution = name_resolution.borrow();
+            if let Some(binding) = resolution.non_glob_binding.or_else(|| resolution.glob_binding) {
                 f(resolver, key.ident, key.ns, binding);
             }
         }
