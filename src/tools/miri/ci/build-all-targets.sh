@@ -9,7 +9,7 @@ FAILS_DIR=failures
 rm -rf $FAILS_DIR
 mkdir $FAILS_DIR
 
-PLATFORM_SUPPORT_FILE=$(rustc +miri --print sysroot)/share/doc/rust/html/rustc/platform-support.html
+PLATFORM_SUPPORT_FILE=$(rustc +miri --print sysroot)/share/doc/rust/html/$(rustc +miri --print host-tuple)/rustc/platform-support.html
 
 for target in $(python3 ci/scrape-targets.py $PLATFORM_SUPPORT_FILE); do
     # Wipe the cache before every build to minimize disk usage
