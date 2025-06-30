@@ -1,9 +1,8 @@
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::ops::Neg;
 use crate::os::windows::prelude::*;
-use crate::sys::api::utf16;
-use crate::sys::c;
 use crate::sys::handle::Handle;
+use crate::sys::{api, c};
 use crate::sys_common::{FromInner, IntoInner};
 use crate::{mem, ptr};
 
@@ -73,8 +72,8 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
         // Open a handle to the pipe filesystem (`\??\PIPE\`).
         // This will be used when creating a new annon pipe.
         let pipe_fs = {
-            let path = c::UNICODE_STRING::from_ref(utf16!(r"\??\PIPE\"));
-            object_attributes.ObjectName = &path;
+            let path = api::unicode_str!(r"\??\PIPE\");
+            object_attributes.ObjectName = path.as_ptr();
             let mut pipe_fs = ptr::null_mut();
             let status = c::NtOpenFile(
                 &mut pipe_fs,
@@ -93,8 +92,12 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
 
         // From now on we're using handles instead of paths to create and open pipes.
         // So set the `ObjectName` to a zero length string.
+        // As a (perhaps overzealous) mitigation for #143078, we use the null pointer
+        // for empty.Buffer instead of unicode_str!("").
+        // There's no difference to the OS itself but it's possible that third party
+        // DLLs which hook in to processes could be relying on the exact form of this string.
         let empty = c::UNICODE_STRING::default();
-        object_attributes.ObjectName = &empty;
+        object_attributes.ObjectName = &raw const empty;
 
         // Create our side of the pipe for async access.
         let ours = {
