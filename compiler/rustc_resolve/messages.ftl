@@ -432,6 +432,7 @@ resolve_undeclared_label =
 
 resolve_underscore_lifetime_is_reserved = `'_` cannot be used here
     .label = `'_` is a reserved lifetime name
+    .help = use another lifetime specifier
 
 resolve_unexpected_res_change_ty_to_const_param_sugg =
     you might have meant to write a const parameter here
