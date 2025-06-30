@@ -277,17 +277,7 @@ impl<'tcx> ItemCtxt<'tcx> {
             }
             _ => self.item_def_id,
         };
-        // FIXME: just invoke `tcx.def_descr` instead of going through the HIR
-        // Can also remove most `descr` methods then.
-        let kind = match self.tcx.hir_node_by_def_id(kind_id) {
-            Node::Item(it) => it.kind.descr(),
-            Node::ImplItem(it) => it.kind.descr(),
-            Node::TraitItem(it) => it.kind.descr(),
-            Node::ForeignItem(it) => it.kind.descr(),
-            Node::OpaqueTy(_) => "opaque type",
-            Node::Synthetic => self.tcx.def_descr(kind_id.into()),
-            node => todo!("{node:#?}"),
-        };
+        let kind = self.tcx.def_descr(kind_id.into());
         let mut diag = placeholder_type_error_diag(
             self,
             generics,
