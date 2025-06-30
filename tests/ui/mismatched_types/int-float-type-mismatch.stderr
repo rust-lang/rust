@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/integral-variable-unification-error.rs:5:9
+  --> $DIR/int-float-type-mismatch.rs:8:9
    |
 LL |     let mut x
    |         ----- expected due to the type of this binding
