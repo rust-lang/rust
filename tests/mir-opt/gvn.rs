@@ -869,7 +869,7 @@ fn generic_cast_metadata<T, A: ?Sized, B: ?Sized>(ps: *const [T], pa: *const A, 
 
             // Metadata usize -> (), do not optimize.
             // CHECK: [[T:_.+]] = copy _1 as
-            // CHECK-NEXT: PtrMetadata(copy [[T]])
+            // CHECK-NEXT: const ();
             let t1 = CastPtrToPtr::<_, *const T>(ps);
             let m1 = PtrMetadata(t1);
 

@@ -130,7 +130,7 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
         let mut state = VnState::new(tcx, body, typing_env, &ssa, dominators, &body.local_decls);
 
         for local in body.args_iter().filter(|&local| ssa.is_ssa(local)) {
-            let opaque = state.new_opaque();
+            let opaque = state.new_opaque(body.local_decls[local].ty);
             state.assign(local, opaque);
         }
 
@@ -238,7 +238,7 @@ struct VnState<'body, 'tcx> {
     /// Locals that are assigned that value.
     // This vector does not hold all the values of `VnIndex` that we create.
     rev_locals: IndexVec<VnIndex, SmallVec<[Local; 1]>>,
-    values: FxIndexSet<Value<'tcx>>,
+    values: FxIndexSet<(Value<'tcx>, Ty<'tcx>)>,
     /// Values evaluated as constants if possible.
     evaluated: IndexVec<VnIndex, Option<OpTy<'tcx>>>,
     /// Counter to generate different values.
@@ -287,8 +287,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self), ret)]
-    fn insert(&mut self, value: Value<'tcx>) -> VnIndex {
-        let (index, new) = self.values.insert_full(value);
+    fn insert(&mut self, ty: Ty<'tcx>, value: Value<'tcx>) -> VnIndex {
+        let (index, new) = self.values.insert_full((value, ty));
         let index = VnIndex::from_usize(index);
         if new {
             // Grow `evaluated` and `rev_locals` here to amortize the allocations.
@@ -310,20 +310,33 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     /// Create a new `Value` for which we have no information at all, except that it is distinct
     /// from all the others.
     #[instrument(level = "trace", skip(self), ret)]
-    fn new_opaque(&mut self) -> VnIndex {
+    fn new_opaque(&mut self, ty: Ty<'tcx>) -> VnIndex {
         let value = Value::Opaque(self.next_opaque());
-        self.insert(value)
+        self.insert(ty, value)
     }
 
     /// Create a new `Value::Address` distinct from all the others.
     #[instrument(level = "trace", skip(self), ret)]
     fn new_pointer(&mut self, place: Place<'tcx>, kind: AddressKind) -> VnIndex {
+        let pty = place.ty(self.local_decls, self.tcx).ty;
+        let ty = match kind {
+            AddressKind::Ref(bk) => {
+                Ty::new_ref(self.tcx, self.tcx.lifetimes.re_erased, pty, bk.to_mutbl_lossy())
+            }
+            AddressKind::Address(mutbl) => Ty::new_ptr(self.tcx, pty, mutbl.to_mutbl_lossy()),
+        };
         let value = Value::Address { place, kind, provenance: self.next_opaque() };
-        self.insert(value)
+        self.insert(ty, value)
     }
 
+    #[inline]
     fn get(&self, index: VnIndex) -> &Value<'tcx> {
-        self.values.get_index(index.as_usize()).unwrap()
+        &self.values.get_index(index.as_usize()).unwrap().0
+    }
+
+    #[inline]
+    fn ty(&self, index: VnIndex) -> Ty<'tcx> {
+        self.values.get_index(index.as_usize()).unwrap().1
     }
 
     /// Record that `local` is assigned `value`. `local` must be SSA.
@@ -346,29 +359,29 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             debug_assert_ne!(disambiguator, 0);
             disambiguator
         };
-        self.insert(Value::Constant { value, disambiguator })
+        self.insert(value.ty(), Value::Constant { value, disambiguator })
     }
 
     fn insert_bool(&mut self, flag: bool) -> VnIndex {
         // Booleans are deterministic.
         let value = Const::from_bool(self.tcx, flag);
         debug_assert!(value.is_deterministic());
-        self.insert(Value::Constant { value, disambiguator: 0 })
+        self.insert(self.tcx.types.bool, Value::Constant { value, disambiguator: 0 })
     }
 
-    fn insert_scalar(&mut self, scalar: Scalar, ty: Ty<'tcx>) -> VnIndex {
+    fn insert_scalar(&mut self, ty: Ty<'tcx>, scalar: Scalar) -> VnIndex {
         // Scalars are deterministic.
         let value = Const::from_scalar(self.tcx, scalar, ty);
         debug_assert!(value.is_deterministic());
-        self.insert(Value::Constant { value, disambiguator: 0 })
+        self.insert(ty, Value::Constant { value, disambiguator: 0 })
     }
 
-    fn insert_tuple(&mut self, values: Vec<VnIndex>) -> VnIndex {
-        self.insert(Value::Aggregate(AggregateTy::Tuple, VariantIdx::ZERO, values))
+    fn insert_tuple(&mut self, ty: Ty<'tcx>, values: Vec<VnIndex>) -> VnIndex {
+        self.insert(ty, Value::Aggregate(AggregateTy::Tuple, VariantIdx::ZERO, values))
     }
 
-    fn insert_deref(&mut self, value: VnIndex) -> VnIndex {
-        let value = self.insert(Value::Projection(value, ProjectionElem::Deref));
+    fn insert_deref(&mut self, ty: Ty<'tcx>, value: VnIndex) -> VnIndex {
+        let value = self.insert(ty, Value::Projection(value, ProjectionElem::Deref));
         self.derefs.push(value);
         value
     }
@@ -376,14 +389,18 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     fn invalidate_derefs(&mut self) {
         for deref in std::mem::take(&mut self.derefs) {
             let opaque = self.next_opaque();
-            *self.values.get_index_mut2(deref.index()).unwrap() = Value::Opaque(opaque);
+            self.values.get_index_mut2(deref.index()).unwrap().0 = Value::Opaque(opaque);
         }
     }
 
     #[instrument(level = "trace", skip(self), ret)]
     fn eval_to_const(&mut self, value: VnIndex) -> Option<OpTy<'tcx>> {
         use Value::*;
+        let ty = self.ty(value);
+        let ty = self.ecx.layout_of(ty).ok()?;
         let op = match *self.get(value) {
+            _ if ty.is_zst() => ImmTy::uninit(ty).into(),
+
             Opaque(_) => return None,
             // Do not bother evaluating repeat expressions. This would uselessly consume memory.
             Repeat(..) => return None,
@@ -391,31 +408,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             Constant { ref value, disambiguator: _ } => {
                 self.ecx.eval_mir_constant(value, DUMMY_SP, None).discard_err()?
             }
-            Aggregate(kind, variant, ref fields) => {
+            Aggregate(_, variant, ref fields) => {
                 let fields = fields
                     .iter()
                     .map(|&f| self.evaluated[f].as_ref())
                     .collect::<Option<Vec<_>>>()?;
-                let ty = match kind {
-                    AggregateTy::Array => {
-                        assert!(fields.len() > 0);
-                        Ty::new_array(self.tcx, fields[0].layout.ty, fields.len() as u64)
-                    }
-                    AggregateTy::Tuple => {
-                        Ty::new_tup_from_iter(self.tcx, fields.iter().map(|f| f.layout.ty))
-                    }
-                    AggregateTy::Def(def_id, args) => {
-                        self.tcx.type_of(def_id).instantiate(self.tcx, args)
-                    }
-                };
-                let variant = if ty.is_enum() { Some(variant) } else { None };
-                let ty = self.ecx.layout_of(ty).ok()?;
-                if ty.is_zst() {
-                    ImmTy::uninit(ty).into()
-                } else if matches!(
-                    ty.backend_repr,
-                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)
-                ) {
+                let variant = if ty.ty.is_enum() { Some(variant) } else { None };
+                if matches!(ty.backend_repr, BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..))
+                {
                     let dest = self.ecx.allocate(ty, MemoryKind::Stack).discard_err()?;
                     let variant_dest = if let Some(variant) = variant {
                         self.ecx.project_downcast(&dest, variant).discard_err()?
@@ -440,11 +440,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     return None;
                 }
             }
-            RawPtr { pointer, metadata, output_pointer_ty, data_pointer_ty: _ } => {
+            RawPtr { pointer, metadata, output_pointer_ty: _, data_pointer_ty: _ } => {
                 let pointer = self.evaluated[pointer].as_ref()?;
                 let metadata = self.evaluated[metadata].as_ref()?;
-                let output_pointer_ty = self.ecx.layout_of(output_pointer_ty).ok()?;
-                debug_assert!(!output_pointer_ty.is_zst());
 
                 // Pointers don't have fields, so don't `project_field` them.
                 let data = self.ecx.read_pointer(pointer).discard_err()?;
@@ -454,7 +452,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     MemPlaceMeta::Meta(self.ecx.read_scalar(metadata).discard_err()?)
                 };
                 let ptr_imm = Immediate::new_pointer_with_meta(data, meta, &self.ecx);
-                ImmTy::from_immediate(ptr_imm, output_pointer_ty).into()
+                ImmTy::from_immediate(ptr_imm, ty).into()
             }
 
             Projection(base, elem) => {
@@ -481,7 +479,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 };
                 self.ecx.project(value, elem).discard_err()?
             }
-            Address { place, kind, provenance: _ } => {
+            Address { place, kind: _, provenance: _ } => {
                 if !place.is_indirect_first_projection() {
                     return None;
                 }
@@ -497,19 +495,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     mplace = self.ecx.project(&mplace, proj).discard_err()?;
                 }
                 let pointer = mplace.to_ref(&self.ecx);
-                let ty = match kind {
-                    AddressKind::Ref(bk) => Ty::new_ref(
-                        self.tcx,
-                        self.tcx.lifetimes.re_erased,
-                        mplace.layout.ty,
-                        bk.to_mutbl_lossy(),
-                    ),
-                    AddressKind::Address(mutbl) => {
-                        Ty::new_ptr(self.tcx, mplace.layout.ty, mutbl.to_mutbl_lossy())
-                    }
-                };
-                let layout = self.ecx.layout_of(ty).ok()?;
-                ImmTy::from_immediate(pointer, layout).into()
+                ImmTy::from_immediate(pointer, ty).into()
             }
 
             Discriminant(base) => {
@@ -521,32 +507,28 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             Len(slice) => {
                 let slice = self.evaluated[slice].as_ref()?;
-                let usize_layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
                 let len = slice.len(&self.ecx).discard_err()?;
-                let imm = ImmTy::from_uint(len, usize_layout);
-                imm.into()
+                ImmTy::from_uint(len, ty).into()
             }
-            NullaryOp(null_op, ty) => {
-                let layout = self.ecx.layout_of(ty).ok()?;
+            NullaryOp(null_op, arg_ty) => {
+                let arg_layout = self.ecx.layout_of(arg_ty).ok()?;
                 if let NullOp::SizeOf | NullOp::AlignOf = null_op
-                    && layout.is_unsized()
+                    && arg_layout.is_unsized()
                 {
                     return None;
                 }
                 let val = match null_op {
-                    NullOp::SizeOf => layout.size.bytes(),
-                    NullOp::AlignOf => layout.align.abi.bytes(),
+                    NullOp::SizeOf => arg_layout.size.bytes(),
+                    NullOp::AlignOf => arg_layout.align.abi.bytes(),
                     NullOp::OffsetOf(fields) => self
                         .ecx
                         .tcx
-                        .offset_of_subfield(self.typing_env(), layout, fields.iter())
+                        .offset_of_subfield(self.typing_env(), arg_layout, fields.iter())
                         .bytes(),
                     NullOp::UbChecks => return None,
                     NullOp::ContractChecks => return None,
                 };
-                let usize_layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
-                let imm = ImmTy::from_uint(val, usize_layout);
-                imm.into()
+                ImmTy::from_uint(val, ty).into()
             }
             UnaryOp(un_op, operand) => {
                 let operand = self.evaluated[operand].as_ref()?;
@@ -562,30 +544,27 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let val = self.ecx.binary_op(bin_op, &lhs, &rhs).discard_err()?;
                 val.into()
             }
-            Cast { kind, value, from: _, to } => match kind {
+            Cast { kind, value, from: _, to: _ } => match kind {
                 CastKind::IntToInt | CastKind::IntToFloat => {
                     let value = self.evaluated[value].as_ref()?;
                     let value = self.ecx.read_immediate(value).discard_err()?;
-                    let to = self.ecx.layout_of(to).ok()?;
-                    let res = self.ecx.int_to_int_or_float(&value, to).discard_err()?;
+                    let res = self.ecx.int_to_int_or_float(&value, ty).discard_err()?;
                     res.into()
                 }
                 CastKind::FloatToFloat | CastKind::FloatToInt => {
                     let value = self.evaluated[value].as_ref()?;
                     let value = self.ecx.read_immediate(value).discard_err()?;
-                    let to = self.ecx.layout_of(to).ok()?;
-                    let res = self.ecx.float_to_float_or_int(&value, to).discard_err()?;
+                    let res = self.ecx.float_to_float_or_int(&value, ty).discard_err()?;
                     res.into()
                 }
                 CastKind::Transmute => {
                     let value = self.evaluated[value].as_ref()?;
-                    let to = self.ecx.layout_of(to).ok()?;
                     // `offset` for immediates generally only supports projections that match the
                     // type of the immediate. However, as a HACK, we exploit that it can also do
                     // limited transmutes: it only works between types with the same layout, and
                     // cannot transmute pointers to integers.
                     if value.as_mplace_or_imm().is_right() {
-                        let can_transmute = match (value.layout.backend_repr, to.backend_repr) {
+                        let can_transmute = match (value.layout.backend_repr, ty.backend_repr) {
                             (BackendRepr::Scalar(s1), BackendRepr::Scalar(s2)) => {
                                 s1.size(&self.ecx) == s2.size(&self.ecx)
                                     && !matches!(s1.primitive(), Primitive::Pointer(..))
@@ -605,13 +584,12 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                             return None;
                         }
                     }
-                    value.offset(Size::ZERO, to, &self.ecx).discard_err()?
+                    value.offset(Size::ZERO, ty, &self.ecx).discard_err()?
                 }
                 CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) => {
                     let src = self.evaluated[value].as_ref()?;
-                    let to = self.ecx.layout_of(to).ok()?;
-                    let dest = self.ecx.allocate(to, MemoryKind::Stack).discard_err()?;
-                    self.ecx.unsize_into(src, to, &dest.clone().into()).discard_err()?;
+                    let dest = self.ecx.allocate(ty, MemoryKind::Stack).discard_err()?;
+                    self.ecx.unsize_into(src, ty, &dest.clone().into()).discard_err()?;
                     self.ecx
                         .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
                         .discard_err()?;
@@ -620,15 +598,13 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 CastKind::FnPtrToPtr | CastKind::PtrToPtr => {
                     let src = self.evaluated[value].as_ref()?;
                     let src = self.ecx.read_immediate(src).discard_err()?;
-                    let to = self.ecx.layout_of(to).ok()?;
-                    let ret = self.ecx.ptr_to_ptr(&src, to).discard_err()?;
+                    let ret = self.ecx.ptr_to_ptr(&src, ty).discard_err()?;
                     ret.into()
                 }
                 CastKind::PointerCoercion(ty::adjustment::PointerCoercion::UnsafeFnPointer, _) => {
                     let src = self.evaluated[value].as_ref()?;
                     let src = self.ecx.read_immediate(src).discard_err()?;
-                    let to = self.ecx.layout_of(to).ok()?;
-                    ImmTy::from_immediate(*src, to).into()
+                    ImmTy::from_immediate(*src, ty).into()
                 }
                 _ => return None,
             },
@@ -638,21 +614,20 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     fn project(
         &mut self,
-        place: PlaceRef<'tcx>,
+        place_ty: PlaceTy<'tcx>,
         value: VnIndex,
         proj: PlaceElem<'tcx>,
         from_non_ssa_index: &mut bool,
-    ) -> Option<VnIndex> {
+    ) -> Option<(PlaceTy<'tcx>, VnIndex)> {
+        let projection_ty = place_ty.projection_ty(self.tcx, proj);
         let proj = match proj {
             ProjectionElem::Deref => {
-                let ty = place.ty(self.local_decls, self.tcx).ty;
-                if let Some(Mutability::Not) = ty.ref_mutability()
-                    && let Some(pointee_ty) = ty.builtin_deref(true)
-                    && pointee_ty.is_freeze(self.tcx, self.typing_env())
+                if let Some(Mutability::Not) = place_ty.ty.ref_mutability()
+                    && projection_ty.ty.is_freeze(self.tcx, self.typing_env())
                 {
                     // An immutable borrow `_x` always points to the same value for the
                     // lifetime of the borrow, so we can merge all instances of `*_x`.
-                    return Some(self.insert_deref(value));
+                    return Some((projection_ty, self.insert_deref(projection_ty.ty, value)));
                 } else {
                     return None;
                 }
@@ -660,7 +635,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             ProjectionElem::Downcast(name, index) => ProjectionElem::Downcast(name, index),
             ProjectionElem::Field(f, ty) => {
                 if let Value::Aggregate(_, _, fields) = self.get(value) {
-                    return Some(fields[f.as_usize()]);
+                    return Some((projection_ty, fields[f.as_usize()]));
                 } else if let Value::Projection(outer_value, ProjectionElem::Downcast(_, read_variant)) = self.get(value)
                     && let Value::Aggregate(_, written_variant, fields) = self.get(*outer_value)
                     // This pass is not aware of control-flow, so we do not know whether the
@@ -680,14 +655,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     // a downcast to an inactive variant.
                     && written_variant == read_variant
                 {
-                    return Some(fields[f.as_usize()]);
+                    return Some((projection_ty, fields[f.as_usize()]));
                 }
                 ProjectionElem::Field(f, ty)
             }
             ProjectionElem::Index(idx) => {
                 if let Value::Repeat(inner, _) = self.get(value) {
                     *from_non_ssa_index |= self.locals[idx].is_none();
-                    return Some(*inner);
+                    return Some((projection_ty, *inner));
                 }
                 let idx = self.locals[idx]?;
                 ProjectionElem::Index(idx)
@@ -695,7 +670,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
                 match self.get(value) {
                     Value::Repeat(inner, _) => {
-                        return Some(*inner);
+                        return Some((projection_ty, *inner));
                     }
                     Value::Aggregate(AggregateTy::Array, _, operands) => {
                         let offset = if from_end {
@@ -703,7 +678,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         } else {
                             offset as usize
                         };
-                        return operands.get(offset).copied();
+                        let value = operands.get(offset).copied()?;
+                        return Some((projection_ty, value));
                     }
                     _ => {}
                 };
@@ -717,7 +693,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             ProjectionElem::UnwrapUnsafeBinder(ty) => ProjectionElem::UnwrapUnsafeBinder(ty),
         };
 
-        Some(self.insert(Value::Projection(value, proj)))
+        let value = self.insert(projection_ty.ty, Value::Projection(value, proj));
+        Some((projection_ty, value))
     }
 
     /// Simplify the projection chain if we know better.
@@ -779,6 +756,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         // Invariant: `value` holds the value up-to the `index`th projection excluded.
         let mut value = self.locals[place.local]?;
+        // Invariant: `value` has type `place_ty`, with optional downcast variant if needed.
+        let mut place_ty = PlaceTy::from_ty(self.local_decls[place.local].ty);
         let mut from_non_ssa_index = false;
         for (index, proj) in place.projection.iter().enumerate() {
             if let Value::Projection(pointer, ProjectionElem::Deref) = *self.get(value)
@@ -796,8 +775,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 place_ref = PlaceRef { local, projection: &place.projection[index..] };
             }
 
-            let base = PlaceRef { local: place.local, projection: &place.projection[..index] };
-            value = self.project(base, value, proj, &mut from_non_ssa_index)?;
+            (place_ty, value) = self.project(place_ty, value, proj, &mut from_non_ssa_index)?;
         }
 
         if let Value::Projection(pointer, ProjectionElem::Deref) = *self.get(value)
@@ -906,8 +884,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // Unsupported values.
             Rvalue::ThreadLocalRef(..) | Rvalue::ShallowInitBox(..) => return None,
         };
-        debug!(?value);
-        Some(self.insert(value))
+        let ty = rvalue.ty(self.local_decls, self.tcx);
+        Some(self.insert(ty, value))
     }
 
     fn simplify_discriminant(&mut self, place: VnIndex) -> Option<VnIndex> {
@@ -917,7 +895,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         {
             let enum_ty = self.tcx.type_of(enum_did).instantiate(self.tcx, enum_args);
             let discr = self.ecx.discriminant_for_variant(enum_ty, variant).discard_err()?;
-            return Some(self.insert_scalar(discr.to_scalar(), discr.layout.ty));
+            return Some(self.insert_scalar(discr.layout.ty, discr.to_scalar()));
         }
 
         None
@@ -1014,9 +992,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
+        let tcx = self.tcx;
+        let ty = rvalue.ty(self.local_decls, tcx);
+
         let Rvalue::Aggregate(box ref kind, ref mut field_ops) = *rvalue else { bug!() };
 
-        let tcx = self.tcx;
         if field_ops.is_empty() {
             let is_zst = match *kind {
                 AggregateKind::Array(..)
@@ -1031,17 +1011,19 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             };
 
             if is_zst {
-                let ty = rvalue.ty(self.local_decls, tcx);
                 return Some(self.insert_constant(Const::zero_sized(ty)));
             }
         }
 
         let fields: Vec<_> = field_ops
             .iter_mut()
-            .map(|op| self.simplify_operand(op, location).unwrap_or_else(|| self.new_opaque()))
+            .map(|op| {
+                self.simplify_operand(op, location)
+                    .unwrap_or_else(|| self.new_opaque(op.ty(self.local_decls, self.tcx)))
+            })
             .collect();
 
-        let (ty, variant_index) = match *kind {
+        let (aty, variant_index) = match *kind {
             AggregateKind::Array(..) => {
                 assert!(!field_ops.is_empty());
                 (AggregateTy::Array, FIRST_VARIANT)
@@ -1058,10 +1040,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             // Do not track unions.
             AggregateKind::Adt(_, _, _, _, Some(_)) => return None,
-            AggregateKind::RawPtr(pointee_ty, mtbl) => {
+            AggregateKind::RawPtr(..) => {
                 assert_eq!(field_ops.len(), 2);
                 let mut data_pointer_ty = field_ops[FieldIdx::ZERO].ty(self.local_decls, self.tcx);
-                let output_pointer_ty = Ty::new_ptr(self.tcx, pointee_ty, mtbl);
 
                 let [mut pointer, metadata] = fields.try_into().unwrap();
 
@@ -1074,7 +1055,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     to: _,
                 } = self.get(pointer)
                     && let ty::RawPtr(from_pointee_ty, from_mtbl) = cast_from.kind()
-                    && let ty::RawPtr(_, output_mtbl) = output_pointer_ty.kind()
+                    && let ty::RawPtr(_, output_mtbl) = ty.kind()
                     && from_mtbl == output_mtbl
                     && from_pointee_ty.is_sized(self.tcx, self.typing_env())
                 {
@@ -1087,16 +1068,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     field_ops[FieldIdx::ZERO] = op;
                 }
 
-                return Some(self.insert(Value::RawPtr {
-                    output_pointer_ty,
-                    data_pointer_ty,
-                    pointer,
-                    metadata,
-                }));
+                return Some(self.insert(
+                    ty,
+                    Value::RawPtr { output_pointer_ty: ty, data_pointer_ty, pointer, metadata },
+                ));
             }
         };
 
-        if let AggregateTy::Array = ty
+        if let AggregateTy::Array = aty
             && fields.len() > 4
         {
             let first = fields[0];
@@ -1105,18 +1084,18 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 if let Some(op) = self.try_as_operand(first, location) {
                     *rvalue = Rvalue::Repeat(op, len);
                 }
-                return Some(self.insert(Value::Repeat(first, len)));
+                return Some(self.insert(ty, Value::Repeat(first, len)));
             }
         }
 
-        if let AggregateTy::Def(_, _) = ty
+        if let AggregateTy::Def(_, _) = aty
             && let Some(value) =
                 self.simplify_aggregate_to_copy(lhs, rvalue, location, &fields, variant_index)
         {
             return Some(value);
         }
 
-        Some(self.insert(Value::Aggregate(ty, variant_index, fields)))
+        Some(self.insert(ty, Value::Aggregate(aty, variant_index, fields)))
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -1197,7 +1176,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             _ => Value::UnaryOp(op, arg_index),
         };
-        Some(self.insert(value))
+        let ty = op.ty(self.tcx, self.ty(arg_index));
+        Some(self.insert(ty, value))
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -1243,8 +1223,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         if let Some(value) = self.simplify_binary_inner(op, lhs_ty, lhs, rhs) {
             return Some(value);
         }
+        let ty = op.ty(self.tcx, self.ty(lhs), self.ty(rhs));
         let value = Value::BinaryOp(op, lhs, rhs);
-        Some(self.insert(value))
+        Some(self.insert(ty, value))
     }
 
     fn simplify_binary_inner(
@@ -1336,19 +1317,19 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 | BinOp::Shr,
                 Left(0),
                 _,
-            ) => self.insert_scalar(Scalar::from_uint(0u128, layout.size), lhs_ty),
+            ) => self.insert_scalar(lhs_ty, Scalar::from_uint(0u128, layout.size)),
             // Attempt to simplify `x | ALL_ONES` to `ALL_ONES`.
             (BinOp::BitOr, _, Left(ones)) | (BinOp::BitOr, Left(ones), _)
                 if ones == layout.size.truncate(u128::MAX)
                     || (layout.ty.is_bool() && ones == 1) =>
             {
-                self.insert_scalar(Scalar::from_uint(ones, layout.size), lhs_ty)
+                self.insert_scalar(lhs_ty, Scalar::from_uint(ones, layout.size))
             }
             // Sub/Xor with itself.
             (BinOp::Sub | BinOp::SubWithOverflow | BinOp::SubUnchecked | BinOp::BitXor, a, b)
                 if a == b =>
             {
-                self.insert_scalar(Scalar::from_uint(0u128, layout.size), lhs_ty)
+                self.insert_scalar(lhs_ty, Scalar::from_uint(0u128, layout.size))
             }
             // Comparison:
             // - if both operands can be computed as bits, just compare the bits;
@@ -1362,8 +1343,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         };
 
         if op.is_overflowing() {
+            let ty = Ty::new_tup(self.tcx, &[self.ty(result), self.tcx.types.bool]);
             let false_val = self.insert_bool(false);
-            Some(self.insert_tuple(vec![result, false_val]))
+            Some(self.insert_tuple(ty, vec![result, false_val]))
         } else {
             Some(result)
         }
@@ -1389,7 +1371,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         if let CastKind::PointerCoercion(ReifyFnPointer | ClosureFnPointer(_), _) = kind {
             // Each reification of a generic fn may get a different pointer.
             // Do not try to merge them.
-            return Some(self.new_opaque());
+            return Some(self.new_opaque(to));
         }
 
         let mut was_ever_updated = false;
@@ -1497,7 +1479,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             *initial_kind = kind;
         }
 
-        Some(self.insert(Value::Cast { kind, value, from, to }))
+        Some(self.insert(to, Value::Cast { kind, value, from, to }))
     }
 
     fn simplify_len(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {
@@ -1530,7 +1512,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         // Fallback: a symbolic `Len`.
-        Some(self.insert(Value::Len(inner)))
+        Some(self.insert(self.tcx.types.usize, Value::Len(inner)))
     }
 
     fn pointers_have_same_metadata(&self, left_ptr_ty: Ty<'tcx>, right_ptr_ty: Ty<'tcx>) -> bool {
@@ -1807,11 +1789,12 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
 
         if let Some(local) = lhs.as_local()
             && self.ssa.is_ssa(local)
+            && let rvalue_ty = rvalue.ty(self.local_decls, self.tcx)
             // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark
             // `local` as reusable if we have an exact type match.
-            && self.local_decls[local].ty == rvalue.ty(self.local_decls, self.tcx)
+            && self.local_decls[local].ty == rvalue_ty
         {
-            let value = value.unwrap_or_else(|| self.new_opaque());
+            let value = value.unwrap_or_else(|| self.new_opaque(rvalue_ty));
             self.assign(local, value);
         }
     }
@@ -1821,7 +1804,8 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
             if let Some(local) = destination.as_local()
                 && self.ssa.is_ssa(local)
             {
-                let opaque = self.new_opaque();
+                let ty = self.local_decls[local].ty;
+                let opaque = self.new_opaque(ty);
                 self.assign(local, opaque);
             }
         }
