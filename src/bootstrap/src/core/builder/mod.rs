@@ -968,6 +968,7 @@ impl<'a> Builder<'a> {
                 tool::CoverageDump,
                 tool::LlvmBitcodeLinker,
                 tool::RustcPerf,
+                tool::RelnotesApiList,
             ),
             Kind::Clippy => describe!(
                 clippy::Std,
@@ -1144,7 +1145,8 @@ impl<'a> Builder<'a> {
                 dist::PlainSourceTarball,
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
-                dist::Gcc
+                dist::Gcc,
+                dist::RelnotesApiList,
             ),
             Kind::Install => describe!(
                 install::Docs,
