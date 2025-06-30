@@ -571,8 +571,6 @@ declare_features! (
     /// standard library until the soundness issues with specialization
     /// are fixed.
     (unstable, min_specialization, "1.7.0", Some(31844)),
-    /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
-    (unstable, more_qualified_paths, "1.54.0", Some(86935)),
     /// Allows the `#[must_not_suspend]` attribute.
     (unstable, must_not_suspend, "1.57.0", Some(83310)),
     /// Allows `mut ref` and `mut ref mut` identifier patterns.
