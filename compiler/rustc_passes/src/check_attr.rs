@@ -33,7 +33,7 @@ use rustc_session::config::CrateType;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, INVALID_MACRO_EXPORT_ARGUMENTS,
-    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    MALFORMED_DIAGNOSTIC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
@@ -429,7 +429,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         );
     }
 
-    /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl.
+    /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl and that it has no
+    /// arguments.
     fn check_do_not_recommend(
         &self,
         attr_span: Span,
@@ -446,7 +447,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             )
         {
             self.tcx.emit_node_span_lint(
-                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
                 hir_id,
                 attr_span,
                 errors::IncorrectDoNotRecommendLocation,
@@ -454,7 +455,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
         if !attr.is_word() {
             self.tcx.emit_node_span_lint(
-                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                 hir_id,
                 attr_span,
                 errors::DoNotRecommendDoesNotExpectArgs,
@@ -466,7 +467,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_diagnostic_on_unimplemented(&self, attr_span: Span, hir_id: HirId, target: Target) {
         if !matches!(target, Target::Trait) {
             self.tcx.emit_node_span_lint(
-                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
                 hir_id,
                 attr_span,
                 DiagnosticOnUnimplementedOnlyForTraits,
