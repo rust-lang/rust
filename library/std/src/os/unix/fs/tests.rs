@@ -39,7 +39,8 @@ fn write_vectored_at() {
         file.write_all(msg).unwrap();
     }
     let expected = {
-        let file = fs::File::options().write(true).open(&filename).unwrap();
+        // Open in append mode to test that positioned writes bypass O_APPEND.
+        let file = fs::File::options().append(true).open(&filename).unwrap();
         let buf0 = b"    ";
         let buf1 = b"great  ";
 
