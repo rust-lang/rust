@@ -28,6 +28,9 @@ attr_parsing_ill_formed_attribute_input = {$num_suggestions ->
         *[other] valid forms for the attribute are {$suggestions}
     }
 
+attr_parsing_illegal_link_ordinal_format = illegal ordinal format in `link_ordinal`
+    .note = an unsuffixed integer value, e.g., `1`, is expected
+
 attr_parsing_incorrect_repr_format_align_one_arg =
     incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
 
@@ -73,6 +76,9 @@ attr_parsing_invalid_repr_hint_no_value =
 
 attr_parsing_invalid_since =
     'since' must be a Rust version number, such as "1.31.0"
+
+attr_parsing_link_ordinal_out_of_range = ordinal value in `link_ordinal` is too large: `{$ordinal}`
+    .note = the value may not exceed `u16::MAX`
 
 attr_parsing_missing_feature =
     missing 'feature'
