@@ -4,6 +4,7 @@ use std::ops::Range;
 use std::str;
 
 use rustc_abi::{FIRST_VARIANT, ReprOptions, VariantIdx};
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -278,7 +279,9 @@ impl AdtDefData {
         debug!("AdtDef::new({:?}, {:?}, {:?}, {:?})", did, kind, variants, repr);
         let mut flags = AdtFlags::NO_ADT_FLAGS;
 
-        if kind == AdtKind::Enum && tcx.has_attr(did, sym::non_exhaustive) {
+        if kind == AdtKind::Enum
+            && find_attr!(tcx.get_all_attrs(did), AttributeKind::NonExhaustive(..))
+        {
             debug!("found non-exhaustive variant list for {:?}", did);
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
         }

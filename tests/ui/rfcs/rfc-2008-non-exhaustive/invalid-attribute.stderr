@@ -1,8 +1,11 @@
-error: malformed `non_exhaustive` attribute input
+error[E0565]: malformed `non_exhaustive` attribute input
   --> $DIR/invalid-attribute.rs:1:1
    |
 LL | #[non_exhaustive(anything)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[non_exhaustive]`
+   | ^^^^^^^^^^^^^^^^----------^
+   | |               |
+   | |               didn't expect any arguments here
+   | help: must be of the form: `#[non_exhaustive]`
 
 error[E0701]: attribute should be applied to a struct or enum
   --> $DIR/invalid-attribute.rs:5:1
@@ -27,4 +30,5 @@ LL | | }
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0701`.
+Some errors have detailed explanations: E0565, E0701.
+For more information about an error, try `rustc --explain E0565`.

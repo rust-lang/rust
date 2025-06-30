@@ -300,6 +300,7 @@ fn emit_malformed_attribute(
             | sym::cold
             | sym::naked
             | sym::no_mangle
+            | sym::non_exhaustive
             | sym::must_use
             | sym::track_caller
             | sym::link_name

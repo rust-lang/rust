@@ -26,6 +26,7 @@ use crate::attributes::link_attrs::LinkNameParser;
 use crate::attributes::lint_helpers::{AsPtrParser, PubTransparentParser};
 use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
 use crate::attributes::must_use::MustUseParser;
+use crate::attributes::non_exhaustive::NonExhaustiveParser;
 use crate::attributes::repr::{AlignParser, ReprParser};
 use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
@@ -127,6 +128,7 @@ attribute_parsers!(
         Single<MayDangleParser>,
         Single<MustUseParser>,
         Single<NoMangleParser>,
+        Single<NonExhaustiveParser>,
         Single<OptimizeParser>,
         Single<PubTransparentParser>,
         Single<RustcForceInlineParser>,
