@@ -6,7 +6,7 @@ use std::fmt;
 use hir_def::{DefWithBodyId, EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId};
 use intern::sym;
 use rustc_pattern_analysis::{
-    Captures, IndexVec, PatCx, PrivateUninhabitedField,
+    IndexVec, PatCx, PrivateUninhabitedField,
     constructor::{Constructor, ConstructorSet, VariantVisibility},
     usefulness::{PlaceValidity, UsefulnessReport, compute_match_usefulness},
 };
@@ -138,11 +138,11 @@ impl<'db> MatchCheckCtx<'db> {
     }
 
     // This lists the fields of a variant along with their types.
-    fn list_variant_fields<'a>(
-        &'a self,
-        ty: &'a Ty,
+    fn list_variant_fields(
+        &self,
+        ty: &Ty,
         variant: VariantId,
-    ) -> impl Iterator<Item = (LocalFieldId, Ty)> + Captures<'a> + Captures<'db> {
+    ) -> impl Iterator<Item = (LocalFieldId, Ty)> {
         let (_, substs) = ty.as_adt().unwrap();
 
         let field_tys = self.db.field_types(variant);
