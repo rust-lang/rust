@@ -16,6 +16,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir_pretty::id_to_string;
+use rustc_middle::dep_graph::WorkProductId;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::metadata_symbol_name;
 use rustc_middle::mir::interpret;
@@ -2406,8 +2407,8 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     let dep_node = tcx.metadata_dep_node();
 
     if tcx.dep_graph.is_fully_enabled()
-        && let work_product_id = &rustc_middle::dep_graph::WorkProductId::from_cgu_name("metadata")
-        && let Some(work_product) = tcx.dep_graph.previous_work_product(work_product_id)
+        && let work_product_id = WorkProductId::from_cgu_name("metadata")
+        && let Some(work_product) = tcx.dep_graph.previous_work_product(&work_product_id)
         && tcx.try_mark_green(&dep_node)
     {
         let saved_path = &work_product.saved_files["rmeta"];
@@ -2416,9 +2417,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         debug!("copying preexisting metadata from {source_file:?} to {path:?}");
         match rustc_fs_util::link_or_copy(&source_file, path) {
             Ok(_) => {}
-            Err(err) => {
-                tcx.dcx().emit_fatal(FailCreateFileEncoder { err });
-            }
+            Err(err) => tcx.dcx().emit_fatal(FailCreateFileEncoder { err }),
         };
         return;
     };
