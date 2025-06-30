@@ -12,9 +12,9 @@ pub mod common;
 pub mod compute_diff;
 mod debuggers;
 pub mod diagnostics;
+pub mod directives;
 pub mod errors;
 mod executor;
-pub mod directives;
 mod json;
 mod raise_fd_limit;
 mod read2;
@@ -42,8 +42,8 @@ use crate::common::{
     CompareMode, Config, Debugger, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path,
     output_base_dir, output_relative_path,
 };
-use crate::executor::{CollectedTest, ColorConfig, OutputFormat};
 use crate::directives::HeadersCache;
+use crate::executor::{CollectedTest, ColorConfig, OutputFormat};
 use crate::util::logv;
 
 /// Creates the `Config` instance for this invocation of compiletest.

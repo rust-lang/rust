@@ -23,8 +23,8 @@ use crate::common::{
     output_base_dir, output_base_name, output_testname_unique,
 };
 use crate::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
-use crate::errors::{Error, ErrorKind, load_errors};
 use crate::directives::TestProps;
+use crate::errors::{Error, ErrorKind, load_errors};
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::util::{Utf8PathBufExt, add_dylib_path, logv, static_regex};
 use crate::{ColorConfig, help, json, stamp_file_path, warning};
@@ -2039,7 +2039,7 @@ impl<'test> TestCx<'test> {
         // Provide more context on failures.
         filecheck.args(&["--dump-input-context", "100"]);
 
-        // Add custom flags supplied by the `filecheck-flags:` test header.
+        // Add custom flags supplied by the `filecheck-flags:` test directive.
         filecheck.args(&self.props.filecheck_flags);
 
         // FIXME(jieyouxu): don't pass an empty Path
