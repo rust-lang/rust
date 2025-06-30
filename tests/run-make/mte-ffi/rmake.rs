@@ -2,6 +2,13 @@
 //! FFI boundaries (C <-> Rust). This test does not require MTE: whilst the test will use MTE if
 //! available, if it is not, arbitrary tag bits are set using TBI.
 
+//@ ignore-test
+// FIXME(#135867): this test requires running on hardware that has >= ARMv8.5 with MTE enabled.
+// However, current `ubuntu-24.04-arm` job runners have to run on Neoverse N1 CPUs (as opposed to
+// new Neoverse N2) due to crashing issues as described in #135867.
+//
+// Therefore, disable this test until job runners are updated to *Sufficiently New* CPUs.
+
 //@ only-aarch64-unknown-linux-gnu
 // Reason: this test is only valid for AArch64 with `gcc`. The linker must be explicitly specified
 // when cross-compiling, so it is limited to `aarch64-unknown-linux-gnu`.
