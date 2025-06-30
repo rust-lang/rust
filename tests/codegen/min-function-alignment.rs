@@ -4,7 +4,6 @@
 //@ [align1024] compile-flags: -Zmin-function-alignment=1024
 
 #![crate_type = "lib"]
-#![feature(fn_align)]
 
 // Functions without explicit alignment use the global minimum.
 //
