@@ -4,6 +4,7 @@ use rustc_ast::BorrowKind;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::{Expr, ExprKind, Node, QPath};
 use rustc_lint::LateContext;
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::sym;
 
 use super::SWAP_WITH_TEMPORARY;
@@ -11,12 +12,12 @@ use super::SWAP_WITH_TEMPORARY;
 const MSG_TEMPORARY: &str = "this expression returns a temporary value";
 const MSG_TEMPORARY_REFMUT: &str = "this is a mutable reference to a temporary value";
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, func: &Expr<'_>, args: &[Expr<'_>]) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, func: &Expr<'_>, args: &'tcx [Expr<'_>]) {
     if let ExprKind::Path(QPath::Resolved(_, func_path)) = func.kind
         && let Some(func_def_id) = func_path.res.opt_def_id()
         && cx.tcx.is_diagnostic_item(sym::mem_swap, func_def_id)
     {
-        match (ArgKind::new(&args[0]), ArgKind::new(&args[1])) {
+        match (ArgKind::new(cx, &args[0]), ArgKind::new(cx, &args[1])) {
             (ArgKind::RefMutToTemp(left_temp), ArgKind::RefMutToTemp(right_temp)) => {
                 emit_lint_useless(cx, expr, &args[0], &args[1], left_temp, right_temp);
             },
@@ -28,10 +29,10 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, func: &Expr<'_>, args
 }
 
 enum ArgKind<'tcx> {
-    // Mutable reference to a place, coming from a macro
-    RefMutToPlaceAsMacro(&'tcx Expr<'tcx>),
-    // Place behind a mutable reference
-    RefMutToPlace(&'tcx Expr<'tcx>),
+    // Mutable reference to a place, coming from a macro, and number of dereferences to use
+    RefMutToPlaceAsMacro(&'tcx Expr<'tcx>, usize),
+    // Place behind a mutable reference, and number of dereferences to use
+    RefMutToPlace(&'tcx Expr<'tcx>, usize),
     // Temporary value behind a mutable reference
     RefMutToTemp(&'tcx Expr<'tcx>),
     // Any other case
@@ -39,13 +40,29 @@ enum ArgKind<'tcx> {
 }
 
 impl<'tcx> ArgKind<'tcx> {
-    fn new(arg: &'tcx Expr<'tcx>) -> Self {
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, target) = arg.kind {
-            if target.is_syntactic_place_expr() {
+    /// Build a new `ArgKind` from `arg`. There must be no false positive when returning a
+    /// `ArgKind::RefMutToTemp` variant, as this may cause a spurious lint to be emitted.
+    fn new(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Self {
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, target) = arg.kind
+            && let adjustments = cx.typeck_results().expr_adjustments(arg)
+            && adjustments
+                .first()
+                .is_some_and(|adj| matches!(adj.kind, Adjust::Deref(None)))
+            && adjustments
+                .last()
+                .is_some_and(|adj| matches!(adj.kind, Adjust::Borrow(_)))
+        {
+            let extra_derefs = adjustments[1..adjustments.len() - 1]
+                .iter()
+                .filter(|adj| matches!(adj.kind, Adjust::Deref(_)))
+                .count();
+            // If a deref is used, `arg` might be a place expression. For example, a mutex guard
+            // would dereference into the mutex content which is probably not temporary.
+            if target.is_syntactic_place_expr() || extra_derefs > 0 {
                 if arg.span.from_expansion() {
-                    ArgKind::RefMutToPlaceAsMacro(arg)
+                    ArgKind::RefMutToPlaceAsMacro(arg, extra_derefs)
                 } else {
-                    ArgKind::RefMutToPlace(target)
+                    ArgKind::RefMutToPlace(target, extra_derefs)
                 }
             } else {
                 ArgKind::RefMutToTemp(target)
@@ -106,10 +123,15 @@ fn emit_lint_assign(cx: &LateContext<'_>, expr: &Expr<'_>, target: &ArgKind<'_>,
                 let mut applicability = Applicability::MachineApplicable;
                 let ctxt = expr.span.ctxt();
                 let assign_target = match target {
-                    ArgKind::Expr(target) | ArgKind::RefMutToPlaceAsMacro(target) => {
-                        Sugg::hir_with_context(cx, target, ctxt, "_", &mut applicability).deref()
-                    },
-                    ArgKind::RefMutToPlace(target) => Sugg::hir_with_context(cx, target, ctxt, "_", &mut applicability),
+                    ArgKind::Expr(target) => Sugg::hir_with_context(cx, target, ctxt, "_", &mut applicability).deref(),
+                    ArgKind::RefMutToPlaceAsMacro(arg, derefs) => (0..*derefs).fold(
+                        Sugg::hir_with_context(cx, arg, ctxt, "_", &mut applicability).deref(),
+                        |sugg, _| sugg.deref(),
+                    ),
+                    ArgKind::RefMutToPlace(target, derefs) => (0..*derefs).fold(
+                        Sugg::hir_with_context(cx, target, ctxt, "_", &mut applicability),
+                        |sugg, _| sugg.deref(),
+                    ),
                     ArgKind::RefMutToTemp(_) => unreachable!(),
                 };
                 let assign_source = Sugg::hir_with_context(cx, temp, ctxt, "_", &mut applicability);
