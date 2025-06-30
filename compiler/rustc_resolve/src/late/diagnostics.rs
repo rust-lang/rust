@@ -1186,12 +1186,18 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let is_assoc_fn = self.self_type_is_available();
         let self_from_macro = "a `self` parameter, but a macro invocation can only \
                                access identifiers it receives from parameters";
-        if let Some((fn_kind, span)) = &self.diag_metadata.current_function {
+        if let Some((fn_kind, fn_span)) = &self.diag_metadata.current_function {
             // The current function has a `self` parameter, but we were unable to resolve
             // a reference to `self`. This can only happen if the `self` identifier we
-            // are resolving came from a different hygiene context.
+            // are resolving came from a different hygiene context or a variable binding.
             if fn_kind.decl().inputs.get(0).is_some_and(|p| p.is_self()) {
-                err.span_label(*span, format!("this function has {self_from_macro}"));
+                if span.from_expansion() {
+                    err.span_label(*fn_span, format!("this function has {self_from_macro}"));
+                } else {
+                    // If the `self` is neither from a macro nor from a function self parameter,
+                    // It is a local variable, we should suggest to rename `self` to `self_`
+                    err.span_help(span, format!("rename `self` to `self_`"));
+                }
             } else {
                 let doesnt = if is_assoc_fn {
                     let (span, sugg) = fn_kind
@@ -1204,7 +1210,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             // This avoids placing the suggestion into the visibility specifier.
                             let span = fn_kind
                                 .ident()
-                                .map_or(*span, |ident| span.with_lo(ident.span.hi()));
+                                .map_or(*fn_span, |ident| fn_span.with_lo(ident.span.hi()));
                             (
                                 self.r
                                     .tcx
