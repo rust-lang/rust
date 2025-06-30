@@ -429,22 +429,21 @@ where
         // If we have run this goal before, and it was stalled, check that any of the goal's
         // args have changed. Otherwise, we don't need to re-run the goal because it'll remain
         // stalled, since it'll canonicalize the same way and evaluation is pure.
-        if let Some(stalled_on) = stalled_on {
-            if !stalled_on.stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value))
-                && !self
-                    .delegate
-                    .opaque_types_storage_num_entries()
-                    .needs_reevaluation(stalled_on.num_opaques)
-            {
-                return Ok((
-                    NestedNormalizationGoals::empty(),
-                    GoalEvaluation {
-                        certainty: Certainty::Maybe(stalled_on.stalled_cause),
-                        has_changed: HasChanged::No,
-                        stalled_on: Some(stalled_on),
-                    },
-                ));
-            }
+        if let Some(stalled_on) = stalled_on
+            && !stalled_on.stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value))
+            && !self
+                .delegate
+                .opaque_types_storage_num_entries()
+                .needs_reevaluation(stalled_on.num_opaques)
+        {
+            return Ok((
+                NestedNormalizationGoals::empty(),
+                GoalEvaluation {
+                    certainty: Certainty::Maybe(stalled_on.stalled_cause),
+                    has_changed: HasChanged::No,
+                    stalled_on: Some(stalled_on),
+                },
+            ));
         }
 
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
@@ -833,14 +832,11 @@ where
 
                 match t.kind() {
                     ty::Infer(ty::TyVar(vid)) => {
-                        if let ty::TermKind::Ty(term) = self.term.kind() {
-                            if let ty::Infer(ty::TyVar(term_vid)) = term.kind() {
-                                if self.delegate.root_ty_var(vid)
-                                    == self.delegate.root_ty_var(term_vid)
-                                {
-                                    return ControlFlow::Break(());
-                                }
-                            }
+                        if let ty::TermKind::Ty(term) = self.term.kind()
+                            && let ty::Infer(ty::TyVar(term_vid)) = term.kind()
+                            && self.delegate.root_ty_var(vid) == self.delegate.root_ty_var(term_vid)
+                        {
+                            return ControlFlow::Break(());
                         }
 
                         self.check_nameable(self.delegate.universe_of_ty(vid).unwrap())?;
@@ -860,15 +856,12 @@ where
             fn visit_const(&mut self, c: I::Const) -> Self::Result {
                 match c.kind() {
                     ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
-                        if let ty::TermKind::Const(term) = self.term.kind() {
-                            if let ty::ConstKind::Infer(ty::InferConst::Var(term_vid)) = term.kind()
-                            {
-                                if self.delegate.root_const_var(vid)
-                                    == self.delegate.root_const_var(term_vid)
-                                {
-                                    return ControlFlow::Break(());
-                                }
-                            }
+                        if let ty::TermKind::Const(term) = self.term.kind()
+                            && let ty::ConstKind::Infer(ty::InferConst::Var(term_vid)) = term.kind()
+                            && self.delegate.root_const_var(vid)
+                                == self.delegate.root_const_var(term_vid)
+                        {
+                            return ControlFlow::Break(());
                         }
 
                         self.check_nameable(self.delegate.universe_of_ct(vid).unwrap())

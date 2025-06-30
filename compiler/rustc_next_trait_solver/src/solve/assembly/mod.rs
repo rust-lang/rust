@@ -383,10 +383,10 @@ where
 
         let mut candidates = vec![];
 
-        if let TypingMode::Coherence = self.typing_mode() {
-            if let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal) {
-                return vec![candidate];
-            }
+        if let TypingMode::Coherence = self.typing_mode()
+            && let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal)
+        {
+            return vec![candidate];
         }
 
         self.assemble_alias_bound_candidates(goal, &mut candidates);

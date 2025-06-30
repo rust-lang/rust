@@ -80,31 +80,29 @@ impl<X: Cx> GlobalCache<X> {
         mut candidate_is_applicable: impl FnMut(&NestedGoals<X>) -> bool,
     ) -> Option<CacheData<'a, X>> {
         let entry = self.map.get(&input)?;
-        if let Some(Success { required_depth, ref nested_goals, ref result }) = entry.success {
-            if available_depth.cache_entry_is_applicable(required_depth)
-                && candidate_is_applicable(nested_goals)
-            {
-                return Some(CacheData {
-                    result: cx.get_tracked(&result),
-                    required_depth,
-                    encountered_overflow: false,
-                    nested_goals,
-                });
-            }
+        if let Some(Success { required_depth, ref nested_goals, ref result }) = entry.success
+            && available_depth.cache_entry_is_applicable(required_depth)
+            && candidate_is_applicable(nested_goals)
+        {
+            return Some(CacheData {
+                result: cx.get_tracked(&result),
+                required_depth,
+                encountered_overflow: false,
+                nested_goals,
+            });
         }
 
         let additional_depth = available_depth.0;
         if let Some(WithOverflow { nested_goals, result }) =
             entry.with_overflow.get(&additional_depth)
+            && candidate_is_applicable(nested_goals)
         {
-            if candidate_is_applicable(nested_goals) {
-                return Some(CacheData {
-                    result: cx.get_tracked(result),
-                    required_depth: additional_depth,
-                    encountered_overflow: true,
-                    nested_goals,
-                });
-            }
+            return Some(CacheData {
+                result: cx.get_tracked(result),
+                required_depth: additional_depth,
+                encountered_overflow: true,
+                nested_goals,
+            });
         }
 
         None
