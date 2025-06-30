@@ -28,14 +28,6 @@ pub(crate) struct CountRepetitionMisplaced {
 }
 
 #[derive(Diagnostic)]
-#[diag(expand_meta_var_expr_unrecognized_var)]
-pub(crate) struct MetaVarExprUnrecognizedVar {
-    #[primary_span]
-    pub span: Span,
-    pub key: MacroRulesNormalizedIdent,
-}
-
-#[derive(Diagnostic)]
 #[diag(expand_var_still_repeating)]
 pub(crate) struct VarStillRepeating {
     #[primary_span]
@@ -498,4 +490,83 @@ pub(crate) struct GlobDelegationTraitlessQpath {
 pub(crate) struct ProcMacroBackCompat {
     pub crate_name: String,
     pub fixed_version: String,
+}
+
+pub(crate) use metavar_exprs::*;
+mod metavar_exprs {
+    use super::*;
+
+    #[derive(Diagnostic)]
+    #[diag(expand_mve_expected_ident)]
+    pub(crate) struct MveExpectedIdent {
+        #[primary_span]
+        pub span: Span,
+        #[label(expand_not_ident)]
+        pub not_ident_label: Option<Span>,
+        /// This error is reused a handful of places, the context here tells us how to customize
+        /// the message.
+        #[subdiagnostic]
+        pub context: MveExpectedIdentContext,
+    }
+
+    #[derive(Subdiagnostic)]
+    pub(crate) enum MveExpectedIdentContext {
+        #[note(expand_expr_name)]
+        #[note(expand_expr_name_note)]
+        ExprName { valid_expr_list: &'static str },
+        #[note(expand_ignore_expr_note)]
+        Ignore,
+        #[note(expand_count_expr_note)]
+        Count,
+    }
+
+    #[derive(Diagnostic)]
+    #[diag(expand_mve_extra_tokens_in_braces)]
+    pub(crate) struct MveExtraTokensInBraces {
+        #[primary_span]
+        #[suggestion(code = "", applicability = "machine-applicable")]
+        pub span: Span,
+    }
+
+    #[derive(Diagnostic)]
+    #[note]
+    #[diag(expand_mve_extra_tokens_in_expr)]
+    pub(crate) struct MveExtraTokensInExpr {
+        #[primary_span]
+        #[suggestion(code = "", applicability = "machine-applicable")]
+        pub span: Span,
+        #[label]
+        pub ident_span: Span,
+        pub count: usize,
+        pub max: usize,
+        pub name: &'static str,
+    }
+
+    #[derive(Diagnostic)]
+    #[note]
+    #[diag(expand_mve_missing_paren)]
+    pub(crate) struct MveMissingParen {
+        #[primary_span]
+        pub span: Span,
+        #[suggestion(code = "( /* ... */ )", applicability = "has-placeholders")]
+        pub insert_span: Option<Span>,
+    }
+
+    #[derive(Diagnostic)]
+    #[note]
+    #[diag(expand_mve_unrecognized_expr)]
+    pub(crate) struct MveUnrecognizedExpr {
+        #[primary_span]
+        #[label]
+        pub span: Span,
+        pub valid_expr_list: &'static str,
+    }
+
+    #[derive(Diagnostic)]
+    #[diag(expand_mve_unrecognized_var)]
+    pub(crate) struct MveUnrecognizedVar {
+        #[primary_span]
+        pub span: Span,
+        pub key: MacroRulesNormalizedIdent,
+    }
 }

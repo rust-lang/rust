@@ -1,6 +1,8 @@
+//@ edition: 2021
+
 #![feature(macro_metavar_expr_concat)]
 
-macro_rules! wrong_concat_declarations {
+macro_rules! syntax_errors {
     ($ex:expr) => {
         ${concat()}
         //~^ ERROR expected identifier
@@ -90,10 +92,30 @@ macro_rules! unsupported_literals {
         //~| ERROR expected pattern
         let ${concat(_a, 1)}: () = ();
         //~^ ERROR expected identifier or string literal
+        let ${concat(_a, 1.5)}: () = ();
+        //~^ ERROR expected identifier or string literal
+        let ${concat(_a, c"hi")}: () = ();
+        //~^ ERROR expected identifier or string literal
+        let ${concat(_a, b"hi")}: () = ();
+        //~^ ERROR expected identifier or string literal
+        let ${concat(_a, b'b')}: () = ();
+        //~^ ERROR expected identifier or string literal
+        let ${concat(_a, b'b')}: () = ();
+        //~^ ERROR expected identifier or string literal
 
         let ${concat($ident, 'b')}: () = ();
         //~^ ERROR expected identifier or string literal
         let ${concat($ident, 1)}: () = ();
+        //~^ ERROR expected identifier or string literal
+        let ${concat($ident, 1.5)}: () = ();
+        //~^ ERROR expected identifier or string literal
+        let ${concat($ident, c"hi")}: () = ();
+        //~^ ERROR expected identifier or string literal
+        let ${concat($ident, b"hi")}: () = ();
+        //~^ ERROR expected identifier or string literal
+        let ${concat($ident, b'b')}: () = ();
+        //~^ ERROR expected identifier or string literal
+        let ${concat($ident, b'b')}: () = ();
         //~^ ERROR expected identifier or string literal
     }};
 }
@@ -132,7 +154,7 @@ macro_rules! bad_tt_literal {
 }
 
 fn main() {
-    wrong_concat_declarations!(1);
+    syntax_errors!(1);
 
     dollar_sign_without_referenced_ident!(VAR);
 
