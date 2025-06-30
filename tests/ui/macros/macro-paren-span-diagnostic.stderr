@@ -1,5 +1,5 @@
 error[E0616]: field `x` of struct `S` is private
-  --> $DIR/paren-span.rs:19:14
+  --> $DIR/macro-paren-span-diagnostic.rs:21:14
    |
 LL |     paren!(s.x);
    |              ^ private field

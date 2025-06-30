@@ -1,10 +1,12 @@
-//@ build-pass (FIXME(62277): could be check-pass?)
+//! Check that closures can be used inside `#[panic_handler]` functions.
+
+//@ check-pass
 
 #![crate_type = "rlib"]
 #![no_std]
 
 #[panic_handler]
-pub fn panic_fmt(_: &::core::panic::PanicInfo) -> ! {
+pub fn panicfmt(_: &::core::panic::PanicInfo) -> ! {
     |x: u8| x;
     loop {}
 }

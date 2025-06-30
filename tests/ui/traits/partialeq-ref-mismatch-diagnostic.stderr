@@ -1,5 +1,5 @@
 error[E0277]: can't compare `&T` with `T`
-  --> $DIR/partialeq_help.rs:2:7
+  --> $DIR/partialeq-ref-mismatch-diagnostic.rs:4:7
    |
 LL |     a == b;
    |       ^^ no implementation for `&T == T`
@@ -15,7 +15,7 @@ LL | fn foo<T: PartialEq>(a: &T, b: T) where &T: PartialEq<T> {
    |                                   ++++++++++++++++++++++
 
 error[E0277]: can't compare `&T` with `T`
-  --> $DIR/partialeq_help.rs:6:7
+  --> $DIR/partialeq-ref-mismatch-diagnostic.rs:8:7
    |
 LL |     a == b;
    |       ^^ no implementation for `&T == T`
@@ -25,10 +25,10 @@ help: consider dereferencing here
    |
 LL |     *a == b;
    |     +
-help: consider extending the `where` clause, but there might be an alternative better way to express this requirement
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
 LL | fn foo2<T: PartialEq>(a: &T, b: T) where &T: PartialEq<T> {
-   |                                          ++++++++++++++++
+   |                                    ++++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 
