@@ -250,6 +250,13 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[ignore]`
+    Ignore {
+        span: Span,
+        /// ignore can optionally have a reason: `#[ignore = "reason this is ignored"]`
+        reason: Option<Symbol>,
+    },
+
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
 

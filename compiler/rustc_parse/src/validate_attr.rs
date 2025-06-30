@@ -304,6 +304,7 @@ fn emit_malformed_attribute(
             | sym::naked
             | sym::no_mangle
             | sym::non_exhaustive
+            | sym::ignore
             | sym::must_use
             | sym::track_caller
             | sym::link_name
@@ -319,8 +320,7 @@ fn emit_malformed_attribute(
 
     // Some of previously accepted forms were used in practice,
     // report them as warnings for now.
-    let should_warn =
-        |name| matches!(name, sym::doc | sym::ignore | sym::link | sym::test | sym::bench);
+    let should_warn = |name| matches!(name, sym::doc | sym::link | sym::test | sym::bench);
 
     let error_msg = format!("malformed `{name}` attribute input");
     let mut suggestions = vec![];
