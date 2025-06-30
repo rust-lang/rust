@@ -114,7 +114,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         }
         sym::copysignf32 => "copysignf",
         sym::copysignf64 => "copysign",
-        sym::copysignf128 => "copysignl",
         sym::floorf32 => "floorf",
         sym::floorf64 => "floor",
         sym::ceilf32 => "ceilf",
@@ -238,6 +237,7 @@ fn get_simple_function_f128_2args<'gcc, 'tcx>(
     let func_name = match name {
         sym::maxnumf128 => "fmaxf128",
         sym::minnumf128 => "fminf128",
+        sym::copysignf128 => "copysignf128",
         _ => return None,
     };
     Some(cx.context.new_function(
@@ -261,6 +261,7 @@ fn f16_builtin<'gcc, 'tcx>(
     let f32_type = cx.type_f32();
     let builtin_name = match name {
         sym::ceilf16 => "__builtin_ceilf",
+        sym::copysignf16 => "__builtin_copysignf",
         sym::floorf16 => "__builtin_floorf",
         sym::fmaf16 => "fmaf",
         sym::maxnumf16 => "__builtin_fmaxf",
@@ -330,6 +331,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 )
             }
             sym::ceilf16
+            | sym::copysignf16
             | sym::floorf16
             | sym::fmaf16
             | sym::maxnumf16
