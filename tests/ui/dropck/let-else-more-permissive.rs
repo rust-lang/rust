@@ -1,5 +1,5 @@
-//! The drop check is currently more permissive when `let` statements have an `else` block, due to
-//! scheduling drops for bindings' storage before pattern-matching (#142056).
+//! Regression test for #142056. The drop check used to be more permissive for `let` statements with
+//! `else` blocks, due to scheduling drops for bindings' storage before pattern-matching.
 
 struct Struct<T>(T);
 impl<T> Drop for Struct<T> {
@@ -14,10 +14,11 @@ fn main() {
         //~^ ERROR `short1` does not live long enough
     }
     {
-        // This is OK: `short2`'s storage is live until after `long2`'s drop runs.
+        // This was OK: `short2`'s storage was live until after `long2`'s drop ran.
         #[expect(irrefutable_let_patterns)]
         let (mut long2, short2) = (Struct(&0), 1) else { unreachable!() };
         long2.0 = &short2;
+        //~^ ERROR `short2` does not live long enough
     }
     {
         // Sanity check: `short3`'s drop is significant; it's dropped before `long3`:
