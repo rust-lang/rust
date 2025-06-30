@@ -1,3 +1,6 @@
+// N.B. drop-order-comparisons-let-chains.rs is part of this test.
+// It is separate because let chains cannot be parsed before Rust 2024.
+//
 // This tests various aspects of the drop order with a focus on:
 //
 // - The lifetime of temporaries with the `if let` construct (and with
@@ -25,7 +28,6 @@
 //@ run-pass
 
 #![feature(if_let_guard)]
-#![cfg_attr(e2021, feature(let_chains))]
 #![cfg_attr(e2021, warn(rust_2024_compatibility))]
 
 fn t_bindings() {
@@ -313,59 +315,6 @@ fn t_let_else_chained_then() {
 
 #[cfg(e2021)]
 #[rustfmt::skip]
-fn t_if_let_chains_then() {
-    let e = Events::new();
-    _ = if e.ok(1).is_ok()
-        && let true = e.ok(9).is_ok()
-        && let Ok(_v) = e.ok(5)
-        && let Ok(_) = e.ok(8)
-        && let Ok(_) = e.ok(7).as_ref()
-        && e.ok(2).is_ok()
-        && let Ok(_v) = e.ok(4)
-        && let Ok(_) = e.ok(6).as_ref() {
-            e.mark(3);
-        };
-    e.assert(9);
-}
-
-#[cfg(e2024)]
-#[rustfmt::skip]
-fn t_if_let_chains_then() {
-    let e = Events::new();
-    _ = if e.ok(1).is_ok()
-        && let true = e.ok(9).is_ok()
-        && let Ok(_v) = e.ok(8)
-        && let Ok(_) = e.ok(7)
-        && let Ok(_) = e.ok(6).as_ref()
-        && e.ok(2).is_ok()
-        && let Ok(_v) = e.ok(5)
-        && let Ok(_) = e.ok(4).as_ref() {
-            e.mark(3);
-        };
-    e.assert(9);
-}
-
-#[rustfmt::skip]
-fn t_guard_if_let_chains_then() {
-    let e = Events::new();
-    _ = match () {
-        () if e.ok(1).is_ok()
-            && let true = e.ok(9).is_ok()
-            && let Ok(_v) = e.ok(8)
-            && let Ok(_) = e.ok(7)
-            && let Ok(_) = e.ok(6).as_ref()
-            && e.ok(2).is_ok()
-            && let Ok(_v) = e.ok(5)
-            && let Ok(_) = e.ok(4).as_ref() => {
-                e.mark(3);
-            }
-        _ => {}
-    };
-    e.assert(9);
-}
-
-#[cfg(e2021)]
-#[rustfmt::skip]
 fn t_if_let_nested_else() {
     let e = Events::new();
     _ = if e.err(1).is_ok() {} else {
@@ -470,59 +419,6 @@ fn t_let_else_chained_then_else() {
     e.assert(9);
 }
 
-#[cfg(e2021)]
-#[rustfmt::skip]
-fn t_if_let_chains_then_else() {
-    let e = Events::new();
-    _ = if e.ok(1).is_ok()
-        && let true = e.ok(9).is_ok()
-        && let Ok(_v) = e.ok(4)
-        && let Ok(_) = e.ok(8)
-        && let Ok(_) = e.ok(7).as_ref()
-        && e.ok(2).is_ok()
-        && let Ok(_v) = e.ok(3)
-        && let Ok(_) = e.err(6) {} else {
-            e.mark(5);
-        };
-    e.assert(9);
-}
-
-#[cfg(e2024)]
-#[rustfmt::skip]
-fn t_if_let_chains_then_else() {
-    let e = Events::new();
-    _ = if e.ok(1).is_ok()
-        && let true = e.ok(8).is_ok()
-        && let Ok(_v) = e.ok(7)
-        && let Ok(_) = e.ok(6)
-        && let Ok(_) = e.ok(5).as_ref()
-        && e.ok(2).is_ok()
-        && let Ok(_v) = e.ok(4)
-        && let Ok(_) = e.err(3) {} else {
-            e.mark(9);
-        };
-    e.assert(9);
-}
-
-#[rustfmt::skip]
-fn t_guard_if_let_chains_then_else() {
-    let e = Events::new();
-    _ = match () {
-       () if e.ok(1).is_ok()
-            && let true = e.ok(8).is_ok()
-            && let Ok(_v) = e.ok(7)
-            && let Ok(_) = e.ok(6)
-            && let Ok(_) = e.ok(5).as_ref()
-            && e.ok(2).is_ok()
-            && let Ok(_v) = e.ok(4)
-            && let Ok(_) = e.err(3) => {}
-        _ => {
-            e.mark(9);
-        }
-    };
-    e.assert(9);
-}
-
 fn main() {
     t_bindings();
     t_tuples();
@@ -540,13 +436,9 @@ fn main() {
     t_if_let_else_tailexpr();
     t_if_let_nested_then();
     t_let_else_chained_then();
-    t_if_let_chains_then();
-    t_guard_if_let_chains_then();
     t_if_let_nested_else();
     t_if_let_nested_then_else();
     t_let_else_chained_then_else();
-    t_if_let_chains_then_else();
-    t_guard_if_let_chains_then_else();
 }
 
 // # Test scaffolding

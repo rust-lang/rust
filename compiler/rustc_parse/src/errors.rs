@@ -1779,6 +1779,13 @@ pub(crate) struct AsyncBoundModifierIn2015 {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_let_chain_pre_2024)]
+pub(crate) struct LetChainPre2024 {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_self_argument_pointer)]
 pub(crate) struct SelfArgumentPointer {
     #[primary_span]
