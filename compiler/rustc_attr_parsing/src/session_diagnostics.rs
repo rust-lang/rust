@@ -620,3 +620,220 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
         diag
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_multiple_names_in_link)]
+pub(crate) struct MultipleNamesInLink {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_link_name_form)]
+pub(crate) struct LinkNameForm {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_empty_link_name, code = E0454)]
+pub(crate) struct EmptyLinkName {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_multiple_kinds_in_link)]
+pub(crate) struct MultipleKindsInLink {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_link_kind_form)]
+pub(crate) struct LinkKindForm {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_link_framework_apple, code = E0455)]
+pub(crate) struct LinkFrameworkApple {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_unknown_link_modifier)]
+pub(crate) struct UnknownLinkModifier<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub modifier: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_incompatible_wasm_link)]
+pub(crate) struct IncompatibleWasmLink {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_link_requires_name, code = E0459)]
+pub(crate) struct LinkRequiresName {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_raw_dylib_no_nul)]
+pub(crate) struct RawDylibNoNul {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_raw_dylib_only_windows, code = E0455)]
+pub(crate) struct RawDylibOnlyWindows {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_unknown_link_kind, code = E0458)]
+pub(crate) struct UnknownLinkKind<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub kind: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_multiple_link_modifiers)]
+pub(crate) struct MultipleLinkModifiers {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_multiple_cfgs)]
+pub(crate) struct MultipleCfgs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_link_cfg_single_predicate)]
+pub(crate) struct LinkCfgSinglePredicate {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_multiple_wasm_import)]
+pub(crate) struct MultipleWasmImport {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_unexpected_link_arg)]
+pub(crate) struct UnexpectedLinkArg {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_invalid_link_modifier)]
+pub(crate) struct InvalidLinkModifier {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_multiple_modifiers)]
+pub(crate) struct MultipleModifiers<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub modifier: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_link_modifiers_form)]
+pub(crate) struct LinkModifiersForm {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_link_cfg_form)]
+pub(crate) struct LinkCfgForm {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_wasm_import_form)]
+pub(crate) struct WasmImportForm {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_multiple_import_name_type)]
+pub(crate) struct MultipleImportNameType {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_import_name_type_form)]
+pub(crate) struct ImportNameTypeForm {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_import_name_type_x86)]
+pub(crate) struct ImportNameTypeX86 {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_unknown_import_name_type)]
+pub(crate) struct UnknownImportNameType<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub import_name_type: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_bundle_needs_static)]
+pub(crate) struct BundleNeedsStatic {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_whole_archive_needs_static)]
+pub(crate) struct WholeArchiveNeedsStatic {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_as_needed_compatibility)]
+pub(crate) struct AsNeededCompatibility {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_import_name_type_raw)]
+pub(crate) struct ImportNameTypeRaw {
+    #[primary_span]
+    pub span: Span,
+}

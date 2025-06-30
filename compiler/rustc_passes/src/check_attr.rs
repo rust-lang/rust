@@ -206,6 +206,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Used { span: attr_span, .. }) => {
                     self.check_used(*attr_span, target, span);
                 }
+                Attribute::Parsed(AttributeKind::Link(links)) => {
+                    // TODO rebase on target_feature for span
+                    self.check_link(hir_id, links[0].span, span, target)
+                }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
@@ -285,7 +289,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::ffi_pure, ..] => self.check_ffi_pure(attr.span(), attrs, target),
                         [sym::ffi_const, ..] => self.check_ffi_const(attr.span(), target),
                         [sym::link_ordinal, ..] => self.check_link_ordinal(attr, span, target),
-                        [sym::link, ..] => self.check_link(hir_id, attr, span, target),
                         [sym::link_section, ..] => self.check_link_section(hir_id, attr, span, target),
                         [sym::macro_use, ..] | [sym::macro_escape, ..] => {
                             self.check_macro_use(hir_id, attr, target)
@@ -1588,7 +1591,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[link]` is applied to an item other than a foreign module.
-    fn check_link(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+    fn check_link(&self, hir_id: HirId, attr_span: Span, span: Span, target: Target) {
         if target == Target::ForeignMod
             && let hir::Node::Item(item) = self.tcx.hir_node(hir_id)
             && let Item { kind: ItemKind::ForeignMod { abi, .. }, .. } = item
@@ -1600,7 +1603,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.tcx.emit_node_span_lint(
             UNUSED_ATTRIBUTES,
             hir_id,
-            attr.span(),
+            attr_span,
             errors::Link { span: (target != Target::ForeignMod).then_some(span) },
         );
     }

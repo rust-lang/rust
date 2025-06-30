@@ -1,10 +1,11 @@
 #![allow(non_camel_case_types)]
 
+use rustc_attr_data_structures::PeImportNameType;
 use rustc_hir::LangItem;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_session::cstore::{DllCallingConvention, DllImport, PeImportNameType};
+use rustc_session::cstore::{DllCallingConvention, DllImport};
 use rustc_span::Span;
 use rustc_target::spec::Target;
 
