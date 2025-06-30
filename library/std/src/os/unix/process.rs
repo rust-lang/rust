@@ -210,6 +210,9 @@ pub trait CommandExt: Sealed {
     /// intentional difference from the underlying `chroot` system call.)
     #[unstable(feature = "process_chroot", issue = "141298")]
     fn chroot<P: AsRef<Path>>(&mut self, dir: P) -> &mut process::Command;
+
+    #[unstable(feature = "process_setsid", issue = "105376")]
+    fn setsid(&mut self, setsid: bool) -> &mut process::Command;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -258,6 +261,11 @@ impl CommandExt for process::Command {
 
     fn chroot<P: AsRef<Path>>(&mut self, dir: P) -> &mut process::Command {
         self.as_inner_mut().chroot(dir.as_ref());
+        self
+    }
+
+    fn setsid(&mut self, setsid: bool) -> &mut process::Command {
+        self.as_inner_mut().setsid(setsid);
         self
     }
 }
