@@ -390,7 +390,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, interpret::Pointer<Provenance>> {
         let this = self.eval_context_ref();
 
-        let (prov, offset) = ptr.into_parts(); // offset is relative (AllocId provenance)
+        let (prov, offset) = ptr.prov_and_relative_offset();
         let alloc_id = prov.alloc_id();
 
         // Get a pointer to the beginning of this allocation.
@@ -447,7 +447,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> Option<(AllocId, Size)> {
         let this = self.eval_context_ref();
 
-        let (tag, addr) = ptr.into_parts(); // addr is absolute (Tag provenance)
+        let (tag, addr) = ptr.into_raw_parts(); // addr is absolute (Miri provenance)
 
         let alloc_id = if let Provenance::Concrete { alloc_id, .. } = tag {
             alloc_id

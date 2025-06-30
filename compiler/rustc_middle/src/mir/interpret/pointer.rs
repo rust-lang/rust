@@ -288,7 +288,7 @@ impl From<CtfeProvenance> for Pointer {
 impl<Prov> From<Pointer<Prov>> for Pointer<Option<Prov>> {
     #[inline(always)]
     fn from(ptr: Pointer<Prov>) -> Self {
-        let (prov, offset) = ptr.into_parts();
+        let (prov, offset) = ptr.into_raw_parts();
         Pointer::new(Some(prov), offset)
     }
 }
@@ -314,19 +314,17 @@ impl<Prov> Pointer<Option<Prov>> {
         assert!(Prov::OFFSET_IS_ADDR);
         self.offset
     }
-}
 
-impl<Prov> Pointer<Option<Prov>> {
     /// Creates a pointer to the given address, with invalid provenance (i.e., cannot be used for
     /// any memory access).
     #[inline(always)]
-    pub fn from_addr_invalid(addr: u64) -> Self {
+    pub fn without_provenance(addr: u64) -> Self {
         Pointer { provenance: None, offset: Size::from_bytes(addr) }
     }
 
     #[inline(always)]
     pub fn null() -> Self {
-        Pointer::from_addr_invalid(0)
+        Pointer::without_provenance(0)
     }
 }
 
@@ -336,11 +334,11 @@ impl<Prov> Pointer<Prov> {
         Pointer { provenance, offset }
     }
 
-    /// Obtain the constituents of this pointer. Not that the meaning of the offset depends on the type `Prov`!
-    /// This function must only be used in the implementation of `Machine::ptr_get_alloc`,
-    /// and when a `Pointer` is taken apart to be stored efficiently in an `Allocation`.
+    /// Obtain the constituents of this pointer. Note that the meaning of the offset depends on the
+    /// type `Prov`! This is a low-level function that should only be used when absolutely
+    /// necessary. Prefer `prov_and_relative_offset` if possible.
     #[inline(always)]
-    pub fn into_parts(self) -> (Prov, Size) {
+    pub fn into_raw_parts(self) -> (Prov, Size) {
         (self.provenance, self.offset)
     }
 
@@ -359,5 +357,14 @@ impl<Prov> Pointer<Prov> {
     pub fn wrapping_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> Self {
         // It's wrapping anyway, so we can just cast to `u64`.
         self.wrapping_offset(Size::from_bytes(i as u64), cx)
+    }
+}
+
+impl Pointer<CtfeProvenance> {
+    /// Return the provenance and relative offset stored in this pointer. Safer alternative to
+    /// `into_raw_parts` since the type ensures that the offset is indeed relative.
+    #[inline(always)]
+    pub fn prov_and_relative_offset(self) -> (CtfeProvenance, Size) {
+        (self.provenance, self.offset)
     }
 }

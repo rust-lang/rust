@@ -209,9 +209,9 @@ pub(super) fn op_to_const<'tcx>(
 
     match immediate {
         Left(ref mplace) => {
-            // We know `offset` is relative to the allocation, so we can use `into_parts`.
-            let (prov, offset) = mplace.ptr().into_parts();
-            let alloc_id = prov.expect("cannot have `fake` place for non-ZST type").alloc_id();
+            let (prov, offset) =
+                mplace.ptr().into_pointer_or_addr().unwrap().prov_and_relative_offset();
+            let alloc_id = prov.alloc_id();
             ConstValue::Indirect { alloc_id, offset }
         }
         // see comment on `let force_as_immediate` above
@@ -232,9 +232,10 @@ pub(super) fn op_to_const<'tcx>(
                     imm.layout.ty,
                 );
                 let msg = "`op_to_const` on an immediate scalar pair must only be used on slice references to the beginning of an actual allocation";
-                // We know `offset` is relative to the allocation, so we can use `into_parts`.
-                let (prov, offset) = a.to_pointer(ecx).expect(msg).into_parts();
-                let alloc_id = prov.expect(msg).alloc_id();
+                let ptr = a.to_pointer(ecx).expect(msg);
+                let (prov, offset) =
+                    ptr.into_pointer_or_addr().expect(msg).prov_and_relative_offset();
+                let alloc_id = prov.alloc_id();
                 let data = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
                 assert!(offset == abi::Size::ZERO, "{}", msg);
                 let meta = b.to_target_usize(ecx).expect(msg);

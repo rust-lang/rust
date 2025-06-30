@@ -109,7 +109,7 @@ impl<Prov> Scalar<Prov> {
     /// Create a Scalar from a pointer with an `Option<_>` provenance (where `None` represents a
     /// plain integer / "invalid" pointer).
     pub fn from_maybe_pointer(ptr: Pointer<Option<Prov>>, cx: &impl HasDataLayout) -> Self {
-        match ptr.into_parts() {
+        match ptr.into_raw_parts() {
             (Some(prov), offset) => Scalar::from_pointer(Pointer::new(prov, offset), cx),
             (None, offset) => {
                 Scalar::Int(ScalarInt::try_from_uint(offset.bytes(), cx.pointer_size()).unwrap())
@@ -276,7 +276,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
             Right(ptr) => interp_ok(ptr.into()),
             Left(bits) => {
                 let addr = u64::try_from(bits).unwrap();
-                interp_ok(Pointer::from_addr_invalid(addr))
+                interp_ok(Pointer::without_provenance(addr))
             }
         }
     }
@@ -299,7 +299,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
                     Ok(ScalarInt::try_from_uint(ptr.offset.bytes(), Size::from_bytes(sz)).unwrap())
                 } else {
                     // We know `offset` is relative, since `OFFSET_IS_ADDR == false`.
-                    let (prov, offset) = ptr.into_parts();
+                    let (prov, offset) = ptr.into_raw_parts();
                     // Because `OFFSET_IS_ADDR == false`, this unwrap can never fail.
                     Err(Scalar::Ptr(Pointer::new(prov.get_alloc_id().unwrap(), offset), sz))
                 }
