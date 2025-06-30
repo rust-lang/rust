@@ -15,7 +15,7 @@
 -         _2 = ();
 -         _1 = move _2 as Never (Transmute);
 +         _2 = const ();
-+         _1 = const () as Never (Transmute);
++         _1 = const ZeroSized: Never;
           unreachable;
       }
   }
