@@ -2638,8 +2638,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if the starting point is greater than the end point or if
-    /// the end point is greater than the length of the vector.
+    /// Panics if the range has `start_bound > end_bound`, or, a range bound is
+    /// bounded and greater than the length of the vector.
     ///
     /// # Leaking
     ///
@@ -3647,8 +3647,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if the starting point is greater than the end point or if
-    /// the end point is greater than the length of the vector.
+    /// Panics if the range has `start_bound > end_bound`, or, a range bound is
+    /// bounded and greater than the length of the vector.
     ///
     /// # Examples
     ///
