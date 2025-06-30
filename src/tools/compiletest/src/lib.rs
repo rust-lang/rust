@@ -42,7 +42,7 @@ use crate::common::{
     CompareMode, Config, Debugger, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path,
     output_base_dir, output_relative_path,
 };
-use crate::directives::HeadersCache;
+use crate::directives::DirectivesCache;
 use crate::executor::{CollectedTest, ColorConfig, OutputFormat};
 use crate::util::logv;
 
@@ -618,7 +618,7 @@ pub fn run_tests(config: Arc<Config>) {
 /// Read-only context data used during test collection.
 struct TestCollectorCx {
     config: Arc<Config>,
-    cache: HeadersCache,
+    cache: DirectivesCache,
     common_inputs_stamp: Stamp,
     modified_tests: Vec<Utf8PathBuf>,
 }
@@ -654,7 +654,7 @@ pub(crate) fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> 
         modified_tests(&config, &config.src_test_suite_root).unwrap_or_else(|err| {
             fatal!("modified_tests: {}: {err}", config.src_test_suite_root);
         });
-    let cache = HeadersCache::load(&config);
+    let cache = DirectivesCache::load(&config);
 
     let cx = TestCollectorCx { config, cache, common_inputs_stamp, modified_tests };
     let collector = collect_tests_from_dir(&cx, &cx.config.src_test_suite_root, Utf8Path::new(""))

@@ -4,7 +4,7 @@ use camino::Utf8Path;
 use semver::Version;
 
 use super::{
-    EarlyProps, HeadersCache, extract_llvm_version, extract_version_range, iter_header,
+    DirectivesCache, EarlyProps, extract_llvm_version, extract_version_range, iter_directives,
     parse_normalize_rule,
 };
 use crate::common::{Config, Debugger, Mode};
@@ -17,7 +17,7 @@ fn make_test_description<R: Read>(
     src: R,
     revision: Option<&str>,
 ) -> CollectedTestDesc {
-    let cache = HeadersCache::load(config);
+    let cache = DirectivesCache::load(config);
     let mut poisoned = false;
     let test = crate::directives::make_test_description(
         config,
@@ -785,7 +785,7 @@ fn threads_support() {
 
 fn run_path(poisoned: &mut bool, path: &Utf8Path, buf: &[u8]) {
     let rdr = std::io::Cursor::new(&buf);
-    iter_header(Mode::Ui, "ui", poisoned, path, rdr, &mut |_| {});
+    iter_directives(Mode::Ui, "ui", poisoned, path, rdr, &mut |_| {});
 }
 
 #[test]

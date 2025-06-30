@@ -24,11 +24,11 @@ mod needs;
 #[cfg(test)]
 mod tests;
 
-pub struct HeadersCache {
+pub struct DirectivesCache {
     needs: CachedNeedsConditions,
 }
 
-impl HeadersCache {
+impl DirectivesCache {
     pub fn load(config: &Config) -> Self {
         Self { needs: CachedNeedsConditions::load(config) }
     }
@@ -54,7 +54,7 @@ impl EarlyProps {
     pub fn from_reader<R: Read>(config: &Config, testfile: &Utf8Path, rdr: R) -> Self {
         let mut props = EarlyProps::default();
         let mut poisoned = false;
-        iter_header(
+        iter_directives(
             config.mode,
             &config.suite,
             &mut poisoned,
@@ -347,7 +347,7 @@ impl TestProps {
 
             let mut poisoned = false;
 
-            iter_header(
+            iter_directives(
                 config.mode,
                 &config.suite,
                 &mut poisoned,
@@ -794,7 +794,7 @@ const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] =
     &["count", "!count", "has", "!has", "is", "!is", "ismany", "!ismany", "set", "!set"];
 
 /// The (partly) broken-down contents of a line containing a test directive,
-/// which [`iter_header`] passes to its callback function.
+/// which [`iter_directives`] passes to its callback function.
 ///
 /// For example:
 ///
@@ -867,7 +867,7 @@ pub(crate) fn check_directive<'a>(
 
 const COMPILETEST_DIRECTIVE_PREFIX: &str = "//@";
 
-fn iter_header(
+fn iter_directives(
     mode: Mode,
     _suite: &str,
     poisoned: &mut bool,
@@ -1372,7 +1372,7 @@ where
 
 pub(crate) fn make_test_description<R: Read>(
     config: &Config,
-    cache: &HeadersCache,
+    cache: &DirectivesCache,
     name: String,
     path: &Utf8Path,
     src: R,
@@ -1386,7 +1386,7 @@ pub(crate) fn make_test_description<R: Read>(
     let mut local_poisoned = false;
 
     // Scan through the test file to handle `ignore-*`, `only-*`, and `needs-*` directives.
-    iter_header(
+    iter_directives(
         config.mode,
         &config.suite,
         &mut local_poisoned,
