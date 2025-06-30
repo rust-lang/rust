@@ -5,11 +5,8 @@
 use crate::ffi::c_void;
 #[allow(unused_imports)]
 use crate::fmt;
-use crate::marker::{PhantomData, PhantomInvariantLifetime};
-use crate::ops::{Deref, DerefMut};
+use crate::marker::PhantomInvariantLifetime;
 
-// The name is WIP, using `VaListImpl` for now.
-//
 // Most targets explicitly specify the layout of `va_list`, this layout is matched here.
 crate::cfg_select! {
     all(
@@ -26,7 +23,7 @@ crate::cfg_select! {
         #[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
         #[derive(Debug)]
         #[lang = "va_list"]
-        pub struct VaListImpl<'f> {
+        pub struct VaList<'f> {
             stack: *mut c_void,
             gr_top: *mut c_void,
             vr_top: *mut c_void,
@@ -40,7 +37,7 @@ crate::cfg_select! {
         #[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
         #[derive(Debug)]
         #[lang = "va_list"]
-        pub struct VaListImpl<'f> {
+        pub struct VaList<'f> {
             gpr: u8,
             fpr: u8,
             reserved: u16,
@@ -54,7 +51,7 @@ crate::cfg_select! {
         #[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
         #[derive(Debug)]
         #[lang = "va_list"]
-        pub struct VaListImpl<'f> {
+        pub struct VaList<'f> {
             gpr: i64,
             fpr: i64,
             overflow_arg_area: *mut c_void,
@@ -67,7 +64,7 @@ crate::cfg_select! {
         #[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
         #[derive(Debug)]
         #[lang = "va_list"]
-        pub struct VaListImpl<'f> {
+        pub struct VaList<'f> {
             gp_offset: i32,
             fp_offset: i32,
             overflow_arg_area: *mut c_void,
@@ -80,7 +77,7 @@ crate::cfg_select! {
         #[repr(C)]
         #[derive(Debug)]
         #[lang = "va_list"]
-        pub struct VaListImpl<'f> {
+        pub struct VaList<'f> {
             stk: *mut i32,
             reg: *mut i32,
             ndx: i32,
@@ -93,7 +90,7 @@ crate::cfg_select! {
     // - apple aarch64 (see https://github.com/rust-lang/rust/pull/56599)
     // - windows
     // - uefi
-    // - any other target for which we don't specify the `VaListImpl` above
+    // - any other target for which we don't specify the `VaList` above
     //
     // In this implementation the `va_list` type is just an alias for an opaque pointer.
     // That pointer is probably just the next variadic argument on the caller's stack.
@@ -101,86 +98,19 @@ crate::cfg_select! {
         /// Basic implementation of a `va_list`.
         #[repr(transparent)]
         #[lang = "va_list"]
-        pub struct VaListImpl<'f> {
+        pub struct VaList<'f> {
             ptr: *mut c_void,
 
-            // Invariant over `'f`, so each `VaListImpl<'f>` object is tied to
+            // Invariant over `'f`, so each `VaList<'f>` object is tied to
             // the region of the function it's defined in
             _marker: PhantomInvariantLifetime<'f>,
         }
 
-        impl<'f> fmt::Debug for VaListImpl<'f> {
+        impl<'f> fmt::Debug for VaList<'f> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 write!(f, "va_list* {:p}", self.ptr)
             }
         }
-    }
-}
-
-crate::cfg_select! {
-    all(
-        any(
-            target_arch = "aarch64",
-            target_arch = "powerpc",
-            target_arch = "s390x",
-            target_arch = "x86_64"
-        ),
-        not(target_arch = "xtensa"),
-        any(not(target_arch = "aarch64"), not(target_vendor = "apple")),
-        not(target_family = "wasm"),
-        not(target_os = "uefi"),
-        not(windows),
-    ) => {
-        /// A wrapper for a `va_list`
-        #[repr(transparent)]
-        #[derive(Debug)]
-        pub struct VaList<'a, 'f: 'a> {
-            inner: &'a mut VaListImpl<'f>,
-            _marker: PhantomData<&'a mut VaListImpl<'f>>,
-        }
-
-
-        impl<'f> VaListImpl<'f> {
-            /// Converts a [`VaListImpl`] into a [`VaList`] that is binary-compatible with C's `va_list`.
-            #[inline]
-            pub fn as_va_list<'a>(&'a mut self) -> VaList<'a, 'f> {
-                VaList { inner: self, _marker: PhantomData }
-            }
-        }
-    }
-
-    _ => {
-        /// A wrapper for a `va_list`
-        #[repr(transparent)]
-        #[derive(Debug)]
-        pub struct VaList<'a, 'f: 'a> {
-            inner: VaListImpl<'f>,
-            _marker: PhantomData<&'a mut VaListImpl<'f>>,
-        }
-
-        impl<'f> VaListImpl<'f> {
-            /// Converts a [`VaListImpl`] into a [`VaList`] that is binary-compatible with C's `va_list`.
-            #[inline]
-            pub fn as_va_list<'a>(&'a mut self) -> VaList<'a, 'f> {
-                VaList { inner: VaListImpl { ..*self }, _marker: PhantomData }
-            }
-        }
-    }
-}
-
-impl<'a, 'f: 'a> Deref for VaList<'a, 'f> {
-    type Target = VaListImpl<'f>;
-
-    #[inline]
-    fn deref(&self) -> &VaListImpl<'f> {
-        &self.inner
-    }
-}
-
-impl<'a, 'f: 'a> DerefMut for VaList<'a, 'f> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut VaListImpl<'f> {
-        &mut self.inner
     }
 }
 
@@ -201,7 +131,7 @@ mod sealed {
     impl<T> Sealed for *const T {}
 }
 
-/// Trait which permits the allowed types to be used with [`VaListImpl::arg`].
+/// Trait which permits the allowed types to be used with [`VaList::arg`].
 ///
 /// # Safety
 ///
@@ -231,30 +161,16 @@ unsafe impl VaArgSafe for f64 {}
 unsafe impl<T> VaArgSafe for *mut T {}
 unsafe impl<T> VaArgSafe for *const T {}
 
-impl<'f> VaListImpl<'f> {
+impl<'f> VaList<'f> {
     /// Advance to the next arg.
     #[inline]
     pub unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
         // SAFETY: the caller must uphold the safety contract for `va_arg`.
         unsafe { va_arg(self) }
     }
-
-    /// Copies the `va_list` at the current location.
-    pub unsafe fn with_copy<F, R>(&self, f: F) -> R
-    where
-        F: for<'copy> FnOnce(VaList<'copy, 'f>) -> R,
-    {
-        let mut ap = self.clone();
-        let ret = f(ap.as_va_list());
-        // SAFETY: the caller must uphold the safety contract for `va_end`.
-        unsafe {
-            va_end(&mut ap);
-        }
-        ret
-    }
 }
 
-impl<'f> Clone for VaListImpl<'f> {
+impl<'f> Clone for VaList<'f> {
     #[inline]
     fn clone(&self) -> Self {
         let mut dest = crate::mem::MaybeUninit::uninit();
@@ -266,7 +182,7 @@ impl<'f> Clone for VaListImpl<'f> {
     }
 }
 
-impl<'f> Drop for VaListImpl<'f> {
+impl<'f> Drop for VaList<'f> {
     fn drop(&mut self) {
         // FIXME: this should call `va_end`, but there's no clean way to
         // guarantee that `drop` always gets inlined into its caller,
@@ -281,19 +197,13 @@ impl<'f> Drop for VaListImpl<'f> {
     }
 }
 
-/// Destroy the arglist `ap` after initialization with `va_start` or
-/// `va_copy`.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-unsafe fn va_end(ap: &mut VaListImpl<'_>);
-
 /// Copies the current location of arglist `src` to the arglist `dst`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-unsafe fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
+unsafe fn va_copy<'f>(dest: *mut VaList<'f>, src: &VaList<'f>);
 
 /// Loads an argument of type `T` from the `va_list` `ap` and increment the
 /// argument `ap` points to.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
+unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;

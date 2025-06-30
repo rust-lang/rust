@@ -114,6 +114,12 @@ where
         // Not touching this...
         return;
     }
+    // `is_pass_indirectly` is only `true` for `VaList`, which would be passed indirectly by the
+    // logic below anyway, so this is just here to make it explicit that this case is handled.
+    if arg.layout.is_pass_indirectly() {
+        arg.make_indirect();
+        return;
+    }
     if !arg.layout.is_aggregate() {
         if kind == AbiKind::DarwinPCS {
             // On Darwin, when passing an i8/i16, it must be sign-extended to 32 bits,
