@@ -224,6 +224,20 @@ pub trait Analysis<'tcx> {
         _data: &mut Self::SwitchIntData,
         _state: &mut Self::Domain,
         _value: SwitchTargetValue,
+        _otherwise_state: Option<&mut Self::Domain>,
+    ) {
+        unreachable!();
+    }
+
+    /// Calls `apply_switch_int_edge_effect` for each target in `targets` and calls `propagate` with
+    /// the new state. This is used in forward analysis for `MaybeUninitializedPlaces` and
+    /// `MaybeInitializedPlaces`.
+    fn apply_switch_int_edge_effect_for_targets(
+        &mut self,
+        _targets: &mir::SwitchTargets,
+        mut _data: Self::SwitchIntData,
+        _state: &mut Self::Domain,
+        mut _propagate: impl FnMut(mir::BasicBlock, &Self::Domain),
     ) {
         unreachable!();
     }
