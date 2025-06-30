@@ -370,10 +370,18 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
     let target_env = sess.target.options.env.as_ref();
     let target_abi = sess.target.options.abi.as_ref();
     let target_pointer_width = sess.target.pointer_width;
+    let version = get_version();
 
     cfg.has_reliable_f16 = match (target_arch, target_os) {
         // Selection failure <https://github.com/llvm/llvm-project/issues/50374>
         ("s390x", _) => false,
+        // LLVM crash without neon <https://github.com/llvm/llvm-project/issues/129394> (now fixed)
+        ("aarch64", _)
+            if !cfg.target_features.iter().any(|f| f.as_str() == "neon")
+                && version < (20, 1, 1) =>
+        {
+            false
+        }
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
