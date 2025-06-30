@@ -24,7 +24,7 @@ use crate::common::{
 };
 use crate::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
 use crate::errors::{Error, ErrorKind, load_errors};
-use crate::header::TestProps;
+use crate::directives::TestProps;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::util::{Utf8PathBufExt, add_dylib_path, logv, static_regex};
 use crate::{ColorConfig, help, json, stamp_file_path, warning};

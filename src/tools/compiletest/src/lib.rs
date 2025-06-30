@@ -14,7 +14,7 @@ mod debuggers;
 pub mod diagnostics;
 pub mod errors;
 mod executor;
-pub mod header;
+pub mod directives;
 mod json;
 mod raise_fd_limit;
 mod read2;
@@ -37,13 +37,13 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 use tracing::debug;
 use walkdir::WalkDir;
 
-use self::header::{EarlyProps, make_test_description};
+use self::directives::{EarlyProps, make_test_description};
 use crate::common::{
     CompareMode, Config, Debugger, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path,
     output_base_dir, output_relative_path,
 };
 use crate::executor::{CollectedTest, ColorConfig, OutputFormat};
-use crate::header::HeadersCache;
+use crate::directives::HeadersCache;
 use crate::util::logv;
 
 /// Creates the `Config` instance for this invocation of compiletest.
@@ -254,8 +254,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
     let llvm_version =
-        matches.opt_str("llvm-version").as_deref().map(header::extract_llvm_version).or_else(
-            || header::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
+        matches.opt_str("llvm-version").as_deref().map(directives::extract_llvm_version).or_else(
+            || directives::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
         );
 
     let run_ignored = matches.opt_present("ignored");

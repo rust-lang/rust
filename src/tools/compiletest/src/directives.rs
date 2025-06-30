@@ -13,8 +13,8 @@ use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
 use crate::errors::ErrorKind;
 use crate::executor::{CollectedTestDesc, ShouldPanic};
-use crate::header::auxiliary::{AuxProps, parse_and_update_aux};
-use crate::header::needs::CachedNeedsConditions;
+use crate::directives::auxiliary::{AuxProps, parse_and_update_aux};
+use crate::directives::needs::CachedNeedsConditions;
 use crate::help;
 use crate::util::static_regex;
 

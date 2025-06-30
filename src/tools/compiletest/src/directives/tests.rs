@@ -19,7 +19,7 @@ fn make_test_description<R: Read>(
 ) -> CollectedTestDesc {
     let cache = HeadersCache::load(config);
     let mut poisoned = false;
-    let test = crate::header::make_test_description(
+    let test = crate::directives::make_test_description(
         config,
         &cache,
         name,
