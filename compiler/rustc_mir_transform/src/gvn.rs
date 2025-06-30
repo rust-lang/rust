@@ -163,12 +163,6 @@ enum AggregateTy<'tcx> {
     Array,
     Tuple,
     Def(DefId, ty::GenericArgsRef<'tcx>),
-    RawPtr {
-        /// Needed for cast propagation.
-        data_pointer_ty: Ty<'tcx>,
-        /// The data pointer can be anything thin, so doesn't determine the output.
-        output_pointer_ty: Ty<'tcx>,
-    },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -194,6 +188,17 @@ enum Value<'tcx> {
     /// An aggregate value, either tuple/closure/struct/enum.
     /// This does not contain unions, as we cannot reason with the value.
     Aggregate(AggregateTy<'tcx>, VariantIdx, Vec<VnIndex>),
+    /// A raw pointer aggregate built from a thin pointer and metadata.
+    RawPtr {
+        /// Thin pointer component. This is field 0 in MIR.
+        pointer: VnIndex,
+        /// Metadata component. This is field 1 in MIR.
+        metadata: VnIndex,
+        /// Needed for cast propagation.
+        data_pointer_ty: Ty<'tcx>,
+        /// The data pointer can be anything thin, so doesn't determine the output.
+        output_pointer_ty: Ty<'tcx>,
+    },
     /// This corresponds to a `[value; count]` expression.
     Repeat(VnIndex, ty::Const<'tcx>),
     /// The address of a place.
@@ -402,22 +407,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     AggregateTy::Def(def_id, args) => {
                         self.tcx.type_of(def_id).instantiate(self.tcx, args)
                     }
-                    AggregateTy::RawPtr { output_pointer_ty, .. } => output_pointer_ty,
                 };
                 let variant = if ty.is_enum() { Some(variant) } else { None };
                 let ty = self.ecx.layout_of(ty).ok()?;
                 if ty.is_zst() {
                     ImmTy::uninit(ty).into()
-                } else if matches!(kind, AggregateTy::RawPtr { .. }) {
-                    // Pointers don't have fields, so don't `project_field` them.
-                    let data = self.ecx.read_pointer(fields[0]).discard_err()?;
-                    let meta = if fields[1].layout.is_zst() {
-                        MemPlaceMeta::None
-                    } else {
-                        MemPlaceMeta::Meta(self.ecx.read_scalar(fields[1]).discard_err()?)
-                    };
-                    let ptr_imm = Immediate::new_pointer_with_meta(data, meta, &self.ecx);
-                    ImmTy::from_immediate(ptr_imm, ty).into()
                 } else if matches!(
                     ty.backend_repr,
                     BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)
@@ -445,6 +439,22 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 } else {
                     return None;
                 }
+            }
+            RawPtr { pointer, metadata, output_pointer_ty, data_pointer_ty: _ } => {
+                let pointer = self.evaluated[pointer].as_ref()?;
+                let metadata = self.evaluated[metadata].as_ref()?;
+                let output_pointer_ty = self.ecx.layout_of(output_pointer_ty).ok()?;
+                debug_assert!(!output_pointer_ty.is_zst());
+
+                // Pointers don't have fields, so don't `project_field` them.
+                let data = self.ecx.read_pointer(pointer).discard_err()?;
+                let meta = if metadata.layout.is_zst() {
+                    MemPlaceMeta::None
+                } else {
+                    MemPlaceMeta::Meta(self.ecx.read_scalar(metadata).discard_err()?)
+                };
+                let ptr_imm = Immediate::new_pointer_with_meta(data, meta, &self.ecx);
+                ImmTy::from_immediate(ptr_imm, output_pointer_ty).into()
             }
 
             Projection(base, elem) => {
@@ -1026,7 +1036,12 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
-        let (mut ty, variant_index) = match *kind {
+        let fields: Vec<_> = field_ops
+            .iter_mut()
+            .map(|op| self.simplify_operand(op, location).unwrap_or_else(|| self.new_opaque()))
+            .collect();
+
+        let (ty, variant_index) = match *kind {
             AggregateKind::Array(..) => {
                 assert!(!field_ops.is_empty());
                 (AggregateTy::Array, FIRST_VARIANT)
@@ -1045,41 +1060,41 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             AggregateKind::Adt(_, _, _, _, Some(_)) => return None,
             AggregateKind::RawPtr(pointee_ty, mtbl) => {
                 assert_eq!(field_ops.len(), 2);
-                let data_pointer_ty = field_ops[FieldIdx::ZERO].ty(self.local_decls, self.tcx);
+                let mut data_pointer_ty = field_ops[FieldIdx::ZERO].ty(self.local_decls, self.tcx);
                 let output_pointer_ty = Ty::new_ptr(self.tcx, pointee_ty, mtbl);
-                (AggregateTy::RawPtr { data_pointer_ty, output_pointer_ty }, FIRST_VARIANT)
+
+                let [mut pointer, metadata] = fields.try_into().unwrap();
+
+                // Any thin pointer of matching mutability is fine as the data pointer.
+                let mut was_updated = false;
+                while let Value::Cast {
+                    kind: CastKind::PtrToPtr,
+                    value: cast_value,
+                    from: cast_from,
+                    to: _,
+                } = self.get(pointer)
+                    && let ty::RawPtr(from_pointee_ty, from_mtbl) = cast_from.kind()
+                    && let ty::RawPtr(_, output_mtbl) = output_pointer_ty.kind()
+                    && from_mtbl == output_mtbl
+                    && from_pointee_ty.is_sized(self.tcx, self.typing_env())
+                {
+                    pointer = *cast_value;
+                    data_pointer_ty = *cast_from;
+                    was_updated = true;
+                }
+
+                if was_updated && let Some(op) = self.try_as_operand(pointer, location) {
+                    field_ops[FieldIdx::ZERO] = op;
+                }
+
+                return Some(self.insert(Value::RawPtr {
+                    output_pointer_ty,
+                    data_pointer_ty,
+                    pointer,
+                    metadata,
+                }));
             }
         };
-
-        let mut fields: Vec<_> = field_ops
-            .iter_mut()
-            .map(|op| self.simplify_operand(op, location).unwrap_or_else(|| self.new_opaque()))
-            .collect();
-
-        if let AggregateTy::RawPtr { data_pointer_ty, output_pointer_ty } = &mut ty {
-            let mut was_updated = false;
-
-            // Any thin pointer of matching mutability is fine as the data pointer.
-            while let Value::Cast {
-                kind: CastKind::PtrToPtr,
-                value: cast_value,
-                from: cast_from,
-                to: _,
-            } = self.get(fields[0])
-                && let ty::RawPtr(from_pointee_ty, from_mtbl) = cast_from.kind()
-                && let ty::RawPtr(_, output_mtbl) = output_pointer_ty.kind()
-                && from_mtbl == output_mtbl
-                && from_pointee_ty.is_sized(self.tcx, self.typing_env())
-            {
-                fields[0] = *cast_value;
-                *data_pointer_ty = *cast_from;
-                was_updated = true;
-            }
-
-            if was_updated && let Some(op) = self.try_as_operand(fields[0], location) {
-                field_ops[FieldIdx::ZERO] = op;
-            }
-        }
 
         if let AggregateTy::Array = ty
             && fields.len() > 4
@@ -1165,9 +1180,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             (UnOp::Not, Value::BinaryOp(BinOp::Ne, lhs, rhs)) => {
                 Value::BinaryOp(BinOp::Eq, *lhs, *rhs)
             }
-            (UnOp::PtrMetadata, Value::Aggregate(AggregateTy::RawPtr { .. }, _, fields)) => {
-                return Some(fields[1]);
-            }
+            (UnOp::PtrMetadata, Value::RawPtr { metadata, .. }) => return Some(*metadata),
             // We have an unsizing cast, which assigns the length to wide pointer metadata.
             (
                 UnOp::PtrMetadata,
@@ -1399,16 +1412,15 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // If a cast just casts away the metadata again, then we can get it by
             // casting the original thin pointer passed to `from_raw_parts`
             if let PtrToPtr = kind
-                && let Value::Aggregate(AggregateTy::RawPtr { data_pointer_ty, .. }, _, fields) =
-                    self.get(value)
+                && let Value::RawPtr { data_pointer_ty, pointer, .. } = self.get(value)
                 && let ty::RawPtr(to_pointee, _) = to.kind()
                 && to_pointee.is_sized(self.tcx, self.typing_env())
             {
                 from = *data_pointer_ty;
-                value = fields[0];
+                value = *pointer;
                 was_updated_this_iteration = true;
                 if *data_pointer_ty == to {
-                    return Some(fields[0]);
+                    return Some(*pointer);
                 }
             }
 
