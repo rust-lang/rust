@@ -682,11 +682,11 @@ impl File {
     /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
     /// cause non-lockholders to block.
     ///
-    /// If this file handle/descriptor, or a clone of it, already holds an lock the exact behavior
+    /// If this file handle/descriptor, or a clone of it, already holds a lock the exact behavior
     /// is unspecified and platform dependent, including the possibility that it will deadlock.
     /// However, if this method returns, then an exclusive lock is held.
     ///
-    /// If the file not open for writing, it is unspecified whether this function returns an error.
+    /// If the file is not open for writing, it is unspecified whether this function returns an error.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
@@ -736,7 +736,7 @@ impl File {
     /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
     /// cause non-lockholders to block.
     ///
-    /// If this file handle/descriptor, or a clone of it, already holds an lock, the exact behavior
+    /// If this file handle/descriptor, or a clone of it, already holds a lock, the exact behavior
     /// is unspecified and platform dependent, including the possibility that it will deadlock.
     /// However, if this method returns, then a shared lock is held.
     ///
@@ -790,11 +790,11 @@ impl File {
     /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
     /// cause non-lockholders to block.
     ///
-    /// If this file handle/descriptor, or a clone of it, already holds an lock, the exact behavior
+    /// If this file handle/descriptor, or a clone of it, already holds a lock, the exact behavior
     /// is unspecified and platform dependent, including the possibility that it will deadlock.
     /// However, if this method returns `Ok(true)`, then it has acquired an exclusive lock.
     ///
-    /// If the file not open for writing, it is unspecified whether this function returns an error.
+    /// If the file is not open for writing, it is unspecified whether this function returns an error.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
@@ -855,7 +855,7 @@ impl File {
     /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
     /// cause non-lockholders to block.
     ///
-    /// If this file handle, or a clone of it, already holds an lock, the exact behavior is
+    /// If this file handle, or a clone of it, already holds a lock, the exact behavior is
     /// unspecified and platform dependent, including the possibility that it will deadlock.
     /// However, if this method returns `Ok(true)`, then it has acquired a shared lock.
     ///
