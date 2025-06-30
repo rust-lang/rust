@@ -26,7 +26,7 @@ dependencies = [
 name = "alloc"
 version = "0.0.0"
 dependencies = [
- "compiler_builtins",
+ "compiler_builtins 0.1.160",
  "core",
 ]
 
@@ -53,6 +53,16 @@ version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9555578bc9e57714c812a1f84e4fc5b4d21fcb063490c624de019f7464c91268"
 dependencies = [
+ "rustc-std-workspace-core",
+]
+
+[[package]]
+name = "compiler_builtins"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "425356d982f29211c24265eeaae37de3593c99efac05a12d3d5c114d95721e5d"
+dependencies = [
+ "cc",
  "rustc-std-workspace-core",
 ]
 
@@ -94,7 +104,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57cafc2274c10fab234f176b25903ce17e690fca7597090d50880e047a0389c5"
 dependencies = [
- "compiler_builtins",
+ "compiler_builtins 0.1.0",
  "rustc-std-workspace-core",
 ]
 
@@ -184,7 +194,7 @@ name = "panic_abort"
 version = "0.0.0"
 dependencies = [
  "alloc",
- "compiler_builtins",
+ "compiler_builtins 0.1.160",
  "core",
  "libc",
 ]
@@ -195,7 +205,7 @@ version = "0.0.0"
 dependencies = [
  "alloc",
  "cfg-if",
- "compiler_builtins",
+ "compiler_builtins 0.1.160",
  "core",
  "libc",
  "unwind",
@@ -290,7 +300,7 @@ dependencies = [
 name = "rustc-std-workspace-core"
 version = "1.99.0"
 dependencies = [
- "compiler_builtins",
+ "compiler_builtins 0.1.160",
  "core",
 ]
 
@@ -314,7 +324,7 @@ dependencies = [
  "addr2line",
  "alloc",
  "cfg-if",
- "compiler_builtins",
+ "compiler_builtins 0.1.160",
  "core",
  "dlmalloc",
  "fortanix-sgx-abi",
@@ -381,7 +391,7 @@ name = "unwind"
 version = "0.0.0"
 dependencies = [
  "cfg-if",
- "compiler_builtins",
+ "compiler_builtins 0.1.160",
  "core",
  "libc",
  "unwinding",
@@ -393,7 +403,7 @@ version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d80f6c2bfede213d9a90b4a14f3eb99b84e33c52df6c1a15de0a100f5a88751"
 dependencies = [
- "compiler_builtins",
+ "compiler_builtins 0.1.160",
  "gimli",
  "rustc-std-workspace-core",
 ]
