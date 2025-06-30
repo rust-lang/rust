@@ -16,7 +16,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Deserializer};
 
-use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
+use crate::core::config::toml::rust::validate_codegen_backends;
 use crate::core::config::{LlvmLibunwind, Merge, ReplaceOpt, SplitDebuginfo, StringOrBool};
 use crate::{Config, HashSet, PathBuf, TargetSelection, define_config, exit};
 
@@ -142,23 +142,9 @@ impl Config {
                 target.rpath = cfg.rpath;
                 target.optimized_compiler_builtins = cfg.optimized_compiler_builtins;
                 target.jemalloc = cfg.jemalloc;
-
-                if let Some(ref backends) = cfg.codegen_backends {
-                    let available_backends = ["llvm", "cranelift", "gcc"];
-
-                    target.codegen_backends = Some(backends.iter().map(|s| {
-                        if let Some(backend) = s.strip_prefix(CODEGEN_BACKEND_PREFIX) {
-                            if available_backends.contains(&backend) {
-                                panic!("Invalid value '{s}' for 'target.{triple}.codegen-backends'. Instead, please use '{backend}'.");
-                            } else {
-                                println!("HELP: '{s}' for 'target.{triple}.codegen-backends' might fail. \
-                                    Codegen backends are mostly defined without the '{CODEGEN_BACKEND_PREFIX}' prefix. \
-                                    In this case, it would be referred to as '{backend}'.");
-                            }
-                        }
-
-                        s.clone()
-                    }).collect());
+                if let Some(backends) = cfg.codegen_backends {
+                    target.codegen_backends =
+                        Some(validate_codegen_backends(backends, &format!("target.{triple}")))
                 }
 
                 target.split_debuginfo = cfg.split_debuginfo.as_ref().map(|v| {
