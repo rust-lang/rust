@@ -1,9 +1,11 @@
 //! There are many AstNodes, but only a few tokens, so we hand-write them here.
 
+use std::ops::Range;
 use std::{borrow::Cow, num::ParseIntError};
 
 use rustc_literal_escaper::{
-    EscapeError, MixedUnit, Mode, unescape_byte, unescape_char, unescape_mixed, unescape_unicode,
+    EscapeError, MixedUnit, unescape_byte, unescape_byte_str, unescape_c_str, unescape_char,
+    unescape_str,
 };
 use stdx::always;
 
@@ -150,7 +152,7 @@ impl QuoteOffsets {
 
 pub trait IsString: AstToken {
     const RAW_PREFIX: &'static str;
-    const MODE: Mode;
+    fn unescape(s: &str, callback: impl FnMut(Range<usize>, Result<char, EscapeError>));
     fn is_raw(&self) -> bool {
         self.text().starts_with(Self::RAW_PREFIX)
     }
@@ -185,7 +187,7 @@ pub trait IsString: AstToken {
         let text = &self.text()[text_range_no_quotes - start];
         let offset = text_range_no_quotes.start() - start;
 
-        unescape_unicode(text, Self::MODE, &mut |range, unescaped_char| {
+        Self::unescape(text, &mut |range: Range<usize>, unescaped_char| {
             if let Some((s, e)) = range.start.try_into().ok().zip(range.end.try_into().ok()) {
                 cb(TextRange::new(s, e) + offset, unescaped_char);
             }
@@ -203,7 +205,9 @@ pub trait IsString: AstToken {
 
 impl IsString for ast::String {
     const RAW_PREFIX: &'static str = "r";
-    const MODE: Mode = Mode::Str;
+    fn unescape(s: &str, cb: impl FnMut(Range<usize>, Result<char, EscapeError>)) {
+        unescape_str(s, cb)
+    }
 }
 
 impl ast::String {
@@ -218,20 +222,19 @@ impl ast::String {
         let mut buf = String::new();
         let mut prev_end = 0;
         let mut has_error = None;
-        unescape_unicode(text, Self::MODE, &mut |char_range, unescaped_char| match (
-            unescaped_char,
-            buf.capacity() == 0,
-        ) {
-            (Ok(c), false) => buf.push(c),
-            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
-                prev_end = char_range.end
+        unescape_str(text, |char_range, unescaped_char| {
+            match (unescaped_char, buf.capacity() == 0) {
+                (Ok(c), false) => buf.push(c),
+                (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
+                    prev_end = char_range.end
+                }
+                (Ok(c), true) => {
+                    buf.reserve_exact(text.len());
+                    buf.push_str(&text[..prev_end]);
+                    buf.push(c);
+                }
+                (Err(e), _) => has_error = Some(e),
             }
-            (Ok(c), true) => {
-                buf.reserve_exact(text.len());
-                buf.push_str(&text[..prev_end]);
-                buf.push(c);
-            }
-            (Err(e), _) => has_error = Some(e),
         });
 
         match (has_error, buf.capacity() == 0) {
@@ -244,7 +247,9 @@ impl ast::String {
 
 impl IsString for ast::ByteString {
     const RAW_PREFIX: &'static str = "br";
-    const MODE: Mode = Mode::ByteStr;
+    fn unescape(s: &str, mut callback: impl FnMut(Range<usize>, Result<char, EscapeError>)) {
+        unescape_byte_str(s, |range, res| callback(range, res.map(char::from)))
+    }
 }
 
 impl ast::ByteString {
@@ -259,20 +264,19 @@ impl ast::ByteString {
         let mut buf: Vec<u8> = Vec::new();
         let mut prev_end = 0;
         let mut has_error = None;
-        unescape_unicode(text, Self::MODE, &mut |char_range, unescaped_char| match (
-            unescaped_char,
-            buf.capacity() == 0,
-        ) {
-            (Ok(c), false) => buf.push(c as u8),
-            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
-                prev_end = char_range.end
+        unescape_byte_str(text, |char_range, unescaped_byte| {
+            match (unescaped_byte, buf.capacity() == 0) {
+                (Ok(b), false) => buf.push(b),
+                (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
+                    prev_end = char_range.end
+                }
+                (Ok(b), true) => {
+                    buf.reserve_exact(text.len());
+                    buf.extend_from_slice(&text.as_bytes()[..prev_end]);
+                    buf.push(b);
+                }
+                (Err(e), _) => has_error = Some(e),
             }
-            (Ok(c), true) => {
-                buf.reserve_exact(text.len());
-                buf.extend_from_slice(&text.as_bytes()[..prev_end]);
-                buf.push(c as u8);
-            }
-            (Err(e), _) => has_error = Some(e),
         });
 
         match (has_error, buf.capacity() == 0) {
@@ -285,25 +289,10 @@ impl ast::ByteString {
 
 impl IsString for ast::CString {
     const RAW_PREFIX: &'static str = "cr";
-    const MODE: Mode = Mode::CStr;
-
-    fn escaped_char_ranges(&self, cb: &mut dyn FnMut(TextRange, Result<char, EscapeError>)) {
-        let text_range_no_quotes = match self.text_range_between_quotes() {
-            Some(it) => it,
-            None => return,
-        };
-
-        let start = self.syntax().text_range().start();
-        let text = &self.text()[text_range_no_quotes - start];
-        let offset = text_range_no_quotes.start() - start;
-
-        unescape_mixed(text, Self::MODE, &mut |range, unescaped_char| {
-            let text_range =
-                TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
-            // XXX: This method should only be used for highlighting ranges. The unescaped
-            // char/byte is not used. For simplicity, we return an arbitrary placeholder char.
-            cb(text_range + offset, unescaped_char.map(|_| ' '));
-        });
+    // NOTE: This method should only be used for highlighting ranges. The unescaped
+    // char/byte is not used. For simplicity, we return an arbitrary placeholder char.
+    fn unescape(s: &str, mut callback: impl FnMut(Range<usize>, Result<char, EscapeError>)) {
+        unescape_c_str(s, |range, _res| callback(range, Ok('_')))
     }
 }
 
@@ -323,10 +312,7 @@ impl ast::CString {
             MixedUnit::Char(c) => buf.extend(c.encode_utf8(&mut [0; 4]).as_bytes()),
             MixedUnit::HighByte(b) => buf.push(b),
         };
-        unescape_mixed(text, Self::MODE, &mut |char_range, unescaped| match (
-            unescaped,
-            buf.capacity() == 0,
-        ) {
+        unescape_c_str(text, |char_range, unescaped| match (unescaped, buf.capacity() == 0) {
             (Ok(u), false) => extend_unit(&mut buf, u),
             (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
                 prev_end = char_range.end

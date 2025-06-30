@@ -1475,26 +1475,26 @@ fn test(x: Box<dyn Trait<u64>>, y: &dyn Trait<u64>) {
         expect![[r#"
             29..33 'self': &'? Self
             54..58 'self': &'? Self
-            198..200 '{}': Box<dyn Trait<u64> + 'static>
-            210..211 'x': Box<dyn Trait<u64> + 'static>
-            234..235 'y': &'? (dyn Trait<u64> + 'static)
+            198..200 '{}': Box<dyn Trait<u64> + '?>
+            210..211 'x': Box<dyn Trait<u64> + '?>
+            234..235 'y': &'? (dyn Trait<u64> + '?)
             254..371 '{     ...2(); }': ()
-            260..261 'x': Box<dyn Trait<u64> + 'static>
-            267..268 'y': &'? (dyn Trait<u64> + 'static)
-            278..279 'z': Box<dyn Trait<u64> + 'static>
-            282..285 'bar': fn bar() -> Box<dyn Trait<u64> + 'static>
-            282..287 'bar()': Box<dyn Trait<u64> + 'static>
-            293..294 'x': Box<dyn Trait<u64> + 'static>
+            260..261 'x': Box<dyn Trait<u64> + '?>
+            267..268 'y': &'? (dyn Trait<u64> + '?)
+            278..279 'z': Box<dyn Trait<u64> + '?>
+            282..285 'bar': fn bar() -> Box<dyn Trait<u64> + '?>
+            282..287 'bar()': Box<dyn Trait<u64> + '?>
+            293..294 'x': Box<dyn Trait<u64> + '?>
             293..300 'x.foo()': u64
-            306..307 'y': &'? (dyn Trait<u64> + 'static)
+            306..307 'y': &'? (dyn Trait<u64> + '?)
             306..313 'y.foo()': u64
-            319..320 'z': Box<dyn Trait<u64> + 'static>
+            319..320 'z': Box<dyn Trait<u64> + '?>
             319..326 'z.foo()': u64
-            332..333 'x': Box<dyn Trait<u64> + 'static>
+            332..333 'x': Box<dyn Trait<u64> + '?>
             332..340 'x.foo2()': i64
-            346..347 'y': &'? (dyn Trait<u64> + 'static)
+            346..347 'y': &'? (dyn Trait<u64> + '?)
             346..354 'y.foo2()': i64
-            360..361 'z': Box<dyn Trait<u64> + 'static>
+            360..361 'z': Box<dyn Trait<u64> + '?>
             360..368 'z.foo2()': i64
         "#]],
     );
@@ -1523,14 +1523,14 @@ fn test(s: S<u32, i32>) {
         expect![[r#"
             32..36 'self': &'? Self
             102..106 'self': &'? S<T, U>
-            128..139 '{ loop {} }': &'? (dyn Trait<T, U> + 'static)
+            128..139 '{ loop {} }': &'? (dyn Trait<T, U> + '?)
             130..137 'loop {}': !
             135..137 '{}': ()
             175..179 'self': &'? Self
             251..252 's': S<u32, i32>
             267..289 '{     ...z(); }': ()
             273..274 's': S<u32, i32>
-            273..280 's.bar()': &'? (dyn Trait<u32, i32> + 'static)
+            273..280 's.bar()': &'? (dyn Trait<u32, i32> + '?)
             273..286 's.bar().baz()': (u32, i32)
         "#]],
     );
@@ -1556,20 +1556,20 @@ fn test(x: Trait, y: &Trait) -> u64 {
 }"#,
         expect![[r#"
             26..30 'self': &'? Self
-            60..62 '{}': dyn Trait + 'static
-            72..73 'x': dyn Trait + 'static
-            82..83 'y': &'? (dyn Trait + 'static)
+            60..62 '{}': dyn Trait + '?
+            72..73 'x': dyn Trait + '?
+            82..83 'y': &'? (dyn Trait + '?)
             100..175 '{     ...o(); }': u64
-            106..107 'x': dyn Trait + 'static
-            113..114 'y': &'? (dyn Trait + 'static)
-            124..125 'z': dyn Trait + 'static
-            128..131 'bar': fn bar() -> dyn Trait + 'static
-            128..133 'bar()': dyn Trait + 'static
-            139..140 'x': dyn Trait + 'static
+            106..107 'x': dyn Trait + '?
+            113..114 'y': &'? (dyn Trait + '?)
+            124..125 'z': dyn Trait + '?
+            128..131 'bar': fn bar() -> dyn Trait + '?
+            128..133 'bar()': dyn Trait + '?
+            139..140 'x': dyn Trait + '?
             139..146 'x.foo()': u64
-            152..153 'y': &'? (dyn Trait + 'static)
+            152..153 'y': &'? (dyn Trait + '?)
             152..159 'y.foo()': u64
-            165..166 'z': dyn Trait + 'static
+            165..166 'z': dyn Trait + '?
             165..172 'z.foo()': u64
         "#]],
     );
@@ -1589,10 +1589,10 @@ fn main() {
         expect![[r#"
             31..35 'self': &'? S
             37..39 '{}': ()
-            47..48 '_': &'? (dyn Fn(S) + 'static)
+            47..48 '_': &'? (dyn Fn(S) + '?)
             58..60 '{}': ()
             71..105 '{     ...()); }': ()
-            77..78 'f': fn f(&'? (dyn Fn(S) + 'static))
+            77..78 'f': fn f(&'? (dyn Fn(S) + '?))
             77..102 'f(&|nu...foo())': ()
             79..101 '&|numb....foo()': &'? impl Fn(S)
             80..101 '|numbe....foo()': impl Fn(S)
@@ -2927,13 +2927,13 @@ fn test(x: &dyn Foo) {
     foo(x);
 }"#,
         expect![[r#"
-            21..22 'x': &'? (dyn Foo + 'static)
+            21..22 'x': &'? (dyn Foo + '?)
             34..36 '{}': ()
-            46..47 'x': &'? (dyn Foo + 'static)
+            46..47 'x': &'? (dyn Foo + '?)
             59..74 '{     foo(x); }': ()
-            65..68 'foo': fn foo(&'? (dyn Foo + 'static))
+            65..68 'foo': fn foo(&'? (dyn Foo + '?))
             65..71 'foo(x)': ()
-            69..70 'x': &'? (dyn Foo + 'static)
+            69..70 'x': &'? (dyn Foo + '?)
         "#]],
     );
 }
@@ -3210,13 +3210,13 @@ fn foo() {
             218..324 '{     ...&s); }': ()
             228..229 's': Option<i32>
             232..236 'None': Option<i32>
-            246..247 'f': Box<dyn FnOnce(&'? Option<i32>) + 'static>
-            281..310 'Box { ... {}) }': Box<dyn FnOnce(&'? Option<i32>) + 'static>
+            246..247 'f': Box<dyn FnOnce(&'? Option<i32>) + '?>
+            281..310 'Box { ... {}) }': Box<dyn FnOnce(&'? Option<i32>) + '?>
             294..308 '&mut (|ps| {})': &'? mut impl FnOnce(&'? Option<i32>)
             300..307 '|ps| {}': impl FnOnce(&'? Option<i32>)
             301..303 'ps': &'? Option<i32>
             305..307 '{}': ()
-            316..317 'f': Box<dyn FnOnce(&'? Option<i32>) + 'static>
+            316..317 'f': Box<dyn FnOnce(&'? Option<i32>) + '?>
             316..321 'f(&s)': ()
             318..320 '&s': &'? Option<i32>
             319..320 's': Option<i32>
@@ -4252,9 +4252,9 @@ fn f<'a>(v: &dyn Trait<Assoc<i32> = &'a i32>) {
     "#,
         expect![[r#"
             90..94 'self': &'? Self
-            127..128 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + 'static)
+            127..128 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + '?)
             164..195 '{     ...f(); }': ()
-            170..171 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + 'static)
+            170..171 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + '?)
             170..184 'v.get::<i32>()': &'? i32
             170..192 'v.get:...eref()': &'? i32
         "#]],

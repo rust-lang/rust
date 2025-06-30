@@ -490,7 +490,7 @@ impl<'db> AnyDiagnostic<'db> {
     ) -> Option<AnyDiagnostic<'db>> {
         match diagnostic {
             BodyValidationDiagnostic::RecordMissingFields { record, variant, missed_fields } => {
-                let variant_data = variant.variant_data(db);
+                let variant_data = variant.fields(db);
                 let missed_fields = missed_fields
                     .into_iter()
                     .map(|idx| variant_data.fields()[idx].name.clone())

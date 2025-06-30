@@ -54,7 +54,7 @@ use hir_def::{
     },
     item_tree::ImportAlias,
     layout::{self, ReprOptions, TargetDataLayout},
-    nameres::{self, diagnostics::DefDiagnostic},
+    nameres::{self, assoc::TraitItems, diagnostics::DefDiagnostic},
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     signatures::{ImplFlags, StaticFlags, TraitFlags, VariantFields},
@@ -649,7 +649,7 @@ impl Module {
                     acc.extend(def.diagnostics(db, style_lints))
                 }
                 ModuleDef::Trait(t) => {
-                    for diag in db.trait_items_with_diagnostics(t.id).1.iter() {
+                    for diag in TraitItems::query_with_diagnostics(db, t.id).1.iter() {
                         emit_def_diagnostic(db, acc, diag, edition);
                     }
 
@@ -668,25 +668,25 @@ impl Module {
                         Adt::Struct(s) => {
                             let source_map = db.struct_signature_with_source_map(s.id).1;
                             expr_store_diagnostics(db, acc, &source_map);
-                            let source_map = db.variant_fields_with_source_map(s.id.into()).1;
-                            expr_store_diagnostics(db, acc, &source_map);
+                            let source_map = &s.id.fields_with_source_map(db).1;
+                            expr_store_diagnostics(db, acc, source_map);
                             push_ty_diagnostics(
                                 db,
                                 acc,
                                 db.field_types_with_diagnostics(s.id.into()).1,
-                                &source_map,
+                                source_map,
                             );
                         }
                         Adt::Union(u) => {
                             let source_map = db.union_signature_with_source_map(u.id).1;
                             expr_store_diagnostics(db, acc, &source_map);
-                            let source_map = db.variant_fields_with_source_map(u.id.into()).1;
-                            expr_store_diagnostics(db, acc, &source_map);
+                            let source_map = &u.id.fields_with_source_map(db).1;
+                            expr_store_diagnostics(db, acc, source_map);
                             push_ty_diagnostics(
                                 db,
                                 acc,
                                 db.field_types_with_diagnostics(u.id.into()).1,
-                                &source_map,
+                                source_map,
                             );
                         }
                         Adt::Enum(e) => {
@@ -711,14 +711,14 @@ impl Module {
                                 }
                             }
                             for &(v, _, _) in &variants.variants {
-                                let source_map = db.variant_fields_with_source_map(v.into()).1;
+                                let source_map = &v.fields_with_source_map(db).1;
                                 push_ty_diagnostics(
                                     db,
                                     acc,
                                     db.field_types_with_diagnostics(v.into()).1,
-                                    &source_map,
+                                    source_map,
                                 );
-                                expr_store_diagnostics(db, acc, &source_map);
+                                expr_store_diagnostics(db, acc, source_map);
                             }
                         }
                     }
@@ -822,7 +822,7 @@ impl Module {
 
             // Negative impls can't have items, don't emit missing items diagnostic for them
             if let (false, Some(trait_)) = (impl_is_negative, trait_) {
-                let items = &db.trait_items(trait_.into()).items;
+                let items = &trait_.id.trait_items(db).items;
                 let required_items = items.iter().filter(|&(_, assoc)| match *assoc {
                     AssocItemId::FunctionId(it) => !db.function_signature(it).has_body(),
                     AssocItemId::ConstId(id) => !db.const_signature(id).has_body(),
@@ -1311,7 +1311,7 @@ impl AstNode for FieldSource {
 
 impl Field {
     pub fn name(&self, db: &dyn HirDatabase) -> Name {
-        db.variant_fields(self.parent.into()).fields()[self.id].name.clone()
+        VariantId::from(self.parent).fields(db).fields()[self.id].name.clone()
     }
 
     pub fn index(&self) -> usize {
@@ -1380,7 +1380,7 @@ impl Field {
 
 impl HasVisibility for Field {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let variant_data = db.variant_fields(self.parent.into());
+        let variant_data = VariantId::from(self.parent).fields(db);
         let visibility = &variant_data.fields()[self.id].visibility;
         let parent_id: hir_def::VariantId = self.parent.into();
         // FIXME: RawVisibility::Public doesn't need to construct a resolver
@@ -1403,7 +1403,8 @@ impl Struct {
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
-        db.variant_fields(self.id.into())
+        self.id
+            .fields(db)
             .fields()
             .iter()
             .map(|(id, _)| Field { parent: self.into(), id })
@@ -1434,8 +1435,8 @@ impl Struct {
         }
     }
 
-    fn variant_fields(self, db: &dyn HirDatabase) -> Arc<VariantFields> {
-        db.variant_fields(self.id.into())
+    fn variant_fields(self, db: &dyn HirDatabase) -> &VariantFields {
+        self.id.fields(db)
     }
 
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
@@ -1478,7 +1479,7 @@ impl Union {
     }
 
     pub fn kind(self, db: &dyn HirDatabase) -> StructKind {
-        match db.variant_fields(self.id.into()).shape {
+        match self.id.fields(db).shape {
             hir_def::item_tree::FieldsShape::Record => StructKind::Record,
             hir_def::item_tree::FieldsShape::Tuple => StructKind::Tuple,
             hir_def::item_tree::FieldsShape::Unit => StructKind::Unit,
@@ -1486,7 +1487,8 @@ impl Union {
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
-        db.variant_fields(self.id.into())
+        self.id
+            .fields(db)
             .fields()
             .iter()
             .map(|(id, _)| Field { parent: self.into(), id })
@@ -1626,7 +1628,8 @@ impl Variant {
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
-        db.variant_fields(self.id.into())
+        self.id
+            .fields(db)
             .fields()
             .iter()
             .map(|(id, _)| Field { parent: self.into(), id })
@@ -1634,7 +1637,7 @@ impl Variant {
     }
 
     pub fn kind(self, db: &dyn HirDatabase) -> StructKind {
-        match db.variant_fields(self.id.into()).shape {
+        match self.id.fields(db).shape {
             hir_def::item_tree::FieldsShape::Record => StructKind::Record,
             hir_def::item_tree::FieldsShape::Tuple => StructKind::Tuple,
             hir_def::item_tree::FieldsShape::Unit => StructKind::Unit,
@@ -1727,10 +1730,10 @@ impl Adt {
     pub fn ty_with_args<'db>(
         self,
         db: &'db dyn HirDatabase,
-        args: impl Iterator<Item = Type<'db>>,
+        args: impl IntoIterator<Item = Type<'db>>,
     ) -> Type<'db> {
         let id = AdtId::from(self);
-        let mut it = args.map(|t| t.ty);
+        let mut it = args.into_iter().map(|t| t.ty);
         let ty = TyBuilder::def_ty(db, id.into(), None)
             .fill(|x| {
                 let r = it.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
@@ -2883,7 +2886,7 @@ impl Trait {
     }
 
     pub fn function(self, db: &dyn HirDatabase, name: impl PartialEq<Name>) -> Option<Function> {
-        db.trait_items(self.id).items.iter().find(|(n, _)| name == *n).and_then(|&(_, it)| match it
+        self.id.trait_items(db).items.iter().find(|(n, _)| name == *n).and_then(|&(_, it)| match it
         {
             AssocItemId::FunctionId(id) => Some(Function { id }),
             _ => None,
@@ -2891,7 +2894,7 @@ impl Trait {
     }
 
     pub fn items(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
-        db.trait_items(self.id).items.iter().map(|(_name, it)| (*it).into()).collect()
+        self.id.trait_items(db).items.iter().map(|(_name, it)| (*it).into()).collect()
     }
 
     pub fn items_with_supertraits(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
@@ -2939,7 +2942,7 @@ impl Trait {
     }
 
     fn all_macro_calls(&self, db: &dyn HirDatabase) -> Box<[(AstId<ast::Item>, MacroCallId)]> {
-        db.trait_items(self.id).macro_calls.to_vec().into_boxed_slice()
+        self.id.trait_items(db).macro_calls.to_vec().into_boxed_slice()
     }
 
     /// `#[rust_analyzer::completions(...)]` mode.
@@ -3043,8 +3046,15 @@ pub struct BuiltinType {
 }
 
 impl BuiltinType {
+    // Constructors are added on demand, feel free to add more.
     pub fn str() -> BuiltinType {
         BuiltinType { inner: hir_def::builtin_type::BuiltinType::Str }
+    }
+
+    pub fn i32() -> BuiltinType {
+        BuiltinType {
+            inner: hir_def::builtin_type::BuiltinType::Int(hir_ty::primitive::BuiltinInt::I32),
+        }
     }
 
     pub fn ty<'db>(self, db: &'db dyn HirDatabase) -> Type<'db> {
@@ -3667,7 +3677,7 @@ impl GenericDef {
 
         let generics = db.generic_params(def);
 
-        if generics.is_empty() && generics.no_predicates() {
+        if generics.is_empty() && generics.has_no_predicates() {
             return;
         }
 
@@ -5000,7 +5010,7 @@ impl<'db> Type<'db> {
         }
 
         let output_assoc_type =
-            db.trait_items(trait_).associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
+            trait_.trait_items(db).associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
         self.normalize_trait_assoc_type(db, &[], output_assoc_type.into())
     }
 
@@ -5013,8 +5023,8 @@ impl<'db> Type<'db> {
     /// This does **not** resolve `IntoIterator`, only `Iterator`.
     pub fn iterator_item(self, db: &'db dyn HirDatabase) -> Option<Type<'db>> {
         let iterator_trait = LangItem::Iterator.resolve_trait(db, self.env.krate)?;
-        let iterator_item = db
-            .trait_items(iterator_trait)
+        let iterator_item = iterator_trait
+            .trait_items(db)
             .associated_type_by_name(&Name::new_symbol_root(sym::Item))?;
         self.normalize_trait_assoc_type(db, &[], iterator_item.into())
     }
@@ -5044,8 +5054,8 @@ impl<'db> Type<'db> {
             return None;
         }
 
-        let into_iter_assoc_type = db
-            .trait_items(trait_)
+        let into_iter_assoc_type = trait_
+            .trait_items(db)
             .associated_type_by_name(&Name::new_symbol_root(sym::IntoIter))?;
         self.normalize_trait_assoc_type(db, &[], into_iter_assoc_type.into())
     }
