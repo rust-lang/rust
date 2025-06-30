@@ -900,10 +900,10 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
         );
         let dest_ty = dest.ty(caller_body, tcx);
         let temp = Place::from(new_call_temp(caller_body, callsite, dest_ty, return_block));
-        caller_body[callsite.block].statements.push(Statement {
-            source_info: callsite.source_info,
-            kind: StatementKind::Assign(Box::new((temp, dest))),
-        });
+        caller_body[callsite.block].statements.push(Statement::new(
+            callsite.source_info,
+            StatementKind::Assign(Box::new((temp, dest))),
+        ));
         tcx.mk_place_deref(temp)
     } else {
         destination
@@ -947,10 +947,9 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     for local in callee_body.vars_and_temps_iter() {
         if integrator.always_live_locals.contains(local) {
             let new_local = integrator.map_local(local);
-            caller_body[callsite.block].statements.push(Statement {
-                source_info: callsite.source_info,
-                kind: StatementKind::StorageLive(new_local),
-            });
+            caller_body[callsite.block]
+                .statements
+                .push(Statement::new(callsite.source_info, StatementKind::StorageLive(new_local)));
         }
     }
     if let Some(block) = return_block {
@@ -958,22 +957,22 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
         // the slice once.
         let mut n = 0;
         if remap_destination {
-            caller_body[block].statements.push(Statement {
-                source_info: callsite.source_info,
-                kind: StatementKind::Assign(Box::new((
+            caller_body[block].statements.push(Statement::new(
+                callsite.source_info,
+                StatementKind::Assign(Box::new((
                     dest,
                     Rvalue::Use(Operand::Move(destination_local.into())),
                 ))),
-            });
+            ));
             n += 1;
         }
         for local in callee_body.vars_and_temps_iter().rev() {
             if integrator.always_live_locals.contains(local) {
                 let new_local = integrator.map_local(local);
-                caller_body[block].statements.push(Statement {
-                    source_info: callsite.source_info,
-                    kind: StatementKind::StorageDead(new_local),
-                });
+                caller_body[block].statements.push(Statement::new(
+                    callsite.source_info,
+                    StatementKind::StorageDead(new_local),
+                ));
                 n += 1;
             }
         }
@@ -1126,10 +1125,10 @@ fn create_temp_if_necessary<'tcx, I: Inliner<'tcx>>(
     trace!("creating temp for argument {:?}", arg);
     let arg_ty = arg.ty(caller_body, inliner.tcx());
     let local = new_call_temp(caller_body, callsite, arg_ty, return_block);
-    caller_body[callsite.block].statements.push(Statement {
-        source_info: callsite.source_info,
-        kind: StatementKind::Assign(Box::new((Place::from(local), Rvalue::Use(arg)))),
-    });
+    caller_body[callsite.block].statements.push(Statement::new(
+        callsite.source_info,
+        StatementKind::Assign(Box::new((Place::from(local), Rvalue::Use(arg)))),
+    ));
     local
 }
 
@@ -1142,19 +1141,14 @@ fn new_call_temp<'tcx>(
 ) -> Local {
     let local = caller_body.local_decls.push(LocalDecl::new(ty, callsite.source_info.span));
 
-    caller_body[callsite.block].statements.push(Statement {
-        source_info: callsite.source_info,
-        kind: StatementKind::StorageLive(local),
-    });
+    caller_body[callsite.block]
+        .statements
+        .push(Statement::new(callsite.source_info, StatementKind::StorageLive(local)));
 
     if let Some(block) = return_block {
-        caller_body[block].statements.insert(
-            0,
-            Statement {
-                source_info: callsite.source_info,
-                kind: StatementKind::StorageDead(local),
-            },
-        );
+        caller_body[block]
+            .statements
+            .insert(0, Statement::new(callsite.source_info, StatementKind::StorageDead(local)));
     }
 
     local

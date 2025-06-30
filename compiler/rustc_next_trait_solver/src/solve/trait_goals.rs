@@ -127,33 +127,32 @@ where
         goal: Goal<I, Self>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
-        if let Some(trait_clause) = assumption.as_trait_clause() {
-            if trait_clause.polarity() != goal.predicate.polarity {
-                return Err(NoSolution);
-            }
-
-            if trait_clause.def_id() == goal.predicate.def_id() {
-                if DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
-                    goal.predicate.trait_ref.args,
-                    trait_clause.skip_binder().trait_ref.args,
-                ) {
-                    return Ok(());
-                }
-            }
-
+        fn trait_def_id_matches<I: Interner>(
+            cx: I,
+            clause_def_id: I::DefId,
+            goal_def_id: I::DefId,
+        ) -> bool {
+            clause_def_id == goal_def_id
             // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
-            // check for a `Sized` subtrait when looking for `MetaSized`. `PointeeSized` bounds
-            // are syntactic sugar for a lack of bounds so don't need this.
-            if ecx.cx().is_lang_item(goal.predicate.def_id(), TraitSolverLangItem::MetaSized)
-                && ecx.cx().is_lang_item(trait_clause.def_id(), TraitSolverLangItem::Sized)
-            {
-                let meta_sized_clause =
-                    trait_predicate_with_def_id(ecx.cx(), trait_clause, goal.predicate.def_id());
-                return Self::fast_reject_assumption(ecx, goal, meta_sized_clause);
-            }
+            // check for a `MetaSized` supertrait being matched against a `Sized` assumption.
+            //
+            // `PointeeSized` bounds are syntactic sugar for a lack of bounds so don't need this.
+                || (cx.is_lang_item(clause_def_id, TraitSolverLangItem::Sized)
+                    && cx.is_lang_item(goal_def_id, TraitSolverLangItem::MetaSized))
         }
 
-        Err(NoSolution)
+        if let Some(trait_clause) = assumption.as_trait_clause()
+            && trait_clause.polarity() == goal.predicate.polarity
+            && trait_def_id_matches(ecx.cx(), trait_clause.def_id(), goal.predicate.def_id())
+            && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
+                goal.predicate.trait_ref.args,
+                trait_clause.skip_binder().trait_ref.args,
+            )
+        {
+            return Ok(());
+        } else {
+            Err(NoSolution)
+        }
     }
 
     fn match_assumption(

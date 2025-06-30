@@ -112,18 +112,17 @@ where
         goal: Goal<I, Self>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
-        if let Some(projection_pred) = assumption.as_projection_clause() {
-            if projection_pred.item_def_id() == goal.predicate.def_id() {
-                if DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
-                    goal.predicate.alias.args,
-                    projection_pred.skip_binder().projection_term.args,
-                ) {
-                    return Ok(());
-                }
-            }
+        if let Some(projection_pred) = assumption.as_projection_clause()
+            && projection_pred.item_def_id() == goal.predicate.def_id()
+            && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
+                goal.predicate.alias.args,
+                projection_pred.skip_binder().projection_term.args,
+            )
+        {
+            Ok(())
+        } else {
+            Err(NoSolution)
         }
-
-        Err(NoSolution)
     }
 
     fn match_assumption(

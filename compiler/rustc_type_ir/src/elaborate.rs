@@ -320,10 +320,10 @@ pub fn supertrait_def_ids<I: Interner>(
         let trait_def_id = stack.pop()?;
 
         for (predicate, _) in cx.explicit_super_predicates_of(trait_def_id).iter_identity() {
-            if let ty::ClauseKind::Trait(data) = predicate.kind().skip_binder() {
-                if set.insert(data.def_id()) {
-                    stack.push(data.def_id());
-                }
+            if let ty::ClauseKind::Trait(data) = predicate.kind().skip_binder()
+                && set.insert(data.def_id())
+            {
+                stack.push(data.def_id());
             }
         }
 
