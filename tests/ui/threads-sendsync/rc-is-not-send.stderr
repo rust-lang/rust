@@ -1,10 +1,10 @@
 error[E0277]: `Rc<()>` cannot be sent between threads safely
-  --> $DIR/no-send-res-ports.rs:25:19
+  --> $DIR/rc-is-not-send.rs:25:19
    |
-LL |       thread::spawn(move|| {
-   |       ------------- ^-----
+LL |       thread::spawn(move || {
+   |       ------------- ^------
    |       |             |
-   |  _____|_____________within this `{closure@$DIR/no-send-res-ports.rs:25:19: 25:25}`
+   |  _____|_____________within this `{closure@$DIR/rc-is-not-send.rs:25:19: 25:26}`
    | |     |
    | |     required by a bound introduced by this call
 LL | |
@@ -13,22 +13,22 @@ LL | |         println!("{:?}", y);
 LL | |     });
    | |_____^ `Rc<()>` cannot be sent between threads safely
    |
-   = help: within `{closure@$DIR/no-send-res-ports.rs:25:19: 25:25}`, the trait `Send` is not implemented for `Rc<()>`
+   = help: within `{closure@$DIR/rc-is-not-send.rs:25:19: 25:26}`, the trait `Send` is not implemented for `Rc<()>`
 note: required because it appears within the type `Port<()>`
-  --> $DIR/no-send-res-ports.rs:5:8
+  --> $DIR/rc-is-not-send.rs:7:8
    |
 LL | struct Port<T>(Rc<T>);
    |        ^^^^
 note: required because it appears within the type `Foo`
-  --> $DIR/no-send-res-ports.rs:9:12
+  --> $DIR/rc-is-not-send.rs:10:8
    |
-LL |     struct Foo {
-   |            ^^^
+LL | struct Foo {
+   |        ^^^
 note: required because it's used within this closure
-  --> $DIR/no-send-res-ports.rs:25:19
+  --> $DIR/rc-is-not-send.rs:25:19
    |
-LL |     thread::spawn(move|| {
-   |                   ^^^^^^
+LL |     thread::spawn(move || {
+   |                   ^^^^^^^
 note: required by a bound in `spawn`
   --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
 
