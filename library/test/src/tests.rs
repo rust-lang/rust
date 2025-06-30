@@ -1,16 +1,14 @@
+use std::fs::{self, File};
+use std::path::PathBuf;
+
+use rand::RngCore;
+
 use super::*;
-use crate::{
-    console::OutputLocation,
-    formatters::PrettyFormatter,
-    test::{
-        MetricMap,
-        // FIXME (introduced by #65251)
-        // ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TestTimeOptions,
-        // TestType, TrFailedMsg, TrIgnored, TrOk,
-        parse_opts,
-    },
-    time::{TestTimeOptions, TimeThreshold},
-};
+use crate::console::{OutputLocation, build_test_output};
+use crate::formatters::PrettyFormatter;
+use crate::test::{MetricMap, parse_opts};
+use crate::test_helpers::{test_rng, tmpdir};
+use crate::time::{TestTimeOptions, TimeThreshold};
 
 impl TestOpts {
     fn new() -> TestOpts {
@@ -24,6 +22,7 @@ impl TestOpts {
             run_tests: false,
             bench_benchmarks: false,
             logfile: None,
+            test_results_file: None,
             nocapture: false,
             color: AutoColor,
             format: OutputFormat::Pretty,
@@ -469,6 +468,29 @@ fn parse_include_ignored_flag() {
 }
 
 #[test]
+fn parse_test_results_file_flag_reads_value() {
+    let args = vec![
+        "progname".to_string(),
+        "filter".to_string(),
+        "--test-results-file".to_string(),
+        "expected_path_to_results_file".to_string(),
+    ];
+    let opts = parse_opts(&args).unwrap().unwrap();
+    assert_eq!(opts.test_results_file, Some(PathBuf::from("expected_path_to_results_file")));
+}
+
+#[test]
+fn parse_test_results_file_requires_value() {
+    let args =
+        vec!["progname".to_string(), "filter".to_string(), "--test-results-file".to_string()];
+    let maybe_opts = parse_opts(&args).unwrap();
+    assert_eq!(
+        maybe_opts.err(),
+        Some("Argument to option 'test-results-file' missing".to_string())
+    );
+}
+
+#[test]
 fn filter_for_ignored_option() {
     // When we run ignored tests the test filter should filter out all the
     // unignored tests and flip the ignore flag on the rest to false
@@ -911,4 +933,35 @@ fn test_dyn_bench_returning_err_fails_when_run_as_test() {
     run_tests(&TestOpts { run_tests: true, ..TestOpts::new() }, vec![desc], notify).unwrap();
     let result = rx.recv().unwrap().result;
     assert_eq!(result, TrFailed);
+}
+
+#[test]
+fn test_result_output_propagated_to_file() {
+    let tmpdir = tmpdir();
+    let test_results_file = tmpdir.join("test_results");
+    let mut output = build_test_output(&Some(test_results_file.clone())).unwrap();
+    let random_str = format!("test_result_file_contents_{}", test_rng().next_u32());
+
+    match output {
+        OutputLocation::Raw(ref mut m) => {
+            m.write_all(random_str.as_bytes()).unwrap();
+            m.flush().unwrap()
+        }
+        OutputLocation::Pretty(_) => unreachable!(),
+    };
+
+    let file_contents = fs::read_to_string(test_results_file).unwrap();
+    assert_eq!(random_str, file_contents);
+}
+
+#[test]
+fn test_result_output_bails_when_file_exists() {
+    let tmpdir = tmpdir();
+    let test_results_file = tmpdir.join("test_results");
+    let new_file = File::create(&test_results_file).unwrap();
+    drop(new_file);
+
+    let maybe_output = build_test_output(&Some(test_results_file));
+
+    assert_eq!(maybe_output.err().map(|e| e.kind()), Some(io::ErrorKind::AlreadyExists));
 }
