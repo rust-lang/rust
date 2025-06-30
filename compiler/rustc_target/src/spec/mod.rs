@@ -3654,3 +3654,90 @@ impl fmt::Display for TargetTuple {
         write!(f, "{}", self.debug_tuple())
     }
 }
+
+#[derive(Copy, Clone, PartialEq)]
+pub(crate) enum Arch {
+    Arm(ArmVer),
+    Aarch64(Aarch64Ver),
+    X86_32(Ix86),
+    X86_64(X86_64Ver),
+}
+
+#[expect(dead_code)]
+#[derive(PartialEq, Copy, Clone)]
+pub(crate) enum Ix86 {
+    /// Apple's idea of what "i386" means.
+    AppleI386,
+    /// Pentium. Oldest x86 deliberately supported by rustc.
+    I586,
+    /// Pentium 4, despite the name
+    ClangI686,
+}
+#[derive(PartialEq, Copy, Clone)]
+pub(crate) enum Aarch64Ver {
+    V8A,
+    /// What does "E" stand for? Armv8.3-A using a pointer-auth ABI, apparently
+    E,
+    _32,
+}
+
+#[expect(dead_code)]
+#[derive(PartialEq, Copy, Clone)]
+pub(crate) enum ArmVer {
+    V4T,
+    V5TE,
+    V6M,
+    V6K,
+    V7A,
+    V7EM,
+    V7M,
+    V7K,
+    V7S,
+    V7R,
+    V8A,
+    V8M,
+    V8R,
+    V9M,
+    V9R,
+}
+
+#[expect(dead_code)]
+#[derive(PartialEq, Copy, Clone)]
+pub(crate) enum X86_64Ver {
+    /// 64-bit long mode
+    X64,
+    /// long mode but people try to use 32-bit pointers
+    X32,
+    /// Apple target
+    Haswell,
+}
+
+impl Arch {
+    /// specially sweet constructor for the most-common arch
+    pub(crate) const fn x86_64() -> Arch {
+        Arch::X86_64(X86_64Ver::X64)
+    }
+}
+
+impl From<X86_64Ver> for Arch {
+    fn from(arg: X86_64Ver) -> Arch {
+        Arch::X86_64(arg)
+    }
+}
+
+impl From<Aarch64Ver> for Arch {
+    fn from(arg: Aarch64Ver) -> Arch {
+        Arch::Aarch64(arg)
+    }
+}
+impl From<ArmVer> for Arch {
+    fn from(arg: ArmVer) -> Arch {
+        Arch::Arm(arg)
+    }
+}
+
+impl From<Ix86> for Arch {
+    fn from(arg: Ix86) -> Arch {
+        Arch::X86_32(arg)
+    }
+}
