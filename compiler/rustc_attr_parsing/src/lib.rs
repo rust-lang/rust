@@ -80,6 +80,7 @@
 #![allow(internal_features)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
+#![feature(decl_macro)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 

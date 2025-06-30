@@ -55,6 +55,15 @@ impl<'a> PathParser<'a> {
         SegmentIterator { offset: 0, path: self }
     }
 
+    pub fn single_segment(&'a self) -> Option<Ident> {
+        let mut segments = self.segments();
+        let single = segments.next()?;
+        if segments.next().is_some() {
+            return None;
+        }
+        Some(*single)
+    }
+
     pub fn span(&self) -> Span {
         match self {
             PathParser::Ast(path) => path.span,
@@ -165,6 +174,15 @@ impl<'a> ArgParser<'a> {
     pub fn name_value(&self) -> Option<&NameValueParser> {
         match self {
             Self::NameValue(n) => Some(n),
+            Self::List(_) | Self::NoArgs => None,
+        }
+    }
+
+    /// Asserts that this MetaItem is a name-value pair, and that the value is a string.
+    /// Returns the value and the span of the value.
+    pub fn name_value_str(&self) -> Option<(Symbol, Span)> {
+        match self {
+            Self::NameValue(n) => n.value_as_str().map(|s| (s, n.value_span)),
             Self::List(_) | Self::NoArgs => None,
         }
     }
