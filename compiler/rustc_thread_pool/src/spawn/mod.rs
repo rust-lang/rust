@@ -95,7 +95,7 @@ where
 
     HeapJob::new(Tlv::null(), {
         let registry = Arc::clone(registry);
-        move || {
+        move |_| {
             registry.catch_unwind(func);
             registry.terminate(); // (*) permit registry to terminate now
         }
