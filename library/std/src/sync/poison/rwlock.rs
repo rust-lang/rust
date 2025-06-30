@@ -1084,7 +1084,6 @@ impl<'a, T: ?Sized> RwLockWriteGuard<'a, T> {
     /// # Example
     ///
     /// ```
-    /// #![feature(rwlock_downgrade)]
     /// use std::sync::{Arc, RwLock, RwLockWriteGuard};
     ///
     /// // The inner value starts as 0.
@@ -1118,7 +1117,7 @@ impl<'a, T: ?Sized> RwLockWriteGuard<'a, T> {
     /// let final_check = rw.read().unwrap();
     /// assert_eq!(*final_check, 2);
     /// ```
-    #[unstable(feature = "rwlock_downgrade", issue = "128203")]
+    #[stable(feature = "rwlock_downgrade", since = "CURRENT_RUSTC_VERSION")]
     pub fn downgrade(s: Self) -> RwLockReadGuard<'a, T> {
         let lock = s.lock;
 
