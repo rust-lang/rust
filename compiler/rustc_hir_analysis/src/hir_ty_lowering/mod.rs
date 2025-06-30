@@ -2460,13 +2460,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // type a projection.
                 let in_trait = match opaque_ty.origin {
                     hir::OpaqueTyOrigin::FnReturn {
+                        parent,
                         in_trait_or_impl: Some(hir::RpitContext::Trait),
                         ..
                     }
                     | hir::OpaqueTyOrigin::AsyncFn {
+                        parent,
                         in_trait_or_impl: Some(hir::RpitContext::Trait),
                         ..
-                    } => true,
+                    } => Some(parent),
                     hir::OpaqueTyOrigin::FnReturn {
                         in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
                         ..
@@ -2475,7 +2477,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
                         ..
                     }
-                    | hir::OpaqueTyOrigin::TyAlias { .. } => false,
+                    | hir::OpaqueTyOrigin::TyAlias { .. } => None,
                 };
 
                 self.lower_opaque_ty(opaque_ty.def_id, in_trait)
@@ -2595,17 +2597,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     /// Lower an opaque type (i.e., an existential impl-Trait type) from the HIR.
     #[instrument(level = "debug", skip(self), ret)]
-    fn lower_opaque_ty(&self, def_id: LocalDefId, in_trait: bool) -> Ty<'tcx> {
+    fn lower_opaque_ty(&self, def_id: LocalDefId, in_trait: Option<LocalDefId>) -> Ty<'tcx> {
         let tcx = self.tcx();
 
         let lifetimes = tcx.opaque_captured_lifetimes(def_id);
         debug!(?lifetimes);
 
-        // If this is an RPITIT and we are using the new RPITIT lowering scheme, we
-        // generate the def_id of an associated type for the trait and return as
-        // type a projection.
-        let def_id = if in_trait {
-            tcx.associated_type_for_impl_trait_in_trait(def_id).to_def_id()
+        // If this is an RPITIT and we are using the new RPITIT lowering scheme,
+        // do a linear search to map this to the synthetic associated type that
+        // it will be lowered to.
+        let def_id = if let Some(parent_def_id) = in_trait {
+            *tcx.associated_types_for_impl_traits_in_associated_fn(parent_def_id)
+                .iter()
+                .find(|rpitit| match tcx.opt_rpitit_info(**rpitit) {
+                    Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
+                        opaque_def_id.expect_local() == def_id
+                    }
+                    _ => unreachable!(),
+                })
+                .unwrap()
         } else {
             def_id.to_def_id()
         };
@@ -2628,7 +2638,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         });
         debug!(?args);
 
-        if in_trait {
+        if in_trait.is_some() {
             Ty::new_projection_from_args(tcx, def_id, args)
         } else {
             Ty::new_opaque(tcx, def_id, args)
