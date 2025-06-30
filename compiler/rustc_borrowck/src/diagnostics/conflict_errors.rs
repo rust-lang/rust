@@ -1102,8 +1102,61 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 // suggestion more targeted to the `mk_iter(val).next()` case. Maybe do that only to
                 // check for whether to suggest `let value` or `let mut value`.
 
+                // This closure checks if `cur_use_expr` is defined in scope visible to `new_use_expr`.
+                // Used to check *if the `value` can be moved out of the loop*.
+                let is_var_visible_to_new_use = |cur_use_expr: &hir::Expr<'_>,
+                                                 new_use_expr: &hir::Expr<'_>|
+                 -> bool {
+                    let new_use_hir_id = new_use_expr.hir_id;
+                    let new_use_span = new_use_expr.span;
+
+                    if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = cur_use_expr.kind {
+                        if let hir::def::Res::Local(def_hir_id) = path.res {
+                            if let Some(def_direct_parent) = tcx.hir_get_enclosing_scope(def_hir_id)
+                            {
+                                let mut first = true;
+                                let mut id = new_use_hir_id;
+                                // iterate over the parents of the new use expression
+                                while let Some(parent_hir_id) = tcx.hir_get_enclosing_scope(id) {
+                                    if first {
+                                        first = false;
+                                        // if they are in the same scope,
+                                        // the parent of the new use expr is the same as the parent of the definition,
+                                        // the definition should be before the new use expression
+                                        if parent_hir_id == def_direct_parent {
+                                            return tcx.hir_span(def_hir_id).lo()
+                                                < new_use_span.lo();
+                                        }
+                                    } else if parent_hir_id == def_direct_parent {
+                                        // if they are not in the same scope,
+                                        // but the parent of the definition is the ancestor of the new use expr,
+                                        // the definition is visible to the new use expr
+                                        return true;
+                                    }
+                                    id = parent_hir_id;
+                                }
+                            }
+                        }
+                    }
+                    false
+                };
+
+                // Issue: https://github.com/rust-lang/rust/issues/141880
+                let mut permit = true;
+                if let hir::ExprKind::MethodCall(_, obj, args, ..) = parent.kind {
+                    if !is_var_visible_to_new_use(obj, in_loop) {
+                        permit = false;
+                    }
+                    for arg in args {
+                        if !is_var_visible_to_new_use(arg, in_loop) {
+                            permit = false;
+                        }
+                    }
+                }
+
                 let span = in_loop.span;
-                if !finder.found_breaks.is_empty()
+                if permit
+                    && !finder.found_breaks.is_empty()
                     && let Ok(value) = sm.span_to_snippet(parent.span)
                 {
                     // We know with high certainty that this move would affect the early return of a
