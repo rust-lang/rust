@@ -290,7 +290,7 @@ impl CycleHeads {
     }
 
     fn contains(&self, other: &CycleHeads) -> bool {
-        other.heads.iter().all(|(h, _)| self.heads.contains_key(h))
+        other.heads.iter().all(|(h, &path)| self.heads.get(h).is_some_and(|p| p.contains(path)))
     }
 }
 
@@ -785,11 +785,14 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     fn clear_dependent_provisional_results(
         stack: &Stack<X>,
         provisional_cache: &mut HashMap<X::Input, Vec<ProvisionalCacheEntry<X>>>,
+        mut handle_removed_entry: impl FnMut(X::Input, ProvisionalCacheEntry<X>),
     ) {
         let head = stack.next_index();
         #[allow(rustc::potential_query_instability)]
-        provisional_cache.retain(|_, entries| {
-            entries.retain(|entry| entry.heads.highest_cycle_head() != head);
+        provisional_cache.retain(|&input, entries| {
+            for e in entries.extract_if(.., |entry| entry.heads.highest_cycle_head() == head) {
+                handle_removed_entry(input, e)
+            }
             !entries.is_empty()
         });
     }
@@ -875,6 +878,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 // Mutate the result of the provisional cache entry in case we did
                 // not reach a fixpoint.
                 *result = mutate_result(input, *result);
+                debug!(?input, ?entry, "rebased entry");
                 true
             });
             !entries.is_empty()
@@ -1209,10 +1213,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 return EvaluationResult::finalize(stack_entry, encountered_overflow, result);
             }
 
-            // Clear all provisional cache entries which depend on a previous provisional
-            // result of this goal and rerun.
-            Self::clear_dependent_provisional_results(&self.stack, &mut self.provisional_cache);
-
             debug!(?i, ?result, "changed provisional results");
             match self.reevaluate_goal_on_stack(cx, stack_entry, result, inspect) {
                 (new_stack_entry, new_result) => {
@@ -1247,6 +1247,20 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     ) -> (StackEntry<X>, X::Result) {
         let node_id = prev_stack_entry.node_id;
         let current_depth = self.stack.next_index();
+
+        let mut removed_entries = BTreeMap::new();
+        // Clear all provisional cache entries which depend on a previous provisional
+        // result of this goal and rerun.
+        Self::clear_dependent_provisional_results(
+            &self.stack,
+            &mut self.provisional_cache,
+            |input, entry| {
+                let prev = removed_entries.insert(entry.entry_node_id, (input, entry));
+                if let Some(prev) = prev {
+                    unreachable!("duplicate entries for the same `NodeId`: {prev:?}");
+                }
+            },
+        );
         self.stack.push(StackEntry {
             node_id,
             input: prev_stack_entry.input,
@@ -1272,7 +1286,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 // TODO: How can we tell whether this entry was the final revision.
                 //
                 // We should be able to rebase provisional entries in most cases.
-                Self::clear_dependent_provisional_results(stack, provisional_cache);
+                Self::clear_dependent_provisional_results(stack, provisional_cache, |_, _| ());
                 Self::update_parent_goal(
                     stack,
                     reeval_entry.step_kind_from_parent,
@@ -1286,7 +1300,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 
         let cycles = self.tree.rerun_get_and_reset_cycles(prev_stack_entry.node_id);
         let current_stack_len = self.stack.len();
-        let mut first_cycle = true;
         let mut has_changed = HashSet::default();
         'outer: for cycle in cycles {
             let &tree::Cycle { node_id: cycle_node_id, ref provisional_results } =
@@ -1328,63 +1341,53 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             let span = tracing::debug_span!("reevaluate cycle", ?rev_stack, ?provisional_result);
             let _span = span.enter();
             let mut current_goal = rev_stack.remove(0);
-            let mut added_goals = rev_stack
-                .into_iter()
-                .rev()
-                .enumerate()
-                .map(|(idx, (node_id, info))| {
-                    (StackDepth::from(current_stack_len + idx), node_id, info)
-                })
-                .peekable();
+            let mut added_goals = rev_stack.into_iter().rev().peekable();
             // We only pop from the stack when checking whether a result has changed.
             // If a later cycle does not have to truncate the stack, we've already reevaluated
             // a parent so there's no need to consider that goal.
-            if first_cycle {
-                first_cycle = false;
-            } else {
-                if added_goals.peek().is_none() {
-                    if self.stack.len() > current_stack_len {
-                        truncate_stack(
-                            &mut self.stack,
-                            &mut self.provisional_cache,
-                            StackDepth::from_usize(current_stack_len),
-                        );
+            for idx in current_stack_len.. {
+                let stack_depth = StackDepth::from_usize(idx);
+                match (added_goals.peek(), self.stack.get(stack_depth)) {
+                    (Some(&(node_id, info)), Some(existing_entry)) => {
+                        let provisional_result = provisional_results.get(&stack_depth).copied();
+                        if existing_entry.node_id == node_id
+                            && provisional_result == existing_entry.provisional_result
+                        {
+                            debug_assert_eq!(existing_entry.input, info.input);
+                            debug_assert_eq!(
+                                existing_entry.step_kind_from_parent,
+                                info.step_kind_from_parent
+                            );
+                            let _ = added_goals.next().unwrap();
+                        } else {
+                            truncate_stack(
+                                &mut self.stack,
+                                &mut self.provisional_cache,
+                                stack_depth,
+                            );
+                            break;
+                        }
                     }
-                } else {
-                    while let Some(&(stack_depth, node_id, info)) = added_goals.peek() {
-                        if let Some(existing_entry) = self.stack.get(stack_depth) {
-                            let provisional_result = provisional_results.get(&stack_depth).copied();
-                            if existing_entry.node_id == node_id
-                                && provisional_result == existing_entry.provisional_result
-                            {
-                                debug_assert_eq!(existing_entry.input, info.input);
-                                debug_assert_eq!(
-                                    existing_entry.step_kind_from_parent,
-                                    info.step_kind_from_parent
-                                );
-                                let _ = added_goals.next().unwrap();
-                            } else {
-                                truncate_stack(
-                                    &mut self.stack,
-                                    &mut self.provisional_cache,
-                                    stack_depth,
-                                );
-                                break;
-                            }
-                        } else if current_goal.0 == node_id {
+                    (Some(&(node_id, info)), None) => {
+                        if current_goal.0 == node_id {
                             debug!(parent = ?info.input, cycle = ?added_goals.last().unwrap(), "reevaluated parent, skip cycle");
                             continue 'outer;
                         } else {
                             break;
                         }
                     }
+                    (None, Some(_)) => {
+                        truncate_stack(&mut self.stack, &mut self.provisional_cache, stack_depth);
+                        break;
+                    }
+                    (None, None) => break,
                 }
             }
 
-            for (stack_depth, node_id, info) in added_goals {
+            for (node_id, info) in added_goals {
                 let tree::GoalInfo { input, step_kind_from_parent, available_depth } = info;
+                let stack_depth = self.stack.next_index();
                 let provisional_result = provisional_results.get(&stack_depth).copied();
-                debug_assert_eq!(self.stack.next_index(), stack_depth);
                 self.stack.push(StackEntry {
                     node_id,
                     input,
@@ -1399,10 +1402,22 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 });
             }
 
+            /*
+            while let Some((&entry_node_id, _)) = removed_entries.first_key_value() {
+                if entry_node_id < current_goal.0
+                    && self.stack.iter().all(|e| e.node_id != entry_node_id)
+                {
+                    let (entry_node_id, (input, entry)) = removed_entries.pop_first().unwrap();
+                    if !self.tree.goal_or_parent_has_changed(node_id, &has_changed, entry_node_id) {
+                        self.provisional_cache.entry(input).or_default().push(entry);
+                    }
+                }
+            }*/
+
             loop {
                 let span = tracing::debug_span!(
                     "reevaluate_canonical_goal",
-                    node = ?current_goal.1.input,
+                    input = ?current_goal.1.input,
                     step_kind_from_parent = ?current_goal.1.step_kind_from_parent
                 );
                 let _span = span.enter();
@@ -1414,6 +1429,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 );
                 if node_id.is_some_and(|node_id| self.tree.result_matches(current_goal.0, node_id))
                 {
+                    removed_entries.remove(&current_goal.0);
                     debug!(input = ?current_goal.1.input, ?result, "goal did not change");
                     continue 'outer;
                 } else {
@@ -1424,6 +1440,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                         Self::clear_dependent_provisional_results(
                             &self.stack,
                             &mut self.provisional_cache,
+                            |_, _| (),
                         );
                         Self::update_parent_goal(
                             &mut self.stack,
@@ -1460,6 +1477,12 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             &mut self.provisional_cache,
             StackDepth::from_usize(current_stack_len),
         );
+
+        for (entry_node_id, (input, entry)) in removed_entries {
+            if !self.tree.goal_or_parent_has_changed(node_id, &has_changed, entry_node_id) {
+                self.provisional_cache.entry(input).or_default().push(entry);
+            }
+        }
 
         debug_assert_eq!(self.stack.len(), current_stack_len);
         let reeval_entry = self.stack.pop();
