@@ -35,6 +35,7 @@ impl AttributeKind {
             MayDangle(..) => No,
             MustUse { .. } => Yes,
             Naked(..) => No,
+            NoImplicitPrelude(..) => No,
             NoMangle(..) => No,
             Optimize(..) => No,
             PubTransparent(..) => Yes,

@@ -278,6 +278,9 @@ pub enum AttributeKind {
     /// Represents `#[naked]`
     Naked(Span),
 
+    /// Represents `#[no_implicit_prelude]`
+    NoImplicitPrelude(Span),
+
     /// Represents `#[no_mangle]`
     NoMangle(Span),
 
