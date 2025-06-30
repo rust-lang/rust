@@ -176,6 +176,10 @@ codegen_ssa_ld64_unimplemented_modifier = `as-needed` modifier not implemented y
 
 codegen_ssa_lib_def_write_failure = failed to write lib.def file: {$error}
 
+codegen_ssa_link_exe_fastfail_abort_note = This may be caused by Windows `__fastfail` termination, such as an `abort()` call, and does not necessarily indicate a stack buffer overrun.
+
+codegen_ssa_link_exe_fastfail_status = 0xc0000409 is `STATUS_STACK_BUFFER_OVERRUN`
+
 codegen_ssa_link_exe_unexpected_error = `link.exe` returned an unexpected error
 
 codegen_ssa_link_script_unavailable = can only use link script when linking with GNU-like linker
