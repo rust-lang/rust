@@ -182,6 +182,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
                 gate_doc!(
                     "experimental" {
+                        html_link_canonical => doc_link_canonical
                         cfg => doc_cfg
                         cfg_hide => doc_cfg_hide
                         masked => doc_masked

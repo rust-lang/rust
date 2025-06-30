@@ -479,6 +479,8 @@ declare_features! (
     (unstable, doc_cfg, "1.21.0", Some(43781)),
     /// Allows `#[doc(cfg_hide(...))]`.
     (unstable, doc_cfg_hide, "1.57.0", Some(43781)),
+    /// Allows `#![doc(html_link_canonical]`
+    (unstable, doc_link_canonical, "1.88.0", Some(143139)),
     /// Allows `#[doc(masked)]`.
     (unstable, doc_masked, "1.21.0", Some(44027)),
     /// Allows `dyn* Trait` objects.
