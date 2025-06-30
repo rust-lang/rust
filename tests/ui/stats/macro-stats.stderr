@@ -22,7 +22,6 @@ macro-stats trait_tys!                            1          2        2.0       
 macro-stats n99!                                  2          2        1.0          4        2.0
 macro-stats none!                                 1          1        1.0          4        4.0
 macro-stats u32!                                  1          1        1.0          3        3.0
-macro-stats long_name_that_fits_on_a_single_line!
-macro-stats                                       1          1        1.0          0        0.0
+macro-stats long_name_that_fits_on_a_single_line! 1          1        1.0          0        0.0
 macro-stats #[test]                               1          1        1.0          0        0.0
 macro-stats ===================================================================================
