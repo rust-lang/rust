@@ -1003,9 +1003,7 @@ impl Config {
         }
 
         if config.lld_enabled && config.is_system_llvm(config.host_target) {
-            eprintln!(
-                "Warning: LLD is enabled when using external llvm-config. LLD will not be built and copied to the sysroot."
-            );
+            panic!("Cannot enable LLD with `rust.lld = true` when using external llvm-config.");
         }
 
         config.optimized_compiler_builtins =

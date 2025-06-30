@@ -2241,7 +2241,7 @@ impl Step for Assemble {
         debug!("copying codegen backends to sysroot");
         copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
 
-        if builder.config.lld_enabled && !builder.config.is_system_llvm(target_compiler.host) {
+        if builder.config.lld_enabled {
             builder.ensure(crate::core::build_steps::tool::LldWrapper {
                 build_compiler,
                 target_compiler,
