@@ -1,5 +1,6 @@
 //@ compile-flags: -C opt-level=0 -C no-prepopulate-passes
 
+#![feature(repr_simd)]
 #![crate_type = "lib"]
 
 // With opaque ptrs in LLVM, `transmute` can load/store any `alloca` as any type,
@@ -98,5 +99,25 @@ pub fn bool_to_fake_bool_unsigned(b: bool) -> FakeBoolUnsigned {
 // CHECK: ret i1 %b
 #[no_mangle]
 pub fn fake_bool_unsigned_to_bool(b: FakeBoolUnsigned) -> bool {
+    unsafe { std::mem::transmute(b) }
+}
+
+#[repr(simd)]
+#[derive(Clone, Copy)]
+struct S([i64; 1]);
+
+// CHECK-LABEL: define i64 @single_element_simd_to_scalar(<1 x i64> %b)
+// CHECK: bitcast <1 x i64> %b to i64
+// CHECK: ret i64
+#[no_mangle]
+pub extern "C" fn single_element_simd_to_scalar(b: S) -> i64 {
+    unsafe { std::mem::transmute(b) }
+}
+
+// CHECK-LABEL: define <1 x i64> @scalar_to_single_element_simd(i64 %b)
+// CHECK: bitcast i64 %b to <1 x i64>
+// CHECK: ret <1 x i64>
+#[no_mangle]
+pub extern "C" fn scalar_to_single_element_simd(b: i64) -> S {
     unsafe { std::mem::transmute(b) }
 }
