@@ -11,22 +11,21 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
 use rustc_hir::{self as hir, LangItem, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, TargetFeature,
 };
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::lint;
+use rustc_session::lint::builtin::AARCH64_SOFTFLOAT_NEON;
 use rustc_session::parse::feature_err;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use rustc_target::spec::SanitizerSet;
 
 use crate::errors;
-use crate::errors::NoMangleNameless;
-use crate::target_features::{
-    check_target_feature_trait_unsafe, check_tied_features, from_target_feature_attr,
-};
+use crate::errors::{FeatureNotValid, NoMangleNameless};
+use crate::target_features::{check_target_feature_trait_unsafe, check_tied_features};
 
 fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
     use rustc_middle::mir::mono::Linkage::*;
@@ -138,6 +137,116 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         });
                     }
                 }
+                AttributeKind::TargetFeature(features, attr_span) => {
+                    let Some(sig) = tcx.hir_node_by_def_id(did).fn_sig() else {
+                        tcx.dcx().span_delayed_bug(*attr_span, "target_feature applied to non-fn");
+                        continue;
+                    };
+                    let safe_target_features =
+                        matches!(sig.header.safety, hir::HeaderSafety::SafeTargetFeatures);
+                    codegen_fn_attrs.safe_target_features = safe_target_features;
+                    if safe_target_features {
+                        if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
+                            // The `#[target_feature]` attribute is allowed on
+                            // WebAssembly targets on all functions. Prior to stabilizing
+                            // the `target_feature_11` feature, `#[target_feature]` was
+                            // only permitted on unsafe functions because on most targets
+                            // execution of instructions that are not supported is
+                            // considered undefined behavior. For WebAssembly which is a
+                            // 100% safe target at execution time it's not possible to
+                            // execute undefined instructions, and even if a future
+                            // feature was added in some form for this it would be a
+                            // deterministic trap. There is no undefined behavior when
+                            // executing WebAssembly so `#[target_feature]` is allowed
+                            // on safe functions (but again, only for WebAssembly)
+                            //
+                            // Note that this is also allowed if `actually_rustdoc` so
+                            // if a target is documenting some wasm-specific code then
+                            // it's not spuriously denied.
+                            //
+                            // Now that `#[target_feature]` is permitted on safe functions,
+                            // this exception must still exist for allowing the attribute on
+                            // `main`, `start`, and other functions that are not usually
+                            // allowed.
+                        } else {
+                            check_target_feature_trait_unsafe(tcx, did, *attr_span);
+                        }
+                    }
+                    let rust_features = tcx.features();
+                    let abi_feature_constraints = tcx.sess.target.abi_required_features();
+                    for &(feature, feature_span) in features {
+                        let feature = feature.as_str();
+                        let Some(stability) = rust_target_features.get(feature) else {
+                            let plus_hint = feature.strip_prefix('+').is_some_and(|stripped| {
+                                rust_target_features.contains_key(stripped)
+                            });
+                            tcx.dcx().emit_err(FeatureNotValid {
+                                feature,
+                                span: feature_span,
+                                plus_hint,
+                            });
+
+                            continue;
+                        };
+
+                        // Only allow target features whose feature gates have been enabled
+                        // and which are permitted to be toggled.
+                        if let Err(reason) = stability.toggle_allowed() {
+                            tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+                                span: feature_span,
+                                feature,
+                                reason,
+                            });
+                        } else if let Some(nightly_feature) = stability.requires_nightly()
+                            && !rust_features.enabled(nightly_feature)
+                        {
+                            feature_err(
+                                &tcx.sess,
+                                nightly_feature,
+                                feature_span,
+                                format!("the target feature `{feature}` is currently unstable"),
+                            )
+                            .emit();
+                        } else {
+                            // Add this and the implied features.
+                            let feature_sym = Symbol::intern(feature);
+                            for &name in tcx.implied_target_features(feature_sym) {
+                                // But ensure the ABI does not forbid enabling this.
+                                // Here we do assume that the backend doesn't add even more implied features
+                                // we don't know about, at least no features that would have ABI effects!
+                                // We skip this logic in rustdoc, where we want to allow all target features of
+                                // all targets, so we can't check their ABI compatibility and anyway we are not
+                                // generating code so "it's fine".
+                                if !tcx.sess.opts.actually_rustdoc {
+                                    if abi_feature_constraints.incompatible.contains(&name.as_str())
+                                    {
+                                        // For "neon" specifically, we emit an FCW instead of a hard error.
+                                        // See <https://github.com/rust-lang/rust/issues/134375>.
+                                        if tcx.sess.target.arch == "aarch64"
+                                            && name.as_str() == "neon"
+                                        {
+                                            tcx.emit_node_span_lint(
+                                                AARCH64_SOFTFLOAT_NEON,
+                                                tcx.local_def_id_to_hir_id(did),
+                                                feature_span,
+                                                errors::Aarch64SoftfloatNeon,
+                                            );
+                                        } else {
+                                            tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+                                                span: feature_span,
+                                                feature: name.as_str(),
+                                                reason: "this feature is incompatible with the target ABI",
+                                            });
+                                        }
+                                    }
+                                }
+                                codegen_fn_attrs
+                                    .target_features
+                                    .push(TargetFeature { name, implied: name != feature_sym })
+                            }
+                        }
+                    }
+                }
                 AttributeKind::TrackCaller(attr_span) => {
                     let is_closure = tcx.is_closure_like(did.to_def_id());
 
@@ -187,49 +296,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
-            sym::target_feature => {
-                let Some(sig) = tcx.hir_node_by_def_id(did).fn_sig() else {
-                    tcx.dcx().span_delayed_bug(attr.span(), "target_feature applied to non-fn");
-                    continue;
-                };
-                let safe_target_features =
-                    matches!(sig.header.safety, hir::HeaderSafety::SafeTargetFeatures);
-                codegen_fn_attrs.safe_target_features = safe_target_features;
-                if safe_target_features {
-                    if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
-                        // The `#[target_feature]` attribute is allowed on
-                        // WebAssembly targets on all functions. Prior to stabilizing
-                        // the `target_feature_11` feature, `#[target_feature]` was
-                        // only permitted on unsafe functions because on most targets
-                        // execution of instructions that are not supported is
-                        // considered undefined behavior. For WebAssembly which is a
-                        // 100% safe target at execution time it's not possible to
-                        // execute undefined instructions, and even if a future
-                        // feature was added in some form for this it would be a
-                        // deterministic trap. There is no undefined behavior when
-                        // executing WebAssembly so `#[target_feature]` is allowed
-                        // on safe functions (but again, only for WebAssembly)
-                        //
-                        // Note that this is also allowed if `actually_rustdoc` so
-                        // if a target is documenting some wasm-specific code then
-                        // it's not spuriously denied.
-                        //
-                        // Now that `#[target_feature]` is permitted on safe functions,
-                        // this exception must still exist for allowing the attribute on
-                        // `main`, `start`, and other functions that are not usually
-                        // allowed.
-                    } else {
-                        check_target_feature_trait_unsafe(tcx, did, attr.span());
-                    }
-                }
-                from_target_feature_attr(
-                    tcx,
-                    did,
-                    attr,
-                    rust_target_features,
-                    &mut codegen_fn_attrs.target_features,
-                );
-            }
             sym::linkage => {
                 if let Some(val) = attr.value_str() {
                     let linkage = Some(linkage_by_name(tcx, did, val.as_str()));
@@ -540,10 +606,10 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             .map(|features| (features.name.as_str(), true))
             .collect(),
     ) {
-        let span = tcx
-            .get_attrs(did, sym::target_feature)
-            .next()
-            .map_or_else(|| tcx.def_span(did), |a| a.span());
+        let span =
+            find_attr!(tcx.get_all_attrs(did), AttributeKind::TargetFeature(_, span) => *span)
+                .unwrap_or_else(|| tcx.def_span(did));
+
         tcx.dcx()
             .create_err(errors::TargetFeatureDisableOrEnable {
                 features,
