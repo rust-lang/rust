@@ -118,14 +118,15 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
 
-    eh_personality: Cell<Option<RValue<'gcc>>>,
+    eh_personality: Cell<Option<Function<'gcc>>>,
     #[cfg(feature = "master")]
     pub rust_try_fn: Cell<Option<(Type<'gcc>, Function<'gcc>)>>,
 
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
 
     /// NOTE: a hack is used because the rustc API is not suitable to libgccjit and as such,
-    /// `const_undef()` returns struct as pointer so that they can later be assigned a value.
+    /// `const_undef()` returns struct as pointer so that they can later be assigned a value (in
+    /// e.g. Builder::insert_value).
     /// As such, this set remembers which of these pointers were returned by this function so that
     /// they can be dereferenced later.
     /// FIXME(antoyo): fix the rustc API to avoid having this hack.
@@ -155,6 +156,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(rust_type))
                 .unwrap();
             let align = layout.align.abi.bytes();
+            // For types with size 1, the alignment can be 1 and only 1
+            // So, we can skip the call to ``get_aligned`.
+            // In the future, we can add a GCC API to query the type align,
+            // and call `get_aligned` if and only if that differs from Rust's expectations.
+            if layout.size.bytes() == 1 {
+                return context.new_c_type(ctype);
+            }
             #[cfg(feature = "master")]
             {
                 context.new_c_type(ctype).get_aligned(align)
@@ -373,8 +381,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
     type Value = RValue<'gcc>;
     type Metadata = RValue<'gcc>;
-    // TODO(antoyo): change to Function<'gcc>.
-    type Function = RValue<'gcc>;
+    type Function = Function<'gcc>;
 
     type BasicBlock = Block<'gcc>;
     type Type = Type<'gcc>;
@@ -392,11 +399,10 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         &self.vtables
     }
 
-    fn get_fn(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
+    fn get_fn(&self, instance: Instance<'tcx>) -> Function<'gcc> {
         let func = get_fn(self, instance);
         *self.current_func.borrow_mut() = Some(func);
-        // FIXME(antoyo): this is a wrong cast. That requires changing the compiler API.
-        unsafe { std::mem::transmute(func) }
+        func
     }
 
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
@@ -420,7 +426,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         ptr
     }
 
-    fn eh_personality(&self) -> RValue<'gcc> {
+    fn eh_personality(&self) -> Function<'gcc> {
         // The exception handling personality function.
         //
         // If our compilation unit has the `eh_personality` lang item somewhere
@@ -458,9 +464,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 let symbol_name = tcx.symbol_name(instance).name;
                 let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
                 self.linkage.set(FunctionType::Extern);
-                let func = self.declare_fn(symbol_name, fn_abi);
-                let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
-                func
+                self.declare_fn(symbol_name, fn_abi)
             }
             _ => {
                 let name = if wants_msvc_seh(self.sess()) {
@@ -468,8 +472,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 } else {
                     "rust_eh_personality"
                 };
-                let func = self.declare_func(name, self.type_i32(), &[], true);
-                unsafe { std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(func) }
+                self.declare_func(name, self.type_i32(), &[], true)
             }
         };
         // TODO(antoyo): apply target cpu attributes.
@@ -481,11 +484,11 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.tcx.sess
     }
 
-    fn set_frame_pointer_type(&self, _llfn: RValue<'gcc>) {
+    fn set_frame_pointer_type(&self, _llfn: Function<'gcc>) {
         // TODO(antoyo)
     }
 
-    fn apply_target_cpu_attr(&self, _llfn: RValue<'gcc>) {
+    fn apply_target_cpu_attr(&self, _llfn: Function<'gcc>) {
         // TODO(antoyo)
     }
 

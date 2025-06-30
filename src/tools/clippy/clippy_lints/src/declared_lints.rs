@@ -2,7 +2,7 @@
 // Use that command to update this file and do not edit by hand.
 // Manual edits will be overwritten.
 
-pub static LINTS: &[&crate::LintInfo] = &[
+pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::absolute_paths::ABSOLUTE_PATHS_INFO,
     crate::almost_complete_range::ALMOST_COMPLETE_RANGE_INFO,
     crate::approx_const::APPROX_CONSTANT_INFO,
@@ -112,6 +112,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::disallowed_names::DISALLOWED_NAMES_INFO,
     crate::disallowed_script_idents::DISALLOWED_SCRIPT_IDENTS_INFO,
     crate::disallowed_types::DISALLOWED_TYPES_INFO,
+    crate::doc::DOC_BROKEN_LINK_INFO,
     crate::doc::DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS_INFO,
     crate::doc::DOC_INCLUDE_WITHOUT_CFG_INFO,
     crate::doc::DOC_LAZY_CONTINUATION_INFO,
@@ -590,6 +591,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::operators::IMPOSSIBLE_COMPARISONS_INFO,
     crate::operators::INEFFECTIVE_BIT_MASK_INFO,
     crate::operators::INTEGER_DIVISION_INFO,
+    crate::operators::MANUAL_IS_MULTIPLE_OF_INFO,
     crate::operators::MANUAL_MIDPOINT_INFO,
     crate::operators::MISREFACTORED_ASSIGN_OP_INFO,
     crate::operators::MODULO_ARITHMETIC_INFO,

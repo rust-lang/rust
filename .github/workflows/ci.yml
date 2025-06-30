@@ -11,10 +11,6 @@ name: CI
 on:
   push:
     branches:
-      # CI on master only serves for caching citool builds for the `calculate_matrix` job.
-      # In order to use GHA cache on PR CI (and auto/try) jobs, we need to write to it
-      # from the default branch.
-      - master
       - auto
       - try
       - try-perf
@@ -57,13 +53,6 @@ jobs:
     steps:
       - name: Checkout the source code
         uses: actions/checkout@v4
-      # Cache citool to make its build faster, as it's in the critical path.
-      # The rust-cache doesn't bleed into the main `job`, so it should not affect any other
-      # Rust compilation.
-      - name: Cache citool
-        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
-        with:
-          workspaces: src/ci/citool
       - name: Test citool
         # Only test citool on the auto branch, to reduce latency of the calculate matrix job
         # on PR/try builds.

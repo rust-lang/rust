@@ -300,27 +300,6 @@ pub(crate) struct ConcatBytesBadRepeat {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_concat_idents_missing_args)]
-pub(crate) struct ConcatIdentsMissingArgs {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_concat_idents_missing_comma)]
-pub(crate) struct ConcatIdentsMissingComma {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_concat_idents_ident_args)]
-pub(crate) struct ConcatIdentsIdentArgs {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(builtin_macros_bad_derive_target, code = E0774)]
 pub(crate) struct BadDeriveTarget {
     #[primary_span]
@@ -681,6 +660,7 @@ impl Subdiagnostic for FormatUnusedArg {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("named", self.named);
         let msg = diag.eagerly_translate(crate::fluent_generated::builtin_macros_format_unused_arg);
+        diag.remove_arg("named");
         diag.span_label(self.span, msg);
     }
 }

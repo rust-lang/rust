@@ -11,7 +11,6 @@
 #![feature(auto_traits)]
 #![feature(box_patterns)]
 #![feature(builtin_syntax)]
-#![feature(concat_idents)]
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
@@ -810,7 +809,7 @@ mod types {
         let _: impl Send + 'static;     //[hir]~ ERROR `impl Trait` is not allowed
         let _: impl 'static + Send;     //[hir]~ ERROR `impl Trait` is not allowed
         let _: impl ?Sized;             //[hir]~ ERROR `impl Trait` is not allowed
-        let _: impl ~const Clone;       //[hir]~ ERROR `impl Trait` is not allowed
+        let _: impl [const] Clone;       //[hir]~ ERROR `impl Trait` is not allowed
         let _: impl for<'a> Send;       //[hir]~ ERROR `impl Trait` is not allowed
     }
 
@@ -835,11 +834,13 @@ mod types {
     }
 
     /// TyKind::MacCall
-    #[expect(deprecated)] // concat_idents is deprecated
     fn ty_mac_call() {
-        let _: concat_idents!(T);
-        let _: concat_idents![T];
-        let _: concat_idents! { T };
+        macro_rules! ty {
+            ($ty:ty) => { $ty }
+        }
+        let _: ty!(T);
+        let _: ty![T];
+        let _: ty! { T };
     }
 
     /// TyKind::CVarArgs

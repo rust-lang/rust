@@ -205,9 +205,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             // Find a way to reuse `immediate_const_vector` from `codegen_ssa` instead.
             let indexes = {
                 use rustc_middle::mir::interpret::*;
-                let idx_const = match &idx.node {
-                    Operand::Constant(const_) => crate::constant::eval_mir_constant(fx, const_).0,
-                    Operand::Copy(_) | Operand::Move(_) => unreachable!("{idx:?}"),
+                let idx_const = if let Some(const_) = idx.node.constant() {
+                    crate::constant::eval_mir_constant(fx, const_).0
+                } else {
+                    unreachable!("{idx:?}")
                 };
 
                 let idx_bytes = match idx_const {
@@ -495,7 +496,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         | sym::simd_flog
         | sym::simd_flog10
         | sym::simd_flog2
-        | sym::simd_round => {
+        | sym::simd_round
+        | sym::simd_round_ties_even => {
             intrinsic_args!(fx, args => (a); intrinsic);
 
             if !a.layout().ty.is_simd() {
@@ -526,6 +528,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     (sym::simd_flog2, types::F64) => "log2",
                     (sym::simd_round, types::F32) => "roundf",
                     (sym::simd_round, types::F64) => "round",
+                    (sym::simd_round_ties_even, types::F32) => "rintf",
+                    (sym::simd_round_ties_even, types::F64) => "rint",
                     _ => unreachable!("{:?}", intrinsic),
                 };
                 fx.lib_call(

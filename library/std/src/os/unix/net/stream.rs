@@ -1,3 +1,18 @@
+cfg_if::cfg_if! {
+    if #[cfg(any(
+        target_os = "linux", target_os = "android",
+        target_os = "hurd",
+        target_os = "dragonfly", target_os = "freebsd",
+        target_os = "openbsd", target_os = "netbsd",
+        target_os = "solaris", target_os = "illumos",
+        target_os = "haiku", target_os = "nto",
+        target_os = "cygwin"))] {
+        use libc::MSG_NOSIGNAL;
+    } else {
+        const MSG_NOSIGNAL: core::ffi::c_int = 0x0;
+    }
+}
+
 use super::{SocketAddr, sockaddr_un};
 #[cfg(any(doc, target_os = "android", target_os = "linux"))]
 use super::{SocketAncillary, recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to};
@@ -41,6 +56,12 @@ use crate::time::Duration;
 ///     Ok(())
 /// }
 /// ```
+///
+/// # `SIGPIPE`
+///
+/// Writes to the underlying socket in `SOCK_STREAM` mode are made with `MSG_NOSIGNAL` flag.
+/// This suppresses the emission of the  `SIGPIPE` signal when writing to disconnected socket.
+/// In some cases getting a `SIGPIPE` would trigger process termination.
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct UnixStream(pub(super) Socket);
 
@@ -633,7 +654,7 @@ impl io::Write for UnixStream {
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl<'a> io::Write for &'a UnixStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0.write(buf)
+        self.0.send_with_flags(buf, MSG_NOSIGNAL)
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {

@@ -353,6 +353,20 @@ impl<'a> Parser<'a> {
         if !self.eat_keyword(exp!(Where)) {
             return Ok((where_clause, None));
         }
+
+        if self.eat_noexpect(&token::Colon) {
+            let colon_span = self.prev_token.span;
+            self.dcx()
+                .struct_span_err(colon_span, "unexpected colon after `where`")
+                .with_span_suggestion_short(
+                    colon_span,
+                    "remove the colon",
+                    "",
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+        }
+
         where_clause.has_where_token = true;
         let where_lo = self.prev_token.span;
 

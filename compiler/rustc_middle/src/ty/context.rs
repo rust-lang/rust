@@ -432,6 +432,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
+    fn impl_super_outlives(
+        self,
+        impl_def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
+        self.impl_super_outlives(impl_def_id)
+    }
+
     fn impl_is_const(self, def_id: DefId) -> bool {
         debug_assert_matches!(self.def_kind(def_id), DefKind::Impl { of_trait: true });
         self.is_conditionally_const(def_id)
@@ -691,14 +698,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.unsizing_params_for_adt(adt_def_id)
     }
 
-    fn find_const_ty_from_env(
-        self,
-        param_env: ty::ParamEnv<'tcx>,
-        placeholder: Self::PlaceholderConst,
-    ) -> Ty<'tcx> {
-        placeholder.find_const_ty_from_env(param_env)
-    }
-
     fn anonymize_bound_vars<T: TypeFoldable<TyCtxt<'tcx>>>(
         self,
         binder: ty::Binder<'tcx, T>,
@@ -774,8 +773,8 @@ bidirectional_lang_item_map! {
     Future,
     FutureOutput,
     Iterator,
-    Metadata,
     MetaSized,
+    Metadata,
     Option,
     PointeeSized,
     PointeeTrait,

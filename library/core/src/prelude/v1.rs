@@ -58,10 +58,9 @@ pub use crate::fmt::macros::Debug;
 pub use crate::hash::macros::Hash;
 
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow(deprecated)]
 #[doc(no_inline)]
 pub use crate::{
-    assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
+    assert, cfg, column, compile_error, concat, env, file, format_args,
     format_args_nl, include, include_bytes, include_str, line, log_syntax, module_path, option_env,
     stringify, trace_macros,
 };

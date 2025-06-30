@@ -346,7 +346,7 @@ impl ParamConst {
     }
 
     #[instrument(level = "debug")]
-    pub fn find_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
+    pub fn find_const_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
         let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
             match clause.kind().skip_binder() {
@@ -362,8 +362,19 @@ impl ParamConst {
             }
         });
 
-        let ty = candidates.next().unwrap();
-        assert!(candidates.next().is_none());
+        // N.B. it may be tempting to fix ICEs by making this function return
+        // `Option<Ty<'tcx>>` instead of `Ty<'tcx>`; however, this is generally
+        // considered to be a bandaid solution, since it hides more important
+        // underlying issues with how we construct generics and predicates of
+        // items. It's advised to fix the underlying issue rather than trying
+        // to modify this function.
+        let ty = candidates.next().unwrap_or_else(|| {
+            bug!("cannot find `{self:?}` in param-env: {env:#?}");
+        });
+        assert!(
+            candidates.next().is_none(),
+            "did not expect duplicate `ConstParamHasTy` for `{self:?}` in param-env: {env:#?}"
+        );
         ty
     }
 }
@@ -1832,7 +1843,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::TyVar(_)) => false,
 
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-                bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
+                bug!("`has_trivial_sizedness` applied to unexpected type: {:?}", self)
             }
         }
     }
@@ -1893,6 +1904,52 @@ impl<'tcx> Ty<'tcx> {
             ty::Param(..) | ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(..) => {
                 false
             }
+        }
+    }
+
+    pub fn is_trivially_wf(self, tcx: TyCtxt<'tcx>) -> bool {
+        match *self.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::Never
+            | ty::Param(_)
+            | ty::Placeholder(_)
+            | ty::Bound(..) => true,
+
+            ty::Slice(ty) => {
+                ty.is_trivially_wf(tcx) && ty.has_trivial_sizedness(tcx, SizedTraitKind::Sized)
+            }
+            ty::RawPtr(ty, _) => ty.is_trivially_wf(tcx),
+
+            ty::FnPtr(sig_tys, _) => {
+                sig_tys.skip_binder().inputs_and_output.iter().all(|ty| ty.is_trivially_wf(tcx))
+            }
+            ty::Ref(_, ty, _) => ty.is_global() && ty.is_trivially_wf(tcx),
+
+            ty::Infer(infer) => match infer {
+                ty::TyVar(_) => false,
+                ty::IntVar(_) | ty::FloatVar(_) => true,
+                ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => true,
+            },
+
+            ty::Adt(_, _)
+            | ty::Tuple(_)
+            | ty::Array(..)
+            | ty::Foreign(_)
+            | ty::Pat(_, _)
+            | ty::FnDef(..)
+            | ty::UnsafeBinder(..)
+            | ty::Dynamic(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Alias(..)
+            | ty::Error(_) => false,
         }
     }
 

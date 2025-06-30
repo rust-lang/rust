@@ -2,12 +2,11 @@
 
 macro_rules! m {
     ($name) => {}; //~ ERROR missing fragment
-                   //~| ERROR missing fragment
 }
 
 fn main() {
-    m!();
-    m!();
-    m!();
-    m!();
+    m!(); //~ ERROR unexpected end
+    m!(); //~ ERROR unexpected end
+    m!(); //~ ERROR unexpected end
+    m!(); //~ ERROR unexpected end
 }

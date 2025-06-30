@@ -7,7 +7,7 @@ use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_hir_analysis::autoderef::Autoderef;
-use rustc_infer::infer;
+use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
@@ -156,7 +156,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn check_call_abi(&self, abi: ExternAbi, span: Span) {
         let canon_abi = match AbiMap::from_target(&self.sess().target).canonize_abi(abi, false) {
             AbiMapping::Direct(canon_abi) | AbiMapping::Deprecated(canon_abi) => canon_abi,
-            AbiMapping::Invalid => return,
+            AbiMapping::Invalid => {
+                // This should be reported elsewhere, but we want to taint this body
+                // so that we don't try to evaluate calls to ABIs that are invalid.
+                let guar = self.dcx().span_delayed_bug(
+                    span,
+                    format!("invalid abi for platform should have reported an error: {abi}"),
+                );
+                self.set_tainted_by_errors(guar);
+                return;
+            }
         };
 
         let valid = match canon_abi {
@@ -210,7 +219,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let closure_sig = args.as_closure().sig();
                 let closure_sig = self.instantiate_binder_with_fresh_vars(
                     call_expr.span,
-                    infer::FnCall,
+                    BoundRegionConversionTime::FnCall,
                     closure_sig,
                 );
                 let adjustments = self.adjust_steps(autoderef);
@@ -237,7 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let closure_args = args.as_coroutine_closure();
                 let coroutine_closure_sig = self.instantiate_binder_with_fresh_vars(
                     call_expr.span,
-                    infer::FnCall,
+                    BoundRegionConversionTime::FnCall,
                     closure_args.coroutine_closure_sig(),
                 );
                 let tupled_upvars_ty = self.next_ty_var(callee_expr.span);
@@ -536,7 +545,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // renormalize the associated types at this point, since they
         // previously appeared within a `Binder<>` and hence would not
         // have been normalized before.
-        let fn_sig = self.instantiate_binder_with_fresh_vars(call_expr.span, infer::FnCall, fn_sig);
+        let fn_sig = self.instantiate_binder_with_fresh_vars(
+            call_expr.span,
+            BoundRegionConversionTime::FnCall,
+            fn_sig,
+        );
         let fn_sig = self.normalize(call_expr.span, fn_sig);
 
         self.check_argument_types(
@@ -903,7 +916,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        // If we have `rustc_do_not_const_check`, do not check `~const` bounds.
+        // If we have `rustc_do_not_const_check`, do not check `[const]` bounds.
         if self.tcx.has_attr(self.body_id, sym::rustc_do_not_const_check) {
             return;
         }

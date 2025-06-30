@@ -149,7 +149,6 @@ pub struct Session {
     pub opts: config::Options,
     pub target_tlib_path: Arc<SearchPath>,
     pub psess: ParseSess,
-    pub sysroot: PathBuf,
     /// Input, input file path and output file path to this compilation process.
     pub io: CompilerIO,
 
@@ -456,8 +455,10 @@ impl Session {
     /// directories are also returned, for example if `--sysroot` is used but tools are missing
     /// (#125246): we also add the bin directories to the sysroot where rustc is located.
     pub fn get_tools_search_paths(&self, self_contained: bool) -> Vec<PathBuf> {
-        let search_paths = filesearch::sysroot_with_fallback(&self.sysroot)
-            .into_iter()
+        let search_paths = self
+            .opts
+            .sysroot
+            .all_paths()
             .map(|sysroot| filesearch::make_target_bin_path(&sysroot, config::host_tuple()));
 
         if self_contained {
@@ -1028,7 +1029,6 @@ pub fn build_session(
     fluent_resources: Vec<&'static str>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     target: Target,
-    sysroot: PathBuf,
     cfg_version: &'static str,
     ice_file: Option<PathBuf>,
     using_internal_features: &'static AtomicBool,
@@ -1063,7 +1063,7 @@ pub fn build_session(
     }
 
     let host_triple = TargetTuple::from_tuple(config::host_tuple());
-    let (host, target_warnings) = Target::search(&host_triple, &sysroot)
+    let (host, target_warnings) = Target::search(&host_triple, sopts.sysroot.path())
         .unwrap_or_else(|e| dcx.handle().fatal(format!("Error loading host specification: {e}")));
     for warning in target_warnings.warning_messages() {
         dcx.handle().warn(warning)
@@ -1096,13 +1096,14 @@ pub fn build_session(
     let host_triple = config::host_tuple();
     let target_triple = sopts.target_triple.tuple();
     // FIXME use host sysroot?
-    let host_tlib_path = Arc::new(SearchPath::from_sysroot_and_triple(&sysroot, host_triple));
+    let host_tlib_path =
+        Arc::new(SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), host_triple));
     let target_tlib_path = if host_triple == target_triple {
         // Use the same `SearchPath` if host and target triple are identical to avoid unnecessary
         // rescanning of the target lib path and an unnecessary allocation.
         Arc::clone(&host_tlib_path)
     } else {
-        Arc::new(SearchPath::from_sysroot_and_triple(&sysroot, target_triple))
+        Arc::new(SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), target_triple))
     };
 
     let prof = SelfProfilerRef::new(
@@ -1134,7 +1135,6 @@ pub fn build_session(
         opts: sopts,
         target_tlib_path,
         psess,
-        sysroot,
         io,
         incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         prof,

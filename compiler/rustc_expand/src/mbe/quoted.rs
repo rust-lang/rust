@@ -54,66 +54,78 @@ pub(super) fn parse(
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
         let tree = parse_tree(tree, &mut iter, parsing_patterns, sess, node_id, features, edition);
-        match tree {
-            TokenTree::MetaVar(start_sp, ident) if parsing_patterns => {
-                // Not consuming the next token immediately, as it may not be a colon
-                let span = match iter.peek() {
-                    Some(&tokenstream::TokenTree::Token(
-                        Token { kind: token::Colon, span: colon_span },
-                        _,
-                    )) => {
-                        // Consume the colon first
-                        iter.next();
 
-                        // It's ok to consume the next tree no matter how,
-                        // since if it's not a token then it will be an invalid declaration.
-                        match iter.next() {
-                            Some(tokenstream::TokenTree::Token(token, _)) => match token.ident() {
-                                Some((fragment, _)) => {
-                                    let span = token.span.with_lo(start_sp.lo());
-                                    let edition = || {
-                                        // FIXME(#85708) - once we properly decode a foreign
-                                        // crate's `SyntaxContext::root`, then we can replace
-                                        // this with just `span.edition()`. A
-                                        // `SyntaxContext::root()` from the current crate will
-                                        // have the edition of the current crate, and a
-                                        // `SyntaxContext::root()` from a foreign crate will
-                                        // have the edition of that crate (which we manually
-                                        // retrieve via the `edition` parameter).
-                                        if !span.from_expansion() {
-                                            edition
-                                        } else {
-                                            span.edition()
-                                        }
-                                    };
-                                    let kind = NonterminalKind::from_symbol(fragment.name, edition)
-                                        .unwrap_or_else(|| {
-                                            sess.dcx().emit_err(errors::InvalidFragmentSpecifier {
-                                                span,
-                                                fragment,
-                                                help: VALID_FRAGMENT_NAMES_MSG.into(),
-                                            });
-                                            NonterminalKind::Ident
-                                        });
-                                    result.push(TokenTree::MetaVarDecl(span, ident, Some(kind)));
-                                    continue;
-                                }
-                                _ => token.span,
-                            },
-                            // Invalid, return a nice source location
-                            _ => colon_span.with_lo(start_sp.lo()),
-                        }
-                    }
-                    // Whether it's none or some other tree, it doesn't belong to
-                    // the current meta variable, returning the original span.
-                    _ => start_sp,
-                };
+        if !parsing_patterns {
+            // No matchers allowed, nothing to process here
+            result.push(tree);
+            continue;
+        }
 
-                result.push(TokenTree::MetaVarDecl(span, ident, None));
-            }
+        let TokenTree::MetaVar(start_sp, ident) = tree else {
+            // Not a metavariable, just return the tree
+            result.push(tree);
+            continue;
+        };
 
-            // Not a metavar or no matchers allowed, so just return the tree
-            _ => result.push(tree),
+        // Push a metavariable with no fragment specifier at the given span
+        let mut missing_fragment_specifier = |span| {
+            sess.dcx().emit_err(errors::MissingFragmentSpecifier {
+                span,
+                add_span: span.shrink_to_hi(),
+                valid: VALID_FRAGMENT_NAMES_MSG,
+            });
+
+            // Fall back to a `TokenTree` since that will match anything if we continue expanding.
+            result.push(TokenTree::MetaVarDecl { span, name: ident, kind: NonterminalKind::TT });
+        };
+
+        // Not consuming the next token immediately, as it may not be a colon
+        if let Some(peek) = iter.peek()
+            && let tokenstream::TokenTree::Token(token, _spacing) = peek
+            && let Token { kind: token::Colon, span: colon_span } = token
+        {
+            // Next token is a colon; consume it
+            iter.next();
+
+            // It's ok to consume the next tree no matter how,
+            // since if it's not a token then it will be an invalid declaration.
+            let Some(tokenstream::TokenTree::Token(token, _)) = iter.next() else {
+                // Invalid, return a nice source location as `var:`
+                missing_fragment_specifier(colon_span.with_lo(start_sp.lo()));
+                continue;
+            };
+
+            let Some((fragment, _)) = token.ident() else {
+                // No identifier for the fragment specifier;
+                missing_fragment_specifier(token.span);
+                continue;
+            };
+
+            let span = token.span.with_lo(start_sp.lo());
+            let edition = || {
+                // FIXME(#85708) - once we properly decode a foreign
+                // crate's `SyntaxContext::root`, then we can replace
+                // this with just `span.edition()`. A
+                // `SyntaxContext::root()` from the current crate will
+                // have the edition of the current crate, and a
+                // `SyntaxContext::root()` from a foreign crate will
+                // have the edition of that crate (which we manually
+                // retrieve via the `edition` parameter).
+                if !span.from_expansion() { edition } else { span.edition() }
+            };
+            let kind = NonterminalKind::from_symbol(fragment.name, edition).unwrap_or_else(|| {
+                sess.dcx().emit_err(errors::InvalidFragmentSpecifier {
+                    span,
+                    fragment,
+                    help: VALID_FRAGMENT_NAMES_MSG,
+                });
+                NonterminalKind::TT
+            });
+            result.push(TokenTree::MetaVarDecl { span, name: ident, kind });
+        } else {
+            // Whether it's none or some other tree, it doesn't belong to
+            // the current meta variable, returning the original span.
+            missing_fragment_specifier(start_sp);
         }
     }
     result

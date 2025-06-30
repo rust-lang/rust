@@ -1,8 +1,8 @@
 error[E0658]: const trait impls are experimental
   --> $DIR/super-traits-fail-3.rs:23:12
    |
-LL | trait Bar: ~const Foo {}
-   |            ^^^^^^
+LL | trait Bar: [const] Foo {}
+   |            ^^^^^^^
    |
    = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
@@ -11,8 +11,8 @@ LL | trait Bar: ~const Foo {}
 error[E0658]: const trait impls are experimental
   --> $DIR/super-traits-fail-3.rs:32:17
    |
-LL | const fn foo<T: ~const Bar>(x: &T) {
-   |                 ^^^^^^
+LL | const fn foo<T: [const] Bar>(x: &T) {
+   |                 ^^^^^^^
    |
    = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable

@@ -893,7 +893,7 @@ impl Token {
             || self.is_qpath_start()
             || matches!(self.is_metavar_seq(), Some(MetaVarKind::Path))
             || self.is_path_segment_keyword()
-            || self.is_ident() && !self.is_reserved_ident()
+            || self.is_non_reserved_ident()
     }
 
     /// Returns `true` if the token is a given keyword, `kw`.
@@ -935,6 +935,10 @@ impl Token {
     /// Returns `true` if the token is either a special identifier or a keyword.
     pub fn is_reserved_ident(&self) -> bool {
         self.is_non_raw_ident_where(Ident::is_reserved)
+    }
+
+    pub fn is_non_reserved_ident(&self) -> bool {
+        self.ident().is_some_and(|(id, raw)| raw == IdentIsRaw::Yes || !Ident::is_reserved(id))
     }
 
     /// Returns `true` if the token is the identifier `true` or `false`.
@@ -1085,6 +1089,7 @@ pub enum NtExprKind {
     Expr2021 { inferred: bool },
 }
 
+/// A macro nonterminal, known in documentation as a fragment specifier.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
 pub enum NonterminalKind {
     Item,

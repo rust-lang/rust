@@ -1935,6 +1935,7 @@ unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 #[stable(feature = "pin_macro", since = "1.68.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(super_let)]
+#[rustc_diagnostic_item = "pin_macro"]
 // `super` gets removed by rustfmt
 #[rustfmt::skip]
 pub macro pin($value:expr $(,)?) {

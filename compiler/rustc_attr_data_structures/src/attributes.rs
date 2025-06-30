@@ -131,6 +131,17 @@ impl Deprecation {
     }
 }
 
+/// There are three valid forms of the attribute:
+/// `#[used]`, which is semantically equivalent to `#[used(linker)]` except that the latter is currently unstable.
+/// `#[used(compiler)]`
+/// `#[used(linker)]`
+#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum UsedBy {
+    Compiler,
+    Linker,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -212,6 +223,9 @@ pub enum AttributeKind {
         first_span: Span,
     },
 
+    /// Represents `#[const_continue]`.
+    ConstContinue(Span),
+
     /// Represents `#[rustc_const_stable]` and `#[rustc_const_unstable]`.
     ConstStability {
         stability: PartialConstStability,
@@ -228,8 +242,22 @@ pub enum AttributeKind {
     /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
 
+    /// Represents [`#[export_name]`](https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute).
+    ExportName {
+        /// The name to export this item with.
+        /// It may not contain \0 bytes as it will be converted to a null-terminated string.
+        name: Symbol,
+        span: Span,
+    },
+
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
+
+    /// Represents `#[link_name]`.
+    LinkName { name: Symbol, span: Span },
+
+    /// Represents `#[loop_match]`.
+    LoopMatch(Span),
 
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
@@ -244,6 +272,9 @@ pub enum AttributeKind {
         reason: Option<Symbol>,
     },
 
+    /// Represents `#[naked]`
+    Naked(Span),
+
     /// Represents `#[no_mangle]`
     NoMangle(Span),
 
@@ -256,11 +287,20 @@ pub enum AttributeKind {
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr(ThinVec<(ReprAttr, Span)>),
 
+    /// Represents `#[rustc_skip_during_method_dispatch]`.
+    SkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },
+
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
     Stability {
         stability: Stability,
         /// Span of the attribute.
         span: Span,
     },
+
+    /// Represents `#[track_caller]`
+    TrackCaller(Span),
+
+    /// Represents `#[used]`
+    Used { used_by: UsedBy, span: Span },
     // tidy-alphabetical-end
 }

@@ -29,7 +29,6 @@ pub use self::intern::{
     HasStaticRootDefId, InternKind, InternResult, intern_const_alloc_for_constprop,
     intern_const_alloc_recursive,
 };
-pub(crate) use self::intrinsics::eval_nullary_intrinsic;
 pub use self::machine::{AllocMap, Machine, MayLeak, ReturnAction, compile_time_machine};
 pub use self::memory::{AllocInfo, AllocKind, AllocRef, AllocRefMut, FnVal, Memory, MemoryKind};
 use self::operand::Operand;

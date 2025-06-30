@@ -20,7 +20,7 @@ use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder;
 use crate::core::builder::{
-    Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step, cargo_profile_var,
+    Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step, StepMetadata, cargo_profile_var,
 };
 use crate::core::config::{DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
@@ -122,14 +122,14 @@ impl Step for ToolBuild {
             Mode::ToolRustc => {
                 // If compiler was forced, its artifacts should be prepared earlier.
                 if !self.compiler.is_forced_compiler() {
-                    builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
+                    builder.std(self.compiler, self.compiler.host);
                     builder.ensure(compile::Rustc::new(self.compiler, target));
                 }
             }
             Mode::ToolStd => {
                 // If compiler was forced, its artifacts should be prepared earlier.
                 if !self.compiler.is_forced_compiler() {
-                    builder.ensure(compile::Std::new(self.compiler, target))
+                    builder.std(self.compiler, target)
                 }
             }
             Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
@@ -479,6 +479,13 @@ macro_rules! bootstrap_tool {
                     }
                 })
             }
+
+            fn metadata(&self) -> Option<StepMetadata> {
+                Some(
+                    StepMetadata::build(stringify!($name), self.target)
+                        .built_by(self.compiler)
+                )
+            }
         }
         )+
     }
@@ -778,6 +785,16 @@ impl Step for Rustdoc {
         } else {
             ToolBuildResult { tool_path, build_compiler, target_compiler }
         }
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::build("rustdoc", self.compiler.host)
+                // rustdoc is ToolRustc, so stage N rustdoc is built by stage N-1 rustc
+                // FIXME: make this stage deduction automatic somehow
+                // FIXME: log the compiler that actually built ToolRustc steps
+                .stage(self.compiler.stage.saturating_sub(1)),
+        )
     }
 }
 
@@ -1169,6 +1186,16 @@ macro_rules! tool_extended {
                     $path,
                     None $( .or(Some(&$add_bins_to_sysroot)) )?,
                     None $( .or(Some($add_features)) )?,
+                )
+            }
+
+            fn metadata(&self) -> Option<StepMetadata> {
+                // FIXME: refactor extended tool steps to make the build_compiler explicit,
+                // it is offset by one now for rustc tools
+                Some(
+                    StepMetadata::build($tool_name, self.target)
+                        .built_by(self.compiler.with_stage(self.compiler.stage.saturating_sub(1)))
+                        .stage(self.compiler.stage)
                 )
             }
         }

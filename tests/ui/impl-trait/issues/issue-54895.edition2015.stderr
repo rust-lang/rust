@@ -1,0 +1,15 @@
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/issue-54895.rs:18:53
+   |
+LL | fn f() -> impl for<'a> Trait<'a, Out = impl Sized + 'a> {
+   |                                                     ^^
+   |
+note: lifetime declared here
+  --> $DIR/issue-54895.rs:18:20
+   |
+LL | fn f() -> impl for<'a> Trait<'a, Out = impl Sized + 'a> {
+   |                    ^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0657`.

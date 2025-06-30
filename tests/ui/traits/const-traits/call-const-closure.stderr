@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): ~const Bar` is not satisfied
+error[E0277]: the trait bound `(): [const] Bar` is not satisfied
   --> $DIR/call-const-closure.rs:17:18
    |
 LL |     (const || ().foo())();

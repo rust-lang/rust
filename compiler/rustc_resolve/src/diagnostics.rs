@@ -256,22 +256,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         let label = match new_binding.is_import_user_facing() {
-            true => errors::NameDefinedMultipleTimeLabel::Reimported { span, name },
-            false => errors::NameDefinedMultipleTimeLabel::Redefined { span, name },
+            true => errors::NameDefinedMultipleTimeLabel::Reimported { span },
+            false => errors::NameDefinedMultipleTimeLabel::Redefined { span },
         };
 
         let old_binding_label =
             (!old_binding.span.is_dummy() && old_binding.span != span).then(|| {
                 let span = self.tcx.sess.source_map().guess_head_span(old_binding.span);
                 match old_binding.is_import_user_facing() {
-                    true => errors::NameDefinedMultipleTimeOldBindingLabel::Import {
-                        span,
-                        name,
-                        old_kind,
-                    },
+                    true => {
+                        errors::NameDefinedMultipleTimeOldBindingLabel::Import { span, old_kind }
+                    }
                     false => errors::NameDefinedMultipleTimeOldBindingLabel::Definition {
                         span,
-                        name,
                         old_kind,
                     },
                 }
@@ -281,6 +278,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .dcx()
             .create_err(errors::NameDefinedMultipleTime {
                 span,
+                name,
                 descr: ns.descr(),
                 container,
                 label,
@@ -2423,6 +2421,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } else {
                 let suggestion = if suggestion.is_some() {
                     suggestion
+                } else if let Some(m) = self.undeclared_module_exists(ident) {
+                    self.undeclared_module_suggest_declare(ident, m)
                 } else if was_invoked_from_cargo() {
                     Some((
                         vec![],
@@ -2442,6 +2442,55 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 (format!("use of unresolved module or unlinked crate `{ident}`"), suggestion)
             }
         }
+    }
+
+    fn undeclared_module_suggest_declare(
+        &mut self,
+        ident: Ident,
+        path: std::path::PathBuf,
+    ) -> Option<(Vec<(Span, String)>, String, Applicability)> {
+        Some((
+            vec![(self.current_crate_outer_attr_insert_span, format!("mod {ident};\n"))],
+            format!(
+                "to make use of source file {}, use `mod {ident}` \
+                 in this file to declare the module",
+                path.display()
+            ),
+            Applicability::MaybeIncorrect,
+        ))
+    }
+
+    fn undeclared_module_exists(&mut self, ident: Ident) -> Option<std::path::PathBuf> {
+        let map = self.tcx.sess.source_map();
+
+        let src = map.span_to_filename(ident.span).into_local_path()?;
+        let i = ident.as_str();
+        // FIXME: add case where non parent using undeclared module (hard?)
+        let dir = src.parent()?;
+        let src = src.file_stem()?.to_str()?;
+        for file in [
+            // …/x.rs
+            dir.join(i).with_extension("rs"),
+            // …/x/mod.rs
+            dir.join(i).join("mod.rs"),
+        ] {
+            if file.exists() {
+                return Some(file);
+            }
+        }
+        if !matches!(src, "main" | "lib" | "mod") {
+            for file in [
+                // …/x/y.rs
+                dir.join(src).join(i).with_extension("rs"),
+                // …/x/y/mod.rs
+                dir.join(src).join(i).join("mod.rs"),
+            ] {
+                if file.exists() {
+                    return Some(file);
+                }
+            }
+        }
+        None
     }
 
     /// Adds suggestions for a path that cannot be resolved.

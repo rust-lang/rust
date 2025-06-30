@@ -469,7 +469,8 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
 
                     let unsafety_flag = match myitem.kind {
                         clean::FunctionItem(_) | clean::ForeignFunctionItem(..)
-                            if myitem.fn_header(tcx).unwrap().is_unsafe() =>
+                            if myitem.fn_header(tcx).unwrap().safety
+                                == hir::HeaderSafety::Normal(hir::Safety::Unsafe) =>
                         {
                             "<sup title=\"unsafe function\">⚠</sup>"
                         }
@@ -1702,6 +1703,7 @@ fn render_enum_fields(
                 if v.is_stripped() {
                     continue;
                 }
+                write!(w, "{}", render_attributes_in_pre(v, TAB, cx))?;
                 w.write_str(TAB)?;
                 match v.kind {
                     clean::VariantItem(ref var) => match var.kind {

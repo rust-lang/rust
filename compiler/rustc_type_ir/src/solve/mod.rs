@@ -79,7 +79,7 @@ pub enum GoalSource {
     TypeRelating,
     /// We're proving a where-bound of an impl.
     ImplWhereBound,
-    /// Const conditions that need to hold for `~const` alias bounds to hold.
+    /// Const conditions that need to hold for `[const]` alias bounds to hold.
     AliasBoundConstCondition,
     /// Instantiating a higher-ranked goal and re-proving it.
     InstantiateHigherRanked,

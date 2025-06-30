@@ -1,27 +1,15 @@
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/issue-81885.rs:1:22
-   |
-LL | const TEST4: fn() -> _ = 42;
-   |                      ^ not allowed in type signatures
-
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constant items
   --> $DIR/issue-81885.rs:1:22
    |
 LL | const TEST4: fn() -> _ = 42;
    |                      ^ not allowed in type signatures
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/issue-81885.rs:6:26
-   |
-LL |     const TEST5: fn() -> _ = 42;
-   |                          ^ not allowed in type signatures
-
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constant items
-  --> $DIR/issue-81885.rs:6:26
+  --> $DIR/issue-81885.rs:5:26
    |
 LL |     const TEST5: fn() -> _ = 42;
    |                          ^ not allowed in type signatures
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0121`.

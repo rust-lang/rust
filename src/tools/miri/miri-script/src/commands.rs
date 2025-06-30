@@ -32,6 +32,7 @@ impl MiriEnv {
         &mut self,
         quiet: bool,
         target: Option<impl AsRef<OsStr>>,
+        features: &[String],
     ) -> Result<PathBuf> {
         if let Some(miri_sysroot) = self.sh.var_os("MIRI_SYSROOT") {
             // Sysroot already set, use that.
@@ -39,8 +40,8 @@ impl MiriEnv {
         }
 
         // Make sure everything is built. Also Miri itself.
-        self.build(".", &[], quiet)?;
-        self.build("cargo-miri", &[], quiet)?;
+        self.build(".", features, &[], quiet)?;
+        self.build("cargo-miri", &[], &[], quiet)?;
 
         let target_flag = if let Some(target) = &target {
             vec![OsStr::new("--target"), target.as_ref()]
@@ -58,7 +59,7 @@ impl MiriEnv {
         }
 
         let mut cmd = self
-            .cargo_cmd("cargo-miri", "run")
+            .cargo_cmd("cargo-miri", "run", &[])
             .arg("--quiet")
             .arg("--")
             .args(&["miri", "setup", "--print-sysroot"])
@@ -90,7 +91,9 @@ impl Command {
             Self::fmt(vec![])?;
         }
         if auto_clippy {
-            Self::clippy(vec![])?;
+            // no features for auto actions, see
+            // https://github.com/rust-lang/miri/pull/4396#discussion_r2149654845
+            Self::clippy(vec![], vec![])?;
         }
 
         Ok(())
@@ -175,16 +178,16 @@ impl Command {
         }
         // Then run the actual command.
         match self {
-            Command::Install { flags } => Self::install(flags),
-            Command::Build { flags } => Self::build(flags),
-            Command::Check { flags } => Self::check(flags),
-            Command::Test { bless, flags, target, coverage } =>
-                Self::test(bless, flags, target, coverage),
-            Command::Run { dep, verbose, target, edition, flags } =>
-                Self::run(dep, verbose, target, edition, flags),
-            Command::Doc { flags } => Self::doc(flags),
+            Command::Install { features, flags } => Self::install(features, flags),
+            Command::Build { features, flags } => Self::build(features, flags),
+            Command::Check { features, flags } => Self::check(features, flags),
+            Command::Test { bless, target, coverage, features, flags } =>
+                Self::test(bless, target, coverage, features, flags),
+            Command::Run { dep, verbose, target, edition, features, flags } =>
+                Self::run(dep, verbose, target, edition, features, flags),
+            Command::Doc { features, flags } => Self::doc(features, flags),
             Command::Fmt { flags } => Self::fmt(flags),
-            Command::Clippy { flags } => Self::clippy(flags),
+            Command::Clippy { features, flags } => Self::clippy(features, flags),
             Command::Bench { target, no_install, save_baseline, load_baseline, benches } =>
                 Self::bench(target, no_install, save_baseline, load_baseline, benches),
             Command::Toolchain { flags } => Self::toolchain(flags),
@@ -494,7 +497,7 @@ impl Command {
 
         if !no_install {
             // Make sure we have an up-to-date Miri installed and selected the right toolchain.
-            Self::install(vec![])?;
+            Self::install(vec![], vec![])?;
         }
         let results_json_dir = if save_baseline.is_some() || load_baseline.is_some() {
             Some(TempDir::new()?)
@@ -601,47 +604,48 @@ impl Command {
         Ok(())
     }
 
-    fn install(flags: Vec<String>) -> Result<()> {
+    fn install(features: Vec<String>, flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
-        e.install_to_sysroot(e.miri_dir.clone(), &flags)?;
-        e.install_to_sysroot(path!(e.miri_dir / "cargo-miri"), &flags)?;
+        e.install_to_sysroot(".", &features, &flags)?;
+        e.install_to_sysroot("cargo-miri", &[], &flags)?;
         Ok(())
     }
 
-    fn build(flags: Vec<String>) -> Result<()> {
+    fn build(features: Vec<String>, flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
-        e.build(".", &flags, /* quiet */ false)?;
-        e.build("cargo-miri", &flags, /* quiet */ false)?;
+        e.build(".", &features, &flags, /* quiet */ false)?;
+        e.build("cargo-miri", &[], &flags, /* quiet */ false)?;
         Ok(())
     }
 
-    fn check(flags: Vec<String>) -> Result<()> {
+    fn check(features: Vec<String>, flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
-        e.check(".", &flags)?;
-        e.check("cargo-miri", &flags)?;
+        e.check(".", &features, &flags)?;
+        e.check("cargo-miri", &[], &flags)?;
         Ok(())
     }
 
-    fn doc(flags: Vec<String>) -> Result<()> {
+    fn doc(features: Vec<String>, flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
-        e.doc(".", &flags)?;
-        e.doc("cargo-miri", &flags)?;
+        e.doc(".", &features, &flags)?;
+        e.doc("cargo-miri", &[], &flags)?;
         Ok(())
     }
 
-    fn clippy(flags: Vec<String>) -> Result<()> {
+    fn clippy(features: Vec<String>, flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
-        e.clippy(".", &flags)?;
-        e.clippy("cargo-miri", &flags)?;
-        e.clippy("miri-script", &flags)?;
+        e.clippy(".", &features, &flags)?;
+        e.clippy("cargo-miri", &[], &flags)?;
+        e.clippy("miri-script", &[], &flags)?;
         Ok(())
     }
 
     fn test(
         bless: bool,
-        mut flags: Vec<String>,
         target: Option<String>,
         coverage: bool,
+        features: Vec<String>,
+        mut flags: Vec<String>,
     ) -> Result<()> {
         let mut e = MiriEnv::new()?;
 
@@ -652,7 +656,7 @@ impl Command {
         }
 
         // Prepare a sysroot. (Also builds cargo-miri, which we need.)
-        e.build_miri_sysroot(/* quiet */ false, target.as_deref())?;
+        e.build_miri_sysroot(/* quiet */ false, target.as_deref(), &features)?;
 
         // Forward information to test harness.
         if bless {
@@ -672,10 +676,10 @@ impl Command {
 
         // Then test, and let caller control flags.
         // Only in root project as `cargo-miri` has no tests.
-        e.test(".", &flags)?;
+        e.test(".", &features, &flags)?;
 
         if let Some(coverage) = &coverage {
-            coverage.show_coverage_report(&e)?;
+            coverage.show_coverage_report(&e, &features)?;
         }
 
         Ok(())
@@ -686,14 +690,17 @@ impl Command {
         verbose: bool,
         target: Option<String>,
         edition: Option<String>,
+        features: Vec<String>,
         flags: Vec<String>,
     ) -> Result<()> {
         let mut e = MiriEnv::new()?;
 
         // Preparation: get a sysroot, and get the miri binary.
-        let miri_sysroot = e.build_miri_sysroot(/* quiet */ !verbose, target.as_deref())?;
-        let miri_bin =
-            e.build_get_binary(".").context("failed to get filename of miri executable")?;
+        let miri_sysroot =
+            e.build_miri_sysroot(/* quiet */ !verbose, target.as_deref(), &features)?;
+        let miri_bin = e
+            .build_get_binary(".", &features)
+            .context("failed to get filename of miri executable")?;
 
         // More flags that we will pass before `flags`
         // (because `flags` may contain `--`).
@@ -718,7 +725,7 @@ impl Command {
         // The basic command that executes the Miri driver.
         let mut cmd = if dep {
             // We invoke the test suite as that has all the logic for running with dependencies.
-            e.cargo_cmd(".", "test")
+            e.cargo_cmd(".", "test", &features)
                 .args(&["--test", "ui"])
                 .args(quiet_flag)
                 .arg("--")

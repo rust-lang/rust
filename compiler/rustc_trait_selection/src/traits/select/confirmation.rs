@@ -11,7 +11,7 @@ use std::ops::ControlFlow;
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::infer::{DefineOpaqueTypes, HigherRankedType, InferOk};
+use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{
@@ -28,8 +28,7 @@ use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::util::{self, closure_trait_ref_and_return_type};
 use crate::traits::{
     ImplSource, ImplSourceUserDefinedData, Normalized, Obligation, ObligationCause,
-    PolyTraitObligation, PredicateObligation, Selection, SelectionError, SignatureMismatch,
-    TraitDynIncompatible, TraitObligation, Unimplemented,
+    PolyTraitObligation, PredicateObligation, Selection, SelectionError, TraitObligation,
 };
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
@@ -176,7 +175,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let candidate = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
-            HigherRankedType,
+            BoundRegionConversionTime::HigherRankedType,
             candidate,
         );
         let mut obligations = PredicateObligations::new();
@@ -194,7 +193,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 .at(&obligation.cause, obligation.param_env)
                 .eq(DefineOpaqueTypes::No, placeholder_trait_predicate, candidate)
                 .map(|InferOk { obligations, .. }| obligations)
-                .map_err(|_| Unimplemented)?,
+                .map_err(|_| SelectionError::Unimplemented)?,
         );
 
         // FIXME(compiler-errors): I don't think this is needed.
@@ -374,7 +373,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             assume = crate::traits::evaluate_const(self.infcx, assume, obligation.param_env)
         }
         let Some(assume) = rustc_transmute::Assume::from_const(self.infcx.tcx, assume) else {
-            return Err(Unimplemented);
+            return Err(SelectionError::Unimplemented);
         };
 
         let dst = predicate.trait_ref.args.type_at(0);
@@ -386,7 +385,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             transmute_env.is_transmutable(rustc_transmute::Types { dst, src }, assume);
 
         let fully_flattened = match maybe_transmutable {
-            Answer::No(_) => Err(Unimplemented)?,
+            Answer::No(_) => Err(SelectionError::Unimplemented)?,
             Answer::If(cond) => flatten_answer_tree(self.tcx(), obligation, cond, assume),
             Answer::Yes => PredicateObligations::new(),
         };
@@ -500,7 +499,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         });
         let object_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
-            HigherRankedType,
+            BoundRegionConversionTime::HigherRankedType,
             object_trait_ref,
         );
         let object_trait_ref = object_trait_ref.with_self_ty(self.tcx(), self_ty);
@@ -513,7 +512,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let upcast_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
-            HigherRankedType,
+            BoundRegionConversionTime::HigherRankedType,
             unnormalized_upcast_trait_ref,
         );
         let upcast_trait_ref = normalize_with_depth_to(
@@ -530,7 +529,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 .at(&obligation.cause, obligation.param_env)
                 .eq(DefineOpaqueTypes::No, trait_predicate.trait_ref, upcast_trait_ref)
                 .map(|InferOk { obligations, .. }| obligations)
-                .map_err(|_| Unimplemented)?,
+                .map_err(|_| SelectionError::Unimplemented)?,
         );
 
         // Check supertraits hold. This is so that their associated type bounds
@@ -962,7 +961,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
         let found_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
-            HigherRankedType,
+            BoundRegionConversionTime::HigherRankedType,
             found_trait_ref,
         );
         // Normalize the obligation and expected trait refs together, because why not
@@ -986,7 +985,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligations
             })
             .map_err(|terr| {
-                SignatureMismatch(Box::new(SignatureMismatchData {
+                SelectionError::SignatureMismatch(Box::new(SignatureMismatchData {
                     expected_trait_ref: obligation_trait_ref,
                     found_trait_ref,
                     terr,
@@ -1090,7 +1089,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
                     .sup(DefineOpaqueTypes::Yes, target, source_trait)
-                    .map_err(|_| Unimplemented)?;
+                    .map_err(|_| SelectionError::Unimplemented)?;
 
                 // Register one obligation for 'a: 'b.
                 let outlives = ty::OutlivesPredicate(r_a, r_b);
@@ -1109,7 +1108,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (_, &ty::Dynamic(data, r, ty::Dyn)) => {
                 let mut object_dids = data.auto_traits().chain(data.principal_def_id());
                 if let Some(did) = object_dids.find(|did| !tcx.is_dyn_compatible(*did)) {
-                    return Err(TraitDynIncompatible(did));
+                    return Err(SelectionError::TraitDynIncompatible(did));
                 }
 
                 let predicate_to_obligation = |predicate| {
@@ -1189,7 +1188,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
                     .eq(DefineOpaqueTypes::Yes, b, a)
-                    .map_err(|_| Unimplemented)?;
+                    .map_err(|_| SelectionError::Unimplemented)?;
 
                 ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
             }
@@ -1198,7 +1197,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (&ty::Adt(def, args_a), &ty::Adt(_, args_b)) => {
                 let unsizing_params = tcx.unsizing_params_for_adt(def.did());
                 if unsizing_params.is_empty() {
-                    return Err(Unimplemented);
+                    return Err(SelectionError::Unimplemented);
                 }
 
                 let tail_field = def.non_enum_variant().tail();
@@ -1237,7 +1236,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
                     .eq(DefineOpaqueTypes::Yes, target, new_struct)
-                    .map_err(|_| Unimplemented)?;
+                    .map_err(|_| SelectionError::Unimplemented)?;
                 nested.extend(obligations);
 
                 // Construct the nested `TailField<T>: Unsize<TailField<U>>` predicate.

@@ -23,7 +23,7 @@ use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::tool::{self, Tool};
 use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor};
 use crate::core::build_steps::{compile, llvm};
-use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
+use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::channel::{self, Info};
@@ -83,6 +83,10 @@ impl Step for Docs {
         tarball.add_bulk_dir(builder.doc_out(host), dest);
         tarball.add_file(builder.src.join("src/doc/robots.txt"), dest, FileType::Regular);
         Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("docs", self.host))
     }
 }
 
@@ -354,6 +358,10 @@ impl Step for Mingw {
 
         Some(tarball.generate())
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("mingw", self.host))
+    }
 }
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
@@ -540,6 +548,10 @@ impl Step for Rustc {
             }
         }
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("rustc", self.compiler.host))
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -711,7 +723,7 @@ impl Step for Std {
             return None;
         }
 
-        builder.ensure(compile::Std::new(compiler, target));
+        builder.std(compiler, target);
 
         let mut tarball = Tarball::new(builder, "rust-std", &target.triple);
         tarball.include_target_in_component_name(true);
@@ -722,6 +734,10 @@ impl Step for Std {
         copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
         Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("std", self.target).built_by(self.compiler))
     }
 }
 
@@ -1002,6 +1018,10 @@ impl Step for Src {
 
         tarball.generate()
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("src", TargetSelection::default()))
+    }
 }
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
@@ -1036,18 +1056,18 @@ impl Step for PlainSourceTarball {
         let src_files = [
             // tidy-alphabetical-start
             ".gitmodules",
-            "bootstrap.example.toml",
-            "Cargo.lock",
-            "Cargo.toml",
-            "configure",
             "CONTRIBUTING.md",
             "COPYRIGHT",
+            "Cargo.lock",
+            "Cargo.toml",
             "LICENSE-APACHE",
-            "license-metadata.json",
             "LICENSE-MIT",
             "README.md",
             "RELEASES.md",
             "REUSE.toml",
+            "bootstrap.example.toml",
+            "configure",
+            "license-metadata.json",
             "x",
             "x.ps1",
             "x.py",

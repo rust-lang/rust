@@ -82,10 +82,13 @@ passes_collapse_debuginfo =
 passes_confusables = attribute should be applied to an inherent method
     .label = not an inherent method
 
+passes_const_continue_attr =
+    `#[const_continue]` should be applied to a break expression
+    .label = not a break expression
+
 passes_const_stable_not_stable =
     attribute `#[rustc_const_stable]` can only be applied to functions that are declared `#[stable]`
     .label = attribute specified here
-
 
 passes_coroutine_on_non_closure =
     attribute should be applied to closures
@@ -291,7 +294,7 @@ passes_duplicate_lang_item_crate_depends =
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
 passes_enum_variant_same_name =
-    it is impossible to refer to the {$descr} `{$dead_name}` because it is shadowed by this enum variant with the same name
+    it is impossible to refer to the {$dead_descr} `{$dead_name}` because it is shadowed by this enum variant with the same name
 
 passes_export_name =
     attribute should be applied to a free function, impl method or static
@@ -446,6 +449,10 @@ passes_linkage =
     attribute should be applied to a function or static
     .label = not a function definition or static
 
+passes_loop_match_attr =
+    `#[loop_match]` should be applied to a loop
+    .label = not a loop
+
 passes_macro_export =
     `#[macro_export]` only has an effect on macro definitions
 
@@ -479,6 +486,11 @@ passes_missing_panic_handler =
 passes_missing_stability_attr =
     {$descr} has missing stability attribute
 
+passes_mixed_export_name_and_no_mangle = `{$no_mangle_attr}` attribute may not be used in combination with `{$export_name_attr}`
+    .label = `{$no_mangle_attr}` is ignored
+    .note = `{$export_name_attr}` takes precedence
+    .suggestion = remove the `{$no_mangle_attr}` attribute
+
 passes_multiple_rustc_main =
     multiple functions with a `#[rustc_main]` attribute
     .first = first `#[rustc_main]` function
@@ -490,11 +502,6 @@ passes_must_not_suspend =
 
 passes_must_use_no_effect =
     `#[must_use]` has no effect when applied to {$article} {$target}
-
-passes_naked_functions_incompatible_attribute =
-    attribute incompatible with `#[unsafe(naked)]`
-    .label = the `{$attr}` attribute is incompatible with `#[unsafe(naked)]`
-    .naked_attribute = function marked with `#[unsafe(naked)]` here
 
 passes_no_link =
     attribute should be applied to an `extern crate` item
@@ -808,9 +815,6 @@ passes_unused_variable_try_prefix = unused variable: `{$name}`
     .label = unused variable
     .suggestion = if this is intentional, prefix it with an underscore
 
-
-passes_used_compiler_linker =
-    `used(compiler)` and `used(linker)` can't be used together
 
 passes_used_static =
     attribute must be applied to a `static` variable

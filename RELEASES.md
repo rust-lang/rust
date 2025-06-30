@@ -54,23 +54,35 @@ Stabilized APIs
 ---------------
 
 - [`Cell::update`](https://doc.rust-lang.org/stable/std/cell/struct.Cell.html#method.update)
-- [`impl Default for *const T`](https://doc.rust-lang.org/nightly/std/primitive.pointer.html#impl-Default-for-*const+T)
-- [`impl Default for *mut T`](https://doc.rust-lang.org/nightly/std/primitive.pointer.html#impl-Default-for-*mut+T)
+- [`impl Default for *const T`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#impl-Default-for-*const+T)
+- [`impl Default for *mut T`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#impl-Default-for-*mut+T)
 - [`HashMap::extract_if`](https://doc.rust-lang.org/stable/std/collections/struct.HashMap.html#method.extract_if)
 - [`HashSet::extract_if`](https://doc.rust-lang.org/stable/std/collections/struct.HashSet.html#method.extract_if)
+- [`hint::select_unpredictable`](https://doc.rust-lang.org/stable/std/hint/fn.select_unpredictable.html)
 - [`proc_macro::Span::line`](https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.line)
 - [`proc_macro::Span::column`](https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.column)
 - [`proc_macro::Span::start`](https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.start)
 - [`proc_macro::Span::end`](https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.end)
 - [`proc_macro::Span::file`](https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.file)
 - [`proc_macro::Span::local_file`](https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.local_file)
+- [`<[T]>::as_chunks`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_chunks)
+- [`<[T]>::as_chunks_mut`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_chunks_mut)
+- [`<[T]>::as_chunks_unchecked`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_chunks_unchecked)
+- [`<[T]>::as_chunks_unchecked_mut`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_chunks_unchecked_mut)
+- [`<[T]>::as_rchunks`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_rchunks)
+- [`<[T]>::as_rchunks_mut`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_rchunks_mut)
+- [`mod ffi::c_str`](https://doc.rust-lang.org/stable/std/ffi/c_str/index.html)
 
 These previously stable APIs are now stable in const contexts:
 
 - [`NonNull<T>::replace`](https://doc.rust-lang.org/stable/std/ptr/struct.NonNull.html#method.replace)
 - [`<*mut T>::replace`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.replace)
-- [`std::ptr::swap_nonoverlapping`](https://github.com/rust-lang/rust/pull/137280)
-- [`Cell::{replace, get, get_mut, from_mut, as_slice_of_cells}`](https://github.com/rust-lang/rust/pull/137928)
+- [`std::ptr::swap_nonoverlapping`](https://doc.rust-lang.org/stable/std/ptr/fn.swap_nonoverlapping.html)
+- [`Cell::replace`](https://doc.rust-lang.org/stable/std/cell/struct.Cell.html#method.replace)
+- [`Cell::get`](https://doc.rust-lang.org/stable/std/cell/struct.Cell.html#method.get)
+- [`Cell::get_mut`](https://doc.rust-lang.org/stable/std/cell/struct.Cell.html#method.get_mut)
+- [`Cell::from_mut`](https://doc.rust-lang.org/stable/std/cell/struct.Cell.html#method.from_mut)
+- [`Cell::as_slice_of_cells`](https://doc.rust-lang.org/stable/std/cell/struct.Cell.html#method.as_slice_of_cells)
 
 
 <a id="1.88.0-Cargo"></a>

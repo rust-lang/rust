@@ -11,7 +11,7 @@ use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::layout::{LayoutCx, LayoutOf};
+use rustc_middle::ty::layout::LayoutCx;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::EntryFnType;
 
@@ -150,6 +150,8 @@ pub struct MiriConfig {
     pub retag_fields: RetagFields,
     /// The location of the shared object files to load when calling external functions
     pub native_lib: Vec<PathBuf>,
+    /// Whether to enable the new native lib tracing system.
+    pub native_lib_enable_tracing: bool,
     /// Run a garbage collector for BorTags every N basic blocks.
     pub gc_interval: u32,
     /// The number of CPUs to be reported by miri.
@@ -199,6 +201,7 @@ impl Default for MiriConfig {
             report_progress: None,
             retag_fields: RetagFields::Yes,
             native_lib: vec![],
+            native_lib_enable_tracing: false,
             gc_interval: 10_000,
             num_cpus: 1,
             page_size: None,

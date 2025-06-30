@@ -10,7 +10,7 @@ use rustc_middle::ty::{self, PseudoCanonicalInput, TyCtxt, TypeVisitableExt, Upc
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{
     ImplSource, Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
-    Unimplemented, sizedness_fast_path,
+    SelectionError, sizedness_fast_path,
 };
 use tracing::debug;
 
@@ -47,7 +47,7 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     let selection = match selcx.select(&obligation) {
         Ok(Some(selection)) => selection,
         Ok(None) => return Err(CodegenObligationError::Ambiguity),
-        Err(Unimplemented) => return Err(CodegenObligationError::Unimplemented),
+        Err(SelectionError::Unimplemented) => return Err(CodegenObligationError::Unimplemented),
         Err(e) => {
             bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, trait_ref)
         }
