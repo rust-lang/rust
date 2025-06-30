@@ -1111,3 +1111,18 @@ fn check_for_overlapping_test_paths(found_path_stems: &HashSet<Utf8PathBuf>) {
         );
     }
 }
+
+pub fn early_config_check(config: &Config) {
+    if !config.has_html_tidy && config.mode == Mode::Rustdoc {
+        eprintln!("warning: `tidy` (html-tidy.org) is not installed; diffs will not be generated");
+    }
+
+    if !config.profiler_runtime && config.mode == Mode::CoverageRun {
+        let actioned = if config.bless { "blessed" } else { "checked" };
+        eprintln!(
+            r#"
+WARNING: profiler runtime is not available, so `.coverage` files won't be {actioned}
+help: try setting `profiler = true` in the `[build]` section of `bootstrap.toml`"#
+        );
+    }
+}
