@@ -15,17 +15,11 @@ pub(crate) fn provide(providers: &mut Providers) {
 
 fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clause<'_>, Span)] {
     match tcx.def_kind(item_def_id) {
-        DefKind::Struct | DefKind::Enum | DefKind::Union => {
-            let crate_map = tcx.inferred_outlives_crate(());
-            crate_map.predicates.get(&item_def_id.to_def_id()).copied().unwrap_or(&[])
-        }
-        DefKind::TyAlias if tcx.type_alias_is_lazy(item_def_id) => {
-            let crate_map = tcx.inferred_outlives_crate(());
-            crate_map.predicates.get(&item_def_id.to_def_id()).copied().unwrap_or(&[])
-        }
+        DefKind::Struct | DefKind::Enum | DefKind::Union | DefKind::Const => {}
+        DefKind::TyAlias if tcx.type_alias_is_lazy(item_def_id) => {}
         DefKind::AnonConst if tcx.features().generic_const_exprs() => {
             let id = tcx.local_def_id_to_hir_id(item_def_id);
-            if tcx.hir_opt_const_param_default_param_def_id(id).is_some() {
+            return if tcx.hir_opt_const_param_default_param_def_id(id).is_some() {
                 // In `generics_of` we set the generics' parent to be our parent's parent which means that
                 // we lose out on the predicates of our actual parent if we dont return those predicates here.
                 // (See comment in `generics_of` for more information on why the parent shenanigans is necessary)
@@ -42,21 +36,22 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clau
                 tcx.inferred_outlives_of(item_def_id)
             } else {
                 &[]
-            }
+            };
         }
-        _ => &[],
+        _ => return &[],
     }
+
+    // FIXME(fmease): Explainer. Maybe fast path:
+    if tcx.generics_of(item_def_id).is_empty() {
+        return &[];
+    }
+
+    let crate_map = tcx.inferred_outlives_crate(());
+    crate_map.predicates.get(&item_def_id.to_def_id()).copied().unwrap_or(&[])
 }
 
+/// Compute a map from each applicable item in the local crate to its inferred/implied outlives-predicates.
 fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
-    // Compute a map from each ADT (struct/enum/union) and lazy type alias to
-    // the **explicit** outlives predicates (`T: 'a`, `'a: 'b`) that the user wrote.
-    // Typically there won't be many of these, except in older code where
-    // they were mandatory. Nonetheless, we have to ensure that every such
-    // predicate is satisfied, so they form a kind of base set of requirements
-    // for the type.
-
-    // Compute the inferred predicates
     let global_inferred_outlives = implicit_infer::infer_predicates(tcx);
 
     // Convert the inferred predicates into the "collected" form the

@@ -1,0 +1,18 @@
+error: lifetime may not live long enough
+  --> $DIR/implied-outlives-bounds.rs:20:9
+   |
+LL | fn env0<'any>() {
+   |         ---- lifetime `'any` defined here
+LL |     _ = TYPE_OUTLIVES_0::<'static, &'any ()>;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'any` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/implied-outlives-bounds.rs:25:9
+   |
+LL | fn env1<'any>() {
+   |         ---- lifetime `'any` defined here
+LL |     _ = REGION_OUTLIVES_0::<'static, 'any>;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'any` must outlive `'static`
+
+error: aborting due to 2 previous errors
+
