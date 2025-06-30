@@ -230,11 +230,11 @@ fn split_block(
     let block_data = &mut basic_blocks[location.block];
 
     // Drain every statement after this one and move the current terminator to a new basic block.
-    let new_block = BasicBlockData {
-        statements: block_data.statements.split_off(location.statement_index),
-        terminator: block_data.terminator.take(),
-        is_cleanup: block_data.is_cleanup,
-    };
+    let new_block = BasicBlockData::new_stmts(
+        block_data.statements.split_off(location.statement_index),
+        block_data.terminator.take(),
+        block_data.is_cleanup,
+    );
 
     basic_blocks.push(new_block)
 }
@@ -270,10 +270,9 @@ fn insert_discr_cast_to_u128<'tcx>(
         let mu_array =
             local_decls.push(LocalDecl::with_source_info(mu_array_ty, source_info)).into();
         let rvalue = Rvalue::Cast(CastKind::Transmute, source_op, mu_array_ty);
-        block_data.statements.push(Statement {
-            source_info,
-            kind: StatementKind::Assign(Box::new((mu_array, rvalue))),
-        });
+        block_data
+            .statements
+            .push(Statement::new(source_info, StatementKind::Assign(Box::new((mu_array, rvalue)))));
 
         // Index into the array of MaybeUninit to get something that is actually
         // as wide as the discriminant.
@@ -294,10 +293,10 @@ fn insert_discr_cast_to_u128<'tcx>(
         let op_as_int =
             local_decls.push(LocalDecl::with_source_info(operand_int_ty, source_info)).into();
         let rvalue = Rvalue::Cast(CastKind::Transmute, source_op, operand_int_ty);
-        block_data.statements.push(Statement {
+        block_data.statements.push(Statement::new(
             source_info,
-            kind: StatementKind::Assign(Box::new((op_as_int, rvalue))),
-        });
+            StatementKind::Assign(Box::new((op_as_int, rvalue))),
+        ));
 
         (CastKind::IntToInt, Operand::Copy(op_as_int))
     };
@@ -306,10 +305,10 @@ fn insert_discr_cast_to_u128<'tcx>(
     let rvalue = Rvalue::Cast(cast_kind, discr_ty_bits, discr.ty);
     let discr_in_discr_ty =
         local_decls.push(LocalDecl::with_source_info(discr.ty, source_info)).into();
-    block_data.statements.push(Statement {
+    block_data.statements.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((discr_in_discr_ty, rvalue))),
-    });
+        StatementKind::Assign(Box::new((discr_in_discr_ty, rvalue))),
+    ));
 
     // Cast the discriminant to a u128 (base for comparisions of enum discriminants).
     let const_u128 = Ty::new_uint(tcx, ty::UintTy::U128);
@@ -317,7 +316,7 @@ fn insert_discr_cast_to_u128<'tcx>(
     let discr = local_decls.push(LocalDecl::with_source_info(const_u128, source_info)).into();
     block_data
         .statements
-        .push(Statement { source_info, kind: StatementKind::Assign(Box::new((discr, rvalue))) });
+        .push(Statement::new(source_info, StatementKind::Assign(Box::new((discr, rvalue)))));
 
     discr
 }
@@ -390,9 +389,9 @@ fn insert_uninhabited_enum_check<'tcx>(
 ) {
     let is_ok: Place<'_> =
         local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
-    block_data.statements.push(Statement {
+    block_data.statements.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             is_ok,
             Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
                 span: source_info.span,
@@ -400,7 +399,7 @@ fn insert_uninhabited_enum_check<'tcx>(
                 const_: Const::Val(ConstValue::from_bool(false), tcx.types.bool),
             }))),
         ))),
-    });
+    ));
 
     block_data.terminator = Some(Terminator {
         source_info,
@@ -463,19 +462,19 @@ fn insert_niche_check<'tcx>(
 
     let discr_diff: Place<'_> =
         local_decls.push(LocalDecl::with_source_info(tcx.types.u128, source_info)).into();
-    block_data.statements.push(Statement {
+    block_data.statements.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             discr_diff,
             Rvalue::BinaryOp(BinOp::Sub, Box::new((Operand::Copy(discr), start_const))),
         ))),
-    });
+    ));
 
     let is_ok: Place<'_> =
         local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
-    block_data.statements.push(Statement {
+    block_data.statements.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             is_ok,
             Rvalue::BinaryOp(
                 // This is a `WrappingRange`, so make sure to get the wrapping right.
@@ -483,7 +482,7 @@ fn insert_niche_check<'tcx>(
                 Box::new((Operand::Copy(discr_diff), end_start_diff_const)),
             ),
         ))),
-    });
+    ));
 
     block_data.terminator = Some(Terminator {
         source_info,
