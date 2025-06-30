@@ -99,6 +99,8 @@ attr_parsing_non_ident_feature =
 
 attr_parsing_null_on_export = `export_name` may not contain null characters
 
+attr_parsing_null_on_link_section = `link_section` may not contain null characters
+
 attr_parsing_repr_ident =
     meta item in `repr` must be an identifier
 
