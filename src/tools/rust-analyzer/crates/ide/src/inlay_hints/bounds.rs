@@ -143,7 +143,7 @@ fn foo<T>() {}
                                             file_id: FileId(
                                                 1,
                                             ),
-                                            range: 135..140,
+                                            range: 446..451,
                                         },
                                     ),
                                 ),

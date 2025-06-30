@@ -2199,6 +2199,10 @@ pub struct SemanticsScope<'db> {
 }
 
 impl<'db> SemanticsScope<'db> {
+    pub fn file_id(&self) -> HirFileId {
+        self.file_id
+    }
+
     pub fn module(&self) -> Module {
         Module { id: self.resolver.module() }
     }

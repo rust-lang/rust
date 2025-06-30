@@ -35,7 +35,7 @@ pub(crate) trait ChildBySource {
 
 impl ChildBySource for TraitId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
-        let data = db.trait_items(*self);
+        let data = self.trait_items(db);
 
         data.macro_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
@@ -191,7 +191,7 @@ impl ChildBySource for VariantId {
                 Either::Right(source) => res[keys::RECORD_FIELD].insert(AstPtr::new(&source), id),
             }
         }
-        let (_, sm) = db.variant_fields_with_source_map(*self);
+        let (_, sm) = self.fields_with_source_map(db);
         sm.expansions().for_each(|(ast, &exp_id)| res[keys::MACRO_CALL].insert(ast.value, exp_id));
     }
 }

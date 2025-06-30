@@ -70,11 +70,10 @@ pub(crate) fn goto_type_definition(
     }
 
     let range = token.text_range();
-    sema.descend_into_macros_no_opaque(token,false)
+    sema.descend_into_macros_no_opaque(token, false)
         .into_iter()
         .filter_map(|token| {
-            sema
-                .token_ancestors_with_macros(token.value)
+            sema.token_ancestors_with_macros(token.value)
                 // When `token` is within a macro call, we can't determine its type. Don't continue
                 // this traversal because otherwise we'll end up returning the type of *that* macro
                 // call, which is not what we want in general.
@@ -103,7 +102,6 @@ pub(crate) fn goto_type_definition(
                             _ => return None,
                         }
                     };
-
                     Some(ty)
                 })
         })

@@ -143,7 +143,7 @@ serde = { version = "1.0.219" }
 serde_derive = { version = "1.0.219" }
 serde_json = "1.0.140"
 rustc-hash = "2.1.1"
-rustc-literal-escaper = "0.0.3"
+rustc-literal-escaper = "0.0.4"
 smallvec = { version = "1.15.1", features = [
   "const_new",
   "union",
