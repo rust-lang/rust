@@ -1,7 +1,7 @@
 //@ revisions: align16 align1024
 //@ compile-flags: -C no-prepopulate-passes -Z mir-opt-level=0 -Clink-dead-code
-//@ [align16] compile-flags: -Zmin-function-alignment=16
-//@ [align1024] compile-flags: -Zmin-function-alignment=1024
+//@ [align16] compile-flags: -Cmin-function-alignment=16
+//@ [align1024] compile-flags: -Cmin-function-alignment=1024
 
 #![crate_type = "lib"]
 #![feature(fn_align)]
@@ -35,7 +35,7 @@ pub fn higher_align() {}
 // cold functions follow the same rules as other functions
 //
 // in GCC, the `-falign-functions` does not apply to cold functions, but
-// `-Zmin-function-alignment` applies to all functions.
+// `-Cmin-function-alignment` applies to all functions.
 //
 // CHECK-LABEL: @no_explicit_align_cold
 // align16: align 16
