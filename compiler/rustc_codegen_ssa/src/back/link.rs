@@ -1211,7 +1211,7 @@ fn add_sanitizer_libraries(
         return;
     }
 
-    let sanitizer = sess.opts.unstable_opts.sanitizer;
+    let sanitizer = sess.opts.cg.sanitize;
     if sanitizer.contains(SanitizerSet::ADDRESS) {
         link_sanitizer_runtime(sess, flavor, linker, "asan");
     }
@@ -2466,11 +2466,7 @@ fn add_order_independent_options(
         && crate_type == CrateType::Executable
         && !matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
     {
-        let prefix = if sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::ADDRESS) {
-            "asan/"
-        } else {
-            ""
-        };
+        let prefix = if sess.is_sanitizer_address_enabled() { "asan/" } else { "" };
         cmd.link_arg(format!("--dynamic-linker={prefix}ld.so.1"));
     }
 
