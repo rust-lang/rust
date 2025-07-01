@@ -1,5 +1,5 @@
 error[E0605]: non-primitive cast: `NonNullary` as `isize`
-  --> $DIR/tag-variant-cast-non-nullary.rs:19:15
+  --> $DIR/cast-enum-to-primitive-error.rs:24:15
    |
 LL |     let val = v as isize;
    |               ^^^^^^^^^^ an `as` expression can be used to convert enum types to numeric types only if the enum type is unit-only or field-less
