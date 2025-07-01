@@ -11,7 +11,6 @@
 #![feature(explicit_tail_calls)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(more_qualified_paths)]
 #![feature(never_patterns)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]

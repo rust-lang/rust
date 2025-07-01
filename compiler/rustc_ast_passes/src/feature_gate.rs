@@ -481,7 +481,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "`for<...>` binders for closures are experimental",
         "consider removing `for<...>`"
     );
-    gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
     // yield can be enabled either by `coroutines` or `gen_blocks`
     if let Some(spans) = spans.get(&sym::yield_expr) {
         for span in spans {

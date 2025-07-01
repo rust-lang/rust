@@ -1652,9 +1652,6 @@ impl<'a> Parser<'a> {
         } else if self.check(exp!(OpenBrace))
             && let Some(expr) = self.maybe_parse_struct_expr(&qself, &path)
         {
-            if qself.is_some() {
-                self.psess.gated_spans.gate(sym::more_qualified_paths, path.span);
-            }
             return expr;
         } else {
             (path.span, ExprKind::Path(qself, path))
