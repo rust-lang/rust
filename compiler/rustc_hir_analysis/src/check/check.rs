@@ -928,6 +928,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 }));
                 check_variances_for_type_defn(tcx, def_id);
             }
+            // Doesn't have any hir based checks
+            return res;
         }
         DefKind::ForeignMod => {
             let it = tcx.hir_expect_item(def_id);
@@ -990,6 +992,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     _ => (),
                 }
             }
+            // Doesn't have any hir based checks
+            return res;
         }
         DefKind::Closure => {
             // This is guaranteed to be called by metadata encoding,
@@ -1065,10 +1069,14 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             return res;
         }
 
-        // Only `Node::Item` and `Node::ForeignItem` still have HIR based
-        // checks. Returning early here does not miss any checks and
-        // avoids this query from having a direct dependency edge on the HIR
-        DefKind::AnonConst | DefKind::InlineConst => return res,
+        // These have no wf checks
+        DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::ExternCrate
+        | DefKind::Macro(..)
+        | DefKind::Use
+        | DefKind::GlobalAsm
+        | DefKind::Mod => return res,
         _ => {}
     }
     let node = tcx.hir_node_by_def_id(def_id);

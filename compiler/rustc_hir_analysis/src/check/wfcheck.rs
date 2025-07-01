@@ -293,7 +293,8 @@ pub(super) fn check_item<'tcx>(
         hir::ItemKind::Struct(..) => check_type_defn(tcx, item, false),
         hir::ItemKind::Union(..) => check_type_defn(tcx, item, true),
         hir::ItemKind::Enum(..) => check_type_defn(tcx, item, true),
-        _ => Ok(()),
+        // Note: do not add new entries to this match. Instead add all new logic in `check_item_type`
+        _ => span_bug!(item.span, "should have been handled by the type based wf check: {item:?}"),
     }
 }
 
