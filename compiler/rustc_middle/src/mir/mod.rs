@@ -1336,6 +1336,7 @@ impl BasicBlock {
 ///
 /// See [`BasicBlock`] for documentation on what basic blocks are at a high level.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[non_exhaustive]
 pub struct BasicBlockData<'tcx> {
     /// List of statements in this block.
     pub statements: Vec<Statement<'tcx>>,

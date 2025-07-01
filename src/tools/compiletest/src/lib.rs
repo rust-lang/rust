@@ -11,6 +11,7 @@ mod tests;
 pub mod common;
 pub mod compute_diff;
 mod debuggers;
+pub mod diagnostics;
 pub mod errors;
 mod executor;
 pub mod header;
@@ -33,7 +34,7 @@ use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use camino::{Utf8Path, Utf8PathBuf};
 use getopts::Options;
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use tracing::*;
+use tracing::debug;
 use walkdir::WalkDir;
 
 use self::header::{EarlyProps, make_test_description};
@@ -651,10 +652,7 @@ pub(crate) fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> 
     let common_inputs_stamp = common_inputs_stamp(&config);
     let modified_tests =
         modified_tests(&config, &config.src_test_suite_root).unwrap_or_else(|err| {
-            panic!(
-                "modified_tests got error from dir: {}, error: {}",
-                config.src_test_suite_root, err
-            )
+            fatal!("modified_tests: {}: {err}", config.src_test_suite_root);
         });
     let cache = HeadersCache::load(&config);
 
@@ -1108,22 +1106,17 @@ fn check_for_overlapping_test_paths(found_path_stems: &HashSet<Utf8PathBuf>) {
 
 pub fn early_config_check(config: &Config) {
     if !config.has_html_tidy && config.mode == Mode::Rustdoc {
-        eprintln!("warning: `tidy` (html-tidy.org) is not installed; diffs will not be generated");
+        warning!("`tidy` (html-tidy.org) is not installed; diffs will not be generated");
     }
 
     if !config.profiler_runtime && config.mode == Mode::CoverageRun {
         let actioned = if config.bless { "blessed" } else { "checked" };
-        eprintln!(
-            r#"
-WARNING: profiler runtime is not available, so `.coverage` files won't be {actioned}
-help: try setting `profiler = true` in the `[build]` section of `bootstrap.toml`"#
-        );
+        warning!("profiler runtime is not available, so `.coverage` files won't be {actioned}");
+        help!("try setting `profiler = true` in the `[build]` section of `bootstrap.toml`");
     }
 
     // `RUST_TEST_NOCAPTURE` is a libtest env var, but we don't callout to libtest.
     if env::var("RUST_TEST_NOCAPTURE").is_ok() {
-        eprintln!(
-            "WARNING: RUST_TEST_NOCAPTURE is not supported. Use the `--no-capture` flag instead."
-        );
+        warning!("`RUST_TEST_NOCAPTURE` is not supported; use the `--no-capture` flag instead");
     }
 }

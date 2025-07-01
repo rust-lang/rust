@@ -164,7 +164,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 Attribute::Parsed(AttributeKind::Repr(_)) => { /* handled below this loop and elsewhere */
                 }
-
+                Attribute::Parsed(AttributeKind::RustcObjectLifetimeDefault) => {
+                    self.check_object_lifetime_default(hir_id);
+                }
                 &Attribute::Parsed(AttributeKind::PubTransparent(attr_span)) => {
                     self.check_rustc_pub_transparent(attr_span, span, attrs)
                 }
@@ -303,7 +305,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::no_implicit_prelude, ..] => {
                             self.check_generic_attr(hir_id, attr, target, Target::Mod)
                         }
-                        [sym::rustc_object_lifetime_default, ..] => self.check_object_lifetime_default(hir_id),
                         [sym::proc_macro, ..] => {
                             self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
                         }
@@ -2831,7 +2832,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
             .find(|item| !item.span.is_dummy()) // Skip prelude `use`s
             .map(|item| errors::ItemFollowingInnerAttr {
                 span: if let Some(ident) = item.kind.ident() { ident.span } else { item.span },
-                kind: item.kind.descr(),
+                kind: tcx.def_descr(item.owner_id.to_def_id()),
             });
         let err = tcx.dcx().create_err(errors::InvalidAttrAtCrateLevel {
             span,

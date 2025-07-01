@@ -29,6 +29,7 @@ use crate::attributes::must_use::MustUseParser;
 use crate::attributes::repr::{AlignParser, ReprParser};
 use crate::attributes::rustc_internal::{
     RustcLayoutScalarValidRangeEnd, RustcLayoutScalarValidRangeStart,
+    RustcObjectLifetimeDefaultParser,
 };
 use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
@@ -136,6 +137,7 @@ attribute_parsers!(
         Single<RustcForceInlineParser>,
         Single<RustcLayoutScalarValidRangeEnd>,
         Single<RustcLayoutScalarValidRangeStart>,
+        Single<RustcObjectLifetimeDefaultParser>,
         Single<SkipDuringMethodDispatchParser>,
         Single<TrackCallerParser>,
         Single<TransparencyParser>,
