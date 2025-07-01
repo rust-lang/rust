@@ -2317,13 +2317,32 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// The list of symbols exported from the given crate.
+    /// The list of non-generic symbols exported from the given crate.
     ///
-    /// - All names contained in `exported_symbols(cnum)` are guaranteed to
-    ///   correspond to a publicly visible symbol in `cnum` machine code.
-    /// - The `exported_symbols` sets of different crates do not intersect.
-    query exported_symbols(cnum: CrateNum) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
-        desc { "collecting exported symbols for crate `{}`", cnum}
+    /// This is separate from exported_generic_symbols to avoid having
+    /// to deserialize all non-generic symbols too for upstream crates
+    /// in the upstream_monomorphizations query.
+    ///
+    /// - All names contained in `exported_non_generic_symbols(cnum)` are
+    ///   guaranteed to correspond to a publicly visible symbol in `cnum`
+    ///   machine code.
+    /// - The `exported_non_generic_symbols` and `exported_generic_symbols`
+    ///   sets of different crates do not intersect.
+    query exported_non_generic_symbols(cnum: CrateNum) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
+        desc { "collecting exported non-generic symbols for crate `{}`", cnum}
+        cache_on_disk_if { *cnum == LOCAL_CRATE }
+        separate_provide_extern
+    }
+
+    /// The list of generic symbols exported from the given crate.
+    ///
+    /// - All names contained in `exported_generic_symbols(cnum)` are
+    ///   guaranteed to correspond to a publicly visible symbol in `cnum`
+    ///   machine code.
+    /// - The `exported_non_generic_symbols` and `exported_generic_symbols`
+    ///   sets of different crates do not intersect.
+    query exported_generic_symbols(cnum: CrateNum) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
+        desc { "collecting exported generic symbols for crate `{}`", cnum}
         cache_on_disk_if { *cnum == LOCAL_CRATE }
         separate_provide_extern
     }

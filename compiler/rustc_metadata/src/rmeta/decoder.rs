@@ -1510,11 +1510,18 @@ impl<'a> CrateMetadataRef<'a> {
             .map(move |v| (self.local_def_id(v.0), v.1))
     }
 
-    fn exported_symbols<'tcx>(
+    fn exported_non_generic_symbols<'tcx>(
         self,
         tcx: TyCtxt<'tcx>,
     ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
-        tcx.arena.alloc_from_iter(self.root.exported_symbols.decode((self, tcx)))
+        tcx.arena.alloc_from_iter(self.root.exported_non_generic_symbols.decode((self, tcx)))
+    }
+
+    fn exported_generic_symbols<'tcx>(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
+        tcx.arena.alloc_from_iter(self.root.exported_generic_symbols.decode((self, tcx)))
     }
 
     fn get_macro(self, id: DefIndex, sess: &Session) -> ast::MacroDef {

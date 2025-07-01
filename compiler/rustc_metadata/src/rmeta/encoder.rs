@@ -692,9 +692,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             stat!("exportable-items", || self.encode_stable_order_of_exportable_impls());
 
         // Encode exported symbols info. This is prefetched in `encode_metadata`.
-        let exported_symbols = stat!("exported-symbols", || {
-            self.encode_exported_symbols(tcx.exported_symbols(LOCAL_CRATE))
-        });
+        let (exported_non_generic_symbols, exported_generic_symbols) =
+            stat!("exported-symbols", || {
+                (
+                    self.encode_exported_symbols(tcx.exported_non_generic_symbols(LOCAL_CRATE)),
+                    self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE)),
+                )
+            });
 
         // Encode the hygiene data.
         // IMPORTANT: this *must* be the last thing that we encode (other than `SourceMap`). The
@@ -760,7 +764,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 incoherent_impls,
                 exportable_items,
                 stable_order_of_exportable_impls,
-                exported_symbols,
+                exported_non_generic_symbols,
+                exported_generic_symbols,
                 interpret_alloc_index,
                 tables,
                 syntax_contexts,
@@ -2375,7 +2380,13 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         // Prefetch some queries used by metadata encoding.
         // This is not necessary for correctness, but is only done for performance reasons.
         // It can be removed if it turns out to cause trouble or be detrimental to performance.
-        join(|| prefetch_mir(tcx), || tcx.exported_symbols(LOCAL_CRATE));
+        join(
+            || prefetch_mir(tcx),
+            || {
+                let _ = tcx.exported_non_generic_symbols(LOCAL_CRATE);
+                let _ = tcx.exported_generic_symbols(LOCAL_CRATE);
+            },
+        );
     }
 
     with_encode_metadata_header(tcx, path, |ecx| {
