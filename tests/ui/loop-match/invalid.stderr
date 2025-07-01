@@ -86,6 +86,30 @@ error: match arms that are part of a `#[loop_match]` cannot have guards
 LL |                 State::B if cond => break 'a,
    |                             ^^^^
 
-error: aborting due to 12 previous errors
+error[E0004]: non-exhaustive patterns: `State::B` and `State::C` not covered
+  --> $DIR/invalid.rs:168:19
+   |
+LL |             match state {
+   |                   ^^^^^ patterns `State::B` and `State::C` not covered
+   |
+note: `State` defined here
+  --> $DIR/invalid.rs:7:6
+   |
+LL | enum State {
+   |      ^^^^^
+LL |     A,
+LL |     B,
+   |     - not covered
+LL |     C,
+   |     - not covered
+   = note: the matched value is of type `State`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~                 State::A => State::B,
+LL ~                 State::B | State::C => todo!(),
+   |
 
-For more information about this error, try `rustc --explain E0308`.
+error: aborting due to 13 previous errors
+
+Some errors have detailed explanations: E0004, E0308.
+For more information about an error, try `rustc --explain E0004`.

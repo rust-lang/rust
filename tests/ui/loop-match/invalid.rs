@@ -159,3 +159,16 @@ fn arm_has_guard(cond: bool) {
         }
     }
 }
+
+fn non_exhaustive() {
+    let mut state = State::A;
+    #[loop_match]
+    loop {
+        state = 'blk: {
+            match state {
+                //~^ ERROR non-exhaustive patterns: `State::B` and `State::C` not covered
+                State::A => State::B,
+            }
+        }
+    }
+}
