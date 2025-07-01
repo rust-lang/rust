@@ -7,7 +7,7 @@ struct T; //~ ERROR struct `T` is never constructed
 struct Used;
 
 #[derive(Default)]
-enum E { //~ NOTE variants in this enum
+enum E { //~ NOTE variant in this enum
     #[default]
     A,
     B, //~ ERROR variant `B` is never constructed
