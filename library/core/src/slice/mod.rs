@@ -52,8 +52,6 @@ pub use index::SliceIndex;
 pub use index::{range, try_range};
 #[unstable(feature = "array_windows", issue = "75027")]
 pub use iter::ArrayWindows;
-#[unstable(feature = "array_chunks", issue = "74985")]
-pub use iter::{ArrayChunks, ArrayChunksMut};
 #[stable(feature = "slice_group_by", since = "1.77.0")]
 pub use iter::{ChunkBy, ChunkByMut};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1427,42 +1425,6 @@ impl<T> [T] {
         (remainder, array_slice)
     }
 
-    /// Returns an iterator over `N` elements of the slice at a time, starting at the
-    /// beginning of the slice.
-    ///
-    /// The chunks are array references and do not overlap. If `N` does not divide the
-    /// length of the slice, then the last up to `N-1` elements will be omitted and can be
-    /// retrieved from the `remainder` function of the iterator.
-    ///
-    /// This method is the const generic equivalent of [`chunks_exact`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N` is zero. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(array_chunks)]
-    /// let slice = ['l', 'o', 'r', 'e', 'm'];
-    /// let mut iter = slice.array_chunks();
-    /// assert_eq!(iter.next().unwrap(), &['l', 'o']);
-    /// assert_eq!(iter.next().unwrap(), &['r', 'e']);
-    /// assert!(iter.next().is_none());
-    /// assert_eq!(iter.remainder(), &['m']);
-    /// ```
-    ///
-    /// [`chunks_exact`]: slice::chunks_exact
-    #[unstable(feature = "array_chunks", issue = "74985")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
-    #[inline]
-    #[track_caller]
-    pub const fn array_chunks<const N: usize>(&self) -> ArrayChunks<'_, T, N> {
-        assert!(N != 0, "chunk size must be non-zero");
-        ArrayChunks::new(self)
-    }
-
     /// Splits the slice into a slice of `N`-element arrays,
     /// assuming that there's no remainder.
     ///
@@ -1623,44 +1585,6 @@ impl<T> [T] {
         // that the length of the subslice is a multiple of N.
         let array_slice = unsafe { multiple_of_n.as_chunks_unchecked_mut() };
         (remainder, array_slice)
-    }
-
-    /// Returns an iterator over `N` elements of the slice at a time, starting at the
-    /// beginning of the slice.
-    ///
-    /// The chunks are mutable array references and do not overlap. If `N` does not divide
-    /// the length of the slice, then the last up to `N-1` elements will be omitted and
-    /// can be retrieved from the `into_remainder` function of the iterator.
-    ///
-    /// This method is the const generic equivalent of [`chunks_exact_mut`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N` is zero. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(array_chunks)]
-    /// let v = &mut [0, 0, 0, 0, 0];
-    /// let mut count = 1;
-    ///
-    /// for chunk in v.array_chunks_mut() {
-    ///     *chunk = [count; 2];
-    ///     count += 1;
-    /// }
-    /// assert_eq!(v, &[1, 1, 2, 2, 0]);
-    /// ```
-    ///
-    /// [`chunks_exact_mut`]: slice::chunks_exact_mut
-    #[unstable(feature = "array_chunks", issue = "74985")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
-    #[inline]
-    #[track_caller]
-    pub const fn array_chunks_mut<const N: usize>(&mut self) -> ArrayChunksMut<'_, T, N> {
-        assert!(N != 0, "chunk size must be non-zero");
-        ArrayChunksMut::new(self)
     }
 
     /// Returns an iterator over overlapping windows of `N` elements of a slice,
