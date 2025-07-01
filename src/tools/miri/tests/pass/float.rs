@@ -1066,7 +1066,6 @@ pub fn libm() {
     assert_eq!((-1f32).powf(f32::NEG_INFINITY), 1.0);
     assert_eq!((-1f64).powf(f64::NEG_INFINITY), 1.0);
 
-
     assert_eq!(0f32.powi(10), 0.0);
     assert_eq!(0f64.powi(100), 0.0);
     assert_eq!(0f32.powi(9), 0.0);
@@ -1489,7 +1488,6 @@ fn test_non_determinism() {
     test_operations_f32(12., 5.);
     test_operations_f64(19., 11.);
     test_operations_f128(25., 18.);
-
 
     // SNaN^0 = (1 | NaN)
     ensure_nondet(|| f32::powf(SNAN_F32, 0.0).is_nan());
