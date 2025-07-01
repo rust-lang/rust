@@ -205,7 +205,7 @@ impl CodegenBackend for GccCodegenBackend {
         // NOTE: try the LTO frontend and check if it errors out. If so, do not embed the bitcode.
         {
             let temp_dir = TempDir::new().expect("cannot create temporary directory");
-            let temp_file = temp_dir.into_path().join("result.asm");
+            let temp_file = temp_dir.keep().join("result.asm");
             let context = Context::default();
             let object_file_path = temp_file.to_str().expect("path to str");
             context.compile_to_file(gccjit::OutputKind::ObjectFile, object_file_path);
