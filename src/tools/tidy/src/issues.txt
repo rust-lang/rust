@@ -2846,7 +2846,6 @@ ui/macros/issue-98466.rs
 ui/macros/issue-99261.rs
 ui/macros/issue-99265.rs
 ui/macros/issue-99907.rs
-ui/macros/rfc-3086-metavar-expr/issue-111904.rs
 ui/malformed/issue-107423-unused-delim-only-one-no-pair.rs
 ui/malformed/issue-69341-malformed-derive-inert.rs
 ui/marker_trait_attr/issue-61651-type-mismatch.rs
