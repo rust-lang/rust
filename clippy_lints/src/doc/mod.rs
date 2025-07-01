@@ -1249,7 +1249,9 @@ fn looks_like_refdef(doc: &str, range: Range<usize>) -> Option<Range<usize>> {
             b'[' => {
                 start = Some(i + offset);
             },
-            b']' if let Some(start) = start => {
+            b']' if let Some(start) = start
+                && doc.as_bytes().get(i + offset + 1) == Some(&b':') =>
+            {
                 return Some(start..i + offset + 1);
             },
             _ => {},
