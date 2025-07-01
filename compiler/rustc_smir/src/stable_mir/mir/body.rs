@@ -1025,8 +1025,6 @@ pub enum CastKind {
     PointerExposeAddress,
     PointerWithExposedProvenance,
     PointerCoercion(PointerCoercion),
-    // FIXME(smir-rename): change this to PointerCoercion(DynStar)
-    DynStar,
     IntToInt,
     FloatToInt,
     FloatToFloat,

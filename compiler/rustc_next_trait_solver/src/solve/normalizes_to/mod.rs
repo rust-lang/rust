@@ -657,8 +657,7 @@ where
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Never
-            | ty::Foreign(..)
-            | ty::Dynamic(_, _, ty::DynStar) => Ty::new_unit(cx),
+            | ty::Foreign(..) => Ty::new_unit(cx),
 
             ty::Error(e) => Ty::new_error(cx, e),
 
