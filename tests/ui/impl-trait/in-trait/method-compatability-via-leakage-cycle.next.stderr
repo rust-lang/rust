@@ -50,11 +50,11 @@ note: ...which requires type-checking `<impl at $DIR/method-compatability-via-le
 LL |     fn foo(b: bool) -> impl Sized {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires computing type of `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo::{anon_assoc#0}`, completing the cycle
-note: cycle used when checking that `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>` is well-formed
-  --> $DIR/method-compatability-via-leakage-cycle.rs:17:1
+note: cycle used when checking assoc item `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo` is compatible with trait definition
+  --> $DIR/method-compatability-via-leakage-cycle.rs:21:5
    |
-LL | impl Trait for u32 {
-   | ^^^^^^^^^^^^^^^^^^
+LL |     fn foo(b: bool) -> impl Sized {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error[E0391]: cycle detected when computing type of `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo::{anon_assoc#0}`
@@ -109,11 +109,11 @@ note: ...which requires type-checking `<impl at $DIR/method-compatability-via-le
 LL |     fn foo(b: bool) -> impl Sized {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires computing type of `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo::{anon_assoc#0}`, completing the cycle
-note: cycle used when checking that `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>` is well-formed
-  --> $DIR/method-compatability-via-leakage-cycle.rs:17:1
+note: cycle used when checking assoc item `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo` is compatible with trait definition
+  --> $DIR/method-compatability-via-leakage-cycle.rs:21:5
    |
-LL | impl Trait for u32 {
-   | ^^^^^^^^^^^^^^^^^^
+LL |     fn foo(b: bool) -> impl Sized {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

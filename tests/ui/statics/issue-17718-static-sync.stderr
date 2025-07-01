@@ -1,8 +1,8 @@
 error[E0277]: `Foo` cannot be shared between threads safely
-  --> $DIR/issue-17718-static-sync.rs:9:13
+  --> $DIR/issue-17718-static-sync.rs:9:1
    |
 LL | static BAR: Foo = Foo;
-   |             ^^^ `Foo` cannot be shared between threads safely
+   | ^^^^^^^^^^^^^^^ `Foo` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `Foo`
    = note: shared static variables must have a type that implements `Sync`
