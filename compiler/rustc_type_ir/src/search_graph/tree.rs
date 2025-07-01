@@ -175,16 +175,16 @@ impl<X: Cx> SearchTree<X> {
         }
     }
 
-    pub(super) fn goal_or_parent_has_changed(
+    pub(super) fn goal_or_parent_was_reevaluated(
         &self,
         cycle_head: NodeId,
-        has_changed: &HashSet<NodeId>,
+        was_reevaluated: &HashSet<NodeId>,
         mut node_id: NodeId,
     ) -> bool {
         loop {
             if node_id == cycle_head {
                 return false;
-            } else if has_changed.contains(&node_id) {
+            } else if was_reevaluated.contains(&node_id) {
                 return true;
             } else {
                 node_id = self.nodes[node_id].parent.unwrap();
