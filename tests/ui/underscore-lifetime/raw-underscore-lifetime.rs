@@ -5,6 +5,5 @@
 
 fn f<'r#_>(){}
 //~^ ERROR `_` cannot be a raw lifetime
-//~| ERROR `'_` cannot be used here [E0637]
 
 fn main() {}
