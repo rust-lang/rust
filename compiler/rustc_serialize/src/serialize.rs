@@ -21,6 +21,11 @@ use thin_vec::ThinVec;
 /// [utf8]: https://en.wikipedia.org/w/index.php?title=UTF-8&oldid=1058865525#Codepage_layout
 const STR_SENTINEL: u8 = 0xC1;
 
+/// For byte strings there are no bytes that canot occur. Just use this value
+/// as a best-effort sentinel. There is no validation skipped so the potential
+/// for badness is lower than in the `STR_SENTINEL` case.
+const BYTE_STR_SENTINEL: u8 = 0xC2;
+
 /// A note about error handling.
 ///
 /// Encoders may be fallible, but in practice failure is rare and there are so
@@ -70,6 +75,13 @@ pub trait Encoder {
         self.emit_usize(v.len());
         self.emit_raw_bytes(v.as_bytes());
         self.emit_u8(STR_SENTINEL);
+    }
+
+    #[inline]
+    fn emit_byte_str(&mut self, v: &[u8]) {
+        self.emit_usize(v.len());
+        self.emit_raw_bytes(v);
+        self.emit_u8(BYTE_STR_SENTINEL);
     }
 
     fn emit_raw_bytes(&mut self, s: &[u8]);
@@ -122,7 +134,17 @@ pub trait Decoder {
         let len = self.read_usize();
         let bytes = self.read_raw_bytes(len + 1);
         assert!(bytes[len] == STR_SENTINEL);
+        // SAFETY: the presence of `STR_SENTINEL` gives us high (but not
+        // perfect) confidence that the bytes we just read truly are UTF-8.
         unsafe { std::str::from_utf8_unchecked(&bytes[..len]) }
+    }
+
+    #[inline]
+    fn read_byte_str(&mut self) -> &[u8] {
+        let len = self.read_usize();
+        let bytes = self.read_raw_bytes(len + 1);
+        assert!(bytes[len] == BYTE_STR_SENTINEL);
+        &bytes[..len]
     }
 
     fn read_raw_bytes(&mut self, len: usize) -> &[u8];
@@ -239,7 +261,7 @@ impl<S: Encoder> Encodable<S> for str {
 
 impl<S: Encoder> Encodable<S> for String {
     fn encode(&self, s: &mut S) {
-        s.emit_str(&self[..]);
+        s.emit_str(&self);
     }
 }
 

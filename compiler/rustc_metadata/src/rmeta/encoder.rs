@@ -29,8 +29,8 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::{CrateType, OptLevel, TargetModifier};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
-    ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
-    sym,
+    ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
+    Symbol, SyntaxContext, sym,
 };
 use tracing::{debug, instrument, trace};
 
@@ -63,7 +63,8 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     required_source_files: Option<FxIndexSet<usize>>,
     is_proc_macro: bool,
     hygiene_ctxt: &'a HygieneEncodeContext,
-    symbol_table: FxHashMap<Symbol, usize>,
+    // Used for both `Symbol`s and `ByteSymbol`s.
+    symbol_index_table: FxHashMap<u32, usize>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -200,27 +201,14 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_symbol(&mut self, symbol: Symbol) {
-        // if symbol predefined, emit tag and symbol index
-        if symbol.is_predefined() {
-            self.opaque.emit_u8(SYMBOL_PREDEFINED);
-            self.opaque.emit_u32(symbol.as_u32());
-        } else {
-            // otherwise write it as string or as offset to it
-            match self.symbol_table.entry(symbol) {
-                Entry::Vacant(o) => {
-                    self.opaque.emit_u8(SYMBOL_STR);
-                    let pos = self.opaque.position();
-                    o.insert(pos);
-                    self.emit_str(symbol.as_str());
-                }
-                Entry::Occupied(o) => {
-                    let x = *o.get();
-                    self.emit_u8(SYMBOL_OFFSET);
-                    self.emit_usize(x);
-                }
-            }
-        }
+    fn encode_symbol(&mut self, sym: Symbol) {
+        self.encode_symbol_or_byte_symbol(sym.as_u32(), |this| this.emit_str(sym.as_str()));
+    }
+
+    fn encode_byte_symbol(&mut self, byte_sym: ByteSymbol) {
+        self.encode_symbol_or_byte_symbol(byte_sym.as_u32(), |this| {
+            this.emit_byte_str(byte_sym.as_byte_str())
+        });
     }
 }
 
@@ -490,6 +478,33 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         assert!(pos.get() <= self.position());
 
         LazyArray::from_position_and_num_elems(pos, len)
+    }
+
+    fn encode_symbol_or_byte_symbol(
+        &mut self,
+        index: u32,
+        emit_str_or_byte_str: impl Fn(&mut Self),
+    ) {
+        // if symbol/byte symbol is predefined, emit tag and symbol index
+        if Symbol::is_predefined(index) {
+            self.opaque.emit_u8(SYMBOL_PREDEFINED);
+            self.opaque.emit_u32(index);
+        } else {
+            // otherwise write it as string or as offset to it
+            match self.symbol_index_table.entry(index) {
+                Entry::Vacant(o) => {
+                    self.opaque.emit_u8(SYMBOL_STR);
+                    let pos = self.opaque.position();
+                    o.insert(pos);
+                    emit_str_or_byte_str(self);
+                }
+                Entry::Occupied(o) => {
+                    let x = *o.get();
+                    self.emit_u8(SYMBOL_OFFSET);
+                    self.emit_usize(x);
+                }
+            }
+        }
     }
 
     fn encode_def_path_table(&mut self) {
@@ -2427,7 +2442,7 @@ fn with_encode_metadata_header(
         required_source_files,
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
-        symbol_table: Default::default(),
+        symbol_index_table: Default::default(),
     };
 
     // Encode the rustc version string in a predictable location.
