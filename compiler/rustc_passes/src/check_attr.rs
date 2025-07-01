@@ -120,12 +120,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         for attr in attrs {
             let mut style = None;
             match attr {
-                Attribute::Parsed(AttributeKind::SkipDuringMethodDispatch {
-                    span: attr_span,
-                    ..
-                }) => {
-                    self.check_must_be_applied_to_trait(*attr_span, span, target);
-                }
                 Attribute::Parsed(AttributeKind::Confusables { first_span, .. }) => {
                     self.check_confusables(*first_span, target);
                 }
@@ -207,7 +201,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
-                    | AttributeKind::MacroTransparency(_),
+                    | AttributeKind::MacroTransparency(_)
+                    | AttributeKind::SkipDuringMethodDispatch { .. },
                 ) => { /* do nothing  */ }
                 Attribute::Parsed(AttributeKind::AsPtr(attr_span)) => {
                     self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)

@@ -635,3 +635,12 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
         diag
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_should_be_applied_to_trait)]
+pub(crate) struct AttrShouldBeAppliedToTrait {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub defn_span: Span,
+}

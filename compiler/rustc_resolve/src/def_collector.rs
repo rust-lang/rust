@@ -2,7 +2,7 @@ use std::mem;
 
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
-use rustc_attr_parsing::{AttributeParser, Early, OmitDoc};
+use rustc_attr_parsing::{AttrTarget, AttributeParser, Early, OmitDoc};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
@@ -137,6 +137,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     &i.attrs,
                     i.span,
                     i.id,
+                    AttrTarget::Macro,
                     OmitDoc::Skip,
                     std::convert::identity,
                     |_l| {

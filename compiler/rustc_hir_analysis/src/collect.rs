@@ -872,7 +872,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
 
     let [skip_array_during_method_dispatch, skip_boxed_slice_during_method_dispatch] = find_attr!(
         tcx.get_all_attrs(def_id),
-        AttributeKind::SkipDuringMethodDispatch { array, boxed_slice, span:_ } => [*array, *boxed_slice]
+        AttributeKind::SkipDuringMethodDispatch { array, boxed_slice } => [*array, *boxed_slice]
     )
     .unwrap_or([false; 2]);
 

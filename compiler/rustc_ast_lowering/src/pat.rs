@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use rustc_ast::ptr::P;
 use rustc_ast::*;
+use rustc_attr_parsing::AttrTarget;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{self as hir, LangItem};
@@ -94,7 +95,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                         let fs = self.arena.alloc_from_iter(fields.iter().map(|f| {
                             let hir_id = self.lower_node_id(f.id);
-                            self.lower_attrs(hir_id, &f.attrs, f.span);
+                            self.lower_attrs(hir_id, &f.attrs, f.span, AttrTarget::PatField);
 
                             hir::PatField {
                                 hir_id,

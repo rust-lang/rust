@@ -4,9 +4,11 @@ use rustc_attr_data_structures::AttributeKind;
 use rustc_feature::{AttributeTemplate, template};
 use rustc_span::{Symbol, sym};
 
+use crate::AttrTarget;
 use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
 use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
+use crate::session_diagnostics::AttrShouldBeAppliedToTrait;
 
 pub(crate) struct SkipDuringMethodDispatchParser;
 
@@ -18,6 +20,14 @@ impl<S: Stage> SingleAttributeParser<S> for SkipDuringMethodDispatchParser {
     const TEMPLATE: AttributeTemplate = template!(List: "array, boxed_slice");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        if !matches!(cx.target, AttrTarget::Trait { .. }) {
+            cx.dcx().emit_err(AttrShouldBeAppliedToTrait {
+                attr_span: cx.attr_span,
+                defn_span: cx.target_span,
+            });
+            return None;
+        }
+
         let mut array = false;
         let mut boxed_slice = false;
         let Some(args) = args.list() else {
@@ -49,6 +59,6 @@ impl<S: Stage> SingleAttributeParser<S> for SkipDuringMethodDispatchParser {
                 cx.duplicate_key(arg.span(), key);
             }
         }
-        Some(AttributeKind::SkipDuringMethodDispatch { array, boxed_slice, span: cx.attr_span })
+        Some(AttributeKind::SkipDuringMethodDispatch { array, boxed_slice })
     }
 }
