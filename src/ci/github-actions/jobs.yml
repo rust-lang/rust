@@ -122,11 +122,11 @@ jobs:
 # These jobs automatically inherit envs.pr, to avoid repeating
 # it in each job definition.
 pr:
-  - name: mingw-check-1
+  - name: pr-check-1
     <<: *job-linux-4c
-  - name: mingw-check-2
+  - name: pr-check-2
     <<: *job-linux-4c
-  - name: mingw-check-tidy
+  - name: pr-check-tidy
     continue_on_error: true
     free_disk: false
     env:
@@ -312,13 +312,13 @@ auto:
         /scripts/stage_2_test_set2.sh
     <<: *job-linux-4c
 
-  - name: mingw-check-1
+  - name: pr-check-1
     <<: *job-linux-4c
 
-  - name: mingw-check-2
+  - name: pr-check-2
     <<: *job-linux-4c
 
-  - name: mingw-check-tidy
+  - name: pr-check-tidy
     free_disk: false
     <<: *job-linux-4c
 
