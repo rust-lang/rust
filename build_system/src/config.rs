@@ -352,10 +352,14 @@ impl ConfigInfo {
             None => return Err("no host found".to_string()),
         };
 
-        if self.target_triple.is_empty()
-            && let Some(overwrite) = env.get("OVERWRITE_TARGET_TRIPLE")
-        {
-            self.target_triple = overwrite.clone();
+        if self.target_triple.is_empty() {
+            // TODO: set target triple.
+            // TODO: why do we even need to set target_triple?
+            // It seems to only be needed for the linker (we could add an environment variable to
+            // remove this need) and the sysroot (perhaps we could find another way to find it).
+            // TODO TODO: seems like we would still need OVERWRITE_TARGET_TRIPLE when using a
+            // json spec file.
+            // ====> maybe not since we specify both --target and --target-triple.
         }
         if self.target_triple.is_empty() {
             self.target_triple = self.host_triple.clone();
