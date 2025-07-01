@@ -546,6 +546,10 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
     }
 
     fn decode_span(&mut self) -> Span {
+        if !self.cdata().has_rmeta_extras() {
+            return DUMMY_SP;
+        }
+
         let start = self.position();
         let tag = SpanTag(self.peek_byte());
         let data = if tag.kind() == SpanKind::Indirect {
@@ -1997,6 +2001,10 @@ impl CrateMetadata {
 
     pub(crate) fn has_default_lib_allocator(&self) -> bool {
         self.root.has_default_lib_allocator
+    }
+
+    pub(crate) fn has_rmeta_extras(&self) -> bool {
+        self.root.has_rmeta_extras
     }
 
     pub(crate) fn is_proc_macro_crate(&self) -> bool {

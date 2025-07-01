@@ -168,6 +168,10 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_span(&mut self, span: Span) {
+        if self.tcx.sess.is_split_rmeta_enabled() {
+            return;
+        }
+
         match self.span_shorthands.entry(span) {
             Entry::Occupied(o) => {
                 // If an offset is smaller than the absolute position, we encode with the offset.
@@ -603,6 +607,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         adapted.encode(&mut self.opaque)
     }
 
+    fn dont_encode_source_map(
+        &mut self,
+    ) -> LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>> {
+        let adapted = TableBuilder::default();
+        adapted.encode(&mut self.opaque)
+    }
+
     fn encode_crate_root(&mut self) -> LazyValue<CrateRoot> {
         let tcx = self.tcx;
         let mut stats: Vec<(&'static str, usize)> = Vec::with_capacity(32);
@@ -708,7 +719,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Encode source_map. This needs to be done last, because encoding `Span`s tells us which
         // `SourceFiles` we actually need to encode.
-        let source_map = stat!("source-map", || self.encode_source_map());
+        let source_map = if tcx.sess.is_split_rmeta_enabled() {
+            stat!("source-map", || self.dont_encode_source_map())
+        } else {
+            stat!("source-map", || self.encode_source_map())
+        };
         let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
 
         let root = stat!("final", || {
@@ -733,6 +748,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     attrs,
                     sym::default_lib_allocator,
                 ),
+                has_rmeta_extras: !tcx.sess.is_split_rmeta_enabled(),
                 proc_macro_data,
                 debugger_visualizers,
                 compiler_builtins: ast::attr::contains_name(attrs, sym::compiler_builtins),
