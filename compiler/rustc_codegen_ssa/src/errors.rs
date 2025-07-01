@@ -39,11 +39,17 @@ pub(crate) struct CguNotRecorded<'a> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_autodiff_without_lto)]
-pub struct AutodiffWithoutLto;
+pub struct AutodiffWithoutLto {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_autodiff_lib_unsupported)]
-pub struct AutodiffLibraryBuild;
+pub struct AutodiffLibraryBuild {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unknown_reuse_kind)]

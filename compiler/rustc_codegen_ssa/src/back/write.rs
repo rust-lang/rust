@@ -419,11 +419,12 @@ fn generate_lto_work<B: ExtraBackendMethods>(
     } else {
         if !autodiff.is_empty() {
             let dcx = cgcx.create_dcx();
+            let span = autodiff[0].span;
             if cgcx.crate_types.contains(&CrateType::Rlib) {
-                dcx.handle().emit_fatal(AutodiffLibraryBuild {});
+                dcx.handle().span_fatal(AutodiffLibraryBuild { span });
             }
             if cgcx.lto != Lto::Fat {
-                dcx.handle().emit_fatal(AutodiffWithoutLto {});
+                dcx.handle().emit_fatal(AutodiffWithoutLto { span });
             }
         }
         assert!(needs_fat_lto.is_empty());
