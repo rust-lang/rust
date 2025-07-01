@@ -830,7 +830,7 @@ macro_rules! uint_impl {
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
-        #[doc = concat!("let _ = (", stringify!($SelfT), "::MIN + 2).strict_sub_signed(3);")]
+        #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX).strict_sub_signed(-1);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
