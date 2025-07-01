@@ -109,7 +109,13 @@ LL ~                 State::A => State::B,
 LL ~                 State::B | State::C => todo!(),
    |
 
-error: aborting due to 13 previous errors
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/invalid.rs:185:17
+   |
+LL |                 4.0..3.0 => {
+   |                 ^^^^^^^^
 
-Some errors have detailed explanations: E0004, E0308.
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0004, E0308, E0579.
 For more information about an error, try `rustc --explain E0004`.

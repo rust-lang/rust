@@ -172,3 +172,21 @@ fn non_exhaustive() {
         }
     }
 }
+
+fn invalid_range_pattern(state: f32) {
+    #[loop_match]
+    loop {
+        state = 'blk: {
+            match state {
+                1.0 => {
+                    #[const_continue]
+                    break 'blk 2.5;
+                }
+                4.0..3.0 => {
+                    //~^ ERROR lower range bound must be less than upper
+                    todo!()
+                }
+            }
+        }
+    }
+}
