@@ -34,6 +34,7 @@ git checkout -- tests/ui/entry-point/auxiliary/bad_main_functions.rs
 # vendor intrinsics
 rm tests/ui/asm/x86_64/evex512-implicit-feature.rs # unimplemented AVX512 x86 vendor intrinsic
 rm tests/ui/simd/dont-invalid-bitcast-x86_64.rs # unimplemented llvm.x86.sse41.round.ps
+rm tests/ui/simd/intrinsic/generic-arithmetic-pass.rs # unimplemented simd_funnel_{shl,shr}
 
 # exotic linkages
 rm tests/incremental/hashes/function_interfaces.rs
@@ -58,6 +59,7 @@ rm tests/ui/asm/naked-asm-mono-sym-fn.rs # same
 rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
 rm -r tests/run-make/embed-source-dwarf # embedding sources in debuginfo
+rm -r tests/run-make/used-proc-macro # used(linker) isn't supported yet
 
 # requires LTO
 rm -r tests/run-make/cdylib
