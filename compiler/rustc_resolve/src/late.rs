@@ -103,7 +103,7 @@ impl IntoDiagArg for PatternSource {
 /// Denotes whether the context for the set of already bound bindings is a `Product`
 /// or `Or` context. This is used in e.g., `fresh_binding` and `resolve_pattern_inner`.
 /// See those functions for more information.
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum PatBoundCtx {
     /// A product pattern context, e.g., `Variant(a, b)`.
     Product,
@@ -217,6 +217,41 @@ pub(crate) enum RibKind<'ra> {
     /// We passed through a `macro_rules!` statement
     MacroDefinition(DefId),
 
+    /// Collects `macro_rules!` statements prior to resolution.
+    /// For example:
+    ///
+    /// ```ignore (illustrative)
+    /// let f = || -> i16 { 42 };       // <1>
+    /// let a: i16 = m!();              // <2>
+    /// macro_rules! m {() => ( f() )}  // <3>
+    /// use m;                          // <4>
+    /// ```
+    ///
+    /// We record `<1>` when resolving the value of `<2>` (the expansion
+    /// result of `<3>`), enabling the system to recognize that `<1>` is
+    /// referenced in `<3>`.
+    ///
+    /// ### Why Not Use `MacroDefinition` Directly?
+    ///
+    /// This prevents edge cases like:
+    ///
+    /// ```ignore (illustrative)
+    /// fn f() {
+    ///     let x = 0;              // <1>
+    ///     macro_rules! foo {
+    ///         () => {
+    ///             assert_eq!(x, 0);
+    ///         }
+    ///     }
+    ///     let x = 1;              // <2>
+    ///     foo!();
+    /// }
+    /// ```
+    ///
+    /// Using `MacroDefinition` would incorrectly record both `<1>` and `<2>` as
+    /// potential resolutions for `x` within the macro, leading to assertion failed.
+    LookAheadMacroDefinition(DefId),
+
     /// All bindings in this rib are generic parameters that can't be used
     /// from the default of a generic parameter because they're not declared
     /// before said generic parameter. Also see the `visit_generics` override.
@@ -247,6 +282,7 @@ impl RibKind<'_> {
             | RibKind::ConstantItem(..)
             | RibKind::Module(_)
             | RibKind::MacroDefinition(_)
+            | RibKind::LookAheadMacroDefinition(_)
             | RibKind::InlineAsmSym => false,
             RibKind::ConstParamTy
             | RibKind::AssocItem
@@ -258,7 +294,9 @@ impl RibKind<'_> {
     /// This rib forbids referring to labels defined in upwards ribs.
     fn is_label_barrier(self) -> bool {
         match self {
-            RibKind::Normal | RibKind::MacroDefinition(..) => false,
+            RibKind::Normal
+            | RibKind::MacroDefinition(..)
+            | RibKind::LookAheadMacroDefinition(..) => false,
 
             RibKind::AssocItem
             | RibKind::FnOrCoroutine
@@ -3793,17 +3831,21 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     /// Apply the bindings from a pattern to the innermost rib of the current scope.
     fn apply_pattern_bindings(&mut self, mut pat_bindings: PatternBindings) {
-        let rib_bindings = self.innermost_rib_bindings(ValueNS);
         let Some((_, pat_bindings)) = pat_bindings.pop() else {
             bug!("tried applying nonexistent bindings from pattern");
         };
-
-        if rib_bindings.is_empty() {
-            // Often, such as for match arms, the bindings are introduced into a new rib.
-            // In this case, we can move the bindings over directly.
-            *rib_bindings = pat_bindings;
-        } else {
-            rib_bindings.extend(pat_bindings);
+        for rib in self.ribs[ValueNS].iter_mut().rev() {
+            let stop = !matches!(rib.kind, RibKind::LookAheadMacroDefinition(_));
+            if rib.bindings.is_empty() {
+                // Often, such as for match arms, the bindings are introduced into a new rib.
+                // In this case, we can move the bindings over directly.
+                rib.bindings = pat_bindings.clone();
+            } else {
+                rib.bindings.extend(pat_bindings.clone());
+            }
+            if stop {
+                break;
+            }
         }
     }
 
@@ -4679,6 +4721,15 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             if let StmtKind::Item(ref item) = stmt.kind
                 && let ItemKind::MacroDef(..) = item.kind
             {
+                let res = self.r.local_def_id(item.id).to_def_id();
+                self.ribs[ValueNS].push(Rib::new(RibKind::LookAheadMacroDefinition(res)));
+            }
+        }
+
+        for stmt in &block.stmts {
+            if let StmtKind::Item(ref item) = stmt.kind
+                && let ItemKind::MacroDef(..) = item.kind
+            {
                 num_macro_definition_ribs += 1;
                 let res = self.r.local_def_id(item.id).to_def_id();
                 self.ribs[ValueNS].push(Rib::new(RibKind::MacroDefinition(res)));
@@ -4691,6 +4742,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // Move back up.
         self.parent_scope.module = orig_module;
         for _ in 0..num_macro_definition_ribs {
+            // pop `LookAheadMacroDefinition` and `MacroDefinition`
+            self.ribs[ValueNS].pop();
             self.ribs[ValueNS].pop();
             self.label_ribs.pop();
         }
