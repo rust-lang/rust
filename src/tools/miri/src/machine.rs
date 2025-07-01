@@ -499,9 +499,6 @@ pub struct MiriMachine<'tcx> {
     /// in `sched_getaffinity`
     pub(crate) thread_cpu_affinity: FxHashMap<ThreadId, CpuAffinityMask>,
 
-    /// The state of the primitive synchronization objects.
-    pub(crate) sync: SynchronizationObjects,
-
     /// Precomputed `TyLayout`s for primitive data types that are commonly used inside Miri.
     pub(crate) layouts: PrimitiveLayouts<'tcx>,
 
@@ -713,7 +710,6 @@ impl<'tcx> MiriMachine<'tcx> {
             layouts,
             threads,
             thread_cpu_affinity,
-            sync: SynchronizationObjects::default(),
             static_roots: Vec::new(),
             profiler,
             string_cache: Default::default(),
@@ -903,7 +899,6 @@ impl VisitProvenance for MiriMachine<'_> {
         let MiriMachine {
             threads,
             thread_cpu_affinity: _,
-            sync: _,
             tls,
             env_vars,
             main_fn_ret_place,
