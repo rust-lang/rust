@@ -546,6 +546,10 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
     }
 
     fn decode_span(&mut self) -> Span {
+        if !self.cdata().has_rmeta_extras() {
+            return DUMMY_SP;
+        }
+
         let start = self.position();
         let tag = SpanTag(self.peek_byte());
         let data = if tag.kind() == SpanKind::Indirect {
@@ -1628,8 +1632,8 @@ impl<'a> CrateMetadataRef<'a> {
             path.filter(|_| {
                 // Only spend time on further checks if we have what to translate *to*.
                 real_source_base_dir.is_some()
-                // Some tests need the translation to be always skipped.
-                && sess.opts.unstable_opts.translate_remapped_path_to_local_path
+                    // Some tests need the translation to be always skipped.
+                    && sess.opts.unstable_opts.translate_remapped_path_to_local_path
             })
             .filter(|virtual_dir| {
                 // Don't translate away `/rustc/$hash` if we're still remapping to it,
@@ -1997,6 +2001,10 @@ impl CrateMetadata {
 
     pub(crate) fn has_default_lib_allocator(&self) -> bool {
         self.root.has_default_lib_allocator
+    }
+
+    pub(crate) fn has_rmeta_extras(&self) -> bool {
+        self.root.has_rmeta_extras
     }
 
     pub(crate) fn is_proc_macro_crate(&self) -> bool {

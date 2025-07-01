@@ -2537,6 +2537,8 @@ written to standard error output)"),
                   by the linker"),
     split_lto_unit: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable LTO unit splitting (default: no)"),
+    split_rmeta: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "split extra rmeta data that isn't relevant rlib ABI into a separate file"),
     src_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_src_file_hash, [TRACKED],
         "hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)"),
     #[rustc_lint_opt_deny_field_access("use `Session::stack_protector` instead of this field")]

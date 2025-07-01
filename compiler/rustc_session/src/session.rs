@@ -400,6 +400,10 @@ impl Session {
         self.opts.unstable_opts.split_lto_unit == Some(true)
     }
 
+    pub fn is_split_rmeta_enabled(&self) -> bool {
+        self.opts.unstable_opts.split_rmeta == Some(true)
+    }
+
     /// Check whether this compile session and crate type use static crt.
     pub fn crt_static(&self, crate_type: Option<CrateType>) -> bool {
         if !self.target.crt_static_respected {
