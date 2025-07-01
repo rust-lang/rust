@@ -187,6 +187,14 @@ enum AddressKind {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+enum AddressBase {
+    /// This address is based on this local.
+    Local(Local),
+    /// This address is based on the deref of this pointer.
+    Deref(VnIndex),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum Value<'a, 'tcx> {
     // Root values.
     /// Used to represent values we know nothing about.
@@ -216,7 +224,10 @@ enum Value<'a, 'tcx> {
     Repeat(VnIndex, ty::Const<'tcx>),
     /// The address of a place.
     Address {
-        place: Place<'tcx>,
+        base: AddressBase,
+        // We do not use a plain `Place` as we want to be able to reason about indices.
+        // This does not contain any `Deref` projection.
+        projection: &'a [ProjectionElem<VnIndex, Ty<'tcx>>],
         kind: AddressKind,
         /// Give each borrow and pointer a different provenance, so we don't merge them.
         provenance: VnOpaque,
@@ -426,7 +437,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 
     /// Create a new `Value::Address` distinct from all the others.
     #[instrument(level = "trace", skip(self), ret)]
-    fn new_pointer(&mut self, place: Place<'tcx>, kind: AddressKind) -> VnIndex {
+    fn new_pointer(&mut self, place: Place<'tcx>, kind: AddressKind) -> Option<VnIndex> {
         let pty = place.ty(self.local_decls, self.tcx).ty;
         let ty = match kind {
             AddressKind::Ref(bk) => {
@@ -434,14 +445,34 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             }
             AddressKind::Address(mutbl) => Ty::new_ptr(self.tcx, pty, mutbl.to_mutbl_lossy()),
         };
-        let index =
-            self.values.insert_unique(ty, |provenance| Value::Address { place, kind, provenance });
+
+        let mut projection = place.projection.iter();
+        let base = if place.is_indirect_first_projection() {
+            let base = self.locals[place.local]?;
+            // Skip the initial `Deref`.
+            projection.next();
+            AddressBase::Deref(base)
+        } else {
+            AddressBase::Local(place.local)
+        };
+        // Do not try evaluating inside `Index`, this has been done by `simplify_place_projection`.
+        let projection =
+            projection.map(|proj| proj.try_map(|index| self.locals[index], |ty| ty).ok_or(()));
+        let projection = self.arena.try_alloc_from_iter(projection).ok()?;
+
+        let index = self.values.insert_unique(ty, |provenance| Value::Address {
+            base,
+            projection,
+            kind,
+            provenance,
+        });
         let evaluated = self.eval_to_const(index);
         let _index = self.evaluated.push(evaluated);
         debug_assert_eq!(index, _index);
         let _index = self.rev_locals.push(SmallVec::new());
         debug_assert_eq!(index, _index);
-        index
+
+        Some(index)
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -591,14 +622,15 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 let elem = elem.try_map(|_| None, |()| ty.ty)?;
                 self.ecx.project(base, elem).discard_err()?
             }
-            Address { place, kind: _, provenance: _ } => {
-                if !place.is_indirect_first_projection() {
-                    return None;
-                }
-                let local = self.locals[place.local]?;
-                let pointer = self.evaluated[local].as_ref()?;
+            Address { base, projection, .. } => {
+                debug_assert!(!projection.contains(&ProjectionElem::Deref));
+                let pointer = match base {
+                    AddressBase::Deref(pointer) => self.evaluated[pointer].as_ref()?,
+                    // We have no stack to point to.
+                    AddressBase::Local(_) => return None,
+                };
                 let mut mplace = self.ecx.deref_pointer(pointer).discard_err()?;
-                for elem in place.projection.iter().skip(1) {
+                for elem in projection {
                     // `Index` by constants should have been replaced by `ConstantIndex` by
                     // `simplify_place_projection`.
                     let elem = elem.try_map(|_| None, |ty| ty)?;
@@ -717,12 +749,38 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         Some(op)
     }
 
+    /// Represent the *value* we obtain by dereferencing an `Address` value.
+    #[instrument(level = "trace", skip(self), ret)]
+    fn dereference_address(
+        &mut self,
+        base: AddressBase,
+        projection: &[ProjectionElem<VnIndex, Ty<'tcx>>],
+    ) -> Option<VnIndex> {
+        let (mut place_ty, mut value) = match base {
+            // The base is a local, so we take the local's value and project from it.
+            AddressBase::Local(local) => {
+                let local = self.locals[local]?;
+                let place_ty = PlaceTy::from_ty(self.ty(local));
+                (place_ty, local)
+            }
+            // The base is a pointer's deref, so we introduce the implicit deref.
+            AddressBase::Deref(reborrow) => {
+                let place_ty = PlaceTy::from_ty(self.ty(reborrow));
+                self.project(place_ty, reborrow, ProjectionElem::Deref)?
+            }
+        };
+        for &proj in projection {
+            (place_ty, value) = self.project(place_ty, value, proj)?;
+        }
+        Some(value)
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
     fn project(
         &mut self,
         place_ty: PlaceTy<'tcx>,
         value: VnIndex,
-        proj: PlaceElem<'tcx>,
-        from_non_ssa_index: &mut bool,
+        proj: ProjectionElem<VnIndex, Ty<'tcx>>,
     ) -> Option<(PlaceTy<'tcx>, VnIndex)> {
         let projection_ty = place_ty.projection_ty(self.tcx, proj);
         let proj = match proj {
@@ -730,6 +788,12 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 if let Some(Mutability::Not) = place_ty.ty.ref_mutability()
                     && projection_ty.ty.is_freeze(self.tcx, self.typing_env())
                 {
+                    if let Value::Address { base, projection, .. } = self.get(value)
+                        && let Some(value) = self.dereference_address(base, projection)
+                    {
+                        return Some((projection_ty, value));
+                    }
+
                     // An immutable borrow `_x` always points to the same value for the
                     // lifetime of the borrow, so we can merge all instances of `*_x`.
                     return Some((projection_ty, self.insert_deref(projection_ty.ty, value)));
@@ -766,10 +830,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             }
             ProjectionElem::Index(idx) => {
                 if let Value::Repeat(inner, _) = self.get(value) {
-                    *from_non_ssa_index |= self.locals[idx].is_none();
                     return Some((projection_ty, inner));
                 }
-                let idx = self.locals[idx]?;
                 ProjectionElem::Index(idx)
             }
             ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
@@ -844,6 +906,42 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         trace!(?place);
     }
 
+    /// Represent the *value* which would be read from `place`. If we succeed, return it.
+    /// If we fail, return a `PlaceRef` that contains the same value.
+    #[instrument(level = "trace", skip(self), ret)]
+    fn compute_place_value(
+        &mut self,
+        place: Place<'tcx>,
+        location: Location,
+    ) -> Result<VnIndex, PlaceRef<'tcx>> {
+        // Invariant: `place` and `place_ref` point to the same value, even if they point to
+        // different memory locations.
+        let mut place_ref = place.as_ref();
+
+        // Invariant: `value` holds the value up-to the `index`th projection excluded.
+        let Some(mut value) = self.locals[place.local] else { return Err(place_ref) };
+        // Invariant: `value` has type `place_ty`, with optional downcast variant if needed.
+        let mut place_ty = PlaceTy::from_ty(self.local_decls[place.local].ty);
+        for (index, proj) in place.projection.iter().enumerate() {
+            if let Some(local) = self.try_as_local(value, location) {
+                // Both `local` and `Place { local: place.local, projection: projection[..index] }`
+                // hold the same value. Therefore, following place holds the value in the original
+                // `place`.
+                place_ref = PlaceRef { local, projection: &place.projection[index..] };
+            }
+
+            let Some(proj) = proj.try_map(|value| self.locals[value], |ty| ty) else {
+                return Err(place_ref);
+            };
+            let Some(ty_and_value) = self.project(place_ty, value, proj) else {
+                return Err(place_ref);
+            };
+            (place_ty, value) = ty_and_value;
+        }
+
+        Ok(value)
+    }
+
     /// Represent the *value* which would be read from `place`, and point `place` to a preexisting
     /// place with the same value (if that already exists).
     #[instrument(level = "trace", skip(self), ret)]
@@ -854,67 +952,28 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     ) -> Option<VnIndex> {
         self.simplify_place_projection(place, location);
 
-        // Invariant: `place` and `place_ref` point to the same value, even if they point to
-        // different memory locations.
-        let mut place_ref = place.as_ref();
-
-        // Invariant: `value` holds the value up-to the `index`th projection excluded.
-        let mut value = self.locals[place.local]?;
-        // Invariant: `value` has type `place_ty`, with optional downcast variant if needed.
-        let mut place_ty = PlaceTy::from_ty(self.local_decls[place.local].ty);
-        let mut from_non_ssa_index = false;
-        for (index, proj) in place.projection.iter().enumerate() {
-            if let Value::Projection(pointer, ProjectionElem::Deref) = self.get(value)
-                && let Value::Address { place: mut pointee, kind, .. } = self.get(pointer)
-                && let AddressKind::Ref(BorrowKind::Shared) = kind
-                && let Some(v) = self.simplify_place_value(&mut pointee, location)
-            {
-                value = v;
-                // `pointee` holds a `Place`, so `ProjectionElem::Index` holds a `Local`.
-                // That local is SSA, but we otherwise have no guarantee on that local's value at
-                // the current location compared to its value where `pointee` was borrowed.
-                if pointee.projection.iter().all(|elem| !matches!(elem, ProjectionElem::Index(_))) {
-                    place_ref =
-                        pointee.project_deeper(&place.projection[index..], self.tcx).as_ref();
+        match self.compute_place_value(*place, location) {
+            Ok(value) => {
+                if let Some(new_place) = self.try_as_place(value, location, true)
+                    && (new_place.local != place.local
+                        || new_place.projection.len() < place.projection.len())
+                {
+                    *place = new_place;
+                    self.reused_locals.insert(new_place.local);
                 }
+                Some(value)
             }
-            if let Some(local) = self.try_as_local(value, location) {
-                // Both `local` and `Place { local: place.local, projection: projection[..index] }`
-                // hold the same value. Therefore, following place holds the value in the original
-                // `place`.
-                place_ref = PlaceRef { local, projection: &place.projection[index..] };
-            }
-
-            (place_ty, value) = self.project(place_ty, value, proj, &mut from_non_ssa_index)?;
-        }
-
-        if let Value::Projection(pointer, ProjectionElem::Deref) = self.get(value)
-            && let Value::Address { place: mut pointee, kind, .. } = self.get(pointer)
-            && let AddressKind::Ref(BorrowKind::Shared) = kind
-            && let Some(v) = self.simplify_place_value(&mut pointee, location)
-        {
-            value = v;
-            // `pointee` holds a `Place`, so `ProjectionElem::Index` holds a `Local`.
-            // That local is SSA, but we otherwise have no guarantee on that local's value at
-            // the current location compared to its value where `pointee` was borrowed.
-            if pointee.projection.iter().all(|elem| !matches!(elem, ProjectionElem::Index(_))) {
-                place_ref = pointee.project_deeper(&[], self.tcx).as_ref();
+            Err(place_ref) => {
+                if place_ref.local != place.local
+                    || place_ref.projection.len() < place.projection.len()
+                {
+                    // By the invariant on `place_ref`.
+                    *place = place_ref.project_deeper(&[], self.tcx);
+                    self.reused_locals.insert(place_ref.local);
+                }
+                None
             }
         }
-        if let Some(new_local) = self.try_as_local(value, location) {
-            place_ref = PlaceRef { local: new_local, projection: &[] };
-        } else if from_non_ssa_index {
-            // If access to non-SSA locals is unavoidable, bail out.
-            return None;
-        }
-
-        if place_ref.local != place.local || place_ref.projection.len() < place.projection.len() {
-            // By the invariant on `place_ref`.
-            *place = place_ref.project_deeper(&[], self.tcx);
-            self.reused_locals.insert(place_ref.local);
-        }
-
-        Some(value)
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -961,11 +1020,11 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             Rvalue::Aggregate(..) => return self.simplify_aggregate(lhs, rvalue, location),
             Rvalue::Ref(_, borrow_kind, ref mut place) => {
                 self.simplify_place_projection(place, location);
-                return Some(self.new_pointer(*place, AddressKind::Ref(borrow_kind)));
+                return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
             }
             Rvalue::RawPtr(mutbl, ref mut place) => {
                 self.simplify_place_projection(place, location);
-                return Some(self.new_pointer(*place, AddressKind::Address(mutbl)));
+                return self.new_pointer(*place, AddressKind::Address(mutbl));
             }
             Rvalue::WrapUnsafeBinder(ref mut op, _) => {
                 let value = self.simplify_operand(op, location)?;
@@ -1205,12 +1264,10 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     }
 
                     // `&mut *p`, `&raw *p`, etc don't change metadata.
-                    Value::Address { place, kind: _, provenance: _ }
-                        if let PlaceRef { local, projection: [PlaceElem::Deref] } =
-                            place.as_ref()
-                            && let Some(local_index) = self.locals[local] =>
+                    Value::Address { base: AddressBase::Deref(reborrowed), projection, .. }
+                        if projection.is_empty() =>
                     {
-                        local_index
+                        reborrowed
                     }
 
                     _ => break,
