@@ -577,10 +577,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                 diag.code(E0565);
             }
             AttributeParseErrorReason::ExpectedNameValue(None) => {
-                diag.span_label(
-                    self.span,
-                    format!("expected this to be of the form `{name} = \"...\"`"),
-                );
+                // The suggestion we add below this match already contains enough information
             }
             AttributeParseErrorReason::ExpectedNameValue(Some(name)) => {
                 diag.span_label(
