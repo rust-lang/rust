@@ -10,6 +10,7 @@ pub(crate) fn target() -> Target {
     base.stack_probes = StackProbeType::Inline;
     // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
     base.crt_static_default = true;
+    base.abi = "elfv2".into();
     base.llvm_abiname = "elfv2".into();
 
     Target {
