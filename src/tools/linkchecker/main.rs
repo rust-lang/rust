@@ -17,9 +17,11 @@
 //! should catch the majority of "broken link" cases.
 
 use std::cell::{Cell, RefCell};
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::ErrorKind;
+use std::iter::once;
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::time::Instant;
@@ -112,6 +114,7 @@ macro_rules! t {
 
 struct Cli {
     docs: PathBuf,
+    link_targets_dirs: Vec<PathBuf>,
 }
 
 fn main() {
@@ -123,7 +126,11 @@ fn main() {
         }
     };
 
-    let mut checker = Checker { root: cli.docs.clone(), cache: HashMap::new() };
+    let mut checker = Checker {
+        root: cli.docs.clone(),
+        link_targets_dirs: cli.link_targets_dirs,
+        cache: HashMap::new(),
+    };
     let mut report = Report {
         errors: 0,
         start: Instant::now(),
@@ -150,6 +157,7 @@ fn parse_cli() -> Result<Cli, String> {
 
     let mut verbatim = false;
     let mut docs = None;
+    let mut link_targets_dirs = Vec::new();
 
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -157,6 +165,12 @@ fn parse_cli() -> Result<Cli, String> {
             verbatim = true;
         } else if !verbatim && (arg == "-h" || arg == "--help") {
             usage_and_exit(0)
+        } else if !verbatim && arg == "--link-targets-dir" {
+            link_targets_dirs.push(to_canonical_path(
+                &args.next().ok_or("missing value for --link-targets-dir")?,
+            )?);
+        } else if !verbatim && let Some(value) = arg.strip_prefix("--link-targets-dir=") {
+            link_targets_dirs.push(to_canonical_path(value)?);
         } else if !verbatim && arg.starts_with('-') {
             return Err(format!("unknown flag: {arg}"));
         } else if docs.is_none() {
@@ -166,16 +180,20 @@ fn parse_cli() -> Result<Cli, String> {
         }
     }
 
-    Ok(Cli { docs: to_canonical_path(&docs.ok_or("missing first positional argument")?)? })
+    Ok(Cli {
+        docs: to_canonical_path(&docs.ok_or("missing first positional argument")?)?,
+        link_targets_dirs,
+    })
 }
 
 fn usage_and_exit(code: i32) -> ! {
-    eprintln!("usage: linkchecker <path>");
+    eprintln!("usage: linkchecker PATH [--link-targets-dir=PATH ...]");
     std::process::exit(code)
 }
 
 struct Checker {
     root: PathBuf,
+    link_targets_dirs: Vec<PathBuf>,
     cache: Cache,
 }
 
@@ -468,15 +486,23 @@ impl Checker {
         let pretty_path =
             file.strip_prefix(&self.root).unwrap_or(file).to_str().unwrap().to_string();
 
-        let entry =
-            self.cache.entry(pretty_path.clone()).or_insert_with(|| match fs::metadata(file) {
+        for base in once(&self.root).chain(self.link_targets_dirs.iter()) {
+            let entry = self.cache.entry(pretty_path.clone());
+            if let Entry::Occupied(e) = &entry
+                && !matches!(e.get(), FileEntry::Missing)
+            {
+                break;
+            }
+
+            let file = base.join(&pretty_path);
+            entry.insert_entry(match fs::metadata(&file) {
                 Ok(metadata) if metadata.is_dir() => FileEntry::Dir,
                 Ok(_) => {
                     if file.extension().and_then(|s| s.to_str()) != Some("html") {
                         FileEntry::OtherFile
                     } else {
                         report.html_files += 1;
-                        load_html_file(file, report)
+                        load_html_file(&file, report)
                     }
                 }
                 Err(e) if e.kind() == ErrorKind::NotFound => FileEntry::Missing,
@@ -492,6 +518,9 @@ impl Checker {
                     panic!("unexpected read error for {}: {}", file.display(), e);
                 }
             });
+        }
+
+        let entry = self.cache.get(&pretty_path).unwrap();
         (pretty_path, entry)
     }
 }
