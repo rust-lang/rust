@@ -57,3 +57,21 @@ fn parse_rustc_layout_scalar_valid_range<S: Stage>(
     };
     Some(Box::new(num.0))
 }
+
+pub(crate) struct RustcObjectLifetimeDefaultParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {
+    const PATH: &[rustc_span::Symbol] = &[sym::rustc_object_lifetime_default];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const TEMPLATE: AttributeTemplate = template!(Word);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        if let Err(span) = args.no_args() {
+            cx.expected_no_args(span);
+            return None;
+        }
+
+        Some(AttributeKind::RustcObjectLifetimeDefault)
+    }
+}
