@@ -895,18 +895,13 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     fn simplify_aggregate_to_copy(
         &mut self,
-        lhs: &Place<'tcx>,
-        rvalue: &mut Rvalue<'tcx>,
-        location: Location,
-        fields: &[VnIndex],
+        ty: Ty<'tcx>,
         variant_index: VariantIdx,
+        fields: &[VnIndex],
     ) -> Option<VnIndex> {
-        let Some(&first_field) = fields.first() else {
-            return None;
-        };
-        let Value::Projection(copy_from_value, _) = *self.get(first_field) else {
-            return None;
-        };
+        let Some(&first_field) = fields.first() else { return None };
+        let Value::Projection(copy_from_value, _) = *self.get(first_field) else { return None };
+
         // All fields must correspond one-to-one and come from the same aggregate value.
         if fields.iter().enumerate().any(|(index, &v)| {
             if let Value::Projection(pointer, ProjectionElem::Field(from_index, _)) = *self.get(v)
@@ -933,21 +928,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
-        // Allow introducing places with non-constant offsets, as those are still better than
-        // reconstructing an aggregate.
-        if self.ty(copy_from_local_value) == rvalue.ty(self.local_decls, self.tcx)
-            && let Some(place) = self.try_as_place(copy_from_local_value, location, true)
-        {
-            // Avoid creating `*a = copy (*b)`, as they might be aliases resulting in overlapping assignments.
-            // FIXME: This also avoids any kind of projection, not just derefs. We can add allowed projections.
-            if lhs.as_local().is_some() {
-                self.reused_locals.insert(place.local);
-                *rvalue = Rvalue::Use(Operand::Copy(place));
-            }
-            return Some(copy_from_local_value);
-        }
-
-        None
+        // Both must be variants of the same type.
+        if self.ty(copy_from_local_value) == ty { Some(copy_from_local_value) } else { None }
     }
 
     fn simplify_aggregate(
@@ -1034,9 +1016,16 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
-        if let Some(value) =
-            self.simplify_aggregate_to_copy(lhs, rvalue, location, &fields, variant_index)
-        {
+        if let Some(value) = self.simplify_aggregate_to_copy(ty, variant_index, &fields) {
+            // Allow introducing places with non-constant offsets, as those are still better than
+            // reconstructing an aggregate. But avoid creating `*a = copy (*b)`, as they might be
+            // aliases resulting in overlapping assignments.
+            let allow_complex_projection =
+                lhs.projection[..].iter().all(PlaceElem::is_stable_offset);
+            if let Some(place) = self.try_as_place(value, location, allow_complex_projection) {
+                self.reused_locals.insert(place.local);
+                *rvalue = Rvalue::Use(Operand::Copy(place));
+            }
             return Some(value);
         }
 
