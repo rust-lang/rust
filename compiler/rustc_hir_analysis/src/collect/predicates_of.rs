@@ -691,7 +691,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
                 if let ty::ClauseKind::Trait(bound) = pred.kind().skip_binder()
                     && bound.polarity == ty::PredicatePolarity::Positive
                 {
-                    tcx.at(span).explicit_super_predicates_of(bound.def_id());
+                    tcx.ensure_ok().explicit_super_predicates_of(bound.def_id());
                 }
             }
         }
@@ -701,7 +701,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
                 if let ty::ClauseKind::Trait(bound) = pred.kind().skip_binder()
                     && bound.polarity == ty::PredicatePolarity::Positive
                 {
-                    tcx.at(span).explicit_implied_predicates_of(bound.def_id());
+                    tcx.ensure_ok().explicit_implied_predicates_of(bound.def_id());
                 }
             }
         }
