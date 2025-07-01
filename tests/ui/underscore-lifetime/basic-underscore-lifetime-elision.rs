@@ -1,6 +1,9 @@
+//! Checks the correct usage and behavior of the anonymous lifetime `'_` (underscore lifetime)
+
 //@ run-pass
 
 #![allow(dead_code, mismatched_lifetime_syntaxes)]
+
 struct Foo<'a>(&'a u8);
 
 fn foo(x: &u8) -> Foo<'_> {
@@ -31,8 +34,5 @@ fn main() {
     let _ = foo2(x);
     let _ = foo3(x);
     foo4(Foo(x));
-    let _ = foo5(Foo2 {
-        a: x,
-        b: &6,
-    });
+    let _ = foo5(Foo2 { a: x, b: &6 });
 }

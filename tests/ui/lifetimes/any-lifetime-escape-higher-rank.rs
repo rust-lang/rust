@@ -1,11 +1,15 @@
+//! Checks that `std::any::Any` cannot be used to circumvent lifetime rules
+//! with higher-rank types.
+
 //@ run-pass
-// Test that we can't ignore lifetimes by going through Any.
 
 use std::any::Any;
 
 struct Foo<'a>(&'a str);
 
-fn good(s: &String) -> Foo<'_> { Foo(s) }
+fn good(s: &String) -> Foo<'_> {
+    Foo(s)
+}
 
 fn bad1(s: String) -> Option<&'static str> {
     let a: Box<dyn Any> = Box::new(good as fn(&String) -> Foo);
@@ -17,7 +21,9 @@ trait AsStr<'a, 'b> {
 }
 
 impl<'a> AsStr<'a, 'a> for String {
-   fn get(&'a self) -> &'a str { self }
+    fn get(&'a self) -> &'a str {
+        self
+    }
 }
 
 fn bad2(s: String) -> Option<&'static str> {

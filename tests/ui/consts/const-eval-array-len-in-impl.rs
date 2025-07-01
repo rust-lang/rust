@@ -1,4 +1,6 @@
-// https://github.com/rust-lang/rust/issues/49208
+//! This checks that compiler correctly evaluate constant array lengths within trait `impl` headers.
+//!
+//! Regression test for <https://github.com/rust-lang/rust/issues/49208>.
 
 trait Foo {
     fn foo();

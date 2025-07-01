@@ -1,24 +1,25 @@
+//! Checks how type parameters interact with auto-traits like `Send` and `Sync` with implicit
+//! bounds
+
 //@ run-pass
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 
-fn p_foo<T>(_pinned: T) { }
-fn s_foo<T>(_shared: T) { }
-fn u_foo<T:Send>(_unique: T) { }
+fn p_foo<T>(_pinned: T) {}
+fn s_foo<T>(_shared: T) {}
+fn u_foo<T: Send>(_unique: T) {}
 
 struct r {
-  i: isize,
+    i: isize,
 }
 
 impl Drop for r {
     fn drop(&mut self) {}
 }
 
-fn r(i:isize) -> r {
-    r {
-        i: i
-    }
+fn r(i: isize) -> r {
+    r { i }
 }
 
 pub fn main() {

@@ -1,16 +1,14 @@
+//! This test verifies that the `?` operator expansion is hygienic,
+//! i.e., it's not affected by other `val` and `err` bindings that may be in scope.
+//!
+//! Note: Prior to the Try trait stabilization, `expr?` expanded to a match
+//! with `val` and `err` bindings. The current implementation uses Try::branch()
+//! but this test remains relevant for hygiene verification.
+
 //@ run-pass
 
 #![allow(non_upper_case_globals)]
 #![allow(dead_code)]
-// `expr?` expands to:
-//
-// match expr {
-//     Ok(val) => val,
-//     Err(err) => return Err(From::from(err)),
-// }
-//
-// This test verifies that the expansion is hygienic, i.e., it's not affected by other `val` and
-// `err` bindings that may be in scope.
 
 use std::num::ParseIntError;
 

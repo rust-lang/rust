@@ -1,3 +1,5 @@
+//! Checks basic multiple variable declaration using tuple destructuring in a `let` binding.
+
 //@ run-pass
 
 pub fn main() {
