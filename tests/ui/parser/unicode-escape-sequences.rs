@@ -1,6 +1,12 @@
+//! Test ES6-style Unicode escape sequences in string literals.
+//!
+//! Regression test for RFC 446 implementation.
+//! See <https://github.com/rust-lang/rust/pull/19480>.
+
 //@ run-pass
 
 pub fn main() {
+    // Basic Unicode escape - snowman character
     let s = "\u{2603}";
     assert_eq!(s, "☃");
 
