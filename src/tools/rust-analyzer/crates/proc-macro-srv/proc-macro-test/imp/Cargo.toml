@@ -6,6 +6,7 @@ edition = "2024"
 publish = false
 
 [lib]
+doctest = false
 proc-macro = true
 
 [dependencies]

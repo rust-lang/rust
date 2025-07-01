@@ -24,6 +24,7 @@ impl AttributeKind {
             DocComment { .. } => Yes,
             ExportName { .. } => Yes,
             Inline(..) => No,
+            LinkSection { .. } => No,
             MacroTransparency(..) => Yes,
             Repr(..) => No,
             Stability { .. } => Yes,

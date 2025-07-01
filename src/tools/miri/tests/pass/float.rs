@@ -1066,17 +1066,6 @@ pub fn libm() {
     assert_eq!((-1f32).powf(f32::NEG_INFINITY), 1.0);
     assert_eq!((-1f64).powf(f64::NEG_INFINITY), 1.0);
 
-    // For pow (powf in rust) the C standard says:
-    // x^0 = 1 for all x even a sNaN
-    // FIXME(#4286): this does not match the behavior of all implementations.
-    assert_eq!(SNAN_F32.powf(0.0), 1.0);
-    assert_eq!(SNAN_F64.powf(0.0), 1.0);
-
-    // For pown (powi in rust) the C standard says:
-    // x^0 = 1 for all x even a sNaN
-    // FIXME(#4286): this does not match the behavior of all implementations.
-    assert_eq!(SNAN_F32.powi(0), 1.0);
-    assert_eq!(SNAN_F64.powi(0), 1.0);
 
     assert_eq!(0f32.powi(10), 0.0);
     assert_eq!(0f64.powi(100), 0.0);
@@ -1358,7 +1347,7 @@ fn test_min_max_nondet() {
     /// Ensure that if we call the closure often enough, we see both `true` and `false.`
     #[track_caller]
     fn ensure_both(f: impl Fn() -> bool) {
-        let rounds = 16;
+        let rounds = 32;
         let first = f();
         for _ in 1..rounds {
             if f() != first {
@@ -1500,4 +1489,18 @@ fn test_non_determinism() {
     test_operations_f32(12., 5.);
     test_operations_f64(19., 11.);
     test_operations_f128(25., 18.);
+
+
+    // SNaN^0 = (1 | NaN)
+    ensure_nondet(|| f32::powf(SNAN_F32, 0.0).is_nan());
+    ensure_nondet(|| f64::powf(SNAN_F64, 0.0).is_nan());
+
+    // 1^SNaN = (1 | NaN)
+    ensure_nondet(|| f32::powf(1.0, SNAN_F32).is_nan());
+    ensure_nondet(|| f64::powf(1.0, SNAN_F64).is_nan());
+
+    // same as powf (keep it consistent):
+    // x^SNaN = (1 | NaN)
+    ensure_nondet(|| f32::powi(SNAN_F32, 0).is_nan());
+    ensure_nondet(|| f64::powi(SNAN_F64, 0).is_nan());
 }

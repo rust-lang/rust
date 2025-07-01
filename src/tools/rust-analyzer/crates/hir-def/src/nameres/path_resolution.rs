@@ -24,8 +24,8 @@ use crate::{
     item_scope::{BUILTIN_SCOPE, ImportOrExternCrate},
     item_tree::FieldsShape,
     nameres::{
-        BlockInfo, BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, crate_def_map,
-        sub_namespace_match,
+        BlockInfo, BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, assoc::TraitItems,
+        crate_def_map, sub_namespace_match,
     },
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
@@ -584,8 +584,11 @@ impl DefMap {
                     // now resulting in a cycle.
                     // To properly implement this, trait item collection needs to be done in def map
                     // collection...
-                    let item =
-                        if true { None } else { db.trait_items(t).assoc_item_by_name(segment) };
+                    let item = if true {
+                        None
+                    } else {
+                        TraitItems::query(db, t).assoc_item_by_name(segment)
+                    };
                     return match item {
                         Some(item) => ResolvePathResult::new(
                             match item {

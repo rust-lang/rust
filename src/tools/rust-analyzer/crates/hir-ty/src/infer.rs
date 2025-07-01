@@ -1813,7 +1813,7 @@ impl<'db> InferenceContext<'db> {
     }
 
     fn resolve_output_on(&self, trait_: TraitId) -> Option<TypeAliasId> {
-        self.db.trait_items(trait_).associated_type_by_name(&Name::new_symbol_root(sym::Output))
+        trait_.trait_items(self.db).associated_type_by_name(&Name::new_symbol_root(sym::Output))
     }
 
     fn resolve_lang_trait(&self, lang: LangItem) -> Option<TraitId> {

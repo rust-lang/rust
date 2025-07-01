@@ -431,4 +431,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "It is no longer possible to `x build` with stage 0. All build commands have to be on stage 1+.",
     },
+    ChangeInfo {
+        change_id: 143175,
+        severity: ChangeSeverity::Info,
+        summary: "It is no longer possible to combine `rust.lld = true` with configuring external LLVM using `llvm.llvm-config`.",
+    },
 ];

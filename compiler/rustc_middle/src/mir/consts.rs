@@ -168,8 +168,9 @@ impl<'tcx> ConstValue<'tcx> {
                     return Some(&[]);
                 }
                 // Non-empty slice, must have memory. We know this is a relative pointer.
-                let (inner_prov, offset) = ptr.into_parts();
-                let data = tcx.global_alloc(inner_prov?.alloc_id()).unwrap_memory();
+                let (inner_prov, offset) =
+                    ptr.into_pointer_or_addr().ok()?.prov_and_relative_offset();
+                let data = tcx.global_alloc(inner_prov.alloc_id()).unwrap_memory();
                 (data, offset.bytes(), offset.bytes() + len)
             }
         };

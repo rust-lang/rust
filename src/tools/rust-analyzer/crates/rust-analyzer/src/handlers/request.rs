@@ -2433,17 +2433,14 @@ fn run_rustfmt(
             }
             _ => {
                 // Something else happened - e.g. `rustfmt` is missing or caught a signal
-                Err(LspError::new(
-                    -32900,
-                    format!(
-                        r#"rustfmt exited with:
-                           Status: {}
-                           stdout: {captured_stdout}
-                           stderr: {captured_stderr}"#,
-                        output.status,
-                    ),
-                )
-                .into())
+                tracing::error!(
+                    ?command,
+                    %output.status,
+                    %captured_stdout,
+                    %captured_stderr,
+                    "rustfmt failed"
+                );
+                Ok(None)
             }
         };
     }

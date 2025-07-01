@@ -38,7 +38,7 @@ impl InferenceContext<'_> {
         decl: Option<DeclContext>,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(id.into(), path, true);
-        let var_data = def.map(|it| it.variant_data(self.db));
+        let var_data = def.map(|it| it.fields(self.db));
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
         }
@@ -60,7 +60,7 @@ impl InferenceContext<'_> {
             _ if subs.is_empty() => {}
             Some(def) => {
                 let field_types = self.db.field_types(def);
-                let variant_data = def.variant_data(self.db);
+                let variant_data = def.fields(self.db);
                 let visibilities = self.db.field_visibilities(def);
 
                 let (pre, post) = match ellipsis {
@@ -129,7 +129,7 @@ impl InferenceContext<'_> {
             _ if subs.len() == 0 => {}
             Some(def) => {
                 let field_types = self.db.field_types(def);
-                let variant_data = def.variant_data(self.db);
+                let variant_data = def.fields(self.db);
                 let visibilities = self.db.field_visibilities(def);
 
                 let substs = ty.as_adt().map(TupleExt::tail);
