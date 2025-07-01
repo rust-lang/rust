@@ -1329,7 +1329,11 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                     // We've evaluated the `entry_node_id` before evaluating this goal. In case
                     // that node and its parents has not changed, we can reinsert the cache entry
                     // before starting to reevaluate it.
-                    if !self.tree.goal_or_parent_was_reevaluated(node_id, &was_reevaluated, entry_node_id) {
+                    if !self.tree.goal_or_parent_was_reevaluated(
+                        node_id,
+                        &was_reevaluated,
+                        entry_node_id,
+                    ) {
                         continue;
                     }
                 }
