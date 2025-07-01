@@ -2844,7 +2844,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
             .find(|item| !item.span.is_dummy()) // Skip prelude `use`s
             .map(|item| errors::ItemFollowingInnerAttr {
                 span: if let Some(ident) = item.kind.ident() { ident.span } else { item.span },
-                kind: item.kind.descr(),
+                kind: tcx.def_descr(item.owner_id.to_def_id()),
             });
         let err = tcx.dcx().create_err(errors::InvalidAttrAtCrateLevel {
             span,
