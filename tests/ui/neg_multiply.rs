@@ -84,12 +84,12 @@ fn float() {
 }
 
 struct Y {
-    delta: f64
+    delta: f64,
 }
 
 fn nested() {
-    let a = Y {delta: 1.0};
-    let b = Y {delta: 1.0};
+    let a = Y { delta: 1.0 };
+    let b = Y { delta: 1.0 };
     let _ = ((a.delta - 0.5).abs() * -1.0).total_cmp(&1.0);
     //~^ neg_multiply
     let _ = (-(a.delta - 0.5).abs()).total_cmp(&1.0);
