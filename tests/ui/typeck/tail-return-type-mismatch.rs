@@ -1,5 +1,14 @@
-fn f() -> isize { return g(); } //~ ERROR mismatched types
+//! Test for type mismatch error when returning `usize` from `isize` function.
 
-fn g() -> usize { return 0; }
+fn f() -> isize {
+    return g();
+    //~^ ERROR mismatched types [E0308]
+}
 
-fn main() { let y = f(); }
+fn g() -> usize {
+    return 0;
+}
+
+fn main() {
+    let y = f();
+}
