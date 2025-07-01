@@ -293,8 +293,6 @@ pub(super) fn check_item<'tcx>(
         hir::ItemKind::Struct(..) => check_type_defn(tcx, item, false),
         hir::ItemKind::Union(..) => check_type_defn(tcx, item, true),
         hir::ItemKind::Enum(..) => check_type_defn(tcx, item, true),
-        hir::ItemKind::Trait(..) => check_trait(tcx, item),
-        hir::ItemKind::TraitAlias(..) => check_trait(tcx, item),
         _ => Ok(()),
     }
 }
@@ -345,7 +343,7 @@ pub(crate) fn check_trait_item<'tcx>(
 ///     fn into_iter<'a>(&'a self) -> Self::Iter<'a>;
 /// }
 /// ```
-fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
+pub(crate) fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
     // Associates every GAT's def_id to a list of possibly missing bounds detected by this lint.
     let mut required_bounds_by_item = FxIndexMap::default();
     let associated_items = tcx.associated_items(trait_def_id);
@@ -1106,11 +1104,8 @@ fn check_type_defn<'tcx>(
     })
 }
 
-#[instrument(skip(tcx, item))]
-fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) -> Result<(), ErrorGuaranteed> {
-    debug!(?item.owner_id);
-
-    let def_id = item.owner_id.def_id;
+#[instrument(skip(tcx))]
+pub(crate) fn check_trait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     if tcx.is_lang_item(def_id.into(), LangItem::PointeeSized) {
         // `PointeeSized` is removed during lowering.
         return Ok(());
@@ -1136,10 +1131,6 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) -> Result<(), ErrorGuarant
         Ok(())
     });
 
-    // Only check traits, don't check trait aliases
-    if let hir::ItemKind::Trait(..) = item.kind {
-        check_gat_where_clauses(tcx, item.owner_id.def_id);
-    }
     res
 }
 

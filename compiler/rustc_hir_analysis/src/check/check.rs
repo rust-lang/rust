@@ -843,12 +843,19 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     _ => {}
                 }
             }
+            res = res.and(wfcheck::check_trait(tcx, def_id));
+            wfcheck::check_gat_where_clauses(tcx, def_id);
+            // Trait aliases do not have hir checks anymore
+            return res;
         }
         DefKind::TraitAlias => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().explicit_implied_predicates_of(def_id);
             tcx.ensure_ok().explicit_super_predicates_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
+            res = res.and(wfcheck::check_trait(tcx, def_id));
+            // Trait aliases do not have hir checks anymore
+            return res;
         }
         def_kind @ (DefKind::Struct | DefKind::Union) => {
             tcx.ensure_ok().generics_of(def_id);
