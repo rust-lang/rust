@@ -36,6 +36,7 @@ pub(crate) mod lint_helpers;
 pub(crate) mod loop_match;
 pub(crate) mod must_use;
 pub(crate) mod repr;
+pub(crate) mod rustc_internal;
 pub(crate) mod semantics;
 pub(crate) mod stability;
 pub(crate) mod traits;

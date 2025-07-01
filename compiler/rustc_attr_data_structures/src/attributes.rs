@@ -290,6 +290,12 @@ pub enum AttributeKind {
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr(ThinVec<(ReprAttr, Span)>),
 
+    /// Represents `#[rustc_layout_scalar_valid_range_end]`.
+    RustcLayoutScalarValidRangeEnd(Box<u128>, Span),
+
+    /// Represents `#[rustc_layout_scalar_valid_range_start]`.
+    RustcLayoutScalarValidRangeStart(Box<u128>, Span),
+
     /// Represents `#[rustc_skip_during_method_dispatch]`.
     SkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },
 

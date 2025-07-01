@@ -618,9 +618,6 @@ passes_rustc_force_inline_coro =
     attribute cannot be applied to a `async`, `gen` or `async gen` function
     .label = `async`, `gen` or `async gen` function
 
-passes_rustc_layout_scalar_valid_range_arg =
-    expected exactly one integer literal argument
-
 passes_rustc_layout_scalar_valid_range_not_struct =
     attribute should be applied to a struct
     .label = not a struct
