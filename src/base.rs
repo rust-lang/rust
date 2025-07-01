@@ -382,7 +382,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 fx.bcx.ins().nop();
 
                 match &**msg {
-                    AssertKind::BoundsCheck { ref len, ref index } => {
+                    AssertKind::BoundsCheck { len, index } => {
                         let len = codegen_operand(fx, len).load_scalar(fx);
                         let index = codegen_operand(fx, index).load_scalar(fx);
                         let location = fx.get_caller_location(source_info).load_scalar(fx);
@@ -395,7 +395,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             source_info.span,
                         );
                     }
-                    AssertKind::MisalignedPointerDereference { ref required, ref found } => {
+                    AssertKind::MisalignedPointerDereference { required, found } => {
                         let required = codegen_operand(fx, required).load_scalar(fx);
                         let found = codegen_operand(fx, found).load_scalar(fx);
                         let location = fx.get_caller_location(source_info).load_scalar(fx);
@@ -977,7 +977,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
         | StatementKind::AscribeUserType(..) => {}
 
         StatementKind::Coverage { .. } => unreachable!(),
-        StatementKind::Intrinsic(ref intrinsic) => match &**intrinsic {
+        StatementKind::Intrinsic(intrinsic) => match &**intrinsic {
             // We ignore `assume` intrinsics, they are only useful for optimizations
             NonDivergingIntrinsic::Assume(_) => {}
             NonDivergingIntrinsic::CopyNonOverlapping(mir::CopyNonOverlapping {

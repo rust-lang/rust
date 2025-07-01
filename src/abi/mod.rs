@@ -268,7 +268,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
                 // individual function arguments.
 
                 let tupled_arg_tys = match arg_ty.kind() {
-                    ty::Tuple(ref tys) => tys,
+                    ty::Tuple(tys) => tys,
                     _ => bug!("spread argument isn't a tuple?! but {:?}", arg_ty),
                 };
 
@@ -491,7 +491,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         };
 
         let tupled_arguments = match pack_arg.value.layout().ty.kind() {
-            ty::Tuple(ref tupled_arguments) => tupled_arguments,
+            ty::Tuple(tupled_arguments) => tupled_arguments,
             _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
         };
 

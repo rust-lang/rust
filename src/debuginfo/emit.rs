@@ -96,7 +96,7 @@ impl WriterRelocate {
                         if jit_module.declarations().get_function_decl(func_id).name.as_deref()
                             == Some("rust_eh_personality")
                         {
-                            extern "C" {
+                            unsafe extern "C" {
                                 fn rust_eh_personality() -> !;
                             }
                             rust_eh_personality as *const u8

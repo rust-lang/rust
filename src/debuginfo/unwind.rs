@@ -279,7 +279,7 @@ impl UnwindContext {
         // Everything after this line up to the end of the file is loosely based on
         // https://github.com/bytecodealliance/wasmtime/blob/4471a82b0c540ff48960eca6757ccce5b1b5c3e4/crates/jit/src/unwind/systemv.rs
         #[cfg(target_os = "macos")]
-        {
+        unsafe {
             // On macOS, `__register_frame` takes a pointer to a single FDE
             let start = eh_frame.as_ptr();
             let end = start.add(eh_frame.len());
@@ -301,12 +301,12 @@ impl UnwindContext {
         #[cfg(not(target_os = "macos"))]
         {
             // On other platforms, `__register_frame` will walk the FDEs until an entry of length 0
-            __register_frame(eh_frame.as_ptr());
+            unsafe { __register_frame(eh_frame.as_ptr()) };
         }
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     // libunwind import
     fn __register_frame(fde: *const u8);
 }

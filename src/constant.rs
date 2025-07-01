@@ -576,7 +576,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                         {
                             return None;
                         }
-                        StatementKind::Intrinsic(ref intrinsic) => match **intrinsic {
+                        StatementKind::Intrinsic(intrinsic) => match **intrinsic {
                             NonDivergingIntrinsic::CopyNonOverlapping(..) => return None,
                             NonDivergingIntrinsic::Assume(..) => {}
                         },

@@ -18,7 +18,7 @@ macro_rules! builtin_functions {
     ) => {
         #[cfg(feature = "jit")]
         #[allow(improper_ctypes)]
-        extern "C" {
+        unsafe extern "C" {
             $(
                 $(#[$attr])?
                 fn $name($($arg_name: $arg_ty),*) -> $ret_ty;
