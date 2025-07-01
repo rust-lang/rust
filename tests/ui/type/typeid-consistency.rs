@@ -1,16 +1,18 @@
+//! Checks the correctness and consistency of `std::any::TypeId::of`.
+
 //@ run-pass
 
 #![allow(deprecated)]
-//@ aux-build:typeid-intrinsic-aux1.rs
-//@ aux-build:typeid-intrinsic-aux2.rs
-
 #![feature(core_intrinsics)]
 
-extern crate typeid_intrinsic_aux1 as other1;
-extern crate typeid_intrinsic_aux2 as other2;
+//@ aux-build:typeid-consistency-aux1.rs
+//@ aux-build:typeid-consistency-aux2.rs
 
-use std::hash::{SipHasher, Hasher, Hash};
+extern crate typeid_consistency_aux1 as other1;
+extern crate typeid_consistency_aux2 as other2;
+
 use std::any::TypeId;
+use std::hash::{Hash, Hasher, SipHasher};
 
 struct A;
 struct Test;
@@ -34,7 +36,7 @@ pub fn main() {
     assert_eq!(TypeId::of::<other2::F>(), other2::id_F());
     assert_eq!(TypeId::of::<other2::G>(), other2::id_G());
     assert_eq!(TypeId::of::<other2::H>(), other2::id_H());
-    assert_eq!(TypeId::of::<other1::I>(), other2::id_I());
+    assert_eq!(TypeId::of::<other2::I>(), other2::id_I());
 
     assert_eq!(other1::id_F(), other2::id_F());
     assert_eq!(other1::id_G(), other2::id_G());
@@ -49,10 +51,8 @@ pub fn main() {
     assert_eq!(other2::foo::<A>(), other1::foo::<A>());
 
     // sanity test of TypeId
-    let (a, b, c) = (TypeId::of::<usize>(), TypeId::of::<&'static str>(),
-                     TypeId::of::<Test>());
-    let (d, e, f) = (TypeId::of::<usize>(), TypeId::of::<&'static str>(),
-                     TypeId::of::<Test>());
+    let (a, b, c) = (TypeId::of::<usize>(), TypeId::of::<&'static str>(), TypeId::of::<Test>());
+    let (d, e, f) = (TypeId::of::<usize>(), TypeId::of::<&'static str>(), TypeId::of::<Test>());
 
     assert!(a != b);
     assert!(a != c);
@@ -82,10 +82,7 @@ pub fn main() {
     assert_ne!(TypeId::of::<other1::I32Iterator>(), TypeId::of::<other1::U32Iterator>());
 
     // Check fn pointer against collisions
-    assert_ne!(
-        TypeId::of::<fn(fn(A) -> A) -> A>(),
-        TypeId::of::<fn(fn() -> A, A) -> A>()
-    );
+    assert_ne!(TypeId::of::<fn(fn(A) -> A) -> A>(), TypeId::of::<fn(fn() -> A, A) -> A>());
     assert_ne!(
         TypeId::of::<for<'a> fn(&'a i32) -> &'a i32>(),
         TypeId::of::<for<'a> fn(&'a i32) -> &'static i32>()
