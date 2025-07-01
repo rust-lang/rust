@@ -163,6 +163,10 @@ case $HOST_TARGET in
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1 candidate
     MANY_SEEDS=64 TEST_TARGET=aarch64-pc-windows-msvc run_tests
+    # Extra tier 2
+    MANY_SEEDS=16 TEST_TARGET=arm-unknown-linux-gnueabi run_tests # 32bit ARM
+    MANY_SEEDS=16 TEST_TARGET=aarch64-pc-windows-gnullvm run_tests # gnullvm ABI
+    MANY_SEEDS=16 TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture of choice
     # Custom target JSON file
     TEST_TARGET=tests/x86_64-unknown-kernel.json MIRI_NO_STD=1 run_tests_minimal no_std
     ;;
@@ -176,10 +180,6 @@ case $HOST_TARGET in
     # Extra tier 1
     MANY_SEEDS=64 TEST_TARGET=i686-pc-windows-gnu run_tests
     MANY_SEEDS=64 TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
-    # Extra tier 2
-    MANY_SEEDS=16 TEST_TARGET=arm-unknown-linux-gnueabi run_tests # 32bit ARM
-    MANY_SEEDS=16 TEST_TARGET=aarch64-pc-windows-gnullvm run_tests # gnullvm ABI
-    MANY_SEEDS=16 TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture of choice
     # Not officially supported tier 2
     MANY_SEEDS=16 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
     MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-illumos run_tests
