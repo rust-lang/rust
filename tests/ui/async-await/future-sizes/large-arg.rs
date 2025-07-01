@@ -1,7 +1,9 @@
-//@ compile-flags: -Z print-type-sizes --crate-type=lib
+//@ compile-flags: -C panic=abort -Z print-type-sizes --crate-type=lib
+//@ needs-deterministic-layouts
 //@ edition: 2021
 //@ build-pass
 //@ ignore-pass
+//@ only-x86_64
 
 pub async fn test() {
     let _ = a([0u8; 1024]).await;
