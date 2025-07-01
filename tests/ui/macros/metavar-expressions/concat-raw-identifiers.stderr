@@ -1,47 +1,47 @@
 error: expected identifier or string literal
-  --> $DIR/raw-identifiers.rs:28:22
+  --> $DIR/concat-raw-identifiers.rs:28:22
    |
 LL |         let ${concat(r#abc, abc)}: () = ();
    |                      ^^^^^
 
 error: expected identifier or string literal
-  --> $DIR/raw-identifiers.rs:32:27
+  --> $DIR/concat-raw-identifiers.rs:32:27
    |
 LL |         let ${concat(abc, r#abc)}: () = ();
    |                           ^^^^^
 
 error: expected identifier or string literal
-  --> $DIR/raw-identifiers.rs:35:22
+  --> $DIR/concat-raw-identifiers.rs:35:22
    |
 LL |         let ${concat(r#abc, r#abc)}: () = ();
    |                      ^^^^^
 
 error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/raw-identifiers.rs:5:28
+  --> $DIR/concat-raw-identifiers.rs:5:28
    |
 LL |         let ${concat(abc, $rhs)}: () = ();
    |                            ^^^
 
 error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/raw-identifiers.rs:12:23
+  --> $DIR/concat-raw-identifiers.rs:12:23
    |
 LL |         let ${concat($lhs, abc)}: () = ();
    |                       ^^^
 
 error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/raw-identifiers.rs:19:23
+  --> $DIR/concat-raw-identifiers.rs:19:23
    |
 LL |         let ${concat($lhs, $rhs)}: () = ();
    |                       ^^^
 
 error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/raw-identifiers.rs:19:29
+  --> $DIR/concat-raw-identifiers.rs:19:29
    |
 LL |         let ${concat($lhs, $rhs)}: () = ();
    |                             ^^^
 
 error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/raw-identifiers.rs:19:23
+  --> $DIR/concat-raw-identifiers.rs:19:23
    |
 LL |         let ${concat($lhs, $rhs)}: () = ();
    |                       ^^^
@@ -49,31 +49,31 @@ LL |         let ${concat($lhs, $rhs)}: () = ();
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/raw-identifiers.rs:42:28
+  --> $DIR/concat-raw-identifiers.rs:42:28
    |
 LL |         let ${concat(abc, $rhs)}: () = ();
    |                            ^^^
 
 error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/raw-identifiers.rs:49:23
+  --> $DIR/concat-raw-identifiers.rs:49:23
    |
 LL |         let ${concat($lhs, abc)}: () = ();
    |                       ^^^
 
 error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/raw-identifiers.rs:56:23
+  --> $DIR/concat-raw-identifiers.rs:56:23
    |
 LL |         let ${concat($lhs, $rhs)}: () = ();
    |                       ^^^
 
 error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/raw-identifiers.rs:56:29
+  --> $DIR/concat-raw-identifiers.rs:56:29
    |
 LL |         let ${concat($lhs, $rhs)}: () = ();
    |                             ^^^
 
 error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/raw-identifiers.rs:56:23
+  --> $DIR/concat-raw-identifiers.rs:56:23
    |
 LL |         let ${concat($lhs, $rhs)}: () = ();
    |                       ^^^
@@ -81,7 +81,7 @@ LL |         let ${concat($lhs, $rhs)}: () = ();
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: expected pattern, found `$`
-  --> $DIR/raw-identifiers.rs:28:13
+  --> $DIR/concat-raw-identifiers.rs:28:13
    |
 LL |         let ${concat(r#abc, abc)}: () = ();
    |             ^ expected pattern

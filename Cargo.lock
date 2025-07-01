@@ -8,7 +8,7 @@ version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dfbe277e56a376000877090da837660b4427aad530e3028d44e0bffe4f89a1c1"
 dependencies = [
- "gimli",
+ "gimli 0.31.1",
 ]
 
 [[package]]
@@ -1484,6 +1484,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "gimli"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93563d740bc9ef04104f9ed6f86f1e3275c2cdafb95664e26584b9ca807a8ffe"
+dependencies = [
+ "fallible-iterator",
+ "indexmap",
+ "stable_deref_trait",
+]
+
+[[package]]
 name = "glob"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2568,7 +2579,7 @@ dependencies = [
  "hashbrown",
  "indexmap",
  "memchr",
- "ruzstd",
+ "ruzstd 0.7.3",
 ]
 
 [[package]]
@@ -2578,9 +2589,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03fd943161069e1768b4b3d050890ba48730e590f57e56d4aa04e7e090e61b4a"
 dependencies = [
  "crc32fast",
+ "flate2",
  "hashbrown",
  "indexmap",
  "memchr",
+ "ruzstd 0.8.1",
  "wasmparser 0.234.0",
 ]
 
@@ -3194,9 +3207,9 @@ version = "0.2.0"
 dependencies = [
  "bstr",
  "build_helper",
- "gimli",
+ "gimli 0.32.0",
  "libc",
- "object 0.36.7",
+ "object 0.37.1",
  "regex",
  "serde_json",
  "similar",
@@ -3498,7 +3511,7 @@ name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "gimli",
+ "gimli 0.31.1",
  "itertools",
  "libc",
  "measureme",
@@ -4473,7 +4486,7 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "tracing",
- "twox-hash",
+ "twox-hash 1.6.3",
 ]
 
 [[package]]
@@ -4857,7 +4870,16 @@ version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fad02996bfc73da3e301efe90b1837be9ed8f4a462b6ed410aa35d00381de89f"
 dependencies = [
- "twox-hash",
+ "twox-hash 1.6.3",
+]
+
+[[package]]
+name = "ruzstd"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3640bec8aad418d7d03c72ea2de10d5c646a598f9883c7babc160d91e3c1b26c"
+dependencies = [
+ "twox-hash 2.1.1",
 ]
 
 [[package]]
@@ -5338,7 +5360,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e9c1e705f82a260173f3eec93f2ff6d7807f23ad5a8cc2e7316a891733ea7a1"
 dependencies = [
- "gimli",
+ "gimli 0.31.1",
  "hashbrown",
  "object 0.36.7",
  "tracing",
@@ -5579,6 +5601,12 @@ dependencies = [
  "rand 0.8.5",
  "static_assertions",
 ]
+
+[[package]]
+name = "twox-hash"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b907da542cbced5261bd3256de1b3a1bf340a3d37f93425a07362a1d687de56"
 
 [[package]]
 name = "type-map"
