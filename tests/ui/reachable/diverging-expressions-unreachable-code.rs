@@ -3,17 +3,17 @@
 #![allow(unused_must_use)]
 #![allow(unreachable_code)]
 
-#![allow(unused_variables)]
-#![allow(dead_code)]
-
-fn id(x: bool) -> bool { x }
-
-fn call_id() {
-    let c = panic!();
-    id(c);
+fn _id(x: bool) -> bool {
+    x
 }
 
-fn call_id_3() { id(return) && id(return); }
-
-pub fn main() {
+fn _call_id() {
+    let _c = panic!();
+    _id(_c);
 }
+
+fn _call_id_3() {
+    _id(return) && _id(return);
+}
+
+pub fn main() {}

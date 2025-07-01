@@ -1,3 +1,6 @@
+//! Tests that errors from both the writer (`Write::write`) and formatter (`Display::fmt`)
+//! are correctly propagated: writer errors return `Err`, formatter errors cause panics.
+
 //@ run-pass
 //@ needs-unwind
 
@@ -24,7 +27,9 @@ impl Write for ErrorWriter {
         Err(Error::new(WRITER_ERROR, "not connected"))
     }
 
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
 }
 
 fn main() {
@@ -37,7 +42,8 @@ fn main() {
     let err = res.expect_err("formatter error did not lead to panic").downcast::<&str>().unwrap();
     assert!(
         err.contains("formatting trait implementation returned an error"),
-        "unexpected panic: {}", err
+        "unexpected panic: {}",
+        err
     );
 
     // Writer error when there's some string before the first `{}`
@@ -50,6 +56,7 @@ fn main() {
     let err = res.expect_err("formatter error did not lead to panic").downcast::<&str>().unwrap();
     assert!(
         err.contains("formatting trait implementation returned an error"),
-        "unexpected panic: {}", err
+        "unexpected panic: {}",
+        err
     );
 }

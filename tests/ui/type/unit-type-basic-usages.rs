@@ -1,16 +1,14 @@
+//! Checks the basic usage of unit type
+
 //@ run-pass
 
-#![allow(unused_assignments)]
-#![allow(unknown_lints)]
-
-#![allow(unused_variables)]
-#![allow(dead_assignment)]
-
-fn f(u: ()) { return u; }
+fn f(u: ()) {
+    u
+}
 
 pub fn main() {
     let u1: () = ();
-    let mut u2: () = f(u1);
-    u2 = ();
-    return ();
+    let mut _u2: () = f(u1);
+    _u2 = ();
+    ()
 }
