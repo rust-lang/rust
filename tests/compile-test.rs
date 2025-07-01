@@ -17,7 +17,8 @@ use ui_test::custom_flags::Flag;
 use ui_test::custom_flags::edition::Edition;
 use ui_test::custom_flags::rustfix::RustfixMode;
 use ui_test::spanned::Spanned;
-use ui_test::{Args, CommandBuilder, Config, Match, error_on_output_conflict, status_emitter};
+use ui_test::status_emitter::StatusEmitter;
+use ui_test::{Args, CommandBuilder, Config, Match, error_on_output_conflict};
 
 use std::collections::{BTreeMap, HashMap};
 use std::env::{self, set_var, var_os};
@@ -217,7 +218,7 @@ fn run_ui(cx: &TestContext) {
         vec![config],
         ui_test::default_file_filter,
         ui_test::default_per_file_config,
-        status_emitter::Text::from(cx.args.format),
+        Box::<dyn StatusEmitter>::from(cx.args.format),
     )
     .unwrap();
 }
@@ -233,7 +234,7 @@ fn run_internal_tests(cx: &TestContext) {
         vec![config],
         ui_test::default_file_filter,
         ui_test::default_per_file_config,
-        status_emitter::Text::from(cx.args.format),
+        Box::<dyn StatusEmitter>::from(cx.args.format),
     )
     .unwrap();
 }
@@ -257,7 +258,7 @@ fn run_ui_toml(cx: &TestContext) {
                 .envs
                 .push(("CLIPPY_CONF_DIR".into(), Some(path.parent().unwrap().into())));
         },
-        status_emitter::Text::from(cx.args.format),
+        Box::<dyn StatusEmitter>::from(cx.args.format),
     )
     .unwrap();
 }
@@ -304,7 +305,7 @@ fn run_ui_cargo(cx: &TestContext) {
                 .then(|| ui_test::default_any_file_filter(path, config) && !ignored_32bit(path))
         },
         |_config, _file_contents| {},
-        status_emitter::Text::from(cx.args.format),
+        Box::<dyn StatusEmitter>::from(cx.args.format),
     )
     .unwrap();
 }
