@@ -29,6 +29,8 @@ use html5ever::tendril::ByteTendril;
 use html5ever::tokenizer::{
     BufferQueue, TagToken, Token, TokenSink, TokenSinkResult, Tokenizer, TokenizerOpts,
 };
+use std::collections::hash_map::Entry;
+use std::iter::once;
 
 // Add linkcheck exceptions here
 // If at all possible you should use intra-doc links to avoid linkcheck issues. These
@@ -114,13 +116,16 @@ macro_rules! t {
 #[derive(Parser)]
 struct Cli {
     docs: PathBuf,
+    #[clap(long)]
+    extra_target: Vec<PathBuf>,
 }
 
 fn main() {
     let mut cli = Cli::parse();
     cli.docs = cli.docs.canonicalize().unwrap();
 
-    let mut checker = Checker { root: cli.docs.clone(), cache: HashMap::new() };
+    let mut checker =
+        Checker { root: cli.docs.clone(), extra_targets: cli.extra_target, cache: HashMap::new() };
     let mut report = Report {
         errors: 0,
         start: Instant::now(),
@@ -142,6 +147,7 @@ fn main() {
 
 struct Checker {
     root: PathBuf,
+    extra_targets: Vec<PathBuf>,
     cache: Cache,
 }
 
@@ -434,15 +440,24 @@ impl Checker {
         let pretty_path =
             file.strip_prefix(&self.root).unwrap_or(file).to_str().unwrap().to_string();
 
-        let entry =
-            self.cache.entry(pretty_path.clone()).or_insert_with(|| match fs::metadata(file) {
+        for base in once(&self.root).chain(self.extra_targets.iter()) {
+            // TODO: rebase and turn into a let else
+            let entry = self.cache.entry(pretty_path.clone());
+            if let Entry::Occupied(e) = &entry {
+                if !matches!(e.get(), FileEntry::Missing) {
+                    break;
+                }
+            }
+
+            let file = base.join(&pretty_path);
+            entry.insert_entry(match fs::metadata(&file) {
                 Ok(metadata) if metadata.is_dir() => FileEntry::Dir,
                 Ok(_) => {
                     if file.extension().and_then(|s| s.to_str()) != Some("html") {
                         FileEntry::OtherFile
                     } else {
                         report.html_files += 1;
-                        load_html_file(file, report)
+                        load_html_file(&file, report)
                     }
                 }
                 Err(e) if e.kind() == ErrorKind::NotFound => FileEntry::Missing,
@@ -458,6 +473,9 @@ impl Checker {
                     panic!("unexpected read error for {}: {}", file.display(), e);
                 }
             });
+        }
+
+        let entry = self.cache.get(&pretty_path).unwrap();
         (pretty_path, entry)
     }
 }
