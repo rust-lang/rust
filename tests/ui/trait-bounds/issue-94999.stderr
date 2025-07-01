@@ -1,0 +1,10 @@
+warning: trait bound X: Holds does not depend on any type or lifetime parameters
+  --> $DIR/issue-94999.rs:28:8
+   |
+LL |     X: Holds<Q = Q>,
+   |        ^^^^^^^^^^^^
+   |
+   = note: `#[warn(trivial_bounds)]` on by default
+
+warning: 1 warning emitted
+

@@ -19,9 +19,8 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::solve::NoSolution;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, AdtKind, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFlags,
-    TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
-    Upcast,
+    self, AdtKind, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -135,14 +134,15 @@ where
 
     let mut wfcx = WfCheckingCtxt { ocx, span, body_def_id, param_env };
 
-    if !tcx.features().trivial_bounds() {
-        wfcx.check_false_global_bounds()
-    }
     f(&mut wfcx)?;
 
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
+    }
+
+    if !tcx.features().trivial_bounds() {
+        wfcx.check_false_global_bounds()?;
     }
 
     let assumed_wf_types = wfcx.ocx.assumed_wf_types_and_report_errors(param_env, body_def_id)?;
@@ -2299,7 +2299,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     /// Feature gates RFC 2056 -- trivial bounds, checking for global bounds that
     /// aren't true.
     #[instrument(level = "debug", skip(self))]
-    fn check_false_global_bounds(&mut self) {
+    fn check_false_global_bounds(&mut self) -> Result<(), ErrorGuaranteed> {
         let tcx = self.ocx.infcx.tcx;
         let mut span = self.span;
         let empty_env = ty::ParamEnv::empty();
@@ -2308,6 +2308,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         // Check elaborated bounds.
         let implied_obligations = traits::elaborate(tcx, predicates_with_span);
 
+        let mut global_obligations = vec![];
         for (pred, obligation_span) in implied_obligations {
             // We lower empty bounds like `Vec<dyn Copy>:` as
             // `WellFormed(Vec<dyn Copy>)`, which will later get checked by
@@ -2315,10 +2316,14 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             if let ty::ClauseKind::WellFormed(..) = pred.kind().skip_binder() {
                 continue;
             }
-            // Match the existing behavior.
-            if pred.is_global() && !pred.has_type_flags(TypeFlags::HAS_BINDER_VARS) {
-                let pred = self.normalize(span, None, pred);
-
+            // Match the existing behavior. We normalize first to handle where-bounds
+            // like `u32: Trait<Assoc = T>`.
+            let clause = ObligationCause::misc(span, self.body_def_id);
+            let Ok(pred) = self.deeply_normalize(&clause, self.param_env, pred) else {
+                tcx.dcx().delayed_bug("encountered errors when normalizing where-clauses");
+                continue;
+            };
+            if pred.is_global() && pred.kind().bound_vars().is_empty() {
                 // only use the span of the predicate clause (#90869)
                 let hir_node = tcx.hir_node_by_def_id(self.body_def_id);
                 if let Some(hir::Generics { predicates, .. }) = hir_node.generics() {
@@ -2340,8 +2345,16 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                     empty_env,
                     pred,
                 );
-                self.ocx.register_obligation(obligation);
+                global_obligations.push(obligation);
             }
+        }
+
+        self.register_obligations(global_obligations);
+        let errors = self.select_all_or_error();
+        if !errors.is_empty() {
+            Err(self.infcx.err_ctxt().report_fulfillment_errors(errors))
+        } else {
+            Ok(())
         }
     }
 }

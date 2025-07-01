@@ -1,0 +1,16 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsatisfiable-sized-ungated.rs:35:9
+   |
+LL |         <Self::A as Api>::Device: Sized,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

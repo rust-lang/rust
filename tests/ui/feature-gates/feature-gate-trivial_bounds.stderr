@@ -145,6 +145,19 @@ help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 LL + #![feature(trivial_bounds)]
    |
 
-error: aborting due to 11 previous errors
+error[E0277]: the trait bound `for<'a> fn(&'a ()): Foo` is not satisfied
+  --> $DIR/feature-gate-trivial_bounds.rs:63:32
+   |
+LL | fn global_hr(x: fn(&())) where fn(&()): Foo {
+   |                                ^^^^^^^^^^^^ the trait `Foo` is not implemented for `for<'a> fn(&'a ())`
+   |
+   = help: the trait `Foo` is implemented for `()`
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

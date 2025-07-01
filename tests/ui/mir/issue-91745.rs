@@ -1,3 +1,4 @@
+#![feature(trivial_bounds)]
 //@ check-pass
 
 pub trait Foo {

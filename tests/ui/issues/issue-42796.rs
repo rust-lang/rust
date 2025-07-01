@@ -1,3 +1,4 @@
+#![feature(trivial_bounds)]
 pub trait Mirror<Smoke> {
     type Image;
 }
