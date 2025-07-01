@@ -167,6 +167,16 @@ LL - #[must_use = "string"suffix]
 LL + #[must_use]
    |
 
-error: aborting due to 21 previous errors; 2 warnings emitted
+error[E0805]: malformed `rustc_layout_scalar_valid_range_start` attribute input
+  --> $DIR/bad-lit-suffixes.rs:43:1
+   |
+LL | #[rustc_layout_scalar_valid_range_start(0suffix)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------^
+   | |                                      |
+   | |                                      expected a single argument here
+   | help: must be of the form: `#[rustc_layout_scalar_valid_range_start(start)]`
 
-For more information about this error, try `rustc --explain E0539`.
+error: aborting due to 22 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0539, E0805.
+For more information about an error, try `rustc --explain E0539`.

@@ -52,12 +52,6 @@ error: malformed `export_stable` attribute input
 LL | #[export_stable = 1]
    | ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[export_stable]`
 
-error: malformed `link_section` attribute input
-  --> $DIR/malformed-attrs.rs:86:1
-   |
-LL | #[link_section]
-   | ^^^^^^^^^^^^^^^ help: must be of the form: `#[link_section = "name"]`
-
 error: malformed `coverage` attribute input
   --> $DIR/malformed-attrs.rs:88:1
    |
@@ -118,18 +112,6 @@ error: malformed `proc_macro_derive` attribute input
    |
 LL | #[proc_macro_derive]
    | ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
-
-error: malformed `rustc_layout_scalar_valid_range_start` attribute input
-  --> $DIR/malformed-attrs.rs:126:1
-   |
-LL | #[rustc_layout_scalar_valid_range_start]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_layout_scalar_valid_range_start(value)]`
-
-error: malformed `rustc_layout_scalar_valid_range_end` attribute input
-  --> $DIR/malformed-attrs.rs:128:1
-   |
-LL | #[rustc_layout_scalar_valid_range_end]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_layout_scalar_valid_range_end(value)]`
 
 error: malformed `must_not_suspend` attribute input
   --> $DIR/malformed-attrs.rs:130:1
@@ -523,6 +505,12 @@ error[E0539]: malformed `link_name` attribute input
 LL | #[link_name]
    | ^^^^^^^^^^^^ help: must be of the form: `#[link_name = "name"]`
 
+error[E0539]: malformed `link_section` attribute input
+  --> $DIR/malformed-attrs.rs:86:1
+   |
+LL | #[link_section]
+   | ^^^^^^^^^^^^^^^ help: must be of the form: `#[link_section = "name"]`
+
 error[E0539]: malformed `must_use` attribute input
   --> $DIR/malformed-attrs.rs:117:1
    |
@@ -539,6 +527,24 @@ LL + #[must_use = "reason"]
 LL - #[must_use = 1]
 LL + #[must_use]
    |
+
+error[E0539]: malformed `rustc_layout_scalar_valid_range_start` attribute input
+  --> $DIR/malformed-attrs.rs:126:1
+   |
+LL | #[rustc_layout_scalar_valid_range_start]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[rustc_layout_scalar_valid_range_start(start)]`
+
+error[E0539]: malformed `rustc_layout_scalar_valid_range_end` attribute input
+  --> $DIR/malformed-attrs.rs:128:1
+   |
+LL | #[rustc_layout_scalar_valid_range_end]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
 
 warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
   --> $DIR/malformed-attrs.rs:147:1

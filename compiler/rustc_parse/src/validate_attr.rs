@@ -305,6 +305,9 @@ fn emit_malformed_attribute(
             | sym::link_name
             | sym::export_name
             | sym::rustc_macro_transparency
+            | sym::link_section
+            | sym::rustc_layout_scalar_valid_range_start
+            | sym::rustc_layout_scalar_valid_range_end
     ) {
         return;
     }
