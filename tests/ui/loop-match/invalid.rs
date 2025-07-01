@@ -142,6 +142,25 @@ fn break_without_value_unit() {
     }
 }
 
+fn break_without_label() {
+    let mut state = State::A;
+    #[loop_match]
+    loop {
+        state = 'blk: {
+            match state {
+                _ => {
+                    // The type error is because the break breaks from the
+                    // loop, and hence attempts to return `State::A`.
+                    #[const_continue]
+                    break State::A;
+                    //~^ ERROR unlabeled `break` inside of a labeled block
+                    //~| ERROR mismatched types
+                }
+            }
+        }
+    }
+}
+
 fn arm_has_guard(cond: bool) {
     let mut state = State::A;
     #[loop_match]
