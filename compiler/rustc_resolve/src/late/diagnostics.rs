@@ -851,8 +851,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
 
         // Try to find in last block rib
-        if let Some(rib) = &self.last_block_rib
-            && let RibKind::Normal = rib.kind
+        if let Some(rib) = &self.last_normal_block_rib
+            && let RibKind::Block { .. } = rib.kind
         {
             for (ident, &res) in &rib.bindings {
                 if let Res::Local(_) = res
@@ -2439,7 +2439,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     ) -> TypoCandidate {
         let mut names = Vec::new();
         if let [segment] = path {
-            let mut ctxt = segment.ident.span.ctxt();
+            let ctxt = segment.ident.span.ctxt();
 
             // Search in lexical scope.
             // Walk backwards up the ribs in scope and collect candidates.
@@ -2455,15 +2455,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     if filter_fn(res) && ident.span.ctxt() == rib_ctxt {
                         names.push(TypoSuggestion::typo_from_ident(*ident, res));
                     }
-                }
-
-                if let RibKind::MacroDefinition(def) = rib.kind
-                    && def == self.r.macro_def(ctxt)
-                {
-                    // If an invocation of this macro created `ident`, give up on `ident`
-                    // and switch to `ident`'s source from the macro definition.
-                    ctxt.remove_mark();
-                    continue;
                 }
 
                 // Items in scope

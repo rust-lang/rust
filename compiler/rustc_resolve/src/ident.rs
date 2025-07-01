@@ -17,9 +17,9 @@ use crate::late::{ConstantHasGenerics, NoConstantGenericsReason, PathSource, Rib
 use crate::macros::{MacroRulesScope, sub_namespace_match};
 use crate::{
     AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingKey, Determinacy, Finalize,
-    ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot, NameBinding,
-    NameBindingKind, ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope,
-    ScopeSet, Segment, Used, Weak, errors,
+    ImportKind, LexicalScopeBinding, LookaheadItemInBlock, Module, ModuleKind, ModuleOrUniformRoot,
+    NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res, ResolutionError,
+    Resolver, Scope, ScopeSet, Segment, Used, Weak, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -325,14 +325,60 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 )));
             }
 
+            if let RibKind::Block { id: block_id, .. } = &rib.kind
+                && let Some(items) = self.lookahead_items_in_block.get(block_id)
+            {
+                let mut expansion = None;
+                for (node_id, item) in items
+                    .iter()
+                    .rev()
+                    .filter(|(_, item)| matches!(item, LookaheadItemInBlock::MacroDef { .. }))
+                {
+                    let LookaheadItemInBlock::MacroDef { def_id, bindings, .. } = item else {
+                        unreachable!();
+                    };
+                    if *def_id != self.macro_def(ident.span.ctxt()) {
+                        continue;
+                    }
+                    expansion.get_or_insert(node_id);
+                    ident.span.remove_mark();
+                    if let Some((original_rib_ident_def, res)) = bindings.get_key_value(&ident) {
+                        // The ident resolves to a type parameter or local variable.
+                        return Some(LexicalScopeBinding::Res(self.validate_res_from_ribs(
+                            i,
+                            ident,
+                            *res,
+                            finalize.map(|finalize| finalize.path_span),
+                            *original_rib_ident_def,
+                            ribs,
+                        )));
+                    }
+                }
+                if let Some(expansion) = expansion
+                    && items.iter().take_while(|(item_id, _)| !expansion.eq(item_id)).any(
+                        |(_, item)| {
+                            if let LookaheadItemInBlock::Binding { name } = item {
+                                name.name == ident.name
+                            } else {
+                                false
+                            }
+                        },
+                    )
+                {
+                    // return `None` for this case:
+                    //
+                    // ```
+                    // let a = m!();
+                    // let b = 1;
+                    // macro_rules! m { () => { b } }
+                    // use b;
+                    // ```
+                    return None;
+                }
+            }
+
             module = match rib.kind {
                 RibKind::Module(module) => module,
-                RibKind::MacroDefinition(def) if def == self.macro_def(ident.span.ctxt()) => {
-                    // If an invocation of this macro created `ident`, give up on `ident`
-                    // and switch to `ident`'s source from the macro definition.
-                    ident.span.remove_mark();
-                    continue;
-                }
                 _ => continue,
             };
 
@@ -1147,6 +1193,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 for rib in ribs {
                     match rib.kind {
                         RibKind::Normal
+                        | RibKind::Block { .. }
                         | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
@@ -1239,6 +1286,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 for rib in ribs {
                     let (has_generic_params, def_kind) = match rib.kind {
                         RibKind::Normal
+                        | RibKind::Block { .. }
                         | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
@@ -1332,6 +1380,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 for rib in ribs {
                     let (has_generic_params, def_kind) = match rib.kind {
                         RibKind::Normal
+                        | RibKind::Block { .. }
                         | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
