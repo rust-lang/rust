@@ -51,6 +51,26 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
         return;
     }
 
+    if fx.tcx.sess.target.arch == "s390x"
+        && template.len() == 3
+        && template[0] == InlineAsmTemplatePiece::String("stfle 0(".into())
+        && let InlineAsmTemplatePiece::Placeholder { operand_idx: 0, modifier: None, span: _ } =
+            template[1]
+        && template[2] == InlineAsmTemplatePiece::String(")".into())
+    {
+        // FIXME no inline asm support for s390x yet, but stdarch needs it for feature detection
+        match destination {
+            Some(destination) => {
+                let destination_block = fx.get_block(destination);
+                fx.bcx.ins().jump(destination_block, &[]);
+            }
+            None => {
+                fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
+            }
+        }
+        return;
+    }
+
     let operands = operands
         .iter()
         .map(|operand| match *operand {
