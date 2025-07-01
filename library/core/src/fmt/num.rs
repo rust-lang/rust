@@ -69,7 +69,10 @@ unsafe trait GenericRadix: Sized {
                 let n = x % base; // Get the current place value.
                 x = x / base; // Deaccumulate the number.
                 curr -= 1;
-                buf[curr].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
+                // SAFETY: `curr` is always between 0 and `buf`'s length.
+                unsafe {
+                    buf.get_unchecked_mut(curr).write(Self::digit(n.to_u8()));
+                } // Store the digit in the buffer.
                 if x == zero {
                     // No more digits left to accumulate.
                     break;
@@ -81,7 +84,10 @@ unsafe trait GenericRadix: Sized {
                 let n = zero - (x % base); // Get the current place value.
                 x = x / base; // Deaccumulate the number.
                 curr -= 1;
-                buf[curr].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
+                // SAFETY: `curr` is always between 0 and `buf`'s length.
+                unsafe {
+                    buf.get_unchecked_mut(curr).write(Self::digit(n.to_u8()));
+                } // Store the digit in the buffer.
                 if x == zero {
                     // No more digits left to accumulate.
                     break;
@@ -270,10 +276,14 @@ macro_rules! impl_Display {
                     remain /= scale;
                     let pair1 = (quad / 100) as usize;
                     let pair2 = (quad % 100) as usize;
-                    buf[offset + 0].write(DEC_DIGITS_LUT[pair1 * 2 + 0]);
-                    buf[offset + 1].write(DEC_DIGITS_LUT[pair1 * 2 + 1]);
-                    buf[offset + 2].write(DEC_DIGITS_LUT[pair2 * 2 + 0]);
-                    buf[offset + 3].write(DEC_DIGITS_LUT[pair2 * 2 + 1]);
+                    // SAFETY: `offset` is always between 0 and `buf`'s length.
+                    unsafe { buf.get_unchecked_mut(offset + 0).write(DEC_DIGITS_LUT[pair1 * 2 + 0]); }
+                    // SAFETY: `offset` is always between 0 and `buf`'s length.
+                    unsafe { buf.get_unchecked_mut(offset + 1).write(DEC_DIGITS_LUT[pair1 * 2 + 1]); }
+                    // SAFETY: `offset` is always between 0 and `buf`'s length.
+                    unsafe { buf.get_unchecked_mut(offset + 2).write(DEC_DIGITS_LUT[pair2 * 2 + 0]); }
+                    // SAFETY: `offset` is always between 0 and `buf`'s length.
+                    unsafe { buf.get_unchecked_mut(offset + 3).write(DEC_DIGITS_LUT[pair2 * 2 + 1]); }
                 }
 
                 // Format per two digits from the lookup table.
@@ -288,8 +298,10 @@ macro_rules! impl_Display {
 
                     let pair = (remain % 100) as usize;
                     remain /= 100;
-                    buf[offset + 0].write(DEC_DIGITS_LUT[pair * 2 + 0]);
-                    buf[offset + 1].write(DEC_DIGITS_LUT[pair * 2 + 1]);
+                    // SAFETY: `offset` is always between 0 and `buf`'s length.
+                    unsafe { buf.get_unchecked_mut(offset + 0).write(DEC_DIGITS_LUT[pair * 2 + 0]); }
+                    // SAFETY: `offset` is always between 0 and `buf`'s length.
+                    unsafe { buf.get_unchecked_mut(offset + 1).write(DEC_DIGITS_LUT[pair * 2 + 1]); }
                 }
 
                 // Format the last remaining digit, if any.
@@ -305,7 +317,8 @@ macro_rules! impl_Display {
                     // Either the compiler sees that remain < 10, or it prevents
                     // a boundary check up next.
                     let last = (remain & 15) as usize;
-                    buf[offset].write(DEC_DIGITS_LUT[last * 2 + 1]);
+                    // SAFETY: `offset` is always between 0 and `buf`'s length.
+                    unsafe { buf.get_unchecked_mut(offset).write(DEC_DIGITS_LUT[last * 2 + 1]); }
                     // not used: remain = 0;
                 }
 
@@ -639,10 +652,22 @@ impl u128 {
             remain /= 1_00_00;
             let pair1 = (quad / 100) as usize;
             let pair2 = (quad % 100) as usize;
-            buf[offset + 0].write(DEC_DIGITS_LUT[pair1 * 2 + 0]);
-            buf[offset + 1].write(DEC_DIGITS_LUT[pair1 * 2 + 1]);
-            buf[offset + 2].write(DEC_DIGITS_LUT[pair2 * 2 + 0]);
-            buf[offset + 3].write(DEC_DIGITS_LUT[pair2 * 2 + 1]);
+            // SAFETY: `offset` is always between 0 and `buf`'s length.
+            unsafe {
+                buf.get_unchecked_mut(offset + 0).write(DEC_DIGITS_LUT[pair1 * 2 + 0]);
+            }
+            // SAFETY: `offset` is always between 0 and `buf`'s length.
+            unsafe {
+                buf.get_unchecked_mut(offset + 1).write(DEC_DIGITS_LUT[pair1 * 2 + 1]);
+            }
+            // SAFETY: `offset` is always between 0 and `buf`'s length.
+            unsafe {
+                buf.get_unchecked_mut(offset + 2).write(DEC_DIGITS_LUT[pair2 * 2 + 0]);
+            }
+            // SAFETY: `offset` is always between 0 and `buf`'s length.
+            unsafe {
+                buf.get_unchecked_mut(offset + 3).write(DEC_DIGITS_LUT[pair2 * 2 + 1]);
+            }
         }
 
         // Format per two digits from the lookup table.
@@ -657,8 +682,14 @@ impl u128 {
 
             let pair = (remain % 100) as usize;
             remain /= 100;
-            buf[offset + 0].write(DEC_DIGITS_LUT[pair * 2 + 0]);
-            buf[offset + 1].write(DEC_DIGITS_LUT[pair * 2 + 1]);
+            // SAFETY: `offset` is always between 0 and `buf`'s length.
+            unsafe {
+                buf.get_unchecked_mut(offset + 0).write(DEC_DIGITS_LUT[pair * 2 + 0]);
+            }
+            // SAFETY: `offset` is always between 0 and `buf`'s length.
+            unsafe {
+                buf.get_unchecked_mut(offset + 1).write(DEC_DIGITS_LUT[pair * 2 + 1]);
+            }
         }
 
         // Format the last remaining digit, if any.
@@ -674,7 +705,10 @@ impl u128 {
             // Either the compiler sees that remain < 10, or it prevents
             // a boundary check up next.
             let last = (remain & 15) as usize;
-            buf[offset].write(DEC_DIGITS_LUT[last * 2 + 1]);
+            // SAFETY: `offset` is always between 0 and `buf`'s length.
+            unsafe {
+                buf.get_unchecked_mut(offset).write(DEC_DIGITS_LUT[last * 2 + 1]);
+            }
             // not used: remain = 0;
         }
 
@@ -703,10 +737,22 @@ fn enc_16lsd<const OFFSET: usize>(buf: &mut [MaybeUninit<u8>], n: u64) {
         remain /= 1_00_00;
         let pair1 = (quad / 100) as usize;
         let pair2 = (quad % 100) as usize;
-        buf[quad_index * 4 + OFFSET + 0].write(DEC_DIGITS_LUT[pair1 * 2 + 0]);
-        buf[quad_index * 4 + OFFSET + 1].write(DEC_DIGITS_LUT[pair1 * 2 + 1]);
-        buf[quad_index * 4 + OFFSET + 2].write(DEC_DIGITS_LUT[pair2 * 2 + 0]);
-        buf[quad_index * 4 + OFFSET + 3].write(DEC_DIGITS_LUT[pair2 * 2 + 1]);
+        // SAFETY: `quad_index * 4 + OFFSET` is always between 0 and `buf`'s length.
+        unsafe {
+            buf.get_unchecked_mut(quad_index * 4 + OFFSET + 0).write(DEC_DIGITS_LUT[pair1 * 2 + 0]);
+        }
+        // SAFETY: `quad_index * 4 + OFFSET` is always between 0 and `buf`'s length.
+        unsafe {
+            buf.get_unchecked_mut(quad_index * 4 + OFFSET + 1).write(DEC_DIGITS_LUT[pair1 * 2 + 1]);
+        }
+        // SAFETY: `quad_index * 4 + OFFSET` is always between 0 and `buf`'s length.
+        unsafe {
+            buf.get_unchecked_mut(quad_index * 4 + OFFSET + 2).write(DEC_DIGITS_LUT[pair2 * 2 + 0]);
+        }
+        // SAFETY: `quad_index * 4 + OFFSET` is always between 0 and `buf`'s length.
+        unsafe {
+            buf.get_unchecked_mut(quad_index * 4 + OFFSET + 3).write(DEC_DIGITS_LUT[pair2 * 2 + 1]);
+        }
     }
 }
 
