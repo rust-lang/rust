@@ -8,18 +8,12 @@ pub(crate) struct LoopMatchParser;
 impl<S: Stage> NoArgsAttributeParser<S> for LoopMatchParser {
     const PATH: &[Symbol] = &[sym::loop_match];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-
-    fn create(span: Span) -> AttributeKind {
-        AttributeKind::LoopMatch(span)
-    }
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::LoopMatch;
 }
 
 pub(crate) struct ConstContinueParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ConstContinueParser {
     const PATH: &[Symbol] = &[sym::const_continue];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-
-    fn create(span: Span) -> AttributeKind {
-        AttributeKind::ConstContinue(span)
-    }
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::ConstContinue;
 }

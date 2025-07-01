@@ -136,10 +136,7 @@ pub(crate) struct ConstStabilityIndirectParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ConstStabilityIndirectParser {
     const PATH: &[Symbol] = &[sym::rustc_const_stable_indirect];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
-
-    fn create(_: Span) -> AttributeKind {
-        AttributeKind::ConstStabilityIndirect
-    }
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ConstStabilityIndirect;
 }
 
 #[derive(Default)]

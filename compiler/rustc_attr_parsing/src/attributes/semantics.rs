@@ -8,8 +8,5 @@ pub(crate) struct MayDangleParser;
 impl<S: Stage> NoArgsAttributeParser<S> for MayDangleParser {
     const PATH: &[Symbol] = &[sym::may_dangle];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-
-    fn create(span: Span) -> AttributeKind {
-        AttributeKind::MayDangle(span)
-    }
+    const CREATE: fn(span: Span) -> AttributeKind = AttributeKind::MayDangle;
 }

@@ -8,18 +8,12 @@ pub(crate) struct AsPtrParser;
 impl<S: Stage> NoArgsAttributeParser<S> for AsPtrParser {
     const PATH: &[Symbol] = &[sym::rustc_as_ptr];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-
-    fn create(span: Span) -> AttributeKind {
-        AttributeKind::AsPtr(span)
-    }
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::AsPtr;
 }
 
 pub(crate) struct PubTransparentParser;
 impl<S: Stage> NoArgsAttributeParser<S> for PubTransparentParser {
     const PATH: &[Symbol] = &[sym::rustc_pub_transparent];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-
-    fn create(span: Span) -> AttributeKind {
-        AttributeKind::PubTransparent(span)
-    }
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::PubTransparent;
 }

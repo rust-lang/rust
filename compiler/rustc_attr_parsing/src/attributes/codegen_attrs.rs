@@ -49,10 +49,7 @@ pub(crate) struct ColdParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ColdParser {
     const PATH: &[Symbol] = &[sym::cold];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-
-    fn create(span: Span) -> AttributeKind {
-        AttributeKind::Cold(span)
-    }
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::Cold;
 }
 
 pub(crate) struct ExportNameParser;
@@ -193,20 +190,14 @@ pub(crate) struct TrackCallerParser;
 impl<S: Stage> NoArgsAttributeParser<S> for TrackCallerParser {
     const PATH: &[Symbol] = &[sym::track_caller];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-
-    fn create(span: Span) -> AttributeKind {
-        AttributeKind::TrackCaller(span)
-    }
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::TrackCaller;
 }
 
 pub(crate) struct NoMangleParser;
 impl<S: Stage> NoArgsAttributeParser<S> for NoMangleParser {
     const PATH: &[Symbol] = &[sym::no_mangle];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-
-    fn create(span: Span) -> AttributeKind {
-        AttributeKind::NoMangle(span)
-    }
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoMangle;
 }
 
 #[derive(Default)]

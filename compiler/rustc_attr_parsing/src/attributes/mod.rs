@@ -238,7 +238,7 @@ pub(crate) trait NoArgsAttributeParser<S: Stage>: 'static {
     const ON_DUPLICATE: OnDuplicate<S>;
 
     /// Create the [`AttributeKind`] given attribute's [`Span`].
-    fn create(span: Span) -> AttributeKind;
+    const CREATE: fn(Span) -> AttributeKind;
 }
 
 pub(crate) struct WithoutArgs<T: NoArgsAttributeParser<S>, S: Stage>(PhantomData<(S, T)>);
@@ -259,7 +259,7 @@ impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for Without
         if let Err(span) = args.no_args() {
             cx.expected_no_args(span);
         }
-        Some(T::create(cx.attr_span))
+        Some(T::CREATE(cx.attr_span))
     }
 }
 
