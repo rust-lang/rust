@@ -102,7 +102,7 @@ jobs:
 
     - name: Run tests
       run: |
-        ./y.sh test--target-triple m68k-unknown-linux-gnu --release --clean --build-sysroot --sysroot-features compiler_builtins/no-f16-f128 ${{ matrix.commands }}
+        ./y.sh test --target-triple m68k-unknown-linux-gnu --release --clean --build-sysroot --sysroot-features compiler_builtins/no-f16-f128 ${{ matrix.commands }}
 
     - name: Run Hello World!
       run: |
