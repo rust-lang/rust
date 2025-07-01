@@ -1,0 +1,15 @@
+error: `_` cannot be a raw lifetime
+  --> $DIR/raw-underscore-lifetime.rs:6:6
+   |
+LL | fn f<'r#_>(){}
+   |      ^^^^
+
+error[E0637]: `'_` cannot be used here
+  --> $DIR/raw-underscore-lifetime.rs:6:6
+   |
+LL | fn f<'r#_>(){}
+   |      ^^^^ `'_` is a reserved lifetime name
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0637`.
