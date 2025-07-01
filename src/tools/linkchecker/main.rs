@@ -18,12 +18,13 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
+use std::fs;
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::time::Instant;
-use std::{env, fs};
 
+use clap::Parser;
 use html5ever::tendril::ByteTendril;
 use html5ever::tokenizer::{
     BufferQueue, TagToken, Token, TokenSink, TokenSinkResult, Tokenizer, TokenizerOpts,
@@ -110,10 +111,16 @@ macro_rules! t {
     };
 }
 
+#[derive(Parser)]
+struct Cli {
+    docs: PathBuf,
+}
+
 fn main() {
-    let docs = env::args_os().nth(1).expect("doc path should be first argument");
-    let docs = env::current_dir().unwrap().join(docs);
-    let mut checker = Checker { root: docs.clone(), cache: HashMap::new() };
+    let mut cli = Cli::parse();
+    cli.docs = cli.docs.canonicalize().unwrap();
+
+    let mut checker = Checker { root: cli.docs.clone(), cache: HashMap::new() };
     let mut report = Report {
         errors: 0,
         start: Instant::now(),
@@ -125,7 +132,7 @@ fn main() {
         intra_doc_exceptions: 0,
         has_broken_urls: false,
     };
-    checker.walk(&docs, &mut report);
+    checker.walk(&cli.docs, &mut report);
     report.report();
     if report.errors != 0 {
         println!("found some broken links");
