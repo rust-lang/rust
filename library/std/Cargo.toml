@@ -68,7 +68,7 @@ rand_xorshift = "0.4.0"
 dlmalloc = { version = "0.2.4", features = ['rustc-dep-of-std'] }
 
 [target.x86_64-fortanix-unknown-sgx.dependencies]
-fortanix-sgx-abi = { version = "0.5.0", features = [
+fortanix-sgx-abi = { version = "0.6.1", features = [
     'rustc-dep-of-std',
 ], public = true }
 

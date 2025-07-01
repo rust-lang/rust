@@ -267,7 +267,7 @@ pub fn send(event_set: u64, tcs: Option<Tcs>) -> IoResult<()> {
 /// Usercall `insecure_time`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn insecure_time() -> Duration {
-    let t = unsafe { raw::insecure_time() };
+    let t = unsafe { raw::insecure_time().0 };
     Duration::new(t / 1_000_000_000, (t % 1_000_000_000) as _)
 }
 
