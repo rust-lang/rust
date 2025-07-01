@@ -1,5 +1,12 @@
+//! This test verifies that a direct non-primitive cast from an enum to an integer type
+//! is correctly disallowed, even when a `From` implementation exists for that enum.
+//! It specifically checks for the `E0605` error ("non-primitive cast: `Enum` as `Primitive`")
+//! and confirms that `rustfix` can suggest an appropriate correction (e.g., using `into()`).
+
 //@ run-rustfix
+
 #![allow(dead_code, unused_variables)]
+
 enum NonNullary {
     Nullary,
     Other(isize),

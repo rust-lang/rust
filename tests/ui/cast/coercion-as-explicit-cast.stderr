@@ -1,5 +1,5 @@
 warning: method `foo` is never used
-  --> $DIR/trivial_casts-rpass.rs:7:8
+  --> $DIR/coercion-as-explicit-cast.rs:9:8
    |
 LL | trait Foo {
    |       --- method in this trait
