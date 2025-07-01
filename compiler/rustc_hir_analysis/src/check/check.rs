@@ -781,7 +781,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
-            crate::collect::lower_enum_variant_types(tcx, def_id.to_def_id());
+            crate::collect::check_enum_variant_types(tcx, def_id.to_def_id());
             check_enum(tcx, def_id);
             check_variances_for_type_defn(tcx, def_id);
         }
@@ -863,7 +863,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             }
 
             if let Some((_, ctor_def_id)) = adt.ctor {
-                crate::collect::lower_variant_ctor(tcx, ctor_def_id.expect_local());
+                crate::collect::check_ctor(tcx, ctor_def_id.expect_local());
             }
             match def_kind {
                 DefKind::Struct => check_struct(tcx, def_id),
