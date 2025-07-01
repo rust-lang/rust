@@ -90,7 +90,16 @@ fn open_link_no_reparse(
     static ATTRIBUTES: Atomic<u32> = AtomicU32::new(c::OBJ_DONT_REPARSE);
 
     let result = unsafe {
+        // Workaround for #143078.
+        // While the Windows OS itself handles zero length strings,
+        // some security software that hooks system functions may expect it to
+        // be null terminated. So as a workaround we ensure zero length strings
+        // always point to a zero u16 even though it should never be read.
+        static EMPTY_STR: [u16; 1] = [0];
         let mut path_str = c::UNICODE_STRING::from_ref(path);
+        if path_str.Length == 0 {
+            path_str.Buffer = EMPTY_STR.as_ptr().cast_mut();
+        }
         let mut object = c::OBJECT_ATTRIBUTES {
             ObjectName: &mut path_str,
             RootDirectory: parent.as_raw_handle(),
