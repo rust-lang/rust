@@ -1300,7 +1300,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 
         let cycles = self.tree.rerun_get_and_reset_cycles(prev_stack_entry.node_id);
         let current_stack_len = self.stack.len();
-        let mut has_changed = HashSet::default();
+        let mut was_reevaluated = HashSet::default();
         'outer: for cycle in cycles {
             let &tree::Cycle { node_id: cycle_node_id, ref provisional_results } =
                 self.tree.get_cycle(cycle);
@@ -1329,7 +1329,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                     // We've evaluated the `entry_node_id` before evaluating this goal. In case
                     // that node and its parents has not changed, we can reinsert the cache entry
                     // before starting to reevaluate it.
-                    if !self.tree.goal_or_parent_has_changed(node_id, &has_changed, entry_node_id) {
+                    if !self.tree.goal_or_parent_was_reevaluated(node_id, &was_reevaluated, entry_node_id) {
                         continue;
                     }
                 }
@@ -1369,7 +1369,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                         }
                     }
                     (Some(&(node_id, info)), None) => {
-                        if current_goal.0 == node_id {
+                        if was_reevaluated.contains(&node_id) {
                             debug!(parent = ?info.input, cycle = ?added_goals.last().unwrap(), "reevaluated parent, skip cycle");
                             continue 'outer;
                         } else {
@@ -1427,15 +1427,12 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                     current_goal.1.step_kind_from_parent,
                     inspect,
                 );
+                was_reevaluated.insert(current_goal.0);
                 if node_id.is_some_and(|node_id| self.tree.result_matches(current_goal.0, node_id))
                 {
-                    // TODO: This seems wrong. If a later loop reevaluates this goal again, we'd use
-                    // its updated `NodeId`.
-                    removed_entries.remove(&current_goal.0);
                     debug!(input = ?current_goal.1.input, ?result, "goal did not change");
                     continue 'outer;
                 } else {
-                    has_changed.insert(current_goal.0);
                     debug!(input = ?current_goal.1.input, ?result, "goal did change");
                     if self.stack.len() > current_stack_len {
                         let parent = self.stack.pop();
@@ -1481,7 +1478,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         );
 
         for (entry_node_id, (input, entry)) in removed_entries {
-            if !self.tree.goal_or_parent_has_changed(node_id, &has_changed, entry_node_id) {
+            if !self.tree.goal_or_parent_was_reevaluated(node_id, &was_reevaluated, entry_node_id) {
                 self.provisional_cache.entry(input).or_default().push(entry);
             }
         }
