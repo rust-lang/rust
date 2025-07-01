@@ -331,9 +331,14 @@ than building it.
             && (build.config.optimized_compiler_builtins(*target)
                 || build.config.rust_std_features.contains("compiler-builtins-c"))
         {
-            let is_clang = build.cc_tool(*target).is_like_clang();
-            if !is_clang {
-                panic!("only clang supports building c code for wasm targets");
+            let cc_tool = build.cc_tool(*target);
+            if !cc_tool.is_like_clang() {
+                panic!(
+                    "Clang is required to build C code for Wasm targets, got `{}` instead\n\
+                    this is because compiler-builtins is configured to build C source. Either \
+                    ensure Clang is used, or adjust this configuration.",
+                    cc_tool.path().display()
+                );
             }
         }
 
