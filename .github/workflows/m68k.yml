@@ -109,8 +109,8 @@ jobs:
         ./y.sh build --target-triple m68k-unknown-linux-gnu
 
         cd tests/hello-world
-        ../../y.sh cargo build --target m68k-unknown-linux-gnu
-        ../../y.sh cargo run --target m68k-unknown-linux-gnu > hello_world_stdout
+        CG_RUSTFLAGS="-Clinker=m68k-unknown-linux-gnu-gcc" ../../y.sh cargo build --target m68k-unknown-linux-gnu
+        CG_RUSTFLAGS="-Clinker=m68k-unknown-linux-gnu-gcc" ../../y.sh cargo run --target m68k-unknown-linux-gnu > hello_world_stdout
         test $(cat hello_world_stdout) == "Hello, world!" || exit 1
 
   # Summary job for the merge queue.
