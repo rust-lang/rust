@@ -1,11 +1,13 @@
+//! Test that functions with unnamed arguments are correct handled by compiler
+
 //@ run-pass
 
-fn good(_a: &isize) {
-}
+fn good(_a: &isize) {}
 
-// unnamed argument &isize is now parse x: &isize
-
-fn called<F>(_f: F) where F: FnOnce(&isize) {
+fn called<F>(_f: F)
+where
+    F: FnOnce(&isize),
+{
 }
 
 pub fn main() {

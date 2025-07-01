@@ -1,5 +1,7 @@
-//! Regression test for https://github.com/rust-lang/rust/issues/137646.
-//! The parameter value at all calls to `check` should be `(1, 1, 1)`.
+//! This test checks the correct parameter handling during virtual method calls
+//! through a `dyn Trait` object.
+//!
+//! Regression test for: <https://github.com/rust-lang/rust/issues/137646>
 
 //@ run-pass
 

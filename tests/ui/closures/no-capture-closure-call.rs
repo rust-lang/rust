@@ -1,3 +1,5 @@
+//! Sanity check for no capture closures
+
 //@ run-pass
 
 pub fn main() {

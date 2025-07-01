@@ -1,5 +1,5 @@
 error[E0600]: cannot apply unary operator `-` to type `usize`
-  --> $DIR/unsigned-literal-negation.rs:2:13
+  --> $DIR/unary-negation-unsigned-integer-error.rs:4:13
    |
 LL |     let x = -1 as usize;
    |             ^^ cannot apply unary operator `-`
@@ -12,7 +12,7 @@ LL +     let x = usize::MAX;
    |
 
 error[E0600]: cannot apply unary operator `-` to type `usize`
-  --> $DIR/unsigned-literal-negation.rs:3:13
+  --> $DIR/unary-negation-unsigned-integer-error.rs:5:13
    |
 LL |     let x = (-1) as usize;
    |             ^^^^ cannot apply unary operator `-`
@@ -25,7 +25,7 @@ LL +     let x = usize::MAX;
    |
 
 error[E0600]: cannot apply unary operator `-` to type `u32`
-  --> $DIR/unsigned-literal-negation.rs:4:18
+  --> $DIR/unary-negation-unsigned-integer-error.rs:6:18
    |
 LL |     let x: u32 = -1;
    |                  ^^ cannot apply unary operator `-`
