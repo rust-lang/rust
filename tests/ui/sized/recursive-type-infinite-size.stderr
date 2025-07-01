@@ -1,17 +1,23 @@
 error[E0072]: recursive types `Baz` and `Foo` have infinite size
-  --> $DIR/sized-cycle-note.rs:1:1
+  --> $DIR/recursive-type-infinite-size.rs:4:1
    |
-LL | struct Baz { q: Option<Foo> }
-   | ^^^^^^^^^^             --- recursive without indirection
+LL | struct Baz {
+   | ^^^^^^^^^^
 LL |
-LL | struct Foo { q: Option<Baz> }
-   | ^^^^^^^^^^             --- recursive without indirection
+LL |     q: Option<Foo>,
+   |               --- recursive without indirection
+LL | }
+LL | struct Foo {
+   | ^^^^^^^^^^
+LL |     q: Option<Baz>,
+   |               --- recursive without indirection
    |
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
-LL ~ struct Baz { q: Option<Box<Foo>> }
-LL |
-LL ~ struct Foo { q: Option<Box<Baz>> }
+LL ~     q: Option<Box<Foo>>,
+LL | }
+LL | struct Foo {
+LL ~     q: Option<Box<Baz>>,
    |
 
 error: aborting due to 1 previous error

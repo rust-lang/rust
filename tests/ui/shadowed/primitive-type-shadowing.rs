@@ -1,3 +1,6 @@
+//! Check that a primitive type can be shadowed by a user-defined type, and the primitive type
+//! can still be referenced using its fully qualified path (e.g., `core::primitive::bool`).
+
 //@ check-pass
 
 mod bar {

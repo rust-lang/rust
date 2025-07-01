@@ -1,8 +1,10 @@
-// Issue #8380
+//! Check that atomic types from `std::sync::atomic` are not `Copy`
+//! and cannot be moved out of a shared reference.
+//!
+//! Regression test for <https://github.com/rust-lang/rust/issues/8380>.
 
-
-use std::sync::atomic::*;
 use std::ptr;
+use std::sync::atomic::*;
 
 fn main() {
     let x = AtomicBool::new(false);

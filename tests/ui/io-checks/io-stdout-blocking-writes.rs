@@ -1,10 +1,12 @@
+//! Check that writes to standard output are blocking, avoiding interleaving
+//! even with concurrent writes from multiple threads.
+
 //@ run-pass
 //@ needs-subprocess
 
-use std::env;
 use std::io::prelude::*;
 use std::process::Command;
-use std::thread;
+use std::{env, thread};
 
 const THREADS: usize = 20;
 const WRITES: usize = 100;
@@ -33,14 +35,16 @@ fn parent() {
 }
 
 fn child() {
-    let threads = (0..THREADS).map(|_| {
-        thread::spawn(|| {
-            let buf = [b'a'; WRITE_SIZE];
-            for _ in 0..WRITES {
-                write_all(&buf);
-            }
+    let threads = (0..THREADS)
+        .map(|_| {
+            thread::spawn(|| {
+                let buf = [b'a'; WRITE_SIZE];
+                for _ in 0..WRITES {
+                    write_all(&buf);
+                }
+            })
         })
-    }).collect::<Vec<_>>();
+        .collect::<Vec<_>>();
 
     for thread in threads {
         thread.join().unwrap();
@@ -63,8 +67,8 @@ fn write_all(buf: &[u8]) {
 fn write_all(buf: &[u8]) {
     use std::fs::File;
     use std::mem;
-    use std::os::windows::raw::*;
     use std::os::windows::prelude::*;
+    use std::os::windows::raw::*;
 
     const STD_OUTPUT_HANDLE: u32 = (-11i32) as u32;
 

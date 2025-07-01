@@ -1,3 +1,6 @@
+//! Check that `#[reexport_test_harness_main]` correctly reexports the test harness entry point
+//! and allows it to be called from within the code.
+
 //@ run-pass
 //@ compile-flags:--test
 
