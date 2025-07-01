@@ -1,13 +1,13 @@
+//! Sanity check for out-of-bounds read caused by copying the entire original buffer on shrink.
+//!
+//! Regression test for: <https://github.com/rust-lang/rust/issues/16687>
+
 //@ run-pass
-// alloc::heap::reallocate test.
-//
-// Ideally this would be revised to use no_std, but for now it serves
-// well enough to reproduce (and illustrate) the bug from #16687.
 
 #![feature(allocator_api)]
 #![feature(slice_ptr_get)]
 
-use std::alloc::{handle_alloc_error, Allocator, Global, Layout};
+use std::alloc::{Allocator, Global, Layout, handle_alloc_error};
 use std::ptr::{self, NonNull};
 
 fn main() {

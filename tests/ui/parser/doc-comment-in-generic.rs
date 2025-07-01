@@ -1,9 +1,13 @@
+//! Tests correct parsing of doc comments on generic parameters in traits.
+//! Checks that compiler doesn't panic when processing this.
+
 //@ check-pass
-// Check that it doesn't panic when `Input` gets its visibility checked.
 
 #![crate_type = "lib"]
 
 pub trait Layer<
-    /// Hello.
+    /// Documentation for generic parameter.
     Input,
-> {}
+>
+{
+}

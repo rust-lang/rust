@@ -1,3 +1,6 @@
+//! Test that print!/println! output to stdout and eprint!/eprintln!
+//! output to stderr correctly.
+
 //@ run-pass
 //@ needs-subprocess
 
