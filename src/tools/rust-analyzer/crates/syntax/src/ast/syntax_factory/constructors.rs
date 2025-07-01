@@ -1212,6 +1212,43 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn attr_outer(&self, meta: ast::Meta) -> ast::Attr {
+        let ast = make::attr_outer(meta.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(meta.syntax().clone(), ast.meta().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn attr_inner(&self, meta: ast::Meta) -> ast::Attr {
+        let ast = make::attr_inner(meta.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(meta.syntax().clone(), ast.meta().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn meta_token_tree(&self, path: ast::Path, tt: ast::TokenTree) -> ast::Meta {
+        let ast = make::meta_token_tree(path.clone(), tt.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(path.syntax().clone(), ast.path().unwrap().syntax().clone());
+            builder.map_node(tt.syntax().clone(), ast.token_tree().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn token_tree(
         &self,
         delimiter: SyntaxKind,
@@ -1241,6 +1278,10 @@ impl SyntaxFactory {
 
     pub fn whitespace(&self, text: &str) -> SyntaxToken {
         make::tokens::whitespace(text)
+    }
+
+    pub fn ident(&self, text: &str) -> SyntaxToken {
+        make::tokens::ident(text)
     }
 }
 
