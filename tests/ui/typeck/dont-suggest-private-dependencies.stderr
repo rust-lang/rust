@@ -4,11 +4,6 @@ error[E0599]: no method named `read` found for struct `Vec<u8>` in the current s
 LL |         self.0.read(buf)
    |                ^^^^
    |
-   = help: items from traits can only be used if the trait is in scope
-help: trait `ReadRef` which provides `read` is implemented but not in scope; perhaps you want to import it
-   |
-LL + use object::read::read_ref::ReadRef;
-   |
 help: there is a method `read_at` with a similar name
    |
 LL |         self.0.read_at(buf)
@@ -19,24 +14,12 @@ error[E0599]: no function or associated item named `cast_from_lossy` found for t
    |
 LL |     let _ = u8::cast_from_lossy(9);
    |                 ^^^^^^^^^^^^^^^ function or associated item not found in `u8`
-   |
-   = help: items from traits can only be used if the trait is in scope
-help: trait `CastFrom` which provides `cast_from_lossy` is implemented but not in scope; perhaps you want to import it
-   |
-LL + use compiler_builtins::math::libm_math::support::int_traits::CastFrom;
-   |
 
 error[E0599]: no function or associated item named `foo` found for struct `B` in the current scope
   --> $DIR/dont-suggest-private-dependencies.rs:28:16
    |
 LL |     let _ = B::foo();
    |                ^^^ function or associated item not found in `B`
-   |
-   = help: items from traits can only be used if the trait is in scope
-help: trait `A` which provides `foo` is implemented but not in scope; perhaps you want to import it
-   |
-LL + use private_dep::A;
-   |
 
 error: aborting due to 3 previous errors
 
