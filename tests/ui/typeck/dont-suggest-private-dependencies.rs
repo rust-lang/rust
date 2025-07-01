@@ -10,6 +10,13 @@
 //@ compile-flags: -Zunstable-options
 //@ forbid-output: private_dep
 
+// By default, the `read` diagnostic suggests `std::os::unix::fs::FileExt::read_at`. Add
+// something more likely to be recommended to make the diagnostic cross-platform.
+trait DecoyRead {
+    fn read1(&self) {}
+}
+impl<T> DecoyRead for Vec<T> {}
+
 struct VecReader(Vec<u8>);
 
 impl std::io::Read for VecReader {
