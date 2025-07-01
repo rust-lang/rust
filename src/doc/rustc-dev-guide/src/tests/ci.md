@@ -148,6 +148,13 @@ for example `*msvc*` or `*-alt`. You can start at most 20 jobs in a single try b
 glob patterns, you might want to wrap them in backticks (`` ` ``) to avoid GitHub rendering
 the pattern as Markdown.
 
+The job pattern needs to match one or more jobs defined in the `auto` or `optional` sections
+of [`jobs.yml`]:
+
+- `auto` jobs are executed before a commit is merged into the `master` branch.
+- `optional` jobs are executed only when explicitly requested via a try build.
+  They are typically used for tier 2 and tier 3 targets.
+
 > **Using `try-job` PR description directives**
 >
 > 1. Identify which set of try-jobs you would like to exercise. You can
