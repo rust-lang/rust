@@ -216,6 +216,7 @@ struct VnState<'body, 'tcx> {
     tcx: TyCtxt<'tcx>,
     ecx: InterpCx<'tcx, DummyMachine>,
     local_decls: &'body LocalDecls<'tcx>,
+    is_coroutine: bool,
     /// Value stored in each local.
     locals: IndexVec<Local, Option<VnIndex>>,
     /// Locals that are assigned that value.
@@ -253,6 +254,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             tcx,
             ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
             local_decls,
+            is_coroutine: body.coroutine.is_some(),
             locals: IndexVec::from_elem(None, local_decls),
             rev_locals: IndexVec::with_capacity(num_values),
             values: FxIndexSet::with_capacity_and_hasher(num_values, Default::default()),
@@ -380,7 +382,12 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     fn eval_to_const(&mut self, value: VnIndex) -> Option<OpTy<'tcx>> {
         use Value::*;
         let ty = self.ty(value);
-        let ty = self.ecx.layout_of(ty).ok()?;
+        // Avoid computing layouts inside a coroutine, as that can cause cycles.
+        let ty = if !self.is_coroutine || ty.is_scalar() {
+            self.ecx.layout_of(ty).ok()?
+        } else {
+            return None;
+        };
         let op = match *self.get(value) {
             _ if ty.is_zst() => ImmTy::uninit(ty).into(),
 
