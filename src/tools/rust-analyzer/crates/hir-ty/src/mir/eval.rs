@@ -657,12 +657,12 @@ impl Evaluator<'_> {
             cached_ptr_size,
             cached_fn_trait_func: LangItem::Fn
                 .resolve_trait(db, crate_id)
-                .and_then(|x| db.trait_items(x).method_by_name(&Name::new_symbol_root(sym::call))),
+                .and_then(|x| x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call))),
             cached_fn_mut_trait_func: LangItem::FnMut.resolve_trait(db, crate_id).and_then(|x| {
-                db.trait_items(x).method_by_name(&Name::new_symbol_root(sym::call_mut))
+                x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call_mut))
             }),
             cached_fn_once_trait_func: LangItem::FnOnce.resolve_trait(db, crate_id).and_then(|x| {
-                db.trait_items(x).method_by_name(&Name::new_symbol_root(sym::call_once))
+                x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call_once))
             }),
         })
     }
@@ -1749,8 +1749,7 @@ impl Evaluator<'_> {
                         AdtId::UnionId(_) => not_supported!("unsizing unions"),
                         AdtId::EnumId(_) => not_supported!("unsizing enums"),
                     };
-                    let Some((last_field, _)) =
-                        self.db.variant_fields(id.into()).fields().iter().next_back()
+                    let Some((last_field, _)) = id.fields(self.db).fields().iter().next_back()
                     else {
                         not_supported!("unsizing struct without field");
                     };
@@ -2232,7 +2231,7 @@ impl Evaluator<'_> {
                 }
                 chalk_ir::TyKind::Adt(adt, subst) => match adt.0 {
                     AdtId::StructId(s) => {
-                        let data = this.db.variant_fields(s.into());
+                        let data = s.fields(this.db);
                         let layout = this.layout(ty)?;
                         let field_types = this.db.field_types(s.into());
                         for (f, _) in data.fields().iter() {
@@ -2261,7 +2260,7 @@ impl Evaluator<'_> {
                             bytes,
                             e,
                         ) {
-                            let data = &this.db.variant_fields(v.into());
+                            let data = v.fields(this.db);
                             let field_types = this.db.field_types(v.into());
                             for (f, _) in data.fields().iter() {
                                 let offset =
@@ -2808,7 +2807,7 @@ impl Evaluator<'_> {
     ) -> Result<()> {
         let Some(drop_fn) = (|| {
             let drop_trait = LangItem::Drop.resolve_trait(self.db, self.crate_id)?;
-            self.db.trait_items(drop_trait).method_by_name(&Name::new_symbol_root(sym::drop))
+            drop_trait.trait_items(self.db).method_by_name(&Name::new_symbol_root(sym::drop))
         })() else {
             // in some tests we don't have drop trait in minicore, and
             // we can ignore drop in them.
@@ -2838,7 +2837,7 @@ impl Evaluator<'_> {
                             return Ok(());
                         }
                         let layout = self.layout_adt(id.0, subst.clone())?;
-                        let variant_fields = self.db.variant_fields(s.into());
+                        let variant_fields = s.fields(self.db);
                         match variant_fields.shape {
                             FieldsShape::Record | FieldsShape::Tuple => {
                                 let field_types = self.db.field_types(s.into());
@@ -2918,7 +2917,7 @@ pub fn render_const_using_debug_impl(
         not_supported!("core::fmt::Debug not found");
     };
     let Some(debug_fmt_fn) =
-        db.trait_items(debug_trait).method_by_name(&Name::new_symbol_root(sym::fmt))
+        debug_trait.trait_items(db).method_by_name(&Name::new_symbol_root(sym::fmt))
     else {
         not_supported!("core::fmt::Debug::fmt not found");
     };
@@ -3045,7 +3044,10 @@ impl IntValue {
             (8, true) => Self::I64(i64::from_le_bytes(bytes.try_into().unwrap())),
             (16, false) => Self::U128(u128::from_le_bytes(bytes.try_into().unwrap())),
             (16, true) => Self::I128(i128::from_le_bytes(bytes.try_into().unwrap())),
-            _ => panic!("invalid integer size"),
+            (len, is_signed) => {
+                never!("invalid integer size: {len}, signed: {is_signed}");
+                Self::I32(0)
+            }
         }
     }
 

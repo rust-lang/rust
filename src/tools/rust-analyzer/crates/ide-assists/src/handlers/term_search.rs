@@ -100,9 +100,7 @@ fn f() { let a: u128 = 1; let b: u128 = todo$0!() }"#,
     fn test_complete_todo_with_msg() {
         check_assist(
             term_search,
-            // FIXME: Since we are lacking of `super let`, term search fails due to borrowck failure.
-            // Should implement super let and remove `fmt_before_1_89_0`
-            r#"//- minicore: todo, unimplemented, fmt_before_1_89_0
+            r#"//- minicore: todo, unimplemented
 fn f() { let a: u128 = 1; let b: u128 = todo$0!("asd") }"#,
             r#"fn f() { let a: u128 = 1; let b: u128 = a }"#,
         )
@@ -112,10 +110,8 @@ fn f() { let a: u128 = 1; let b: u128 = todo$0!("asd") }"#,
     fn test_complete_unimplemented_with_msg() {
         check_assist(
             term_search,
-            // FIXME: Since we are lacking of `super let`, term search fails due to borrowck failure.
-            // Should implement super let and remove `fmt_before_1_89_0`
-            r#"//- minicore: todo, unimplemented, fmt_before_1_89_0
-fn f() { let a: u128 = 1; let b: u128 = todo$0!("asd") }"#,
+            r#"//- minicore: todo, unimplemented
+fn f() { let a: u128 = 1; let b: u128 = unimplemented$0!("asd") }"#,
             r#"fn f() { let a: u128 = 1; let b: u128 = a }"#,
         )
     }
@@ -124,10 +120,8 @@ fn f() { let a: u128 = 1; let b: u128 = todo$0!("asd") }"#,
     fn test_complete_unimplemented() {
         check_assist(
             term_search,
-            // FIXME: Since we are lacking of `super let`, term search fails due to borrowck failure.
-            // Should implement super let and remove `fmt_before_1_89_0`
-            r#"//- minicore: todo, unimplemented, fmt_before_1_89_0
-fn f() { let a: u128 = 1; let b: u128 = todo$0!("asd") }"#,
+            r#"//- minicore: todo, unimplemented
+fn f() { let a: u128 = 1; let b: u128 = unimplemented$0!() }"#,
             r#"fn f() { let a: u128 = 1; let b: u128 = a }"#,
         )
     }

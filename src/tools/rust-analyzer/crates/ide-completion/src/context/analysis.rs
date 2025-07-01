@@ -4,6 +4,7 @@ use std::iter;
 use hir::{ExpandResult, InFile, Semantics, Type, TypeInfo, Variant};
 use ide_db::{RootDatabase, active_parameter::ActiveParameter};
 use itertools::Either;
+use stdx::always;
 use syntax::{
     AstNode, AstToken, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken,
     T, TextRange, TextSize,
@@ -869,8 +870,15 @@ fn classify_name_ref<'db>(
                     return None;
                 }
 
+                let mut receiver_ty = receiver.as_ref().and_then(|it| sema.type_of_expr(it));
+                if receiver_is_ambiguous_float_literal {
+                    // `123.|` is parsed as a float but should actually be an integer.
+                    always!(receiver_ty.as_ref().is_none_or(|receiver_ty| receiver_ty.original.is_float()));
+                    receiver_ty = Some(TypeInfo { original: hir::BuiltinType::i32().ty(sema.db), adjusted: None });
+                }
+
                 let kind = NameRefKind::DotAccess(DotAccess {
-                    receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
+                    receiver_ty,
                     kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal },
                     receiver,
                     ctx: DotAccessExprCtx { in_block_expr: is_in_block(field.syntax()), in_breakable: is_in_breakable(field.syntax()) }

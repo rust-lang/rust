@@ -175,10 +175,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // and therefore is not considered during coroutine auto-trait
                 // determination. See the comment about `box` at `yield_in_scope`.
                 let result = this.local_decls.push(LocalDecl::new(expr.ty, expr_span));
-                this.cfg.push(
-                    block,
-                    Statement { source_info, kind: StatementKind::StorageLive(result) },
-                );
+                this.cfg
+                    .push(block, Statement::new(source_info, StatementKind::StorageLive(result)));
                 if let Some(scope) = scope.temp_lifetime {
                     // schedule a shallow free of that memory, lest we unwind:
                     this.schedule_drop_storage_and_value(expr_span, scope, result);
@@ -278,12 +276,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         };
                         this.cfg.push(
                             block,
-                            Statement {
+                            Statement::new(
                                 source_info,
-                                kind: StatementKind::Intrinsic(Box::new(
-                                    NonDivergingIntrinsic::Assume(Operand::Move(assert_place)),
-                                )),
-                            },
+                                StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(
+                                    Operand::Move(assert_place),
+                                ))),
+                            ),
                         );
                     }
 
@@ -789,7 +787,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_info = this.source_info(upvar_span);
         let temp = this.local_decls.push(LocalDecl::new(upvar_ty, upvar_span));
 
-        this.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });
+        this.cfg.push(block, Statement::new(source_info, StatementKind::StorageLive(temp)));
 
         let arg_place_builder = unpack!(block = this.as_place_builder(block, arg));
 

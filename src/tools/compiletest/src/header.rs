@@ -15,6 +15,7 @@ use crate::errors::ErrorKind;
 use crate::executor::{CollectedTestDesc, ShouldPanic};
 use crate::header::auxiliary::{AuxProps, parse_and_update_aux};
 use crate::header::needs::CachedNeedsConditions;
+use crate::help;
 use crate::util::static_regex;
 
 pub(crate) mod auxiliary;
@@ -920,9 +921,9 @@ fn iter_header(
             if !is_known_directive {
                 *poisoned = true;
 
-                eprintln!(
-                    "error: detected unknown compiletest test directive `{}` in {}:{}",
-                    directive_line.raw_directive, testfile, line_number,
+                error!(
+                    "{testfile}:{line_number}: detected unknown compiletest test directive `{}`",
+                    directive_line.raw_directive,
                 );
 
                 return;
@@ -931,11 +932,11 @@ fn iter_header(
             if let Some(trailing_directive) = &trailing_directive {
                 *poisoned = true;
 
-                eprintln!(
-                    "error: detected trailing compiletest test directive `{}` in {}:{}\n \
-                      help: put the trailing directive in it's own line: `//@ {}`",
-                    trailing_directive, testfile, line_number, trailing_directive,
+                error!(
+                    "{testfile}:{line_number}: detected trailing compiletest test directive `{}`",
+                    trailing_directive,
                 );
+                help!("put the trailing directive in it's own line: `//@ {}`", trailing_directive);
 
                 return;
             }
@@ -1031,10 +1032,9 @@ impl Config {
         };
 
         let Some((regex, replacement)) = parse_normalize_rule(raw_value) else {
-            panic!(
-                "couldn't parse custom normalization rule: `{raw_directive}`\n\
-                help: expected syntax is: `{directive_name}: \"REGEX\" -> \"REPLACEMENT\"`"
-            );
+            error!("couldn't parse custom normalization rule: `{raw_directive}`");
+            help!("expected syntax is: `{directive_name}: \"REGEX\" -> \"REPLACEMENT\"`");
+            panic!("invalid normalization rule detected");
         };
         Some(NormalizeRule { kind, regex, replacement })
     }
@@ -1406,7 +1406,7 @@ pub(crate) fn make_test_description<R: Read>(
                             ignore_message = Some(reason.into());
                         }
                         IgnoreDecision::Error { message } => {
-                            eprintln!("error: {}:{line_number}: {message}", path);
+                            error!("{path}:{line_number}: {message}");
                             *poisoned = true;
                             return;
                         }

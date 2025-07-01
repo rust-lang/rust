@@ -1596,7 +1596,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 Some((alloc_id, offset, extra)) => Ok((alloc_id, offset, extra)),
                 None => {
                     assert!(M::Provenance::OFFSET_IS_ADDR);
-                    let (_, addr) = ptr.into_parts();
+                    // Offset is absolute, as we just asserted.
+                    let (_, addr) = ptr.into_raw_parts();
                     Err(addr.bytes())
                 }
             },

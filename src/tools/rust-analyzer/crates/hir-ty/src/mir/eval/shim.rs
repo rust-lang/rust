@@ -1257,9 +1257,8 @@ impl Evaluator<'_> {
                     args.push(IntervalAndTy::new(addr, field, self, locals)?);
                 }
                 if let Some(target) = LangItem::FnOnce.resolve_trait(self.db, self.crate_id) {
-                    if let Some(def) = self
-                        .db
-                        .trait_items(target)
+                    if let Some(def) = target
+                        .trait_items(self.db)
                         .method_by_name(&Name::new_symbol_root(sym::call_once))
                     {
                         self.exec_fn_trait(

@@ -1532,6 +1532,16 @@
             {
                 "title": "highlightRelated",
                 "properties": {
+                    "rust-analyzer.highlightRelated.branchExitPoints.enable": {
+                        "markdownDescription": "Enables highlighting of related return values while the cursor is on any `match`, `if`, or match arm arrow (`=>`).",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "highlightRelated",
+                "properties": {
                     "rust-analyzer.highlightRelated.breakPoints.enable": {
                         "markdownDescription": "Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.",
                         "default": true,

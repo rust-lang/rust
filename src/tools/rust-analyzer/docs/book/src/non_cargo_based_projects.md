@@ -40,6 +40,9 @@ interface ProjectJson {
     /// several different "sysroots" in one graph of
     /// crates.
     sysroot_src?: string;
+    /// A ProjectJson describing the crates of the sysroot.
+    sysroot_project?: ProjectJson;
+
     /// List of groups of common cfg values, to allow
     /// sharing them between crates.
     ///

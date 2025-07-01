@@ -13,6 +13,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
+doctest = false
 
 [[bin]]
 name = "rust-analyzer"

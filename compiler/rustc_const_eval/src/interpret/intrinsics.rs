@@ -6,10 +6,9 @@ use std::assert_matches::assert_matches;
 
 use rustc_abi::Size;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
-use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::{TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_span::{Symbol, sym};
 use tracing::trace;
@@ -17,8 +16,8 @@ use tracing::trace;
 use super::memory::MemoryKind;
 use super::util::ensure_monomorphic_enough;
 use super::{
-    Allocation, CheckInAllocMsg, ConstAllocation, GlobalId, ImmTy, InterpCx, InterpResult, Machine,
-    OpTy, PlaceTy, Pointer, PointerArithmetic, Provenance, Scalar, err_inval, err_ub_custom,
+    Allocation, CheckInAllocMsg, ConstAllocation, ImmTy, InterpCx, InterpResult, Machine, OpTy,
+    PlaceTy, Pointer, PointerArithmetic, Provenance, Scalar, err_inval, err_ub_custom,
     err_unsup_format, interp_ok, throw_inval, throw_ub_custom, throw_ub_format,
 };
 use crate::fluent_generated as fluent;
@@ -28,73 +27,6 @@ pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAll
     let path = crate::util::type_name(tcx, ty);
     let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes(), ());
     tcx.mk_const_alloc(alloc)
-}
-
-/// The logic for all nullary intrinsics is implemented here. These intrinsics don't get evaluated
-/// inside an `InterpCx` and instead have their value computed directly from rustc internal info.
-pub(crate) fn eval_nullary_intrinsic<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    typing_env: ty::TypingEnv<'tcx>,
-    def_id: DefId,
-    args: GenericArgsRef<'tcx>,
-) -> InterpResult<'tcx, ConstValue<'tcx>> {
-    let tp_ty = args.type_at(0);
-    let name = tcx.item_name(def_id);
-    interp_ok(match name {
-        sym::type_name => {
-            ensure_monomorphic_enough(tcx, tp_ty)?;
-            let alloc = alloc_type_name(tcx, tp_ty);
-            ConstValue::Slice { data: alloc, meta: alloc.inner().size().bytes() }
-        }
-        sym::needs_drop => {
-            ensure_monomorphic_enough(tcx, tp_ty)?;
-            ConstValue::from_bool(tp_ty.needs_drop(tcx, typing_env))
-        }
-        sym::type_id => {
-            ensure_monomorphic_enough(tcx, tp_ty)?;
-            ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128())
-        }
-        sym::variant_count => match match tp_ty.kind() {
-            // Pattern types have the same number of variants as their base type.
-            // Even if we restrict e.g. which variants are valid, the variants are essentially just uninhabited.
-            // And `Result<(), !>` still has two variants according to `variant_count`.
-            ty::Pat(base, _) => *base,
-            _ => tp_ty,
-        }
-        .kind()
-        {
-            // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
-            ty::Adt(adt, _) => ConstValue::from_target_usize(adt.variants().len() as u64, &tcx),
-            ty::Alias(..) | ty::Param(_) | ty::Placeholder(_) | ty::Infer(_) => {
-                throw_inval!(TooGeneric)
-            }
-            ty::Pat(..) => unreachable!(),
-            ty::Bound(_, _) => bug!("bound ty during ctfe"),
-            ty::Bool
-            | ty::Char
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Foreign(_)
-            | ty::Str
-            | ty::Array(_, _)
-            | ty::Slice(_)
-            | ty::RawPtr(_, _)
-            | ty::Ref(_, _, _)
-            | ty::FnDef(_, _)
-            | ty::FnPtr(..)
-            | ty::Dynamic(_, _, _)
-            | ty::Closure(_, _)
-            | ty::CoroutineClosure(_, _)
-            | ty::Coroutine(_, _)
-            | ty::CoroutineWitness(..)
-            | ty::UnsafeBinder(_)
-            | ty::Never
-            | ty::Tuple(_)
-            | ty::Error(_) => ConstValue::from_target_usize(0u64, &tcx),
-        },
-        other => bug!("`{}` is not a zero arg intrinsic", other),
-    })
 }
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
@@ -110,8 +42,77 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, bool> {
         let instance_args = instance.args;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
+        let tcx = self.tcx.tcx;
 
         match intrinsic_name {
+            sym::type_name => {
+                let tp_ty = instance.args.type_at(0);
+                ensure_monomorphic_enough(tcx, tp_ty)?;
+                let alloc = alloc_type_name(tcx, tp_ty);
+                let val = ConstValue::Slice { data: alloc, meta: alloc.inner().size().bytes() };
+                let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
+                self.copy_op(&val, dest)?;
+            }
+            sym::needs_drop => {
+                let tp_ty = instance.args.type_at(0);
+                ensure_monomorphic_enough(tcx, tp_ty)?;
+                let val = ConstValue::from_bool(tp_ty.needs_drop(tcx, self.typing_env));
+                let val = self.const_val_to_op(val, tcx.types.bool, Some(dest.layout))?;
+                self.copy_op(&val, dest)?;
+            }
+            sym::type_id => {
+                let tp_ty = instance.args.type_at(0);
+                ensure_monomorphic_enough(tcx, tp_ty)?;
+                let val = ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128());
+                let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
+                self.copy_op(&val, dest)?;
+            }
+            sym::variant_count => {
+                let tp_ty = instance.args.type_at(0);
+                let ty = match tp_ty.kind() {
+                    // Pattern types have the same number of variants as their base type.
+                    // Even if we restrict e.g. which variants are valid, the variants are essentially just uninhabited.
+                    // And `Result<(), !>` still has two variants according to `variant_count`.
+                    ty::Pat(base, _) => *base,
+                    _ => tp_ty,
+                };
+                let val = match ty.kind() {
+                    // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
+                    ty::Adt(adt, _) => {
+                        ConstValue::from_target_usize(adt.variants().len() as u64, &tcx)
+                    }
+                    ty::Alias(..) | ty::Param(_) | ty::Placeholder(_) | ty::Infer(_) => {
+                        throw_inval!(TooGeneric)
+                    }
+                    ty::Pat(..) => unreachable!(),
+                    ty::Bound(_, _) => bug!("bound ty during ctfe"),
+                    ty::Bool
+                    | ty::Char
+                    | ty::Int(_)
+                    | ty::Uint(_)
+                    | ty::Float(_)
+                    | ty::Foreign(_)
+                    | ty::Str
+                    | ty::Array(_, _)
+                    | ty::Slice(_)
+                    | ty::RawPtr(_, _)
+                    | ty::Ref(_, _, _)
+                    | ty::FnDef(_, _)
+                    | ty::FnPtr(..)
+                    | ty::Dynamic(_, _, _)
+                    | ty::Closure(_, _)
+                    | ty::CoroutineClosure(_, _)
+                    | ty::Coroutine(_, _)
+                    | ty::CoroutineWitness(..)
+                    | ty::UnsafeBinder(_)
+                    | ty::Never
+                    | ty::Tuple(_)
+                    | ty::Error(_) => ConstValue::from_target_usize(0u64, &tcx),
+                };
+                let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
+                self.copy_op(&val, dest)?;
+            }
+
             sym::caller_location => {
                 let span = self.find_closest_untracked_caller_location();
                 let val = self.tcx.span_as_caller_location(span);
@@ -135,21 +136,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
 
                 self.write_scalar(Scalar::from_target_usize(result, self), dest)?;
-            }
-
-            sym::needs_drop | sym::type_id | sym::type_name | sym::variant_count => {
-                let gid = GlobalId { instance, promoted: None };
-                let ty = self
-                    .tcx
-                    .fn_sig(instance.def_id())
-                    .instantiate(self.tcx.tcx, instance.args)
-                    .output()
-                    .no_bound_vars()
-                    .unwrap();
-                let val = self
-                    .ctfe_query(|tcx| tcx.const_eval_global_id(self.typing_env, gid, tcx.span))?;
-                let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
-                self.copy_op(&val, dest)?;
             }
 
             sym::fadd_algebraic

@@ -486,7 +486,7 @@ pub(crate) fn visit_module(
                     });
                 }
                 ModuleDefId::TraitId(it) => {
-                    let trait_data = db.trait_items(it);
+                    let trait_data = it.trait_items(db);
                     for &(_, item) in trait_data.items.iter() {
                         match item {
                             AssocItemId::FunctionId(it) => cb(it.into()),

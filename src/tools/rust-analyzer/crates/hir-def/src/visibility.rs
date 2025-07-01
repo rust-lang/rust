@@ -273,7 +273,7 @@ pub(crate) fn field_visibilities_query(
     db: &dyn DefDatabase,
     variant_id: VariantId,
 ) -> Arc<ArenaMap<LocalFieldId, Visibility>> {
-    let variant_fields = db.variant_fields(variant_id);
+    let variant_fields = variant_id.fields(db);
     let fields = variant_fields.fields();
     if fields.is_empty() {
         return Arc::default();

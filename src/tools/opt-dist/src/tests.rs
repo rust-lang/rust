@@ -72,6 +72,8 @@ change-id = 115898
 [rust]
 channel = "{channel}"
 verbose-tests = true
+# rust-lld cannot be combined with an external LLVM
+lld = false
 
 [build]
 rustc = "{rustc}"

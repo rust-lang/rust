@@ -316,6 +316,11 @@ mod prim_bool {}
 #[unstable(feature = "never_type", issue = "35121")]
 mod prim_never {}
 
+// Required to make auto trait impls render.
+// See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
+#[doc(hidden)]
+impl ! {}
+
 #[rustc_doc_primitive = "char"]
 #[allow(rustdoc::invalid_rust_codeblocks)]
 /// A character type.

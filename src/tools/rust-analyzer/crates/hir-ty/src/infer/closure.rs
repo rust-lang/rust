@@ -677,7 +677,7 @@ impl CapturedItem {
             match proj {
                 ProjectionElem::Deref => {}
                 ProjectionElem::Field(Either::Left(f)) => {
-                    let variant_data = f.parent.variant_data(db);
+                    let variant_data = f.parent.fields(db);
                     match variant_data.shape {
                         FieldsShape::Record => {
                             result.push('_');
@@ -720,7 +720,7 @@ impl CapturedItem {
                 // In source code autoderef kicks in.
                 ProjectionElem::Deref => {}
                 ProjectionElem::Field(Either::Left(f)) => {
-                    let variant_data = f.parent.variant_data(db);
+                    let variant_data = f.parent.fields(db);
                     match variant_data.shape {
                         FieldsShape::Record => format_to!(
                             result,
@@ -782,7 +782,7 @@ impl CapturedItem {
                     if field_need_paren {
                         result = format!("({result})");
                     }
-                    let variant_data = f.parent.variant_data(db);
+                    let variant_data = f.parent.fields(db);
                     let field = match variant_data.shape {
                         FieldsShape::Record => {
                             variant_data.fields()[f.local_id].name.as_str().to_owned()
@@ -1210,9 +1210,8 @@ impl InferenceContext<'_> {
                         if let Some(deref_trait) =
                             self.resolve_lang_item(LangItem::DerefMut).and_then(|it| it.as_trait())
                         {
-                            if let Some(deref_fn) = self
-                                .db
-                                .trait_items(deref_trait)
+                            if let Some(deref_fn) = deref_trait
+                                .trait_items(self.db)
                                 .method_by_name(&Name::new_symbol_root(sym::deref_mut))
                             {
                                 break 'b deref_fn == f;
@@ -1560,7 +1559,7 @@ impl InferenceContext<'_> {
                             self.consume_place(place)
                         }
                         VariantId::StructId(s) => {
-                            let vd = &*self.db.variant_fields(s.into());
+                            let vd = s.fields(self.db);
                             for field_pat in args.iter() {
                                 let arg = field_pat.pat;
                                 let Some(local_id) = vd.field(&field_pat.name) else {
@@ -1612,7 +1611,7 @@ impl InferenceContext<'_> {
                             self.consume_place(place)
                         }
                         VariantId::StructId(s) => {
-                            let vd = &*self.db.variant_fields(s.into());
+                            let vd = s.fields(self.db);
                             let (al, ar) =
                                 args.split_at(ellipsis.map_or(args.len(), |it| it as usize));
                             let fields = vd.fields().iter();
