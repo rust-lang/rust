@@ -55,9 +55,6 @@ RUN ./install-riscv64-none-elf.sh
 COPY host-x86_64/dist-various-1/install-riscv32-none-elf.sh /build
 RUN ./install-riscv32-none-elf.sh
 
-COPY host-x86_64/dist-various-1/install-llvm-mingw.sh /build
-RUN ./install-llvm-mingw.sh
-
 COPY host-x86_64/dist-various-1/install-emscripten.sh /build
 RUN ./install-emscripten.sh
 
