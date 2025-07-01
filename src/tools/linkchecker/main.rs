@@ -18,11 +18,11 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
+use std::fs;
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::time::Instant;
-use std::{env, fs};
 
 use html5ever::tendril::ByteTendril;
 use html5ever::tokenizer::{
@@ -110,10 +110,20 @@ macro_rules! t {
     };
 }
 
+struct Cli {
+    docs: PathBuf,
+}
+
 fn main() {
-    let docs = env::args_os().nth(1).expect("doc path should be first argument");
-    let docs = env::current_dir().unwrap().join(docs);
-    let mut checker = Checker { root: docs.clone(), cache: HashMap::new() };
+    let cli = match parse_cli() {
+        Ok(cli) => cli,
+        Err(err) => {
+            eprintln!("error: {err}");
+            usage_and_exit(1);
+        }
+    };
+
+    let mut checker = Checker { root: cli.docs.clone(), cache: HashMap::new() };
     let mut report = Report {
         errors: 0,
         start: Instant::now(),
@@ -125,12 +135,43 @@ fn main() {
         intra_doc_exceptions: 0,
         has_broken_urls: false,
     };
-    checker.walk(&docs, &mut report);
+    checker.walk(&cli.docs, &mut report);
     report.report();
     if report.errors != 0 {
         println!("found some broken links");
         std::process::exit(1);
     }
+}
+
+fn parse_cli() -> Result<Cli, String> {
+    fn to_canonical_path(arg: &str) -> Result<PathBuf, String> {
+        PathBuf::from(arg).canonicalize().map_err(|e| format!("could not canonicalize {arg}: {e}"))
+    }
+
+    let mut verbatim = false;
+    let mut docs = None;
+
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
+        if !verbatim && arg == "--" {
+            verbatim = true;
+        } else if !verbatim && (arg == "-h" || arg == "--help") {
+            usage_and_exit(0)
+        } else if !verbatim && arg.starts_with('-') {
+            return Err(format!("unknown flag: {arg}"));
+        } else if docs.is_none() {
+            docs = Some(arg);
+        } else {
+            return Err("too many positional arguments".into());
+        }
+    }
+
+    Ok(Cli { docs: to_canonical_path(&docs.ok_or("missing first positional argument")?)? })
+}
+
+fn usage_and_exit(code: i32) -> ! {
+    eprintln!("usage: linkchecker <path>");
+    std::process::exit(code)
 }
 
 struct Checker {
