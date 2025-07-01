@@ -3031,6 +3031,61 @@ impl<T, A: Allocator> Vec<T, A> {
             (initialized, spare, &mut self.len)
         }
     }
+
+    /// Groups every `N` elements in the `Vec<T>` into chunks to produce a `Vec<[T; N]>`, dropping
+    /// elements in the remainder. `N` must be greater than zero.
+    ///
+    /// If the capacity is not a multiple of the chunk size, the buffer will shrink down to the
+    /// nearest multiple with a reallocation or deallocation.
+    ///
+    /// This function can be used to reverse [`Vec::into_flattened`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_into_chunks)]
+    ///
+    /// let vec = vec![0, 1, 2, 3, 4, 5, 6, 7];
+    /// assert_eq!(vec.into_chunks::<3>(), [[0, 1, 2], [3, 4, 5]]);
+    ///
+    /// let vec = vec![0, 1, 2, 3];
+    /// let chunks: Vec<[u8; 10]> = vec.into_chunks();
+    /// assert!(chunks.is_empty());
+    ///
+    /// let flat = vec![0; 8 * 8 * 8];
+    /// let reshaped: Vec<[[[u8; 8]; 8]; 8]> = flat.into_chunks().into_chunks().into_chunks();
+    /// assert_eq!(reshaped.len(), 1);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "vec_into_chunks", issue = "142137")]
+    pub fn into_chunks<const N: usize>(mut self) -> Vec<[T; N], A> {
+        const {
+            assert!(N != 0, "chunk size must be greater than zero");
+        }
+
+        let (len, cap) = (self.len(), self.capacity());
+
+        let len_remainder = len % N;
+        if len_remainder != 0 {
+            self.truncate(len - len_remainder);
+        }
+
+        let cap_remainder = cap % N;
+        if !T::IS_ZST && cap_remainder != 0 {
+            self.buf.shrink_to_fit(cap - cap_remainder);
+        }
+
+        let (ptr, _, _, alloc) = self.into_raw_parts_with_alloc();
+
+        // SAFETY:
+        // - `ptr` and `alloc` were just returned from `self.into_raw_parts_with_alloc()`
+        // - `[T; N]` has the same alignment as `T`
+        // - `size_of::<[T; N]>() * cap / N == size_of::<T>() * cap`
+        // - `len / N <= cap / N` because `len <= cap`
+        // - the allocated memory consists of `len / N` valid values of type `[T; N]`
+        // - `cap / N` fits the size of the allocated memory after shrinking
+        unsafe { Vec::from_raw_parts_in(ptr.cast(), len / N, cap / N, alloc) }
+    }
 }
 
 impl<T: Clone, A: Allocator> Vec<T, A> {
