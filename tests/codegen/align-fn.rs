@@ -132,6 +132,7 @@ unsafe extern "C" {
     fn align_unmangled();
 }
 
+// FIXME also check `gen` et al
 // CHECK-LABEL: async_align
 // CHECK-SAME: align 64
 #[unsafe(no_mangle)]
