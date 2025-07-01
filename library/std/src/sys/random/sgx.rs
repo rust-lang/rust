@@ -46,22 +46,22 @@ fn rdrand16() -> u16 {
 }
 
 pub fn fill_bytes(bytes: &mut [u8]) {
-    let mut chunks = bytes.array_chunks_mut();
-    for chunk in &mut chunks {
+    let (chunks, remainder) = bytes.as_chunks_mut();
+    for chunk in chunks {
         *chunk = rdrand64().to_ne_bytes();
     }
 
-    let mut chunks = chunks.into_remainder().array_chunks_mut();
-    for chunk in &mut chunks {
+    let (chunks, remainder) = remainder.as_chunks_mut();
+    for chunk in chunks {
         *chunk = rdrand32().to_ne_bytes();
     }
 
-    let mut chunks = chunks.into_remainder().array_chunks_mut();
-    for chunk in &mut chunks {
+    let (chunks, remainder) = remainder.as_chunks_mut();
+    for chunk in chunks {
         *chunk = rdrand16().to_ne_bytes();
     }
 
-    if let [byte] = chunks.into_remainder() {
+    if let [byte] = remainder {
         *byte = rdrand16() as u8;
     }
 }
