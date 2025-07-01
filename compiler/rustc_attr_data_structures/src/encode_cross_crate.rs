@@ -40,6 +40,7 @@ impl AttributeKind {
             PubTransparent(..) => Yes,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
+            RustcObjectLifetimeDefault => No,
             SkipDuringMethodDispatch { .. } => No,
             TrackCaller(..) => Yes,
             Used { .. } => No,
