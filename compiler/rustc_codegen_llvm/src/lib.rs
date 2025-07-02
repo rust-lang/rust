@@ -392,6 +392,21 @@ unsafe impl Send for ModuleLlvm {}
 unsafe impl Sync for ModuleLlvm {}
 
 impl ModuleLlvm {
+    fn new_simple(
+        name: &str,
+        dl_cstr: *const i8,
+        target_cstr: *const i8,
+        cgcx: &CodegenContext<LlvmCodegenBackend>,
+    ) -> Result<Self, FatalError> {
+        unsafe {
+            let llcx = llvm::LLVMRustContextCreate(false);
+            let llmod_raw = context::create_simple_module(llcx, dl_cstr, target_cstr, name);
+            let dcx = cgcx.create_dcx();
+            let tm = ModuleLlvm::tm_from_cgcx(cgcx, name, dcx.handle())?;
+            Ok(ModuleLlvm { llmod_raw, llcx, tm: ManuallyDrop::new(tm) })
+        }
+    }
+
     fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
