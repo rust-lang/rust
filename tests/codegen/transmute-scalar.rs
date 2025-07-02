@@ -1,6 +1,12 @@
+//@ add-core-stubs
 //@ compile-flags: -C opt-level=0 -C no-prepopulate-passes
 
 #![crate_type = "lib"]
+#![feature(no_core, repr_simd, arm_target_feature, mips_target_feature, s390x_target_feature)]
+#![no_core]
+extern crate minicore;
+
+use minicore::*;
 
 // With opaque ptrs in LLVM, `transmute` can load/store any `alloca` as any type,
 // without needing to pointercast, and SRoA will turn that into a `bitcast`.
@@ -14,7 +20,7 @@
 // CHECK-NEXT: ret i32 %_0
 #[no_mangle]
 pub fn f32_to_bits(x: f32) -> u32 {
-    unsafe { std::mem::transmute(x) }
+    unsafe { mem::transmute(x) }
 }
 
 // CHECK-LABEL: define{{.*}}i8 @bool_to_byte(i1 zeroext %b)
@@ -22,7 +28,7 @@ pub fn f32_to_bits(x: f32) -> u32 {
 // CHECK-NEXT: ret i8 %_0
 #[no_mangle]
 pub fn bool_to_byte(b: bool) -> u8 {
-    unsafe { std::mem::transmute(b) }
+    unsafe { mem::transmute(b) }
 }
 
 // CHECK-LABEL: define{{.*}}zeroext i1 @byte_to_bool(i8{{.*}} %byte)
@@ -30,14 +36,14 @@ pub fn bool_to_byte(b: bool) -> u8 {
 // CHECK-NEXT: ret i1 %_0
 #[no_mangle]
 pub unsafe fn byte_to_bool(byte: u8) -> bool {
-    std::mem::transmute(byte)
+    mem::transmute(byte)
 }
 
 // CHECK-LABEL: define{{.*}}ptr @ptr_to_ptr(ptr %p)
 // CHECK: ret ptr %p
 #[no_mangle]
 pub fn ptr_to_ptr(p: *mut u16) -> *mut u8 {
-    unsafe { std::mem::transmute(p) }
+    unsafe { mem::transmute(p) }
 }
 
 // CHECK: define{{.*}}[[USIZE:i[0-9]+]] @ptr_to_int(ptr %p)
@@ -45,7 +51,7 @@ pub fn ptr_to_ptr(p: *mut u16) -> *mut u8 {
 // CHECK-NEXT: ret [[USIZE]] %_0
 #[no_mangle]
 pub fn ptr_to_int(p: *mut u16) -> usize {
-    unsafe { std::mem::transmute(p) }
+    unsafe { mem::transmute(p) }
 }
 
 // CHECK: define{{.*}}ptr @int_to_ptr([[USIZE]] %i)
@@ -53,7 +59,7 @@ pub fn ptr_to_int(p: *mut u16) -> usize {
 // CHECK-NEXT: ret ptr %_0
 #[no_mangle]
 pub fn int_to_ptr(i: usize) -> *mut u16 {
-    unsafe { std::mem::transmute(i) }
+    unsafe { mem::transmute(i) }
 }
 
 // This is the one case where signedness matters to transmuting:
@@ -70,7 +76,7 @@ pub enum FakeBoolSigned {
 // CHECK-NEXT: ret i8 %_0
 #[no_mangle]
 pub fn bool_to_fake_bool_signed(b: bool) -> FakeBoolSigned {
-    unsafe { std::mem::transmute(b) }
+    unsafe { mem::transmute(b) }
 }
 
 // CHECK-LABEL: define{{.*}}i1 @fake_bool_signed_to_bool(i8 %b)
@@ -78,7 +84,7 @@ pub fn bool_to_fake_bool_signed(b: bool) -> FakeBoolSigned {
 // CHECK-NEXT: ret i1 %_0
 #[no_mangle]
 pub fn fake_bool_signed_to_bool(b: FakeBoolSigned) -> bool {
-    unsafe { std::mem::transmute(b) }
+    unsafe { mem::transmute(b) }
 }
 
 #[repr(u8)]
@@ -91,12 +97,41 @@ pub enum FakeBoolUnsigned {
 // CHECK: ret i1 %b
 #[no_mangle]
 pub fn bool_to_fake_bool_unsigned(b: bool) -> FakeBoolUnsigned {
-    unsafe { std::mem::transmute(b) }
+    unsafe { mem::transmute(b) }
 }
 
 // CHECK-LABEL: define{{.*}}i1 @fake_bool_unsigned_to_bool(i1 zeroext %b)
 // CHECK: ret i1 %b
 #[no_mangle]
 pub fn fake_bool_unsigned_to_bool(b: FakeBoolUnsigned) -> bool {
-    unsafe { std::mem::transmute(b) }
+    unsafe { mem::transmute(b) }
+}
+
+#[repr(simd)]
+struct S([i64; 1]);
+
+// CHECK-LABEL: define{{.*}}i64 @single_element_simd_to_scalar(<1 x i64> %b)
+// CHECK: bitcast <1 x i64> %b to i64
+// CHECK: ret i64
+#[no_mangle]
+#[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "neon"))]
+#[cfg_attr(target_arch = "x86", target_feature(enable = "sse"))]
+#[cfg_attr(target_arch = "mips", target_feature(enable = "msa"))]
+#[cfg_attr(target_arch = "s390x", target_feature(enable = "vector"))]
+pub extern "C" fn single_element_simd_to_scalar(b: S) -> i64 {
+    unsafe { mem::transmute(b) }
+}
+
+// CHECK-LABEL: define{{.*}}<1 x i64> @scalar_to_single_element_simd(i64 %b)
+// CHECK: bitcast i64 %b to <1 x i64>
+// CHECK: ret <1 x i64>
+#[no_mangle]
+#[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "neon"))]
+#[cfg_attr(target_arch = "x86", target_feature(enable = "sse"))]
+#[cfg_attr(target_arch = "mips", target_feature(enable = "msa"))]
+#[cfg_attr(target_arch = "s390x", target_feature(enable = "vector"))]
+pub extern "C" fn scalar_to_single_element_simd(b: i64) -> S {
+    unsafe { mem::transmute(b) }
 }
