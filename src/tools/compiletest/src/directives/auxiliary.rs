@@ -3,8 +3,8 @@
 
 use std::iter;
 
+use super::directives::{AUX_BIN, AUX_BUILD, AUX_CODEGEN_BACKEND, AUX_CRATE, PROC_MACRO};
 use crate::common::Config;
-use crate::header::directives::{AUX_BIN, AUX_BUILD, AUX_CODEGEN_BACKEND, AUX_CRATE, PROC_MACRO};
 
 /// Properties parsed from `aux-*` test directives.
 #[derive(Clone, Debug, Default)]
