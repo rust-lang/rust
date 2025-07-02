@@ -62,8 +62,8 @@ generate it in [gimple.md](./doc/gimple.md).
 
  * Run `./y.sh prepare --cross` so that the sysroot is patched for the cross-compiling case.
  * Set the path to the cross-compiling libgccjit in `gcc-path` (in `config.toml`).
- * Make sure you have the linker for your target (for instance `m68k-unknown-linux-gnu-gcc`) in your `$PATH`. Currently, the linker name is hardcoded as being `$TARGET-gcc`. Specify the target when building the sysroot: `./y.sh build --sysroot --target-triple m68k-unknown-linux-gnu`.
- * Build your project by specifying the target: `../y.sh cargo build --target m68k-unknown-linux-gnu`.
+ * Make sure you have the linker for your target (for instance `m68k-unknown-linux-gnu-gcc`) in your `$PATH`. You can specify which linker to use via `CG_RUSTFLAGS="-Clinker=<linker>"`, for instance: `CG_RUSTFLAGS="-Clinker=m68k-unknown-linux-gnu-gcc"`. Specify the target when building the sysroot: `./y.sh build --sysroot --target-triple m68k-unknown-linux-gnu`.
+ * Build your project by specifying the target and the linker to use: `CG_RUSTFLAGS="-Clinker=m68k-unknown-linux-gnu-gcc" ../y.sh cargo build --target m68k-unknown-linux-gnu`.
 
 If the target is not yet supported by the Rust compiler, create a [target specification file](https://docs.rust-embedded.org/embedonomicon/custom-target.html) (note that the `arch` specified in this file must be supported by the rust compiler).
 Then, you can use it the following way:
