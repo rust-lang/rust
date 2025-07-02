@@ -1,10 +1,10 @@
-//@ is "$.index[?(@.name=='EnumStruct')].visibility" \"public\"
-//@ has "$.index[?(@.name=='EnumStruct')].inner.enum"
+//@ arg enum_struct .index[] | select(.name == "EnumStruct")
+//@ jq $enum_struct.visibility == "public"
+//@ jq $enum_struct.inner.enum
 pub enum EnumStruct {
-    //@ has "$.index[?(@.name=='x')].inner.struct_field"
-    //@ set x = "$.index[?(@.name=='x')].id"
-    //@ has "$.index[?(@.name=='y')].inner.struct_field"
-    //@ set y = "$.index[?(@.name=='y')].id"
-    //@ ismany "$.index[?(@.name=='VariantS')].inner.variant.kind.struct.fields[*]" $x $y
+    //@ arg x .index[] | select(.name == "x")
+    //@ arg y .index[] | select(.name == "y")
+    //@ jq [[$x, $y][].inner.struct_field] | all
+    //@ jq .index[] | select(.name == "VariantS").inner.variant.kind?.struct.fields? == [$x.id, $y.id]
     VariantS { x: u32, y: String },
 }

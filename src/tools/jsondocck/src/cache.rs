@@ -1,35 +1,77 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
-use std::path::Path;
+use std::iter;
+use std::path::{Path, PathBuf};
 
 use fs_err as fs;
+use jaq_core::load::{Arena, File, Loader};
+use jaq_core::{Compiler, Ctx, RcIter};
+use jaq_json::Val;
 use serde_json::Value;
 
 use crate::config::Config;
 
 #[derive(Debug)]
 pub struct Cache {
-    value: Value,
-    pub variables: HashMap<String, Value>,
+    value: Val,
+    global_vars: HashMap<String, Val>,
 }
 
 impl Cache {
-    /// Create a new cache, used to read files only once and otherwise store their contents.
-    pub fn new(config: &Config) -> Cache {
-        let root = Path::new(&config.doc_dir);
+    /// Create a new cache, used to read a documentation JSON file only once and otherwise store its
+    /// content.
+    pub fn new(Config { doc_dir, template }: &Config) -> Self {
+        let root = Path::new(doc_dir);
         // `filename` needs to replace `-` with `_` to be sure the JSON path will always be valid.
-        let filename =
-            Path::new(&config.template).file_stem().unwrap().to_str().unwrap().replace('-', "_");
-        let file_path = root.join(&Path::with_extension(Path::new(&filename), "json"));
-        let content = fs::read_to_string(&file_path).expect("failed to read JSON file");
+        let mut filename: PathBuf =
+            Path::new(template).file_stem().unwrap().to_str().unwrap().replace('-', "_").into();
+
+        filename.set_extension("json");
+
+        let content = fs::read(root.join(filename)).expect("failed to read a JSON file");
 
         Cache {
-            value: serde_json::from_str::<Value>(&content).expect("failed to convert from JSON"),
-            variables: HashMap::from([("FILE".to_owned(), config.template.clone().into())]),
+            value: serde_json::from_slice::<Value>(&content)
+                .expect("failed to convert from JSON")
+                .into(),
+            // FIXME: Replace this with empty `HashMap` and use `input_filename` instead of `$FILE`
+            // in tests once https://github.com/01mf02/jaq/issues/144 is fixed.
+            global_vars: [("$FILE".into(), template.to_owned().into())].into(),
         }
     }
 
-    // FIXME: Make this failible, so jsonpath syntax error has line number.
-    pub fn select(&self, path: &str) -> Vec<&Value> {
-        jsonpath_rust::query::js_path_vals(path, &self.value).unwrap()
+    pub fn arg(&mut self, name: &str, value: Val) {
+        self.global_vars.insert(format!("${name}"), value);
+    }
+
+    pub fn filter(&self, code: &str) -> Result<Val, Cow<'static, str>> {
+        let arena = Arena::default();
+        let modules = Loader::new(
+            // `tonumber` depends on `fromjson` that requires adding the extra "hifijson"
+            // dependency.
+            jaq_std::defs().chain(jaq_json::defs().filter(|def| !matches!(def.name, "tonumber"))),
+        )
+        .load(&arena, File { code, path: () })
+        .map_err(|e| format!("failed to parse the given filter: {:?}", e.first().unwrap().1))?;
+        let filter = Compiler::default()
+            .with_funs(jaq_std::funs().chain(jaq_json::base_funs()))
+            .with_global_vars(self.global_vars.keys().map(String::as_ref))
+            .compile(modules)
+            .map_err(|e| {
+                format!("failed to compile the given filter: {:?}", e.first().unwrap().1)
+            })?;
+        let inputs = RcIter::new(iter::empty());
+        let mut outputs =
+            filter.run((Ctx::new(self.global_vars.values().cloned(), &inputs), self.value.clone()));
+        let output = outputs
+            .next()
+            .ok_or::<Cow<'_, _>>("directive returned nothing".into())?
+            .map_err(|e| format!("failed to execute the given filter: {e}"))?;
+
+        if outputs.next().is_some() {
+            return Err("expected a single output, received multiple".into());
+        }
+
+        Ok(output)
     }
 }

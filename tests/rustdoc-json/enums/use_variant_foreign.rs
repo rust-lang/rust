@@ -2,8 +2,7 @@
 
 extern crate color;
 
-//@ has "$.index[?(@.inner.use.name == 'Red')]"
+//@ jq .index[] | select(.inner.use.name? == "Red")
 pub use color::Color::Red;
 
-//@ !has "$.index[?(@.name == 'Red')]"
-//@ !has "$.index[?(@.name == 'Color')]"
+//@ jq [.index[] | select(.name == "Red" or .name == "Color")] == []

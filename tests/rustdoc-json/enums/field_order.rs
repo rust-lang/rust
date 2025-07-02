@@ -17,24 +17,14 @@ pub enum Whatever {
     },
 }
 
-//@ set 0 = '$.index[?(@.name == "ews_0")].id'
-//@ set 1 = '$.index[?(@.name == "dik_1")].id'
-//@ set 2 = '$.index[?(@.name == "hsk_2")].id'
-//@ set 3 = '$.index[?(@.name == "djt_3")].id'
-//@ set 4 = '$.index[?(@.name == "jnr_4")].id'
-//@ set 5 = '$.index[?(@.name == "dfs_5")].id'
-//@ set 6 = '$.index[?(@.name == "bja_6")].id'
-//@ set 7 = '$.index[?(@.name == "lyc_7")].id'
-//@ set 8 = '$.index[?(@.name == "yqd_8")].id'
-//@ set 9 = '$.index[?(@.name == "vll_9")].id'
-
-//@ is '$.index[?(@.name == "Foo")].inner.variant.kind.struct.fields[0]' $0
-//@ is '$.index[?(@.name == "Foo")].inner.variant.kind.struct.fields[1]' $1
-//@ is '$.index[?(@.name == "Foo")].inner.variant.kind.struct.fields[2]' $2
-//@ is '$.index[?(@.name == "Foo")].inner.variant.kind.struct.fields[3]' $3
-//@ is '$.index[?(@.name == "Foo")].inner.variant.kind.struct.fields[4]' $4
-//@ is '$.index[?(@.name == "Foo")].inner.variant.kind.struct.fields[5]' $5
-//@ is '$.index[?(@.name == "Foo")].inner.variant.kind.struct.fields[6]' $6
-//@ is '$.index[?(@.name == "Foo")].inner.variant.kind.struct.fields[7]' $7
-//@ is '$.index[?(@.name == "Foo")].inner.variant.kind.struct.fields[8]' $8
-//@ is '$.index[?(@.name == "Foo")].inner.variant.kind.struct.fields[9]' $9
+//@ arg foo .index[] | select(.name == "Foo").inner.variant.kind?.struct.fields?
+//@ jq .index[] | select(.name == "ews_0").id == $foo[0]
+//@ jq .index[] | select(.name == "dik_1").id == $foo[1]
+//@ jq .index[] | select(.name == "hsk_2").id == $foo[2]
+//@ jq .index[] | select(.name == "djt_3").id == $foo[3]
+//@ jq .index[] | select(.name == "jnr_4").id == $foo[4]
+//@ jq .index[] | select(.name == "dfs_5").id == $foo[5]
+//@ jq .index[] | select(.name == "bja_6").id == $foo[6]
+//@ jq .index[] | select(.name == "lyc_7").id == $foo[7]
+//@ jq .index[] | select(.name == "yqd_8").id == $foo[8]
+//@ jq .index[] | select(.name == "vll_9").id == $foo[9]
