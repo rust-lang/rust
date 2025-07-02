@@ -845,7 +845,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
-                    // Iterate through all goals in param_env to find the one that has the same symbol.
+                    // Iterate through all clauses in the environment to
+                    // find the one that has the same symbol.
                     for pred in obligation.param_env.caller_bounds().iter() {
                         if let ty::ClauseKind::UnstableFeature(sym) = pred.kind().skip_binder() {
                             if sym == symbol {

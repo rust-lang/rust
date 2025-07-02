@@ -2,7 +2,7 @@
 //@ check-pass
 #![feature(feat_bar, feat_moo)]
 extern crate unstable_feature;
-use unstable_feature::{Foo, Bar, Moo};
+use unstable_feature::Bar;
 
 /// Bar::foo() should still be usable even if we enable multiple feature.
 

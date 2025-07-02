@@ -3,7 +3,6 @@
 #![allow(dead_code)]
 #![unstable(feature = "feat_bar", issue = "none" )]
 
-
 /// Test the behaviour of multiple unstable_feature_bound attribute.
 
 trait Foo {
