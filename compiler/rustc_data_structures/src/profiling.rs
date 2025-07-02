@@ -88,7 +88,7 @@ use std::fmt::Display;
 use std::intrinsics::unlikely;
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 use std::{fs, process};
 
@@ -100,6 +100,7 @@ use tracing::warn;
 
 use crate::fx::FxHashMap;
 use crate::outline;
+use crate::sync::AtomicU64;
 
 bitflags::bitflags! {
     #[derive(Clone, Copy)]
