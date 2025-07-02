@@ -654,6 +654,7 @@ pub(crate) fn run_pass_manager(
     // We then run the llvm_optimize function a second time, to optimize the code which we generated
     // in the enzyme differentiation pass.
     let enable_ad = config.autodiff.contains(&config::AutoDiff::Enable);
+    let enable_gpu = config.offload.contains(&config::Offload::Enable);
     let stage = if thin {
         write::AutodiffStage::PreAD
     } else {
