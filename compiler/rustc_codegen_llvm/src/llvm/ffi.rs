@@ -1009,11 +1009,18 @@ unsafe extern "C" {
         ModuleID: *const c_char,
         C: &Context,
     ) -> &Module;
+    pub(crate) fn LLVMPrintModuleToFile(
+        M: &Module,
+        Name: *const c_char,
+        Error_message: *mut c_char,
+    );
     pub(crate) fn LLVMCloneModule(M: &Module) -> &Module;
 
     /// Data layout. See Module::getDataLayout.
     pub(crate) fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
     pub(crate) fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
+
+    pub(crate) fn LLVMSetTarget(M: &Module, Name: *const c_char);
 
     /// Append inline assembly to a module. See `Module::appendModuleInlineAsm`.
     pub(crate) fn LLVMAppendModuleInlineAsm(
