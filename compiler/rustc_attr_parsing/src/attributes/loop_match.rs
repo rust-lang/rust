@@ -1,31 +1,19 @@
 use rustc_attr_data_structures::AttributeKind;
-use rustc_feature::{AttributeTemplate, template};
-use rustc_span::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 
-use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::{AcceptContext, Stage};
-use crate::parser::ArgParser;
+use crate::attributes::{NoArgsAttributeParser, OnDuplicate};
+use crate::context::Stage;
 
 pub(crate) struct LoopMatchParser;
-impl<S: Stage> SingleAttributeParser<S> for LoopMatchParser {
+impl<S: Stage> NoArgsAttributeParser<S> for LoopMatchParser {
     const PATH: &[Symbol] = &[sym::loop_match];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const TEMPLATE: AttributeTemplate = template!(Word);
-
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, _args: &ArgParser<'_>) -> Option<AttributeKind> {
-        Some(AttributeKind::LoopMatch(cx.attr_span))
-    }
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::LoopMatch;
 }
 
 pub(crate) struct ConstContinueParser;
-impl<S: Stage> SingleAttributeParser<S> for ConstContinueParser {
+impl<S: Stage> NoArgsAttributeParser<S> for ConstContinueParser {
     const PATH: &[Symbol] = &[sym::const_continue];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const TEMPLATE: AttributeTemplate = template!(Word);
-
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, _args: &ArgParser<'_>) -> Option<AttributeKind> {
-        Some(AttributeKind::ConstContinue(cx.attr_span))
-    }
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::ConstContinue;
 }

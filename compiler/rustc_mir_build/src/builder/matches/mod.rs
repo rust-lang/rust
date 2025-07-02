@@ -2970,6 +2970,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             Constructor::Wildcard => true,
 
+            // Opaque patterns must not be matched on structurally.
+            Constructor::Opaque(_) => false,
+
             // These we may eventually support:
             Constructor::Struct
             | Constructor::Ref
@@ -2980,8 +2983,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | Constructor::Str(_) => bug!("unsupported pattern constructor {:?}", pat.ctor()),
 
             // These should never occur here:
-            Constructor::Opaque(_)
-            | Constructor::Never
+            Constructor::Never
             | Constructor::NonExhaustive
             | Constructor::Hidden
             | Constructor::Missing

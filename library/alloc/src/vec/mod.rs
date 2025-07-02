@@ -761,6 +761,88 @@ impl<T> Vec<T> {
     pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
         PeekMut::new(self)
     }
+
+    /// Decomposes a `Vec<T>` into its raw components: `(pointer, length, capacity)`.
+    ///
+    /// Returns the raw pointer to the underlying data, the length of
+    /// the vector (in elements), and the allocated capacity of the
+    /// data (in elements). These are the same arguments in the same
+    /// order as the arguments to [`from_raw_parts`].
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `Vec`. The only way to do
+    /// this is to convert the raw pointer, length, and capacity back
+    /// into a `Vec` with the [`from_raw_parts`] function, allowing
+    /// the destructor to perform the cleanup.
+    ///
+    /// [`from_raw_parts`]: Vec::from_raw_parts
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_into_raw_parts)]
+    /// let v: Vec<i32> = vec![-1, 0, 1];
+    ///
+    /// let (ptr, len, cap) = v.into_raw_parts();
+    ///
+    /// let rebuilt = unsafe {
+    ///     // We can now make changes to the components, such as
+    ///     // transmuting the raw pointer to a compatible type.
+    ///     let ptr = ptr as *mut u32;
+    ///
+    ///     Vec::from_raw_parts(ptr, len, cap)
+    /// };
+    /// assert_eq!(rebuilt, [4294967295, 0, 1]);
+    /// ```
+    #[must_use = "losing the pointer will leak memory"]
+    #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
+    pub fn into_raw_parts(self) -> (*mut T, usize, usize) {
+        let mut me = ManuallyDrop::new(self);
+        (me.as_mut_ptr(), me.len(), me.capacity())
+    }
+
+    #[doc(alias = "into_non_null_parts")]
+    /// Decomposes a `Vec<T>` into its raw components: `(NonNull pointer, length, capacity)`.
+    ///
+    /// Returns the `NonNull` pointer to the underlying data, the length of
+    /// the vector (in elements), and the allocated capacity of the
+    /// data (in elements). These are the same arguments in the same
+    /// order as the arguments to [`from_parts`].
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `Vec`. The only way to do
+    /// this is to convert the `NonNull` pointer, length, and capacity back
+    /// into a `Vec` with the [`from_parts`] function, allowing
+    /// the destructor to perform the cleanup.
+    ///
+    /// [`from_parts`]: Vec::from_parts
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_into_raw_parts, box_vec_non_null)]
+    ///
+    /// let v: Vec<i32> = vec![-1, 0, 1];
+    ///
+    /// let (ptr, len, cap) = v.into_parts();
+    ///
+    /// let rebuilt = unsafe {
+    ///     // We can now make changes to the components, such as
+    ///     // transmuting the raw pointer to a compatible type.
+    ///     let ptr = ptr.cast::<u32>();
+    ///
+    ///     Vec::from_parts(ptr, len, cap)
+    /// };
+    /// assert_eq!(rebuilt, [4294967295, 0, 1]);
+    /// ```
+    #[must_use = "losing the pointer will leak memory"]
+    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    // #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
+    pub fn into_parts(self) -> (NonNull<T>, usize, usize) {
+        let (ptr, len, capacity) = self.into_raw_parts();
+        // SAFETY: A `Vec` always has a non-null pointer.
+        (unsafe { NonNull::new_unchecked(ptr) }, len, capacity)
+    }
 }
 
 impl<T, A: Allocator> Vec<T, A> {
@@ -1093,88 +1175,6 @@ impl<T, A: Allocator> Vec<T, A> {
     // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     pub unsafe fn from_parts_in(ptr: NonNull<T>, length: usize, capacity: usize, alloc: A) -> Self {
         unsafe { Vec { buf: RawVec::from_nonnull_in(ptr, capacity, alloc), len: length } }
-    }
-
-    /// Decomposes a `Vec<T>` into its raw components: `(pointer, length, capacity)`.
-    ///
-    /// Returns the raw pointer to the underlying data, the length of
-    /// the vector (in elements), and the allocated capacity of the
-    /// data (in elements). These are the same arguments in the same
-    /// order as the arguments to [`from_raw_parts`].
-    ///
-    /// After calling this function, the caller is responsible for the
-    /// memory previously managed by the `Vec`. The only way to do
-    /// this is to convert the raw pointer, length, and capacity back
-    /// into a `Vec` with the [`from_raw_parts`] function, allowing
-    /// the destructor to perform the cleanup.
-    ///
-    /// [`from_raw_parts`]: Vec::from_raw_parts
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(vec_into_raw_parts)]
-    /// let v: Vec<i32> = vec![-1, 0, 1];
-    ///
-    /// let (ptr, len, cap) = v.into_raw_parts();
-    ///
-    /// let rebuilt = unsafe {
-    ///     // We can now make changes to the components, such as
-    ///     // transmuting the raw pointer to a compatible type.
-    ///     let ptr = ptr as *mut u32;
-    ///
-    ///     Vec::from_raw_parts(ptr, len, cap)
-    /// };
-    /// assert_eq!(rebuilt, [4294967295, 0, 1]);
-    /// ```
-    #[must_use = "losing the pointer will leak memory"]
-    #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
-    pub fn into_raw_parts(self) -> (*mut T, usize, usize) {
-        let mut me = ManuallyDrop::new(self);
-        (me.as_mut_ptr(), me.len(), me.capacity())
-    }
-
-    #[doc(alias = "into_non_null_parts")]
-    /// Decomposes a `Vec<T>` into its raw components: `(NonNull pointer, length, capacity)`.
-    ///
-    /// Returns the `NonNull` pointer to the underlying data, the length of
-    /// the vector (in elements), and the allocated capacity of the
-    /// data (in elements). These are the same arguments in the same
-    /// order as the arguments to [`from_parts`].
-    ///
-    /// After calling this function, the caller is responsible for the
-    /// memory previously managed by the `Vec`. The only way to do
-    /// this is to convert the `NonNull` pointer, length, and capacity back
-    /// into a `Vec` with the [`from_parts`] function, allowing
-    /// the destructor to perform the cleanup.
-    ///
-    /// [`from_parts`]: Vec::from_parts
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(vec_into_raw_parts, box_vec_non_null)]
-    ///
-    /// let v: Vec<i32> = vec![-1, 0, 1];
-    ///
-    /// let (ptr, len, cap) = v.into_parts();
-    ///
-    /// let rebuilt = unsafe {
-    ///     // We can now make changes to the components, such as
-    ///     // transmuting the raw pointer to a compatible type.
-    ///     let ptr = ptr.cast::<u32>();
-    ///
-    ///     Vec::from_parts(ptr, len, cap)
-    /// };
-    /// assert_eq!(rebuilt, [4294967295, 0, 1]);
-    /// ```
-    #[must_use = "losing the pointer will leak memory"]
-    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
-    // #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
-    pub fn into_parts(self) -> (NonNull<T>, usize, usize) {
-        let (ptr, len, capacity) = self.into_raw_parts();
-        // SAFETY: A `Vec` always has a non-null pointer.
-        (unsafe { NonNull::new_unchecked(ptr) }, len, capacity)
     }
 
     /// Decomposes a `Vec<T>` into its raw components: `(pointer, length, capacity, allocator)`.

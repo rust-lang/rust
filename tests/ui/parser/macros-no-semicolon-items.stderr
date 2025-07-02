@@ -38,11 +38,11 @@ help: add a semicolon
 LL | );
    |  +
 
-error: unexpected end of macro invocation
+error: macros must contain at least one rule
   --> $DIR/macros-no-semicolon-items.rs:1:1
    |
 LL | macro_rules! foo()
-   | ^^^^^^^^^^^^^^^^^^ missing tokens in macro arguments
+   | ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 
