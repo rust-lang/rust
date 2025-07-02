@@ -1412,6 +1412,7 @@ macro_rules! from_str_int_impl {
             /// ```
             #[inline]
             fn from_str(src: &str) -> Result<$int_ty, ParseIntError> {
+                #[allow(clippy::from_str_radix_10)]
                 <$int_ty>::from_str_radix(src, 10)
             }
         }

@@ -21,6 +21,7 @@ pub struct Fp {
 
 impl Fp {
     /// Returns a correctly rounded product of itself and `other`.
+    #[allow(clippy::should_implement_trait)]
     pub fn mul(self, other: Self) -> Self {
         let (lo, hi) = self.f.widening_mul(other.f);
         let f = hi + (lo >> 63) /* round */;

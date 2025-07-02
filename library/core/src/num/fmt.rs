@@ -19,6 +19,7 @@ pub enum Part<'a> {
 
 impl<'a> Part<'a> {
     /// Returns the exact byte length of given part.
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         match *self {
             Part::Zero(nzeroes) => nzeroes,
@@ -31,8 +32,10 @@ impl<'a> Part<'a> {
                     } else {
                         3
                     }
+                } else if v < 10_000 {
+                    4
                 } else {
-                    if v < 10_000 { 4 } else { 5 }
+                    5
                 }
             }
             Part::Copy(buf) => buf.len(),
@@ -81,6 +84,7 @@ pub struct Formatted<'a> {
 
 impl<'a> Formatted<'a> {
     /// Returns the exact byte length of combined formatted result.
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         let mut len = self.sign.len();
         for part in self.parts {

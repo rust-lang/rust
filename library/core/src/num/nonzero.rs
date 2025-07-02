@@ -1158,6 +1158,7 @@ macro_rules! nonzero_integer {
         impl FromStr for NonZero<$Int> {
             type Err = ParseIntError;
             fn from_str(src: &str) -> Result<Self, Self::Err> {
+                #[allow(clippy::from_str_radix_10)]
                 Self::new(<$Int>::from_str_radix(src, 10)?)
                     .ok_or(ParseIntError {
                         kind: IntErrorKind::Zero

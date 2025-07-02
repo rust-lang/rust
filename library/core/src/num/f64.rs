@@ -10,6 +10,7 @@
 //! defined directly on the `f64` type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![allow(clippy::excessive_precision)]
 
 use crate::convert::FloatToInt;
 use crate::num::FpCategory;
@@ -490,13 +491,15 @@ impl f64 {
     /// The concrete bit pattern may change across Rust versions and target platforms.
     #[rustc_diagnostic_item = "f64_nan"]
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    #[allow(clippy::eq_op)]
+    #[allow(clippy::eq_op, clippy::zero_divided_by_zero)]
     pub const NAN: f64 = 0.0_f64 / 0.0_f64;
     /// Infinity (∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
+    #[allow(clippy::zero_divided_by_zero)]
     pub const INFINITY: f64 = 1.0_f64 / 0.0_f64;
     /// Negative infinity (−∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
+    #[allow(clippy::zero_divided_by_zero)]
     pub const NEG_INFINITY: f64 = -1.0_f64 / 0.0_f64;
 
     /// Sign bit
