@@ -934,6 +934,7 @@ pub(crate) struct ImplicitElidedLifetimeNotAllowedHere {
 
 #[derive(Diagnostic)]
 #[diag(resolve_underscore_lifetime_is_reserved, code = E0637)]
+#[help]
 pub(crate) struct UnderscoreLifetimeIsReserved {
     #[primary_span]
     #[label]
