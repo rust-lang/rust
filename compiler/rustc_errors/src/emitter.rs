@@ -2446,17 +2446,22 @@ impl HumanEmitter {
                     | DisplaySuggestion::Underline => row_num - 1,
                     DisplaySuggestion::None => row_num,
                 };
-                self.draw_col_separator_end(&mut buffer, row, max_line_num_len + 1);
+                if other_suggestions > 0 {
+                    self.draw_col_separator_no_space(&mut buffer, row, max_line_num_len + 1);
+                } else {
+                    self.draw_col_separator_end(&mut buffer, row, max_line_num_len + 1);
+                }
                 row_num = row + 1;
             }
         }
         if other_suggestions > 0 {
+            self.draw_note_separator(&mut buffer, row_num, max_line_num_len + 1, false);
             let msg = format!(
                 "and {} other candidate{}",
                 other_suggestions,
                 pluralize!(other_suggestions)
             );
-            buffer.puts(row_num, max_line_num_len + 3, &msg, Style::NoStyle);
+            buffer.append(row_num, &msg, Style::NoStyle);
         }
 
         emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
