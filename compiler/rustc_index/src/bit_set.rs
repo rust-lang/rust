@@ -1538,6 +1538,28 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         changed != 0
     }
 
+    /// Adds the bits from col `read` to the bits from col `write`, and
+    /// returns `true` if anything changed.
+    pub fn union_cols(&mut self, read: C, write: C) -> bool {
+        assert!(read.index() < self.num_columns && write.index() < self.num_columns);
+
+        let words_per_row = num_words(self.num_columns);
+        let (read_index, read_mask) = word_index_and_mask(read);
+        let (write_index, write_mask) = word_index_and_mask(write);
+
+        let words = &mut self.words[..];
+        let mut changed = 0;
+        for row in 0..self.num_rows {
+            let write_word = words[row * words_per_row + write_index];
+            let read_word = (words[row * words_per_row + read_index] & read_mask) != 0;
+            let new_word = if read_word { write_word | write_mask } else { write_word };
+            words[row * words_per_row + write_index] = new_word;
+            // See `bitwise` for the rationale.
+            changed |= write_word ^ new_word;
+        }
+        changed != 0
+    }
+
     /// Adds the bits from `with` to the bits from row `write`, and
     /// returns `true` if anything changed.
     pub fn union_row_with(&mut self, with: &DenseBitSet<C>, write: R) -> bool {

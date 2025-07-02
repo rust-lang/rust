@@ -131,8 +131,8 @@
 //! [attempt 2]: https://github.com/rust-lang/rust/pull/71003
 //! [attempt 3]: https://github.com/rust-lang/rust/pull/72632
 
-use rustc_data_structures::fx::{FxIndexMap, IndexEntry, IndexOccupiedEntry};
-use rustc_index::bit_set::DenseBitSet;
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_index::bit_set::{BitMatrix, DenseBitSet};
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
@@ -153,11 +153,12 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
         sess.mir_opt_level() >= 2
     }
 
+    #[tracing::instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
         let mut candidates = Candidates::default();
         let mut write_info = WriteInfo::default();
-        trace!(func = ?tcx.def_path_str(def_id));
+        trace!(?def_id);
 
         let borrowed = rustc_mir_dataflow::impls::borrowed_locals(body);
 
@@ -185,40 +186,33 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
             trace!(?candidates);
             dest_prop_mir_dump(tcx, body, &points, &live, round_count);
 
-            FilterInformation::filter_liveness(
-                &mut candidates,
-                &points,
-                &live,
-                &mut write_info,
-                body,
-            );
-
-            // Because we only filter once per round, it is unsound to use a local for more than
-            // one merge operation within a single round of optimizations. We store here which ones
-            // we have already used.
-            let mut merged_locals: DenseBitSet<Local> =
-                DenseBitSet::new_empty(body.local_decls.len());
+            let mut filter =
+                FilterInformation::filter_liveness(&points, &live, &mut write_info, body);
 
             // This is the set of merges we will apply this round. It is a subset of the candidates.
             let mut merges = FxIndexMap::default();
+            // Record which locals have been merged to handle storage statements.
+            let mut merged_locals: DenseBitSet<Local> =
+                DenseBitSet::new_empty(body.local_decls.len());
 
-            for (src, candidates) in candidates.c.iter() {
-                if merged_locals.contains(*src) {
-                    continue;
-                }
-                let Some(dest) = candidates.iter().find(|dest| !merged_locals.contains(**dest))
-                else {
-                    continue;
-                };
+            for (&src, candidates) in candidates.c.iter() {
+                let Some(dest) = filter.find_non_conflicting(src, candidates) else { continue };
+                // `dest` may already be replaced with another destination. This is not an issue.
+                // This just appears as locals changing names between rounds. This will be resolved
+                // in a next round.
 
                 // Replace `src` by `dest` everywhere.
-                merges.insert(*src, *dest);
-                merged_locals.insert(*src);
-                merged_locals.insert(*dest);
+                merges.insert(src, dest);
+                merged_locals.insert(src);
+                merged_locals.insert(dest);
 
                 // Update liveness information based on the merge we just performed.
                 // Every location where `src` was live, `dest` will be live.
-                live.union_rows(*src, *dest);
+                live.union_rows(src, dest);
+
+                // Update conflict information based on the merge we just performed.
+                // Everything that conflicted with `src` now conflicts with `dest`.
+                filter.record_merge(src, dest);
             }
             trace!(merging = ?merges);
 
@@ -255,11 +249,6 @@ struct Candidates {
     /// We will still report that we would like to merge `_1` and `_2` in an attempt to allow us to
     /// remove that assignment.
     c: FxIndexMap<Local, Vec<Local>>,
-
-    /// A reverse index of the `c` set; if the `c` set contains `a => Place { local: b, proj }`,
-    /// then this contains `b => a`.
-    // PERF: Possibly these should be `SmallVec`s?
-    reverse: FxIndexMap<Local, Vec<Local>>,
 }
 
 //////////////////////////////////////////////////////////
@@ -335,8 +324,7 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
 struct FilterInformation<'a, 'tcx> {
     body: &'a Body<'tcx>,
     points: &'a DenseLocationMap,
-    live: &'a SparseIntervalMatrix<Local, PointIndex>,
-    candidates: &'a mut Candidates,
+    conflicts: BitMatrix<Local, Local>,
     write_info: &'a mut WriteInfo,
     at: Location,
 }
@@ -350,7 +338,6 @@ impl Candidates {
     /// This is responsible for enforcing the first and third bullet point.
     fn reset_and_find<'tcx>(&mut self, body: &Body<'tcx>, borrowed: &DenseBitSet<Local>) {
         self.c.clear();
-        self.reverse.clear();
         let mut visitor = FindAssignments { body, candidates: &mut self.c, borrowed };
         visitor.visit_body(body);
         // Deduplicate candidates.
@@ -358,86 +345,7 @@ impl Candidates {
             cands.sort();
             cands.dedup();
         }
-        // Generate the reverse map.
-        for (src, cands) in self.c.iter() {
-            for dest in cands.iter().copied() {
-                self.reverse.entry(dest).or_default().push(*src);
-            }
-        }
     }
-
-    /// Just `Vec::retain`, but the condition is inverted and we add debugging output
-    fn vec_filter_candidates(
-        src: Local,
-        v: &mut Vec<Local>,
-        mut f: impl FnMut(Local) -> CandidateFilter,
-        at: Location,
-    ) {
-        v.retain(|dest| {
-            let remove = f(*dest);
-            if remove == CandidateFilter::Remove {
-                trace!("eliminating {:?} => {:?} due to conflict at {:?}", src, dest, at);
-            }
-            remove == CandidateFilter::Keep
-        });
-    }
-
-    /// `vec_filter_candidates` but for an `Entry`
-    fn entry_filter_candidates(
-        mut entry: IndexOccupiedEntry<'_, Local, Vec<Local>>,
-        p: Local,
-        f: impl FnMut(Local) -> CandidateFilter,
-        at: Location,
-    ) {
-        let candidates = entry.get_mut();
-        Self::vec_filter_candidates(p, candidates, f, at);
-        if candidates.len() == 0 {
-            // FIXME(#120456) - is `swap_remove` correct?
-            entry.swap_remove();
-        }
-    }
-
-    /// For all candidates `(p, q)` or `(q, p)` removes the candidate if `f(q)` says to do so
-    fn filter_candidates_by(
-        &mut self,
-        p: Local,
-        mut f: impl FnMut(Local) -> CandidateFilter,
-        at: Location,
-    ) {
-        // Cover the cases where `p` appears as a `src`
-        if let IndexEntry::Occupied(entry) = self.c.entry(p) {
-            Self::entry_filter_candidates(entry, p, &mut f, at);
-        }
-        // And the cases where `p` appears as a `dest`
-        let Some(srcs) = self.reverse.get_mut(&p) else {
-            return;
-        };
-        // We use `retain` here to remove the elements from the reverse set if we've removed the
-        // matching candidate in the forward set.
-        srcs.retain(|src| {
-            if f(*src) == CandidateFilter::Keep {
-                return true;
-            }
-            let IndexEntry::Occupied(entry) = self.c.entry(*src) else {
-                return false;
-            };
-            Self::entry_filter_candidates(
-                entry,
-                *src,
-                |dest| {
-                    if dest == p { CandidateFilter::Remove } else { CandidateFilter::Keep }
-                },
-                at,
-            );
-            false
-        });
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq)]
-enum CandidateFilter {
-    Keep,
-    Remove,
 }
 
 impl<'a, 'tcx> FilterInformation<'a, 'tcx> {
@@ -459,73 +367,79 @@ impl<'a, 'tcx> FilterInformation<'a, 'tcx> {
     /// statement/terminator to be live. We are additionally conservative by treating all written to
     /// locals as also being read from.
     fn filter_liveness(
-        candidates: &mut Candidates,
-        points: &DenseLocationMap,
+        points: &'a DenseLocationMap,
         live: &SparseIntervalMatrix<Local, PointIndex>,
-        write_info: &mut WriteInfo,
-        body: &Body<'tcx>,
-    ) {
+        write_info: &'a mut WriteInfo,
+        body: &'a Body<'tcx>,
+    ) -> Self {
+        let num_locals = body.local_decls.len();
         let mut this = FilterInformation {
             body,
             points,
-            live,
-            candidates,
+            conflicts: BitMatrix::new(num_locals, num_locals),
             // We don't actually store anything at this scope, we just keep things here to be able
             // to reuse the allocation.
             write_info,
             // Doesn't matter what we put here, will be overwritten before being used
             at: Location::START,
         };
-        this.internal_filter_liveness();
+        this.internal_filter_liveness(live);
+        this
     }
 
-    fn internal_filter_liveness(&mut self) {
+    fn internal_filter_liveness(&mut self, live: &SparseIntervalMatrix<Local, PointIndex>) {
         for (block, data) in traversal::preorder(self.body) {
             self.at = Location { block, statement_index: data.statements.len() };
             self.write_info.for_terminator(&data.terminator().kind);
-            self.apply_conflicts();
+            self.record_conflicts(live);
 
             for (i, statement) in data.statements.iter().enumerate().rev() {
                 self.at = Location { block, statement_index: i };
                 self.write_info.for_statement(&statement.kind, self.body);
-                self.apply_conflicts();
+                self.record_conflicts(live);
+            }
+        }
+
+        trace!(?self.conflicts, "initial conflicts");
+    }
+
+    fn record_conflicts(&mut self, live: &SparseIntervalMatrix<Local, PointIndex>) {
+        let writes = &self.write_info.writes;
+        let skip_pair = self.write_info.skip_pair;
+        let at = self.points.point_from_location(self.at);
+
+        for &p in writes {
+            for &q in writes {
+                if p != q && skip_pair != Some((p, q)) && skip_pair != Some((q, p)) {
+                    self.conflicts.insert(p, q);
+                }
+            }
+
+            for q in live.rows() {
+                if p != q
+                    && skip_pair != Some((p, q))
+                    && skip_pair != Some((q, p))
+                    && live.contains(q, at)
+                {
+                    self.conflicts.insert(p, q);
+                }
             }
         }
     }
 
-    fn apply_conflicts(&mut self) {
-        let writes = &self.write_info.writes;
-        for p in writes {
-            let other_skip = self.write_info.skip_pair.and_then(|(a, b)| {
-                if a == *p {
-                    Some(b)
-                } else if b == *p {
-                    Some(a)
-                } else {
-                    None
-                }
-            });
-            let at = self.points.point_from_location(self.at);
-            self.candidates.filter_candidates_by(
-                *p,
-                |q| {
-                    if Some(q) == other_skip {
-                        return CandidateFilter::Keep;
-                    }
-                    // It is possible that a local may be live for less than the
-                    // duration of a statement This happens in the case of function
-                    // calls or inline asm. Because of this, we also mark locals as
-                    // conflicting when both of them are written to in the same
-                    // statement.
-                    if self.live.contains(q, at) || writes.contains(&q) {
-                        CandidateFilter::Remove
-                    } else {
-                        CandidateFilter::Keep
-                    }
-                },
-                self.at,
-            );
-        }
+    #[tracing::instrument(level = "trace", skip(self))]
+    fn record_merge(&mut self, src: Local, dest: Local) {
+        trace!(?self.conflicts, "pre");
+        self.conflicts.union_rows(src, dest);
+        self.conflicts.union_cols(src, dest);
+        trace!(?self.conflicts, "post");
+    }
+
+    #[tracing::instrument(level = "trace", skip(self), ret)]
+    fn find_non_conflicting(&self, src: Local, candidates: &Vec<Local>) -> Option<Local> {
+        candidates.iter().copied().find(|&dest| {
+            !self.conflicts.contains(src, dest) && !self.conflicts.contains(dest, src)
+        })
     }
 }
 
