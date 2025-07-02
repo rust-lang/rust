@@ -1230,7 +1230,6 @@ pub(crate) struct ConstContinueMissingValue {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_const_continue_unknown_jump_target)]
-#[note]
 pub(crate) struct ConstContinueUnknownJumpTarget {
     #[primary_span]
     pub span: Span,
