@@ -26,12 +26,34 @@ rustc_index::newtype_index! {
     pub(super) struct CycleId {}
 }
 
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub(super) enum RebaseEntriesKind {
+    Normal,
+    Ambiguity,
+    Overflow,
+}
+
 #[derive_where(Debug; X: Cx)]
 pub(super) enum NodeKind<X: Cx> {
-    InProgress { cycles_start: CycleId },
-    Finished { encountered_overflow: bool, heads: CycleHeads, result: X::Result },
-    CycleOnStack { entry_node_id: NodeId, result: X::Result },
-    ProvisionalCacheHit { entry_node_id: NodeId },
+    InProgress {
+        cycles_start: CycleId,
+        last_iteration_provisional_result: Option<X::Result>,
+        rebase_entries_kind: Option<RebaseEntriesKind>,
+    },
+    Finished {
+        encountered_overflow: bool,
+        heads: CycleHeads,
+        last_iteration_provisional_result: Option<X::Result>,
+        rebase_entries_kind: Option<RebaseEntriesKind>,
+        result: X::Result,
+    },
+    CycleOnStack {
+        entry_node_id: NodeId,
+        result: X::Result,
+    },
+    ProvisionalCacheHit {
+        entry_node_id: NodeId,
+    },
 }
 
 #[derive_where(Debug; X: Cx)]
@@ -66,7 +88,11 @@ impl<X: Cx> SearchTree<X> {
         self.nodes.push(Node {
             info,
             parent,
-            kind: NodeKind::InProgress { cycles_start: self.cycles.next_index() },
+            kind: NodeKind::InProgress {
+                cycles_start: self.cycles.next_index(),
+                last_iteration_provisional_result: None,
+                rebase_entries_kind: None,
+            },
         })
     }
 
@@ -108,10 +134,21 @@ impl<X: Cx> SearchTree<X> {
         heads: CycleHeads,
         result: X::Result,
     ) {
-        let NodeKind::InProgress { cycles_start: _ } = self.nodes[node_id].kind else {
+        let NodeKind::InProgress {
+            cycles_start: _,
+            last_iteration_provisional_result,
+            rebase_entries_kind,
+        } = self.nodes[node_id].kind
+        else {
             panic!("unexpected node kind: {:?}", self.nodes[node_id]);
         };
-        self.nodes[node_id].kind = NodeKind::Finished { encountered_overflow, heads, result }
+        self.nodes[node_id].kind = NodeKind::Finished {
+            encountered_overflow,
+            heads,
+            result,
+            last_iteration_provisional_result,
+            rebase_entries_kind,
+        }
     }
 
     pub(super) fn get_cycle(&self, cycle_id: CycleId) -> &Cycle<X> {
@@ -129,15 +166,22 @@ impl<X: Cx> SearchTree<X> {
                     encountered_overflow: prev_overflow,
                     heads: prev_heads,
                     result: prev_result,
+                    rebase_entries_kind: prev_rebase_entries_kind,
+                    last_iteration_provisional_result: prev_last_iteration_provisional_result,
                 },
                 NodeKind::Finished {
                     encountered_overflow: new_overflow,
                     heads: new_heads,
                     result: new_result,
+                    rebase_entries_kind: new_rebase_entries_kind,
+                    last_iteration_provisional_result: new_last_iteration_provisional_result,
                 },
             ) => {
                 prev_result == new_result
                     && (*prev_overflow || !*new_overflow)
+                    && prev_rebase_entries_kind == new_rebase_entries_kind
+                    && prev_last_iteration_provisional_result
+                        == new_last_iteration_provisional_result
                     && prev_heads.contains(new_heads)
             }
             (
@@ -157,10 +201,35 @@ impl<X: Cx> SearchTree<X> {
         }
     }
 
-    pub(super) fn rerun_get_and_reset_cycles(&mut self, node_id: NodeId) -> Range<CycleId> {
-        if let NodeKind::InProgress { cycles_start, .. } = &mut self.nodes[node_id].kind {
+    pub(super) fn set_rebase_kind(&mut self, node_id: NodeId, rebase_kind: RebaseEntriesKind) {
+        if let NodeKind::InProgress {
+            cycles_start: _,
+            last_iteration_provisional_result: _,
+            rebase_entries_kind,
+        } = &mut self.nodes[node_id].kind
+        {
+            let prev = rebase_entries_kind.replace(rebase_kind);
+            debug_assert!(prev.is_none());
+        } else {
+            panic!("unexpected node kind: {:?}", self.nodes[node_id]);
+        }
+    }
+
+    pub(super) fn rerun_get_and_reset_cycles(
+        &mut self,
+        node_id: NodeId,
+        provisional_result: X::Result,
+    ) -> Range<CycleId> {
+        if let NodeKind::InProgress {
+            cycles_start,
+            last_iteration_provisional_result,
+            rebase_entries_kind,
+        } = &mut self.nodes[node_id].kind
+        {
+            debug_assert!(rebase_entries_kind.is_none());
             let prev = *cycles_start;
             *cycles_start = self.cycles.next_index();
+            *last_iteration_provisional_result = Some(provisional_result);
             prev..self.cycles.next_index()
         } else {
             panic!("unexpected node kind: {:?}", self.nodes[node_id]);
