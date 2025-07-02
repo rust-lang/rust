@@ -267,25 +267,10 @@ pub fn check_builtin_meta_item(
     deny_unsafety: bool,
 ) {
     if !is_attr_template_compatible(&template, &meta.kind) {
-        emit_malformed_attribute(psess, style, meta.span, name, template);
-    }
-
-    if deny_unsafety {
-        deny_builtin_meta_unsafety(psess, meta);
-    }
-}
-
-fn emit_malformed_attribute(
-    psess: &ParseSess,
-    style: ast::AttrStyle,
-    span: Span,
-    name: Symbol,
-    template: AttributeTemplate,
-) {
-    // attrs with new parsers are locally validated so excluded here
-    if matches!(
-        name,
-        sym::inline
+        // attrs with new parsers are locally validated so excluded here
+        if matches!(
+            name,
+            sym::inline
             | sym::may_dangle
             | sym::rustc_as_ptr
             | sym::rustc_pub_transparent
@@ -310,11 +295,24 @@ fn emit_malformed_attribute(
             | sym::link_section
             | sym::rustc_layout_scalar_valid_range_start
             | sym::rustc_layout_scalar_valid_range_end
-            | sym::no_implicit_prelude
-    ) {
-        return;
+        | sym::no_implicit_prelude) {
+            return;
+        }
+        emit_malformed_attribute(psess, style, meta.span, name, template);
     }
 
+    if deny_unsafety {
+        deny_builtin_meta_unsafety(psess, meta);
+    }
+}
+
+fn emit_malformed_attribute(
+    psess: &ParseSess,
+    style: ast::AttrStyle,
+    span: Span,
+    name: Symbol,
+    template: AttributeTemplate,
+) {
     // Some of previously accepted forms were used in practice,
     // report them as warnings for now.
     let should_warn =
