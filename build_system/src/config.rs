@@ -374,6 +374,7 @@ impl ConfigInfo {
             if self.target_triple.is_empty() {
                 return Err("Unknown non-native platform".to_string());
             }
+            // TODO: check if this is still needed.
             linker = Some(format!("-Clinker={}-gcc", self.target_triple));
             self.run_in_vm = true;
         }
