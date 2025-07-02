@@ -339,15 +339,15 @@ fn exit(exit_code: i32) -> ! {
     std::process::exit(exit_code);
 }
 
-fn show_error_(msg: &impl std::fmt::Display) -> ! {
+fn fatal_error_(msg: &impl std::fmt::Display) -> ! {
     eprintln!("fatal error: {msg}");
     exit(1)
 }
 
-macro_rules! show_error {
-    ($($tt:tt)*) => { $crate::show_error_(&format_args!($($tt)*)) };
+macro_rules! fatal_error {
+    ($($tt:tt)*) => { $crate::fatal_error_(&format_args!($($tt)*)) };
 }
-use show_error;
+use fatal_error;
 
 /// Execute a compiler with the given CLI arguments and callbacks.
 fn run_compiler_and_exit(
@@ -520,7 +520,7 @@ fn main() {
                     params.precise_interior_mut = false;
                 }
                 _ =>
-                    show_error!(
+                    fatal_error!(
                         "`-Zmiri-tree-borrows` is required before `-Zmiri-tree-borrows-no-precise-interior-mut`"
                     ),
             };
@@ -547,7 +547,7 @@ fn main() {
                 "warn-nobacktrace" =>
                     miri::IsolatedOp::Reject(miri::RejectOpWith::WarningWithoutBacktrace),
                 _ =>
-                    show_error!(
+                    fatal_error!(
                         "-Zmiri-isolation-error must be `abort`, `hide`, `warn`, or `warn-nobacktrace`"
                     ),
             };
@@ -578,16 +578,16 @@ fn main() {
                 "all" => RetagFields::Yes,
                 "none" => RetagFields::No,
                 "scalar" => RetagFields::OnlyScalar,
-                _ => show_error!("`-Zmiri-retag-fields` can only be `all`, `none`, or `scalar`"),
+                _ => fatal_error!("`-Zmiri-retag-fields` can only be `all`, `none`, or `scalar`"),
             };
         } else if let Some(param) = arg.strip_prefix("-Zmiri-seed=") {
             let seed = param.parse::<u64>().unwrap_or_else(|_| {
-                show_error!("-Zmiri-seed must be an integer that fits into u64")
+                fatal_error!("-Zmiri-seed must be an integer that fits into u64")
             });
             miri_config.seed = Some(seed);
         } else if let Some(param) = arg.strip_prefix("-Zmiri-many-seeds=") {
             let range = parse_range(param).unwrap_or_else(|err| {
-                show_error!(
+                fatal_error!(
                     "-Zmiri-many-seeds requires a range in the form `from..to` or `..to`: {err}"
                 )
             });
@@ -604,51 +604,51 @@ fn main() {
             miri_config.forwarded_env_vars.push(param.to_owned());
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-set=") {
             let Some((name, value)) = param.split_once('=') else {
-                show_error!("-Zmiri-env-set requires an argument of the form <name>=<value>");
+                fatal_error!("-Zmiri-env-set requires an argument of the form <name>=<value>");
             };
             miri_config.set_env_vars.insert(name.to_owned(), value.to_owned());
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-pointer-tag=") {
             let ids: Vec<u64> = parse_comma_list(param).unwrap_or_else(|err| {
-                show_error!("-Zmiri-track-pointer-tag requires a comma separated list of valid `u64` arguments: {err}")
+                fatal_error!("-Zmiri-track-pointer-tag requires a comma separated list of valid `u64` arguments: {err}")
             });
             for id in ids.into_iter().map(miri::BorTag::new) {
                 if let Some(id) = id {
                     miri_config.tracked_pointer_tags.insert(id);
                 } else {
-                    show_error!("-Zmiri-track-pointer-tag requires nonzero arguments");
+                    fatal_error!("-Zmiri-track-pointer-tag requires nonzero arguments");
                 }
             }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-alloc-id=") {
             let ids = parse_comma_list::<NonZero<u64>>(param).unwrap_or_else(|err| {
-                show_error!("-Zmiri-track-alloc-id requires a comma separated list of valid non-zero `u64` arguments: {err}")
+                fatal_error!("-Zmiri-track-alloc-id requires a comma separated list of valid non-zero `u64` arguments: {err}")
             });
             miri_config.tracked_alloc_ids.extend(ids.into_iter().map(miri::AllocId));
         } else if arg == "-Zmiri-track-alloc-accesses" {
             miri_config.track_alloc_accesses = true;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-address-reuse-rate=") {
             miri_config.address_reuse_rate = parse_rate(param)
-                .unwrap_or_else(|err| show_error!("-Zmiri-address-reuse-rate {err}"));
+                .unwrap_or_else(|err| fatal_error!("-Zmiri-address-reuse-rate {err}"));
         } else if let Some(param) = arg.strip_prefix("-Zmiri-address-reuse-cross-thread-rate=") {
             miri_config.address_reuse_cross_thread_rate = parse_rate(param)
-                .unwrap_or_else(|err| show_error!("-Zmiri-address-reuse-cross-thread-rate {err}"));
+                .unwrap_or_else(|err| fatal_error!("-Zmiri-address-reuse-cross-thread-rate {err}"));
         } else if let Some(param) = arg.strip_prefix("-Zmiri-compare-exchange-weak-failure-rate=") {
             miri_config.cmpxchg_weak_failure_rate = parse_rate(param).unwrap_or_else(|err| {
-                show_error!("-Zmiri-compare-exchange-weak-failure-rate {err}")
+                fatal_error!("-Zmiri-compare-exchange-weak-failure-rate {err}")
             });
         } else if let Some(param) = arg.strip_prefix("-Zmiri-preemption-rate=") {
-            miri_config.preemption_rate =
-                parse_rate(param).unwrap_or_else(|err| show_error!("-Zmiri-preemption-rate {err}"));
+            miri_config.preemption_rate = parse_rate(param)
+                .unwrap_or_else(|err| fatal_error!("-Zmiri-preemption-rate {err}"));
         } else if arg == "-Zmiri-report-progress" {
             // This makes it take a few seconds between progress reports on my laptop.
             miri_config.report_progress = Some(1_000_000);
         } else if let Some(param) = arg.strip_prefix("-Zmiri-report-progress=") {
             let interval = param.parse::<u32>().unwrap_or_else(|err| {
-                show_error!("-Zmiri-report-progress requires a `u32`: {}", err)
+                fatal_error!("-Zmiri-report-progress requires a `u32`: {}", err)
             });
             miri_config.report_progress = Some(interval);
         } else if let Some(param) = arg.strip_prefix("-Zmiri-provenance-gc=") {
             let interval = param.parse::<u32>().unwrap_or_else(|err| {
-                show_error!("-Zmiri-provenance-gc requires a `u32`: {}", err)
+                fatal_error!("-Zmiri-provenance-gc requires a `u32`: {}", err)
             });
             miri_config.gc_interval = interval;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-measureme=") {
@@ -658,7 +658,7 @@ fn main() {
                 "0" => BacktraceStyle::Off,
                 "1" => BacktraceStyle::Short,
                 "full" => BacktraceStyle::Full,
-                _ => show_error!("-Zmiri-backtrace may only be 0, 1, or full"),
+                _ => fatal_error!("-Zmiri-backtrace may only be 0, 1, or full"),
             };
         } else if let Some(param) = arg.strip_prefix("-Zmiri-native-lib=") {
             let filename = param.to_string();
@@ -675,27 +675,27 @@ fn main() {
                     miri_config.native_lib.push(filename.into());
                 }
             } else {
-                show_error!("-Zmiri-native-lib `{}` does not exist", filename);
+                fatal_error!("-Zmiri-native-lib `{}` does not exist", filename);
             }
         } else if arg == "-Zmiri-force-old-native-lib-mode" {
             miri_config.force_old_native_lib = true;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-num-cpus=") {
             let num_cpus = param
                 .parse::<u32>()
-                .unwrap_or_else(|err| show_error!("-Zmiri-num-cpus requires a `u32`: {}", err));
+                .unwrap_or_else(|err| fatal_error!("-Zmiri-num-cpus requires a `u32`: {}", err));
             if !(1..=miri::MAX_CPUS).contains(&usize::try_from(num_cpus).unwrap()) {
-                show_error!("-Zmiri-num-cpus must be in the range 1..={}", miri::MAX_CPUS);
+                fatal_error!("-Zmiri-num-cpus must be in the range 1..={}", miri::MAX_CPUS);
             }
             miri_config.num_cpus = num_cpus;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-force-page-size=") {
             let page_size = param.parse::<u64>().unwrap_or_else(|err| {
-                show_error!("-Zmiri-force-page-size requires a `u64`: {}", err)
+                fatal_error!("-Zmiri-force-page-size requires a `u64`: {}", err)
             });
             // Convert from kilobytes to bytes.
             let page_size = if page_size.is_power_of_two() {
                 page_size * 1024
             } else {
-                show_error!("-Zmiri-force-page-size requires a power of 2: {page_size}");
+                fatal_error!("-Zmiri-force-page-size requires a power of 2: {page_size}");
             };
             miri_config.page_size = Some(page_size);
         } else {
@@ -706,22 +706,22 @@ fn main() {
     // Tree Borrows implies strict provenance, and is not compatible with native calls.
     if matches!(miri_config.borrow_tracker, Some(BorrowTrackerMethod::TreeBorrows { .. })) {
         if miri_config.provenance_mode != ProvenanceMode::Strict {
-            show_error!(
+            fatal_error!(
                 "Tree Borrows does not support integer-to-pointer casts, and hence requires strict provenance"
             );
         }
         if !miri_config.native_lib.is_empty() {
-            show_error!("Tree Borrows is not compatible with calling native functions");
+            fatal_error!("Tree Borrows is not compatible with calling native functions");
         }
     }
 
     // Native calls and strict provenance are not compatible.
     if !miri_config.native_lib.is_empty() && miri_config.provenance_mode == ProvenanceMode::Strict {
-        show_error!("strict provenance is not compatible with calling native functions");
+        fatal_error!("strict provenance is not compatible with calling native functions");
     }
     // You can set either one seed or many.
     if many_seeds.is_some() && miri_config.seed.is_some() {
-        show_error!("Only one of `-Zmiri-seed` and `-Zmiri-many-seeds can be set");
+        fatal_error!("Only one of `-Zmiri-seed` and `-Zmiri-many-seeds can be set");
     }
 
     // Ensure we have parallelism for many-seeds mode.
@@ -737,12 +737,12 @@ fn main() {
     assert_eq!(genmc_config.is_some(), miri_config.genmc_mode);
     if genmc_config.is_some() {
         if !miri_config.data_race_detector {
-            show_error!("Cannot disable data race detection in GenMC mode (currently)");
+            fatal_error!("Cannot disable data race detection in GenMC mode (currently)");
         } else if !miri_config.weak_memory_emulation {
-            show_error!("Cannot disable weak memory emulation in GenMC mode");
+            fatal_error!("Cannot disable weak memory emulation in GenMC mode");
         }
     } else if miri_config.weak_memory_emulation && !miri_config.data_race_detector {
-        show_error!(
+        fatal_error!(
             "Weak memory emulation cannot be enabled when the data race detector is disabled"
         );
     };

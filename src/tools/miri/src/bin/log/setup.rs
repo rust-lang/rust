@@ -59,7 +59,7 @@ fn init_logger_once(early_dcx: &EarlyDiagCtxt) {
         let guard = if env::var_os("MIRI_TRACING").is_some() {
             #[cfg(not(feature = "tracing"))]
             {
-                crate::show_error!(
+                crate::fatal_error!(
                     "fatal error: cannot enable MIRI_TRACING since Miri was not built with the \"tracing\" feature"
                 );
             }
