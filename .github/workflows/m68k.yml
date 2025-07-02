@@ -14,8 +14,6 @@ permissions:
 env:
   # Enable backtraces for easier debugging
   RUST_BACKTRACE: 1
-  # TODO: remove when confish.sh is removed.
-  OVERWRITE_TARGET_TRIPLE: m68k-unknown-linux-gnu
 
 jobs:
   build:
@@ -85,15 +83,15 @@ jobs:
       run: |
         ./y.sh prepare --only-libcore --cross
         ./y.sh build --sysroot --features compiler_builtins/no-f16-f128 --target-triple m68k-unknown-linux-gnu --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
-        ./y.sh cargo build --manifest-path=./tests/hello-world/Cargo.toml --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
+        CG_RUSTFLAGS="-Clinker=m68k-unknown-linux-gnu-gcc" ./y.sh cargo build --manifest-path=./tests/hello-world/Cargo.toml --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
         ./y.sh clean all
 
     - name: Build
       run: |
         ./y.sh prepare --only-libcore --cross
         ./y.sh build --sysroot --features compiler_builtins/no-f16-f128 --target-triple m68k-unknown-linux-gnu
-        ./y.sh test --mini-tests
-        CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu ./y.sh test --cargo-tests
+        ./y.sh test --mini-tests --target-triple m68k-unknown-linux-gnu
+        CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu ./y.sh test --cargo-tests --target-triple m68k-unknown-linux-gnu
         ./y.sh clean all
 
     - name: Prepare dependencies
@@ -104,7 +102,19 @@ jobs:
 
     - name: Run tests
       run: |
-        ./y.sh test --release --clean --build-sysroot --sysroot-features compiler_builtins/no-f16-f128 ${{ matrix.commands }}
+        ./y.sh test --target-triple m68k-unknown-linux-gnu --release --clean --build-sysroot --sysroot-features compiler_builtins/no-f16-f128 ${{ matrix.commands }}
+
+    - name: Run Hello World!
+      run: |
+        ./y.sh build --target-triple m68k-unknown-linux-gnu
+
+        vm_dir=$(pwd)/vm
+        cd tests/hello-world
+        CG_RUSTFLAGS="-Clinker=m68k-unknown-linux-gnu-gcc" ../../y.sh cargo build --target m68k-unknown-linux-gnu
+        sudo cp target/m68k-unknown-linux-gnu/debug/hello_world $vm_dir/home/
+        sudo chroot $vm_dir qemu-m68k-static /home/hello_world > hello_world_stdout
+        expected_output="40"
+        test $(cat hello_world_stdout) == $expected_output || (echo "Output differs. Actual output: $(cat hello_world_stdout)"; exit 1)
 
   # Summary job for the merge queue.
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
