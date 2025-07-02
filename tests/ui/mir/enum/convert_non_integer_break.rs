@@ -3,19 +3,17 @@
 //@ error-pattern: trying to construct an enum from an invalid value
 
 #[allow(dead_code)]
-#[repr(u16)]
-enum Mix {
+#[repr(u32)]
+enum Foo {
     A,
-    B(u16),
+    B,
 }
 
 #[allow(dead_code)]
-enum Nested {
-    C(Mix),
-    D,
-    E,
+struct Bar {
+    a: u32,
 }
 
 fn main() {
-    let _val: Nested = unsafe { std::mem::transmute::<u32, Nested>(u32::MAX) };
+    let _val: Foo = unsafe { std::mem::transmute::<_, Foo>(Bar { a: 3 }) };
 }
