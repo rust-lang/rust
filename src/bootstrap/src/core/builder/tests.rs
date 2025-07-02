@@ -1300,6 +1300,38 @@ mod snapshot {
     }
 
     #[test]
+    fn check_cross_compile() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .stage(2)
+                .targets(&[TEST_TRIPLE_1])
+                .hosts(&[TEST_TRIPLE_1])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [check] rustc <target1>
+        [check] Rustdoc <target1>
+        [check] cranelift <target1>
+        [check] gcc <target1>
+        [check] Clippy <target1>
+        [check] Miri <target1>
+        [check] CargoMiri <target1>
+        [check] MiroptTestTools <target1>
+        [check] Rustfmt <target1>
+        [check] rust-analyzer <target1>
+        [check] TestFloatParse <target1>
+        [check] FeaturesStatusDump <target1>
+        [check] std <target1>
+        ");
+    }
+
+    #[test]
     fn check_library_no_explicit_stage() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
@@ -1345,6 +1377,21 @@ mod snapshot {
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [check] std <host>
+        ");
+    }
+
+    #[test]
+    fn check_library_cross_compile() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .paths(&["core", "alloc", "std"])
+                .targets(&[TEST_TRIPLE_1, TEST_TRIPLE_2])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [check] std <target1>
+        [check] std <target2>
         ");
     }
 
