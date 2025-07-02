@@ -21,6 +21,7 @@ pub(crate) fn target() -> Target {
             max_atomic_width: Some(128),
             // FIXME: The leak sanitizer currently fails the tests, see #88132.
             supported_sanitizers: SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::THREAD,
+            stable_sanitizers: SanitizerSet::ADDRESS,
             supports_xray: true,
             ..opts
         },

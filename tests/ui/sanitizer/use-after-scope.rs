@@ -2,7 +2,7 @@
 //@ needs-sanitizer-address
 //@ ignore-cross-compile
 //
-//@ compile-flags: -Zsanitizer=address
+//@ compile-flags: -Zunstable-options -Csanitize=address
 //@ run-fail
 //@ error-pattern: ERROR: AddressSanitizer: stack-use-after-scope
 
