@@ -344,7 +344,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     llfn: &'ll Value,
     instance: ty::Instance<'tcx>,
 ) {
-    let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
+    let codegen_fn_attrs = cx.tcx.codegen_instance_attrs(instance.def);
 
     let mut to_add = SmallVec::<[_; 16]>::new();
 

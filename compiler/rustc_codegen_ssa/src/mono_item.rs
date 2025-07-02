@@ -71,7 +71,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 cx.predefine_static(def_id, linkage, visibility, symbol_name);
             }
             MonoItem::Fn(instance) => {
-                let attrs = cx.tcx().codegen_fn_attrs(instance.def_id());
+                let attrs = cx.tcx().codegen_instance_attrs(instance.def);
 
                 if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
                     // do not define this function; it will become a global assembly block

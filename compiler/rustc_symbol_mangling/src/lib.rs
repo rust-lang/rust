@@ -180,7 +180,7 @@ fn compute_symbol_name<'tcx>(
 
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
     let attrs = if tcx.def_kind(def_id).has_codegen_attrs() {
-        tcx.codegen_fn_attrs(def_id)
+        &tcx.codegen_instance_attrs(instance.def)
     } else {
         CodegenFnAttrs::EMPTY
     };

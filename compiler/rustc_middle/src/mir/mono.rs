@@ -152,7 +152,7 @@ impl<'tcx> MonoItem<'tcx> {
         // If the function is #[naked] or contains any other attribute that requires exactly-once
         // instantiation:
         // We emit an unused_attributes lint for this case, which should be kept in sync if possible.
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id());
+        let codegen_fn_attrs = tcx.codegen_instance_attrs(instance.def);
         if codegen_fn_attrs.contains_extern_indicator()
             || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED)
         {
@@ -219,7 +219,7 @@ impl<'tcx> MonoItem<'tcx> {
         // functions the same as those that unconditionally get LocalCopy codegen. It's only when
         // we get here that we can at least not codegen a #[inline(never)] generic function in all
         // of our CGUs.
-        if let InlineAttr::Never = tcx.codegen_fn_attrs(instance.def_id()).inline
+        if let InlineAttr::Never = codegen_fn_attrs.inline
             && self.is_generic_fn()
         {
             return InstantiationMode::GloballyShared { may_conflict: true };
@@ -234,14 +234,13 @@ impl<'tcx> MonoItem<'tcx> {
     }
 
     pub fn explicit_linkage(&self, tcx: TyCtxt<'tcx>) -> Option<Linkage> {
-        let def_id = match *self {
-            MonoItem::Fn(ref instance) => instance.def_id(),
-            MonoItem::Static(def_id) => def_id,
+        let instance_kind = match *self {
+            MonoItem::Fn(ref instance) => instance.def,
+            MonoItem::Static(def_id) => InstanceKind::Item(def_id),
             MonoItem::GlobalAsm(..) => return None,
         };
 
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
-        codegen_fn_attrs.linkage
+        tcx.codegen_instance_attrs(instance_kind).linkage
     }
 
     /// Returns `true` if this instance is instantiable - whether it has no unsatisfied
