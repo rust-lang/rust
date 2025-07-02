@@ -29,7 +29,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
             // query.
             let rpitit_items = tcx.associated_types_for_impl_traits_in_trait_or_impl(def_id);
             tcx.arena.alloc_from_iter(trait_item_refs.iter().flat_map(|trait_item_ref| {
-                let item_def_id = trait_item_ref.id.owner_id.to_def_id();
+                let item_def_id = trait_item_ref.owner_id.to_def_id();
                 [item_def_id]
                     .into_iter()
                     .chain(rpitit_items.get(&item_def_id).into_iter().flatten().copied())
@@ -41,7 +41,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
             // associated_types_for_impl_traits_in_trait_or_impl query.
             let rpitit_items = tcx.associated_types_for_impl_traits_in_trait_or_impl(def_id);
             tcx.arena.alloc_from_iter(impl_.items.iter().flat_map(|impl_item_ref| {
-                let item_def_id = impl_item_ref.id.owner_id.to_def_id();
+                let item_def_id = impl_item_ref.owner_id.to_def_id();
                 [item_def_id]
                     .into_iter()
                     .chain(rpitit_items.get(&item_def_id).into_iter().flatten().copied())
@@ -154,10 +154,10 @@ fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
         ItemKind::Trait(.., trait_item_refs) => trait_item_refs
             .iter()
             .filter_map(move |item| {
-                if !matches!(tcx.def_kind(item.id.owner_id), DefKind::AssocFn) {
+                if !matches!(tcx.def_kind(item.owner_id), DefKind::AssocFn) {
                     return None;
                 }
-                let fn_def_id = item.id.owner_id.def_id;
+                let fn_def_id = item.owner_id.def_id;
                 let Some(output) = tcx.hir_get_fn_output(fn_def_id) else {
                     return Some((fn_def_id.to_def_id(), vec![]));
                 };
@@ -185,11 +185,11 @@ fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
                 .items
                 .iter()
                 .filter_map(|item| {
-                    if !matches!(tcx.def_kind(item.id.owner_id), DefKind::AssocFn) {
+                    if !matches!(tcx.def_kind(item.owner_id), DefKind::AssocFn) {
                         return None;
                     }
-                    let did = item.id.owner_id.def_id.to_def_id();
-                    let item = tcx.hir_impl_item(item.id);
+                    let did = item.owner_id.def_id.to_def_id();
+                    let item = tcx.hir_impl_item(*item);
                     let Some(trait_item_def_id) = item.trait_item_def_id else {
                         return Some((did, vec![]));
                     };

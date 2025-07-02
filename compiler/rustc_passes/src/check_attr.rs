@@ -1152,7 +1152,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             ItemKind::Trait(_, _, _, generics, _, items)
                 if generics.params.len() != 0
                     || items.iter().any(|item| {
-                        matches!(self.tcx.def_kind(item.id.owner_id), DefKind::AssocTy)
+                        matches!(self.tcx.def_kind(item.owner_id), DefKind::AssocTy)
                     }) => {}
             ItemKind::TyAlias(_, generics, _) if generics.params.len() != 0 => {}
             _ => {

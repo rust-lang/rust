@@ -4162,7 +4162,7 @@ impl<'hir> Item<'hir> {
                 Ident,
                 &'hir Generics<'hir>,
                 GenericBounds<'hir>,
-                &'hir [TraitItemRef]
+                &'hir [TraitItemId]
             ),
             ItemKind::Trait(is_auto, safety, ident, generics, bounds, items),
             (*is_auto, *safety, *ident, generics, bounds, items);
@@ -4335,7 +4335,7 @@ pub enum ItemKind<'hir> {
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
     Union(Ident, &'hir Generics<'hir>, VariantData<'hir>),
     /// A trait definition.
-    Trait(IsAuto, Safety, Ident, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
+    Trait(IsAuto, Safety, Ident, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemId]),
     /// A trait alias.
     TraitAlias(Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
 
@@ -4362,7 +4362,7 @@ pub struct Impl<'hir> {
     pub of_trait: Option<TraitRef<'hir>>,
 
     pub self_ty: &'hir Ty<'hir>,
-    pub items: &'hir [ImplItemRef],
+    pub items: &'hir [ImplItemId],
 }
 
 impl ItemKind<'_> {
@@ -4403,32 +4403,6 @@ impl ItemKind<'_> {
             _ => return None,
         })
     }
-}
-
-/// A reference from an trait to one of its associated items. This
-/// contains the item's id, naturally, but also the item's name and
-/// some other high-level details (like whether it is an associated
-/// type or method, and whether it is public). This allows other
-/// passes to find the impl they want without loading the ID (which
-/// means fewer edges in the incremental compilation graph).
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub struct TraitItemRef {
-    pub id: TraitItemId,
-    pub ident: Ident,
-    pub span: Span,
-}
-
-/// A reference from an impl to one of its associated items. This
-/// contains the item's ID, naturally, but also the item's name and
-/// some other high-level details (like whether it is an associated
-/// type or method, and whether it is public). This allows other
-/// passes to find the impl they want without loading the ID (which
-/// means fewer edges in the incremental compilation graph).
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub struct ImplItemRef {
-    pub id: ImplItemId,
-    pub ident: Ident,
-    pub span: Span,
 }
 
 // The bodies for items are stored "out of line", in a separate
