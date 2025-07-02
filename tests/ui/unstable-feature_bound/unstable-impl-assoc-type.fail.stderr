@@ -1,9 +1,10 @@
-error[E0284]: type annotations needed: cannot satisfy `unstable feature: `feat_foo``
+error: unstable feature `feat_foo` is used without being enabled.
   --> $DIR/unstable-impl-assoc-type.rs:23:16
    |
 LL |   type Assoc = Self;
-   |                ^^^^ cannot satisfy `unstable feature: `feat_foo``
+   |                ^^^^
    |
+   = help: The feature can be enabled through #[unstable_feature_bound(feat_foo)] in std/core, or with #[feature(feat_foo)] outside of std/core.
 note: required for `Foo` to implement `Bar`
   --> $DIR/unstable-impl-assoc-type.rs:19:6
    |
@@ -19,4 +20,3 @@ LL |     type Assoc: Bar;
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0284`.

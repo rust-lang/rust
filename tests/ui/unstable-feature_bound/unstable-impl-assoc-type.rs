@@ -21,7 +21,8 @@ impl Bar for Foo {}
 #[cfg_attr(pass, unstable_feature_bound(feat_foo))]
 impl Trait for Foo {
   type Assoc = Self;
-  //[fail]~^ ERROR: cannot satisfy `unstable feature: `feat_foo``
+  //[fail]~^ ERROR: unstable feature `feat_foo` is used without being enabled.
+
 }
 
 fn main(){}

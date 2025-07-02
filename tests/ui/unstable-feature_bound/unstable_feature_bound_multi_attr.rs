@@ -31,7 +31,7 @@ fn koo() {
 #[unstable_feature_bound(feat_koo, feat_foo, feat_moo)]
 fn boo() {
     Bar::foo();
-    //~^ ERROR: type annotations needed: cannot satisfy `unstable feature: `feat_bar``
+    //~^ ERROR: unstable feature `feat_bar` is used without being enabled.
 }
 
 fn main() {}

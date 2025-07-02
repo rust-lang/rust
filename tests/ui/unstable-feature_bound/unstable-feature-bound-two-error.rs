@@ -7,6 +7,6 @@ use unstable_feature::{Foo, Bar, Moo};
 
 fn main() {
     Bar::foo();
-    //~^ ERROR: type annotations needed: cannot satisfy `unstable feature: `feat_bar``
+    //~^ ERROR: unstable feature `feat_bar` is used without being enabled.
     Moo::foo();
 }

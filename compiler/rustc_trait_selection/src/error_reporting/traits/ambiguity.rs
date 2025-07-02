@@ -610,6 +610,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 )
                 .with_span_label(span, format!("cannot normalize `{alias}`"))
             }
+            ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(sym)) => {
+                if let Some(e) = self.tainted_by_errors() {
+                    return e;
+                }
+
+                let mut err = self.dcx().struct_span_err(
+                    span,
+                    format!("unstable feature `{sym}` is used without being enabled."),
+                );
+                err.help(format!("The feature can be enabled through #[unstable_feature_bound({sym})] in std/core, or with \
+                                #[feature({sym})] outside of std/core."
+            ));
+                err
+            }
 
             _ => {
                 if let Some(e) = self.tainted_by_errors() {

@@ -10,5 +10,5 @@ use unstable_feature::{Foo, Bar};
 
 fn main() {
     Bar::foo();
-    //[fail]~^ ERROR: cannot satisfy `unstable feature: `feat_bar``
+    //[fail]~^ ERROR: unstable feature `feat_bar` is used without being enabled.
 }

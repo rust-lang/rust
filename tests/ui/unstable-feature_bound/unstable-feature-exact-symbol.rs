@@ -35,7 +35,8 @@ impl Moo for Bar {
 fn bar() {
     Bar::foo();
     Bar::moo();
-    //[fail]~^ ERROR cannot satisfy `unstable feature: `feat_moo``
+    //[fail]~^ ERROR  unstable feature `feat_moo` is used without being enabled.
+
 }
 
 fn main() {}

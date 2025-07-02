@@ -1,9 +1,10 @@
-error[E0284]: type annotations needed: cannot satisfy `unstable feature: `feat_foo``
+error: unstable feature `feat_foo` is used without being enabled.
   --> $DIR/unstable-impl-cannot-use-feature.rs:26:5
    |
 LL |     Bar::foo();
-   |     ^^^ cannot satisfy `unstable feature: `feat_foo``
+   |     ^^^
    |
+   = help: The feature can be enabled through #[unstable_feature_bound(feat_foo)] in std/core, or with #[feature(feat_foo)] outside of std/core.
 note: required for `Bar` to implement `Foo`
   --> $DIR/unstable-impl-cannot-use-feature.rs:20:6
    |
@@ -14,4 +15,3 @@ LL | impl Foo for Bar {
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0284`.

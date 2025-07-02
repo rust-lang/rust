@@ -1,11 +1,11 @@
-error[E0284]: type annotations needed: cannot satisfy `unstable feature: `feat_moo``
+error: unstable feature `feat_moo` is used without being enabled.
   --> $DIR/unstable-feature-cross-crate-exact-symbol.rs:16:5
    |
 LL |     Moo::foo();
-   |     ^^^ cannot satisfy `unstable feature: `feat_moo``
+   |     ^^^
    |
+   = help: The feature can be enabled through #[unstable_feature_bound(feat_moo)] in std/core, or with #[feature(feat_moo)] outside of std/core.
    = note: required for `Moo` to implement `Foo`
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0284`.
