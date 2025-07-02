@@ -219,6 +219,32 @@ impl<I: Idx> IntervalSet<I> {
         })
     }
 
+    pub fn disjoint(&self, other: &IntervalSet<I>) -> bool
+    where
+        I: Step,
+    {
+        let helper = move || {
+            let mut self_iter = self.iter_intervals();
+            let mut other_iter = other.iter_intervals();
+
+            let mut self_current = self_iter.next()?;
+            let mut other_current = other_iter.next()?;
+
+            loop {
+                if self_current.end <= other_current.start {
+                    self_current = self_iter.next()?;
+                    continue;
+                }
+                if other_current.end <= self_current.start {
+                    other_current = other_iter.next()?;
+                    continue;
+                }
+                return Some(false);
+            }
+        };
+        helper().unwrap_or(true)
+    }
+
     pub fn is_empty(&self) -> bool {
         self.map.is_empty()
     }
