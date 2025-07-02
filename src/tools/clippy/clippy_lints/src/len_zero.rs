@@ -12,7 +12,7 @@ use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{
     BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, HirId, ImplItem, ImplItemKind,
     ImplicitSelfKind, Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatExprKind, PatKind, PathSegment, PrimTy,
-    QPath, TraitItemRef, TyKind,
+    QPath, TraitItemId, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, FnSig, Ty};
@@ -265,11 +265,11 @@ fn span_without_enclosing_paren(cx: &LateContext<'_>, span: Span) -> Span {
     }
 }
 
-fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, ident: Ident, trait_items: &[TraitItemRef]) {
-    fn is_named_self(cx: &LateContext<'_>, item: &TraitItemRef, name: Symbol) -> bool {
-        item.ident.name == name
+fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, ident: Ident, trait_items: &[TraitItemId]) {
+    fn is_named_self(cx: &LateContext<'_>, item: &TraitItemId, name: Symbol) -> bool {
+        cx.tcx.item_name(item.owner_id) == name
             && matches!(
-                cx.tcx.fn_arg_idents(item.id.owner_id),
+                cx.tcx.fn_arg_idents(item.owner_id),
                 [Some(Ident { name: kw::SelfLower, .. })],
             )
     }
