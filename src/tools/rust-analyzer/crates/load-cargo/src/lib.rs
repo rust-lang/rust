@@ -69,6 +69,23 @@ pub fn load_workspace(
     extra_env: &FxHashMap<String, Option<String>>,
     load_config: &LoadCargoConfig,
 ) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroClient>)> {
+    let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<u16>().ok());
+    let mut db = RootDatabase::new(lru_cap);
+
+    let (vfs, proc_macro_server) = load_workspace_into_db(ws, extra_env, load_config, &mut db)?;
+
+    Ok((db, vfs, proc_macro_server))
+}
+
+// This variant of `load_workspace` allows deferring the loading of rust-analyzer
+// into an existing database, which is useful in certain third-party scenarios,
+// now that `salsa` supports extending foreign databases (e.g. `RootDatabase`).
+pub fn load_workspace_into_db(
+    ws: ProjectWorkspace,
+    extra_env: &FxHashMap<String, Option<String>>,
+    load_config: &LoadCargoConfig,
+    db: &mut RootDatabase,
+) -> anyhow::Result<(vfs::Vfs, Option<ProcMacroClient>)> {
     let (sender, receiver) = unbounded();
     let mut vfs = vfs::Vfs::default();
     let mut loader = {
@@ -145,18 +162,20 @@ pub fn load_workspace(
         version: 0,
     });
 
-    let db = load_crate_graph(
+    load_crate_graph_into_db(
         crate_graph,
         proc_macros,
         project_folders.source_root_config,
         &mut vfs,
         &receiver,
+        db,
     );
 
     if load_config.prefill_caches {
-        prime_caches::parallel_prime_caches(&db, 1, &|_| ());
+        prime_caches::parallel_prime_caches(db, 1, &|_| ());
     }
-    Ok((db, vfs, proc_macro_server.and_then(Result::ok)))
+
+    Ok((vfs, proc_macro_server.and_then(Result::ok)))
 }
 
 #[derive(Default)]
@@ -425,15 +444,14 @@ pub fn load_proc_macro(
     }
 }
 
-fn load_crate_graph(
+fn load_crate_graph_into_db(
     crate_graph: CrateGraphBuilder,
     proc_macros: ProcMacrosBuilder,
     source_root_config: SourceRootConfig,
     vfs: &mut vfs::Vfs,
     receiver: &Receiver<vfs::loader::Message>,
-) -> RootDatabase {
-    let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<u16>().ok());
-    let mut db = RootDatabase::new(lru_cap);
+    db: &mut RootDatabase,
+) {
     let mut analysis_change = ChangeWithProcMacros::default();
 
     db.enable_proc_attr_macros();
@@ -470,7 +488,6 @@ fn load_crate_graph(
     analysis_change.set_proc_macros(proc_macros);
 
     db.apply_change(analysis_change);
-    db
 }
 
 fn expander_to_proc_macro(
