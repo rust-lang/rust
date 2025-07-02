@@ -385,6 +385,10 @@ impl Step for RustAnalyzer {
         let _guard = builder.msg_check("rust-analyzer artifacts", target, None);
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check("rust-analyzer", self.target))
+    }
 }
 
 /// Compiletest is implicitly "checked" when it gets built in order to run tests,

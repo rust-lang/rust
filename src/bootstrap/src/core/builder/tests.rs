@@ -1442,6 +1442,20 @@ mod snapshot {
     }
 
     #[test]
+    fn check_rust_analyzer() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("rust-analyzer")
+                .render_steps(), @r"
+        [check] std <host>
+        [build] llvm <host>
+        [check] rustc <host>
+        [check] rust-analyzer <host>
+        ");
+    }
+
+    #[test]
     fn test_exclude() {
         let ctx = TestCtx::new();
         let steps = ctx.config("test").args(&["--skip", "src/tools/tidy"]).get_steps();
