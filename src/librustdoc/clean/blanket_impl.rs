@@ -23,7 +23,7 @@ pub(crate) fn synthesize_blanket_impls(
     let ty = tcx.type_of(item_def_id);
 
     let mut blanket_impls = Vec::new();
-    for trait_def_id in tcx.all_traits() {
+    for trait_def_id in tcx.visible_traits() {
         if !cx.cache.effective_visibilities.is_reachable(tcx, trait_def_id)
             || cx.generated_synthetics.contains(&(ty.skip_binder(), trait_def_id))
         {
