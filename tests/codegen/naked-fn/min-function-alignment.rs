@@ -1,9 +1,16 @@
+//@ add-core-stubs
 //@ compile-flags: -C no-prepopulate-passes -Copt-level=0 -Zmin-function-alignment=16
 //@ needs-asm-support
 //@ ignore-arm no "ret" mnemonic
 
+#![feature(no_core)]
 #![feature(fn_align)]
 #![crate_type = "lib"]
+#![no_std]
+#![no_core]
+
+extern crate minicore;
+use minicore::*;
 
 // functions without explicit alignment use the global minimum
 //
@@ -11,7 +18,7 @@
 #[no_mangle]
 #[unsafe(naked)]
 pub extern "C" fn naked_no_explicit_align() {
-    core::arch::naked_asm!("ret")
+    naked_asm!("ret")
 }
 
 // CHECK: .balign 16
@@ -19,7 +26,7 @@ pub extern "C" fn naked_no_explicit_align() {
 #[align(8)]
 #[unsafe(naked)]
 pub extern "C" fn naked_lower_align() {
-    core::arch::naked_asm!("ret")
+    naked_asm!("ret")
 }
 
 // CHECK: .balign 32
@@ -27,7 +34,7 @@ pub extern "C" fn naked_lower_align() {
 #[align(32)]
 #[unsafe(naked)]
 pub extern "C" fn naked_higher_align() {
-    core::arch::naked_asm!("ret")
+    naked_asm!("ret")
 }
 
 // cold functions follow the same rules as other functions
@@ -40,5 +47,5 @@ pub extern "C" fn naked_higher_align() {
 #[cold]
 #[unsafe(naked)]
 pub extern "C" fn no_explicit_align_cold() {
-    core::arch::naked_asm!("ret")
+    naked_asm!("ret")
 }

@@ -1,4 +1,4 @@
-//@compile-flags: -Zmin-function-alignment=8
+//@compile-flags: -Zmin-function-alignment=8 -Cunsafe-allow-abi-mismatch=min-function-alignment
 #![feature(fn_align)]
 
 // When a function uses `align(N)`, the function address should be a multiple of `N`.
