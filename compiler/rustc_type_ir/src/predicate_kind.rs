@@ -48,7 +48,11 @@ pub enum ClauseKind<I: Interner> {
     HostEffect(ty::HostEffectPredicate<I>),
 
     /// Support marking impl as unstable.
-    UnstableFeature(I::Symbol),
+    UnstableFeature(
+        #[type_foldable(identity)]
+        #[type_visitable(ignore)]
+        I::Symbol,
+    ),
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
