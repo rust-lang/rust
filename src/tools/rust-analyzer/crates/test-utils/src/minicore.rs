@@ -382,7 +382,7 @@ pub mod convert {
     // endregion:as_ref
     // region:as_mut
     pub trait AsMut<T: crate::marker::PointeeSized>: crate::marker::PointeeSized {
-        fn as_ref(&mut self) -> &mut T;
+        fn as_mut(&mut self) -> &mut T;
     }
     // endregion:as_mut
     // region:infallible
