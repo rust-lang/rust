@@ -25,6 +25,11 @@ trait MyTrait {
 }
 impl MyTrait for Thing {}
 
+// the shim calls the real function
+// CHECK-LABEL: define
+// CHECK-SAME: my_naked_function
+// CHECK-SAME: reify.shim.fnptr
+
 // CHECK-LABEL: main
 #[unsafe(no_mangle)]
 pub fn main() {
@@ -32,16 +37,11 @@ pub fn main() {
     const F: extern "C" fn() = Thing::my_naked_function;
 
     // main calls the shim function
-    // CHECK: call
+    // CHECK: call void
     // CHECK-SAME: my_naked_function
     // CHECK-SAME: reify.shim.fnptr
     (F)();
 }
-
-// the shim calls the real function
-// CHECK: define
-// CHECK-SAME: my_naked_function
-// CHECK-SAME: reify.shim.fnptr
 
 // CHECK: declare !kcfi_type
 // CHECK-SAME: my_naked_function
