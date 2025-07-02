@@ -68,7 +68,7 @@ pr:
     <<: *job-linux-4c
   - name: pr-check-2
     <<: *job-linux-4c
-  - name: pr-check-tidy
+  - name: tidy
     continue_on_error: true
     doc_url: https://foo.bar
     <<: *job-linux-4c

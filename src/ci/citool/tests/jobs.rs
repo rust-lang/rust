@@ -40,7 +40,7 @@ try-job: dist-i686-msvc"#,
 fn pr_jobs() {
     let stdout = get_matrix("pull_request", "commit", "refs/heads/pr/1234");
     insta::assert_snapshot!(stdout, @r#"
-    jobs=[{"name":"pr-check-1","full_name":"PR - pr-check-1","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"free_disk":true},{"name":"pr-check-2","full_name":"PR - pr-check-2","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"free_disk":true},{"name":"pr-check-tidy","full_name":"PR - pr-check-tidy","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"continue_on_error":true,"free_disk":true,"doc_url":"https://foo.bar"}]
+    jobs=[{"name":"pr-check-1","full_name":"PR - pr-check-1","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"free_disk":true},{"name":"pr-check-2","full_name":"PR - pr-check-2","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"free_disk":true},{"name":"tidy","full_name":"PR - tidy","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"continue_on_error":true,"free_disk":true,"doc_url":"https://foo.bar"}]
     run_type=pr
     "#);
 }

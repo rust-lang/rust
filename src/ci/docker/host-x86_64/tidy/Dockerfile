@@ -1,5 +1,5 @@
 # We use the ghcr base image because ghcr doesn't have a rate limit
-# and the pr-check-tidy job doesn't cache docker images in CI.
+# and the tidy job doesn't cache docker images in CI.
 FROM ghcr.io/rust-lang/ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -29,7 +29,7 @@ RUN sh /scripts/nodejs.sh /node
 ENV PATH="/node/bin:${PATH}"
 
 # Install eslint
-COPY host-x86_64/pr-check-tidy/eslint.version /tmp/
+COPY host-x86_64/tidy/eslint.version /tmp/
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
