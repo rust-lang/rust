@@ -1456,6 +1456,20 @@ mod snapshot {
     }
 
     #[test]
+    fn check_bootstrap_tool() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("run-make-support")
+                .render_steps(), @r"
+        [check] std <host>
+        [build] llvm <host>
+        [check] rustc <host>
+        [check] RunMakeSupport <host>
+        ");
+    }
+
+    #[test]
     fn test_exclude() {
         let ctx = TestCtx::new();
         let steps = ctx.config("test").args(&["--skip", "src/tools/tidy"]).get_steps();
