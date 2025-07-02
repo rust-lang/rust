@@ -20,7 +20,9 @@ impl<'tcx> TyCtxt<'tcx> {
         // Drop the `#[naked]` attribute on non-item `InstanceKind`s, like the shims that
         // are generated for indirect function calls.
         if !matches!(instance_kind, InstanceKind::Item(_)) {
-            attrs.to_mut().flags.remove(CodegenFnAttrFlags::NAKED);
+            if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+                attrs.to_mut().flags.remove(CodegenFnAttrFlags::NAKED);
+            }
         }
 
         attrs
