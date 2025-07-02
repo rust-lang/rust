@@ -43,6 +43,10 @@ reviewed_label = "S-waiting-on-author"
 [autolabel."S-waiting-on-review"]
 new_pr = true
 
+[concern]
+# These labels are set when there are unresolved concerns, removed otherwise
+labels = ["S-waiting-on-concerns"]
+
 [assign]
 contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md"
 users_on_vacation = [
