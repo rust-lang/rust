@@ -168,7 +168,6 @@ impl Step for Std {
             lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
             &build_stamp::libstd_stamp(builder, compiler, target),
             vec![],
-            true,
             false,
         );
     }
@@ -246,7 +245,6 @@ impl Step for Rustc {
             lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
             &build_stamp::librustc_stamp(builder, compiler, target),
             vec![],
-            true,
             false,
         );
     }
@@ -320,7 +318,6 @@ macro_rules! lint_any {
                     lint_args(builder, &self.config, &[]),
                     &stamp,
                     vec![],
-                    true,
                     false,
                 );
             }

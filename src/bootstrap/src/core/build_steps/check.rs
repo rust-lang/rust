@@ -116,7 +116,7 @@ impl Step for Std {
         );
 
         let stamp = build_stamp::libstd_stamp(builder, compiler, target).with_prefix("check");
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
 
         // We skip populating the sysroot in non-zero stage because that'll lead
         // to rlib/rmeta conflicts if std gets built during this session.
@@ -165,7 +165,7 @@ impl Step for Std {
 
         let stamp = build_stamp::libstd_stamp(builder, compiler, target).with_prefix("check-test");
         let _guard = builder.msg_check("library test/bench/example targets", target, Some(stage));
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
     }
 }
 
@@ -252,7 +252,7 @@ impl Step for Rustc {
 
         let stamp = build_stamp::librustc_stamp(builder, compiler, target).with_prefix("check");
 
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
 
         let libdir = builder.sysroot_target_libdir(compiler, target);
         let hostdir = builder.sysroot_target_libdir(compiler, compiler.host);
@@ -313,7 +313,7 @@ impl Step for CodegenBackend {
         let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, backend)
             .with_prefix("check");
 
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
     }
 }
 
@@ -371,7 +371,7 @@ impl Step for RustAnalyzer {
             .with_prefix("rust-analyzer-check");
 
         let _guard = builder.msg_check("rust-analyzer artifacts", target, None);
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
     }
 }
 
@@ -430,7 +430,7 @@ impl Step for Compiletest {
             .with_prefix("compiletest-check");
 
         let _guard = builder.msg_check("compiletest artifacts", self.target, None);
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
     }
 }
 
@@ -504,7 +504,7 @@ fn run_tool_check_step(
         .with_prefix(&format!("{}-check", step_type_name.to_lowercase()));
 
     let _guard = builder.msg_check(format!("{display_name} artifacts"), target, None);
-    run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+    run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
 }
 
 tool_check_step!(Rustdoc { path: "src/tools/rustdoc", alt_path: "src/librustdoc" });
@@ -589,6 +589,6 @@ impl Step for CoverageDump {
             &compiler.host,
             &target,
         );
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
     }
 }

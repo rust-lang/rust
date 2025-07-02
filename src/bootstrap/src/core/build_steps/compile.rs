@@ -295,7 +295,6 @@ impl Step for Std {
             vec![],
             &build_stamp::libstd_stamp(builder, compiler, target),
             target_deps,
-            self.is_for_mir_opt_tests, // is_check
             false,
         );
 
@@ -608,6 +607,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     {
         features += "compiler-builtins-no-f16-f128 ";
     }
+
+    cargo.arg("-Zno-embed-metadata");
 
     if builder.no_std(target) == Some(true) {
         features += " compiler-builtins-mem";
@@ -1154,7 +1155,6 @@ impl Step for Rustc {
             vec![],
             &stamp,
             vec![],
-            false,
             true, // Only ship rustc_driver.so and .rmeta files, not all intermediate .rlib files.
         );
 
@@ -1208,6 +1208,7 @@ pub fn rustc_cargo(
         .arg(builder.src.join("compiler/rustc/Cargo.toml"));
 
     cargo.rustdocflag("-Zcrate-attr=warn(rust_2018_idioms)");
+    cargo.arg("-Zno-embed-metadata");
 
     // If the rustc output is piped to e.g. `head -n1` we want the process to be killed, rather than
     // having an error bubble up and cause a panic.
@@ -1691,7 +1692,7 @@ impl Step for CodegenBackend {
         let tmp_stamp = BuildStamp::new(&out_dir).with_prefix("tmp");
 
         let _guard = builder.msg_build(compiler, format_args!("codegen backend {backend}"), target);
-        let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false, false);
+        let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false);
         if builder.config.dry_run() {
             return;
         }
@@ -2341,7 +2342,6 @@ pub fn run_cargo(
     tail_args: Vec<String>,
     stamp: &BuildStamp,
     additional_target_deps: Vec<(PathBuf, DependencyType)>,
-    is_check: bool,
     rlib_only_metadata: bool,
 ) -> Vec<PathBuf> {
     // `target_root_dir` looks like $dir/$target/release
@@ -2381,7 +2381,7 @@ pub fn run_cargo(
                 // Always keep native libraries, rust dylibs and debuginfo
                 keep = true;
             }
-            if is_check && filename.ends_with(".rmeta") {
+            if filename.ends_with(".rmeta") {
                 // During check builds we need to keep crate metadata
                 keep = true;
             } else if rlib_only_metadata {

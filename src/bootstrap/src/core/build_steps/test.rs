@@ -2227,7 +2227,7 @@ impl BookTest {
                 let stamp = BuildStamp::new(&builder.cargo_out(compiler, mode, target))
                     .with_prefix(PathBuf::from(dep).file_name().and_then(|v| v.to_str()).unwrap());
 
-                let output_paths = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
+                let output_paths = run_cargo(builder, cargo, vec![], &stamp, vec![], false);
                 let directories = output_paths
                     .into_iter()
                     .filter_map(|p| p.parent().map(ToOwned::to_owned))
