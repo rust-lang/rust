@@ -440,6 +440,10 @@ impl Step for Compiletest {
         let _guard = builder.msg_check("compiletest artifacts", self.target, None);
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check("compiletest", self.target))
+    }
 }
 
 macro_rules! tool_check_step {

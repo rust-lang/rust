@@ -1249,13 +1249,13 @@ mod snapshot {
             ctx.config("check")
                 .path("rustc")
                 .render_steps(), @r"
+        [check] std <host>
         [build] llvm <host>
-        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc <host>
         ");
     }
 
     #[test]
-    #[should_panic]
     fn check_compiler_stage_0() {
         let ctx = TestCtx::new();
         ctx.config("check").path("compiler").stage(0).run();
@@ -1307,7 +1307,6 @@ mod snapshot {
     }
 
     #[test]
-    #[should_panic]
     fn check_library_stage_0() {
         let ctx = TestCtx::new();
         ctx.config("check").path("library").stage(0).run();
@@ -1358,7 +1357,6 @@ mod snapshot {
     }
 
     #[test]
-    #[should_panic]
     fn check_miri_stage_0() {
         let ctx = TestCtx::new();
         ctx.config("check").path("miri").stage(0).run();
@@ -1395,6 +1393,30 @@ mod snapshot {
         [build] rustc 2 <host> -> std 2 <host>
         [check] rustc <host>
         [check] Miri <host>
+        ");
+    }
+
+    #[test]
+    fn check_compiletest() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("compiletest")
+                .render_steps(), @"[check] compiletest <host>");
+    }
+
+    #[test]
+    fn check_compiletest_stage1_libtest() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("compiletest")
+                .args(&["--set", "build.compiletest-use-stage0-libtest=false"])
+                .render_steps(), @r"
+        [check] std <host>
+        [build] llvm <host>
+        [check] rustc <host>
+        [check] compiletest <host>
         ");
     }
 
