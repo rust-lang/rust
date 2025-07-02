@@ -4,7 +4,7 @@ error: unstable feature `feat_moo` is used without being enabled.
 LL |     Bar::moo();
    |     ^^^
    |
-   = help: The feature can be enabled through #[unstable_feature_bound(feat_moo)] in std/core, or with #[feature(feat_moo)] outside of std/core.
+   = help: The feature can be enabled through #[unstable_feature_bound(feat_moo)] in std/core, or #[feature(feat_moo)] outside of std/core.
 note: required for `Bar` to implement `Moo`
   --> $DIR/unstable-feature-exact-symbol.rs:29:6
    |

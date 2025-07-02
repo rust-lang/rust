@@ -4,7 +4,7 @@ error: unstable feature `feat_bar` is used without being enabled.
 LL |     Bar::foo();
    |     ^^^
    |
-   = help: The feature can be enabled through #[unstable_feature_bound(feat_bar)] in std/core, or with #[feature(feat_bar)] outside of std/core.
+   = help: The feature can be enabled through #[unstable_feature_bound(feat_bar)] in std/core, or #[feature(feat_bar)] outside of std/core.
 note: required for `Bar` to implement `Foo`
   --> $DIR/unstable_feature_bound_multi_attr.rs:16:6
    |

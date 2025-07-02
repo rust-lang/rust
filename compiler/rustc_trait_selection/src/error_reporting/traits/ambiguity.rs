@@ -619,7 +619,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     span,
                     format!("unstable feature `{sym}` is used without being enabled."),
                 );
-                err.help(format!("The feature can be enabled through #[unstable_feature_bound({sym})] in std/core, or with \
+                err.help(format!("The feature can be enabled through #[unstable_feature_bound({sym})] in std/core, or \
                                 #[feature({sym})] outside of std/core."
             ));
                 err
