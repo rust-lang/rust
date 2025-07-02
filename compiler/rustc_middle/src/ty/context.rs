@@ -3512,7 +3512,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolutions(()).extern_crate_map.get(&def_id).copied()
     }
 
-    pub fn resolver_for_lowering(self) -> &'tcx (ty::ResolverAstLowering, ast::Crate) {
+    pub fn resolver_for_lowering(self) -> &'tcx (ty::ResolverAstLowering, Steal<ast::Crate>) {
         self.resolver_for_lowering_raw(()).0
     }
 

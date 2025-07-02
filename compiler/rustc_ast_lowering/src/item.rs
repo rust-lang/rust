@@ -13,7 +13,7 @@ use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{DesugaringKind, Ident, Span, Symbol, kw, sym};
-use smallvec::{SmallVec, smallvec};
+use smallvec::SmallVec;
 use thin_vec::ThinVec;
 use tracing::instrument;
 
@@ -27,6 +27,7 @@ use super::{
 pub(super) struct ItemLowerer<'hir> {
     pub(super) tcx: TyCtxt<'hir>,
     pub(super) resolver: &'hir ResolverAstLowering,
+    pub(super) next_node_id: NodeId,
 }
 
 /// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
@@ -54,7 +55,7 @@ impl<'hir> ItemLowerer<'hir> {
         owner: NodeId,
         f: impl FnOnce(&mut LoweringContext<'hir>) -> hir::OwnerNode<'hir>,
     ) -> hir::MaybeOwner<'hir> {
-        let mut lctx = LoweringContext::new(self.tcx, self.resolver, owner);
+        let mut lctx = LoweringContext::new(self.tcx, self.resolver, owner, self.next_node_id);
 
         let item = f(&mut lctx);
         debug_assert_eq!(lctx.current_hir_id_owner, item.def_id());
@@ -103,28 +104,12 @@ impl<'hir> LoweringContext<'hir> {
                 inner_span: self.lower_span(spans.inner_span),
                 inject_use_span: self.lower_span(spans.inject_use_span),
             },
-            item_ids: self.arena.alloc_from_iter(items.iter().flat_map(|x| self.lower_item_ref(x))),
+            item_ids: self.arena.alloc_from_iter(items.iter().map(|x| self.lower_item_ref(x))),
         })
     }
 
-    pub(super) fn lower_item_ref(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
-        let mut node_ids = smallvec![hir::ItemId { owner_id: self.owner_id(i.id) }];
-        if let ItemKind::Use(use_tree) = &i.kind {
-            self.lower_item_id_use_tree(use_tree, &mut node_ids);
-        }
-        node_ids
-    }
-
-    fn lower_item_id_use_tree(&mut self, tree: &UseTree, vec: &mut SmallVec<[hir::ItemId; 1]>) {
-        match &tree.kind {
-            UseTreeKind::Nested { items, .. } => {
-                for &(ref nested, id) in items {
-                    vec.push(hir::ItemId { owner_id: self.owner_id(id) });
-                    self.lower_item_id_use_tree(nested, vec);
-                }
-            }
-            UseTreeKind::Simple(..) | UseTreeKind::Glob => {}
-        }
+    pub(super) fn lower_item_ref(&mut self, i: &Item) -> hir::ItemId {
+        hir::ItemId { owner_id: self.owner_id(i.id) }
     }
 
     fn generate_extra_attrs_for_item_kind(
