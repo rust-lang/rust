@@ -3357,7 +3357,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
     }
 
-    pub fn resolver_for_lowering(self) -> &'tcx (ty::ResolverAstLowering, ast::Crate) {
+    pub fn resolver_for_lowering(self) -> &'tcx (ty::ResolverAstLowering, Steal<ast::Crate>) {
         self.resolver_for_lowering_raw(()).0
     }
 

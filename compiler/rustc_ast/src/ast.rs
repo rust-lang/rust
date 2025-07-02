@@ -4055,14 +4055,14 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 pub type ForeignItem = Item<ForeignItemKind>;
 
 #[derive(Debug)]
-pub enum AstOwner<'a> {
+pub enum AstOwner {
     NonOwner,
     Synthetic(rustc_span::def_id::LocalDefId),
-    Crate(&'a Crate),
-    Item(&'a Item),
-    TraitItem(&'a AssocItem),
-    ImplItem(&'a AssocItem),
-    ForeignItem(&'a ForeignItem),
+    Crate(P<Crate>),
+    Item(P<Item>),
+    TraitItem(P<AssocItem>),
+    ImplItem(P<AssocItem>),
+    ForeignItem(P<ForeignItem>),
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
