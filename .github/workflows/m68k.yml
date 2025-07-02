@@ -59,14 +59,12 @@ jobs:
 
     - name: Setup path to libgccjit
       run: |
-          sudo dpkg -i gcc-m68k-15.deb
+          sudo dpkg --force-overwrite -i gcc-m68k-15.deb
           echo 'gcc-path = "/usr/lib/"' > config.toml
 
     - name: Set env
       run: |
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-        
-        
 
     #- name: Cache rust repository
       ## We only clone the rust repository for rustc tests
