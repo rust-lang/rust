@@ -181,7 +181,7 @@ rustc_queries! {
 
     query resolver_for_lowering_raw(_: ()) -> (
         &'tcx ty::ResolverAstLowering<'tcx>,
-        &'tcx ast::Crate,
+        &'tcx Steal<ast::Crate>,
         &'tcx ty::ResolverGlobalCtxt,
     ) {
         eval_always
@@ -189,7 +189,8 @@ rustc_queries! {
         desc { "getting the resolver for lowering" }
     }
 
-    query index_ast(_: ()) -> &'tcx IndexVec<LocalDefId, ast::AstOwner<'tcx>> {
+    query index_ast(_: ()) -> &'tcx (IndexVec<LocalDefId, Steal<ast::AstOwner>>, ast::NodeId) {
+        arena_cache
         eval_always
         no_hash
         desc { "getting the AST for lowering" }
