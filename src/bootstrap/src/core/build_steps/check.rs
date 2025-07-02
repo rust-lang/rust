@@ -323,6 +323,10 @@ impl Step for CodegenBackend {
 
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check(self.backend, self.target))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
