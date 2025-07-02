@@ -4,6 +4,7 @@ use std::{iter, ptr};
 
 pub(crate) mod autodiff;
 pub(crate) mod gpu_offload;
+pub(crate) mod gpu_wrapper;
 
 use libc::{c_char, c_uint, size_t};
 use rustc_abi as abi;

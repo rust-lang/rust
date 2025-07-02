@@ -159,6 +159,23 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
     }
 }
 
+// FIXME(offload): This method is not relying on a tcx. We might still want to try to share some of
+// the logic with create_module, e.g. the target_data_layout handling.
+pub(crate) unsafe fn create_simple_module<'ll>(
+    llcx: &'ll llvm::Context,
+    target_data_layout: *const i8,
+    target_triple: *const i8,
+    mod_name: &str,
+) -> &'ll llvm::Module {
+    let mod_name = SmallCStr::new(mod_name);
+    let llmod = unsafe { llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx) };
+    unsafe {
+        llvm::LLVMSetDataLayout(llmod, target_data_layout);
+        llvm::LLVMSetTarget(llmod, target_triple);
+    }
+    llmod
+}
+
 pub(crate) unsafe fn create_module<'ll>(
     tcx: TyCtxt<'_>,
     llcx: &'ll llvm::Context,
