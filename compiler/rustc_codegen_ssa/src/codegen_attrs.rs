@@ -114,6 +114,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     codegen_fn_attrs.export_name = Some(*name);
                 }
                 AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
+
                 AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
                 AttributeKind::LinkName { name, .. } => codegen_fn_attrs.link_name = Some(*name),
                 AttributeKind::LinkSection { name, .. } => {
