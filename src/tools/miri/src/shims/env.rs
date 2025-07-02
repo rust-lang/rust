@@ -59,15 +59,6 @@ impl<'tcx> EnvVars<'tcx> {
         interp_ok(())
     }
 
-    pub(crate) fn cleanup(ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>) -> InterpResult<'tcx> {
-        let this = ecx.eval_context_mut();
-        match this.machine.env_vars {
-            EnvVars::Unix(_) => UnixEnvVars::cleanup(this),
-            EnvVars::Windows(_) => interp_ok(()), // no cleanup needed
-            EnvVars::Uninit => interp_ok(()),
-        }
-    }
-
     pub(crate) fn unix(&self) -> &UnixEnvVars<'tcx> {
         match self {
             EnvVars::Unix(env) => env,

@@ -1,6 +1,6 @@
+use std::env;
 use std::ffi::{OsStr, OsString};
 use std::io::ErrorKind;
-use std::{env, mem};
 
 use rustc_abi::{FieldIdx, Size};
 use rustc_data_structures::fx::FxHashMap;
@@ -48,20 +48,6 @@ impl<'tcx> UnixEnvVars<'tcx> {
         ecx.write_pointer(environ_block, &environ)?;
 
         interp_ok(UnixEnvVars { map: env_vars_machine, environ })
-    }
-
-    pub(crate) fn cleanup(ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>) -> InterpResult<'tcx> {
-        // Deallocate individual env vars.
-        let env_vars = mem::take(&mut ecx.machine.env_vars.unix_mut().map);
-        for (_name, ptr) in env_vars {
-            ecx.deallocate_ptr(ptr, None, MiriMemoryKind::Runtime.into())?;
-        }
-        // Deallocate environ var list.
-        let environ = &ecx.machine.env_vars.unix().environ;
-        let old_vars_ptr = ecx.read_pointer(environ)?;
-        ecx.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Runtime.into())?;
-
-        interp_ok(())
     }
 
     pub(crate) fn environ(&self) -> Pointer {
@@ -112,7 +98,7 @@ fn alloc_env_var<'tcx>(
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
     name_osstring.push(value);
-    ecx.alloc_os_str_as_c_str(name_osstring.as_os_str(), MiriMemoryKind::Runtime.into())
+    ecx.alloc_os_str_as_c_str(name_osstring.as_os_str(), MiriMemoryKind::Machine.into())
 }
 
 /// Allocates an `environ` block with the given list of pointers.
@@ -128,7 +114,7 @@ fn alloc_environ_block<'tcx>(
         ecx.machine.layouts.mut_raw_ptr.ty,
         u64::try_from(vars.len()).unwrap(),
     ))?;
-    let vars_place = ecx.allocate(vars_layout, MiriMemoryKind::Runtime.into())?;
+    let vars_place = ecx.allocate(vars_layout, MiriMemoryKind::Machine.into())?;
     for (idx, var) in vars.into_iter_enumerated() {
         let place = ecx.project_field(&vars_place, idx)?;
         ecx.write_pointer(var, &place)?;
@@ -171,7 +157,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let Some((name, value)) = new {
             let var_ptr = alloc_env_var(this, &name, &value)?;
             if let Some(var) = this.machine.env_vars.unix_mut().map.insert(name, var_ptr) {
-                this.deallocate_ptr(var, None, MiriMemoryKind::Runtime.into())?;
+                this.deallocate_ptr(var, None, MiriMemoryKind::Machine.into())?;
             }
             this.update_environ()?;
             interp_ok(Scalar::from_i32(0)) // return zero on success
@@ -195,7 +181,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         if let Some(old) = success {
             if let Some(var) = old {
-                this.deallocate_ptr(var, None, MiriMemoryKind::Runtime.into())?;
+                this.deallocate_ptr(var, None, MiriMemoryKind::Machine.into())?;
             }
             this.update_environ()?;
             interp_ok(Scalar::from_i32(0))
@@ -253,7 +239,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Deallocate the old environ list.
         let environ = this.machine.env_vars.unix().environ.clone();
         let old_vars_ptr = this.read_pointer(&environ)?;
-        this.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Runtime.into())?;
+        this.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Machine.into())?;
 
         // Write the new list.
         let vals = this.machine.env_vars.unix().map.values().copied().collect();
