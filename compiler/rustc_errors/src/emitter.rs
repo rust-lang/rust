@@ -2078,7 +2078,9 @@ impl HumanEmitter {
                 // file name, saving in verbosity, but if it *isn't* we do need it, otherwise we're
                 // telling users to make a change but not clarifying *where*.
                 let loc = sm.lookup_char_pos(parts[0].span.lo());
-                if loc.file.name != sm.span_to_filename(span) && loc.file.name.is_real() {
+                if (span.is_dummy() || loc.file.name != sm.span_to_filename(span))
+                    && loc.file.name.is_real()
+                {
                     // --> file.rs:line:col
                     //  |
                     let arrow = self.file_start();

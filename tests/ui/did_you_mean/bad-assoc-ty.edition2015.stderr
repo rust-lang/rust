@@ -302,7 +302,7 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
 LL | trait P<F> where F: Fn() -> _ {
    |                             ^ not allowed in type signatures
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated functions
   --> $DIR/bad-assoc-ty.rs:88:38
    |
 LL |     fn foo<F>(_: F) where F: Fn() -> _ {}

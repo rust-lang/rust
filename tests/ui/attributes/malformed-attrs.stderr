@@ -1,0 +1,596 @@
+error: `cfg` is not followed by parentheses
+  --> $DIR/malformed-attrs.rs:100:1
+   |
+LL | #[cfg]
+   | ^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+
+error: malformed `cfg_attr` attribute input
+  --> $DIR/malformed-attrs.rs:102:1
+   |
+LL | #[cfg_attr]
+   | ^^^^^^^^^^^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+help: missing condition and attribute
+   |
+LL | #[cfg_attr(condition, attribute, other_attribute, ...)]
+   |           ++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0463]: can't find crate for `wloop`
+  --> $DIR/malformed-attrs.rs:209:1
+   |
+LL | extern crate wloop;
+   | ^^^^^^^^^^^^^^^^^^^ can't find crate
+
+error: malformed `omit_gdb_pretty_printer_section` attribute input
+  --> $DIR/malformed-attrs.rs:26:1
+   |
+LL | #![omit_gdb_pretty_printer_section = 1]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![omit_gdb_pretty_printer_section]`
+
+error: malformed `windows_subsystem` attribute input
+  --> $DIR/malformed-attrs.rs:29:1
+   |
+LL | #![windows_subsystem]
+   | ^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![windows_subsystem = "windows|console"]`
+
+error: malformed `crate_name` attribute input
+  --> $DIR/malformed-attrs.rs:72:1
+   |
+LL | #[crate_name]
+   | ^^^^^^^^^^^^^ help: must be of the form: `#[crate_name = "name"]`
+
+error: malformed `target_feature` attribute input
+  --> $DIR/malformed-attrs.rs:77:1
+   |
+LL | #[target_feature]
+   | ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[target_feature(enable = "name")]`
+
+error: malformed `export_stable` attribute input
+  --> $DIR/malformed-attrs.rs:79:1
+   |
+LL | #[export_stable = 1]
+   | ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[export_stable]`
+
+error: malformed `coverage` attribute input
+  --> $DIR/malformed-attrs.rs:88:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
+
+error: malformed `no_sanitize` attribute input
+  --> $DIR/malformed-attrs.rs:90:1
+   |
+LL | #[no_sanitize]
+   | ^^^^^^^^^^^^^^ help: must be of the form: `#[no_sanitize(address, kcfi, memory, thread)]`
+
+error: malformed `no_implicit_prelude` attribute input
+  --> $DIR/malformed-attrs.rs:95:1
+   |
+LL | #[no_implicit_prelude = 23]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[no_implicit_prelude]`
+
+error: malformed `proc_macro` attribute input
+  --> $DIR/malformed-attrs.rs:97:1
+   |
+LL | #[proc_macro = 18]
+   | ^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro]`
+
+error: malformed `instruction_set` attribute input
+  --> $DIR/malformed-attrs.rs:104:1
+   |
+LL | #[instruction_set]
+   | ^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[instruction_set(set)]`
+
+error: malformed `patchable_function_entry` attribute input
+  --> $DIR/malformed-attrs.rs:106:1
+   |
+LL | #[patchable_function_entry]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
+
+error: malformed `coroutine` attribute input
+  --> $DIR/malformed-attrs.rs:109:5
+   |
+LL |     #[coroutine = 63] || {}
+   |     ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[coroutine]`
+
+error: malformed `proc_macro_attribute` attribute input
+  --> $DIR/malformed-attrs.rs:114:1
+   |
+LL | #[proc_macro_attribute = 19]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_attribute]`
+
+error: malformed `proc_macro_derive` attribute input
+  --> $DIR/malformed-attrs.rs:121:1
+   |
+LL | #[proc_macro_derive]
+   | ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
+
+error: malformed `must_not_suspend` attribute input
+  --> $DIR/malformed-attrs.rs:130:1
+   |
+LL | #[must_not_suspend()]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL - #[must_not_suspend()]
+LL + #[must_not_suspend = "reason"]
+   |
+LL - #[must_not_suspend()]
+LL + #[must_not_suspend]
+   |
+
+error: malformed `cfi_encoding` attribute input
+  --> $DIR/malformed-attrs.rs:132:1
+   |
+LL | #[cfi_encoding]
+   | ^^^^^^^^^^^^^^^ help: must be of the form: `#[cfi_encoding = "encoding"]`
+
+error: malformed `type_const` attribute input
+  --> $DIR/malformed-attrs.rs:141:5
+   |
+LL |     #[type_const = 1]
+   |     ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[type_const]`
+
+error: malformed `marker` attribute input
+  --> $DIR/malformed-attrs.rs:153:1
+   |
+LL | #[marker = 3]
+   | ^^^^^^^^^^^^^ help: must be of the form: `#[marker]`
+
+error: malformed `fundamental` attribute input
+  --> $DIR/malformed-attrs.rs:155:1
+   |
+LL | #[fundamental()]
+   | ^^^^^^^^^^^^^^^^ help: must be of the form: `#[fundamental]`
+
+error: malformed `ffi_pure` attribute input
+  --> $DIR/malformed-attrs.rs:163:5
+   |
+LL |     #[unsafe(ffi_pure = 1)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[ffi_pure]`
+
+error: malformed `link_ordinal` attribute input
+  --> $DIR/malformed-attrs.rs:165:5
+   |
+LL |     #[link_ordinal]
+   |     ^^^^^^^^^^^^^^^ help: must be of the form: `#[link_ordinal(ordinal)]`
+
+error: malformed `ffi_const` attribute input
+  --> $DIR/malformed-attrs.rs:169:5
+   |
+LL |     #[unsafe(ffi_const = 1)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[ffi_const]`
+
+error: malformed `linkage` attribute input
+  --> $DIR/malformed-attrs.rs:171:5
+   |
+LL |     #[linkage]
+   |     ^^^^^^^^^^ help: must be of the form: `#[linkage = "external|internal|..."]`
+
+error: malformed `allow` attribute input
+  --> $DIR/malformed-attrs.rs:176:1
+   |
+LL | #[allow]
+   | ^^^^^^^^ help: must be of the form: `#[allow(lint1, lint2, ..., /*opt*/ reason = "...")]`
+
+error: malformed `expect` attribute input
+  --> $DIR/malformed-attrs.rs:178:1
+   |
+LL | #[expect]
+   | ^^^^^^^^^ help: must be of the form: `#[expect(lint1, lint2, ..., /*opt*/ reason = "...")]`
+
+error: malformed `warn` attribute input
+  --> $DIR/malformed-attrs.rs:180:1
+   |
+LL | #[warn]
+   | ^^^^^^^ help: must be of the form: `#[warn(lint1, lint2, ..., /*opt*/ reason = "...")]`
+
+error: malformed `deny` attribute input
+  --> $DIR/malformed-attrs.rs:182:1
+   |
+LL | #[deny]
+   | ^^^^^^^ help: must be of the form: `#[deny(lint1, lint2, ..., /*opt*/ reason = "...")]`
+
+error: malformed `forbid` attribute input
+  --> $DIR/malformed-attrs.rs:184:1
+   |
+LL | #[forbid]
+   | ^^^^^^^^^ help: must be of the form: `#[forbid(lint1, lint2, ..., /*opt*/ reason = "...")]`
+
+error: malformed `debugger_visualizer` attribute input
+  --> $DIR/malformed-attrs.rs:186:1
+   |
+LL | #[debugger_visualizer]
+   | ^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[debugger_visualizer(natvis_file = "...", gdb_script_file = "...")]`
+
+error: malformed `automatically_derived` attribute input
+  --> $DIR/malformed-attrs.rs:189:1
+   |
+LL | #[automatically_derived = 18]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[automatically_derived]`
+
+error: malformed `non_exhaustive` attribute input
+  --> $DIR/malformed-attrs.rs:195:1
+   |
+LL | #[non_exhaustive = 1]
+   | ^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[non_exhaustive]`
+
+error: malformed `thread_local` attribute input
+  --> $DIR/malformed-attrs.rs:201:1
+   |
+LL | #[thread_local()]
+   | ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[thread_local]`
+
+error: malformed `no_link` attribute input
+  --> $DIR/malformed-attrs.rs:205:1
+   |
+LL | #[no_link()]
+   | ^^^^^^^^^^^^ help: must be of the form: `#[no_link]`
+
+error: malformed `macro_use` attribute input
+  --> $DIR/malformed-attrs.rs:207:1
+   |
+LL | #[macro_use = 1]
+   | ^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL - #[macro_use = 1]
+LL + #[macro_use(name1, name2, ...)]
+   |
+LL - #[macro_use = 1]
+LL + #[macro_use]
+   |
+
+error: malformed `macro_export` attribute input
+  --> $DIR/malformed-attrs.rs:212:1
+   |
+LL | #[macro_export = 18]
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL - #[macro_export = 18]
+LL + #[macro_export(local_inner_macros)]
+   |
+LL - #[macro_export = 18]
+LL + #[macro_export]
+   |
+
+error: malformed `allow_internal_unsafe` attribute input
+  --> $DIR/malformed-attrs.rs:214:1
+   |
+LL | #[allow_internal_unsafe = 1]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[allow_internal_unsafe]`
+
+error: the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/malformed-attrs.rs:97:1
+   |
+LL | #[proc_macro = 18]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: the `#[proc_macro_attribute]` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/malformed-attrs.rs:114:1
+   |
+LL | #[proc_macro_attribute = 19]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/malformed-attrs.rs:121:1
+   |
+LL | #[proc_macro_derive]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error[E0658]: allow_internal_unsafe side-steps the unsafe_code lint
+  --> $DIR/malformed-attrs.rs:214:1
+   |
+LL | #[allow_internal_unsafe = 1]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(allow_internal_unsafe)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: valid forms for the attribute are `#[doc(hidden|inline|...)]` and `#[doc = "string"]`
+  --> $DIR/malformed-attrs.rs:42:1
+   |
+LL | #[doc]
+   | ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` on by default
+
+error: valid forms for the attribute are `#[doc(hidden|inline|...)]` and `#[doc = "string"]`
+  --> $DIR/malformed-attrs.rs:74:1
+   |
+LL | #[doc]
+   | ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+
+error: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...", /*opt*/ import_name_type = "decorated|noprefix|undecorated")]`
+  --> $DIR/malformed-attrs.rs:81:1
+   |
+LL | #[link]
+   | ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+
+error: valid forms for the attribute are `#[ignore]` and `#[ignore = "reason"]`
+  --> $DIR/malformed-attrs.rs:92:1
+   |
+LL | #[ignore()]
+   | ^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+
+error: invalid argument
+  --> $DIR/malformed-attrs.rs:186:1
+   |
+LL | #[debugger_visualizer]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected: `natvis_file = "..."`
+   = note: OR
+   = note: expected: `gdb_script_file = "..."`
+
+error[E0539]: malformed `export_name` attribute input
+  --> $DIR/malformed-attrs.rs:32:1
+   |
+LL | #[unsafe(export_name)]
+   | ^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[export_name = "name"]`
+
+error: `rustc_allow_const_fn_unstable` expects a list of feature names
+  --> $DIR/malformed-attrs.rs:34:1
+   |
+LL | #[rustc_allow_const_fn_unstable]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `allow_internal_unstable` expects a list of feature names
+  --> $DIR/malformed-attrs.rs:36:1
+   |
+LL | #[allow_internal_unstable]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0539]: malformed `rustc_confusables` attribute input
+  --> $DIR/malformed-attrs.rs:38:1
+   |
+LL | #[rustc_confusables]
+   | ^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[rustc_confusables("name1", "name2", ...)]`
+
+error[E0539]: malformed `deprecated` attribute input
+  --> $DIR/malformed-attrs.rs:40:1
+   |
+LL | #[deprecated = 5]
+   | ^^^^^^^^^^^^^^^-^
+   |                |
+   |                expected a string literal here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[deprecated = 5]
+LL + #[deprecated = "reason"]
+   |
+LL - #[deprecated = 5]
+LL + #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+   |
+LL - #[deprecated = 5]
+LL + #[deprecated]
+   |
+
+error[E0539]: malformed `rustc_macro_transparency` attribute input
+  --> $DIR/malformed-attrs.rs:45:1
+   |
+LL | #[rustc_macro_transparency]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_macro_transparency = "transparent|semitransparent|opaque"]`
+
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/malformed-attrs.rs:47:1
+   |
+LL | #[repr]
+   | ^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[repr(C | Rust | align(...) | packed(...) | <integer type> | transparent)]`
+
+error[E0565]: malformed `rustc_as_ptr` attribute input
+  --> $DIR/malformed-attrs.rs:49:1
+   |
+LL | #[rustc_as_ptr = 5]
+   | ^^^^^^^^^^^^^^^---^
+   | |              |
+   | |              didn't expect any arguments here
+   | help: must be of the form: `#[rustc_as_ptr]`
+
+error[E0539]: malformed `align` attribute input
+  --> $DIR/malformed-attrs.rs:54:1
+   |
+LL | #[align]
+   | ^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[align(<alignment in bytes>)]`
+
+error[E0539]: malformed `optimize` attribute input
+  --> $DIR/malformed-attrs.rs:56:1
+   |
+LL | #[optimize]
+   | ^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[optimize(size|speed|none)]`
+
+error[E0565]: malformed `cold` attribute input
+  --> $DIR/malformed-attrs.rs:58:1
+   |
+LL | #[cold = 1]
+   | ^^^^^^^---^
+   | |      |
+   | |      didn't expect any arguments here
+   | help: must be of the form: `#[cold]`
+
+error: valid forms for the attribute are `#[must_use = "reason"]` and `#[must_use]`
+  --> $DIR/malformed-attrs.rs:60:1
+   |
+LL | #[must_use()]
+   | ^^^^^^^^^^^^^
+
+error[E0565]: malformed `no_mangle` attribute input
+  --> $DIR/malformed-attrs.rs:62:1
+   |
+LL | #[no_mangle = 1]
+   | ^^^^^^^^^^^^---^
+   | |           |
+   | |           didn't expect any arguments here
+   | help: must be of the form: `#[no_mangle]`
+
+error[E0565]: malformed `naked` attribute input
+  --> $DIR/malformed-attrs.rs:64:1
+   |
+LL | #[unsafe(naked())]
+   | ^^^^^^^^^^^^^^--^^
+   | |             |
+   | |             didn't expect any arguments here
+   | help: must be of the form: `#[naked]`
+
+error[E0565]: malformed `track_caller` attribute input
+  --> $DIR/malformed-attrs.rs:66:1
+   |
+LL | #[track_caller()]
+   | ^^^^^^^^^^^^^^--^
+   | |             |
+   | |             didn't expect any arguments here
+   | help: must be of the form: `#[track_caller]`
+
+error[E0539]: malformed `export_name` attribute input
+  --> $DIR/malformed-attrs.rs:68:1
+   |
+LL | #[export_name()]
+   | ^^^^^^^^^^^^^^^^ help: must be of the form: `#[export_name = "name"]`
+
+error[E0805]: malformed `used` attribute input
+  --> $DIR/malformed-attrs.rs:70:1
+   |
+LL | #[used()]
+   | ^^^^^^--^
+   |       |
+   |       expected a single argument here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[used(compiler|linker)]
+   |        +++++++++++++++
+LL - #[used()]
+LL + #[used]
+   |
+
+error[E0539]: malformed `link_name` attribute input
+  --> $DIR/malformed-attrs.rs:84:1
+   |
+LL | #[link_name]
+   | ^^^^^^^^^^^^ help: must be of the form: `#[link_name = "name"]`
+
+error[E0539]: malformed `link_section` attribute input
+  --> $DIR/malformed-attrs.rs:86:1
+   |
+LL | #[link_section]
+   | ^^^^^^^^^^^^^^^ help: must be of the form: `#[link_section = "name"]`
+
+error[E0539]: malformed `must_use` attribute input
+  --> $DIR/malformed-attrs.rs:117:1
+   |
+LL | #[must_use = 1]
+   | ^^^^^^^^^^^^^-^
+   |              |
+   |              expected a string literal here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[must_use = 1]
+LL + #[must_use = "reason"]
+   |
+LL - #[must_use = 1]
+LL + #[must_use]
+   |
+
+error[E0539]: malformed `rustc_layout_scalar_valid_range_start` attribute input
+  --> $DIR/malformed-attrs.rs:126:1
+   |
+LL | #[rustc_layout_scalar_valid_range_start]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[rustc_layout_scalar_valid_range_start(start)]`
+
+error[E0539]: malformed `rustc_layout_scalar_valid_range_end` attribute input
+  --> $DIR/malformed-attrs.rs:128:1
+   |
+LL | #[rustc_layout_scalar_valid_range_end]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
+
+warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
+  --> $DIR/malformed-attrs.rs:147:1
+   |
+LL | #[diagnostic::do_not_recommend()]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
+
+warning: missing options for `on_unimplemented` attribute
+  --> $DIR/malformed-attrs.rs:136:1
+   |
+LL | #[diagnostic::on_unimplemented]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: at least one of the `message`, `note` and `label` options are expected
+
+warning: malformed `on_unimplemented` attribute
+  --> $DIR/malformed-attrs.rs:138:1
+   |
+LL | #[diagnostic::on_unimplemented = 1]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid option found here
+   |
+   = help: only `message`, `note` and `label` are allowed as options
+
+error: valid forms for the attribute are `#[inline(always|never)]` and `#[inline]`
+  --> $DIR/malformed-attrs.rs:51:1
+   |
+LL | #[inline = 5]
+   | ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+
+error[E0308]: mismatched types
+  --> $DIR/malformed-attrs.rs:109:23
+   |
+LL | fn test() {
+   |          - help: a return type might be missing here: `-> _`
+LL |     #[coroutine = 63] || {}
+   |                       ^^^^^ expected `()`, found coroutine
+   |
+   = note: expected unit type `()`
+              found coroutine `{coroutine@$DIR/malformed-attrs.rs:109:23: 109:25}`
+
+error: aborting due to 72 previous errors; 3 warnings emitted
+
+Some errors have detailed explanations: E0308, E0463, E0539, E0565, E0658, E0805.
+For more information about an error, try `rustc --explain E0308`.

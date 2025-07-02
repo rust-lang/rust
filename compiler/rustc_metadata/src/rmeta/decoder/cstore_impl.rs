@@ -358,7 +358,7 @@ provide! { tcx, def_id, other, cdata,
     specialization_enabled_in => { cdata.root.specialization_enabled_in }
     reachable_non_generics => {
         let reachable_non_generics = tcx
-            .exported_symbols(cdata.cnum)
+            .exported_non_generic_symbols(cdata.cnum)
             .iter()
             .filter_map(|&(exported_symbol, export_info)| {
                 if let ExportedSymbol::NonGeneric(def_id) = exported_symbol {
@@ -408,15 +408,8 @@ provide! { tcx, def_id, other, cdata,
 
     exportable_items => { tcx.arena.alloc_from_iter(cdata.get_exportable_items()) }
     stable_order_of_exportable_impls => { tcx.arena.alloc(cdata.get_stable_order_of_exportable_impls().collect()) }
-    exported_symbols => {
-        let syms = cdata.exported_symbols(tcx);
-
-        // FIXME rust-lang/rust#64319, rust-lang/rust#64872: We want
-        // to block export of generics from dylibs, but we must fix
-        // rust-lang/rust#65890 before we can do that robustly.
-
-        syms
-    }
+    exported_non_generic_symbols => { cdata.exported_non_generic_symbols(tcx) }
+    exported_generic_symbols => { cdata.exported_generic_symbols(tcx) }
 
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }

@@ -29,7 +29,7 @@ LL | struct S<const S: (), const S: S = { S }>;
    |                                ^
    |
    = note: ...which immediately requires computing type of `S::S` again
-note: cycle used when computing explicit predicates of `S`
+note: cycle used when checking that `S` is well-formed
   --> $DIR/issue-103790.rs:4:1
    |
 LL | struct S<const S: (), const S: S = { S }>;

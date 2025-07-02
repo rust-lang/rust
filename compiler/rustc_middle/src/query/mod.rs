@@ -67,6 +67,7 @@ use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use rustc_abi::Align;
 use rustc_arena::TypedArena;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -1481,6 +1482,10 @@ rustc_queries! {
         desc { |tcx| "computing should_inherit_track_caller of `{}`", tcx.def_path_str(def_id) }
     }
 
+    query inherited_align(def_id: DefId) -> Option<Align> {
+        desc { |tcx| "computing inherited_align of `{}`", tcx.def_path_str(def_id) }
+    }
+
     query lookup_deprecation_entry(def_id: DefId) -> Option<DeprecationEntry> {
         desc { |tcx| "checking whether `{}` is deprecated", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
@@ -2312,13 +2317,32 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// The list of symbols exported from the given crate.
+    /// The list of non-generic symbols exported from the given crate.
     ///
-    /// - All names contained in `exported_symbols(cnum)` are guaranteed to
-    ///   correspond to a publicly visible symbol in `cnum` machine code.
-    /// - The `exported_symbols` sets of different crates do not intersect.
-    query exported_symbols(cnum: CrateNum) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
-        desc { "collecting exported symbols for crate `{}`", cnum}
+    /// This is separate from exported_generic_symbols to avoid having
+    /// to deserialize all non-generic symbols too for upstream crates
+    /// in the upstream_monomorphizations query.
+    ///
+    /// - All names contained in `exported_non_generic_symbols(cnum)` are
+    ///   guaranteed to correspond to a publicly visible symbol in `cnum`
+    ///   machine code.
+    /// - The `exported_non_generic_symbols` and `exported_generic_symbols`
+    ///   sets of different crates do not intersect.
+    query exported_non_generic_symbols(cnum: CrateNum) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
+        desc { "collecting exported non-generic symbols for crate `{}`", cnum}
+        cache_on_disk_if { *cnum == LOCAL_CRATE }
+        separate_provide_extern
+    }
+
+    /// The list of generic symbols exported from the given crate.
+    ///
+    /// - All names contained in `exported_generic_symbols(cnum)` are
+    ///   guaranteed to correspond to a publicly visible symbol in `cnum`
+    ///   machine code.
+    /// - The `exported_non_generic_symbols` and `exported_generic_symbols`
+    ///   sets of different crates do not intersect.
+    query exported_generic_symbols(cnum: CrateNum) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
+        desc { "collecting exported generic symbols for crate `{}`", cnum}
         cache_on_disk_if { *cnum == LOCAL_CRATE }
         separate_provide_extern
     }

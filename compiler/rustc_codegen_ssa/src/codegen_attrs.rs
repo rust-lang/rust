@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use rustc_abi::ExternAbi;
+use rustc_abi::{Align, ExternAbi};
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
 use rustc_attr_data_structures::{
@@ -395,6 +395,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     codegen_fn_attrs.alignment =
         Ord::max(codegen_fn_attrs.alignment, tcx.sess.opts.unstable_opts.min_function_alignment);
 
+    // On trait methods, inherit the `#[align]` of the trait's method prototype.
+    codegen_fn_attrs.alignment = Ord::max(codegen_fn_attrs.alignment, tcx.inherited_align(did));
+
     let inline_span;
     (codegen_fn_attrs.inline, inline_span) = if let Some((inline_attr, span)) =
         find_attr!(attrs, AttributeKind::Inline(i, span) => (*i, *span))
@@ -549,17 +552,26 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     codegen_fn_attrs
 }
 
+/// If the provided DefId is a method in a trait impl, return the DefId of the method prototype.
+fn opt_trait_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
+    let impl_item = tcx.opt_associated_item(def_id)?;
+    match impl_item.container {
+        ty::AssocItemContainer::Impl => impl_item.trait_item_def_id,
+        _ => None,
+    }
+}
+
 /// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller
 /// applied to the method prototype.
 fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    if let Some(impl_item) = tcx.opt_associated_item(def_id)
-        && let ty::AssocItemContainer::Impl = impl_item.container
-        && let Some(trait_item) = impl_item.trait_item_def_id
-    {
-        return tcx.codegen_fn_attrs(trait_item).flags.intersects(CodegenFnAttrFlags::TRACK_CALLER);
-    }
+    let Some(trait_item) = opt_trait_item(tcx, def_id) else { return false };
+    tcx.codegen_fn_attrs(trait_item).flags.intersects(CodegenFnAttrFlags::TRACK_CALLER)
+}
 
-    false
+/// If the provided DefId is a method in a trait impl, return the value of the `#[align]`
+/// attribute on the method prototype (if any).
+fn inherited_align<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Align> {
+    tcx.codegen_fn_attrs(opt_trait_item(tcx, def_id)?).alignment
 }
 
 fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Option<u16> {
@@ -727,5 +739,6 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { codegen_fn_attrs, should_inherit_track_caller, ..*providers };
+    *providers =
+        Providers { codegen_fn_attrs, should_inherit_track_caller, inherited_align, ..*providers };
 }

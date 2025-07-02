@@ -126,20 +126,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
 
-            CastKind::PointerCoercion(PointerCoercion::DynStar, _) => {
-                if let ty::Dynamic(data, _, ty::DynStar) = cast_ty.kind() {
-                    // Initial cast from sized to dyn trait
-                    let vtable = self.get_vtable_ptr(src.layout.ty, data)?;
-                    let vtable = Scalar::from_maybe_pointer(vtable, self);
-                    let data = self.read_immediate(src)?.to_scalar();
-                    let _assert_pointer_like = data.to_pointer(self)?;
-                    let val = Immediate::ScalarPair(data, vtable);
-                    self.write_immediate(val, dest)?;
-                } else {
-                    bug!()
-                }
-            }
-
             CastKind::Transmute => {
                 assert!(src.layout.is_sized());
                 assert!(dest.layout.is_sized());

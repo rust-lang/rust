@@ -47,46 +47,7 @@ impl MetaVarExpr {
         check_trailing_token(&mut iter, psess)?;
         let mut iter = args.iter();
         let rslt = match ident.as_str() {
-            "concat" => {
-                let mut result = Vec::new();
-                loop {
-                    let is_var = try_eat_dollar(&mut iter);
-                    let token = parse_token(&mut iter, psess, outer_span)?;
-                    let element = if is_var {
-                        MetaVarExprConcatElem::Var(parse_ident_from_token(psess, token)?)
-                    } else if let TokenKind::Literal(Lit {
-                        kind: token::LitKind::Str,
-                        symbol,
-                        suffix: None,
-                    }) = token.kind
-                    {
-                        MetaVarExprConcatElem::Literal(symbol)
-                    } else {
-                        match parse_ident_from_token(psess, token) {
-                            Err(err) => {
-                                err.cancel();
-                                return Err(psess
-                                    .dcx()
-                                    .struct_span_err(token.span, UNSUPPORTED_CONCAT_ELEM_ERR));
-                            }
-                            Ok(elem) => MetaVarExprConcatElem::Ident(elem),
-                        }
-                    };
-                    result.push(element);
-                    if iter.peek().is_none() {
-                        break;
-                    }
-                    if !try_eat_comma(&mut iter) {
-                        return Err(psess.dcx().struct_span_err(outer_span, "expected comma"));
-                    }
-                }
-                if result.len() < 2 {
-                    return Err(psess
-                        .dcx()
-                        .struct_span_err(ident.span, "`concat` must have at least two elements"));
-                }
-                MetaVarExpr::Concat(result.into())
-            }
+            "concat" => parse_concat(&mut iter, psess, outer_span, ident.span)?,
             "count" => parse_count(&mut iter, psess, ident.span)?,
             "ignore" => {
                 eat_dollar(&mut iter, psess, ident.span)?;
@@ -126,20 +87,6 @@ impl MetaVarExpr {
     }
 }
 
-/// Indicates what is placed in a `concat` parameter. For example, literals
-/// (`${concat("foo", "bar")}`) or adhoc identifiers (`${concat(foo, bar)}`).
-#[derive(Debug, Decodable, Encodable, PartialEq)]
-pub(crate) enum MetaVarExprConcatElem {
-    /// Identifier WITHOUT a preceding dollar sign, which means that this identifier should be
-    /// interpreted as a literal.
-    Ident(Ident),
-    /// For example, a number or a string.
-    Literal(Symbol),
-    /// Identifier WITH a preceding dollar sign, which means that this identifier should be
-    /// expanded and interpreted as a variable.
-    Var(Ident),
-}
-
 // Checks if there are any remaining tokens. For example, `${ignore(ident ... a b c ...)}`
 fn check_trailing_token<'psess>(
     iter: &mut TokenStreamIter<'_>,
@@ -154,6 +101,64 @@ fn check_trailing_token<'psess>(
     } else {
         Ok(())
     }
+}
+
+/// Indicates what is placed in a `concat` parameter. For example, literals
+/// (`${concat("foo", "bar")}`) or adhoc identifiers (`${concat(foo, bar)}`).
+#[derive(Debug, Decodable, Encodable, PartialEq)]
+pub(crate) enum MetaVarExprConcatElem {
+    /// Identifier WITHOUT a preceding dollar sign, which means that this identifier should be
+    /// interpreted as a literal.
+    Ident(Ident),
+    /// For example, a number or a string.
+    Literal(Symbol),
+    /// Identifier WITH a preceding dollar sign, which means that this identifier should be
+    /// expanded and interpreted as a variable.
+    Var(Ident),
+}
+
+/// Parse a meta-variable `concat` expression: `concat($metavar, ident, ...)`.
+fn parse_concat<'psess>(
+    iter: &mut TokenStreamIter<'_>,
+    psess: &'psess ParseSess,
+    outer_span: Span,
+    expr_ident_span: Span,
+) -> PResult<'psess, MetaVarExpr> {
+    let mut result = Vec::new();
+    loop {
+        let is_var = try_eat_dollar(iter);
+        let token = parse_token(iter, psess, outer_span)?;
+        let element = if is_var {
+            MetaVarExprConcatElem::Var(parse_ident_from_token(psess, token)?)
+        } else if let TokenKind::Literal(Lit { kind: token::LitKind::Str, symbol, suffix: None }) =
+            token.kind
+        {
+            MetaVarExprConcatElem::Literal(symbol)
+        } else {
+            match parse_ident_from_token(psess, token) {
+                Err(err) => {
+                    err.cancel();
+                    return Err(psess
+                        .dcx()
+                        .struct_span_err(token.span, UNSUPPORTED_CONCAT_ELEM_ERR));
+                }
+                Ok(elem) => MetaVarExprConcatElem::Ident(elem),
+            }
+        };
+        result.push(element);
+        if iter.peek().is_none() {
+            break;
+        }
+        if !try_eat_comma(iter) {
+            return Err(psess.dcx().struct_span_err(outer_span, "expected comma"));
+        }
+    }
+    if result.len() < 2 {
+        return Err(psess
+            .dcx()
+            .struct_span_err(expr_ident_span, "`concat` must have at least two elements"));
+    }
+    Ok(MetaVarExpr::Concat(result.into()))
 }
 
 /// Parse a meta-variable `count` expression: `count(ident[, depth])`

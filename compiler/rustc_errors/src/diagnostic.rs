@@ -1005,7 +1005,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// * may look like "to do xyz, use" or "to do xyz, use abc"
     /// * may contain a name of a function, variable, or type, but not whole expressions
     ///
-    /// See `CodeSuggestion` for more information.
+    /// See [`CodeSuggestion`] for more information.
     #[rustc_lint_diagnostics]
     pub fn span_suggestion(
         &mut self,
@@ -1166,7 +1166,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// Prints out a message with a suggested edit of the code. If the suggestion is presented
     /// inline, it will only show the message and not the suggestion.
     ///
-    /// See `CodeSuggestion` for more information.
+    /// See [`CodeSuggestion`] for more information.
     #[rustc_lint_diagnostics]
     pub fn span_suggestion_short(
         &mut self,

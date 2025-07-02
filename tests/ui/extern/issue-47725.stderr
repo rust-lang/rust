@@ -2,10 +2,7 @@ error[E0539]: malformed `link_name` attribute input
   --> $DIR/issue-47725.rs:17:1
    |
 LL | #[link_name]
-   | ^^^^^^^^^^^^
-   | |
-   | expected this to be of the form `link_name = "..."`
-   | help: must be of the form: `#[link_name = "name"]`
+   | ^^^^^^^^^^^^ help: must be of the form: `#[link_name = "name"]`
 
 warning: attribute should be applied to a foreign function or static
   --> $DIR/issue-47725.rs:3:1

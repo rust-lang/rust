@@ -28,14 +28,6 @@ pub(crate) struct CountRepetitionMisplaced {
 }
 
 #[derive(Diagnostic)]
-#[diag(expand_meta_var_expr_unrecognized_var)]
-pub(crate) struct MetaVarExprUnrecognizedVar {
-    #[primary_span]
-    pub span: Span,
-    pub key: MacroRulesNormalizedIdent,
-}
-
-#[derive(Diagnostic)]
 #[diag(expand_var_still_repeating)]
 pub(crate) struct VarStillRepeating {
     #[primary_span]
@@ -498,4 +490,17 @@ pub(crate) struct GlobDelegationTraitlessQpath {
 pub(crate) struct ProcMacroBackCompat {
     pub crate_name: String,
     pub fixed_version: String,
+}
+
+pub(crate) use metavar_exprs::*;
+mod metavar_exprs {
+    use super::*;
+
+    #[derive(Diagnostic)]
+    #[diag(expand_mve_unrecognized_var)]
+    pub(crate) struct MveUnrecognizedVar {
+        #[primary_span]
+        pub span: Span,
+        pub key: MacroRulesNormalizedIdent,
+    }
 }

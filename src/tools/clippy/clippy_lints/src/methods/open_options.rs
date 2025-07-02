@@ -76,7 +76,7 @@ fn get_open_options(
                         ..
                     } = span
                     {
-                        Argument::Set(*lit)
+                        Argument::Set(lit)
                     } else {
                         // The function is called with a literal which is not a boolean literal.
                         // This is theoretically possible, but not very likely.

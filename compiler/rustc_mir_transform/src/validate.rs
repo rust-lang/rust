@@ -1260,9 +1260,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             self.fail(location, format!("Unsize coercion, but `{op_ty}` isn't coercible to `{target_type}`"));
                         }
                     }
-                    CastKind::PointerCoercion(PointerCoercion::DynStar, _) => {
-                        // FIXME(dyn-star): make sure nothing needs to be done here.
-                    }
                     CastKind::IntToInt | CastKind::IntToFloat => {
                         let input_valid = op_ty.is_integral() || op_ty.is_char() || op_ty.is_bool();
                         let target_valid = target_type.is_numeric() || target_type.is_char();

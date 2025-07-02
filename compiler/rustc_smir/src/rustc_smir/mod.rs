@@ -7,9 +7,9 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
+use std::marker::PointeeSized;
 use std::ops::RangeInclusive;
 
-use rustc_data_structures::PointeeSized;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;

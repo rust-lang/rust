@@ -231,9 +231,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::Ref(r_b, _, mutbl_b) => {
                 return self.coerce_borrowed_pointer(a, b, r_b, mutbl_b);
             }
-            ty::Dynamic(predicates, region, ty::DynStar) if self.tcx.features().dyn_star() => {
-                return self.coerce_dyn_star(a, b, predicates, region);
-            }
             ty::Adt(pin, _)
                 if self.tcx.features().pin_ergonomics()
                     && self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) =>
@@ -771,71 +768,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
 
         Ok(coercion)
-    }
-
-    fn coerce_dyn_star(
-        &self,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-        b_region: ty::Region<'tcx>,
-    ) -> CoerceResult<'tcx> {
-        if !self.tcx.features().dyn_star() {
-            return Err(TypeError::Mismatch);
-        }
-
-        // FIXME(dyn_star): We should probably allow things like casting from
-        // `dyn* Foo + Send` to `dyn* Foo`.
-        if let ty::Dynamic(a_data, _, ty::DynStar) = a.kind()
-            && let ty::Dynamic(b_data, _, ty::DynStar) = b.kind()
-            && a_data.principal_def_id() == b_data.principal_def_id()
-        {
-            return self.unify(a, b);
-        }
-
-        // Check the obligations of the cast -- for example, when casting
-        // `usize` to `dyn* Clone + 'static`:
-        let obligations = predicates
-            .iter()
-            .map(|predicate| {
-                // For each existential predicate (e.g., `?Self: Clone`) instantiate
-                // the type of the expression (e.g., `usize` in our example above)
-                // and then require that the resulting predicate (e.g., `usize: Clone`)
-                // holds (it does).
-                let predicate = predicate.with_self_ty(self.tcx, a);
-                Obligation::new(self.tcx, self.cause.clone(), self.param_env, predicate)
-            })
-            .chain([
-                // Enforce the region bound (e.g., `usize: 'static`, in our example).
-                Obligation::new(
-                    self.tcx,
-                    self.cause.clone(),
-                    self.param_env,
-                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
-                        ty::OutlivesPredicate(a, b_region),
-                    ))),
-                ),
-                // Enforce that the type is `usize`/pointer-sized.
-                Obligation::new(
-                    self.tcx,
-                    self.cause.clone(),
-                    self.param_env,
-                    ty::TraitRef::new(
-                        self.tcx,
-                        self.tcx.require_lang_item(hir::LangItem::PointerLike, self.cause.span),
-                        [a],
-                    ),
-                ),
-            ])
-            .collect();
-
-        Ok(InferOk {
-            value: (
-                vec![Adjustment { kind: Adjust::Pointer(PointerCoercion::DynStar), target: b }],
-                b,
-            ),
-            obligations,
-        })
     }
 
     /// Applies reborrowing for `Pin`

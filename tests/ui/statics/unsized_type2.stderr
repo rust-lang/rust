@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/unsized_type2.rs:14:24
+  --> $DIR/unsized_type2.rs:14:1
    |
 LL | pub static WITH_ERROR: Foo = Foo { version: 0 };
-   |                        ^^^ doesn't have a size known at compile-time
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Foo`, the trait `Sized` is not implemented for `str`
 note: required because it appears within the type `Foo`

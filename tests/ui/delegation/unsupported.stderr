@@ -10,11 +10,11 @@ note: ...which requires comparing an impl and trait method signature, inferring 
 LL |         reuse to_reuse::opaque_ret;
    |                         ^^^^^^^^^^
    = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:21:5: 21:24>::opaque_ret::{anon_assoc#0}`, completing the cycle
-note: cycle used when checking that `opaque::<impl at $DIR/unsupported.rs:21:5: 21:24>` is well-formed
-  --> $DIR/unsupported.rs:21:5
+note: cycle used when checking assoc item `opaque::<impl at $DIR/unsupported.rs:21:5: 21:24>::opaque_ret` is compatible with trait definition
+  --> $DIR/unsupported.rs:22:25
    |
-LL |     impl ToReuse for u8 {
-   |     ^^^^^^^^^^^^^^^^^^^
+LL |         reuse to_reuse::opaque_ret;
+   |                         ^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:24:5: 24:25>::opaque_ret::{anon_assoc#0}`
@@ -29,11 +29,11 @@ note: ...which requires comparing an impl and trait method signature, inferring 
 LL |         reuse ToReuse::opaque_ret;
    |                        ^^^^^^^^^^
    = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:24:5: 24:25>::opaque_ret::{anon_assoc#0}`, completing the cycle
-note: cycle used when checking that `opaque::<impl at $DIR/unsupported.rs:24:5: 24:25>` is well-formed
-  --> $DIR/unsupported.rs:24:5
+note: cycle used when checking assoc item `opaque::<impl at $DIR/unsupported.rs:24:5: 24:25>::opaque_ret` is compatible with trait definition
+  --> $DIR/unsupported.rs:25:24
    |
-LL |     impl ToReuse for u16 {
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |         reuse ToReuse::opaque_ret;
+   |                        ^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: recursive delegation is not supported yet

@@ -85,7 +85,7 @@ fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, MiriEntryFnType) {
         return (def_id, MiriEntryFnType::Rustc(entry_type));
     }
     // Look for a symbol in the local crate named `miri_start`, and treat that as the entry point.
-    let sym = tcx.exported_symbols(LOCAL_CRATE).iter().find_map(|(sym, _)| {
+    let sym = tcx.exported_non_generic_symbols(LOCAL_CRATE).iter().find_map(|(sym, _)| {
         if sym.symbol_name_for_local_instance(tcx).name == "miri_start" { Some(sym) } else { None }
     });
     if let Some(ExportedSymbol::NonGeneric(id)) = sym {
@@ -250,10 +250,10 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
             // Queries overridden here affect the data stored in `rmeta` files of dependencies,
             // which will be used later in non-`MIRI_BE_RUSTC` mode.
             config.override_queries = Some(|_, local_providers| {
-                // `exported_symbols` and `reachable_non_generics` provided by rustc always returns
+                // `exported_non_generic_symbols` and `reachable_non_generics` provided by rustc always returns
                 // an empty result if `tcx.sess.opts.output_types.should_codegen()` is false.
                 // In addition we need to add #[used] symbols to exported_symbols for `lookup_link_section`.
-                local_providers.exported_symbols = |tcx, LocalCrate| {
+                local_providers.exported_non_generic_symbols = |tcx, LocalCrate| {
                     let reachable_set = tcx.with_stable_hashing_context(|hcx| {
                         tcx.reachable_set(()).to_sorted(&hcx, true)
                     });
