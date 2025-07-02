@@ -186,6 +186,8 @@ impl StepMetadata {
     pub fn get_stage(&self) -> Option<u32> {
         self.stage.or(self
             .built_by
+            // For std, its stage corresponds to the stage of the compiler that builds it.
+            // For everything else, a stage N things gets built by a stage N-1 compiler.
             .map(|compiler| if self.name == "std" { compiler.stage } else { compiler.stage + 1 }))
     }
 }

@@ -1667,8 +1667,7 @@ fn render_metadata(metadata: &StepMetadata) -> String {
     if let Some(compiler) = metadata.built_by {
         write!(record, "{} -> ", render_compiler(compiler));
     }
-    let stage =
-        if let Some(stage) = metadata.get_stage() { format!("{stage} ") } else { "".to_string() };
+    let stage = metadata.get_stage().map(|stage| format!("{stage} ")).unwrap_or_default();
     write!(record, "{} {stage}<{}>", metadata.name, normalize_target(metadata.target));
     record
 }
