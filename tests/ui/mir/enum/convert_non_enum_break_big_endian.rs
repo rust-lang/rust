@@ -1,6 +1,8 @@
-//@ run-fail
+//@ run-pass
 //@ compile-flags: -C debug-assertions
-//@ error-pattern: trying to construct an enum from an invalid value 0x10000
+// This test depends on the endianess and has a different behavior on
+// little endian.
+//@ ignore-endian-little
 
 #[allow(dead_code)]
 #[repr(u32)]

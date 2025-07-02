@@ -1,5 +1,8 @@
 //@ run-fail
 //@ compile-flags: -C debug-assertions
+// This test depends on the endianess and has a different behavior on
+// big endian.
+//@ ignore-endian-big
 //@ error-pattern: trying to construct an enum from an invalid value 0x3
 
 #[allow(dead_code)]
