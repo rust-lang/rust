@@ -185,6 +185,10 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
             // results?
             candidates.reset_and_find(body, &borrowed);
             trace!(?candidates);
+            if candidates.c.is_empty() {
+                break;
+            }
+
             dest_prop_mir_dump(tcx, body, &points, &live, round_count);
 
             let mut filter = FilterInformation::filter_liveness(
