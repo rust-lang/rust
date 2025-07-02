@@ -3171,6 +3171,8 @@ pub struct ImplItem<'hir> {
     pub span: Span,
     pub vis_span: Span,
     pub has_delayed_lints: bool,
+    /// When we are in a trait impl, link to the trait-item's id.
+    pub trait_item_def_id: Option<DefId>,
 }
 
 impl<'hir> ImplItem<'hir> {
@@ -4412,7 +4414,6 @@ impl ItemKind<'_> {
 pub struct TraitItemRef {
     pub id: TraitItemId,
     pub ident: Ident,
-    pub kind: AssocItemKind,
     pub span: Span,
 }
 
@@ -4426,17 +4427,7 @@ pub struct TraitItemRef {
 pub struct ImplItemRef {
     pub id: ImplItemId,
     pub ident: Ident,
-    pub kind: AssocItemKind,
     pub span: Span,
-    /// When we are in a trait impl, link to the trait-item's id.
-    pub trait_item_def_id: Option<DefId>,
-}
-
-#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
-pub enum AssocItemKind {
-    Const,
-    Fn { has_self: bool },
-    Type,
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -4968,7 +4959,7 @@ mod size_asserts {
     static_assert_size!(GenericBound<'_>, 64);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);
-    static_assert_size!(ImplItem<'_>, 88);
+    static_assert_size!(ImplItem<'_>, 96);
     static_assert_size!(ImplItemKind<'_>, 40);
     static_assert_size!(Item<'_>, 88);
     static_assert_size!(ItemKind<'_>, 64);

@@ -6,6 +6,8 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
 use rustc_middle::{bug, span_bug};
+use rustc_span::Ident;
+use rustc_span::symbol::kw;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -33,7 +35,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
                         trait_item_refs
                             .iter()
                             .filter(|trait_item_ref| {
-                                matches!(trait_item_ref.kind, hir::AssocItemKind::Fn { .. })
+                                matches!(tcx.def_kind(trait_item_ref.id.owner_id), DefKind::AssocFn)
                             })
                             .flat_map(|trait_item_ref| {
                                 let trait_fn_def_id = trait_item_ref.id.owner_id.def_id.to_def_id();
@@ -59,7 +61,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
                             .items
                             .iter()
                             .filter(|impl_item_ref| {
-                                matches!(impl_item_ref.kind, hir::AssocItemKind::Fn { .. })
+                                matches!(tcx.def_kind(impl_item_ref.id.owner_id), DefKind::AssocFn)
                             })
                             .flat_map(|impl_item_ref| {
                                 let impl_fn_def_id = impl_item_ref.id.owner_id.def_id.to_def_id();
@@ -92,46 +94,33 @@ fn impl_item_implementor_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> DefIdMap<DefId>
 }
 
 fn associated_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AssocItem {
-    let id = tcx.local_def_id_to_hir_id(def_id);
-    let parent_def_id = tcx.hir_get_parent_item(id);
-    let parent_item = tcx.hir_expect_item(parent_def_id.def_id);
-    match parent_item.kind {
-        hir::ItemKind::Impl(impl_) => {
-            if let Some(impl_item_ref) = impl_.items.iter().find(|i| i.id.owner_id.def_id == def_id)
-            {
-                let assoc_item = associated_item_from_impl_item_ref(impl_item_ref);
-                debug_assert_eq!(assoc_item.def_id.expect_local(), def_id);
-                return assoc_item;
-            }
-        }
-
-        hir::ItemKind::Trait(.., trait_item_refs) => {
-            if let Some(trait_item_ref) =
-                trait_item_refs.iter().find(|i| i.id.owner_id.def_id == def_id)
-            {
-                let assoc_item = associated_item_from_trait_item_ref(trait_item_ref);
-                debug_assert_eq!(assoc_item.def_id.expect_local(), def_id);
-                return assoc_item;
-            }
-        }
-
-        _ => {}
-    }
-
-    span_bug!(
-        parent_item.span,
-        "unexpected parent of trait or impl item or item not found: {:?}",
-        parent_item.kind
-    )
+    let assoc_item = match tcx.hir_node_by_def_id(def_id) {
+        hir::Node::TraitItem(ti) => associated_item_from_trait_item(tcx, ti),
+        hir::Node::ImplItem(ii) => associated_item_from_impl_item(tcx, ii),
+        node => span_bug!(tcx.def_span(def_id), "impl item or item not found: {:?}", node,),
+    };
+    debug_assert_eq!(assoc_item.def_id.expect_local(), def_id);
+    assoc_item
 }
 
-fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty::AssocItem {
-    let owner_id = trait_item_ref.id.owner_id;
-    let name = trait_item_ref.ident.name;
-    let kind = match trait_item_ref.kind {
-        hir::AssocItemKind::Const => ty::AssocKind::Const { name },
-        hir::AssocItemKind::Fn { has_self } => ty::AssocKind::Fn { name, has_self },
-        hir::AssocItemKind::Type => ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) },
+fn fn_has_self_parameter(tcx: TyCtxt<'_>, owner_id: hir::OwnerId) -> bool {
+    matches!(tcx.fn_arg_idents(owner_id.def_id), [Some(Ident { name: kw::SelfLower, .. }), ..])
+}
+
+fn associated_item_from_trait_item(
+    tcx: TyCtxt<'_>,
+    trait_item: &hir::TraitItem<'_>,
+) -> ty::AssocItem {
+    let owner_id = trait_item.owner_id;
+    let name = trait_item.ident.name;
+    let kind = match trait_item.kind {
+        hir::TraitItemKind::Const { .. } => ty::AssocKind::Const { name },
+        hir::TraitItemKind::Fn { .. } => {
+            ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }
+        }
+        hir::TraitItemKind::Type { .. } => {
+            ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) }
+        }
     };
 
     ty::AssocItem {
@@ -142,22 +131,27 @@ fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty
     }
 }
 
-fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::AssocItem {
-    let def_id = impl_item_ref.id.owner_id;
-    let name = impl_item_ref.ident.name;
-    let kind = match impl_item_ref.kind {
-        hir::AssocItemKind::Const => ty::AssocKind::Const { name },
-        hir::AssocItemKind::Fn { has_self } => ty::AssocKind::Fn { name, has_self },
-        hir::AssocItemKind::Type => ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) },
+fn associated_item_from_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>) -> ty::AssocItem {
+    let owner_id = impl_item.owner_id;
+    let name = impl_item.ident.name;
+    let kind = match impl_item.kind {
+        hir::ImplItemKind::Const { .. } => ty::AssocKind::Const { name },
+        hir::ImplItemKind::Fn { .. } => {
+            ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }
+        }
+        hir::ImplItemKind::Type { .. } => {
+            ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) }
+        }
     };
 
     ty::AssocItem {
         kind,
-        def_id: def_id.to_def_id(),
-        trait_item_def_id: impl_item_ref.trait_item_def_id,
+        def_id: owner_id.to_def_id(),
+        trait_item_def_id: impl_item.trait_item_def_id,
         container: ty::AssocItemContainer::Impl,
     }
 }
+
 struct RPITVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     synthetics: Vec<LocalDefId>,
