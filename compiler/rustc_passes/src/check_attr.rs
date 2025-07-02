@@ -1888,7 +1888,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// Checks if the `#[align]` attributes on `item` are valid.
     fn check_align(&self, span: Span, target: Target, align: Align, repr_span: Span) {
         match target {
-            Target::Fn | Target::Method(_) => {}
+            Target::Fn | Target::Method(_) | Target::ForeignFn => {}
             Target::Struct | Target::Union | Target::Enum => {
                 self.dcx().emit_err(errors::AlignShouldBeReprAlign {
                     span: repr_span,
@@ -1897,10 +1897,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 });
             }
             _ => {
-                self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
-                    hint_span: repr_span,
-                    span,
-                });
+                self.dcx().emit_err(errors::AlignAttrApplication { hint_span: repr_span, span });
             }
         }
 
