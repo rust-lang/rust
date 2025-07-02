@@ -3,6 +3,7 @@ use std::ops::Deref;
 use std::{iter, ptr};
 
 pub(crate) mod autodiff;
+pub(crate) mod gpu_device;
 pub(crate) mod gpu_offload;
 pub(crate) mod gpu_wrapper;
 
