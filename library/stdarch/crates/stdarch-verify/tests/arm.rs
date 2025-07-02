@@ -503,7 +503,7 @@ fn matches(rust: &Function, arm: &Intrinsic) -> Result<(), String> {
     // TODO: This instruction checking logic needs work to handle multiple instructions and to only
     // look at aarch64 insructions.
     // The ACLE's listed instructions are a guideline only and compilers have the freedom to use
-    // different instructions in dfferent cases which makes this an unreliable testing method. It
+    // different instructions in different cases which makes this an unreliable testing method. It
     // is of questionable value given the intrinsic test tool.
     {
         for instr in rust.instrs {
