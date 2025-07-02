@@ -160,6 +160,17 @@ pr:
 try:
   - <<: *job-dist-x86_64-linux
 
+# Jobs that only run when explicitly invoked in one of the following ways:
+# - comment `@bors2 try jobs=<job-name>`
+# - `try-job: <job-name>` in the PR description and comment `@bors try` or `@bors2 try`.
+optional:
+  # This job is used just to test optional jobs.
+  # It will be replaced by tier 2 and tier 3 jobs in the future.
+  - name: optional-mingw-check-1
+    env:
+      IMAGE: mingw-check-1
+    <<: *job-linux-4c
+
 # Main CI jobs that have to be green to merge a commit into master
 # These jobs automatically inherit envs.auto, to avoid repeating
 # it in each job definition.

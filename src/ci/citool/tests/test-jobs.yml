@@ -139,3 +139,8 @@ auto:
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows
+
+# Jobs that only run when explicitly invoked via `@bors try`.
+optional:
+  - name: test-optional-job
+    <<: *job-linux-4c
