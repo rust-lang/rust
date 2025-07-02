@@ -39,6 +39,12 @@ If you find a `core` item to be missing from the [`minicore`] stub, consider
 adding it to the test auxiliary if it's likely to be used or is already needed
 by more than one test.
 
+## Staying in sync with `core`
+
+The `minicore` items must be kept up to date with `core`. For consistent
+diagnostic output between using `core` and `minicore`, any `diagnostic`
+attributes (e.g. `on_unimplemented`) should be replicated exactly in `minicore`.
+
 ## Example codegen test that uses `minicore`
 
 ```rust,no_run
