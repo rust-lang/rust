@@ -134,6 +134,7 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::{BitMatrix, DenseBitSet};
 use rustc_index::interval::SparseIntervalMatrix;
+use rustc_index::{IndexVec, newtype_index};
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::{
@@ -186,8 +187,13 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
             trace!(?candidates);
             dest_prop_mir_dump(tcx, body, &points, &live, round_count);
 
-            let mut filter =
-                FilterInformation::filter_liveness(&points, &live, &mut write_info, body);
+            let mut filter = FilterInformation::filter_liveness(
+                &points,
+                &live,
+                &mut write_info,
+                body,
+                &candidates,
+            );
 
             // This is the set of merges we will apply this round. It is a subset of the candidates.
             let mut merges = FxIndexMap::default();
@@ -317,6 +323,45 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
 }
 
 //////////////////////////////////////////////////////////
+// Relevant locals
+//
+// Small utility to reduce size of the conflict matrix by only considering locals that appear in
+// the candidates
+
+newtype_index! {
+    /// Represent a subset of locals which appear in candidates.
+    struct RelevantLocal {}
+}
+
+#[derive(Debug)]
+struct RelevantLocals {
+    original: IndexVec<RelevantLocal, Local>,
+    shrink: IndexVec<Local, Option<RelevantLocal>>,
+}
+
+impl RelevantLocals {
+    #[tracing::instrument(level = "trace", skip(candidates, num_locals), ret)]
+    fn compute(candidates: &Candidates, num_locals: usize) -> RelevantLocals {
+        let mut original = IndexVec::with_capacity(candidates.c.len());
+        let mut shrink = IndexVec::from_elem_n(None, num_locals);
+
+        // Mark a local as relevant and record it into the maps.
+        let mut declare = |local| {
+            shrink.get_or_insert_with(local, || original.push(local));
+        };
+
+        for (&src, destinations) in candidates.c.iter() {
+            declare(src);
+            for &dest in destinations {
+                declare(dest)
+            }
+        }
+
+        RelevantLocals { original, shrink }
+    }
+}
+
+//////////////////////////////////////////////////////////
 // Liveness filtering
 //
 // This section enforces bullet point 2
@@ -324,7 +369,8 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
 struct FilterInformation<'a, 'tcx> {
     body: &'a Body<'tcx>,
     points: &'a DenseLocationMap,
-    conflicts: BitMatrix<Local, Local>,
+    relevant: RelevantLocals,
+    conflicts: BitMatrix<RelevantLocal, RelevantLocal>,
     write_info: &'a mut WriteInfo,
     at: Location,
 }
@@ -371,12 +417,16 @@ impl<'a, 'tcx> FilterInformation<'a, 'tcx> {
         live: &SparseIntervalMatrix<Local, PointIndex>,
         write_info: &'a mut WriteInfo,
         body: &'a Body<'tcx>,
+        candidates: &Candidates,
     ) -> Self {
         let num_locals = body.local_decls.len();
+        let relevant = RelevantLocals::compute(candidates, num_locals);
+        let num_relevant = relevant.original.len();
         let mut this = FilterInformation {
             body,
+            relevant,
             points,
-            conflicts: BitMatrix::new(num_locals, num_locals),
+            conflicts: BitMatrix::new(num_relevant, num_relevant),
             // We don't actually store anything at this scope, we just keep things here to be able
             // to reuse the allocation.
             write_info,
@@ -404,22 +454,28 @@ impl<'a, 'tcx> FilterInformation<'a, 'tcx> {
     }
 
     fn record_conflicts(&mut self, live: &SparseIntervalMatrix<Local, PointIndex>) {
-        let writes = &self.write_info.writes;
-        let skip_pair = self.write_info.skip_pair;
+        let writes = self.write_info.writes.iter().filter_map(|&p| self.relevant.shrink[p]);
+
+        let skip_pair = self.write_info.skip_pair.and_then(|(p, q)| {
+            let p = self.relevant.shrink[p]?;
+            let q = self.relevant.shrink[q]?;
+            Some((p, q))
+        });
+
         let at = self.points.point_from_location(self.at);
 
-        for &p in writes {
-            for &q in writes {
+        for p in writes.clone() {
+            for q in writes.clone() {
                 if p != q && skip_pair != Some((p, q)) && skip_pair != Some((q, p)) {
                     self.conflicts.insert(p, q);
                 }
             }
 
-            for q in live.rows() {
+            for (q, &original_q) in self.relevant.original.iter_enumerated() {
                 if p != q
                     && skip_pair != Some((p, q))
                     && skip_pair != Some((q, p))
-                    && live.contains(q, at)
+                    && live.contains(original_q, at)
                 {
                     self.conflicts.insert(p, q);
                 }
@@ -430,6 +486,8 @@ impl<'a, 'tcx> FilterInformation<'a, 'tcx> {
     #[tracing::instrument(level = "trace", skip(self))]
     fn record_merge(&mut self, src: Local, dest: Local) {
         trace!(?self.conflicts, "pre");
+        let src = self.relevant.shrink[src].expect("merged locals are relevant");
+        let dest = self.relevant.shrink[dest].expect("merged locals are relevant");
         self.conflicts.union_rows(src, dest);
         self.conflicts.union_cols(src, dest);
         trace!(?self.conflicts, "post");
@@ -437,7 +495,9 @@ impl<'a, 'tcx> FilterInformation<'a, 'tcx> {
 
     #[tracing::instrument(level = "trace", skip(self), ret)]
     fn find_non_conflicting(&self, src: Local, candidates: &Vec<Local>) -> Option<Local> {
+        let src = self.relevant.shrink[src].expect("merged locals are relevant");
         candidates.iter().copied().find(|&dest| {
+            let dest = self.relevant.shrink[dest].expect("merged locals are relevant");
             !self.conflicts.contains(src, dest) && !self.conflicts.contains(dest, src)
         })
     }
