@@ -261,7 +261,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
     FieldSized {
         adt_kind: AdtKind,
-        span: Span,
+        field: DefId,
         last: bool,
     },
 

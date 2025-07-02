@@ -3121,7 +3121,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ObligationCauseCode::StructInitializerSized => {
                 err.note("structs must have a statically known size to be initialized");
             }
-            ObligationCauseCode::FieldSized { adt_kind: ref item, last, span } => {
+            ObligationCauseCode::FieldSized { adt_kind: ref item, last, field } => {
+                let def_span = tcx.def_span(field);
+                let span = field
+                    .as_local()
+                    .map(|field| tcx.hir_node_by_def_id(field).expect_field().ty.span)
+                    .unwrap_or(def_span);
+                err.replace_span(def_span, span);
                 match *item {
                     AdtKind::Struct => {
                         if last {

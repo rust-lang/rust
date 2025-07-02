@@ -1051,27 +1051,21 @@ pub(crate) fn check_type_defn<'tcx>(
                 variant.fields.raw[..variant.fields.len() - unsized_len].iter().enumerate()
             {
                 let last = idx == variant.fields.len() - 1;
-                let field_id = field.did.expect_local();
-                let hir::FieldDef { ty: hir_ty, .. } =
-                    tcx.hir_node_by_def_id(field_id).expect_field();
-                let ty = wfcx.normalize(
-                    hir_ty.span,
-                    None,
-                    tcx.type_of(field.did).instantiate_identity(),
-                );
+                let span = tcx.def_span(field.did);
+                let ty = wfcx.normalize(span, None, tcx.type_of(field.did).instantiate_identity());
                 wfcx.register_bound(
                     traits::ObligationCause::new(
-                        hir_ty.span,
+                        span,
                         wfcx.body_def_id,
                         ObligationCauseCode::FieldSized {
                             adt_kind: adt_def.adt_kind(),
-                            span: hir_ty.span,
+                            field: field.did,
                             last,
                         },
                     ),
                     wfcx.param_env,
                     ty,
-                    tcx.require_lang_item(LangItem::Sized, hir_ty.span),
+                    tcx.require_lang_item(LangItem::Sized, span),
                 );
             }
 

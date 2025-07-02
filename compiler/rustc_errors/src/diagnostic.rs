@@ -1264,6 +1264,14 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self
     } }
 
+    with_fn! { with_replace_span,
+    /// Replace all occurrences of the first span with the second one
+    #[rustc_lint_diagnostics]
+    pub fn replace_span(&mut self, before: Span, after: Span) -> &mut Self {
+        self.span.replace(before, after);
+        self
+    } }
+
     #[rustc_lint_diagnostics]
     pub fn is_lint(&mut self, name: String, has_future_breakage: bool) -> &mut Self {
         self.is_lint = Some(IsLint { name, has_future_breakage });
