@@ -251,6 +251,15 @@ pub(crate) fn add_global<'a>(llmod: &'a Module, ty: &'a Type, name_cstr: &CStr) 
     unsafe { LLVMAddGlobal(llmod, ty, name_cstr.as_ptr()) }
 }
 
+pub(crate) fn add_global_in_addrspace<'a>(
+    llmod: &'a Module,
+    ty: &'a Type,
+    name_cstr: &CStr,
+    addrspace: c_uint,
+) -> &'a Value {
+    unsafe { LLVMAddGlobalInAddressSpace(llmod, ty, name_cstr.as_ptr(), addrspace) }
+}
+
 pub(crate) fn set_initializer(llglobal: &Value, constant_val: &Value) {
     unsafe {
         LLVMSetInitializer(llglobal, constant_val);
