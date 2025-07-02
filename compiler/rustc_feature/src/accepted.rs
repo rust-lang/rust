@@ -265,6 +265,8 @@ declare_features! (
     (accepted, keylocker_x86, "1.89.0", Some(134813)),
     /// Allows `'a: { break 'a; }`.
     (accepted, label_break_value, "1.65.0", Some(48594)),
+    /// Allows `if/while p && let q = r && ...` chains.
+    (accepted, let_chains, "1.88.0", Some(53667)),
     /// Allows `let...else` statements.
     (accepted, let_else, "1.65.0", Some(87335)),
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.

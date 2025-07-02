@@ -1,6 +1,4 @@
-// gate-test-let_chains
-
-// Here we test feature gating for ´let_chains`.
+// Here we test Rust 2024 edition gating for ´let_chains`.
 // See `disallowed-positions.rs` for the grammar
 // defining the language for gated allowed positions.
 
@@ -12,17 +10,17 @@ fn _if() {
     if let 0 = 1 {} // Stable!
 
     if true && let 0 = 1 {}
-    //~^ ERROR `let` expressions in this position are unstable [E0658]
+    //~^ ERROR let chains are only allowed in Rust 2024 or later
 
     if let 0 = 1 && true {}
-    //~^ ERROR `let` expressions in this position are unstable [E0658]
+    //~^ ERROR let chains are only allowed in Rust 2024 or later
 
     if let Range { start: _, end: _ } = (true..true) && false {}
-    //~^ ERROR `let` expressions in this position are unstable [E0658]
+    //~^ ERROR let chains are only allowed in Rust 2024 or later
 
     if let 1 = 1 && let true = { true } && false {
-    //~^ ERROR `let` expressions in this position are unstable [E0658]
-    //~| ERROR `let` expressions in this position are unstable [E0658]
+    //~^ ERROR let chains are only allowed in Rust 2024 or later
+    //~| ERROR let chains are only allowed in Rust 2024 or later
     }
 }
 
@@ -30,13 +28,13 @@ fn _while() {
     while let 0 = 1 {} // Stable!
 
     while true && let 0 = 1 {}
-    //~^ ERROR `let` expressions in this position are unstable [E0658]
+    //~^ ERROR let chains are only allowed in Rust 2024 or later
 
     while let 0 = 1 && true {}
-    //~^ ERROR `let` expressions in this position are unstable [E0658]
+    //~^ ERROR let chains are only allowed in Rust 2024 or later
 
     while let Range { start: _, end: _ } = (true..true) && false {}
-    //~^ ERROR `let` expressions in this position are unstable [E0658]
+    //~^ ERROR let chains are only allowed in Rust 2024 or later
 }
 
 fn _macros() {
