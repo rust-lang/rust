@@ -19,9 +19,8 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::solve::NoSolution;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, AdtKind, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFlags,
-    TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
-    Upcast,
+    self, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFlags, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -289,9 +288,6 @@ pub(super) fn check_item<'tcx>(
         }
         hir::ItemKind::Fn { sig, .. } => check_item_fn(tcx, def_id, sig.decl),
         hir::ItemKind::Const(_, _, ty, _) => check_const_item(tcx, def_id, ty.span),
-        hir::ItemKind::Struct(..) => check_type_defn(tcx, item, false),
-        hir::ItemKind::Union(..) => check_type_defn(tcx, item, true),
-        hir::ItemKind::Enum(..) => check_type_defn(tcx, item, true),
         // Note: do not add new entries to this match. Instead add all new logic in `check_item_type`
         _ => span_bug!(item.span, "should have been handled by the type based wf check: {item:?}"),
     }
@@ -989,15 +985,15 @@ pub(crate) fn check_associated_item(
 }
 
 /// In a type definition, we check that to ensure that the types of the fields are well-formed.
-fn check_type_defn<'tcx>(
+pub(crate) fn check_type_defn<'tcx>(
     tcx: TyCtxt<'tcx>,
-    item: &hir::Item<'tcx>,
+    item: LocalDefId,
     all_sized: bool,
 ) -> Result<(), ErrorGuaranteed> {
-    let _ = tcx.representability(item.owner_id.def_id);
-    let adt_def = tcx.adt_def(item.owner_id);
+    let _ = tcx.representability(item);
+    let adt_def = tcx.adt_def(item);
 
-    enter_wf_checking_ctxt(tcx, item.owner_id.def_id, |wfcx| {
+    enter_wf_checking_ctxt(tcx, item, |wfcx| {
         let variants = adt_def.variants();
         let packed = adt_def.repr().packed();
 
@@ -1068,15 +1064,7 @@ fn check_type_defn<'tcx>(
                         hir_ty.span,
                         wfcx.body_def_id,
                         ObligationCauseCode::FieldSized {
-                            adt_kind: match &item.kind {
-                                ItemKind::Struct(..) => AdtKind::Struct,
-                                ItemKind::Union(..) => AdtKind::Union,
-                                ItemKind::Enum(..) => AdtKind::Enum,
-                                kind => span_bug!(
-                                    item.span,
-                                    "should be wfchecking an ADT, got {kind:?}"
-                                ),
-                            },
+                            adt_kind: adt_def.adt_kind(),
                             span: hir_ty.span,
                             last,
                         },
@@ -1099,7 +1087,7 @@ fn check_type_defn<'tcx>(
             }
         }
 
-        check_where_clauses(wfcx, item.owner_id.def_id);
+        check_where_clauses(wfcx, item);
         Ok(())
     })
 }
