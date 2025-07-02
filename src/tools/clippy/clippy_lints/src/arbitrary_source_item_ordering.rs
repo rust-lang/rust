@@ -8,9 +8,10 @@ use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::is_cfg_test;
 use rustc_attr_data_structures::AttributeKind;
 use rustc_hir::{
-    AssocItemKind, Attribute, FieldDef, HirId, ImplItemRef, IsAuto, Item, ItemKind, Mod, QPath, TraitItemRef, TyKind,
+    Attribute, FieldDef, HirId, ImplItemRef, IsAuto, Item, ItemKind, Mod, OwnerId, QPath, TraitItemRef, TyKind,
     Variant, VariantData,
 };
+use rustc_middle::ty::AssocKind;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 
@@ -315,9 +316,9 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                     }
 
                     if let Some(cur_t) = cur_t {
-                        let cur_t_kind = convert_assoc_item_kind(cur_t.kind);
+                        let cur_t_kind = convert_assoc_item_kind(cx, cur_t.id.owner_id);
                         let cur_t_kind_index = self.assoc_types_order.index_of(&cur_t_kind);
-                        let item_kind = convert_assoc_item_kind(item.kind);
+                        let item_kind = convert_assoc_item_kind(cx,item.id.owner_id);
                         let item_kind_index = self.assoc_types_order.index_of(&item_kind);
 
                         if cur_t_kind == item_kind && cur_t.ident.name.as_str() > item.ident.name.as_str() {
@@ -338,9 +339,9 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                     }
 
                     if let Some(cur_t) = cur_t {
-                        let cur_t_kind = convert_assoc_item_kind(cur_t.kind);
+                        let cur_t_kind = convert_assoc_item_kind(cx, cur_t.id.owner_id);
                         let cur_t_kind_index = self.assoc_types_order.index_of(&cur_t_kind);
-                        let item_kind = convert_assoc_item_kind(item.kind);
+                        let item_kind = convert_assoc_item_kind(cx, item.id.owner_id);
                         let item_kind_index = self.assoc_types_order.index_of(&item_kind);
 
                         if cur_t_kind == item_kind && cur_t.ident.name.as_str() > item.ident.name.as_str() {
@@ -458,18 +459,19 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
     }
 }
 
-/// Converts a [`rustc_hir::AssocItemKind`] to a
-/// [`SourceItemOrderingTraitAssocItemKind`].
+/// Converts a [`ty::AssocKind`] to a [`SourceItemOrderingTraitAssocItemKind`].
 ///
 /// This is implemented here because `rustc_hir` is not a dependency of
 /// `clippy_config`.
-fn convert_assoc_item_kind(value: AssocItemKind) -> SourceItemOrderingTraitAssocItemKind {
+fn convert_assoc_item_kind(cx: &LateContext<'_>, owner_id: OwnerId) -> SourceItemOrderingTraitAssocItemKind {
+    let kind = cx.tcx.associated_item(owner_id.def_id).kind;
+
     #[allow(clippy::enum_glob_use)] // Very local glob use for legibility.
     use SourceItemOrderingTraitAssocItemKind::*;
-    match value {
-        AssocItemKind::Const => Const,
-        AssocItemKind::Type => Type,
-        AssocItemKind::Fn { .. } => Fn,
+    match kind {
+        AssocKind::Const{..} => Const,
+        AssocKind::Type {..}=> Type,
+        AssocKind::Fn { .. } => Fn,
     }
 }
 
