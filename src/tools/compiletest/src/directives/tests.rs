@@ -690,6 +690,22 @@ fn is_big_endian() {
 }
 
 #[test]
+fn is_little_endian() {
+    let endians = [
+        ("x86_64-unknown-linux-gnu", true),
+        ("bpfeb-unknown-none", false),
+        ("m68k-unknown-linux-gnu", false),
+        ("aarch64_be-unknown-linux-gnu", false),
+        ("powerpc64-unknown-linux-gnu", false),
+    ];
+    for (target, is_little) in endians {
+        let config = cfg().target(target).build();
+        assert_eq!(config.is_little_endian(), is_little, "{target} {is_little}");
+        assert_eq!(check_ignore(&config, "//@ ignore-endian-little"), is_little);
+    }
+}
+
+#[test]
 fn pointer_width() {
     let widths = [
         ("x86_64-unknown-linux-gnu", 64),
