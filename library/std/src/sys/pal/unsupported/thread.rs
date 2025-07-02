@@ -26,6 +26,10 @@ impl Thread {
         panic!("can't sleep");
     }
 
+    pub fn sleep_until(_deadline: Instant) {
+        panic!("can't sleep");
+    }
+
     pub fn join(self) {
         self.0
     }
