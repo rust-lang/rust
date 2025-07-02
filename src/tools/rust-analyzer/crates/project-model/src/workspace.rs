@@ -391,6 +391,7 @@ impl ProjectWorkspace {
                         toolchain.clone(),
                         target_dir.clone(),
                     )),
+                    config.no_deps,
                     workspace_dir,
                     progress,
                 )
@@ -499,6 +500,7 @@ impl ProjectWorkspace {
                 if let Some(sysroot_project) = sysroot_project {
                     sysroot.load_workspace(
                         &RustSourceWorkspaceConfig::Json(*sysroot_project),
+                        config.no_deps,
                         project_root,
                         progress,
                     )
@@ -510,6 +512,7 @@ impl ProjectWorkspace {
                             toolchain.clone(),
                             target_dir,
                         )),
+                        config.no_deps,
                         project_root,
                         progress,
                     )
@@ -570,6 +573,7 @@ impl ProjectWorkspace {
                 toolchain.clone(),
                 target_dir.clone(),
             )),
+            config.no_deps,
             dir,
             &|_| (),
         );
