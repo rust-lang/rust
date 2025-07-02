@@ -113,7 +113,8 @@ jobs:
         CG_RUSTFLAGS="-Clinker=m68k-unknown-linux-gnu-gcc" ../../y.sh cargo build --target m68k-unknown-linux-gnu
         sudo cp target/m68k-unknown-linux-gnu/debug/hello_world $vm_dir/home/
         sudo chroot $vm_dir qemu-m68k-static /home/hello_world > hello_world_stdout
-        test $(cat hello_world_stdout) == "Hello, world!" || (echo "Output differs. Actual output: $(cat hello_world_stdout)"; exit 1)
+        expected_output="40"
+        test $(cat hello_world_stdout) == $expected_output || (echo "Output differs. Actual output: $(cat hello_world_stdout)"; exit 1)
 
   # Summary job for the merge queue.
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
