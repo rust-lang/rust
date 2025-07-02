@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::{env, fs};
 
 use build_helper::util::try_run;
-use compiletest::header::TestProps;
+use compiletest::directives::TestProps;
 use config::Config;
 
 mod config;
