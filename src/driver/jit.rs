@@ -127,7 +127,7 @@ fn codegen_and_compile_fn<'tcx>(
     module: &mut dyn Module,
     instance: Instance<'tcx>,
 ) {
-    if tcx.codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
+    if tcx.codegen_instance_attrs(instance.def).flags.contains(CodegenFnAttrFlags::NAKED) {
         tcx.dcx()
             .span_fatal(tcx.def_span(instance.def_id()), "Naked asm is not supported in JIT mode");
     }
