@@ -672,14 +672,14 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     self.reach(item.owner_id.def_id, item_ev).generics().predicates();
 
                     for trait_item_ref in trait_item_refs {
-                        self.update(trait_item_ref.id.owner_id.def_id, item_ev, Level::Reachable);
+                        self.update(trait_item_ref.owner_id.def_id, item_ev, Level::Reachable);
 
                         let tcx = self.tcx;
-                        let mut reach = self.reach(trait_item_ref.id.owner_id.def_id, item_ev);
+                        let mut reach = self.reach(trait_item_ref.owner_id.def_id, item_ev);
                         reach.generics().predicates();
 
-                        if let DefKind::AssocTy = tcx.def_kind(trait_item_ref.id.owner_id)
-                            && !tcx.defaultness(trait_item_ref.id.owner_id).has_value()
+                        if let DefKind::AssocTy = tcx.def_kind(trait_item_ref.owner_id)
+                            && !tcx.defaultness(trait_item_ref.owner_id).has_value()
                         {
                             // No type to visit.
                         } else {
@@ -715,7 +715,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 self.reach(item.owner_id.def_id, item_ev).generics().predicates().ty().trait_ref();
 
                 for impl_item_ref in impl_.items {
-                    let def_id = impl_item_ref.id.owner_id.def_id;
+                    let def_id = impl_item_ref.owner_id.def_id;
                     let max_vis =
                         impl_.of_trait.is_none().then(|| self.tcx.local_visibility(def_id));
                     self.update_eff_vis(def_id, item_ev, max_vis, Level::Direct);

@@ -435,8 +435,8 @@ pub trait Visitor<'v>: Sized {
     fn visit_trait_item(&mut self, ti: &'v TraitItem<'v>) -> Self::Result {
         walk_trait_item(self, ti)
     }
-    fn visit_trait_item_ref(&mut self, ii: &'v TraitItemRef) -> Self::Result {
-        walk_trait_item_ref(self, ii)
+    fn visit_trait_item_ref(&mut self, ii: &'v TraitItemId) -> Self::Result {
+        walk_trait_item_ref(self, *ii)
     }
     fn visit_impl_item(&mut self, ii: &'v ImplItem<'v>) -> Self::Result {
         walk_impl_item(self, ii)
@@ -444,8 +444,8 @@ pub trait Visitor<'v>: Sized {
     fn visit_foreign_item_ref(&mut self, ii: &'v ForeignItemId) -> Self::Result {
         walk_foreign_item_ref(self, *ii)
     }
-    fn visit_impl_item_ref(&mut self, ii: &'v ImplItemRef) -> Self::Result {
-        walk_impl_item_ref(self, ii)
+    fn visit_impl_item_ref(&mut self, ii: &'v ImplItemId) -> Self::Result {
+        walk_impl_item_ref(self, *ii)
     }
     fn visit_trait_ref(&mut self, t: &'v TraitRef<'v>) -> Self::Result {
         walk_trait_ref(self, t)
@@ -1245,13 +1245,8 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
     V::Result::output()
 }
 
-pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    trait_item_ref: &'v TraitItemRef,
-) -> V::Result {
-    let TraitItemRef { id, ident, span: _ } = *trait_item_ref;
-    try_visit!(visitor.visit_nested_trait_item(id));
-    visitor.visit_ident(ident)
+pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, id: TraitItemId) -> V::Result {
+    visitor.visit_nested_trait_item(id)
 }
 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(
@@ -1294,13 +1289,8 @@ pub fn walk_foreign_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, id: ForeignIte
     visitor.visit_nested_foreign_item(id)
 }
 
-pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    impl_item_ref: &'v ImplItemRef,
-) -> V::Result {
-    let ImplItemRef { id, ident, span: _ } = *impl_item_ref;
-    try_visit!(visitor.visit_nested_impl_item(id));
-    visitor.visit_ident(ident)
+pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, id: ImplItemId) -> V::Result {
+    visitor.visit_nested_impl_item(id)
 }
 
 pub fn walk_trait_ref<'v, V: Visitor<'v>>(

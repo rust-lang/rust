@@ -30,15 +30,15 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
             tcx.arena.alloc_from_iter(
                 trait_item_refs
                     .iter()
-                    .map(|trait_item_ref| trait_item_ref.id.owner_id.to_def_id())
+                    .map(|trait_item_ref| trait_item_ref.owner_id.to_def_id())
                     .chain(
                         trait_item_refs
                             .iter()
                             .filter(|trait_item_ref| {
-                                matches!(tcx.def_kind(trait_item_ref.id.owner_id), DefKind::AssocFn)
+                                matches!(tcx.def_kind(trait_item_ref.owner_id), DefKind::AssocFn)
                             })
                             .flat_map(|trait_item_ref| {
-                                let trait_fn_def_id = trait_item_ref.id.owner_id.def_id.to_def_id();
+                                let trait_fn_def_id = trait_item_ref.owner_id.to_def_id();
                                 tcx.associated_types_for_impl_traits_in_associated_fn(
                                     trait_fn_def_id,
                                 )
@@ -52,25 +52,23 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
             // create a corresponding associated item using
             // associated_types_for_impl_traits_in_associated_fn query.
             tcx.arena.alloc_from_iter(
-                impl_
-                    .items
-                    .iter()
-                    .map(|impl_item_ref| impl_item_ref.id.owner_id.to_def_id())
-                    .chain(impl_.of_trait.iter().flat_map(|_| {
+                impl_.items.iter().map(|impl_item_ref| impl_item_ref.owner_id.to_def_id()).chain(
+                    impl_.of_trait.iter().flat_map(|_| {
                         impl_
                             .items
                             .iter()
                             .filter(|impl_item_ref| {
-                                matches!(tcx.def_kind(impl_item_ref.id.owner_id), DefKind::AssocFn)
+                                matches!(tcx.def_kind(impl_item_ref.owner_id), DefKind::AssocFn)
                             })
                             .flat_map(|impl_item_ref| {
-                                let impl_fn_def_id = impl_item_ref.id.owner_id.def_id.to_def_id();
+                                let impl_fn_def_id = impl_item_ref.owner_id.to_def_id();
                                 tcx.associated_types_for_impl_traits_in_associated_fn(
                                     impl_fn_def_id,
                                 )
                             })
                             .copied()
-                    })),
+                    }),
+                ),
             )
         }
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),

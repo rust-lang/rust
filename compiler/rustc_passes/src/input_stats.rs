@@ -467,9 +467,9 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_trait_item(self, ti)
     }
 
-    fn visit_trait_item_ref(&mut self, ti: &'v hir::TraitItemRef) {
-        self.record("TraitItemRef", Some(ti.id.hir_id()), ti);
-        hir_visit::walk_trait_item_ref(self, ti)
+    fn visit_trait_item_ref(&mut self, ti: &'v hir::TraitItemId) {
+        self.record("TraitItemId", Some(ti.hir_id()), ti);
+        hir_visit::walk_trait_item_ref(self, *ti)
     }
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
@@ -485,9 +485,9 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_foreign_item_ref(self, *fi)
     }
 
-    fn visit_impl_item_ref(&mut self, ii: &'v hir::ImplItemRef) {
-        self.record("ImplItemRef", Some(ii.id.hir_id()), ii);
-        hir_visit::walk_impl_item_ref(self, ii)
+    fn visit_impl_item_ref(&mut self, ii: &'v hir::ImplItemId) {
+        self.record("ImplItemId", Some(ii.hir_id()), ii);
+        hir_visit::walk_impl_item_ref(self, *ii)
     }
 
     fn visit_param_bound(&mut self, b: &'v hir::GenericBound<'v>) {
