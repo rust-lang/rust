@@ -1365,7 +1365,6 @@ mod prim_f16 {}
 /// x = a + b + c + d; // As written
 /// x = (a + c) + (b + d); // Reordered to shorten critical path and enable vectorization
 /// ```
-
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f32 {}
 

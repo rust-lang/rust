@@ -436,7 +436,6 @@ pub trait Extend<A> {
     /// **For implementors:** For a collection to unsafely rely on this method's safety precondition (that is,
     /// invoke UB if they are violated), it must implement `extend_reserve` correctly. In other words,
     /// callers may assume that if they `extend_reserve`ed enough space they can call this method.
-
     // This method is for internal usage only. It is only on the trait because of specialization's limitations.
     #[unstable(feature = "extend_one_unchecked", issue = "none")]
     #[doc(hidden)]
