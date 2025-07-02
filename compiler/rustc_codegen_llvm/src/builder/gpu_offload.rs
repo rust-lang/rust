@@ -12,7 +12,7 @@ use crate::llvm::{self, Linkage};
 use crate::{LlvmCodegenBackend, SimpleCx, attributes};
 
 pub(crate) fn handle_gpu_code<'ll>(
-    _cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext<LlvmCodegenBackend>,
     cx: &'ll SimpleCx<'_>,
 ) {
     let (offload_entry_ty, at_one, begin, update, end, tgt_bin_desc, fn_ty) = gen_globals(&cx);
@@ -27,6 +27,7 @@ pub(crate) fn handle_gpu_code<'ll>(
         }
     }
     gen_call_handling(&cx, &kernels, at_one, begin, update, end, tgt_bin_desc, fn_ty, &o_types);
+    crate::builder::gpu_wrapper::gen_image_wrapper_module(&cgcx);
 }
 
 // The meaning of the __tgt_offload_entry (as per llvm docs) is
