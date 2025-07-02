@@ -2583,7 +2583,7 @@ impl fmt::Display for MacroRulesNormalizedIdent {
     }
 }
 
-/// An interned string.
+/// An interned UTF-8 string.
 ///
 /// Internally, a `Symbol` is implemented as an index, and all operations
 /// (including hashing, equality, and ordering) operate on that index. The use
@@ -2595,20 +2595,23 @@ impl fmt::Display for MacroRulesNormalizedIdent {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(SymbolIndex);
 
+// Used within both `Symbol` and `ByteSymbol`.
 rustc_index::newtype_index! {
     #[orderable]
     struct SymbolIndex {}
 }
 
 impl Symbol {
+    /// Avoid this except for things like deserialization of previously
+    /// serialized symbols, and testing. Use `intern` instead.
     pub const fn new(n: u32) -> Self {
         Symbol(SymbolIndex::from_u32(n))
     }
 
     /// Maps a string to its interned representation.
     #[rustc_diagnostic_item = "SymbolIntern"]
-    pub fn intern(string: &str) -> Self {
-        with_session_globals(|session_globals| session_globals.symbol_interner.intern(string))
+    pub fn intern(str: &str) -> Self {
+        with_session_globals(|session_globals| session_globals.symbol_interner.intern_str(str))
     }
 
     /// Access the underlying string. This is a slowish operation because it
@@ -2621,7 +2624,7 @@ impl Symbol {
     /// it works out ok.
     pub fn as_str(&self) -> &str {
         with_session_globals(|session_globals| unsafe {
-            std::mem::transmute::<&str, &str>(session_globals.symbol_interner.get(*self))
+            std::mem::transmute::<&str, &str>(session_globals.symbol_interner.get_str(*self))
         })
     }
 
@@ -2678,56 +2681,130 @@ impl StableCompare for Symbol {
     }
 }
 
+/// Like `Symbol`, but for byte strings. `ByteSymbol` is used less widely, so
+/// it has fewer operations defined than `Symbol`.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ByteSymbol(SymbolIndex);
+
+impl ByteSymbol {
+    /// Avoid this except for things like deserialization of previously
+    /// serialized symbols, and testing. Use `intern` instead.
+    pub const fn new(n: u32) -> Self {
+        ByteSymbol(SymbolIndex::from_u32(n))
+    }
+
+    /// Maps a string to its interned representation.
+    pub fn intern(byte_str: &[u8]) -> Self {
+        with_session_globals(|session_globals| {
+            session_globals.symbol_interner.intern_byte_str(byte_str)
+        })
+    }
+
+    /// Like `Symbol::as_str`.
+    pub fn as_byte_str(&self) -> &[u8] {
+        with_session_globals(|session_globals| unsafe {
+            std::mem::transmute::<&[u8], &[u8]>(session_globals.symbol_interner.get_byte_str(*self))
+        })
+    }
+
+    pub fn as_u32(self) -> u32 {
+        self.0.as_u32()
+    }
+}
+
+impl fmt::Debug for ByteSymbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(self.as_byte_str(), f)
+    }
+}
+
+impl<CTX> HashStable<CTX> for ByteSymbol {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.as_byte_str().hash_stable(hcx, hasher);
+    }
+}
+
+// Interner used for both `Symbol`s and `ByteSymbol`s. If a string and a byte
+// string with identical contents (e.g. "foo" and b"foo") are both interned,
+// only one copy will be stored and the resulting `Symbol` and `ByteSymbol`
+// will have the same index.
 pub(crate) struct Interner(Lock<InternerInner>);
 
-// The `&'static str`s in this type actually point into the arena.
+// The `&'static [u8]`s in this type actually point into the arena.
 //
 // This type is private to prevent accidentally constructing more than one
 // `Interner` on the same thread, which makes it easy to mix up `Symbol`s
 // between `Interner`s.
 struct InternerInner {
     arena: DroplessArena,
-    strings: FxIndexSet<&'static str>,
+    byte_strs: FxIndexSet<&'static [u8]>,
 }
 
 impl Interner {
+    // These arguments are `&str`, but because of the sharing, we are
+    // effectively pre-interning all these strings for both `Symbol` and
+    // `ByteSymbol`.
     fn prefill(init: &[&'static str], extra: &[&'static str]) -> Self {
-        let strings = FxIndexSet::from_iter(init.iter().copied().chain(extra.iter().copied()));
-        assert_eq!(
-            strings.len(),
-            init.len() + extra.len(),
-            "there are duplicate symbols in the rustc symbol list and the extra symbols added by the driver",
+        let byte_strs = FxIndexSet::from_iter(
+            init.iter().copied().chain(extra.iter().copied()).map(|str| str.as_bytes()),
         );
-        Interner(Lock::new(InternerInner { arena: Default::default(), strings }))
+        assert_eq!(
+            byte_strs.len(),
+            init.len() + extra.len(),
+            "duplicate symbols in the rustc symbol list and the extra symbols added by the driver",
+        );
+        Interner(Lock::new(InternerInner { arena: Default::default(), byte_strs }))
+    }
+
+    fn intern_str(&self, str: &str) -> Symbol {
+        Symbol::new(self.intern_inner(str.as_bytes()))
+    }
+
+    fn intern_byte_str(&self, byte_str: &[u8]) -> ByteSymbol {
+        ByteSymbol::new(self.intern_inner(byte_str))
     }
 
     #[inline]
-    fn intern(&self, string: &str) -> Symbol {
+    fn intern_inner(&self, byte_str: &[u8]) -> u32 {
         let mut inner = self.0.lock();
-        if let Some(idx) = inner.strings.get_index_of(string) {
-            return Symbol::new(idx as u32);
+        if let Some(idx) = inner.byte_strs.get_index_of(byte_str) {
+            return idx as u32;
         }
 
-        let string: &str = inner.arena.alloc_str(string);
+        let byte_str: &[u8] = inner.arena.alloc_slice(byte_str);
 
         // SAFETY: we can extend the arena allocation to `'static` because we
         // only access these while the arena is still alive.
-        let string: &'static str = unsafe { &*(string as *const str) };
+        let byte_str: &'static [u8] = unsafe { &*(byte_str as *const [u8]) };
 
         // This second hash table lookup can be avoided by using `RawEntryMut`,
         // but this code path isn't hot enough for it to be worth it. See
         // #91445 for details.
-        let (idx, is_new) = inner.strings.insert_full(string);
+        let (idx, is_new) = inner.byte_strs.insert_full(byte_str);
         debug_assert!(is_new); // due to the get_index_of check above
 
-        Symbol::new(idx as u32)
+        idx as u32
     }
 
     /// Get the symbol as a string.
     ///
     /// [`Symbol::as_str()`] should be used in preference to this function.
-    fn get(&self, symbol: Symbol) -> &str {
-        self.0.lock().strings.get_index(symbol.0.as_usize()).unwrap()
+    fn get_str(&self, symbol: Symbol) -> &str {
+        let byte_str = self.get_inner(symbol.0.as_usize());
+        // SAFETY: known to be a UTF8 string because it's a `Symbol`.
+        unsafe { str::from_utf8_unchecked(byte_str) }
+    }
+
+    /// Get the symbol as a string.
+    ///
+    /// [`ByteSymbol::as_byte_str()`] should be used in preference to this function.
+    fn get_byte_str(&self, symbol: ByteSymbol) -> &[u8] {
+        self.get_inner(symbol.0.as_usize())
+    }
+
+    fn get_inner(&self, index: usize) -> &[u8] {
+        self.0.lock().byte_strs.get_index(index).unwrap()
     }
 }
 
@@ -2822,9 +2899,11 @@ impl Symbol {
         self != sym::empty && self != kw::Underscore && !self.is_path_segment_keyword()
     }
 
-    /// Was this symbol predefined in the compiler's `symbols!` macro
-    pub fn is_predefined(self) -> bool {
-        self.as_u32() < PREDEFINED_SYMBOLS_COUNT
+    /// Was this symbol index predefined in the compiler's `symbols!` macro?
+    /// Note: this applies to both `Symbol`s and `ByteSymbol`s, which is why it
+    /// takes a `u32` argument instead of a `&self` argument. Use with care.
+    pub fn is_predefined(index: u32) -> bool {
+        index < PREDEFINED_SYMBOLS_COUNT
     }
 }
 

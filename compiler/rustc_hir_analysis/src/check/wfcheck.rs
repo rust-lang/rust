@@ -25,7 +25,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
-use rustc_span::{DUMMY_SP, Ident, Span, sym};
+use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::{InferCtxtRegionExt, OutlivesEnvironmentBuildExt};
 use rustc_trait_selection::traits::misc::{
@@ -46,7 +46,6 @@ use crate::{errors, fluent_generated as fluent};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
     pub(super) ocx: ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>,
-    span: Span,
     body_def_id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
 }
@@ -84,7 +83,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     /// signature types for implied bounds when checking regions.
     // FIXME(-Znext-solver): This should be removed when we compute implied outlives
     // bounds using the unnormalized signature of the function we're checking.
-    fn deeply_normalize<T>(&self, span: Span, loc: Option<WellFormedLoc>, value: T) -> T
+    pub(super) fn deeply_normalize<T>(&self, span: Span, loc: Option<WellFormedLoc>, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -105,7 +104,12 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         }
     }
 
-    fn register_wf_obligation(&self, span: Span, loc: Option<WellFormedLoc>, term: ty::Term<'tcx>) {
+    pub(super) fn register_wf_obligation(
+        &self,
+        span: Span,
+        loc: Option<WellFormedLoc>,
+        term: ty::Term<'tcx>,
+    ) {
         let cause = traits::ObligationCause::new(
             span,
             self.body_def_id,
@@ -122,7 +126,6 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
 pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     tcx: TyCtxt<'tcx>,
-    span: Span,
     body_def_id: LocalDefId,
     f: F,
 ) -> Result<(), ErrorGuaranteed>
@@ -133,7 +136,7 @@ where
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
-    let mut wfcx = WfCheckingCtxt { ocx, span, body_def_id, param_env };
+    let mut wfcx = WfCheckingCtxt { ocx, body_def_id, param_env };
 
     if !tcx.features().trivial_bounds() {
         wfcx.check_false_global_bounds()
@@ -187,23 +190,10 @@ where
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
-    let node = tcx.hir_node_by_def_id(def_id);
-    let mut res = match node {
-        hir::Node::Crate(_) => bug!("check_well_formed cannot be applied to the crate root"),
-        hir::Node::Item(item) => check_item(tcx, item),
-        hir::Node::TraitItem(item) => check_trait_item(tcx, item),
-        hir::Node::ImplItem(item) => check_impl_item(tcx, item),
-        hir::Node::ForeignItem(item) => check_foreign_item(tcx, item),
-        hir::Node::ConstBlock(_) | hir::Node::Expr(_) | hir::Node::OpaqueTy(_) => {
-            Ok(crate::check::check::check_item_type(tcx, def_id))
-        }
-        _ => unreachable!("{node:?}"),
-    };
+    let mut res = crate::check::check::check_item_type(tcx, def_id);
 
-    if let Some(generics) = node.generics() {
-        for param in generics.params {
-            res = res.and(check_param_wf(tcx, param));
-        }
+    for param in &tcx.generics_of(def_id).own_params {
+        res = res.and(check_param_wf(tcx, param));
     }
 
     res
@@ -223,16 +213,18 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
 /// not included it frequently leads to confusing errors in fn bodies. So it's better to check
 /// the types first.
 #[instrument(skip(tcx), level = "debug")]
-fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<(), ErrorGuaranteed> {
+pub(super) fn check_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    item: &'tcx hir::Item<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
     let def_id = item.owner_id.def_id;
 
     debug!(
         ?item.owner_id,
         item.name = ? tcx.def_path_str(def_id)
     );
-    crate::collect::lower_item(tcx, item.item_id());
 
-    let res = match item.kind {
+    match item.kind {
         // Right now we check that every default trait implementation
         // has an implementation of itself. Basically, a case like:
         //
@@ -295,57 +287,18 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             }
             res
         }
-        hir::ItemKind::Fn { ident, sig, .. } => {
-            check_item_fn(tcx, def_id, ident, item.span, sig.decl)
-        }
-        hir::ItemKind::Static(_, _, ty, _) => {
-            check_static_item(tcx, def_id, ty.span, UnsizedHandling::Forbid)
-        }
-        hir::ItemKind::Const(_, _, ty, _) => check_const_item(tcx, def_id, ty.span, item.span),
-        hir::ItemKind::Struct(_, generics, _) => {
-            let res = check_type_defn(tcx, item, false);
-            check_variances_for_type_defn(tcx, item, generics);
-            res
-        }
-        hir::ItemKind::Union(_, generics, _) => {
-            let res = check_type_defn(tcx, item, true);
-            check_variances_for_type_defn(tcx, item, generics);
-            res
-        }
-        hir::ItemKind::Enum(_, generics, _) => {
-            let res = check_type_defn(tcx, item, true);
-            check_variances_for_type_defn(tcx, item, generics);
-            res
-        }
+        hir::ItemKind::Fn { sig, .. } => check_item_fn(tcx, def_id, sig.decl),
+        hir::ItemKind::Const(_, _, ty, _) => check_const_item(tcx, def_id, ty.span),
+        hir::ItemKind::Struct(..) => check_type_defn(tcx, item, false),
+        hir::ItemKind::Union(..) => check_type_defn(tcx, item, true),
+        hir::ItemKind::Enum(..) => check_type_defn(tcx, item, true),
         hir::ItemKind::Trait(..) => check_trait(tcx, item),
         hir::ItemKind::TraitAlias(..) => check_trait(tcx, item),
-        // `ForeignItem`s are handled separately.
-        hir::ItemKind::ForeignMod { .. } => Ok(()),
-        hir::ItemKind::TyAlias(_, generics, hir_ty) if tcx.type_alias_is_lazy(item.owner_id) => {
-            let res = enter_wf_checking_ctxt(tcx, item.span, def_id, |wfcx| {
-                let ty = tcx.type_of(def_id).instantiate_identity();
-                let item_ty =
-                    wfcx.deeply_normalize(hir_ty.span, Some(WellFormedLoc::Ty(def_id)), ty);
-                wfcx.register_wf_obligation(
-                    hir_ty.span,
-                    Some(WellFormedLoc::Ty(def_id)),
-                    item_ty.into(),
-                );
-                check_where_clauses(wfcx, item.span, def_id);
-                Ok(())
-            });
-            check_variances_for_type_defn(tcx, item, generics);
-            res
-        }
         _ => Ok(()),
-    };
-
-    crate::check::check::check_item_type(tcx, def_id);
-
-    res
+    }
 }
 
-fn check_foreign_item<'tcx>(
+pub(super) fn check_foreign_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: &'tcx hir::ForeignItem<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
@@ -357,43 +310,23 @@ fn check_foreign_item<'tcx>(
     );
 
     match item.kind {
-        hir::ForeignItemKind::Fn(sig, ..) => {
-            check_item_fn(tcx, def_id, item.ident, item.span, sig.decl)
-        }
-        hir::ForeignItemKind::Static(ty, ..) => {
-            check_static_item(tcx, def_id, ty.span, UnsizedHandling::AllowIfForeignTail)
-        }
-        hir::ForeignItemKind::Type => Ok(()),
+        hir::ForeignItemKind::Fn(sig, ..) => check_item_fn(tcx, def_id, sig.decl),
+        hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => Ok(()),
     }
 }
 
-fn check_trait_item<'tcx>(
+pub(crate) fn check_trait_item<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_item: &'tcx hir::TraitItem<'tcx>,
+    def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let def_id = trait_item.owner_id.def_id;
-
-    crate::collect::lower_trait_item(tcx, trait_item.trait_item_id());
-
-    let (method_sig, span) = match trait_item.kind {
-        hir::TraitItemKind::Fn(ref sig, _) => (Some(sig), trait_item.span),
-        hir::TraitItemKind::Type(_bounds, Some(ty)) => (None, ty.span),
-        _ => (None, trait_item.span),
-    };
-
     // Check that an item definition in a subtrait is shadowing a supertrait item.
     lint_item_shadowing_supertrait_item(tcx, def_id);
 
-    let mut res = check_associated_item(tcx, def_id, span, method_sig);
+    let mut res = Ok(());
 
-    if matches!(trait_item.kind, hir::TraitItemKind::Fn(..)) {
+    if matches!(tcx.def_kind(def_id), DefKind::AssocFn) {
         for &assoc_ty_def_id in tcx.associated_types_for_impl_traits_in_associated_fn(def_id) {
-            res = res.and(check_associated_item(
-                tcx,
-                assoc_ty_def_id.expect_local(),
-                tcx.def_span(assoc_ty_def_id),
-                None,
-            ));
+            res = res.and(check_associated_item(tcx, assoc_ty_def_id.expect_local()));
         }
     }
     res
@@ -872,67 +805,54 @@ fn lint_item_shadowing_supertrait_item<'tcx>(tcx: TyCtxt<'tcx>, trait_item_def_i
     }
 }
 
-fn check_impl_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    impl_item: &'tcx hir::ImplItem<'tcx>,
-) -> Result<(), ErrorGuaranteed> {
-    crate::collect::lower_impl_item(tcx, impl_item.impl_item_id());
-
-    let (method_sig, span) = match impl_item.kind {
-        hir::ImplItemKind::Fn(ref sig, _) => (Some(sig), impl_item.span),
-        // Constrain binding and overflow error spans to `<Ty>` in `type foo = <Ty>`.
-        hir::ImplItemKind::Type(ty) if ty.span != DUMMY_SP => (None, ty.span),
-        _ => (None, impl_item.span),
-    };
-    check_associated_item(tcx, impl_item.owner_id.def_id, span, method_sig)
-}
-
-fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), ErrorGuaranteed> {
+fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), ErrorGuaranteed> {
     match param.kind {
         // We currently only check wf of const params here.
-        hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. } => Ok(()),
+        ty::GenericParamDefKind::Lifetime | ty::GenericParamDefKind::Type { .. } => Ok(()),
 
         // Const parameters are well formed if their type is structural match.
-        hir::GenericParamKind::Const { ty: hir_ty, default: _, synthetic: _ } => {
+        ty::GenericParamDefKind::Const { .. } => {
             let ty = tcx.type_of(param.def_id).instantiate_identity();
+            let span = tcx.def_span(param.def_id);
+            let def_id = param.def_id.expect_local();
 
             if tcx.features().unsized_const_params() {
-                enter_wf_checking_ctxt(tcx, hir_ty.span, tcx.local_parent(param.def_id), |wfcx| {
+                enter_wf_checking_ctxt(tcx, tcx.local_parent(def_id), |wfcx| {
                     wfcx.register_bound(
-                        ObligationCause::new(
-                            hir_ty.span,
-                            param.def_id,
-                            ObligationCauseCode::ConstParam(ty),
-                        ),
+                        ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(ty)),
                         wfcx.param_env,
                         ty,
-                        tcx.require_lang_item(LangItem::UnsizedConstParamTy, hir_ty.span),
+                        tcx.require_lang_item(LangItem::UnsizedConstParamTy, span),
                     );
                     Ok(())
                 })
             } else if tcx.features().adt_const_params() {
-                enter_wf_checking_ctxt(tcx, hir_ty.span, tcx.local_parent(param.def_id), |wfcx| {
+                enter_wf_checking_ctxt(tcx, tcx.local_parent(def_id), |wfcx| {
                     wfcx.register_bound(
-                        ObligationCause::new(
-                            hir_ty.span,
-                            param.def_id,
-                            ObligationCauseCode::ConstParam(ty),
-                        ),
+                        ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(ty)),
                         wfcx.param_env,
                         ty,
-                        tcx.require_lang_item(LangItem::ConstParamTy, hir_ty.span),
+                        tcx.require_lang_item(LangItem::ConstParamTy, span),
                     );
                     Ok(())
                 })
             } else {
+                let span = || {
+                    let hir::GenericParamKind::Const { ty: &hir::Ty { span, .. }, .. } =
+                        tcx.hir_node_by_def_id(def_id).expect_generic_param().kind
+                    else {
+                        bug!()
+                    };
+                    span
+                };
                 let mut diag = match ty.kind() {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => return Ok(()),
                     ty::FnPtr(..) => tcx.dcx().struct_span_err(
-                        hir_ty.span,
+                        span(),
                         "using function pointers as const generic parameters is forbidden",
                     ),
                     ty::RawPtr(_, _) => tcx.dcx().struct_span_err(
-                        hir_ty.span,
+                        span(),
                         "using raw pointers as const generic parameters is forbidden",
                     ),
                     _ => {
@@ -940,7 +860,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                         ty.error_reported()?;
 
                         tcx.dcx().struct_span_err(
-                            hir_ty.span,
+                            span(),
                             format!(
                                 "`{ty}` is forbidden as the type of a const generic parameter",
                             ),
@@ -950,7 +870,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
 
                 diag.note("the only supported types are integers, `bool`, and `char`");
 
-                let cause = ObligationCause::misc(hir_ty.span, param.def_id);
+                let cause = ObligationCause::misc(span(), def_id);
                 let adt_const_params_feature_string =
                     " more complex and user defined types".to_string();
                 let may_suggest_feature = match type_allowed_to_implement_const_param_ty(
@@ -1010,15 +930,13 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
     }
 }
 
-#[instrument(level = "debug", skip(tcx, span, sig_if_method))]
-fn check_associated_item(
+#[instrument(level = "debug", skip(tcx))]
+pub(crate) fn check_associated_item(
     tcx: TyCtxt<'_>,
     item_id: LocalDefId,
-    span: Span,
-    sig_if_method: Option<&hir::FnSig<'_>>,
 ) -> Result<(), ErrorGuaranteed> {
     let loc = Some(WellFormedLoc::Ty(item_id));
-    enter_wf_checking_ctxt(tcx, span, item_id, |wfcx| {
+    enter_wf_checking_ctxt(tcx, item_id, |wfcx| {
         let item = tcx.associated_item(item_id);
 
         // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
@@ -1032,6 +950,8 @@ fn check_associated_item(
                 tcx.type_of(item.container_id(tcx)).instantiate_identity()
             }
         };
+
+        let span = tcx.def_span(item_id);
 
         match item.kind {
             ty::AssocKind::Const { .. } => {
@@ -1049,14 +969,9 @@ fn check_associated_item(
             }
             ty::AssocKind::Fn { .. } => {
                 let sig = tcx.fn_sig(item.def_id).instantiate_identity();
-                let hir_sig = sig_if_method.expect("bad signature for method");
-                check_fn_or_method(
-                    wfcx,
-                    item.ident(tcx).span,
-                    sig,
-                    hir_sig.decl,
-                    item.def_id.expect_local(),
-                );
+                let hir_sig =
+                    tcx.hir_node_by_def_id(item_id).fn_sig().expect("bad signature for method");
+                check_fn_or_method(wfcx, sig, hir_sig.decl, item_id);
                 check_method_receiver(wfcx, hir_sig, item, self_ty)
             }
             ty::AssocKind::Type { .. } => {
@@ -1083,7 +998,7 @@ fn check_type_defn<'tcx>(
     let _ = tcx.representability(item.owner_id.def_id);
     let adt_def = tcx.adt_def(item.owner_id);
 
-    enter_wf_checking_ctxt(tcx, item.span, item.owner_id.def_id, |wfcx| {
+    enter_wf_checking_ctxt(tcx, item.owner_id.def_id, |wfcx| {
         let variants = adt_def.variants();
         let packed = adt_def.repr().packed();
 
@@ -1185,7 +1100,7 @@ fn check_type_defn<'tcx>(
             }
         }
 
-        check_where_clauses(wfcx, item.span, item.owner_id.def_id);
+        check_where_clauses(wfcx, item.owner_id.def_id);
         Ok(())
     })
 }
@@ -1215,8 +1130,8 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) -> Result<(), ErrorGuarant
         }
     }
 
-    let res = enter_wf_checking_ctxt(tcx, item.span, def_id, |wfcx| {
-        check_where_clauses(wfcx, item.span, def_id);
+    let res = enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+        check_where_clauses(wfcx, def_id);
         Ok(())
     });
 
@@ -1252,72 +1167,63 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocIt
 fn check_item_fn(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-    ident: Ident,
-    span: Span,
     decl: &hir::FnDecl<'_>,
 ) -> Result<(), ErrorGuaranteed> {
-    enter_wf_checking_ctxt(tcx, span, def_id, |wfcx| {
+    enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
         let sig = tcx.fn_sig(def_id).instantiate_identity();
-        check_fn_or_method(wfcx, ident.span, sig, decl, def_id);
+        check_fn_or_method(wfcx, sig, decl, def_id);
         Ok(())
     })
 }
 
-enum UnsizedHandling {
-    Forbid,
-    AllowIfForeignTail,
-}
-
-#[instrument(level = "debug", skip(tcx, ty_span, unsized_handling))]
-fn check_static_item(
+#[instrument(level = "debug", skip(tcx))]
+pub(super) fn check_static_item(
     tcx: TyCtxt<'_>,
     item_id: LocalDefId,
-    ty_span: Span,
-    unsized_handling: UnsizedHandling,
 ) -> Result<(), ErrorGuaranteed> {
-    enter_wf_checking_ctxt(tcx, ty_span, item_id, |wfcx| {
+    enter_wf_checking_ctxt(tcx, item_id, |wfcx| {
         let ty = tcx.type_of(item_id).instantiate_identity();
-        let item_ty = wfcx.deeply_normalize(ty_span, Some(WellFormedLoc::Ty(item_id)), ty);
+        let item_ty = wfcx.deeply_normalize(DUMMY_SP, Some(WellFormedLoc::Ty(item_id)), ty);
 
-        let forbid_unsized = match unsized_handling {
-            UnsizedHandling::Forbid => true,
-            UnsizedHandling::AllowIfForeignTail => {
-                let tail =
-                    tcx.struct_tail_for_codegen(item_ty, wfcx.infcx.typing_env(wfcx.param_env));
-                !matches!(tail.kind(), ty::Foreign(_))
-            }
+        let is_foreign_item = tcx.is_foreign_item(item_id);
+
+        let forbid_unsized = !is_foreign_item || {
+            let tail = tcx.struct_tail_for_codegen(item_ty, wfcx.infcx.typing_env(wfcx.param_env));
+            !matches!(tail.kind(), ty::Foreign(_))
         };
 
-        wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(item_id)), item_ty.into());
+        wfcx.register_wf_obligation(DUMMY_SP, Some(WellFormedLoc::Ty(item_id)), item_ty.into());
         if forbid_unsized {
+            let span = tcx.def_span(item_id);
             wfcx.register_bound(
                 traits::ObligationCause::new(
-                    ty_span,
+                    span,
                     wfcx.body_def_id,
                     ObligationCauseCode::SizedConstOrStatic,
                 ),
                 wfcx.param_env,
                 item_ty,
-                tcx.require_lang_item(LangItem::Sized, ty_span),
+                tcx.require_lang_item(LangItem::Sized, span),
             );
         }
 
         // Ensure that the end result is `Sync` in a non-thread local `static`.
         let should_check_for_sync = tcx.static_mutability(item_id.to_def_id())
             == Some(hir::Mutability::Not)
-            && !tcx.is_foreign_item(item_id.to_def_id())
+            && !is_foreign_item
             && !tcx.is_thread_local_static(item_id.to_def_id());
 
         if should_check_for_sync {
+            let span = tcx.def_span(item_id);
             wfcx.register_bound(
                 traits::ObligationCause::new(
-                    ty_span,
+                    span,
                     wfcx.body_def_id,
                     ObligationCauseCode::SharedStatic,
                 ),
                 wfcx.param_env,
                 item_ty,
-                tcx.require_lang_item(LangItem::Sync, ty_span),
+                tcx.require_lang_item(LangItem::Sync, span),
             );
         }
         Ok(())
@@ -1328,9 +1234,8 @@ fn check_const_item(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
     ty_span: Span,
-    item_span: Span,
 ) -> Result<(), ErrorGuaranteed> {
-    enter_wf_checking_ctxt(tcx, ty_span, def_id, |wfcx| {
+    enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
         let ty = tcx.type_of(def_id).instantiate_identity();
         let ty = wfcx.deeply_normalize(ty_span, Some(WellFormedLoc::Ty(def_id)), ty);
 
@@ -1346,7 +1251,7 @@ fn check_const_item(
             tcx.require_lang_item(LangItem::Sized, ty_span),
         );
 
-        check_where_clauses(wfcx, item_span, def_id);
+        check_where_clauses(wfcx, def_id);
 
         Ok(())
     })
@@ -1359,7 +1264,7 @@ fn check_impl<'tcx>(
     hir_self_ty: &hir::Ty<'_>,
     hir_trait_ref: &Option<hir::TraitRef<'_>>,
 ) -> Result<(), ErrorGuaranteed> {
-    enter_wf_checking_ctxt(tcx, item.span, item.owner_id.def_id, |wfcx| {
+    enter_wf_checking_ctxt(tcx, item.owner_id.def_id, |wfcx| {
         match hir_trait_ref {
             Some(hir_trait_ref) => {
                 // `#[rustc_reservation_impl]` impls are not real impls and
@@ -1443,14 +1348,14 @@ fn check_impl<'tcx>(
             }
         }
 
-        check_where_clauses(wfcx, item.span, item.owner_id.def_id);
+        check_where_clauses(wfcx, item.owner_id.def_id);
         Ok(())
     })
 }
 
 /// Checks where-clauses and inline bounds that are declared on `def_id`.
 #[instrument(level = "debug", skip(wfcx))]
-fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id: LocalDefId) {
+pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id: LocalDefId) {
     let infcx = wfcx.infcx;
     let tcx = wfcx.tcx();
 
@@ -1605,21 +1510,18 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
 
     let predicates = predicates.instantiate_identity(tcx);
 
-    let predicates = wfcx.normalize(span, None, predicates);
-
-    debug!(?predicates.predicates);
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
+        let p = wfcx.normalize(sp, None, p);
         traits::wf::clause_obligations(infcx, wfcx.param_env, wfcx.body_def_id, p, sp)
     });
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();
     wfcx.register_obligations(obligations);
 }
 
-#[instrument(level = "debug", skip(wfcx, span, hir_decl))]
+#[instrument(level = "debug", skip(wfcx, hir_decl))]
 fn check_fn_or_method<'tcx>(
     wfcx: &WfCheckingCtxt<'_, 'tcx>,
-    span: Span,
     sig: ty::PolyFnSig<'tcx>,
     hir_decl: &hir::FnDecl<'_>,
     def_id: LocalDefId,
@@ -1657,7 +1559,7 @@ fn check_fn_or_method<'tcx>(
         );
     }
 
-    check_where_clauses(wfcx, span, def_id);
+    check_where_clauses(wfcx, def_id);
 
     if sig.abi == ExternAbi::RustCall {
         let span = tcx.def_span(def_id);
@@ -1746,17 +1648,18 @@ fn check_method_receiver<'tcx>(
     }
 
     let span = fn_sig.decl.inputs[0].span;
+    let loc = Some(WellFormedLoc::Param { function: method.def_id.expect_local(), param_idx: 0 });
 
     let sig = tcx.fn_sig(method.def_id).instantiate_identity();
     let sig = tcx.liberate_late_bound_regions(method.def_id, sig);
-    let sig = wfcx.normalize(span, None, sig);
+    let sig = wfcx.normalize(DUMMY_SP, loc, sig);
 
     debug!("check_method_receiver: sig={:?}", sig);
 
-    let self_ty = wfcx.normalize(span, None, self_ty);
+    let self_ty = wfcx.normalize(DUMMY_SP, loc, self_ty);
 
     let receiver_ty = sig.inputs()[0];
-    let receiver_ty = wfcx.normalize(span, None, receiver_ty);
+    let receiver_ty = wfcx.normalize(DUMMY_SP, loc, receiver_ty);
 
     // If the receiver already has errors reported, consider it valid to avoid
     // unnecessary errors (#58712).
@@ -2004,27 +1907,23 @@ fn legacy_receiver_is_implemented<'tcx>(
     }
 }
 
-fn check_variances_for_type_defn<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    item: &'tcx hir::Item<'tcx>,
-    hir_generics: &hir::Generics<'tcx>,
-) {
-    match item.kind {
-        ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
+pub(super) fn check_variances_for_type_defn<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
+    match tcx.def_kind(def_id) {
+        DefKind::Enum | DefKind::Struct | DefKind::Union => {
             // Ok
         }
-        ItemKind::TyAlias(..) => {
+        DefKind::TyAlias => {
             assert!(
-                tcx.type_alias_is_lazy(item.owner_id),
+                tcx.type_alias_is_lazy(def_id),
                 "should not be computing variance of non-free type alias"
             );
         }
-        kind => span_bug!(item.span, "cannot compute the variances of {kind:?}"),
+        kind => span_bug!(tcx.def_span(def_id), "cannot compute the variances of {kind:?}"),
     }
 
-    let ty_predicates = tcx.predicates_of(item.owner_id);
+    let ty_predicates = tcx.predicates_of(def_id);
     assert_eq!(ty_predicates.parent, None);
-    let variances = tcx.variances_of(item.owner_id);
+    let variances = tcx.variances_of(def_id);
 
     let mut constrained_parameters: FxHashSet<_> = variances
         .iter()
@@ -2037,8 +1936,10 @@ fn check_variances_for_type_defn<'tcx>(
 
     // Lazily calculated because it is only needed in case of an error.
     let explicitly_bounded_params = LazyCell::new(|| {
-        let icx = crate::collect::ItemCtxt::new(tcx, item.owner_id.def_id);
-        hir_generics
+        let icx = crate::collect::ItemCtxt::new(tcx, def_id);
+        tcx.hir_node_by_def_id(def_id)
+            .generics()
+            .unwrap()
             .predicates
             .iter()
             .filter_map(|predicate| match predicate.kind {
@@ -2053,8 +1954,6 @@ fn check_variances_for_type_defn<'tcx>(
             .collect::<FxHashSet<_>>()
     });
 
-    let ty_generics = tcx.generics_of(item.owner_id);
-
     for (index, _) in variances.iter().enumerate() {
         let parameter = Parameter(index as u32);
 
@@ -2062,8 +1961,12 @@ fn check_variances_for_type_defn<'tcx>(
             continue;
         }
 
-        let ty_param = &ty_generics.own_params[index];
+        let node = tcx.hir_node_by_def_id(def_id);
+        let item = node.expect_item();
+        let hir_generics = node.generics().unwrap();
         let hir_param = &hir_generics.params[index];
+
+        let ty_param = &tcx.generics_of(item.owner_id).own_params[index];
 
         if ty_param.def_id != hir_param.def_id.into() {
             // Valid programs always have lifetimes before types in the generic parameter list.
@@ -2082,7 +1985,7 @@ fn check_variances_for_type_defn<'tcx>(
 
         // Look for `ErrorGuaranteed` deeply within this type.
         if let ControlFlow::Break(ErrorGuaranteed { .. }) = tcx
-            .type_of(item.owner_id)
+            .type_of(def_id)
             .instantiate_identity()
             .visit_with(&mut HasErrorDeep { tcx, seen: Default::default() })
         {
@@ -2301,7 +2204,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn check_false_global_bounds(&mut self) {
         let tcx = self.ocx.infcx.tcx;
-        let mut span = self.span;
+        let mut span = tcx.def_span(self.body_def_id);
         let empty_env = ty::ParamEnv::empty();
 
         let predicates_with_span = tcx.predicates_of(self.body_def_id).predicates.iter().copied();

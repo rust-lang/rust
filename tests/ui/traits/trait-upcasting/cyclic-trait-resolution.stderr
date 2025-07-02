@@ -9,7 +9,7 @@ note: cycle used when checking that `A` is well-formed
   --> $DIR/cyclic-trait-resolution.rs:1:1
    |
 LL | trait A: B + A {}
-   | ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error[E0391]: cycle detected when computing the implied predicates of `A`

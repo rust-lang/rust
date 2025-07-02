@@ -436,4 +436,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "It is no longer possible to combine `rust.lld = true` with configuring external LLVM using `llvm.llvm-config`.",
     },
+    ChangeInfo {
+        change_id: 143255,
+        severity: ChangeSeverity::Warning,
+        summary: "`llvm.lld` is no longer enabled by default for the dist profile.",
+    },
 ];

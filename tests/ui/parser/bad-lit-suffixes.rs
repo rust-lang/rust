@@ -33,6 +33,7 @@ fn f() {}
 
 #[must_use = "string"suffix]
 //~^ ERROR suffixes on string literals are invalid
+//~| ERROR malformed `must_use` attribute input
 fn g() {}
 
 #[link(name = "string"suffix)]
@@ -41,4 +42,5 @@ extern "C" {}
 
 #[rustc_layout_scalar_valid_range_start(0suffix)]
 //~^ ERROR invalid suffix `suffix` for number literal
+//~| ERROR malformed `rustc_layout_scalar_valid_range_start` attribute input
 struct S;

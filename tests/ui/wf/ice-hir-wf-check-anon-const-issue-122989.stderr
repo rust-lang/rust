@@ -37,7 +37,7 @@ note: ...which requires computing type of `Bar::M`...
 LL | trait Bar<const M: Foo<2>> {}
    |           ^^^^^^^^^^^^^^^
    = note: ...which again requires computing type of `Foo::N`, completing the cycle
-note: cycle used when computing explicit predicates of trait `Foo`
+note: cycle used when checking that `Foo` is well-formed
   --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:1
    |
 LL | trait Foo<const N: Bar<2>> {
@@ -56,7 +56,7 @@ note: ...which requires computing type of `Bar::M`...
 LL | trait Bar<const M: Foo<2>> {}
    |           ^^^^^^^^^^^^^^^
    = note: ...which again requires computing type of `Foo::N`, completing the cycle
-note: cycle used when computing explicit predicates of trait `Foo`
+note: cycle used when checking that `Foo` is well-formed
   --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:1
    |
 LL | trait Foo<const N: Bar<2>> {

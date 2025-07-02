@@ -1794,7 +1794,10 @@ fn for_each_exported_symbols_include_dep<'tcx>(
     for (cnum, dep_format) in deps.iter_enumerated() {
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
-            for &(symbol, info) in tcx.exported_symbols(cnum).iter() {
+            for &(symbol, info) in tcx.exported_non_generic_symbols(cnum).iter() {
+                callback(symbol, info, cnum);
+            }
+            for &(symbol, info) in tcx.exported_generic_symbols(cnum).iter() {
                 callback(symbol, info, cnum);
             }
         }

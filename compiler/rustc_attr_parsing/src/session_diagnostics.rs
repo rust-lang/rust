@@ -510,6 +510,7 @@ pub(crate) struct NakedFunctionIncompatibleAttribute {
 pub(crate) enum AttributeParseErrorReason {
     ExpectedNoArgs,
     ExpectedStringLiteral { byte_string: Option<Span> },
+    ExpectedIntegerLiteral,
     ExpectedAtLeastOneArgument,
     ExpectedSingleArgument,
     ExpectedList,
@@ -550,6 +551,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                     diag.span_label(self.span, "expected a string literal here");
                 }
             }
+            AttributeParseErrorReason::ExpectedIntegerLiteral => {
+                diag.span_label(self.span, "expected an integer literal here");
+            }
             AttributeParseErrorReason::ExpectedSingleArgument => {
                 diag.span_label(self.span, "expected a single argument here");
                 diag.code(E0805);
@@ -573,10 +577,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                 diag.code(E0565);
             }
             AttributeParseErrorReason::ExpectedNameValue(None) => {
-                diag.span_label(
-                    self.span,
-                    format!("expected this to be of the form `{name} = \"...\"`"),
-                );
+                // The suggestion we add below this match already contains enough information
             }
             AttributeParseErrorReason::ExpectedNameValue(Some(name)) => {
                 diag.span_label(
