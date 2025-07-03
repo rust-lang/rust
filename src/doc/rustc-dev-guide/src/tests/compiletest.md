@@ -29,7 +29,7 @@ on if or how to run the test, what behavior to expect, and more. See
 [directives](directives.md) and the test suite documentation below for more details
 on these annotations.
 
-See the [Adding new tests](adding.md) and [Best practies](best-practices.md)
+See the [Adding new tests](adding.md) and [Best practise](best-practices.md)
 chapters for a tutorial on creating a new test and advice on writing a good
 test, and the [Running tests](running.md) chapter on how to run the test suite.
 
