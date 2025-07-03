@@ -3340,7 +3340,7 @@ pub enum OomStrategy {
 }
 
 impl OomStrategy {
-    pub const SYMBOL: &'static str = "__rust_alloc_error_handler_should_panic";
+    pub const SYMBOL: &'static str = "__rust_alloc_error_handler_should_panic_v2";
 
     pub fn should_panic(self) -> u8 {
         match self {
