@@ -41,7 +41,7 @@ declare_lint! {
     /// }
     /// ```
     ///
-    /// Otherwise try to find an alternative way to achive your goals using only raw pointers:
+    /// Otherwise try to find an alternative way to achieve your goals using only raw pointers:
     ///
     /// ```rust
     /// use std::ptr;

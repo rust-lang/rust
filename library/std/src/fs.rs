@@ -3114,7 +3114,7 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 /// On UNIX-like systems, this function will update the permission bits
 /// of the file pointed to by the symlink.
 ///
-/// Note that this behavior can lead to privalage escalation vulnerabilites,
+/// Note that this behavior can lead to privalage escalation vulnerabilities,
 /// where the ability to create a symlink in one directory allows you to
 /// cause the permissions of another file or directory to be modified.
 ///

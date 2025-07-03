@@ -29,7 +29,7 @@
 //! _b = some other value // also has VnIndex i
 //! ```
 //!
-//! We consider it to be replacable by:
+//! We consider it to be replaceable by:
 //! ```ignore (MIR)
 //! _a = some value // has VnIndex i
 //! // some MIR

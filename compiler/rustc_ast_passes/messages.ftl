@@ -1,6 +1,6 @@
 ast_passes_abi_cannot_be_coroutine =
     functions with the {$abi} ABI cannot be `{$coroutine_kind_str}`
-    .suggestion = remove the `{$coroutine_kind_str}` keyword from this definiton
+    .suggestion = remove the `{$coroutine_kind_str}` keyword from this definition
 
 ast_passes_abi_custom_safe_foreign_function =
     foreign functions with the "custom" ABI cannot be safe

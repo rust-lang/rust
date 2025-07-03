@@ -32,7 +32,7 @@ impl<T: PointeeSized> *mut T {
         self as _
     }
 
-    /// Try to cast to a pointer of another type by checking aligment.
+    /// Try to cast to a pointer of another type by checking alignment.
     ///
     /// If the pointer is properly aligned to the target type, it will be
     /// cast to the target type. Otherwise, `None` is returned.

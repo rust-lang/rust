@@ -109,7 +109,7 @@ pub trait RawFloat:
 
     /// Round-to-even only happens for negative values of q
     /// when q ≥ −4 in the 64-bit case and when q ≥ −17 in
-    /// the 32-bitcase.
+    /// the 32-bit case.
     ///
     /// When q ≥ 0,we have that 5^q ≤ 2m+1. In the 64-bit case,we
     /// have 5^q ≤ 2m+1 ≤ 2^54 or q ≤ 23. In the 32-bit case,we have
@@ -119,7 +119,7 @@ pub trait RawFloat:
     /// so (2m+1)×5^−q < 2^64. We have that 2m+1 > 2^53 (64-bit case)
     /// or 2m+1 > 2^24 (32-bit case). Hence,we must have 2^53×5^−q < 2^64
     /// (64-bit) and 2^24×5^−q < 2^64 (32-bit). Hence we have 5^−q < 2^11
-    /// or q ≥ −4 (64-bit case) and 5^−q < 2^40 or q ≥ −17 (32-bitcase).
+    /// or q ≥ −4 (64-bit case) and 5^−q < 2^40 or q ≥ −17 (32-bit case).
     ///
     /// Thus we have that we only need to round ties to even when
     /// we have that q ∈ [−4,23](in the 64-bit case) or q∈[−17,10]
@@ -143,7 +143,7 @@ pub trait RawFloat:
     /// smaller than `10^SMALLEST_POWER_OF_TEN`, which will round to zero.
     ///
     /// The smallest power of ten is represented by `⌊log10(2^-n / (2^64 - 1))⌋`, where `n` is
-    /// the smallest power of two. The `2^64 - 1)` denomenator comes from the number of values
+    /// the smallest power of two. The `2^64 - 1)` denominator comes from the number of values
     /// that are representable by the intermediate storage format. I don't actually know _why_
     /// the storage format is relevant here.
     ///

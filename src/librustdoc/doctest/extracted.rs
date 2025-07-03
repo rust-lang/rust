@@ -62,7 +62,7 @@ impl ExtractedDocTests {
             Some(&opts.crate_name),
         );
         self.doctests.push(ExtractedDocTest {
-            file: filename.prefer_remapped_unconditionaly().to_string(),
+            file: filename.prefer_remapped_unconditionally().to_string(),
             line,
             doctest_attributes: langstr.into(),
             doctest_code: match wrapped {

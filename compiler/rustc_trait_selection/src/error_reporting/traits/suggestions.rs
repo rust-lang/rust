@@ -4432,7 +4432,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         candidate_impls: &[ImplCandidate<'tcx>],
         span: Span,
     ) {
-        // We can only suggest the slice coersion for function and binary operation arguments,
+        // We can only suggest the slice coercion for function and binary operation arguments,
         // since the suggestion would make no sense in turbofish or call
         let (ObligationCauseCode::BinOp { .. } | ObligationCauseCode::FunctionArg { .. }) =
             obligation.cause.code()
