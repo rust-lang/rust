@@ -470,6 +470,7 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     target_cpu: String,
+    autodiff_items: &[AutoDiffItem],
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
 
@@ -488,6 +489,7 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
         backend.clone(),
         tcx,
         &crate_info,
+        autodiff_items,
         shared_emitter,
         codegen_worker_send,
         coordinator_receive,
@@ -1044,9 +1046,6 @@ pub(crate) enum Message<B: WriteBackendMethods> {
     /// Sent from a backend worker thread.
     WorkItem { result: Result<WorkItemResult<B>, Option<WorkerFatalError>>, worker_id: usize },
 
-    /// A vector containing all the AutoDiff tasks that we have to pass to Enzyme.
-    AddAutoDiffItems(Vec<AutoDiffItem>),
-
     /// The frontend has finished generating something (backend IR or a
     /// post-LTO artifact) for a codegen unit, and it should be passed to the
     /// backend. Sent from the main thread.
@@ -1113,6 +1112,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     crate_info: &CrateInfo,
+    autodiff_items: &[AutoDiffItem],
     shared_emitter: SharedEmitter,
     codegen_worker_send: Sender<CguMessage>,
     coordinator_receive: Receiver<Box<dyn Any + Send>>,
@@ -1122,6 +1122,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
 ) -> thread::JoinHandle<Result<CompiledModules, ()>> {
     let coordinator_send = tx_to_llvm_workers;
     let sess = tcx.sess;
+    let autodiff_items = autodiff_items.to_vec();
 
     let mut each_linked_rlib_for_lto = Vec::new();
     drop(link::each_linked_rlib(crate_info, None, &mut |cnum, path| {
@@ -1375,7 +1376,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
         // This is where we collect codegen units that have gone all the way
         // through codegen and LLVM.
-        let mut autodiff_items = Vec::new();
         let mut compiled_modules = vec![];
         let mut compiled_allocator_module = None;
         let mut needs_link = Vec::new();
@@ -1643,10 +1643,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     }
                     assert_eq!(main_thread_state, MainThreadState::Codegenning);
                     main_thread_state = MainThreadState::Idle;
-                }
-
-                Message::AddAutoDiffItems(mut items) => {
-                    autodiff_items.append(&mut items);
                 }
 
                 Message::CodegenComplete => {
@@ -2115,10 +2111,6 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
         drop(self.coordinator.sender.send(Box::new(Message::CodegenComplete::<B>)));
-    }
-
-    pub(crate) fn submit_autodiff_items(&self, items: Vec<AutoDiffItem>) {
-        drop(self.coordinator.sender.send(Box::new(Message::<B>::AddAutoDiffItems(items))));
     }
 
     pub(crate) fn check_for_errors(&self, sess: &Session) {
