@@ -30,7 +30,7 @@ use tracing::debug;
 
 use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, type_di_node};
 use self::namespace::mangled_name_of_instance;
-use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
+use self::utils::{DIB, create_DIArray, debug_context, is_node_local_to_unit};
 use crate::builder::Builder;
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm;
@@ -131,20 +131,22 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
 }
 
 /// Creates any deferred debug metadata nodes
-pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
-    if let Some(dbg_cx) = &cx.dbg_cx {
-        debug!("finalize");
-
-        if gdb::needs_gdb_debug_scripts_section(cx) {
-            // Add a .debug_gdb_scripts section to this compile-unit. This will
-            // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
-            // which activates the Rust pretty printers for binary this section is
-            // contained in.
-            gdb::get_or_insert_gdb_debug_scripts_section_global(cx);
-        }
-
-        dbg_cx.finalize(cx.sess());
+pub(crate) fn finalize(cx: &mut CodegenCx<'_, '_>) {
+    if cx.dbg_cx.is_none() {
+        return;
     }
+
+    debug!("finalize");
+
+    if gdb::needs_gdb_debug_scripts_section(cx) {
+        // Add a .debug_gdb_scripts section to this compile-unit. This will
+        // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
+        // which activates the Rust pretty printers for binary this section is
+        // contained in.
+        gdb::get_or_insert_gdb_debug_scripts_section_global(cx);
+    }
+
+    debug_context(cx).finalize(cx.sess());
 }
 
 impl<'ll> Builder<'_, 'll, '_> {
@@ -213,10 +215,6 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         unsafe {
             llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, ptr::null());
         }
-    }
-
-    fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {
-        gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
     }
 
     fn set_var_name(&mut self, value: &'ll Value, name: &str) {
@@ -614,7 +612,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         metadata::extend_scope_to_file(self, scope_metadata, file)
     }
 
-    fn debuginfo_finalize(&self) {
+    fn debuginfo_finalize(&mut self) {
         finalize(self)
     }
 
