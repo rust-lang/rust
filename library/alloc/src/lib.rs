@@ -134,7 +134,6 @@
 #![feature(panic_internals)]
 #![feature(pattern)]
 #![feature(pin_coerce_unsized_trait)]
-#![feature(pointer_like_trait)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]

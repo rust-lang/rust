@@ -47,7 +47,6 @@ pub(super) fn check_trait<'tcx>(
     checker.check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized)?;
     checker
         .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn)?;
-    checker.check(lang_items.pointer_like(), visit_implementation_of_pointer_like)?;
     checker.check(
         lang_items.coerce_pointee_validated_trait(),
         visit_implementation_of_coerce_pointee_validity,
@@ -705,104 +704,6 @@ fn infringing_fields_error<'tcx>(
     );
 
     err.emit()
-}
-
-fn visit_implementation_of_pointer_like(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
-    let tcx = checker.tcx;
-    let typing_env = ty::TypingEnv::non_body_analysis(tcx, checker.impl_def_id);
-    let impl_span = tcx.def_span(checker.impl_def_id);
-    let self_ty = tcx.impl_trait_ref(checker.impl_def_id).unwrap().instantiate_identity().self_ty();
-
-    let is_permitted_primitive = match *self_ty.kind() {
-        ty::Adt(def, _) => def.is_box(),
-        ty::Uint(..) | ty::Int(..) | ty::RawPtr(..) | ty::Ref(..) | ty::FnPtr(..) => true,
-        _ => false,
-    };
-
-    if is_permitted_primitive
-        && let Ok(layout) = tcx.layout_of(typing_env.as_query_input(self_ty))
-        && layout.layout.is_pointer_like(&tcx.data_layout)
-    {
-        return Ok(());
-    }
-
-    let why_disqualified = match *self_ty.kind() {
-        // If an ADT is repr(transparent)
-        ty::Adt(self_ty_def, args) => {
-            if self_ty_def.repr().transparent() {
-                // FIXME(compiler-errors): This should and could be deduplicated into a query.
-                // Find the nontrivial field.
-                let adt_typing_env = ty::TypingEnv::non_body_analysis(tcx, self_ty_def.did());
-                let nontrivial_field = self_ty_def.all_fields().find(|field_def| {
-                    let field_ty = tcx.type_of(field_def.did).instantiate_identity();
-                    !tcx.layout_of(adt_typing_env.as_query_input(field_ty))
-                        .is_ok_and(|layout| layout.layout.is_1zst())
-                });
-
-                if let Some(nontrivial_field) = nontrivial_field {
-                    // Check that the nontrivial field implements `PointerLike`.
-                    let nontrivial_field_ty = nontrivial_field.ty(tcx, args);
-                    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
-                    let ocx = ObligationCtxt::new(&infcx);
-                    ocx.register_bound(
-                        ObligationCause::misc(impl_span, checker.impl_def_id),
-                        param_env,
-                        nontrivial_field_ty,
-                        tcx.require_lang_item(LangItem::PointerLike, impl_span),
-                    );
-                    // FIXME(dyn-star): We should regionck this implementation.
-                    if ocx.select_all_or_error().is_empty() {
-                        return Ok(());
-                    } else {
-                        format!(
-                            "the field `{field_name}` of {descr} `{self_ty}` \
-                    does not implement `PointerLike`",
-                            field_name = nontrivial_field.name,
-                            descr = self_ty_def.descr()
-                        )
-                    }
-                } else {
-                    format!(
-                        "the {descr} `{self_ty}` is `repr(transparent)`, \
-                but does not have a non-trivial field (it is zero-sized)",
-                        descr = self_ty_def.descr()
-                    )
-                }
-            } else if self_ty_def.is_box() {
-                // If we got here, then the `layout.is_pointer_like()` check failed
-                // and this box is not a thin pointer.
-
-                String::from("boxes of dynamically-sized types are too large to be `PointerLike`")
-            } else {
-                format!(
-                    "the {descr} `{self_ty}` is not `repr(transparent)`",
-                    descr = self_ty_def.descr()
-                )
-            }
-        }
-        ty::Ref(..) => {
-            // If we got here, then the `layout.is_pointer_like()` check failed
-            // and this reference is not a thin pointer.
-            String::from("references to dynamically-sized types are too large to be `PointerLike`")
-        }
-        ty::Dynamic(..) | ty::Foreign(..) => {
-            String::from("types of dynamic or unknown size may not implement `PointerLike`")
-        }
-        _ => {
-            // This is a white lie; it is true everywhere outside the standard library.
-            format!("only user-defined sized types are eligible for `impl PointerLike`")
-        }
-    };
-
-    Err(tcx
-        .dcx()
-        .struct_span_err(
-            impl_span,
-            "implementation must be applied to type that has the same ABI as a pointer, \
-            or is `repr(transparent)` and whose field is `PointerLike`",
-        )
-        .with_note(why_disqualified)
-        .emit())
 }
 
 fn visit_implementation_of_coerce_pointee_validity(

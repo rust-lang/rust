@@ -1623,7 +1623,6 @@ symbols! {
         pointee_sized,
         pointee_trait,
         pointer,
-        pointer_like,
         poll,
         poll_next,
         position,
