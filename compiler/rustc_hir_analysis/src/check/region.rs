@@ -191,6 +191,14 @@ fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir:
     visitor.cx.var_parent = visitor.cx.parent;
 
     resolve_pat(visitor, arm.pat);
+    // In order to ensure bindings and temporaries from `if let` guards are dropped before the arm's
+    // pattern's bindings, we introduce a new scope nested within the arm's. This contains the
+    // guard's bindings as well as any temporaries and scopes introduced within the arm's body.
+    // `ScopeData::IfThenRescope` is used as it restricts temporaries' lifetimes.
+    // FIXME(guard_patterns): This will likewise be needed for guard patterns. Nesting will be more
+    // complex in that case, and multiple may be needed for `let` guards inside `let` chains.
+    visitor.enter_scope(Scope { local_id: arm.hir_id.local_id, data: ScopeData::IfThenRescope });
+    visitor.cx.var_parent = visitor.cx.parent;
     if let Some(guard) = arm.guard {
         resolve_expr(visitor, guard, !has_let_expr(guard));
     }
