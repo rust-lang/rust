@@ -480,9 +480,9 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_impl_item(self, ii)
     }
 
-    fn visit_foreign_item_ref(&mut self, fi: &'v hir::ForeignItemRef) {
-        self.record("ForeignItemRef", Some(fi.id.hir_id()), fi);
-        hir_visit::walk_foreign_item_ref(self, fi)
+    fn visit_foreign_item_ref(&mut self, fi: &'v hir::ForeignItemId) {
+        self.record("ForeignItemId", Some(fi.hir_id()), fi);
+        hir_visit::walk_foreign_item_ref(self, *fi)
     }
 
     fn visit_impl_item_ref(&mut self, ii: &'v hir::ImplItemRef) {
