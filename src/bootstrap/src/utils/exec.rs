@@ -221,6 +221,7 @@ impl<'a> BootstrapCommand {
     }
 
     /// Spawn the command in background, while capturing and returning stdout, and printing stderr.
+    /// Returns None in dry-mode
     #[track_caller]
     pub fn stream_capture_stdout(
         &'a mut self,

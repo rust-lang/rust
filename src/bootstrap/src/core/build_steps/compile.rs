@@ -12,7 +12,6 @@ use std::ffi::OsStr;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
 use std::{env, fs, str};
 
 use serde_derive::Deserialize;
@@ -2507,7 +2506,6 @@ pub fn stream_cargo(
     #[cfg(feature = "tracing")]
     let _run_span = crate::trace_cmd!(cmd);
 
-    let cargo = cmd.as_command_mut();
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
     let mut message_format = if builder.config.json_output {
@@ -2519,27 +2517,24 @@ pub fn stream_cargo(
         message_format.push_str(",json-diagnostic-");
         message_format.push_str(s);
     }
-    cargo.arg("--message-format").arg(message_format).stdout(Stdio::piped());
+    cmd.arg("--message-format").arg(message_format);
 
     for arg in tail_args {
-        cargo.arg(arg);
+        cmd.arg(arg);
     }
 
-    builder.verbose(|| println!("running: {cargo:?}"));
+    builder.verbose(|| println!("running: {cmd:?}"));
 
-    if builder.config.dry_run() {
+    let streaming_command = cmd.stream_capture_stdout(&builder.config.exec_ctx);
+
+    let Some(mut streaming_command) = streaming_command else {
         return true;
-    }
-
-    let mut child = match cargo.spawn() {
-        Ok(child) => child,
-        Err(e) => panic!("failed to execute command: {cargo:?}\nERROR: {e}"),
     };
 
     // Spawn Cargo slurping up its JSON output. We'll start building up the
     // `deps` array of all files it generated along with a `toplevel` array of
     // files we need to probe for later.
-    let stdout = BufReader::new(child.stdout.take().unwrap());
+    let stdout = BufReader::new(streaming_command.stdout.take().unwrap());
     for line in stdout.lines() {
         let line = t!(line);
         match serde_json::from_str::<CargoMessage<'_>>(&line) {
@@ -2556,13 +2551,14 @@ pub fn stream_cargo(
     }
 
     // Make sure Cargo actually succeeded after we read all of its stdout.
-    let status = t!(child.wait());
+    let status = t!(streaming_command.wait());
     if builder.is_verbose() && !status.success() {
         eprintln!(
-            "command did not execute successfully: {cargo:?}\n\
+            "command did not execute successfully: {cmd:?}\n\
                   expected success, got: {status}"
         );
     }
+
     status.success()
 }
 
