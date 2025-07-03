@@ -4,7 +4,7 @@ extern crate unstable_impl_coherence_inference_aux as aux;
 use aux::Trait;
 
 // The test below should not infer the type based on the fact
-// that ``impl Trait for Vec<u64>`` is unstable. This will cause breakage
+// that `impl Trait for Vec<u64>` is unstable. This would cause breakage
 // in downstream crate once `impl Trait for Vec<u64>` is stabilised.
 
 fn bar() {
