@@ -166,12 +166,12 @@ where
         // monomorphizing a body from an upstream crate which had an unstable feature
         // enabled that we do not.
         //
-        // The coherence tests in  
+        // The coherence tests in
         // tests/ui/unstable-feature_bound/unstable_impl_coherence.rs
         // will fail if we return error instead of ambiguity.
         //
         // Return ambiguity can also prevent people from writing code which depends on inference guidance
-        // that might no longer work after the impl is stabilised, 
+        // that might no longer work after the impl is stabilised,
         // tests/ui/unstable-feature_bound/unstable_impl_coherence_inherence.rs is one of the example.
         //
         // Note: `feature_bound_holds_in_crate` does not consider a feature to be enabled
