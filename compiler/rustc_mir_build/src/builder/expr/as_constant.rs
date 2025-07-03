@@ -1,7 +1,5 @@
 //! See docs in build/expr/mod.rs
 
-use std::marker::PhantomData;
-
 use rustc_abi::Size;
 use rustc_ast as ast;
 use rustc_hir::LangItem;
@@ -125,11 +123,7 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
             let s = s.as_str().as_bytes();
             let len = s.len();
             let allocation = tcx.allocate_bytes_dedup(s, CTFE_ALLOC_SALT);
-            ConstValue::Slice {
-                alloc_id: allocation,
-                meta: len.try_into().unwrap(),
-                phantom: PhantomData,
-            }
+            ConstValue::Slice { alloc_id: allocation, meta: len.try_into().unwrap() }
         }
         (ast::LitKind::ByteStr(byte_sym, _), ty::Ref(_, inner_ty, _))
             if matches!(inner_ty.kind(), ty::Slice(_)) =>
@@ -137,11 +131,7 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
             let data = byte_sym.as_byte_str();
             let len = data.len();
             let allocation = tcx.allocate_bytes_dedup(data, CTFE_ALLOC_SALT);
-            ConstValue::Slice {
-                alloc_id: allocation,
-                meta: len.try_into().unwrap(),
-                phantom: PhantomData,
-            }
+            ConstValue::Slice { alloc_id: allocation, meta: len.try_into().unwrap() }
         }
         (ast::LitKind::ByteStr(byte_sym, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
             let id = tcx.allocate_bytes_dedup(byte_sym.as_byte_str(), CTFE_ALLOC_SALT);
@@ -152,11 +142,7 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
             let data = byte_sym.as_byte_str();
             let len = data.len();
             let allocation = tcx.allocate_bytes_dedup(data, CTFE_ALLOC_SALT);
-            ConstValue::Slice {
-                alloc_id: allocation,
-                meta: len.try_into().unwrap(),
-                phantom: PhantomData,
-            }
+            ConstValue::Slice { alloc_id: allocation, meta: len.try_into().unwrap() }
         }
         (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
             ConstValue::Scalar(Scalar::from_uint(n, Size::from_bytes(1)))

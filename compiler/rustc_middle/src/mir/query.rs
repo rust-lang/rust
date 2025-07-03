@@ -173,5 +173,5 @@ pub enum AnnotationSource {
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct DestructuredConstant<'tcx> {
     pub variant: Option<VariantIdx>,
-    pub fields: &'tcx [(ConstValue<'tcx>, Ty<'tcx>)],
+    pub fields: &'tcx [(ConstValue, Ty<'tcx>)],
 }

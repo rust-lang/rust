@@ -3,7 +3,6 @@
 //! and miri.
 
 use std::assert_matches::assert_matches;
-use std::marker::PhantomData;
 
 use rustc_abi::{FieldIdx, HasDataLayout, Size};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
@@ -129,7 +128,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let tp_ty = instance.args.type_at(0);
                 ensure_monomorphic_enough(tcx, tp_ty)?;
                 let (alloc_id, meta) = alloc_type_name(tcx, tp_ty);
-                let val = ConstValue::Slice { alloc_id, meta, phantom: PhantomData };
+                let val = ConstValue::Slice { alloc_id, meta };
                 let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
                 self.copy_op(&val, dest)?;
             }

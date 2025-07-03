@@ -836,7 +836,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     pub(crate) fn const_val_to_op(
         &self,
-        val_val: mir::ConstValue<'tcx>,
+        val_val: mir::ConstValue,
         ty: Ty<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
@@ -860,7 +860,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             mir::ConstValue::Scalar(x) => adjust_scalar(x)?.into(),
             mir::ConstValue::ZeroSized => Immediate::Uninit,
-            mir::ConstValue::Slice { alloc_id, meta, phantom: _ } => {
+            mir::ConstValue::Slice { alloc_id, meta } => {
                 // This is const data, no mutation allowed.
                 let ptr = Pointer::new(CtfeProvenance::from(alloc_id).as_immutable(), Size::ZERO);
                 Immediate::new_slice(self.global_root_pointer(ptr)?.into(), meta, self)
