@@ -74,7 +74,7 @@ jobs:
         run: |
           sudo apt install gcc-${{ matrix.gcc_cross }}
           echo "Setting environment variables:"
-          echo "CC=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
+          echo "CC_${{ matrix.host_target }}=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
           TARGET_UPPERCASE=$(echo ${{ matrix.host_target }} | tr '[:lower:]-' '[:upper:]_')
           echo "CARGO_TARGET_${TARGET_UPPERCASE}_LINKER=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
 
