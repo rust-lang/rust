@@ -1,7 +1,8 @@
 use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::traits::{
-    ImplDerivedHostCause, ImplSource, Obligation, ObligationCauseCode, PredicateObligation,
+    ImplDerivedHostCause, ImplSource, Obligation, ObligationCause, ObligationCauseCode,
+    PredicateObligation,
 };
 use rustc_middle::span_bug;
 use rustc_middle::traits::query::NoSolution;
@@ -303,6 +304,9 @@ fn evaluate_host_effect_from_builtin_impls<'tcx>(
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
     match selcx.tcx().as_lang_item(obligation.predicate.def_id()) {
         Some(LangItem::Destruct) => evaluate_host_effect_for_destruct_goal(selcx, obligation),
+        Some(LangItem::Fn | LangItem::FnMut | LangItem::FnOnce) => {
+            evaluate_host_effect_for_fn_goal(selcx, obligation)
+        }
         _ => Err(EvaluationFailure::NoSolution),
     }
 }
@@ -396,6 +400,54 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
             )
         })
         .collect())
+}
+
+// NOTE: Keep this in sync with `extract_fn_def_from_const_callable` in the new solver.
+fn evaluate_host_effect_for_fn_goal<'tcx>(
+    selcx: &mut SelectionContext<'_, 'tcx>,
+    obligation: &HostEffectObligation<'tcx>,
+) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
+    let tcx = selcx.tcx();
+    let self_ty = obligation.predicate.self_ty();
+
+    let (def, args) = match *self_ty.kind() {
+        ty::FnDef(def, args) => (def, args),
+
+        // We may support function pointers at some point in the future
+        ty::FnPtr(..) => return Err(EvaluationFailure::NoSolution),
+
+        // Coroutines could implement `[const] Fn`,
+        // but they don't really need to right now.
+        ty::Closure(..)
+        | ty::CoroutineClosure(_, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(_, _) => {
+            return Err(EvaluationFailure::NoSolution);
+        }
+
+        // Everything else needs explicit impls or cannot have an impl
+        _ => return Err(EvaluationFailure::NoSolution),
+    };
+
+    match tcx.constness(def) {
+        hir::Constness::Const => Ok(tcx
+            .const_conditions(def)
+            .instantiate(tcx, args)
+            .into_iter()
+            .map(|(c, span)| {
+                let code = ObligationCauseCode::WhereClause(def, span);
+                let cause =
+                    ObligationCause::new(obligation.cause.span, obligation.cause.body_id, code);
+                Obligation::new(
+                    tcx,
+                    cause,
+                    obligation.param_env,
+                    c.to_host_effect_clause(tcx, obligation.predicate.constness),
+                )
+            })
+            .collect()),
+        hir::Constness::NotConst => Err(EvaluationFailure::NoSolution),
+    }
 }
 
 fn evaluate_host_effect_from_selection_candidate<'tcx>(
