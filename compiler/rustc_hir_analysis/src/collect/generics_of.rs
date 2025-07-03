@@ -1,12 +1,11 @@
 use std::assert_matches::assert_matches;
 use std::ops::ControlFlow;
 
-use hir::intravisit::{self, Visitor};
-use hir::{GenericParamKind, HirId, Node};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::VisitorExt;
-use rustc_hir::{self as hir, AmbigArg};
+use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::{self as hir, AmbigArg, GenericParamKind, HirId, Node};
+use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::{Span, Symbol, kw};
@@ -212,7 +211,19 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             // inherit the generics of the item.
             Some(parent.to_def_id())
         }
-        _ => None,
+
+        // All of these nodes have no parent from which to inherit generics.
+        Node::Item(_) | Node::ForeignItem(_) => None,
+
+        // Params don't really have generics, but we use it when instantiating their value paths.
+        Node::GenericParam(_) => None,
+
+        Node::Synthetic => span_bug!(
+            tcx.def_span(def_id),
+            "synthetic HIR should have its `generics_of` explicitly fed"
+        ),
+
+        _ => span_bug!(tcx.def_span(def_id), "unhandled node {node:?}"),
     };
 
     enum Defaults {
