@@ -301,10 +301,28 @@ fn evaluate_host_effect_from_builtin_impls<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
-    match selcx.tcx().as_lang_item(obligation.predicate.def_id()) {
+    let mut obligations = match selcx.tcx().as_lang_item(obligation.predicate.def_id()) {
         Some(LangItem::Destruct) => evaluate_host_effect_for_destruct_goal(selcx, obligation),
         _ => Err(EvaluationFailure::NoSolution),
-    }
+    }?;
+
+    let mut obligations_from_normalization = thin_vec![];
+    obligations = obligations
+        .drain(..)
+        .map(|mut obligation| {
+            obligation.recursion_depth += 1;
+            normalize_with_depth_to(
+                selcx,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth,
+                obligation,
+                &mut obligations_from_normalization,
+            )
+        })
+        .collect();
+    obligations.extend(obligations_from_normalization.drain(..));
+    Ok(obligations)
 }
 
 // NOTE: Keep this in sync with `const_conditions_for_destruct` in the new solver.
