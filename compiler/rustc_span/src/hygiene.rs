@@ -35,7 +35,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, HashStable_Generic, HashStable_NoContext};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::{debug, trace};
 
@@ -70,6 +70,8 @@ struct SyntaxContextData {
     opaque_and_semiopaque: SyntaxContext,
     /// Name of the crate to which `$crate` with this context would resolve.
     dollar_crate_name: Symbol,
+    /// Pre-computed stable hash.
+    hash: Fingerprint,
 }
 
 impl SyntaxContextData {
@@ -81,6 +83,7 @@ impl SyntaxContextData {
             opaque: SyntaxContext::root(),
             opaque_and_semiopaque: SyntaxContext::root(),
             dollar_crate_name: kw::DollarCrate,
+            hash: Fingerprint::ZERO,
         }
     }
 
@@ -143,7 +146,7 @@ fn assert_default_hashing_controls(ctx: &impl HashStableContext, msg: &str) {
 }
 
 /// A unique hash value associated to an expansion.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable, Decodable, HashStable_NoContext)]
 pub struct ExpnHash(Fingerprint);
 
 impl ExpnHash {
@@ -177,7 +180,7 @@ impl ExpnHash {
 /// A property of a macro expansion that determines how identifiers
 /// produced by that expansion are resolved.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash, Debug, Encodable, Decodable)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable_NoContext)]
 pub enum Transparency {
     /// Identifier produced by a transparent expansion is always resolved at call-site.
     /// Call-site spans in procedural macros, hygiene opt-out in `macro` should use this.
@@ -603,6 +606,16 @@ impl HygieneData {
             ),
         };
 
+        let hash = {
+            let mut hasher = StableHasher::new();
+            self.syntax_context_data[parent.as_u32() as usize]
+                .hash
+                .hash_stable(&mut (), &mut hasher);
+            self.expn_hash(expn_id).hash_stable(&mut (), &mut hasher);
+            transparency.hash_stable(&mut (), &mut hasher);
+            hasher.finish()
+        };
+
         // Fill the full data, now that we have it.
         self.syntax_context_data[ctxt.as_u32() as usize] = SyntaxContextData {
             outer_expn: expn_id,
@@ -611,6 +624,7 @@ impl HygieneData {
             opaque,
             opaque_and_semiopaque,
             dollar_crate_name: kw::DollarCrate,
+            hash,
         };
         ctxt
     }
@@ -894,11 +908,6 @@ impl SyntaxContext {
     #[inline]
     pub fn outer_expn_data(self) -> ExpnData {
         HygieneData::with(|data| data.expn_data(data.outer_expn(self)).clone())
-    }
-
-    #[inline]
-    fn outer_mark(self) -> (ExpnId, Transparency) {
-        HygieneData::with(|data| data.outer_mark(self))
     }
 
     pub(crate) fn dollar_crate_name(self) -> Symbol {
@@ -1520,17 +1529,15 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut ctx: impl HashStableContex
 
 impl<CTX: HashStableContext> HashStable<CTX> for SyntaxContext {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        const TAG_EXPANSION: u8 = 0;
-        const TAG_NO_EXPANSION: u8 = 1;
-
-        if self.is_root() {
-            TAG_NO_EXPANSION.hash_stable(ctx, hasher);
+        assert_default_hashing_controls(ctx, "SyntaxContext");
+        let hash = if *self == SyntaxContext::root() {
+            // Avoid fetching TLS storage for a trivial often-used value.
+            Fingerprint::ZERO
         } else {
-            TAG_EXPANSION.hash_stable(ctx, hasher);
-            let (expn_id, transparency) = self.outer_mark();
-            expn_id.hash_stable(ctx, hasher);
-            transparency.hash_stable(ctx, hasher);
-        }
+            HygieneData::with(|data| data.syntax_context_data[self.0 as usize].hash)
+        };
+
+        hash.hash_stable(ctx, hasher);
     }
 }
 
