@@ -89,6 +89,7 @@ pub(crate) mod context;
 mod lints;
 pub mod parser;
 mod session_diagnostics;
+mod target;
 
 pub use attributes::cfg::*;
 pub use attributes::util::{
@@ -96,5 +97,6 @@ pub use attributes::util::{
 };
 pub use context::{AttributeParser, Early, Late, OmitDoc};
 pub use lints::emit_attribute_lint;
+pub use target::*;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
