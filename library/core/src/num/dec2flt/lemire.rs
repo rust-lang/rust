@@ -55,7 +55,7 @@ pub fn compute_float<F: RawFloat>(q: i64, mut w: u64) -> BiasedFp {
         // <https://arxiv.org/pdf/2101.11408.pdf#section.9.1>. For detailed
         // explanations of rounding for positive exponents, see
         // <https://arxiv.org/pdf/2101.11408.pdf#section.8>.
-        let inside_safe_exponent = (q >= -27) && (q <= 55);
+        let inside_safe_exponent = (-27..=55).contains(&q);
         if !inside_safe_exponent {
             return fp_error;
         }
