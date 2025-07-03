@@ -14,13 +14,12 @@ use core::{cell::RefCell, ops::Drop};
 
 fn main() {
     // Test that `let` guard bindings and temps are dropped before the arm's pattern's bindings.
-    // TODO: this is currently the old behavior (`let` bindings dropped after arm bindings).
     assert_drop_order(1..=6, |o| {
         // We move out of the scrutinee, so the drop order of the array's elements are based on
         // binding declaration order, and they're dropped in the arm's scope.
-        match [o.log(3), o.log(2)] {
+        match [o.log(6), o.log(5)] {
             // Partially move from the guard temporary to test drops both for temps and the binding.
-            [_x, _y] if let [_, _z, _] = [o.log(6), o.log(4), o.log(5)]
+            [_x, _y] if let [_, _z, _] = [o.log(4), o.log(2), o.log(3)]
                 && true => { let _a = o.log(1); }
             _ => unreachable!(),
         }
