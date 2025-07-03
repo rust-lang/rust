@@ -579,7 +579,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) => {
                     let src = self.evaluated[value].as_ref()?;
                     let dest = self.ecx.allocate(ty, MemoryKind::Stack).discard_err()?;
-                    self.ecx.unsize_into(src, ty, &dest.clone().into()).discard_err()?;
+                    self.ecx.unsize_into(src, ty, &dest).discard_err()?;
                     self.ecx
                         .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
                         .discard_err()?;
