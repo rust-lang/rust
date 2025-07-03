@@ -627,14 +627,32 @@ impl CStore {
         }
     }
 
-    pub(crate) fn update_extern_crate(&mut self, cnum: CrateNum, extern_crate: ExternCrate) {
+    /// Track how an extern crate has been loaded. Called after resolving an import in the local crate.
+    pub(crate) fn update_extern_crate(
+        &mut self,
+        cnum: CrateNum,
+        extern_crate: ExternCrate,
+    ) {
+        debug_assert_eq!(
+            extern_crate.dependency_of, LOCAL_CRATE,
+            "this function should not be called on transitive dependencies"
+        );
+        self.update_transitive_extern_crate_diagnostics(cnum, extern_crate);
+    }
+
+    /// `CrateMetadata` uses `ExternCrate` only for diagnostics
+    fn update_transitive_extern_crate_diagnostics(
+        &mut self,
+        cnum: CrateNum,
+        extern_crate: ExternCrate,
+    ) {
         let cmeta = self.get_crate_data_mut(cnum);
-        if cmeta.update_extern_crate(extern_crate) {
+        if cmeta.update_extern_crate_diagnostics(extern_crate) {
             // Propagate the extern crate info to dependencies if it was updated.
             let extern_crate = ExternCrate { dependency_of: cnum, ..extern_crate };
             let dependencies = mem::take(&mut cmeta.dependencies);
             for &dep_cnum in &dependencies {
-                self.update_extern_crate(dep_cnum, extern_crate);
+                self.update_transitive_extern_crate_diagnostics(dep_cnum, extern_crate);
             }
             self.get_crate_data_mut(cnum).dependencies = dependencies;
         }
