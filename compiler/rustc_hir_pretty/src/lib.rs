@@ -654,8 +654,8 @@ impl<'a> State<'a> {
                 let (cb, ib) = self.head("extern");
                 self.word_nbsp(abi.to_string());
                 self.bopen(ib);
-                for item in items {
-                    self.ann.nested(self, Nested::ForeignItem(item.id));
+                for &foreign_item in items {
+                    self.ann.nested(self, Nested::ForeignItem(foreign_item));
                 }
                 self.bclose(item.span, cb);
             }

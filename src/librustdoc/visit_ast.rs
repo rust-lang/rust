@@ -469,8 +469,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
         match item.kind {
             hir::ItemKind::ForeignMod { items, .. } => {
-                for item in items {
-                    let item = tcx.hir_foreign_item(item.id);
+                for &item in items {
+                    let item = tcx.hir_foreign_item(item);
                     self.visit_foreign_item_inner(item, None, None);
                 }
             }

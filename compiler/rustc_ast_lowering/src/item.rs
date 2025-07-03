@@ -704,14 +704,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(item)
     }
 
-    fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemRef {
-        hir::ForeignItemRef {
-            id: hir::ForeignItemId { owner_id: self.owner_id(i.id) },
-            // `unwrap` is safe because `ForeignItemKind::MacCall` is the only foreign item kind
-            // without an identifier and it cannot reach here.
-            ident: self.lower_ident(i.kind.ident().unwrap()),
-            span: self.lower_span(i.span),
-        }
+    fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemId {
+        hir::ForeignItemId { owner_id: self.owner_id(i.id) }
     }
 
     fn lower_variant(&mut self, item_kind: &ItemKind, v: &Variant) -> hir::Variant<'hir> {

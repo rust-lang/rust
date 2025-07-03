@@ -117,7 +117,7 @@ hir-stats ImplItemRef               48 (NN.N%)             2            24
 hir-stats ExprField                 40 (NN.N%)             1            40
 hir-stats Mod                       32 (NN.N%)             1            32
 hir-stats Lifetime                  28 (NN.N%)             1            28
-hir-stats ForeignItemRef            24 (NN.N%)             1            24
+hir-stats ForeignItemId              4 (NN.N%)             1             4
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_684                   173
+hir-stats Total                  8_664                   173
 hir-stats ================================================================

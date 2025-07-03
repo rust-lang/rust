@@ -4138,7 +4138,7 @@ impl<'hir> Item<'hir> {
 
         expect_mod, (Ident, &'hir Mod<'hir>), ItemKind::Mod(ident, m), (*ident, m);
 
-        expect_foreign_mod, (ExternAbi, &'hir [ForeignItemRef]),
+        expect_foreign_mod, (ExternAbi, &'hir [ForeignItemId]),
             ItemKind::ForeignMod { abi, items }, (*abi, items);
 
         expect_global_asm, &'hir InlineAsm<'hir>, ItemKind::GlobalAsm { asm, .. }, asm;
@@ -4315,7 +4315,7 @@ pub enum ItemKind<'hir> {
     /// A module.
     Mod(Ident, &'hir Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
-    ForeignMod { abi: ExternAbi, items: &'hir [ForeignItemRef] },
+    ForeignMod { abi: ExternAbi, items: &'hir [ForeignItemId] },
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm {
         asm: &'hir InlineAsm<'hir>,
@@ -4445,19 +4445,6 @@ impl ForeignItemId {
         // Items are always HIR owners.
         HirId::make_owner(self.owner_id.def_id)
     }
-}
-
-/// A reference from a foreign block to one of its items. This
-/// contains the item's ID, naturally, but also the item's name and
-/// some other high-level details (like whether it is an associated
-/// type or method, and whether it is public). This allows other
-/// passes to find the impl they want without loading the ID (which
-/// means fewer edges in the incremental compilation graph).
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub struct ForeignItemRef {
-    pub id: ForeignItemId,
-    pub ident: Ident,
-    pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]

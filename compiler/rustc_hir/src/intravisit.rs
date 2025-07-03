@@ -441,8 +441,8 @@ pub trait Visitor<'v>: Sized {
     fn visit_impl_item(&mut self, ii: &'v ImplItem<'v>) -> Self::Result {
         walk_impl_item(self, ii)
     }
-    fn visit_foreign_item_ref(&mut self, ii: &'v ForeignItemRef) -> Self::Result {
-        walk_foreign_item_ref(self, ii)
+    fn visit_foreign_item_ref(&mut self, ii: &'v ForeignItemId) -> Self::Result {
+        walk_foreign_item_ref(self, *ii)
     }
     fn visit_impl_item_ref(&mut self, ii: &'v ImplItemRef) -> Self::Result {
         walk_impl_item_ref(self, ii)
@@ -1290,13 +1290,8 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
     }
 }
 
-pub fn walk_foreign_item_ref<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    foreign_item_ref: &'v ForeignItemRef,
-) -> V::Result {
-    let ForeignItemRef { id, ident, span: _ } = *foreign_item_ref;
-    try_visit!(visitor.visit_nested_foreign_item(id));
-    visitor.visit_ident(ident)
+pub fn walk_foreign_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, id: ForeignItemId) -> V::Result {
+    visitor.visit_nested_foreign_item(id)
 }
 
 pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(
