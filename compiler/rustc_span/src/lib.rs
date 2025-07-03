@@ -482,6 +482,16 @@ impl FileName {
             _ => None,
         }
     }
+
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    pub fn remapped_path_if_available(&self) -> Option<&Path> {
+        match self {
+            FileName::Real(path) => Some(path.remapped_path_if_available()),
+            FileName::DocTest(path, _) => Some(path),
+            _ => return None,
+        }
+    }
 }
 
 /// Represents a span.
