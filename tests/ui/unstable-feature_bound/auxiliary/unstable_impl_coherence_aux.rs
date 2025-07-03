@@ -9,6 +9,3 @@ pub trait Trait {}
 #[unstable_feature_bound(foo)]
 #[unstable(feature = "foo", issue = "none" )]
 impl <T> Trait for T {}
-
-fn main() {
-}

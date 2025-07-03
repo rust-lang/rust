@@ -3,9 +3,9 @@
 #![stable(feature = "a", since = "1.1.1" )]
 
 #[stable(feature = "a", since = "1.1.1" )]
-pub trait Trait { 
+pub trait Trait {
     #[stable(feature = "a", since = "1.1.1" )]
-    fn foo(&self) {} 
+    fn foo(&self) {}
 }
 
 #[stable(feature = "a", since = "1.1.1" )]
