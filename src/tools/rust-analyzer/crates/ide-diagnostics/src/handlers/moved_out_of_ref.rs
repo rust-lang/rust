@@ -239,4 +239,22 @@ impl S {
 "#,
         )
     }
+
+    #[test]
+    fn regression_20155() {
+        check_diagnostics(
+            r#"
+//- minicore: copy, option
+struct Box(i32);
+fn test() {
+    let b = Some(Box(0));
+    || {
+        if let Some(b) = b {
+            let _move = b;
+        }
+    };
+}
+"#,
+        )
+    }
 }
