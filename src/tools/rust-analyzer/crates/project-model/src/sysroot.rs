@@ -163,18 +163,18 @@ impl Sysroot {
         }
     }
 
-    pub fn discover_proc_macro_srv(&self) -> anyhow::Result<AbsPathBuf> {
-        let Some(root) = self.root() else {
-            return Err(anyhow::format_err!("no sysroot",));
-        };
-        ["libexec", "lib"]
-            .into_iter()
-            .map(|segment| root.join(segment).join("rust-analyzer-proc-macro-srv"))
-            .find_map(|server_path| probe_for_binary(server_path.into()))
-            .map(AbsPathBuf::assert)
-            .ok_or_else(|| {
-                anyhow::format_err!("cannot find proc-macro server in sysroot `{}`", root)
-            })
+    pub fn discover_proc_macro_srv(&self) -> Option<anyhow::Result<AbsPathBuf>> {
+        let root = self.root()?;
+        Some(
+            ["libexec", "lib"]
+                .into_iter()
+                .map(|segment| root.join(segment).join("rust-analyzer-proc-macro-srv"))
+                .find_map(|server_path| probe_for_binary(server_path.into()))
+                .map(AbsPathBuf::assert)
+                .ok_or_else(|| {
+                    anyhow::format_err!("cannot find proc-macro server in sysroot `{}`", root)
+                }),
+        )
     }
 
     fn assemble(

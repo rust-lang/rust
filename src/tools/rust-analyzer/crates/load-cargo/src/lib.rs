@@ -78,20 +78,27 @@ pub fn load_workspace(
 
     tracing::debug!(?load_config, "LoadCargoConfig");
     let proc_macro_server = match &load_config.with_proc_macro_server {
-        ProcMacroServerChoice::Sysroot => ws
-            .find_sysroot_proc_macro_srv()
-            .and_then(|it| ProcMacroClient::spawn(&it, extra_env).map_err(Into::into))
-            .map_err(|e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())),
-        ProcMacroServerChoice::Explicit(path) => ProcMacroClient::spawn(path, extra_env)
-            .map_err(|e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())),
-        ProcMacroServerChoice::None => Err(ProcMacroLoadingError::Disabled),
+        ProcMacroServerChoice::Sysroot => ws.find_sysroot_proc_macro_srv().map(|it| {
+            it.and_then(|it| ProcMacroClient::spawn(&it, extra_env).map_err(Into::into)).map_err(
+                |e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str()),
+            )
+        }),
+        ProcMacroServerChoice::Explicit(path) => {
+            Some(ProcMacroClient::spawn(path, extra_env).map_err(|e| {
+                ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())
+            }))
+        }
+        ProcMacroServerChoice::None => Some(Err(ProcMacroLoadingError::Disabled)),
     };
     match &proc_macro_server {
-        Ok(server) => {
-            tracing::info!(path=%server.server_path(), "Proc-macro server started")
+        Some(Ok(server)) => {
+            tracing::info!(manifest=%ws.manifest_or_root(), path=%server.server_path(), "Proc-macro server started")
         }
-        Err(e) => {
-            tracing::info!(%e, "Failed to start proc-macro server")
+        Some(Err(e)) => {
+            tracing::info!(manifest=%ws.manifest_or_root(), %e, "Failed to start proc-macro server")
+        }
+        None => {
+            tracing::info!(manifest=%ws.manifest_or_root(), "No proc-macro server started")
         }
     }
 
@@ -108,8 +115,13 @@ pub fn load_workspace(
     );
     let proc_macros = {
         let proc_macro_server = match &proc_macro_server {
-            Ok(it) => Ok(it),
-            Err(e) => Err(ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())),
+            Some(Ok(it)) => Ok(it),
+            Some(Err(e)) => {
+                Err(ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str()))
+            }
+            None => Err(ProcMacroLoadingError::ProcMacroSrvError(
+                "proc-macro-srv is not running, workspace is missing a sysroot".into(),
+            )),
         };
         proc_macros
             .into_iter()
@@ -144,7 +156,7 @@ pub fn load_workspace(
     if load_config.prefill_caches {
         prime_caches::parallel_prime_caches(&db, 1, &|_| ());
     }
-    Ok((db, vfs, proc_macro_server.ok()))
+    Ok((db, vfs, proc_macro_server.and_then(Result::ok)))
 }
 
 #[derive(Default)]

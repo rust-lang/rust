@@ -101,7 +101,7 @@ pub(crate) struct GlobalState {
     pub(crate) last_reported_status: lsp_ext::ServerStatusParams,
 
     // proc macros
-    pub(crate) proc_macro_clients: Arc<[anyhow::Result<ProcMacroClient>]>,
+    pub(crate) proc_macro_clients: Arc<[Option<anyhow::Result<ProcMacroClient>>]>,
     pub(crate) build_deps_changed: bool,
 
     // Flycheck
