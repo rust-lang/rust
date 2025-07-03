@@ -2,7 +2,7 @@ use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_errors::{DiagCtxtHandle, FatalError};
 use rustc_middle::dep_graph::WorkProduct;
 
-use crate::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
+use crate::back::lto::{SerializedModule, ThinModule};
 use crate::back::write::{CodegenContext, FatLtoInput, ModuleConfig};
 use crate::{CompiledModule, ModuleCodegen};
 
@@ -26,7 +26,7 @@ pub trait WriteBackendMethods: Clone + 'static {
         cgcx: &CodegenContext<Self>,
         modules: Vec<FatLtoInput<Self>>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-    ) -> Result<LtoModuleCodegen<Self>, FatalError>;
+    ) -> Result<ModuleCodegen<Self::Module>, FatalError>;
     /// Performs thin LTO by performing necessary global analysis and returning two
     /// lists, one of the modules that need optimization and another for modules that
     /// can simply be copied over from the incr. comp. cache.
@@ -34,7 +34,7 @@ pub trait WriteBackendMethods: Clone + 'static {
         cgcx: &CodegenContext<Self>,
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-    ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError>;
+    ) -> Result<(Vec<ThinModule<Self>>, Vec<WorkProduct>), FatalError>;
     fn print_pass_timings(&self);
     fn print_statistics(&self);
     fn optimize(

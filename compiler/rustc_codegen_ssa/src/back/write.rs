@@ -408,14 +408,16 @@ fn generate_lto_work<B: ExtraBackendMethods>(
 
     if !needs_fat_lto.is_empty() {
         assert!(needs_thin_lto.is_empty());
-        let mut module =
+        let module =
             B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
         if cgcx.lto == Lto::Fat && !autodiff.is_empty() {
             let config = cgcx.config(ModuleKind::Regular);
-            module = module.autodiff(cgcx, autodiff, config).unwrap_or_else(|e| e.raise());
+            if let Err(err) = B::autodiff(cgcx, &module, autodiff, config) {
+                err.raise();
+            }
         }
         // We are adding a single work item, so the cost doesn't matter.
-        vec![(WorkItem::LTO(module), 0)]
+        vec![(WorkItem::FatLto(module), 0)]
     } else {
         if !autodiff.is_empty() {
             let dcx = cgcx.create_dcx();
@@ -428,7 +430,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
             .into_iter()
             .map(|module| {
                 let cost = module.cost();
-                (WorkItem::LTO(module), cost)
+                (WorkItem::ThinLto(module), cost)
             })
             .chain(copy_jobs.into_iter().map(|wp| {
                 (
@@ -736,15 +738,19 @@ pub(crate) enum WorkItem<B: WriteBackendMethods> {
     /// Copy the post-LTO artifacts from the incremental cache to the output
     /// directory.
     CopyPostLtoArtifacts(CachedModuleCodegen),
-    /// Performs (Thin)LTO on the given module.
-    LTO(lto::LtoModuleCodegen<B>),
+    /// Performs fat LTO on the given module.
+    FatLto(ModuleCodegen<B::Module>),
+    /// Performs thin-LTO on the given module.
+    ThinLto(lto::ThinModule<B>),
 }
 
 impl<B: WriteBackendMethods> WorkItem<B> {
     fn module_kind(&self) -> ModuleKind {
         match *self {
             WorkItem::Optimize(ref m) => m.kind,
-            WorkItem::CopyPostLtoArtifacts(_) | WorkItem::LTO(_) => ModuleKind::Regular,
+            WorkItem::CopyPostLtoArtifacts(_) | WorkItem::FatLto(_) | WorkItem::ThinLto(_) => {
+                ModuleKind::Regular
+            }
         }
     }
 
@@ -792,7 +798,8 @@ impl<B: WriteBackendMethods> WorkItem<B> {
         match self {
             WorkItem::Optimize(m) => desc("opt", "optimize module", &m.name),
             WorkItem::CopyPostLtoArtifacts(m) => desc("cpy", "copy LTO artifacts for", &m.name),
-            WorkItem::LTO(m) => desc("lto", "LTO module", m.name()),
+            WorkItem::FatLto(_) => desc("lto", "fat LTO module", "everything"),
+            WorkItem::ThinLto(m) => desc("lto", "thin-LTO module", m.name()),
         }
     }
 }
@@ -996,12 +1003,21 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     })
 }
 
-fn execute_lto_work_item<B: ExtraBackendMethods>(
+fn execute_fat_lto_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
-    module: lto::LtoModuleCodegen<B>,
+    mut module: ModuleCodegen<B::Module>,
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
-    let module = module.optimize(cgcx)?;
+    B::optimize_fat(cgcx, &mut module)?;
+    finish_intra_module_work(cgcx, module, module_config)
+}
+
+fn execute_thin_lto_work_item<B: ExtraBackendMethods>(
+    cgcx: &CodegenContext<B>,
+    module: lto::ThinModule<B>,
+    module_config: &ModuleConfig,
+) -> Result<WorkItemResult<B>, FatalError> {
+    let module = B::optimize_thin(cgcx, module)?;
     finish_intra_module_work(cgcx, module, module_config)
 }
 
@@ -1842,10 +1858,16 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
                     );
                     Ok(execute_copy_from_cache_work_item(&cgcx, m, module_config))
                 }
-                WorkItem::LTO(m) => {
+                WorkItem::FatLto(m) => {
+                    let _timer = cgcx
+                        .prof
+                        .generic_activity_with_arg("codegen_module_perform_lto", "everything");
+                    execute_fat_lto_work_item(&cgcx, m, module_config)
+                }
+                WorkItem::ThinLto(m) => {
                     let _timer =
                         cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", m.name());
-                    execute_lto_work_item(&cgcx, m, module_config)
+                    execute_thin_lto_work_item(&cgcx, m, module_config)
                 }
             })
         };
