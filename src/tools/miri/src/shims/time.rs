@@ -366,14 +366,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         clock_id: &OpTy<'tcx>,
         flags: &OpTy<'tcx>,
-        req: &OpTy<'tcx>,
+        timespec: &OpTy<'tcx>,
         rem: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-
         let clockid_t_size = this.libc_ty_layout("clockid_t").size;
+
         let clock_id = this.read_scalar(clock_id)?.to_int(clockid_t_size)?;
-        let req = this.deref_pointer_as(req, this.libc_ty_layout("timespec"))?;
+        let timespec = this.deref_pointer_as(timespec, this.libc_ty_layout("timespec"))?;
         let flags = this.read_scalar(flags)?.to_i32()?;
         let _rem = this.read_pointer(rem)?; // Signal handlers are not supported, so rem will never be written to.
 
@@ -382,7 +382,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("clock_nanosleep: only CLOCK_MONOTONIC is supported");
         }
 
-        let duration = match this.read_timespec(&req)? {
+        let duration = match this.read_timespec(&timespec)? {
             Some(duration) => duration,
             None => {
                 return this.set_last_error_and_return_i32(LibcError("EINVAL"));
