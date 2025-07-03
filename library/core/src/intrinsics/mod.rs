@@ -472,7 +472,8 @@ pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
 }
 
 /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
-/// This will statically either panic, or do nothing.
+/// This will statically either panic, or do nothing. It does not *guarantee* to ever panic,
+/// and should only be called if an assertion failure will imply language UB in the following code.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic_const_stable_indirect]
@@ -481,7 +482,9 @@ pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
 pub const fn assert_inhabited<T>();
 
 /// A guard for unsafe functions that cannot ever be executed if `T` does not permit
-/// zero-initialization: This will statically either panic, or do nothing.
+/// zero-initialization: This will statically either panic, or do nothing. It does not *guarantee*
+/// to ever panic, and should only be called if an assertion failure will imply language UB in the
+/// following code.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic_const_stable_indirect]
@@ -489,7 +492,9 @@ pub const fn assert_inhabited<T>();
 #[rustc_intrinsic]
 pub const fn assert_zero_valid<T>();
 
-/// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing.
+/// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing. It does
+/// not *guarantee* to ever panic, and should only be called if an assertion failure will imply
+/// language UB in the following code.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic_const_stable_indirect]

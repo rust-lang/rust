@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at .value[0]: encountered uninitialized memory, but expected a floating point number
+error: Undefined Behavior: constructing invalid value at [0]: encountered uninitialized memory, but expected a floating point number
   --> tests/fail/validity/uninit_float.rs:LL:CC
    |
 LL |     let _val: [f32; 1] = unsafe { std::mem::uninitialized() };
