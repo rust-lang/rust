@@ -3428,8 +3428,6 @@ pub struct DeducedParamAttrs {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.maybe_unused_trait_imports =
-        |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
     providers.is_panic_runtime =
