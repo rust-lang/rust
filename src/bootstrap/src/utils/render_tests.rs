@@ -7,7 +7,7 @@
 //! to reimplement all the rendering logic in this module because of that.
 
 use std::io::{BufRead, BufReader, Read, Write};
-use std::process::{ChildStdout, Stdio};
+use std::process::ChildStdout;
 use std::time::Duration;
 
 use termcolor::{Color, ColorSpec, WriteColor};
@@ -52,32 +52,28 @@ pub(crate) fn try_run_tests(
 }
 
 fn run_tests(builder: &Builder<'_>, cmd: &mut BootstrapCommand, stream: bool) -> bool {
-    let cmd = cmd.as_command_mut();
-    cmd.stdout(Stdio::piped());
-
     builder.verbose(|| println!("running: {cmd:?}"));
 
-    let mut process = cmd.spawn().unwrap();
+    let mut streaming_command = cmd.stream_capture_stdout(&builder.config.exec_ctx).unwrap();
 
     // This runs until the stdout of the child is closed, which means the child exited. We don't
     // run this on another thread since the builder is not Sync.
-    let renderer = Renderer::new(process.stdout.take().unwrap(), builder);
+    let renderer = Renderer::new(streaming_command.stdout.take().unwrap(), builder);
     if stream {
         renderer.stream_all();
     } else {
         renderer.render_all();
     }
 
-    let result = process.wait_with_output().unwrap();
-    if !result.status.success() && builder.is_verbose() {
+    let status = streaming_command.wait().unwrap();
+    if !status.success() && builder.is_verbose() {
         println!(
             "\n\ncommand did not execute successfully: {cmd:?}\n\
-             expected success, got: {}",
-            result.status
+             expected success, got: {status}",
         );
     }
 
-    result.status.success()
+    status.success()
 }
 
 struct Renderer<'a> {
