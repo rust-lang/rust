@@ -367,18 +367,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         clock_id: &OpTy<'tcx>,
         flags: &OpTy<'tcx>,
         req: &OpTy<'tcx>,
-        rem: &OpTy<'tcx>, // Signal handlers are not supported, so rem will never be written to.
+        rem: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let clockid_t_size = this.libc_ty_layout("clockid_t").size;
-        let clock_id = this.read_scalar(clock_id_op)?.to_int(clockid_t_size)?;
-        let req = this.deref_pointer_as(req_op, this.libc_ty_layout("timespec"))?;
-        // TODO must be a better way to do this, also fix the
-        // if compare of the flags later
-        let int_size = this.libc_ty_layout("int").size;
-        let flags = this.read_scalar(flags)?.to_int(int_size);
-        let rem = this.read_pointer()?;
+        let clock_id = this.read_scalar(clock_id)?.to_int(clockid_t_size)?;
+        let req = this.deref_pointer_as(req, this.libc_ty_layout("timespec"))?;
+        let flags = this.read_scalar(flags)?.to_i32()?;
+        let _rem = this.read_pointer(rem)?; // Signal handlers are not supported, so rem will never be written to.
 
         // The standard lib through sleep_until only needs CLOCK_MONOTONIC
         if clock_id != this.eval_libc("CLOCK_MONOTONIC").to_int(clockid_t_size)? {
@@ -396,14 +393,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // No flags set, the timespec should be interperted as a duration
             // to sleep for
             TimeoutAnchor::Relative
-        } else if flag == this.eval_libc("TIMER_ABSTIME").to_int(int_size) {
+        } else if flags == this.eval_libc("TIMER_ABSTIME").to_i32()? {
             // Only flag TIMER_ABSTIME set, the timespec should be interperted as
             // an absolute time.
             TimeoutAnchor::Absolute
         } else {
-            // The standard lib through sleep_until only needs TIMER_ABSTIME
+            // The standard lib (through `sleep_until`) only needs TIMER_ABSTIME
             throw_unsup_format!(
-                "`clock_nanosleep` unsupported flags {flags}, only no flags or\
+                "`clock_nanosleep` unsupported flags {flags}, only no flags or \
                 TIMER_ABSTIME is supported"
             );
         };
