@@ -194,6 +194,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::TrackCaller(attr_span)) => {
                     self.check_track_caller(hir_id, *attr_span, attrs, span, target)
                 }
+                Attribute::Parsed(AttributeKind::NonExhaustive(attr_span)) => {
+                    self.check_non_exhaustive(hir_id, *attr_span, span, target, item)
+                }
                 Attribute::Parsed(
                     AttributeKind::RustcLayoutScalarValidRangeStart(_num, attr_span)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(_num, attr_span),
@@ -237,7 +240,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::no_sanitize, ..] => {
                             self.check_no_sanitize(attr, span, target)
                         }
-                        [sym::non_exhaustive, ..] => self.check_non_exhaustive(hir_id, attr, span, target, item),
                         [sym::marker, ..] => self.check_marker(hir_id, attr, span, target),
                         [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
                         [sym::doc, ..] => self.check_doc_attrs(
@@ -779,7 +781,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_non_exhaustive(
         &self,
         hir_id: HirId,
-        attr: &Attribute,
+        attr_span: Span,
         span: Span,
         target: Target,
         item: Option<ItemLike<'_>>,
@@ -794,7 +796,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     && fields.iter().any(|f| f.default.is_some())
                 {
                     self.dcx().emit_err(errors::NonExhaustiveWithDefaultFieldValues {
-                        attr_span: attr.span(),
+                        attr_span,
                         defn_span: span,
                     });
                 }
@@ -805,13 +807,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "non_exhaustive");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr_span, "non_exhaustive");
             }
             _ => {
-                self.dcx().emit_err(errors::NonExhaustiveWrongLocation {
-                    attr_span: attr.span(),
-                    defn_span: span,
-                });
+                self.dcx()
+                    .emit_err(errors::NonExhaustiveWrongLocation { attr_span, defn_span: span });
             }
         }
     }
