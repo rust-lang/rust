@@ -3,6 +3,7 @@ error[E0599]: cannot write into `String`
    |
 LL |     let _ = write!(buf, "foo");
    |                    ^^^
+   |
   --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
    |
    = note: the method is available for `String` here

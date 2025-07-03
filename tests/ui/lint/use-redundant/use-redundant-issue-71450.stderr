@@ -3,6 +3,7 @@ warning: the item `String` is imported redundantly
    |
 LL |         use std::string::String;
    |             ^^^^^^^^^^^^^^^^^^^
+   |
   --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
    |
    = note: the item `String` is already defined here

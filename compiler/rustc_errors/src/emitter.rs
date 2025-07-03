@@ -1591,6 +1591,9 @@ impl HumanEmitter {
             annotated_files.swap(0, pos);
         }
 
+        // An end column separator should be emitted when a file with with a
+        // source, is followed by one without a source
+        let mut col_sep_before_no_show_source = false;
         let annotated_files_len = annotated_files.len();
         // Print out the annotate source lines that correspond with the error
         for (file_idx, annotated_file) in annotated_files.into_iter().enumerate() {
@@ -1601,6 +1604,26 @@ impl HumanEmitter {
                 &annotated_file.file,
             ) {
                 if !self.short_message {
+                    // Add an end column separator when a file without a source
+                    // comes after one with a source
+                    //    ╭▸ $DIR/deriving-meta-unknown-trait.rs:1:10
+                    //    │
+                    // LL │ #[derive(Eqr)]
+                    //    │          ━━━
+                    //    ╰╴ (<- It prints *this* line)
+                    //    ╭▸ $SRC_DIR/core/src/cmp.rs:356:0
+                    //    │
+                    //    ╰╴note: similarly named derive macro `Eq` defined here
+                    if col_sep_before_no_show_source {
+                        let buffer_msg_line_offset = buffer.num_lines();
+                        self.draw_col_separator_end(
+                            &mut buffer,
+                            buffer_msg_line_offset,
+                            max_line_num_len + 1,
+                        );
+                    }
+                    col_sep_before_no_show_source = false;
+
                     // We'll just print an unannotated message.
                     for (annotation_id, line) in annotated_file.lines.iter().enumerate() {
                         let mut annotations = line.annotations.clone();
@@ -1671,6 +1694,8 @@ impl HumanEmitter {
                     }
                 }
                 continue;
+            } else {
+                col_sep_before_no_show_source = true;
             }
 
             // print out the span location and spacer before we print the annotated source

@@ -3,6 +3,7 @@ warning: the item `Some` is imported redundantly
    |
 LL | use std::option::Option::Some;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
   --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
    |
    = note: the item `Some` is already defined here
@@ -17,6 +18,7 @@ warning: the item `None` is imported redundantly
    |
 LL | use std::option::Option::None;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
   --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
    |
    = note: the item `None` is already defined here
@@ -26,6 +28,7 @@ warning: the item `Ok` is imported redundantly
    |
 LL | use std::result::Result::Ok;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
   --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
    |
    = note: the item `Ok` is already defined here
@@ -35,6 +38,7 @@ warning: the item `Err` is imported redundantly
    |
 LL | use std::result::Result::Err;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
   --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
    |
    = note: the item `Err` is already defined here
