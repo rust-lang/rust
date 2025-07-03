@@ -162,10 +162,19 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
         trace!(?def_id);
 
         let borrowed = rustc_mir_dataflow::impls::borrowed_locals(body);
+        let points = DenseLocationMap::new(body);
+
+        candidates.reset_and_find(body, &borrowed);
+        trace!(?candidates);
+        if candidates.c.is_empty() {
+            return;
+        }
+
+        let relevant = RelevantLocals::compute(&candidates, body.local_decls.len());
 
         let live = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("MaybeLiveLocals-DestProp"));
-        let points = DenseLocationMap::new(body);
-        let mut live = save_as_intervals(&points, body, live.analysis, live.results);
+        let mut live =
+            save_as_intervals(&points, body, &relevant.original, live.analysis, live.results);
 
         // In order to avoid having to collect data for every single pair of locals in the body, we
         // do not allow doing more than one merge for places that are derived from the same local at
@@ -181,22 +190,14 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
         //     https://github.com/rust-lang/regex/tree/b5372864e2df6a2f5e543a556a62197f50ca3650
         let mut round_count = 0;
         loop {
-            // PERF: Can we do something smarter than recalculating the candidates and liveness
-            // results?
-            candidates.reset_and_find(body, &borrowed);
-            trace!(?candidates);
-            if candidates.c.is_empty() {
-                break;
-            }
-
-            dest_prop_mir_dump(tcx, body, &points, &live, round_count);
+            dest_prop_mir_dump(tcx, body, &points, &live, &relevant, round_count);
 
             let mut filter = FilterInformation::filter_liveness(
                 &points,
                 &live,
                 &mut write_info,
                 body,
-                &candidates,
+                &relevant,
             );
 
             // This is the set of merges we will apply this round. It is a subset of the candidates.
@@ -216,6 +217,10 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
                 merged_locals.insert(src);
                 merged_locals.insert(dest);
 
+                // `find_non_conflicting` ensures this is true.
+                let src = relevant.shrink[src].expect("merged locals are relevant");
+                let dest = relevant.shrink[dest].expect("merged locals are relevant");
+
                 // Update liveness information based on the merge we just performed.
                 // Every location where `src` was live, `dest` will be live.
                 live.union_rows(src, dest);
@@ -232,6 +237,12 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
             round_count += 1;
 
             apply_merges(body, tcx, merges, merged_locals);
+
+            candidates.reset_and_find(body, &borrowed);
+            trace!(?candidates);
+            if candidates.c.is_empty() {
+                break;
+            }
         }
 
         trace!(round_count);
@@ -373,7 +384,7 @@ impl RelevantLocals {
 struct FilterInformation<'a, 'tcx> {
     body: &'a Body<'tcx>,
     points: &'a DenseLocationMap,
-    relevant: RelevantLocals,
+    relevant: &'a RelevantLocals,
     conflicts: BitMatrix<RelevantLocal, RelevantLocal>,
     write_info: &'a mut WriteInfo,
     at: Location,
@@ -418,13 +429,11 @@ impl<'a, 'tcx> FilterInformation<'a, 'tcx> {
     /// locals as also being read from.
     fn filter_liveness(
         points: &'a DenseLocationMap,
-        live: &SparseIntervalMatrix<Local, PointIndex>,
+        live: &SparseIntervalMatrix<RelevantLocal, PointIndex>,
         write_info: &'a mut WriteInfo,
         body: &'a Body<'tcx>,
-        candidates: &Candidates,
+        relevant: &'a RelevantLocals,
     ) -> Self {
-        let num_locals = body.local_decls.len();
-        let relevant = RelevantLocals::compute(candidates, num_locals);
         let num_relevant = relevant.original.len();
         let mut this = FilterInformation {
             body,
@@ -441,7 +450,7 @@ impl<'a, 'tcx> FilterInformation<'a, 'tcx> {
         this
     }
 
-    fn internal_filter_liveness(&mut self, live: &SparseIntervalMatrix<Local, PointIndex>) {
+    fn internal_filter_liveness(&mut self, live: &SparseIntervalMatrix<RelevantLocal, PointIndex>) {
         for (block, data) in traversal::preorder(self.body) {
             self.at = Location { block, statement_index: data.statements.len() };
             self.write_info.for_terminator(&data.terminator().kind);
@@ -457,7 +466,7 @@ impl<'a, 'tcx> FilterInformation<'a, 'tcx> {
         trace!(?self.conflicts, "initial conflicts");
     }
 
-    fn record_conflicts(&mut self, live: &SparseIntervalMatrix<Local, PointIndex>) {
+    fn record_conflicts(&mut self, live: &SparseIntervalMatrix<RelevantLocal, PointIndex>) {
         let writes = self.write_info.writes.iter().filter_map(|&p| self.relevant.shrink[p]);
 
         let skip_pair = self.write_info.skip_pair.and_then(|(p, q)| {
@@ -475,11 +484,11 @@ impl<'a, 'tcx> FilterInformation<'a, 'tcx> {
                 }
             }
 
-            for (q, &original_q) in self.relevant.original.iter_enumerated() {
+            for q in self.relevant.original.indices() {
                 if p != q
                     && skip_pair != Some((p, q))
                     && skip_pair != Some((q, p))
-                    && live.contains(original_q, at)
+                    && live.contains(q, at)
                 {
                     self.conflicts.insert(p, q);
                 }
@@ -488,10 +497,8 @@ impl<'a, 'tcx> FilterInformation<'a, 'tcx> {
     }
 
     #[tracing::instrument(level = "trace", skip(self))]
-    fn record_merge(&mut self, src: Local, dest: Local) {
+    fn record_merge(&mut self, src: RelevantLocal, dest: RelevantLocal) {
         trace!(?self.conflicts, "pre");
-        let src = self.relevant.shrink[src].expect("merged locals are relevant");
-        let dest = self.relevant.shrink[dest].expect("merged locals are relevant");
         self.conflicts.union_rows(src, dest);
         self.conflicts.union_cols(src, dest);
         trace!(?self.conflicts, "post");
@@ -499,10 +506,12 @@ impl<'a, 'tcx> FilterInformation<'a, 'tcx> {
 
     #[tracing::instrument(level = "trace", skip(self), ret)]
     fn find_non_conflicting(&self, src: Local, candidates: &Vec<Local>) -> Option<Local> {
-        let src = self.relevant.shrink[src].expect("merged locals are relevant");
+        // Refuse to merge if the local is not marked relevant.
+        let src = self.relevant.shrink[src]?;
         candidates.iter().copied().find(|&dest| {
-            let dest = self.relevant.shrink[dest].expect("merged locals are relevant");
-            !self.conflicts.contains(src, dest) && !self.conflicts.contains(dest, src)
+            self.relevant.shrink[dest].is_some_and(|dest| {
+                !self.conflicts.contains(src, dest) && !self.conflicts.contains(dest, src)
+            })
         })
     }
 }
@@ -773,12 +782,16 @@ fn dest_prop_mir_dump<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     points: &DenseLocationMap,
-    live: &SparseIntervalMatrix<Local, PointIndex>,
+    live: &SparseIntervalMatrix<RelevantLocal, PointIndex>,
+    relevant: &RelevantLocals,
     round: usize,
 ) {
     let locals_live_at = |location| {
         let location = points.point_from_location(location);
-        live.rows().filter(|&r| live.contains(r, location)).collect::<Vec<_>>()
+        live.rows()
+            .filter(|&r| live.contains(r, location))
+            .map(|rl| relevant.original[rl])
+            .collect::<Vec<_>>()
     };
     dump_mir(tcx, false, "DestinationPropagation-dataflow", &round, body, |pass_where, w| {
         if let PassWhere::BeforeLocation(loc) = pass_where {
