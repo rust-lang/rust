@@ -80,6 +80,7 @@ fn check_impl(
                     }
                 }
                 Err(err) => {
+                    // only warn becasue before bad extra checks would be silently ignored.
                     eprintln!("warning: bad extra check argument {src:?}: {err:?}");
                     None
                 }
@@ -612,6 +613,7 @@ enum ExtraCheckParseError {
     UnknownKind(String),
     #[allow(dead_code)]
     UnknownLang(String),
+    UnsupportedKindForLang,
     /// Too many `:`
     TooManyParts,
     /// Tried to parse the empty string
@@ -644,6 +646,20 @@ impl ExtraCheckArg {
         };
         !crate::files_modified(ci_info, |s| s.ends_with(ext))
     }
+
+    fn has_supported_kind(&self) -> bool {
+        let Some(kind) = self.kind else {
+            // "run all extra checks" mode is supported for all languages.
+            return true;
+        };
+        use ExtraCheckKind::*;
+        let supported_kinds: &[_] = match self.lang {
+            ExtraCheckLang::Py => &[Fmt, Lint],
+            ExtraCheckLang::Cpp => &[Fmt],
+            ExtraCheckLang::Shell => &[Lint],
+        };
+        supported_kinds.contains(&kind)
+    }
 }
 
 impl FromStr for ExtraCheckArg {
@@ -666,7 +682,12 @@ impl FromStr for ExtraCheckArg {
         if parts.next().is_some() {
             return Err(ExtraCheckParseError::TooManyParts);
         }
-        Ok(Self { auto, lang: first.parse()?, kind: second.map(|s| s.parse()).transpose()? })
+        let arg = Self { auto, lang: first.parse()?, kind: second.map(|s| s.parse()).transpose()? };
+        if !arg.has_supported_kind() {
+            return Err(ExtraCheckParseError::UnsupportedKindForLang);
+        }
+
+        Ok(arg)
     }
 }
 
