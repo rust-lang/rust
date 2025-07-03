@@ -585,7 +585,9 @@ impl u8 {
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
     pub const fn eq_ignore_ascii_case(&self, other: &u8) -> bool {
-        self.to_ascii_lowercase() == other.to_ascii_lowercase()
+        #[allow(clippy::manual_ignore_case_cmp)] // exempt by being the one true definition
+        self.to_ascii_lowercase()
+            == other.to_ascii_lowercase()
     }
 
     /// Converts this value to its ASCII upper case equivalent in-place.
@@ -673,6 +675,7 @@ impl u8 {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphabetic(&self) -> bool {
+        #![allow(clippy::manual_is_ascii_check)] // exempt by being the one true definition
         matches!(*self, b'A'..=b'Z' | b'a'..=b'z')
     }
 
@@ -707,6 +710,7 @@ impl u8 {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_uppercase(&self) -> bool {
+        #![allow(clippy::manual_is_ascii_check)] // exempt by being the one true definition
         matches!(*self, b'A'..=b'Z')
     }
 
@@ -741,6 +745,7 @@ impl u8 {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_lowercase(&self) -> bool {
+        #![allow(clippy::manual_is_ascii_check)] // exempt by being the one true definition
         matches!(*self, b'a'..=b'z')
     }
 
@@ -778,6 +783,7 @@ impl u8 {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphanumeric(&self) -> bool {
+        #![allow(clippy::manual_is_ascii_check)] // exempt by being the one true definition
         matches!(*self, b'0'..=b'9') | matches!(*self, b'A'..=b'Z') | matches!(*self, b'a'..=b'z')
     }
 
@@ -812,6 +818,7 @@ impl u8 {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_digit(&self) -> bool {
+        #![allow(clippy::manual_is_ascii_check)] // exempt by being the one true definition
         matches!(*self, b'0'..=b'9')
     }
 
@@ -843,6 +850,7 @@ impl u8 {
     #[unstable(feature = "is_ascii_octdigit", issue = "101288")]
     #[inline]
     pub const fn is_ascii_octdigit(&self) -> bool {
+        #![allow(clippy::manual_is_ascii_check)] // exempt by being the one true definition
         matches!(*self, b'0'..=b'7')
     }
 
@@ -880,6 +888,7 @@ impl u8 {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_hexdigit(&self) -> bool {
+        #![allow(clippy::manual_is_ascii_check)] // exempt by being the one true definition
         matches!(*self, b'0'..=b'9') | matches!(*self, b'A'..=b'F') | matches!(*self, b'a'..=b'f')
     }
 
