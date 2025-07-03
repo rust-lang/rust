@@ -14,8 +14,9 @@ pub use crate::{
     input::{
         BuiltCrateData, BuiltDependency, Crate, CrateBuilder, CrateBuilderId, CrateDataBuilder,
         CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CratesIdMap, CratesMap,
-        DependencyBuilder, Env, ExtraCrateData, LangCrateOrigin, ProcMacroPaths, ReleaseChannel,
-        SourceRoot, SourceRootId, TargetLayoutLoadResult, UniqueCrateData,
+        DependencyBuilder, Env, ExtraCrateData, LangCrateOrigin, ProcMacroLoadingError,
+        ProcMacroPaths, ReleaseChannel, SourceRoot, SourceRootId, TargetLayoutLoadResult,
+        UniqueCrateData,
     },
 };
 use dashmap::{DashMap, mapref::entry::Entry};

@@ -7,8 +7,8 @@ use std::{collections::VecDeque, fmt, fs, iter, ops::Deref, sync, thread};
 use anyhow::Context;
 use base_db::{
     CrateBuilderId, CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin,
-    CrateWorkspaceData, DependencyBuilder, Env, LangCrateOrigin, ProcMacroPaths,
-    TargetLayoutLoadResult,
+    CrateWorkspaceData, DependencyBuilder, Env, LangCrateOrigin, ProcMacroLoadingError,
+    ProcMacroPaths, TargetLayoutLoadResult,
 };
 use cfg::{CfgAtom, CfgDiff, CfgOptions};
 use intern::{Symbol, sym};
@@ -1641,11 +1641,11 @@ fn add_target_crate_root(
             Some((BuildScriptOutput { proc_macro_dylib_path, .. }, has_errors)) => {
                 match proc_macro_dylib_path {
                     Some(path) => Ok((cargo_name.to_owned(), path.clone())),
-                    None if has_errors => Err("failed to build proc-macro".to_owned()),
-                    None => Err("proc-macro crate build data is missing dylib path".to_owned()),
+                    None if has_errors => Err(ProcMacroLoadingError::FailedToBuild),
+                    None => Err(ProcMacroLoadingError::MissingDylibPath),
                 }
             }
-            None => Err("build scripts have not been built".to_owned()),
+            None => Err(ProcMacroLoadingError::NotYetBuilt),
         };
         proc_macros.insert(crate_id, proc_macro);
     }

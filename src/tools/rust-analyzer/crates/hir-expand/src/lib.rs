@@ -199,9 +199,9 @@ impl ExpandErrorKind {
             },
             &ExpandErrorKind::MissingProcMacroExpander(def_crate) => {
                 match db.proc_macros_for_crate(def_crate).as_ref().and_then(|it| it.get_error()) {
-                    Some((e, hard_err)) => RenderedExpandError {
-                        message: e.to_owned(),
-                        error: hard_err,
+                    Some(e) => RenderedExpandError {
+                        message: e.to_string(),
+                        error: e.is_hard_error(),
                         kind: RenderedExpandError::GENERAL_KIND,
                     },
                     None => RenderedExpandError {

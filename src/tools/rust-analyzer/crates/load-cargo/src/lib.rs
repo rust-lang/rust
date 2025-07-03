@@ -11,7 +11,7 @@ use hir_expand::proc_macro::{
 };
 use ide_db::{
     ChangeWithProcMacros, FxHashMap, RootDatabase,
-    base_db::{CrateGraphBuilder, Env, SourceRoot, SourceRootId},
+    base_db::{CrateGraphBuilder, Env, ProcMacroLoadingError, SourceRoot, SourceRootId},
     prime_caches,
 };
 use itertools::Itertools;
@@ -81,19 +81,16 @@ pub fn load_workspace(
         ProcMacroServerChoice::Sysroot => ws
             .find_sysroot_proc_macro_srv()
             .and_then(|it| ProcMacroClient::spawn(&it, extra_env).map_err(Into::into))
-            .map_err(|e| (e, true)),
-        ProcMacroServerChoice::Explicit(path) => {
-            ProcMacroClient::spawn(path, extra_env).map_err(Into::into).map_err(|e| (e, true))
-        }
-        ProcMacroServerChoice::None => {
-            Err((anyhow::format_err!("proc macro server disabled"), false))
-        }
+            .map_err(|e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())),
+        ProcMacroServerChoice::Explicit(path) => ProcMacroClient::spawn(path, extra_env)
+            .map_err(|e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())),
+        ProcMacroServerChoice::None => Err(ProcMacroLoadingError::Disabled),
     };
     match &proc_macro_server {
         Ok(server) => {
             tracing::info!(path=%server.server_path(), "Proc-macro server started")
         }
-        Err((e, _)) => {
+        Err(e) => {
             tracing::info!(%e, "Failed to start proc-macro server")
         }
     }
@@ -112,21 +109,18 @@ pub fn load_workspace(
     let proc_macros = {
         let proc_macro_server = match &proc_macro_server {
             Ok(it) => Ok(it),
-            Err((e, hard_err)) => Err((e.to_string(), *hard_err)),
+            Err(e) => Err(ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())),
         };
         proc_macros
             .into_iter()
             .map(|(crate_id, path)| {
                 (
                     crate_id,
-                    path.map_or_else(
-                        |e| Err((e, true)),
-                        |(_, path)| {
-                            proc_macro_server.as_ref().map_err(Clone::clone).and_then(
-                                |proc_macro_server| load_proc_macro(proc_macro_server, &path, &[]),
-                            )
-                        },
-                    ),
+                    path.map_or_else(Err, |(_, path)| {
+                        proc_macro_server.as_ref().map_err(Clone::clone).and_then(
+                            |proc_macro_server| load_proc_macro(proc_macro_server, &path, &[]),
+                        )
+                    }),
                 )
             })
             .collect()
@@ -391,11 +385,13 @@ pub fn load_proc_macro(
     path: &AbsPath,
     ignored_macros: &[Box<str>],
 ) -> ProcMacroLoadResult {
-    let res: Result<Vec<_>, String> = (|| {
+    let res: Result<Vec<_>, _> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf());
-        let vec = server.load_dylib(dylib).map_err(|e| format!("{e}"))?;
+        let vec = server.load_dylib(dylib).map_err(|e| {
+            ProcMacroLoadingError::ProcMacroSrvError(format!("{e}").into_boxed_str())
+        })?;
         if vec.is_empty() {
-            return Err("proc macro library returned no proc macros".to_owned());
+            return Err(ProcMacroLoadingError::NoProcMacros);
         }
         Ok(vec
             .into_iter()
@@ -412,7 +408,7 @@ pub fn load_proc_macro(
         }
         Err(e) => {
             tracing::warn!("proc-macro loading for {path} failed: {e}");
-            Err((e, true))
+            Err(e)
         }
     }
 }
