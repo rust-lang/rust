@@ -2746,7 +2746,8 @@ fn add_without_unwanted_attributes<'hir>(
                     attrs.push((Cow::Owned(attr), import_parent));
                 }
             }
-            hir::Attribute::Parsed(..) if is_inline => {
+            // FIXME: make sure to exclude `#[cfg_trace]` here when it is ported to the new parsers
+            hir::Attribute::Parsed(..) => {
                 attrs.push((Cow::Owned(attr), import_parent));
             }
             _ => {}
