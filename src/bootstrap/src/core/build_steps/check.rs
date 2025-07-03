@@ -251,10 +251,15 @@ fn prepare_compiler_for_check(
     match mode {
         Mode::ToolBootstrap => builder.compiler(0, host),
         Mode::ToolStd => {
-            // A small number of tools rely on in-tree standard
-            // library crates (e.g. compiletest needs libtest).
+            // These tools require the local standard library to be checked
             let build_compiler = builder.compiler(builder.top_stage, host);
+
+            // We need to build the host stdlib to check the tool itself.
+            // We need to build the target stdlib so that the tool can link to it.
             builder.std(build_compiler, host);
+            // We could only check this library in theory, but `check::Std` doesn't copy rmetas
+            // into `build_compiler`'s sysroot to avoid clashes with `.rlibs`, so we build it
+            // instead.
             builder.std(build_compiler, target);
             build_compiler
         }
