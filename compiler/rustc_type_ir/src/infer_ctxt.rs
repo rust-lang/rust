@@ -295,9 +295,10 @@ pub trait InferCtxtLike: Sized {
         // monomorphizing a body from an upstream crate which had an unstable feature
         // enabled that we do not.
         //
-        // The coherence tests in
-        // tests/ui/unstable-feature_bound/unstable_impl_coherence.rs
-        // will fail if we return error instead of ambiguity.
+        // Coherence should already report overlap errors involving unstable impls
+        // as the affected code would otherwise break when stabilizing this feature.
+        // It is also easily possible to accidentally cause unsoundness this way as
+        // we have to always enable unstable impls during codegen.
         //
         // Return ambiguity can also prevent people from writing code which depends on inference guidance
         // that might no longer work after the impl is stabilised,
