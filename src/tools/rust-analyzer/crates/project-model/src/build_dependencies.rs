@@ -409,13 +409,6 @@ impl WorkspaceBuildScripts {
                     cmd.arg("--target-dir").arg(target_dir);
                 }
 
-                // --all-targets includes tests, benches and examples in addition to the
-                // default lib and bins. This is an independent concept from the --target
-                // flag below.
-                if config.all_targets {
-                    cmd.arg("--all-targets");
-                }
-
                 if let Some(target) = &config.target {
                     cmd.args(["--target", target]);
                 }
@@ -463,14 +456,26 @@ impl WorkspaceBuildScripts {
                     cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
                     cmd.arg("-Zunstable-options");
                     cmd.arg("--compile-time-deps");
-                } else if config.wrap_rustc_in_build_scripts {
-                    // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
-                    // that to compile only proc macros and build scripts during the initial
-                    // `cargo check`.
-                    // We don't need this if we are using `--compile-time-deps` flag.
-                    let myself = std::env::current_exe()?;
-                    cmd.env("RUSTC_WRAPPER", myself);
-                    cmd.env("RA_RUSTC_WRAPPER", "1");
+                    // we can pass this unconditionally, because we won't actually build the
+                    // binaries, and as such, this will succeed even on targets without libtest
+                    cmd.arg("--all-targets");
+                } else {
+                    // --all-targets includes tests, benches and examples in addition to the
+                    // default lib and bins. This is an independent concept from the --target
+                    // flag below.
+                    if config.all_targets {
+                        cmd.arg("--all-targets");
+                    }
+
+                    if config.wrap_rustc_in_build_scripts {
+                        // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
+                        // that to compile only proc macros and build scripts during the initial
+                        // `cargo check`.
+                        // We don't need this if we are using `--compile-time-deps` flag.
+                        let myself = std::env::current_exe()?;
+                        cmd.env("RUSTC_WRAPPER", myself);
+                        cmd.env("RA_RUSTC_WRAPPER", "1");
+                    }
                 }
                 Ok(cmd)
             }
