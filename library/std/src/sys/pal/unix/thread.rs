@@ -297,6 +297,7 @@ impl Thread {
     }
 
     // Any unix that has clock_nanosleep
+    // If this list changes update the MIRI chock_nanosleep shim
     #[cfg(any(
         target_os = "freebsd",
         target_os = "netbsd",
