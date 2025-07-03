@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::common::{CompareMode, Config, Debugger};
-use crate::header::IgnoreDecision;
+use crate::directives::IgnoreDecision;
 
 const EXTRA_ARCHS: &[&str] = &["spirv"];
 

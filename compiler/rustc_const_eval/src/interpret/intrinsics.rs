@@ -7,7 +7,7 @@ use std::assert_matches::assert_matches;
 use rustc_abi::Size;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
-use rustc_middle::ty::layout::{TyAndLayout, ValidityRequirement};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_span::{Symbol, sym};
@@ -17,8 +17,8 @@ use super::memory::MemoryKind;
 use super::util::ensure_monomorphic_enough;
 use super::{
     Allocation, CheckInAllocMsg, ConstAllocation, ImmTy, InterpCx, InterpResult, Machine, OpTy,
-    PlaceTy, Pointer, PointerArithmetic, Provenance, Scalar, err_inval, err_ub_custom,
-    err_unsup_format, interp_ok, throw_inval, throw_ub_custom, throw_ub_format,
+    PlaceTy, Pointer, PointerArithmetic, Provenance, Scalar, err_ub_custom, err_unsup_format,
+    interp_ok, throw_inval, throw_ub_custom, throw_ub_format,
 };
 use crate::fluent_generated as fluent;
 
@@ -372,41 +372,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.exact_div(&val, &size, dest)?;
             }
 
-            sym::assert_inhabited
-            | sym::assert_zero_valid
-            | sym::assert_mem_uninitialized_valid => {
-                let ty = instance.args.type_at(0);
-                let requirement = ValidityRequirement::from_intrinsic(intrinsic_name).unwrap();
-
-                let should_panic = !self
-                    .tcx
-                    .check_validity_requirement((requirement, self.typing_env.as_query_input(ty)))
-                    .map_err(|_| err_inval!(TooGeneric))?;
-
-                if should_panic {
-                    let layout = self.layout_of(ty)?;
-
-                    let msg = match requirement {
-                        // For *all* intrinsics we first check `is_uninhabited` to give a more specific
-                        // error message.
-                        _ if layout.is_uninhabited() => format!(
-                            "aborted execution: attempted to instantiate uninhabited type `{ty}`"
-                        ),
-                        ValidityRequirement::Inhabited => bug!("handled earlier"),
-                        ValidityRequirement::Zero => format!(
-                            "aborted execution: attempted to zero-initialize type `{ty}`, which is invalid"
-                        ),
-                        ValidityRequirement::UninitMitigated0x01Fill => format!(
-                            "aborted execution: attempted to leave type `{ty}` uninitialized, which is invalid"
-                        ),
-                        ValidityRequirement::Uninit => bug!("assert_uninit_valid doesn't exist"),
-                    };
-
-                    M::panic_nounwind(self, &msg)?;
-                    // Skip the `return_to_block` at the end (we panicked, we do not return).
-                    return interp_ok(true);
-                }
-            }
             sym::simd_insert => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
                 let elem = &args[2];

@@ -11,10 +11,10 @@ use tracing::*;
 
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
+use crate::directives::auxiliary::{AuxProps, parse_and_update_aux};
+use crate::directives::needs::CachedNeedsConditions;
 use crate::errors::ErrorKind;
 use crate::executor::{CollectedTestDesc, ShouldPanic};
-use crate::header::auxiliary::{AuxProps, parse_and_update_aux};
-use crate::header::needs::CachedNeedsConditions;
 use crate::help;
 use crate::util::static_regex;
 
@@ -24,11 +24,11 @@ mod needs;
 #[cfg(test)]
 mod tests;
 
-pub struct HeadersCache {
+pub struct DirectivesCache {
     needs: CachedNeedsConditions,
 }
 
-impl HeadersCache {
+impl DirectivesCache {
     pub fn load(config: &Config) -> Self {
         Self { needs: CachedNeedsConditions::load(config) }
     }
@@ -54,7 +54,7 @@ impl EarlyProps {
     pub fn from_reader<R: Read>(config: &Config, testfile: &Utf8Path, rdr: R) -> Self {
         let mut props = EarlyProps::default();
         let mut poisoned = false;
-        iter_header(
+        iter_directives(
             config.mode,
             &config.suite,
             &mut poisoned,
@@ -138,12 +138,12 @@ pub struct TestProps {
     pub incremental_dir: Option<Utf8PathBuf>,
     // If `true`, this test will use incremental compilation.
     //
-    // This can be set manually with the `incremental` header, or implicitly
+    // This can be set manually with the `incremental` directive, or implicitly
     // by being a part of an incremental mode test. Using the `incremental`
-    // header should be avoided if possible; using an incremental mode test is
+    // directive should be avoided if possible; using an incremental mode test is
     // preferred. Incremental mode tests support multiple passes, which can
     // verify that the incremental cache can be loaded properly after being
-    // created. Just setting the header will only verify the behavior with
+    // created. Just setting the directive will only verify the behavior with
     // creating an incremental cache, but doesn't check that it is created
     // correctly.
     //
@@ -347,7 +347,7 @@ impl TestProps {
 
             let mut poisoned = false;
 
-            iter_header(
+            iter_directives(
                 config.mode,
                 &config.suite,
                 &mut poisoned,
@@ -642,11 +642,11 @@ impl TestProps {
         let check_ui = |mode: &str| {
             // Mode::Crashes may need build-fail in order to trigger llvm errors or stack overflows
             if config.mode != Mode::Ui && config.mode != Mode::Crashes {
-                panic!("`{}-fail` header is only supported in UI tests", mode);
+                panic!("`{}-fail` directive is only supported in UI tests", mode);
             }
         };
         if config.mode == Mode::Ui && config.parse_name_directive(ln, "compile-fail") {
-            panic!("`compile-fail` header is useless in UI tests");
+            panic!("`compile-fail` directive is useless in UI tests");
         }
         let fail_mode = if config.parse_name_directive(ln, "check-fail") {
             check_ui("check");
@@ -662,7 +662,7 @@ impl TestProps {
         };
         match (self.fail_mode, fail_mode) {
             (None, Some(_)) => self.fail_mode = fail_mode,
-            (Some(_), Some(_)) => panic!("multiple `*-fail` headers in a single test"),
+            (Some(_), Some(_)) => panic!("multiple `*-fail` directives in a single test"),
             (_, None) => {}
         }
     }
@@ -674,10 +674,10 @@ impl TestProps {
             (Mode::Codegen, "build-pass") => (),
             (Mode::Incremental, _) => {
                 if revision.is_some() && !self.revisions.iter().all(|r| r.starts_with("cfail")) {
-                    panic!("`{s}` header is only supported in `cfail` incremental tests")
+                    panic!("`{s}` directive is only supported in `cfail` incremental tests")
                 }
             }
-            (mode, _) => panic!("`{s}` header is not supported in `{mode}` tests"),
+            (mode, _) => panic!("`{s}` directive is not supported in `{mode}` tests"),
         };
         let pass_mode = if config.parse_name_directive(ln, "check-pass") {
             check_no_run("check-pass");
@@ -693,7 +693,7 @@ impl TestProps {
         };
         match (self.pass_mode, pass_mode) {
             (None, Some(_)) => self.pass_mode = pass_mode,
-            (Some(_), Some(_)) => panic!("multiple `*-pass` headers in a single test"),
+            (Some(_), Some(_)) => panic!("multiple `*-pass` directives in a single test"),
             (_, None) => {}
         }
     }
@@ -794,7 +794,7 @@ const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] =
     &["count", "!count", "has", "!has", "is", "!is", "ismany", "!ismany", "set", "!set"];
 
 /// The (partly) broken-down contents of a line containing a test directive,
-/// which [`iter_header`] passes to its callback function.
+/// which [`iter_directives`] passes to its callback function.
 ///
 /// For example:
 ///
@@ -867,7 +867,7 @@ pub(crate) fn check_directive<'a>(
 
 const COMPILETEST_DIRECTIVE_PREFIX: &str = "//@";
 
-fn iter_header(
+fn iter_directives(
     mode: Mode,
     _suite: &str,
     poisoned: &mut bool,
@@ -1163,8 +1163,7 @@ enum NormalizeKind {
     Stderr64bit,
 }
 
-/// Parses the regex and replacement values of a `//@ normalize-*` header,
-/// in the format:
+/// Parses the regex and replacement values of a `//@ normalize-*` directive, in the format:
 /// ```text
 /// "REGEX" -> "REPLACEMENT"
 /// ```
@@ -1373,7 +1372,7 @@ where
 
 pub(crate) fn make_test_description<R: Read>(
     config: &Config,
-    cache: &HeadersCache,
+    cache: &DirectivesCache,
     name: String,
     path: &Utf8Path,
     src: R,
@@ -1387,7 +1386,7 @@ pub(crate) fn make_test_description<R: Read>(
     let mut local_poisoned = false;
 
     // Scan through the test file to handle `ignore-*`, `only-*`, and `needs-*` directives.
-    iter_header(
+    iter_directives(
         config.mode,
         &config.suite,
         &mut local_poisoned,

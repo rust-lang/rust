@@ -2940,7 +2940,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         let span = if let [.., bound] = &param.bounds[..] {
                             bound.span()
                         } else if let GenericParam {
-                            kind: GenericParamKind::Const { ty, kw_span: _, default  }, ..
+                            kind: GenericParamKind::Const { ty, span: _, default  }, ..
                         } = param {
                             default.as_ref().map(|def| def.value.span).unwrap_or(ty.span)
                         } else {
@@ -3832,6 +3832,7 @@ fn mk_where_bound_predicate(
                 ref_id: DUMMY_NODE_ID,
             },
             span: DUMMY_SP,
+            parens: ast::Parens::No,
         })],
     };
 

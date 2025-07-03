@@ -44,6 +44,12 @@ pub fn evaluate_host_effect_obligation<'tcx>(
         Err(EvaluationFailure::NoSolution) => {}
     }
 
+    match evaluate_host_effect_from_conditionally_const_item_bounds(selcx, obligation) {
+        Ok(result) => return Ok(result),
+        Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
+        Err(EvaluationFailure::NoSolution) => {}
+    }
+
     match evaluate_host_effect_from_item_bounds(selcx, obligation) {
         Ok(result) => return Ok(result),
         Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
@@ -153,7 +159,9 @@ fn evaluate_host_effect_from_bounds<'tcx>(
     }
 }
 
-fn evaluate_host_effect_from_item_bounds<'tcx>(
+/// Assembles constness bounds from `~const` item bounds on alias types, which only
+/// hold if the `~const` where bounds also hold and the parent trait is `~const`.
+fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
@@ -227,6 +235,63 @@ fn evaluate_host_effect_from_item_bounds<'tcx>(
             }));
         })
         .expect("candidate matched before, so it should match again"))
+    } else {
+        Err(EvaluationFailure::NoSolution)
+    }
+}
+
+/// Assembles constness bounds "normal" item bounds on aliases, which may include
+/// unconditionally `const` bounds that are *not* conditional and thus always hold.
+fn evaluate_host_effect_from_item_bounds<'tcx>(
+    selcx: &mut SelectionContext<'_, 'tcx>,
+    obligation: &HostEffectObligation<'tcx>,
+) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
+    let infcx = selcx.infcx;
+    let tcx = infcx.tcx;
+    let drcx = DeepRejectCtxt::relate_rigid_rigid(selcx.tcx());
+    let mut candidate = None;
+
+    let mut consider_ty = obligation.predicate.self_ty();
+    while let ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) = *consider_ty.kind() {
+        for clause in tcx.item_bounds(alias_ty.def_id).iter_instantiated(tcx, alias_ty.args) {
+            let bound_clause = clause.kind();
+            let ty::ClauseKind::HostEffect(data) = bound_clause.skip_binder() else {
+                continue;
+            };
+            let data = bound_clause.rebind(data);
+            if data.skip_binder().trait_ref.def_id != obligation.predicate.trait_ref.def_id {
+                continue;
+            }
+
+            if !drcx.args_may_unify(
+                obligation.predicate.trait_ref.args,
+                data.skip_binder().trait_ref.args,
+            ) {
+                continue;
+            }
+
+            let is_match =
+                infcx.probe(|_| match_candidate(selcx, obligation, data, true, |_, _| {}).is_ok());
+
+            if is_match {
+                if candidate.is_some() {
+                    return Err(EvaluationFailure::Ambiguous);
+                } else {
+                    candidate = Some(data);
+                }
+            }
+        }
+
+        if kind != ty::Projection {
+            break;
+        }
+
+        consider_ty = alias_ty.self_ty();
+    }
+
+    if let Some(data) = candidate {
+        Ok(match_candidate(selcx, obligation, data, true, |_, _| {})
+            .expect("candidate matched before, so it should match again"))
     } else {
         Err(EvaluationFailure::NoSolution)
     }

@@ -457,6 +457,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 throw_machine_stop!(TerminationInfo::Abort(format!("trace/breakpoint trap")))
             }
 
+            "assert_inhabited" | "assert_zero_valid" | "assert_mem_uninitialized_valid" => {
+                // Make these a NOP, so we get the better Miri-native error messages.
+            }
+
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }
 

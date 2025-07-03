@@ -1209,6 +1209,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         modifiers: TraitBoundModifiers::NONE,
                         trait_ref: TraitRef { path: path.clone(), ref_id: t.id },
                         span: t.span,
+                        parens: ast::Parens::No,
                     },
                     itctx,
                 );
@@ -1959,7 +1960,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 (hir::ParamName::Plain(self.lower_ident(param.ident)), kind)
             }
-            GenericParamKind::Const { ty, kw_span: _, default } => {
+            GenericParamKind::Const { ty, span: _, default } => {
                 let ty = self
                     .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault));
 
