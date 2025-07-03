@@ -395,6 +395,9 @@ flags to control that behavior. When the `--extern-html-root-url` flag is given 
 one of your dependencies, rustdoc use that URL for those docs. Keep in mind that if those docs exist
 in the output directory, those local docs will still override this flag.
 
+The crate names in this flag are first matched against the names given in the `--extern name=` flags,
+and fall back to using crates' own names otherwise (e.g. for transitive dependencies and sysroot crates).
+
 ## `-Z force-unstable-if-unmarked`
 
 Using this flag looks like this:
