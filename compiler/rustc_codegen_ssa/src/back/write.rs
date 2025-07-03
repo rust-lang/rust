@@ -397,25 +397,6 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
     }
 }
 
-fn generate_fat_lto_work<B: ExtraBackendMethods>(
-    cgcx: &CodegenContext<B>,
-    autodiff: Vec<AutoDiffItem>,
-    needs_fat_lto: Vec<FatLtoInput<B>>,
-    import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
-) -> WorkItem<B> {
-    let _prof_timer = cgcx.prof.generic_activity("codegen_generate_lto_work");
-
-    let module =
-        B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
-    if cgcx.lto == Lto::Fat && !autodiff.is_empty() {
-        let config = cgcx.config(ModuleKind::Regular);
-        if let Err(err) = B::autodiff(cgcx, &module, autodiff, config) {
-            err.raise();
-        }
-    }
-    WorkItem::FatLto(module)
-}
-
 fn generate_thin_lto_work<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
@@ -739,7 +720,11 @@ pub(crate) enum WorkItem<B: WriteBackendMethods> {
     /// directory.
     CopyPostLtoArtifacts(CachedModuleCodegen),
     /// Performs fat LTO on the given module.
-    FatLto(ModuleCodegen<B::Module>),
+    FatLto {
+        needs_fat_lto: Vec<FatLtoInput<B>>,
+        import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
+        autodiff: Vec<AutoDiffItem>,
+    },
     /// Performs thin-LTO on the given module.
     ThinLto(lto::ThinModule<B>),
 }
@@ -748,7 +733,7 @@ impl<B: WriteBackendMethods> WorkItem<B> {
     fn module_kind(&self) -> ModuleKind {
         match *self {
             WorkItem::Optimize(ref m) => m.kind,
-            WorkItem::CopyPostLtoArtifacts(_) | WorkItem::FatLto(_) | WorkItem::ThinLto(_) => {
+            WorkItem::CopyPostLtoArtifacts(_) | WorkItem::FatLto { .. } | WorkItem::ThinLto(_) => {
                 ModuleKind::Regular
             }
         }
@@ -798,7 +783,7 @@ impl<B: WriteBackendMethods> WorkItem<B> {
         match self {
             WorkItem::Optimize(m) => desc("opt", "optimize module", &m.name),
             WorkItem::CopyPostLtoArtifacts(m) => desc("cpy", "copy LTO artifacts for", &m.name),
-            WorkItem::FatLto(_) => desc("lto", "fat LTO module", "everything"),
+            WorkItem::FatLto { .. } => desc("lto", "fat LTO module", "everything"),
             WorkItem::ThinLto(m) => desc("lto", "thin-LTO module", m.name()),
         }
     }
@@ -1005,9 +990,21 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 
 fn execute_fat_lto_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
-    mut module: ModuleCodegen<B::Module>,
+    needs_fat_lto: Vec<FatLtoInput<B>>,
+    import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
+    autodiff: Vec<AutoDiffItem>,
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
+    let mut module =
+        B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
+
+    if cgcx.lto == Lto::Fat && !autodiff.is_empty() {
+        let config = cgcx.config(ModuleKind::Regular);
+        if let Err(err) = B::autodiff(cgcx, &module, autodiff, config) {
+            err.raise();
+        }
+    }
+
     B::optimize_fat(cgcx, &mut module)?;
 
     let module = B::codegen(cgcx, module, module_config)?;
@@ -1490,13 +1487,14 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     if !needs_fat_lto.is_empty() {
                         assert!(needs_thin_lto.is_empty());
 
-                        let work = generate_fat_lto_work(
-                            &cgcx,
-                            autodiff_items.clone(),
-                            needs_fat_lto,
-                            import_only_modules,
-                        );
-                        work_items.push((work, 0));
+                        work_items.push((
+                            WorkItem::FatLto {
+                                needs_fat_lto,
+                                import_only_modules,
+                                autodiff: autodiff_items.clone(),
+                            },
+                            0,
+                        ));
                         if cgcx.parallel {
                             helper.request_token();
                         }
@@ -1867,11 +1865,17 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
                     );
                     Ok(execute_copy_from_cache_work_item(&cgcx, m, module_config))
                 }
-                WorkItem::FatLto(m) => {
+                WorkItem::FatLto { needs_fat_lto, import_only_modules, autodiff } => {
                     let _timer = cgcx
                         .prof
                         .generic_activity_with_arg("codegen_module_perform_lto", "everything");
-                    execute_fat_lto_work_item(&cgcx, m, module_config)
+                    execute_fat_lto_work_item(
+                        &cgcx,
+                        needs_fat_lto,
+                        import_only_modules,
+                        autodiff,
+                        module_config,
+                    )
                 }
                 WorkItem::ThinLto(m) => {
                     let _timer =
