@@ -1009,7 +1009,9 @@ fn execute_fat_lto_work_item<B: ExtraBackendMethods>(
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
     B::optimize_fat(cgcx, &mut module)?;
-    finish_intra_module_work(cgcx, module, module_config)
+
+    let module = B::codegen(cgcx, module, module_config)?;
+    Ok(WorkItemResult::Finished(module))
 }
 
 fn execute_thin_lto_work_item<B: ExtraBackendMethods>(
