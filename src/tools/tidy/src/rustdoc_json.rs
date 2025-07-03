@@ -14,22 +14,10 @@ pub fn check(src_path: &Path, ci_info: &crate::CiInfo, bad: &mut bool) {
     };
 
     // First we check that `src/rustdoc-json-types` was modified.
-    match crate::git_diff(&base_commit, "--name-status") {
-        Some(output) => {
-            if !output
-                .lines()
-                .any(|line| line.starts_with("M") && line.contains(RUSTDOC_JSON_TYPES))
-            {
-                // `rustdoc-json-types` was not modified so nothing more to check here.
-                println!("`rustdoc-json-types` was not modified.");
-                return;
-            }
-        }
-        None => {
-            *bad = true;
-            eprintln!("error: failed to run `git diff` in rustdoc_json check");
-            return;
-        }
+    if !crate::files_modified(base_commit, |p| p == RUSTDOC_JSON_TYPES) {
+        // `rustdoc-json-types` was not modified so nothing more to check here.
+        println!("`rustdoc-json-types` was not modified.");
+        return;
     }
     // Then we check that if `FORMAT_VERSION` was updated, the `Latest feature:` was also updated.
     match crate::git_diff(&base_commit, src_path.join("rustdoc-json-types")) {
