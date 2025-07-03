@@ -34,7 +34,7 @@ pub type FxIndexSet<T> = indexmap::IndexSet<T, rustc_hash::FxBuildHasher>;
 #[macro_export]
 macro_rules! impl_intern_key {
     ($id:ident, $loc:ident) => {
-        #[salsa_macros::interned(no_lifetime)]
+        #[salsa_macros::interned(no_lifetime, revisions = usize::MAX)]
         #[derive(PartialOrd, Ord)]
         pub struct $id {
             pub loc: $loc,
@@ -44,7 +44,7 @@ macro_rules! impl_intern_key {
         impl ::std::fmt::Debug for $id {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 f.debug_tuple(stringify!($id))
-                    .field(&format_args!("{:04x}", self.0.as_u32()))
+                    .field(&format_args!("{:04x}", self.0.index()))
                     .finish()
             }
         }
@@ -168,7 +168,7 @@ impl Files {
     }
 }
 
-#[salsa_macros::interned(no_lifetime, debug, constructor=from_span)]
+#[salsa_macros::interned(no_lifetime, debug, constructor=from_span, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct EditionedFileId {
     pub editioned_file_id: span::EditionedFileId,
