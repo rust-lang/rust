@@ -366,25 +366,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         clock_id: &OpTy<'tcx>,
         flags: &OpTy<'tcx>,
-        req_op: &OpTy<'tcx>,
-        _rem: &OpTy<'tcx>, // Signal handlers are not supported, so rem will never be written to.
+        req: &OpTy<'tcx>,
+        rem: &OpTy<'tcx>, // Signal handlers are not supported, so rem will never be written to.
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let clock_id: libc::clockid_t = this.read_scalar(clock_id)?.to_i32()?;
-        match clock_id {
-            libc::CLOCK_MONOTONIC => (),
-            libc::CLOCK_REALTIME
-            | libc::CLOCK_TAI
-            | libc::CLOCK_BOOTTIME
-            | libc::CLOCK_PROCESS_CPUTIME_ID => {
-                // The standard lib through sleep_until only needs CLOCK_MONOTONIC
-                panic!("MIRI only supports CLOCK_MONOTONIC for clock_nanosleep")
-            }
-            _other => return this.set_last_error_and_return_i32(LibcError("EINVAL")),
+        let clockid_t_size = this.libc_ty_layout("clockid_t").size;
+        let clock_id = this.read_scalar(clock_id_op)?.to_int(clockid_t_size)?;
+        let req = this.deref_pointer_as(req_op, this.libc_ty_layout("timespec"))?;
+        // TODO must be a better way to do this, also fix the
+        // if compare of the flags later
+        let int_size = this.libc_ty_layout("int").size;
+        let flags = this.read_scalar(flags)?.to_int(int_size);
+        let rem = this.read_pointer()?;
+
+        // The standard lib through sleep_until only needs CLOCK_MONOTONIC
+        if clock_id != this.eval_libc("CLOCK_MONOTONIC").to_int(clockid_t_size)? {
+            throw_unsup_format!("clock_nanosleep: only CLOCK_MONOTONIC is supported");
         }
 
-        let req = this.deref_pointer_as(req_op, this.libc_ty_layout("timespec"))?;
         let duration = match this.read_timespec(&req)? {
             Some(duration) => duration,
             None => {
@@ -392,39 +392,34 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         };
 
-        let flags: libc::c_int = this.read_scalar(flags)?.to_i32()?;
-        if flags == 0 {
-            this.block_thread(
-                BlockReason::Sleep,
-                Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
-                callback!(
-                    @capture<'tcx> {}
-                    |_this, unblock: UnblockKind| {
-                        assert_eq!(unblock, UnblockKind::TimedOut);
-                        interp_ok(())
-                    }
-                ),
-            );
-            interp_ok(Scalar::from_i32(0))
-        } else if flags == libc::TIMER_ABSTIME {
-            this.block_thread(
-                BlockReason::Sleep,
-                Some((TimeoutClock::Monotonic, TimeoutAnchor::Absolute, duration)),
-                // PR Author review note: no idea what this does, I copied it
-                // form nanosleep, please check carefully if it is correct
-                callback!(
-                    @capture<'tcx> {}
-                    |_this, unblock: UnblockKind| {
-                        assert_eq!(unblock, UnblockKind::TimedOut);
-                        interp_ok(())
-                    }
-                ),
-            );
-            interp_ok(Scalar::from_i32(0))
+        let timeout_anchor = if flags == 0 {
+            // No flags set, the timespec should be interperted as a duration
+            // to sleep for
+            TimeoutAnchor::Relative
+        } else if flag == this.eval_libc("TIMER_ABSTIME").to_int(int_size) {
+            // Only flag TIMER_ABSTIME set, the timespec should be interperted as
+            // an absolute time.
+            TimeoutAnchor::Absolute
         } else {
             // The standard lib through sleep_until only needs TIMER_ABSTIME
-            panic!("MIRI only supports no flags (0) or flag TIMER_ABSTIME for clock_nanosleep")
-        }
+            throw_unsup_format!(
+                "`clock_nanosleep` unsupported flags {flags}, only no flags or\
+                TIMER_ABSTIME is supported"
+            );
+        };
+
+        this.block_thread(
+            BlockReason::Sleep,
+            Some((TimeoutClock::Monotonic, timeout_anchor, duration)),
+            callback!(
+                @capture<'tcx> {}
+                |_this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::TimedOut);
+                    interp_ok(())
+                }
+            ),
+        );
+        interp_ok(Scalar::from_i32(0))
     }
 
     #[allow(non_snake_case)]

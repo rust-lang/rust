@@ -970,18 +970,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "clock_nanosleep" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
                 this.check_target_os(
-                    &[
-                        "freebsd",
-                        "netbsd",
-                        "linux",
-                        "android",
-                        "solaris",
-                        "illumos",
-                        "dragonfly",
-                        "hurd",
-                        "fuchsia",
-                        "vxworks",
-                    ],
+                    &["freebsd", "linux", "android", "solaris", "illumos"],
                     link_name,
                 )?;
                 let [clock_id, flags, req, rem] =
