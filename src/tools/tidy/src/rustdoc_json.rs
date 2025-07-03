@@ -14,7 +14,7 @@ pub fn check(src_path: &Path, ci_info: &crate::CiInfo, bad: &mut bool) {
     };
 
     // First we check that `src/rustdoc-json-types` was modified.
-    if !crate::files_modified(base_commit, |p| p == RUSTDOC_JSON_TYPES) {
+    if !crate::files_modified(ci_info, |p| p == RUSTDOC_JSON_TYPES) {
         // `rustdoc-json-types` was not modified so nothing more to check here.
         println!("`rustdoc-json-types` was not modified.");
         return;

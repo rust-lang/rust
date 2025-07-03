@@ -124,8 +124,12 @@ pub fn git_diff<S: AsRef<OsStr>>(base_commit: &str, extra_arg: S) -> Option<Stri
     Some(String::from_utf8_lossy(&output.stdout).into())
 }
 
-/// Returns true if any modified file matches the predicate, or if unable to list modified files.
-pub fn files_modified(base_commit: &str, pred: impl Fn(&str) -> bool) -> bool {
+/// Returns true if any modified file matches the predicate, if we are in CI, or if unable to list modified files.
+pub fn files_modified(ci_info: &CiInfo, pred: impl Fn(&str) -> bool) -> bool {
+    let Some(base_commit) = &ci_info.base_commit else {
+        eprintln!("No base commit, assuming all files are modified");
+        return true;
+    };
     match crate::git_diff(&base_commit, "--name-status") {
         Some(output) => {
             let modified_files = output.lines().filter_map(|ln| {
