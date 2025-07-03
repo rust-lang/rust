@@ -301,7 +301,7 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
                 "n32" if !is_32bit => e_flags |= elf::EF_MIPS_ABI2,
                 "n64" if !is_32bit => {}
                 "" if is_32bit => e_flags |= elf::EF_MIPS_ABI_O32,
-                "" => sess.dcx().fatal("LLVM ABI must be specifed for 64-bit MIPS targets"),
+                "" => sess.dcx().fatal("LLVM ABI must be specified for 64-bit MIPS targets"),
                 s if is_32bit => {
                     sess.dcx().fatal(format!("invalid LLVM ABI `{}` for 32-bit MIPS target", s))
                 }

@@ -572,7 +572,7 @@ where
             Right((local, offset, locals_addr, layout)) => {
                 if offset.is_some() {
                     // This has been projected to a part of this local, or had the type changed.
-                    // FIMXE: there are cases where we could still avoid allocating an mplace.
+                    // FIXME: there are cases where we could still avoid allocating an mplace.
                     Left(place.force_mplace(self)?)
                 } else {
                     debug_assert_eq!(locals_addr, self.frame().locals_addr());

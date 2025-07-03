@@ -443,7 +443,7 @@ impl CratesIndexPart {
             .expect("Object Replacement Character (U+FFFC) should not appear in the --index-page")
     }
 
-    /// Might return parts that are duplicate with ones in prexisting index.html
+    /// Might return parts that are duplicate with ones in preexisting index.html
     fn get(crate_name: &str, external_crates: &[String]) -> Result<PartsAndLocations<Self>, Error> {
         let mut ret = PartsAndLocations::default();
         let path = Path::new("index.html");

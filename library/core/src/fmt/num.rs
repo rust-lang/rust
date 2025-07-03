@@ -589,7 +589,7 @@ impl fmt::Display for i128 {
 }
 
 impl u128 {
-    /// Format optimized for u128. Computation of 128 bits is limited by proccessing
+    /// Format optimized for u128. Computation of 128 bits is limited by processing
     /// in batches of 16 decimals at a time.
     #[doc(hidden)]
     #[unstable(

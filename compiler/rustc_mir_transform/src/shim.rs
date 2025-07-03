@@ -31,7 +31,7 @@ pub(super) fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
 
-// Replace Pin<&mut ImplCoroutine> accesses (_1.0) into Pin<&mut ProxyCoroutine> acceses
+// Replace Pin<&mut ImplCoroutine> accesses (_1.0) into Pin<&mut ProxyCoroutine> accesses
 struct FixProxyFutureDropVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     replace_to: Local,
