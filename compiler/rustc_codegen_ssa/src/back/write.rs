@@ -999,8 +999,7 @@ fn execute_fat_lto_work_item<B: ExtraBackendMethods>(
         B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
 
     if !autodiff.is_empty() {
-        let config = cgcx.config(ModuleKind::Regular);
-        if let Err(err) = B::autodiff(cgcx, &module, autodiff, config) {
+        if let Err(err) = B::autodiff(cgcx, &module, autodiff) {
             err.raise();
         }
     }

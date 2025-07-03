@@ -65,7 +65,6 @@ pub trait WriteBackendMethods: Clone + 'static {
         cgcx: &CodegenContext<Self>,
         module: &ModuleCodegen<Self::Module>,
         diff_fncs: Vec<AutoDiffItem>,
-        config: &ModuleConfig,
     ) -> Result<(), FatalError>;
 }
 

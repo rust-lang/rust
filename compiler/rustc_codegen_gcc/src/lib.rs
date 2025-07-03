@@ -437,7 +437,6 @@ impl WriteBackendMethods for GccCodegenBackend {
         _cgcx: &CodegenContext<Self>,
         _module: &ModuleCodegen<Self::Module>,
         _diff_functions: Vec<AutoDiffItem>,
-        _config: &ModuleConfig,
     ) -> Result<(), FatalError> {
         unimplemented!()
     }

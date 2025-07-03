@@ -231,13 +231,12 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         cgcx: &CodegenContext<Self>,
         module: &ModuleCodegen<Self::Module>,
         diff_fncs: Vec<AutoDiffItem>,
-        config: &ModuleConfig,
     ) -> Result<(), FatalError> {
         if cgcx.lto != Lto::Fat {
             let dcx = cgcx.create_dcx();
             return Err(dcx.handle().emit_almost_fatal(AutoDiffWithoutLTO));
         }
-        builder::autodiff::differentiate(module, cgcx, diff_fncs, config)
+        builder::autodiff::differentiate(module, cgcx, diff_fncs)
     }
 }
 
