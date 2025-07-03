@@ -16,10 +16,12 @@ use crate::{GccCodegenBackend, GccContext};
 
 pub(crate) fn codegen(
     cgcx: &CodegenContext<GccCodegenBackend>,
-    dcx: DiagCtxtHandle<'_>,
     module: ModuleCodegen<GccContext>,
     config: &ModuleConfig,
 ) -> Result<CompiledModule, FatalError> {
+    let dcx = cgcx.create_dcx();
+    let dcx = dcx.handle();
+
     let _timer = cgcx.prof.generic_activity_with_arg("GCC_module_codegen", &*module.name);
     {
         let context = &module.module_llvm.context;

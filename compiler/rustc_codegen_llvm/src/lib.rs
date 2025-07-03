@@ -212,11 +212,10 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn codegen(
         cgcx: &CodegenContext<Self>,
-        dcx: DiagCtxtHandle<'_>,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError> {
-        back::write::codegen(cgcx, dcx, module, config)
+        back::write::codegen(cgcx, module, config)
     }
     fn prepare_thin(
         module: ModuleCodegen<Self::Module>,

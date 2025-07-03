@@ -53,7 +53,6 @@ pub trait WriteBackendMethods: Clone + 'static {
     ) -> Result<ModuleCodegen<Self::Module>, FatalError>;
     fn codegen(
         cgcx: &CodegenContext<Self>,
-        dcx: DiagCtxtHandle<'_>,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError>;
