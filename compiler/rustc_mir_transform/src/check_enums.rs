@@ -120,6 +120,7 @@ enum EnumCheckType<'tcx> {
     },
 }
 
+#[derive(Debug, Copy, Clone)]
 struct TyAndSize<'tcx> {
     pub ty: Ty<'tcx>,
     pub size: Size,
@@ -337,7 +338,7 @@ fn insert_direct_enum_check<'tcx>(
     let invalid_discr_block_data = BasicBlockData::new(None, false);
     let invalid_discr_block = basic_blocks.push(invalid_discr_block_data);
     let block_data = &mut basic_blocks[current_block];
-    let discr = insert_discr_cast_to_u128(
+    let discr_place = insert_discr_cast_to_u128(
         tcx,
         local_decls,
         block_data,
@@ -348,13 +349,34 @@ fn insert_direct_enum_check<'tcx>(
         source_info,
     );
 
+    // Mask out the bits of the discriminant type.
+    let mask = discr.size.unsigned_int_max();
+    let discr_masked =
+        local_decls.push(LocalDecl::with_source_info(tcx.types.u128, source_info)).into();
+    let rvalue = Rvalue::BinaryOp(
+        BinOp::BitAnd,
+        Box::new((
+            Operand::Copy(discr_place),
+            Operand::Constant(Box::new(ConstOperand {
+                span: source_info.span,
+                user_ty: None,
+                const_: Const::Val(ConstValue::from_u128(mask), tcx.types.u128),
+            })),
+        )),
+    );
+    block_data
+        .statements
+        .push(Statement::new(source_info, StatementKind::Assign(Box::new((discr_masked, rvalue)))));
+
     // Branch based on the discriminant value.
     block_data.terminator = Some(Terminator {
         source_info,
         kind: TerminatorKind::SwitchInt {
-            discr: Operand::Copy(discr),
+            discr: Operand::Copy(discr_masked),
             targets: SwitchTargets::new(
-                discriminants.into_iter().map(|discr| (discr, new_block)),
+                discriminants
+                    .into_iter()
+                    .map(|discr_val| (discr.size.truncate(discr_val), new_block)),
                 invalid_discr_block,
             ),
         },
@@ -371,7 +393,7 @@ fn insert_direct_enum_check<'tcx>(
             })),
             expected: true,
             target: new_block,
-            msg: Box::new(AssertKind::InvalidEnumConstruction(Operand::Copy(discr))),
+            msg: Box::new(AssertKind::InvalidEnumConstruction(Operand::Copy(discr_masked))),
             // This calls panic_invalid_enum_construction, which is #[rustc_nounwind].
             // We never want to insert an unwind into unsafe code, because unwinding could
             // make a failing UB check turn into much worse UB when we start unwinding.

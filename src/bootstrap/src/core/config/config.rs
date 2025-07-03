@@ -297,7 +297,8 @@ pub struct Config {
 
     /// Whether to use the precompiled stage0 libtest with compiletest.
     pub compiletest_use_stage0_libtest: bool,
-
+    /// Default value for `--extra-checks`
+    pub tidy_extra_checks: Option<String>,
     pub is_running_on_ci: bool,
 
     /// Cache for determining path modifications
@@ -744,6 +745,7 @@ impl Config {
             jobs,
             compiletest_diff_tool,
             compiletest_use_stage0_libtest,
+            tidy_extra_checks,
             mut ccache,
             exclude,
         } = toml.build.unwrap_or_default();
@@ -1010,6 +1012,7 @@ impl Config {
             optimized_compiler_builtins.unwrap_or(config.channel != "dev");
         config.compiletest_diff_tool = compiletest_diff_tool;
         config.compiletest_use_stage0_libtest = compiletest_use_stage0_libtest.unwrap_or(true);
+        config.tidy_extra_checks = tidy_extra_checks;
 
         let download_rustc = config.download_rustc_commit.is_some();
         config.explicit_stage_from_cli = flags_stage.is_some();

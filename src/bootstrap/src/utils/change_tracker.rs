@@ -441,4 +441,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "`llvm.lld` is no longer enabled by default for the dist profile.",
     },
+    ChangeInfo {
+        change_id: 143251,
+        severity: ChangeSeverity::Info,
+        summary: "Added new option `build.tidy-extra-checks` to specify a default value for the --extra-checks cli flag.",
+    },
 ];

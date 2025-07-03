@@ -306,11 +306,7 @@ impl Step for Std {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(
-            StepMetadata::build("std", self.target)
-                .built_by(self.compiler)
-                .stage(self.compiler.stage),
-        )
+        Some(StepMetadata::build("std", self.target).built_by(self.compiler))
     }
 }
 
@@ -1186,11 +1182,7 @@ impl Step for Rustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(
-            StepMetadata::build("rustc", self.target)
-                .built_by(self.build_compiler)
-                .stage(self.build_compiler.stage + 1),
-        )
+        Some(StepMetadata::build("rustc", self.target).built_by(self.build_compiler))
     }
 }
 
