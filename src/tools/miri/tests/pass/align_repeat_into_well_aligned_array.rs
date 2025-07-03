@@ -2,6 +2,7 @@
 
 use std::mem::size_of;
 
+#[expect(unused_variables, unused_assignments)]
 fn main() {
     let mut a = Params::new();
     // The array itself here happens to be quite well-aligned, but not all its elements have that
