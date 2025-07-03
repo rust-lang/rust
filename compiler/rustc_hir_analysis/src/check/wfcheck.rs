@@ -15,7 +15,6 @@ use rustc_infer::infer::{self, InferCtxt, SubregionOrigin, TyCtxtInferExt};
 use rustc_lint_defs::builtin::SUPERTRAIT_ITEM_SHADOWING_DEFINITION;
 use rustc_macros::LintDiagnostic;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::query::Providers;
 use rustc_middle::traits::solve::NoSolution;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
@@ -189,7 +188,10 @@ where
     }
 }
 
-fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
+pub(super) fn check_well_formed(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
     let mut res = crate::check::check::check_item_type(tcx, def_id);
 
     for param in &tcx.generics_of(def_id).own_params {
@@ -2249,7 +2251,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     }
 }
 
-fn check_type_wf(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuaranteed> {
+pub(super) fn check_type_wf(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuaranteed> {
     let items = tcx.hir_crate_items(());
     let res = items
         .par_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id))
@@ -2396,8 +2398,4 @@ struct RedundantLifetimeArgsLint<'tcx> {
     victim: ty::Region<'tcx>,
     // The lifetime we can replace the victim with.
     candidate: ty::Region<'tcx>,
-}
-
-pub fn provide(providers: &mut Providers) {
-    *providers = Providers { check_type_wf, check_well_formed, ..*providers };
 }

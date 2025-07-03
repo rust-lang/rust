@@ -4,7 +4,6 @@ use rustc_hir::{self as hir, AmbigArg, ForeignItem, ForeignItemKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode, WellFormedLoc};
 use rustc_middle::bug;
-use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode, fold_regions};
 use rustc_span::def_id::LocalDefId;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
@@ -12,13 +11,9 @@ use tracing::debug;
 
 use crate::collect::ItemCtxt;
 
-pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { diagnostic_hir_wf_check, ..*providers };
-}
-
 // Ideally, this would be in `rustc_trait_selection`, but we
 // need access to `ItemCtxt`
-fn diagnostic_hir_wf_check<'tcx>(
+pub(super) fn diagnostic_hir_wf_check<'tcx>(
     tcx: TyCtxt<'tcx>,
     (predicate, loc): (ty::Predicate<'tcx>, WellFormedLoc),
 ) -> Option<ObligationCause<'tcx>> {

@@ -8,7 +8,6 @@ use rustc_arena::DroplessArena;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{
     self, CrateVariancesMap, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
@@ -27,18 +26,14 @@ mod solve;
 
 pub(crate) mod dump;
 
-pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { variances_of, crate_variances, ..*providers };
-}
-
-fn crate_variances(tcx: TyCtxt<'_>, (): ()) -> CrateVariancesMap<'_> {
+pub(super) fn crate_variances(tcx: TyCtxt<'_>, (): ()) -> CrateVariancesMap<'_> {
     let arena = DroplessArena::default();
     let terms_cx = terms::determine_parameters_to_be_inferred(tcx, &arena);
     let constraints_cx = constraints::add_constraints_from_crate(terms_cx);
     solve::solve_constraints(constraints_cx)
 }
 
-fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
+pub(super) fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
     // Skip items with no generics - there's nothing to infer in them.
     if tcx.generics_of(item_def_id).is_empty() {
         return &[];

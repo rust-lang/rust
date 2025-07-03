@@ -109,6 +109,8 @@ pub fn provide(providers: &mut Providers) {
         collect_return_position_impl_trait_in_trait_tys,
         compare_impl_item: compare_impl_item::compare_impl_item,
         check_coroutine_obligations: check::check_coroutine_obligations,
+        check_type_wf: wfcheck::check_type_wf,
+        check_well_formed: wfcheck::check_well_formed,
         ..*providers
     };
 }
