@@ -1153,35 +1153,20 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
     // If there is no `doc(cfg())`, then we retrieve the `cfg()` attributes (because
     // `doc(cfg())` overrides `cfg()`).
     for attr in attrs {
-        let Some(ident) = attr.ident() else { continue };
-        match ident.name {
-            sym::cfg | sym::cfg_trace if !cfg_info.parent_is_doc_cfg => {
-                if let Some(attr) = single(attr.meta_item_list()?)
-                    && let Ok(new_cfg) = Cfg::parse(&attr)
-                {
-                    cfg_info.current_cfg &= new_cfg;
-                }
-            }
+        if let hir::Attribute::Parsed(AttributeKind::TargetFeature { features, .. }) = attr {
             // treat #[target_feature(enable = "feat")] attributes as if they were
             // #[doc(cfg(target_feature = "feat"))] attributes as well
-            sym::target_feature
-                if let Some(attrs) = attr.meta_item_list() =>
-            {
-                for attr in attrs {
-                    if attr.has_name(sym::enable) && attr.value_str().is_some() {
-                        // Clone `enable = "feat"`, change to `target_feature = "feat"`.
-                        // Unwrap is safe because `value_str` succeeded above.
-                        let mut meta = attr.meta_item().unwrap().clone();
-                        meta.path =
-                            ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
-
-                        if let Ok(feat_cfg) = Cfg::parse(&ast::MetaItemInner::MetaItem(meta)) {
-                            cfg_info.current_cfg &= feat_cfg;
-                        }
-                    }
-                }
+            for (feature, _) in features {
+                cfg_info.current_cfg &= Cfg::Cfg(sym::target_feature, Some(*feature));
             }
-            _ => {}
+            continue;
+        } else if !cfg_info.parent_is_doc_cfg
+            && let Some(ident) = attr.ident()
+            && matches!(ident.name, sym::cfg | sym::cfg_trace)
+            && let Some(attr) = single(attr.meta_item_list()?)
+            && let Ok(new_cfg) = Cfg::parse(&attr)
+        {
+            cfg_info.current_cfg &= new_cfg;
         }
     }
 
