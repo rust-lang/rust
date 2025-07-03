@@ -12,14 +12,19 @@ use std::panic;
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span};
+use rustc_span::{Ident, Span, Symbol};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
 use crate::ast::*;
 use crate::ptr::P;
 use crate::tokenstream::*;
-use crate::visit::{AssocCtxt, BoundKind, FnCtxt, VisitorResult, try_visit, visit_opt, walk_list};
+use crate::visit::{AssocCtxt, BoundKind, FnCtxt, LifetimeCtxt, VisitorResult, try_visit};
+use crate::{
+    define_named_walk, impl_visitable, impl_visitable_calling, impl_visitable_calling_walkable,
+    impl_visitable_direct, impl_visitable_list, impl_visitable_noop, impl_walkable,
+    visit_visitable, visit_visitable_with, walk_walkable,
+};
 
 mod sealed {
     use rustc_ast_ir::visit::VisitorResult;
@@ -36,11 +41,144 @@ mod sealed {
 
 use sealed::MutVisitorResult;
 
+pub(crate) trait MutVisitable<V: MutVisitor> {
+    type Extra: Copy;
+    fn visit_mut(&mut self, visitor: &mut V, extra: Self::Extra);
+}
+
+impl<V: MutVisitor, T: ?Sized> MutVisitable<V> for P<T>
+where
+    T: MutVisitable<V>,
+{
+    type Extra = T::Extra;
+    fn visit_mut(&mut self, visitor: &mut V, extra: Self::Extra) {
+        (**self).visit_mut(visitor, extra)
+    }
+}
+
+impl<V: MutVisitor, T> MutVisitable<V> for Option<T>
+where
+    T: MutVisitable<V>,
+{
+    type Extra = T::Extra;
+    fn visit_mut(&mut self, visitor: &mut V, extra: Self::Extra) {
+        if let Some(this) = self {
+            this.visit_mut(visitor, extra)
+        }
+    }
+}
+
+impl<V: MutVisitor, T> MutVisitable<V> for Spanned<T>
+where
+    T: MutVisitable<V>,
+{
+    type Extra = T::Extra;
+    fn visit_mut(&mut self, visitor: &mut V, extra: Self::Extra) {
+        let Spanned { span, node } = self;
+        span.visit_mut(visitor, ());
+        node.visit_mut(visitor, extra);
+    }
+}
+
+impl<V: MutVisitor, T> MutVisitable<V> for [T]
+where
+    T: MutVisitable<V>,
+{
+    type Extra = T::Extra;
+    fn visit_mut(&mut self, visitor: &mut V, extra: Self::Extra) {
+        for item in self {
+            item.visit_mut(visitor, extra);
+        }
+    }
+}
+
+impl<V: MutVisitor, T> MutVisitable<V> for Vec<T>
+where
+    T: MutVisitable<V>,
+{
+    type Extra = T::Extra;
+    fn visit_mut(&mut self, visitor: &mut V, extra: Self::Extra) {
+        for item in self {
+            item.visit_mut(visitor, extra);
+        }
+    }
+}
+
+impl<V: MutVisitor, T> MutVisitable<V> for (T,)
+where
+    T: MutVisitable<V>,
+{
+    type Extra = T::Extra;
+    fn visit_mut(&mut self, visitor: &mut V, extra: Self::Extra) {
+        self.0.visit_mut(visitor, extra);
+    }
+}
+
+impl<V: MutVisitor, T1, T2> MutVisitable<V> for (T1, T2)
+where
+    T1: MutVisitable<V, Extra = ()>,
+    T2: MutVisitable<V, Extra = ()>,
+{
+    type Extra = ();
+    fn visit_mut(&mut self, visitor: &mut V, extra: Self::Extra) {
+        self.0.visit_mut(visitor, extra);
+        self.1.visit_mut(visitor, extra);
+    }
+}
+
+impl<V: MutVisitor, T1, T2, T3> MutVisitable<V> for (T1, T2, T3)
+where
+    T1: MutVisitable<V, Extra = ()>,
+    T2: MutVisitable<V, Extra = ()>,
+    T3: MutVisitable<V, Extra = ()>,
+{
+    type Extra = ();
+    fn visit_mut(&mut self, visitor: &mut V, extra: Self::Extra) {
+        self.0.visit_mut(visitor, extra);
+        self.1.visit_mut(visitor, extra);
+        self.2.visit_mut(visitor, extra);
+    }
+}
+
+impl<V: MutVisitor, T1, T2, T3, T4> MutVisitable<V> for (T1, T2, T3, T4)
+where
+    T1: MutVisitable<V, Extra = ()>,
+    T2: MutVisitable<V, Extra = ()>,
+    T3: MutVisitable<V, Extra = ()>,
+    T4: MutVisitable<V, Extra = ()>,
+{
+    type Extra = ();
+    fn visit_mut(&mut self, visitor: &mut V, extra: Self::Extra) {
+        self.0.visit_mut(visitor, extra);
+        self.1.visit_mut(visitor, extra);
+        self.2.visit_mut(visitor, extra);
+        self.3.visit_mut(visitor, extra);
+    }
+}
+
+pub trait MutWalkable<V: MutVisitor> {
+    fn walk_mut(&mut self, visitor: &mut V);
+}
+
 super::common_visitor_and_walkers!((mut) MutVisitor);
 
 macro_rules! generate_flat_map_visitor_fns {
     ($($name:ident, $Ty:ty, $flat_map_fn:ident$(, $param:ident: $ParamTy:ty)*;)+) => {
         $(
+            #[allow(unused_parens)]
+            impl<V: MutVisitor> MutVisitable<V> for ThinVec<$Ty> {
+                type Extra = ($($ParamTy),*);
+
+                #[inline]
+                fn visit_mut(
+                    &mut self,
+                    visitor: &mut V,
+                    ($($param),*): Self::Extra,
+                ) -> V::Result {
+                    $name(visitor, self $(, $param)*)
+                }
+            }
+
             fn $name<V: MutVisitor>(
                 vis: &mut V,
                 values: &mut ThinVec<$Ty>,
@@ -78,15 +216,6 @@ pub fn walk_flat_map_pat_field<T: MutVisitor>(
     smallvec![fp]
 }
 
-fn visit_nested_use_tree<V: MutVisitor>(
-    vis: &mut V,
-    nested_tree: &mut UseTree,
-    nested_id: &mut NodeId,
-) {
-    vis.visit_id(nested_id);
-    vis.visit_use_tree(nested_tree);
-}
-
 macro_rules! generate_walk_flat_map_fns {
     ($($fn_name:ident($Ty:ty$(,$extra_name:ident: $ExtraTy:ty)*) => $visit_fn_name:ident;)+) => {$(
         pub fn $fn_name<V: MutVisitor>(vis: &mut V, mut value: $Ty$(,$extra_name: $ExtraTy)*) -> SmallVec<[$Ty; 1]> {
@@ -107,14 +236,6 @@ generate_walk_flat_map_fns! {
     walk_flat_map_item(P<Item>) => visit_item;
     walk_flat_map_foreign_item(P<ForeignItem>) => visit_foreign_item;
     walk_flat_map_assoc_item(P<AssocItem>, ctxt: AssocCtxt) => visit_assoc_item;
-}
-
-fn walk_ty_alias_where_clauses<T: MutVisitor>(vis: &mut T, tawcs: &mut TyAliasWhereClauses) {
-    let TyAliasWhereClauses { before, after, split: _ } = tawcs;
-    let TyAliasWhereClause { has_where_token: _, span: span_before } = before;
-    let TyAliasWhereClause { has_where_token: _, span: span_after } = after;
-    vis.visit_span(span_before);
-    vis.visit_span(span_after);
 }
 
 pub fn walk_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: P<Expr>) -> Option<P<Expr>> {

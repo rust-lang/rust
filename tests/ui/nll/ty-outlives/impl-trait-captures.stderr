@@ -1,4 +1,4 @@
-error[E0700]: hidden type for `Opaque(DefId(0:11 ~ impl_trait_captures[aeb9]::foo::{opaque#0}), ['a/#0, T, 'a/#0])` captures lifetime that does not appear in bounds
+error[E0700]: hidden type for `Opaque(DefId(0:9 ~ impl_trait_captures[aeb9]::foo::{opaque#0}), ['a/#0, T, 'a/#0])` captures lifetime that does not appear in bounds
   --> $DIR/impl-trait-captures.rs:11:5
    |
 LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> {

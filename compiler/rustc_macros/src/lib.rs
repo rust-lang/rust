@@ -21,6 +21,7 @@ mod symbols;
 mod try_from;
 mod type_foldable;
 mod type_visitable;
+mod visitable;
 
 // Reads the rust version (e.g. "1.75.0") from the CFG_RELEASE env var and
 // produces a `RustcVersion` literal containing that version (e.g.
@@ -100,6 +101,16 @@ decl_derive!(
     /// variant is annotated with `#[type_visitable(ignore)]` then that field will not be
     /// visited (and its type is not required to implement `TypeVisitable`).
     type_visitable::type_visitable_derive
+);
+decl_derive!(
+    [Walkable, attributes(visitable)] =>
+    /// Derives `Walkable` for the annotated `struct` or `enum` (`union` is not supported).
+    ///
+    /// Each field of the struct or enum variant will be visited in definition order, using the
+    /// `Walkable` implementation for its type. However, if a field of a struct or an enum
+    /// variant is annotated with `#[visitable(ignore)]` then that field will not be
+    /// visited (and its type is not required to implement `Walkable`).
+    visitable::visitable_derive
 );
 decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
 decl_derive!(

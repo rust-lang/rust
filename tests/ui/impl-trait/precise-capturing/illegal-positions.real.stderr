@@ -16,6 +16,12 @@ error: `use<...>` precise capturing syntax not allowed in bounds
 LL |     type Assoc: use<> where (): use<>;
    |                 ^^^^^
 
+error: at least one trait must be specified
+  --> $DIR/illegal-positions.rs:14:21
+   |
+LL | fn fun<T: use<>>(_: impl use<>) where (): use<> {}
+   |                     ^^^^^^^^^^
+
 error: `use<...>` precise capturing syntax not allowed in bounds
   --> $DIR/illegal-positions.rs:14:11
    |
@@ -27,12 +33,6 @@ error: `use<...>` precise capturing syntax not allowed in bounds
    |
 LL | fn fun<T: use<>>(_: impl use<>) where (): use<> {}
    |                                           ^^^^^
-
-error: at least one trait must be specified
-  --> $DIR/illegal-positions.rs:14:21
-   |
-LL | fn fun<T: use<>>(_: impl use<>) where (): use<> {}
-   |                     ^^^^^^^^^^
 
 error: `use<...>` precise capturing syntax not allowed in `dyn` trait object bounds
   --> $DIR/illegal-positions.rs:21:25
