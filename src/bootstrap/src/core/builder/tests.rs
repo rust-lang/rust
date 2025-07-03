@@ -1378,7 +1378,6 @@ mod snapshot {
     }
 
     #[test]
-    #[should_panic]
     fn check_library_cross_compile() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
@@ -1388,8 +1387,8 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [check] std <target1>
-        [check] std <target2>
+        [check] rustc 1 <host> -> std 1 <target1>
+        [check] rustc 1 <host> -> std 1 <target2>
         ");
     }
 
