@@ -714,6 +714,13 @@ don't know
 ]
 message_on_remove = "PR #{number}'s beta-nomination has been removed."
 
+[notify-zulip."beta-accepted".compiler]
+required_labels = ["T-compiler"]
+zulip_stream = 474880 # #t-compiler/backports
+# Put it in the same thread as beta-nominated.
+topic = "#{number}: beta-nominated"
+message_on_add = "PR #{number} has been **accepted** for **beta** backport."
+
 [notify-zulip."stable-nominated".compiler]
 required_labels = ["T-compiler"]
 zulip_stream = 474880 # #t-compiler/backports
@@ -731,6 +738,13 @@ don't know
 """,
 ]
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
+
+[notify-zulip."stable-accepted".compiler]
+required_labels = ["T-compiler"]
+zulip_stream = 474880 # #t-compiler/backports
+# Put it in the same thread as stable-nominated.
+topic = "#{number}: stable-nominated"
+message_on_add = "PR #{number} has been **accepted** for **stable** backport."
 
 
 [notify-zulip."beta-nominated".bootstrap]
