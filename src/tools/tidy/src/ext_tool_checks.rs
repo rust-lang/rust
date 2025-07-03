@@ -23,6 +23,8 @@ use std::process::Command;
 use std::str::FromStr;
 use std::{fmt, fs, io};
 
+use crate::CiInfo;
+
 const MIN_PY_REV: (u32, u32) = (3, 9);
 const MIN_PY_REV_STR: &str = "≥3.9";
 
@@ -37,15 +39,18 @@ const RUFF_CONFIG_PATH: &[&str] = &["src", "tools", "tidy", "config", "ruff.toml
 const RUFF_CACHE_PATH: &[&str] = &["cache", "ruff_cache"];
 const PIP_REQ_PATH: &[&str] = &["src", "tools", "tidy", "config", "requirements.txt"];
 
+const SPELLCHECK_DIRS: &[&str] = &["compiler", "library", "src/bootstrap", "src/librustdoc"];
+
 pub fn check(
     root_path: &Path,
     outdir: &Path,
+    ci_info: &CiInfo,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
     bad: &mut bool,
 ) {
-    if let Err(e) = check_impl(root_path, outdir, bless, extra_checks, pos_args) {
+    if let Err(e) = check_impl(root_path, outdir, ci_info, bless, extra_checks, pos_args) {
         tidy_error!(bad, "{e}");
     }
 }
@@ -53,6 +58,7 @@ pub fn check(
 fn check_impl(
     root_path: &Path,
     outdir: &Path,
+    ci_info: &CiInfo,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
@@ -73,7 +79,13 @@ fn check_impl(
                 (ExtraCheckArg::from_str(s), s)
             })
             .filter_map(|(res, src)| match res {
-                Ok(x) => Some(x),
+                Ok(arg) => {
+                    if arg.is_inactive_auto(ci_info) {
+                        None
+                    } else {
+                        Some(arg)
+                    }
+                }
                 Err(err) => {
                     eprintln!("warning: bad extra check argument {src:?}: {err:?}");
                     None
@@ -249,14 +261,9 @@ fn check_impl(
     if spellcheck {
         let config_path = root_path.join("typos.toml");
         // sync target files with .github/workflows/spellcheck.yml
-        let mut args = vec![
-            "-c",
-            config_path.as_os_str().to_str().unwrap(),
-            "./compiler",
-            "./library",
-            "./src/bootstrap",
-            "./src/librustdoc",
-        ];
+        let mut args = vec!["-c", config_path.as_os_str().to_str().unwrap()];
+
+        args.extend_from_slice(SPELLCHECK_DIRS);
 
         if bless {
             eprintln!("spellcheck files and fix");
@@ -663,9 +670,12 @@ enum ExtraCheckParseError {
     TooManyParts,
     /// Tried to parse the empty string
     Empty,
+    /// `auto` specified without lang part.
+    AutoRequiresLang,
 }
 
 struct ExtraCheckArg {
+    auto: bool,
     lang: ExtraCheckLang,
     /// None = run all extra checks for the given lang
     kind: Option<ExtraCheckKind>,
@@ -675,21 +685,47 @@ impl ExtraCheckArg {
     fn matches(&self, lang: ExtraCheckLang, kind: ExtraCheckKind) -> bool {
         self.lang == lang && self.kind.map(|k| k == kind).unwrap_or(true)
     }
+
+    /// Returns `true` if this is an auto arg and the relevant files are not modified.
+    fn is_inactive_auto(&self, ci_info: &CiInfo) -> bool {
+        if !self.auto {
+            return false;
+        }
+        let ext = match self.lang {
+            ExtraCheckLang::Py => ".py",
+            ExtraCheckLang::Cpp => ".cpp",
+            ExtraCheckLang::Shell => ".sh",
+            ExtraCheckLang::Spellcheck => {
+                return !crate::files_modified(ci_info, |s| {
+                    SPELLCHECK_DIRS.iter().any(|dir| Path::new(s).starts_with(dir))
+                });
+            }
+        };
+        !crate::files_modified(ci_info, |s| s.ends_with(ext))
+    }
 }
 
 impl FromStr for ExtraCheckArg {
     type Err = ExtraCheckParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut auto = false;
         let mut parts = s.split(':');
-        let Some(first) = parts.next() else {
+        let Some(mut first) = parts.next() else {
             return Err(ExtraCheckParseError::Empty);
         };
+        if first == "auto" {
+            let Some(part) = parts.next() else {
+                return Err(ExtraCheckParseError::AutoRequiresLang);
+            };
+            auto = true;
+            first = part;
+        }
         let second = parts.next();
         if parts.next().is_some() {
             return Err(ExtraCheckParseError::TooManyParts);
         }
-        Ok(Self { lang: first.parse()?, kind: second.map(|s| s.parse()).transpose()? })
+        Ok(Self { auto, lang: first.parse()?, kind: second.map(|s| s.parse()).transpose()? })
     }
 }
 

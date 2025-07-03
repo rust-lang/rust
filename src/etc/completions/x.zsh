@@ -338,7 +338,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '*--test-args=[extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)]:ARGS:_default' \
 '*--compiletest-rustc-args=[extra options to pass the compiler when running compiletest tests]:ARGS:_default' \
-'--extra-checks=[comma-separated list of other files types to check (accepts py, py\:lint, py\:fmt, shell, shell\:lint, cpp, cpp\:fmt, spellcheck, spellcheck\:fix)]:EXTRA_CHECKS:_default' \
+'--extra-checks=[comma-separated list of other files types to check (accepts py, py\:lint, py\:fmt, shell, shell\:lint, cpp, cpp\:fmt, spellcheck)]:EXTRA_CHECKS:_default' \
 '--compare-mode=[mode describing what file the actual ui output will be compared to]:COMPARE MODE:_default' \
 '--pass=[force {check,build,run}-pass tests to this mode]:check | build | run:_default' \
 '--run=[whether to execute run-* tests]:auto | always | never:_default' \
