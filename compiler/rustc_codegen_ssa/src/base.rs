@@ -528,8 +528,6 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let llbb = Bx::append_block(cx, llfn, "top");
         let mut bx = Bx::build(cx, llbb);
 
-        bx.insert_reference_to_gdb_debug_scripts_section_global();
-
         let isize_ty = cx.type_isize();
         let ptr_ty = cx.type_ptr();
         let (arg_argc, arg_argv) = get_argc_argv(&mut bx);
@@ -609,15 +607,7 @@ pub fn collect_debugger_visualizers_transitive(
 ) -> BTreeSet<DebuggerVisualizerFile> {
     tcx.debugger_visualizers(LOCAL_CRATE)
         .iter()
-        .chain(
-            tcx.crates(())
-                .iter()
-                .filter(|&cnum| {
-                    let used_crate_source = tcx.used_crate_source(*cnum);
-                    used_crate_source.rlib.is_some() || used_crate_source.rmeta.is_some()
-                })
-                .flat_map(|&cnum| tcx.debugger_visualizers(cnum)),
-        )
+        .chain(tcx.crates(()).iter().flat_map(|&cnum| tcx.debugger_visualizers(cnum)))
         .filter(|visualizer| visualizer.visualizer_type == visualizer_type)
         .cloned()
         .collect::<BTreeSet<_>>()
