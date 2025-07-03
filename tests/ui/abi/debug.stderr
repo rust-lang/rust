@@ -89,9 +89,9 @@ error: fn_abi_of(test) = FnAbi {
            conv: Rust,
            can_unwind: $SOME_BOOL,
        }
-  --> $DIR/debug.rs:16:1
+  --> $DIR/debug.rs:23:1
    |
-LL | fn test(_x: u8) -> bool { true }
+LL | fn test(_x: u8) -> bool {
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: fn_abi_of(TestFnPtr) = FnAbi {
@@ -185,7 +185,7 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
            conv: Rust,
            can_unwind: $SOME_BOOL,
        }
-  --> $DIR/debug.rs:19:1
+  --> $DIR/debug.rs:29:1
    |
 LL | type TestFnPtr = fn(bool) -> u8;
    | ^^^^^^^^^^^^^^
@@ -263,13 +263,13 @@ error: fn_abi_of(test_generic) = FnAbi {
            conv: Rust,
            can_unwind: $SOME_BOOL,
        }
-  --> $DIR/debug.rs:22:1
+  --> $DIR/debug.rs:32:1
    |
-LL | fn test_generic<T>(_x: *const T) { }
+LL | fn test_generic<T>(_x: *const T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
-  --> $DIR/debug.rs:25:1
+  --> $DIR/debug.rs:35:1
    |
 LL | const C: () = ();
    | ^^^^^^^^^^^
@@ -419,7 +419,7 @@ error: ABIs are not compatible
            conv: Rust,
            can_unwind: $SOME_BOOL,
        }
-  --> $DIR/debug.rs:41:1
+  --> $DIR/debug.rs:51:1
    |
 LL | type TestAbiNe = (fn(u8), fn(u32));
    | ^^^^^^^^^^^^^^
@@ -571,7 +571,7 @@ error: ABIs are not compatible
            conv: Rust,
            can_unwind: $SOME_BOOL,
        }
-  --> $DIR/debug.rs:44:1
+  --> $DIR/debug.rs:54:1
    |
 LL | type TestAbiNeLarger = (fn([u8; 32]), fn([u32; 32]));
    | ^^^^^^^^^^^^^^^^^^^^
@@ -720,7 +720,7 @@ error: ABIs are not compatible
            conv: Rust,
            can_unwind: $SOME_BOOL,
        }
-  --> $DIR/debug.rs:47:1
+  --> $DIR/debug.rs:57:1
    |
 LL | type TestAbiNeFloat = (fn(f32), fn(u32));
    | ^^^^^^^^^^^^^^^^^^^
@@ -870,13 +870,13 @@ error: ABIs are not compatible
            conv: Rust,
            can_unwind: $SOME_BOOL,
        }
-  --> $DIR/debug.rs:51:1
+  --> $DIR/debug.rs:61:1
    |
 LL | type TestAbiNeSign = (fn(i32), fn(u32));
    | ^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/debug.rs:54:46
+  --> $DIR/debug.rs:64:46
    |
 LL | type TestAbiEqNonsense = (fn((str, str)), fn((str, str)));
    |                                              ^^^^^^^^^^ doesn't have a size known at compile-time
@@ -885,13 +885,13 @@ LL | type TestAbiEqNonsense = (fn((str, str)), fn((str, str)));
    = note: only the last element of a tuple may have a dynamically sized type
 
 error: unrecognized argument
-  --> $DIR/debug.rs:56:13
+  --> $DIR/debug.rs:66:13
    |
 LL | #[rustc_abi("assert_eq")]
    |             ^^^^^^^^^^^
 
 error: `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
-  --> $DIR/debug.rs:29:5
+  --> $DIR/debug.rs:39:5
    |
 LL |     const C: () = ();
    |     ^^^^^^^^^^^
@@ -981,9 +981,9 @@ error: fn_abi_of(assoc_test) = FnAbi {
            conv: Rust,
            can_unwind: $SOME_BOOL,
        }
-  --> $DIR/debug.rs:34:5
+  --> $DIR/debug.rs:44:5
    |
-LL |     fn assoc_test(&self) { }
+LL |     fn assoc_test(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 12 previous errors
