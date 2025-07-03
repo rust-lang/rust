@@ -995,17 +995,7 @@ fn execute_fat_lto_work_item<B: ExtraBackendMethods>(
     autodiff: Vec<AutoDiffItem>,
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
-    let mut module =
-        B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
-
-    if !autodiff.is_empty() {
-        if let Err(err) = B::autodiff(cgcx, &module, autodiff) {
-            err.raise();
-        }
-    }
-
-    B::optimize_fat(cgcx, &mut module)?;
-
+    let module = B::run_and_optimize_fat_lto(cgcx, needs_fat_lto, import_only_modules, autodiff)?;
     let module = B::codegen(cgcx, module, module_config)?;
     Ok(WorkItemResult::Finished(module))
 }

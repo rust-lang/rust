@@ -26,7 +26,7 @@ use std::mem::ManuallyDrop;
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
 use context::SimpleCx;
-use errors::{AutoDiffWithoutLTO, ParseTargetMachineConfig};
+use errors::ParseTargetMachineConfig;
 use llvm_util::target_config;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
@@ -43,7 +43,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
-use rustc_session::config::{Lto, OptLevel, OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_span::Symbol;
 
 mod back {
@@ -174,12 +174,23 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::write::link(cgcx, dcx, modules)
     }
-    fn run_fat_lto(
+    fn run_and_optimize_fat_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<FatLtoInput<Self>>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
+        diff_fncs: Vec<AutoDiffItem>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        back::lto::run_fat(cgcx, modules, cached_modules)
+        let mut module = back::lto::run_fat(cgcx, modules, cached_modules)?;
+
+        if !diff_fncs.is_empty() {
+            builder::autodiff::differentiate(&module, cgcx, diff_fncs)?;
+        }
+
+        let dcx = cgcx.create_dcx();
+        let dcx = dcx.handle();
+        back::lto::run_pass_manager(cgcx, dcx, &mut module, false)?;
+
+        Ok(module)
     }
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
@@ -195,14 +206,6 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
         back::write::optimize(cgcx, dcx, module, config)
-    }
-    fn optimize_fat(
-        cgcx: &CodegenContext<Self>,
-        module: &mut ModuleCodegen<Self::Module>,
-    ) -> Result<(), FatalError> {
-        let dcx = cgcx.create_dcx();
-        let dcx = dcx.handle();
-        back::lto::run_pass_manager(cgcx, dcx, module, false)
     }
     fn optimize_thin(
         cgcx: &CodegenContext<Self>,
@@ -225,18 +228,6 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
         (module.name, back::lto::ModuleBuffer::new(module.module_llvm.llmod()))
-    }
-    /// Generate autodiff rules
-    fn autodiff(
-        cgcx: &CodegenContext<Self>,
-        module: &ModuleCodegen<Self::Module>,
-        diff_fncs: Vec<AutoDiffItem>,
-    ) -> Result<(), FatalError> {
-        if cgcx.lto != Lto::Fat {
-            let dcx = cgcx.create_dcx();
-            return Err(dcx.handle().emit_almost_fatal(AutoDiffWithoutLTO));
-        }
-        builder::autodiff::differentiate(module, cgcx, diff_fncs)
     }
 }
 
