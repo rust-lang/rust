@@ -3,6 +3,7 @@ error[E0412]: cannot find type `Fo` in this scope
    |
 LL | impl Fo {
    |      ^^ help: a trait with a similar name exists: `Fn`
+   |
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
    = note: similarly named trait `Fn` defined here

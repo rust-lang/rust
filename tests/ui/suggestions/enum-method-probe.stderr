@@ -99,6 +99,7 @@ error[E0624]: method `len` is private
    |
 LL |     res.len();
    |         ^^^ private method
+   |
   --> $SRC_DIR/core/src/option.rs:LL:COL
    |
    = note: private method defined here

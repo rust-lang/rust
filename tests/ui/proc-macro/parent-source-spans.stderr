@@ -144,6 +144,7 @@ LL |     parent_source_spans!($($tokens)*);
 ...
 LL |     one!("hello", "world");
    |     ---------------------- in this macro invocation
+   |
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
    = note: similarly named tuple variant `Ok` defined here
@@ -158,6 +159,7 @@ LL |     parent_source_spans!($($tokens)*);
 ...
 LL |     two!("yay", "rust");
    |     ------------------- in this macro invocation
+   |
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
    = note: similarly named tuple variant `Ok` defined here
@@ -172,6 +174,7 @@ LL |     parent_source_spans!($($tokens)*);
 ...
 LL |     three!("hip", "hop");
    |     -------------------- in this macro invocation
+   |
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
    = note: similarly named tuple variant `Ok` defined here
