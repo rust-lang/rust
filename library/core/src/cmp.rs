@@ -1817,8 +1817,6 @@ mod impls {
             impl const PartialEq for $t {
                 #[inline]
                 fn eq(&self, other: &Self) -> bool { *self == *other }
-                #[inline]
-                fn ne(&self, other: &Self) -> bool { *self != *other }
             }
         )*)
     }
@@ -1828,10 +1826,6 @@ mod impls {
         #[inline]
         fn eq(&self, _other: &()) -> bool {
             true
-        }
-        #[inline]
-        fn ne(&self, _other: &()) -> bool {
-            false
         }
     }
 
@@ -2030,6 +2024,9 @@ mod impls {
         fn eq(&self, other: &&B) -> bool {
             PartialEq::eq(*self, *other)
         }
+        // if <A as PartialEq<B>>::ne uses inline assembly or FFI, then
+        // this forwarding impl may be more efficient than the default impl
+        #[expect(clippy::partialeq_ne_impl)]
         #[inline]
         fn ne(&self, other: &&B) -> bool {
             PartialEq::ne(*self, *other)
@@ -2102,6 +2099,9 @@ mod impls {
         fn eq(&self, other: &&mut B) -> bool {
             PartialEq::eq(*self, *other)
         }
+        // if <A as PartialEq<B>>::ne uses inline assembly or FFI, then
+        // this forwarding impl may be more efficient than the default impl
+        #[expect(clippy::partialeq_ne_impl)]
         #[inline]
         fn ne(&self, other: &&mut B) -> bool {
             PartialEq::ne(*self, *other)
@@ -2172,6 +2172,9 @@ mod impls {
         fn eq(&self, other: &&mut B) -> bool {
             PartialEq::eq(*self, *other)
         }
+        // if <A as PartialEq<B>>::ne uses inline assembly or FFI, then
+        // this forwarding impl may be more efficient than the default impl
+        #[expect(clippy::partialeq_ne_impl)]
         #[inline]
         fn ne(&self, other: &&mut B) -> bool {
             PartialEq::ne(*self, *other)
@@ -2188,6 +2191,9 @@ mod impls {
         fn eq(&self, other: &&B) -> bool {
             PartialEq::eq(*self, *other)
         }
+        // if <A as PartialEq<B>>::ne uses inline assembly or FFI, then
+        // this forwarding impl may be more efficient than the default impl
+        #[expect(clippy::partialeq_ne_impl)]
         #[inline]
         fn ne(&self, other: &&B) -> bool {
             PartialEq::ne(*self, *other)
