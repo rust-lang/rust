@@ -19,6 +19,9 @@ use crate::fmt::Debug;
 use crate::hash::{Hash, Hasher};
 use crate::pin::UnsafePinned;
 
+// NOTE: for consistent error messages between `core` and `minicore`, all `diagnostic` attributes
+// should be replicated exactly in `minicore` (if `minicore` defines the item).
+
 /// Implements a given marker trait for multiple types at the same time.
 ///
 /// The basic syntax looks like this:
