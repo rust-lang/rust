@@ -2389,6 +2389,11 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
 
 #[instrument(level = "trace", skip(tcx))]
 pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
+    // Since encoding metadata is not in a query, and nothing is cached,
+    // there's no need to do dep-graph tracking for any of it.
+    tcx.dep_graph.assert_ignored();
+
+    // Generate the metadata stub manually, as that is a small file compared to full metadata.
     if let Some(ref_path) = ref_path {
         let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
 
@@ -2401,11 +2406,14 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                 is_stub: true,
             });
             header.position.get()
-        });
+        })
     }
+
+    let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
 
     let dep_node = tcx.metadata_dep_node();
 
+    // If the metadata dep-node is green, try to reuse the saved work product.
     if tcx.dep_graph.is_fully_enabled()
         && let work_product_id = WorkProductId::from_cgu_name("metadata")
         && let Some(work_product) = tcx.dep_graph.previous_work_product(&work_product_id)
@@ -2422,12 +2430,6 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         return;
     };
 
-    let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
-
-    // Since encoding metadata is not in a query, and nothing is cached,
-    // there's no need to do dep-graph tracking for any of it.
-    tcx.dep_graph.assert_ignored();
-
     if tcx.sess.threads() != 1 {
         // Prefetch some queries used by metadata encoding.
         // This is not necessary for correctness, but is only done for performance reasons.
@@ -2441,6 +2443,8 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         );
     }
 
+    // Perform metadata encoding inside a task, so the dep-graph can check if any encoded
+    // information changes, and maybe reuse the work product.
     tcx.dep_graph.with_task(
         dep_node,
         tcx,
@@ -2461,7 +2465,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                 );
 
                 root.position.get()
-            });
+            })
         },
         None,
     );
