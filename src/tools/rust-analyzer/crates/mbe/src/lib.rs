@@ -371,7 +371,7 @@ pub fn expect_fragment<'t>(
     let buffer = tt_iter.remaining();
     // FIXME: Pass the correct edition per token. Due to the split between mbe and hir-expand it's complicated.
     let parser_input = to_parser_input(buffer, &mut |_ctx| edition);
-    let tree_traversal = entry_point.parse(&parser_input, edition);
+    let tree_traversal = entry_point.parse(&parser_input);
     let mut cursor = buffer.cursor();
     let mut error = false;
     for step in tree_traversal.iter() {

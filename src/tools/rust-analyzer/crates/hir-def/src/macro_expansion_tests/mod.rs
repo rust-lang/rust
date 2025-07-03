@@ -372,7 +372,6 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
             subtree,
             syntax_bridge::TopEntryPoint::MacroItems,
             &mut |_| span::Edition::CURRENT,
-            span::Edition::CURRENT,
         );
         if parse.errors().is_empty() {
             Ok(subtree.clone())
@@ -413,10 +412,7 @@ fn regression_20171() {
         #dollar_crate::panic::panic_2021!();
     }}
         };
-    token_tree_to_syntax_node(
-        &tt,
-        syntax_bridge::TopEntryPoint::MacroStmts,
-        &mut |_| Edition::CURRENT,
-        Edition::CURRENT,
-    );
+    token_tree_to_syntax_node(&tt, syntax_bridge::TopEntryPoint::MacroStmts, &mut |_| {
+        Edition::CURRENT
+    });
 }

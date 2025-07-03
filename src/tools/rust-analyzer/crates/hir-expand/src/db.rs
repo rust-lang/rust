@@ -315,8 +315,7 @@ pub fn expand_speculative(
     let expand_to = loc.expand_to();
 
     fixup::reverse_fixups(&mut speculative_expansion.value, &undo_info);
-    let (node, rev_tmap) =
-        token_tree_to_syntax_node(db, &speculative_expansion.value, expand_to, loc.def.edition);
+    let (node, rev_tmap) = token_tree_to_syntax_node(db, &speculative_expansion.value, expand_to);
 
     let syntax_node = node.syntax_node();
     let token = rev_tmap
@@ -358,7 +357,6 @@ fn parse_macro_expansion(
 ) -> ExpandResult<(Parse<SyntaxNode>, Arc<ExpansionSpanMap>)> {
     let _p = tracing::info_span!("parse_macro_expansion").entered();
     let loc = db.lookup_intern_macro_call(macro_file);
-    let def_edition = loc.def.edition;
     let expand_to = loc.expand_to();
     let mbe::ValueResult { value: (tt, matched_arm), err } = macro_expand(db, macro_file, loc);
 
@@ -369,7 +367,6 @@ fn parse_macro_expansion(
             CowArc::Owned(it) => it,
         },
         expand_to,
-        def_edition,
     );
     rev_token_map.matched_arm = matched_arm;
 
@@ -733,7 +730,6 @@ pub(crate) fn token_tree_to_syntax_node(
     db: &dyn ExpandDatabase,
     tt: &tt::TopSubtree,
     expand_to: ExpandTo,
-    edition: parser::Edition,
 ) -> (Parse<SyntaxNode>, ExpansionSpanMap) {
     let entry_point = match expand_to {
         ExpandTo::Statements => syntax_bridge::TopEntryPoint::MacroStmts,
@@ -742,7 +738,7 @@ pub(crate) fn token_tree_to_syntax_node(
         ExpandTo::Type => syntax_bridge::TopEntryPoint::Type,
         ExpandTo::Expr => syntax_bridge::TopEntryPoint::Expr,
     };
-    syntax_bridge::token_tree_to_syntax_node(tt, entry_point, &mut |ctx| ctx.edition(db), edition)
+    syntax_bridge::token_tree_to_syntax_node(tt, entry_point, &mut |ctx| ctx.edition(db))
 }
 
 fn check_tt_count(tt: &tt::TopSubtree) -> Result<(), ExpandResult<()>> {

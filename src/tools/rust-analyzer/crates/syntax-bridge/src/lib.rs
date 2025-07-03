@@ -143,7 +143,6 @@ pub fn token_tree_to_syntax_node<Ctx>(
     tt: &tt::TopSubtree<SpanData<Ctx>>,
     entry_point: parser::TopEntryPoint,
     span_to_edition: &mut dyn FnMut(Ctx) -> Edition,
-    top_edition: Edition,
 ) -> (Parse<SyntaxNode>, SpanMap<Ctx>)
 where
     Ctx: Copy + fmt::Debug + PartialEq + PartialEq + Eq + Hash,
@@ -151,7 +150,7 @@ where
     let buffer = tt.view().strip_invisible();
     let parser_input = to_parser_input(buffer, span_to_edition);
     // It matters what edition we parse with even when we escape all identifiers correctly.
-    let parser_output = entry_point.parse(&parser_input, top_edition);
+    let parser_output = entry_point.parse(&parser_input);
     let mut tree_sink = TtTreeSink::new(buffer.cursor());
     for event in parser_output.iter() {
         match event {

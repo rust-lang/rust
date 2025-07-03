@@ -86,7 +86,7 @@ fn check(entry: PrefixEntryPoint, input: &str, prefix: &str) {
     let input = lexed.to_input(Edition::CURRENT);
 
     let mut n_tokens = 0;
-    for step in entry.parse(&input, Edition::CURRENT).iter() {
+    for step in entry.parse(&input).iter() {
         match step {
             Step::Token { n_input_tokens, .. } => n_tokens += n_input_tokens as usize,
             Step::FloatSplit { .. } => n_tokens += 1,

@@ -65,12 +65,8 @@ fn check_(
     if render_debug {
         format_to!(expect_res, "{:#?}\n\n", res.value.0);
     }
-    let (node, _) = syntax_bridge::token_tree_to_syntax_node(
-        &res.value.0,
-        parse,
-        &mut |_| def_edition,
-        def_edition,
-    );
+    let (node, _) =
+        syntax_bridge::token_tree_to_syntax_node(&res.value.0, parse, &mut |_| def_edition);
     format_to!(
         expect_res,
         "{}",

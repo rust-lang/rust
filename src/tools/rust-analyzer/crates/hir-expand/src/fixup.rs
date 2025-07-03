@@ -535,7 +535,6 @@ mod tests {
             &tt,
             syntax_bridge::TopEntryPoint::MacroItems,
             &mut |_| parser::Edition::CURRENT,
-            parser::Edition::CURRENT,
         );
         assert!(
             parse.errors().is_empty(),
