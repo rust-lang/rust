@@ -60,7 +60,7 @@ RUN curl -L https://github.com/bytecodealliance/wasmtime/releases/download/v19.0
   tar -xJ
 ENV PATH "$PATH:/wasmtime-v19.0.0-x86_64-linux"
 
-ENV WASM_WASIP_TARGET=wasm32-wasip1 
+ENV WASM_WASIP_TARGET=wasm32-wasip1
 ENV WASM_WASIP_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_WASIP_TARGET \
   tests/run-make \
   tests/ui \
