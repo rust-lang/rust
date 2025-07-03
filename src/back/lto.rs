@@ -24,7 +24,7 @@ use std::sync::Arc;
 
 use gccjit::{Context, OutputKind};
 use object::read::archive::ArchiveFile;
-use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
+use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::symbol_export;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 use rustc_codegen_ssa::traits::*;
@@ -176,7 +176,7 @@ pub(crate) fn run_fat(
     cgcx: &CodegenContext<GccCodegenBackend>,
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
-) -> Result<LtoModuleCodegen<GccCodegenBackend>, FatalError> {
+) -> Result<ModuleCodegen<GccContext>, FatalError> {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
     let lto_data = prepare_lto(cgcx, dcx)?;
@@ -201,7 +201,7 @@ fn fat_lto(
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     tmp_path: TempDir,
     //symbols_below_threshold: &[String],
-) -> Result<LtoModuleCodegen<GccCodegenBackend>, FatalError> {
+) -> Result<ModuleCodegen<GccContext>, FatalError> {
     let _timer = cgcx.prof.generic_activity("GCC_fat_lto_build_monolithic_module");
     info!("going for a fat lto");
 
@@ -334,7 +334,7 @@ fn fat_lto(
     // of now.
     module.module_llvm.temp_dir = Some(tmp_path);
 
-    Ok(LtoModuleCodegen::Fat(module))
+    Ok(module)
 }
 
 pub struct ModuleBuffer(PathBuf);
@@ -358,7 +358,7 @@ pub(crate) fn run_thin(
     cgcx: &CodegenContext<GccCodegenBackend>,
     modules: Vec<(String, ThinBuffer)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
-) -> Result<(Vec<LtoModuleCodegen<GccCodegenBackend>>, Vec<WorkProduct>), FatalError> {
+) -> Result<(Vec<ThinModule<GccCodegenBackend>>, Vec<WorkProduct>), FatalError> {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
     let lto_data = prepare_lto(cgcx, dcx)?;
@@ -427,7 +427,7 @@ fn thin_lto(
     tmp_path: TempDir,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     //_symbols_below_threshold: &[String],
-) -> Result<(Vec<LtoModuleCodegen<GccCodegenBackend>>, Vec<WorkProduct>), FatalError> {
+) -> Result<(Vec<ThinModule<GccCodegenBackend>>, Vec<WorkProduct>), FatalError> {
     let _timer = cgcx.prof.generic_activity("LLVM_thin_lto_global_analysis");
     info!("going for that thin, thin LTO");
 
@@ -573,8 +573,7 @@ fn thin_lto(
         }*/
 
         info!(" - {}: re-compiled", module_name);
-        opt_jobs
-            .push(LtoModuleCodegen::Thin(ThinModule { shared: shared.clone(), idx: module_index }));
+        opt_jobs.push(ThinModule { shared: shared.clone(), idx: module_index });
     }
 
     // Save the current ThinLTO import information for the next compilation
