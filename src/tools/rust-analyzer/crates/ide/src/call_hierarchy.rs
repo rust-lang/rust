@@ -592,7 +592,7 @@ macro_rules! call {
 "#,
             expect!["callee Function FileId(0) 22..37 30..36"],
             expect![[r#"
-                caller Function FileId(0) 38..52 : FileId(0):44..50
+                caller Function FileId(0) 38..43 : FileId(0):44..50
                 caller Function FileId(1) 130..136 130..136 : FileId(0):44..50
                 callee Function FileId(0) 38..52 44..50 : FileId(0):44..50"#]],
             expect![[]],

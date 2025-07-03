@@ -1082,7 +1082,7 @@ macro_rules! define_fn {
 }
 
   define_fn!();
-//^^^^^^^^^^^^^
+//^^^^^^^^^^
 fn bar() {
    $0foo();
 }
@@ -3228,7 +3228,7 @@ mod bar {
     use crate::m;
 
     m!();
- // ^^^^^
+ // ^^
 
     fn qux() {
         Foo$0;

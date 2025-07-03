@@ -3751,7 +3751,7 @@ fn foo() {
     }
     let v: bool = true;
     m!();
- // ^^^^ i32
+ // ^^ i32
 }
         "#,
     );
@@ -3765,39 +3765,39 @@ fn foo() {
     let v: bool;
     macro_rules! m { () => { v } }
     m!();
- // ^^^^ bool
+ // ^^ bool
 
     let v: char;
     macro_rules! m { () => { v } }
     m!();
- // ^^^^ char
+ // ^^ char
 
     {
         let v: u8;
         macro_rules! m { () => { v } }
         m!();
-     // ^^^^ u8
+     // ^^ u8
 
         let v: i8;
         macro_rules! m { () => { v } }
         m!();
-     // ^^^^ i8
+     // ^^ i8
 
         let v: i16;
         macro_rules! m { () => { v } }
         m!();
-     // ^^^^ i16
+     // ^^ i16
 
         {
             let v: u32;
             macro_rules! m { () => { v } }
             m!();
-         // ^^^^ u32
+         // ^^ u32
 
             let v: u64;
             macro_rules! m { () => { v } }
             m!();
-         // ^^^^ u64
+         // ^^ u64
         }
     }
 }

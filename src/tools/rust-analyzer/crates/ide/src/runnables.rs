@@ -351,7 +351,7 @@ pub(crate) fn runnable_fn(
     )
     .call_site();
 
-    let file_range = fn_source.syntax().original_file_range_with_macro_call_body(sema.db);
+    let file_range = fn_source.syntax().original_file_range_with_macro_call_input(sema.db);
     let update_test =
         UpdateTest::find_snapshot_macro(sema, &fn_source.file_syntax(sema.db), file_range);
 
@@ -425,7 +425,7 @@ pub(crate) fn runnable_impl(
 
     let impl_source = sema.source(*def)?;
     let impl_syntax = impl_source.syntax();
-    let file_range = impl_syntax.original_file_range_with_macro_call_body(sema.db);
+    let file_range = impl_syntax.original_file_range_with_macro_call_input(sema.db);
     let update_test =
         UpdateTest::find_snapshot_macro(sema, &impl_syntax.file_syntax(sema.db), file_range);
 
@@ -1241,10 +1241,10 @@ generate_main!();
                 [
                     "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..345, name: \"\", kind: Module })",
                     "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 282..312, focus_range: 286..291, name: \"tests\", kind: Module, description: \"mod tests\" })",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 298..310, name: \"foo_test\", kind: Function })",
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 313..326, name: \"tests2\", kind: Module, description: \"mod tests2\" }, true)",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 313..326, name: \"foo_test2\", kind: Function }, true)",
-                    "(Bin, NavigationTarget { file_id: FileId(0), full_range: 327..344, name: \"main\", kind: Function })",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 298..307, name: \"foo_test\", kind: Function })",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 313..323, name: \"tests2\", kind: Module, description: \"mod tests2\" }, true)",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 313..323, name: \"foo_test2\", kind: Function }, true)",
+                    "(Bin, NavigationTarget { file_id: FileId(0), full_range: 327..341, name: \"main\", kind: Function })",
                 ]
             "#]],
         );
@@ -1272,10 +1272,10 @@ foo!();
 "#,
             expect![[r#"
                 [
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo_tests\", kind: Module, description: \"mod foo_tests\" }, true)",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo0\", kind: Function }, true)",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo1\", kind: Function }, true)",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo2\", kind: Function }, true)",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 210..214, name: \"foo_tests\", kind: Module, description: \"mod foo_tests\" }, true)",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..214, name: \"foo0\", kind: Function }, true)",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..214, name: \"foo1\", kind: Function }, true)",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..214, name: \"foo2\", kind: Function }, true)",
                 ]
             "#]],
         );
