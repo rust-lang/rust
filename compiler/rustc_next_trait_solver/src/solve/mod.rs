@@ -176,8 +176,8 @@ where
         //
         // Note: `feature_bound_holds_in_crate` does not consider a feature to be enabled
         // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
-        if self.cx().features().feature_bound_holds_in_crate(symbol)
-            || (self.typing_mode() == TypingMode::PostAnalysis)
+        if (self.typing_mode() == TypingMode::PostAnalysis) ||
+            self.cx().features().feature_bound_holds_in_crate(symbol)
         {
             return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
         } else {
