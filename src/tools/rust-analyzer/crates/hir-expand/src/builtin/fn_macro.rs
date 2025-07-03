@@ -7,6 +7,7 @@ use intern::{
     Symbol,
     sym::{self},
 };
+use itertools::Itertools;
 use mbe::{DelimiterKind, expect_fragment};
 use span::{Edition, FileId, Span};
 use stdx::format_to;
@@ -681,11 +682,19 @@ fn relative_file(
 }
 
 fn parse_string(tt: &tt::TopSubtree) -> Result<(Symbol, Span), ExpandError> {
-    let delimiter = tt.top_subtree().delimiter;
-    tt.iter()
-        .next()
-        .ok_or(delimiter.open.cover(delimiter.close))
-        .and_then(|tt| match tt {
+    let mut tt = TtElement::Subtree(tt.top_subtree(), tt.iter());
+    (|| {
+        // FIXME: We wrap expression fragments in parentheses which can break this expectation
+        // here
+        // Remove this once we handle none delims correctly
+        while let TtElement::Subtree(sub, tt_iter) = &mut tt
+            && let DelimiterKind::Parenthesis | DelimiterKind::Invisible = sub.delimiter.kind
+        {
+            tt =
+                tt_iter.exactly_one().map_err(|_| sub.delimiter.open.cover(sub.delimiter.close))?;
+        }
+
+        match tt {
             TtElement::Leaf(tt::Leaf::Literal(tt::Literal {
                 symbol: text,
                 span,
@@ -698,35 +707,11 @@ fn parse_string(tt: &tt::TopSubtree) -> Result<(Symbol, Span), ExpandError> {
                 kind: tt::LitKind::StrRaw(_),
                 suffix: _,
             })) => Ok((text.clone(), *span)),
-            // FIXME: We wrap expression fragments in parentheses which can break this expectation
-            // here
-            // Remove this once we handle none delims correctly
-            TtElement::Subtree(tt, mut tt_iter)
-                if tt.delimiter.kind == DelimiterKind::Parenthesis =>
-            {
-                tt_iter
-                    .next()
-                    .and_then(|tt| match tt {
-                        TtElement::Leaf(tt::Leaf::Literal(tt::Literal {
-                            symbol: text,
-                            span,
-                            kind: tt::LitKind::Str,
-                            suffix: _,
-                        })) => Some((unescape_symbol(text), *span)),
-                        TtElement::Leaf(tt::Leaf::Literal(tt::Literal {
-                            symbol: text,
-                            span,
-                            kind: tt::LitKind::StrRaw(_),
-                            suffix: _,
-                        })) => Some((text.clone(), *span)),
-                        _ => None,
-                    })
-                    .ok_or(delimiter.open.cover(delimiter.close))
-            }
             TtElement::Leaf(l) => Err(*l.span()),
             TtElement::Subtree(tt, _) => Err(tt.delimiter.open.cover(tt.delimiter.close)),
-        })
-        .map_err(|span| ExpandError::other(span, "expected string literal"))
+        }
+    })()
+    .map_err(|span| ExpandError::other(span, "expected string literal"))
 }
 
 fn include_expand(
