@@ -179,9 +179,10 @@ impl Name {
         self.symbol.as_str()
     }
 
+    #[inline]
     pub fn display<'a>(
         &'a self,
-        db: &dyn crate::db::ExpandDatabase,
+        db: &dyn salsa::Database,
         edition: Edition,
     ) -> impl fmt::Display + 'a {
         _ = db;

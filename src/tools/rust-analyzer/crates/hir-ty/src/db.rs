@@ -273,9 +273,8 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::variance::variances_of)]
     #[salsa::cycle(
-        // cycle_fn = crate::variance::variances_of_cycle_fn,
-        // cycle_initial = crate::variance::variances_of_cycle_initial,
-        cycle_result = crate::variance::variances_of_cycle_initial,
+        cycle_fn = crate::variance::variances_of_cycle_fn,
+        cycle_initial = crate::variance::variances_of_cycle_initial,
     )]
     fn variances_of(&self, def: GenericDefId) -> Option<Arc<[crate::variance::Variance]>>;
 
