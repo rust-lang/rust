@@ -22,6 +22,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{fmt, fs, io};
 
+mod rustdoc_js;
+
 const MIN_PY_REV: (u32, u32) = (3, 9);
 const MIN_PY_REV_STR: &str = "≥3.9";
 
@@ -39,12 +41,24 @@ const PIP_REQ_PATH: &[&str] = &["src", "tools", "tidy", "config", "requirements.
 pub fn check(
     root_path: &Path,
     outdir: &Path,
+    librustdoc_path: &Path,
+    tools_path: &Path,
+    src_path: &Path,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
     bad: &mut bool,
 ) {
-    if let Err(e) = check_impl(root_path, outdir, bless, extra_checks, pos_args) {
+    if let Err(e) = check_impl(
+        root_path,
+        outdir,
+        librustdoc_path,
+        tools_path,
+        src_path,
+        bless,
+        extra_checks,
+        pos_args,
+    ) {
         tidy_error!(bad, "{e}");
     }
 }
@@ -52,6 +66,9 @@ pub fn check(
 fn check_impl(
     root_path: &Path,
     outdir: &Path,
+    librustdoc_path: &Path,
+    tools_path: &Path,
+    src_path: &Path,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
@@ -65,6 +82,9 @@ fn check_impl(
         None => vec![],
     };
 
+    // FIXME(lolbinarycat): this is getting complex, we should probably
+    // have more proper handling, including a warning/error
+    // for unknown extra check names.
     let python_all = lint_args.contains(&"py");
     let python_lint = lint_args.contains(&"py:lint") || python_all;
     let python_fmt = lint_args.contains(&"py:fmt") || python_all;
@@ -72,6 +92,10 @@ fn check_impl(
     let shell_lint = lint_args.contains(&"shell:lint") || shell_all;
     let cpp_all = lint_args.contains(&"cpp");
     let cpp_fmt = lint_args.contains(&"cpp:fmt") || cpp_all;
+    let js_all = lint_args.contains(&"js");
+    let js_lint = js_all || lint_args.contains(&"js:lint");
+    let js_typecheck = js_all || lint_args.contains(&"js:typecheck");
+    let js_es_check = js_all || lint_args.contains(&"js:es-check");
 
     let mut py_path = None;
 
@@ -222,6 +246,22 @@ fn check_impl(
         }
 
         shellcheck_runner(&merge_args(&cfg_args, &file_args_shc))?;
+    }
+
+    if js_lint || js_typecheck || js_es_check {
+        rustdoc_js::npm_install()?;
+    }
+
+    if js_lint {
+        rustdoc_js::lint(librustdoc_path, tools_path, src_path)?;
+    }
+
+    if js_typecheck {
+        rustdoc_js::typecheck(librustdoc_path)?;
+    }
+
+    if js_es_check {
+        rustdoc_js::es_check(librustdoc_path)?;
     }
 
     Ok(())
