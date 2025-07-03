@@ -124,6 +124,32 @@ pub fn git_diff<S: AsRef<OsStr>>(base_commit: &str, extra_arg: S) -> Option<Stri
     Some(String::from_utf8_lossy(&output.stdout).into())
 }
 
+/// Returns true if any modified file matches the predicate, or if unable to list modified files.
+pub fn files_modified(base_commit: &str, pred: impl Fn(&str) -> bool) -> bool {
+    match crate::git_diff(&base_commit, "--name-status") {
+        Some(output) => {
+            let modified_files = output.lines().filter_map(|ln| {
+                let (status, name) = ln
+                    .trim_end()
+                    .split_once('\t')
+                    .expect("bad format from `git diff --name-status`");
+                if status == "M" { Some(name) } else { None }
+            });
+            for modified_file in modified_files {
+                if pred(modified_file) {
+                    return true;
+                }
+            }
+            false
+        }
+        None => {
+            eprintln!("warning: failed to run `git diff` to check for changes");
+            eprintln!("warning: assuming all files are modified");
+            true
+        }
+    }
+}
+
 pub mod alphabetical;
 pub mod bins;
 pub mod debug_artifacts;
