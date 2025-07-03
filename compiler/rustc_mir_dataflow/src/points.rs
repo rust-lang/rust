@@ -1,6 +1,6 @@
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::SparseIntervalMatrix;
-use rustc_index::{Idx, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::{self, BasicBlock, Body, Location};
 
 use crate::framework::{Analysis, Direction, Results, ResultsVisitor, visit_results};
@@ -95,25 +95,30 @@ rustc_index::newtype_index! {
 }
 
 /// Add points depending on the result of the given dataflow analysis.
-pub fn save_as_intervals<'tcx, N, A>(
+pub fn save_as_intervals<'tcx, N, M, A>(
     elements: &DenseLocationMap,
     body: &mir::Body<'tcx>,
+    relevant: &IndexSlice<N, M>,
     mut analysis: A,
     results: Results<A::Domain>,
 ) -> SparseIntervalMatrix<N, PointIndex>
 where
     N: Idx,
-    A: Analysis<'tcx, Domain = DenseBitSet<N>>,
+    M: Idx,
+    A: Analysis<'tcx, Domain = DenseBitSet<M>>,
 {
     let mut values = SparseIntervalMatrix::new(elements.num_points());
     let reachable_blocks = mir::traversal::reachable_as_bitset(body);
     if A::Direction::IS_BACKWARD {
         // Iterate blocks in decreasing order, to visit locations in decreasing order. This
         // allows to use the more efficient `prepend` method to interval sets.
-        let callback = |state: &DenseBitSet<N>, location| {
+        let callback = |state: &DenseBitSet<M>, location| {
             let point = elements.point_from_location(location);
-            // Use internal iterator manually as it is much more efficient.
-            state.iter().for_each(|node| values.prepend(node, point));
+            for (relevant, &original) in relevant.iter_enumerated() {
+                if state.contains(original) {
+                    values.prepend(relevant, point);
+                }
+            }
         };
         let mut visitor = Visitor { callback };
         visit_results(
@@ -127,10 +132,13 @@ where
     } else {
         // Iterate blocks in increasing order, to visit locations in increasing order. This
         // allows to use the more efficient `append` method to interval sets.
-        let callback = |state: &DenseBitSet<N>, location| {
+        let callback = |state: &DenseBitSet<M>, location| {
             let point = elements.point_from_location(location);
-            // Use internal iterator manually as it is much more efficient.
-            state.iter().for_each(|node| values.append(node, point));
+            for (relevant, &original) in relevant.iter_enumerated() {
+                if state.contains(original) {
+                    values.append(relevant, point);
+                }
+            }
         };
         let mut visitor = Visitor { callback };
         visit_results(body, reachable_blocks.iter(), &mut analysis, &results, &mut visitor);
