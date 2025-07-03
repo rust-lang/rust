@@ -43,6 +43,7 @@ use rustc_ast::{
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -1701,6 +1702,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub fn into_outputs(self) -> ResolverOutputs {
+        let visibilities_hash = {
+            let mut hasher = StableHasher::new();
+            let mut hcx = self.create_stable_hashing_context();
+            self.visibilities_for_hashing.hash_stable(&mut hcx, &mut hasher);
+            hasher.finish()
+        };
+
         let proc_macros = self.proc_macros;
         let expn_that_defined = self.expn_that_defined;
         let extern_crate_map = self.extern_crate_map;
@@ -1722,7 +1730,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,
-            visibilities_for_hashing: self.visibilities_for_hashing,
+            visibilities_hash,
             effective_visibilities,
             extern_crate_map,
             module_children: self.module_children,
