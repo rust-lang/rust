@@ -1187,6 +1187,14 @@ where
     ) -> T {
         BoundVarReplacer::replace_bound_vars(&**self.delegate, universes, t).0
     }
+
+    pub(super) fn may_use_unstable_feature(
+        &self,
+        param_env: I::ParamEnv,
+        symbol: I::Symbol,
+    ) -> bool {
+        self.delegate.may_use_unstable_feature(param_env, symbol)
+    }
 }
 
 /// Eagerly replace aliases with inference variables, emitting `AliasRelate`

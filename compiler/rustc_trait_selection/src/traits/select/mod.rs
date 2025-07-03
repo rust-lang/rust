@@ -31,6 +31,7 @@ use rustc_middle::ty::{
     TypeFoldable, TypeVisitableExt, TypingMode, Upcast, elaborate,
 };
 use rustc_span::{Symbol, sym};
+use rustc_type_ir::InferCtxtLike;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -845,26 +846,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
-                    // Iterate through all clauses in the environment to
-                    // find the one that has the same symbol.
-                    for pred in obligation.param_env.caller_bounds().iter() {
-                        if let ty::ClauseKind::UnstableFeature(sym) = pred.kind().skip_binder() {
-                            if sym == symbol {
-                                return Ok(EvaluatedToOk);
-                            }
-                        }
-                    }
-
-                    // During codegen we must assume that all feature bounds hold as we may be
-                    // monomorphizing a body from an upstream crate which had an unstable feature
-                    // enabled that we do not.
-                    //
-                    // Note: we don't not consider a feature to be enabled
-                    // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
-                    if (!self.tcx().features().staged_api()
-                        && self.tcx().features().enabled(symbol))
-                        || (self.infcx.typing_mode() == TypingMode::PostAnalysis)
-                    {
+                    #[allow(rustc::usage_of_type_ir_traits)]
+                    if self.infcx.may_use_unstable_feature(obligation.param_env, symbol) {
                         return Ok(EvaluatedToOk);
                     } else {
                         return Ok(EvaluatedToAmbig);

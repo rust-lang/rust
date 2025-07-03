@@ -12,6 +12,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Binder, Const, GenericArgsRef, TypeVisitableExt, TypingMode};
+use rustc_type_ir::InferCtxtLike;
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, debug_span, instrument};
 
@@ -771,26 +772,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     }
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
-                    // Iterate through all clauses in the environment to
-                    // find the one that has the same symbol.
-                    for pred in obligation.param_env.caller_bounds().iter() {
-                        if let ty::ClauseKind::UnstableFeature(sym) = pred.kind().skip_binder() {
-                            if sym == symbol {
-                                return ProcessResult::Changed(Default::default());
-                            }
-                        }
-                    }
-
-                    // During codegen we must assume that all feature bounds hold as we may be
-                    // monomorphizing a body from an upstream crate which had an unstable feature
-                    // enabled that we do not.
-                    //
-                    // Note: we don't consider a feature to be enabled
-                    // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
-                    if (!self.selcx.tcx().features().staged_api()
-                        && self.selcx.tcx().features().enabled(symbol))
-                        || (self.selcx.infcx.typing_mode() == TypingMode::PostAnalysis)
-                    {
+                    #[allow(rustc::usage_of_type_ir_traits)]
+                    if self.selcx.infcx.may_use_unstable_feature(obligation.param_env, symbol) {
                         return ProcessResult::Changed(Default::default());
                     } else {
                         return ProcessResult::Unchanged;
