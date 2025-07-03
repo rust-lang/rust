@@ -744,7 +744,7 @@ impl ProjectWorkspace {
         }
     }
 
-    pub fn find_sysroot_proc_macro_srv(&self) -> anyhow::Result<AbsPathBuf> {
+    pub fn find_sysroot_proc_macro_srv(&self) -> Option<anyhow::Result<AbsPathBuf>> {
         self.sysroot.discover_proc_macro_srv()
     }
 
