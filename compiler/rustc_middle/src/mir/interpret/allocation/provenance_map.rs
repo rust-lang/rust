@@ -120,7 +120,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         }
     }
 
-    /// Check if here is ptr-sized provenance at the given index.
+    /// Check if there is ptr-sized provenance at the given index.
     /// Does not mean anything for bytewise provenance! But can be useful as an optimization.
     pub fn get_ptr(&self, offset: Size) -> Option<Prov> {
         self.ptrs.get(&offset).copied()
