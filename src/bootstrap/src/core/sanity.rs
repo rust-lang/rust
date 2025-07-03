@@ -334,7 +334,8 @@ than building it.
                 || build.config.rust_std_features.contains("compiler-builtins-c"))
         {
             let cc_tool = build.cc_tool(*target);
-            if !cc_tool.is_like_clang() {
+            if !cc_tool.is_like_clang() && !cc_tool.path().ends_with("emcc") {
+                // emcc works as well
                 panic!(
                     "Clang is required to build C code for Wasm targets, got `{}` instead\n\
                     this is because compiler-builtins is configured to build C source. Either \
