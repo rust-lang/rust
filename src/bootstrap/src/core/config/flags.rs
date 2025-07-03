@@ -382,7 +382,10 @@ pub enum Subcommand {
         bless: bool,
         #[arg(long)]
         /// comma-separated list of other files types to check (accepts py, py:lint,
-        /// py:fmt, shell)
+        /// py:fmt, cpp, shell)
+        ///
+        /// Any argument can be prefixed with "auto:" to only run if
+        /// relevant files are modified (eg. "auto:py").
         extra_checks: Option<String>,
         #[arg(long)]
         /// rerun tests even if the inputs are unchanged

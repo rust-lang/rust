@@ -173,7 +173,15 @@ fn main() {
         };
         check!(unstable_book, &src_path, collected);
 
-        check!(ext_tool_checks, &root_path, &output_directory, bless, extra_checks, pos_args);
+        check!(
+            ext_tool_checks,
+            &root_path,
+            &output_directory,
+            &ci_info,
+            bless,
+            extra_checks,
+            pos_args
+        );
     });
 
     if bad.load(Ordering::Relaxed) {
