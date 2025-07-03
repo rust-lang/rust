@@ -357,11 +357,16 @@ impl WriteBackendMethods for GccCodegenBackend {
     type ThinData = ThinData;
     type ThinBuffer = ThinBuffer;
 
-    fn run_fat_lto(
+    fn run_and_optimize_fat_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<FatLtoInput<Self>>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
+        diff_fncs: Vec<AutoDiffItem>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+        if !diff_fncs.is_empty() {
+            unimplemented!();
+        }
+
         back::lto::run_fat(cgcx, modules, cached_modules)
     }
 
@@ -388,14 +393,6 @@ impl WriteBackendMethods for GccCodegenBackend {
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
         module.module_llvm.context.set_optimization_level(to_gcc_opt_level(config.opt_level));
-        Ok(())
-    }
-
-    fn optimize_fat(
-        _cgcx: &CodegenContext<Self>,
-        _module: &mut ModuleCodegen<Self::Module>,
-    ) -> Result<(), FatalError> {
-        // TODO(antoyo)
         Ok(())
     }
 
@@ -431,14 +428,6 @@ impl WriteBackendMethods for GccCodegenBackend {
         modules: Vec<ModuleCodegen<Self::Module>>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::write::link(cgcx, dcx, modules)
-    }
-
-    fn autodiff(
-        _cgcx: &CodegenContext<Self>,
-        _module: &ModuleCodegen<Self::Module>,
-        _diff_functions: Vec<AutoDiffItem>,
-    ) -> Result<(), FatalError> {
-        unimplemented!()
     }
 }
 
