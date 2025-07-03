@@ -397,52 +397,50 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
     }
 }
 
-fn generate_lto_work<B: ExtraBackendMethods>(
+fn generate_fat_lto_work<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     autodiff: Vec<AutoDiffItem>,
     needs_fat_lto: Vec<FatLtoInput<B>>,
+    import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
+) -> WorkItem<B> {
+    let _prof_timer = cgcx.prof.generic_activity("codegen_generate_lto_work");
+
+    let module =
+        B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
+    if cgcx.lto == Lto::Fat && !autodiff.is_empty() {
+        let config = cgcx.config(ModuleKind::Regular);
+        if let Err(err) = B::autodiff(cgcx, &module, autodiff, config) {
+            err.raise();
+        }
+    }
+    WorkItem::FatLto(module)
+}
+
+fn generate_thin_lto_work<B: ExtraBackendMethods>(
+    cgcx: &CodegenContext<B>,
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
 ) -> Vec<(WorkItem<B>, u64)> {
-    let _prof_timer = cgcx.prof.generic_activity("codegen_generate_lto_work");
+    let _prof_timer = cgcx.prof.generic_activity("codegen_thin_generate_lto_work");
 
-    if !needs_fat_lto.is_empty() {
-        assert!(needs_thin_lto.is_empty());
-        let module =
-            B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
-        if cgcx.lto == Lto::Fat && !autodiff.is_empty() {
-            let config = cgcx.config(ModuleKind::Regular);
-            if let Err(err) = B::autodiff(cgcx, &module, autodiff, config) {
-                err.raise();
-            }
-        }
-        // We are adding a single work item, so the cost doesn't matter.
-        vec![(WorkItem::FatLto(module), 0)]
-    } else {
-        if !autodiff.is_empty() {
-            let dcx = cgcx.create_dcx();
-            dcx.handle().emit_fatal(AutodiffWithoutLto {});
-        }
-        assert!(needs_fat_lto.is_empty());
-        let (lto_modules, copy_jobs) = B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules)
-            .unwrap_or_else(|e| e.raise());
-        lto_modules
-            .into_iter()
-            .map(|module| {
-                let cost = module.cost();
-                (WorkItem::ThinLto(module), cost)
-            })
-            .chain(copy_jobs.into_iter().map(|wp| {
-                (
-                    WorkItem::CopyPostLtoArtifacts(CachedModuleCodegen {
-                        name: wp.cgu_name.clone(),
-                        source: wp,
-                    }),
-                    0, // copying is very cheap
-                )
-            }))
-            .collect()
-    }
+    let (lto_modules, copy_jobs) =
+        B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules).unwrap_or_else(|e| e.raise());
+    lto_modules
+        .into_iter()
+        .map(|module| {
+            let cost = module.cost();
+            (WorkItem::ThinLto(module), cost)
+        })
+        .chain(copy_jobs.into_iter().map(|wp| {
+            (
+                WorkItem::CopyPostLtoArtifacts(CachedModuleCodegen {
+                    name: wp.cgu_name.clone(),
+                    source: wp,
+                }),
+                0, // copying is very cheap
+            )
+        }))
+        .collect()
 }
 
 struct CompiledModules {
@@ -1489,19 +1487,35 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     let needs_thin_lto = mem::take(&mut needs_thin_lto);
                     let import_only_modules = mem::take(&mut lto_import_only_modules);
 
-                    for (work, cost) in generate_lto_work(
-                        &cgcx,
-                        autodiff_items.clone(),
-                        needs_fat_lto,
-                        needs_thin_lto,
-                        import_only_modules,
-                    ) {
-                        let insertion_index = work_items
-                            .binary_search_by_key(&cost, |&(_, cost)| cost)
-                            .unwrap_or_else(|e| e);
-                        work_items.insert(insertion_index, (work, cost));
+                    if !needs_fat_lto.is_empty() {
+                        assert!(needs_thin_lto.is_empty());
+
+                        let work = generate_fat_lto_work(
+                            &cgcx,
+                            autodiff_items.clone(),
+                            needs_fat_lto,
+                            import_only_modules,
+                        );
+                        work_items.push((work, 0));
                         if cgcx.parallel {
                             helper.request_token();
+                        }
+                    } else {
+                        if !autodiff_items.is_empty() {
+                            let dcx = cgcx.create_dcx();
+                            dcx.handle().emit_fatal(AutodiffWithoutLto {});
+                        }
+
+                        for (work, cost) in
+                            generate_thin_lto_work(&cgcx, needs_thin_lto, import_only_modules)
+                        {
+                            let insertion_index = work_items
+                                .binary_search_by_key(&cost, |&(_, cost)| cost)
+                                .unwrap_or_else(|e| e);
+                            work_items.insert(insertion_index, (work, cost));
+                            if cgcx.parallel {
+                                helper.request_token();
+                            }
                         }
                     }
                 }
