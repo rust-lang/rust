@@ -437,8 +437,8 @@ impl<'a> CrateLocator<'a> {
                         let (rlibs, rmetas, dylibs, interfaces) =
                             candidates.entry(hash).or_default();
                         {
-                            // As a perforamnce optimisation we canonicalize the path and skip
-                            // ones we've already seeen. This allows us to ignore crates
+                            // As a performance optimisation we canonicalize the path and skip
+                            // ones we've already seen. This allows us to ignore crates
                             // we know are exactual equal to ones we've already found.
                             // Going to the same crate through different symlinks does not change the result.
                             let path = try_canonicalize(&spf.path)

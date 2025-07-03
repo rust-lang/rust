@@ -21,7 +21,7 @@ use thin_vec::ThinVec;
 /// [utf8]: https://en.wikipedia.org/w/index.php?title=UTF-8&oldid=1058865525#Codepage_layout
 const STR_SENTINEL: u8 = 0xC1;
 
-/// For byte strings there are no bytes that canot occur. Just use this value
+/// For byte strings there are no bytes that cannot occur. Just use this value
 /// as a best-effort sentinel. There is no validation skipped so the potential
 /// for badness is lower than in the `STR_SENTINEL` case.
 const BYTE_STR_SENTINEL: u8 = 0xC2;

@@ -62,6 +62,10 @@ codegen_ssa_failed_to_get_layout = failed to get layout for {$ty}: {$err}
 
 codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 
+codegen_ssa_feature_not_valid = the feature named `{$feature}` is not valid for this target
+    .label = `{$feature}` is not valid for this target
+    .help = consider removing the leading `+` in the feature name
+
 codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
 
 codegen_ssa_forbidden_ctarget_feature =
@@ -289,7 +293,7 @@ codegen_ssa_thorin_missing_referenced_unit = unit {$unit} referenced by executab
 
 codegen_ssa_thorin_missing_required_section = input object missing required section `{$section}`
 
-codegen_ssa_thorin_mixed_input_encodings = input objects haved mixed encodings
+codegen_ssa_thorin_mixed_input_encodings = input objects have mixed encodings
 
 codegen_ssa_thorin_multiple_debug_info_section = multiple `.debug_info.dwo` sections
 

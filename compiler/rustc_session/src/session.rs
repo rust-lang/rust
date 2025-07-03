@@ -1545,7 +1545,7 @@ impl RemapFileNameExt for rustc_span::FileName {
             "one and only one scope should be passed to for_scope"
         );
         if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
-            self.prefer_remapped_unconditionaly()
+            self.prefer_remapped_unconditionally()
         } else {
             self.prefer_local()
         }

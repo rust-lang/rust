@@ -73,7 +73,7 @@ where
     /// Register additional assumptions for aliases corresponding to `[const]` item bounds.
     ///
     /// Unlike item bounds, they are not simply implied by the well-formedness of the alias.
-    /// Instead, they only hold if the const conditons on the alias also hold. This is why
+    /// Instead, they only hold if the const conditions on the alias also hold. This is why
     /// we also register the const conditions of the alias after matching the goal against
     /// the assumption.
     fn consider_additional_alias_assumptions(

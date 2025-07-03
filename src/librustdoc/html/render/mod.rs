@@ -1944,7 +1944,7 @@ fn render_impl(
         // 3. Functions
         //
         // This order is because you can have associated constants used in associated types (like array
-        // length), and both in associcated functions. So with this order, when reading from top to
+        // length), and both in associated functions. So with this order, when reading from top to
         // bottom, you should see items definitions before they're actually used most of the time.
         let mut assoc_types = Vec::new();
         let mut methods = Vec::new();

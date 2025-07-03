@@ -532,7 +532,7 @@ fn collect_items_rec<'tcx>(
         });
     }
     // Only updating `usage_map` for used items as otherwise we may be inserting the same item
-    // multiple times (if it is first 'mentioned' and then later actuall used), and the usage map
+    // multiple times (if it is first 'mentioned' and then later actually used), and the usage map
     // logic does not like that.
     // This is part of the output of collection and hence only relevant for "used" items.
     // ("Mentioned" items are only considered internally during collection.)

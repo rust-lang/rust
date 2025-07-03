@@ -33,6 +33,7 @@
 //~^ ERROR malformed
 #[rustc_allow_const_fn_unstable]
 //~^ ERROR `rustc_allow_const_fn_unstable` expects a list of feature names
+//~| ERROR attribute should be applied to `const fn`
 #[allow_internal_unstable]
 //~^ ERROR `allow_internal_unstable` expects a list of feature names
 #[rustc_confusables]

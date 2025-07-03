@@ -375,7 +375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // type parameters or early-bound regions.
         let tcx = self.tcx;
         // We use `Ident::with_dummy_span` since no built-in operator methods have
-        // any macro-specific hygeine, so the span's context doesn't really matter.
+        // any macro-specific hygiene, so the span's context doesn't really matter.
         let Some(method_item) =
             self.associated_value(trait_def_id, Ident::with_dummy_span(method_name))
         else {

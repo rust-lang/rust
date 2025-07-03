@@ -142,7 +142,7 @@ macro_rules! common_visitor_and_walkers {
             )?
 
             // Methods in this trait have one of three forms, with the last two forms
-            // only occuring on `MutVisitor`:
+            // only occurring on `MutVisitor`:
             //
             //   fn visit_t(&mut self, t: &mut T);                      // common
             //   fn flat_map_t(&mut self, t: T) -> SmallVec<[T; 1]>;    // rare
