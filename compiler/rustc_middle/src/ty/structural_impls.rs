@@ -235,6 +235,7 @@ TrivialLiftImpls! {
     rustc_abi::ExternAbi,
     rustc_abi::Size,
     rustc_hir::Safety,
+    rustc_middle::mir::ConstValue,
     rustc_type_ir::BoundConstness,
     rustc_type_ir::PredicatePolarity,
     // tidy-alphabetical-end
@@ -251,7 +252,7 @@ TrivialTypeTraversalImpls! {
     crate::mir::BlockTailInfo,
     crate::mir::BorrowKind,
     crate::mir::CastKind,
-    crate::mir::ConstValue<'tcx>,
+    crate::mir::ConstValue,
     crate::mir::CoroutineSavedLocal,
     crate::mir::FakeReadCause,
     crate::mir::Local,

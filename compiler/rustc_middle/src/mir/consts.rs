@@ -30,9 +30,9 @@ pub struct ConstAlloc<'tcx> {
 
 /// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
 /// array length computations, enum discriminants and the pattern matching logic.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Lift, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable)]
-pub enum ConstValue<'tcx> {
+pub enum ConstValue {
     /// Used for types with `layout::abi::Scalar` ABI.
     ///
     /// Not using the enum `Value` to encode that this must not be `Uninit`.
@@ -54,7 +54,6 @@ pub enum ConstValue<'tcx> {
         /// The metadata field of the reference.
         /// This is a "target usize", so we use `u64` as in the interpreter.
         meta: u64,
-        phantom: std::marker::PhantomData<&'tcx ()>,
     },
 
     /// A value not representable by the other variants; needs to be stored in-memory.
@@ -74,9 +73,9 @@ pub enum ConstValue<'tcx> {
 }
 
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(ConstValue<'_>, 24);
+rustc_data_structures::static_assert_size!(ConstValue, 24);
 
-impl ConstValue<'_> {
+impl ConstValue {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
@@ -139,7 +138,7 @@ impl ConstValue<'_> {
             ConstValue::Scalar(_) | ConstValue::ZeroSized => {
                 bug!("`try_get_slice_bytes` on non-slice constant")
             }
-            &ConstValue::Slice { alloc_id, meta, phantom: _ } => (alloc_id, 0, meta),
+            &ConstValue::Slice { alloc_id, meta } => (alloc_id, 0, meta),
             &ConstValue::Indirect { alloc_id, offset } => {
                 // The reference itself is stored behind an indirection.
                 // Load the reference, and then load the actual slice contents.
@@ -192,7 +191,7 @@ impl ConstValue<'_> {
             ConstValue::Scalar(Scalar::Ptr(..)) => return true,
             // It's hard to find out the part of the allocation we point to;
             // just conservatively check everything.
-            ConstValue::Slice { alloc_id, meta: _, phantom: _ } => {
+            ConstValue::Slice { alloc_id, meta: _ } => {
                 !tcx.global_alloc(alloc_id).unwrap_memory().inner().provenance().ptrs().is_empty()
             }
             ConstValue::Indirect { alloc_id, offset } => !tcx
@@ -252,7 +251,7 @@ pub enum Const<'tcx> {
 
     /// This constant cannot go back into the type system, as it represents
     /// something the type system cannot handle (e.g. pointers).
-    Val(ConstValue<'tcx>, Ty<'tcx>),
+    Val(ConstValue, Ty<'tcx>),
 }
 
 impl<'tcx> Const<'tcx> {
@@ -348,7 +347,7 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         span: Span,
-    ) -> Result<ConstValue<'tcx>, ErrorHandled> {
+    ) -> Result<ConstValue, ErrorHandled> {
         match self {
             Const::Ty(_, c) => {
                 if c.has_non_region_param() {
@@ -445,7 +444,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn from_value(val: ConstValue<'tcx>, ty: Ty<'tcx>) -> Self {
+    pub fn from_value(val: ConstValue, ty: Ty<'tcx>) -> Self {
         Self::Val(val, ty)
     }
 
@@ -578,7 +577,7 @@ impl<'tcx> Display for Const<'tcx> {
 /// Const-related utilities
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn span_as_caller_location(self, span: Span) -> ConstValue<'tcx> {
+    pub fn span_as_caller_location(self, span: Span) -> ConstValue {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.sess.source_map().lookup_char_pos(topmost.lo());
         self.const_caller_location(

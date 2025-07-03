@@ -1465,7 +1465,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 self.push(&format!("+ user_ty: {user_ty:?}"));
             }
 
-            let fmt_val = |val: ConstValue<'tcx>, ty: Ty<'tcx>| {
+            let fmt_val = |val: ConstValue, ty: Ty<'tcx>| {
                 let tcx = self.tcx;
                 rustc_data_structures::make_display(move |fmt| {
                     pretty_print_const_value_tcx(tcx, val, ty, fmt)
@@ -1562,7 +1562,7 @@ pub fn write_allocations<'tcx>(
         alloc.inner().provenance().ptrs().values().map(|p| p.alloc_id())
     }
 
-    fn alloc_id_from_const_val(val: ConstValue<'_>) -> Option<AllocId> {
+    fn alloc_id_from_const_val(val: ConstValue) -> Option<AllocId> {
         match val {
             ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => Some(ptr.provenance.alloc_id()),
             ConstValue::Scalar(interpret::Scalar::Int { .. }) => None,
@@ -1881,7 +1881,7 @@ fn pretty_print_byte_str(fmt: &mut Formatter<'_>, byte_str: &[u8]) -> fmt::Resul
 fn comma_sep<'tcx>(
     tcx: TyCtxt<'tcx>,
     fmt: &mut Formatter<'_>,
-    elems: Vec<(ConstValue<'tcx>, Ty<'tcx>)>,
+    elems: Vec<(ConstValue, Ty<'tcx>)>,
 ) -> fmt::Result {
     let mut first = true;
     for (ct, ty) in elems {
@@ -1896,7 +1896,7 @@ fn comma_sep<'tcx>(
 
 fn pretty_print_const_value_tcx<'tcx>(
     tcx: TyCtxt<'tcx>,
-    ct: ConstValue<'tcx>,
+    ct: ConstValue,
     ty: Ty<'tcx>,
     fmt: &mut Formatter<'_>,
 ) -> fmt::Result {
@@ -1943,7 +1943,7 @@ fn pretty_print_const_value_tcx<'tcx>(
             let ct = tcx.lift(ct).unwrap();
             let ty = tcx.lift(ty).unwrap();
             if let Some(contents) = tcx.try_destructure_mir_constant_for_user_output(ct, ty) {
-                let fields: Vec<(ConstValue<'_>, Ty<'_>)> = contents.fields.to_vec();
+                let fields: Vec<(ConstValue, Ty<'_>)> = contents.fields.to_vec();
                 match *ty.kind() {
                     ty::Array(..) => {
                         fmt.write_str("[")?;
@@ -2024,7 +2024,7 @@ fn pretty_print_const_value_tcx<'tcx>(
 }
 
 pub(crate) fn pretty_print_const_value<'tcx>(
-    ct: ConstValue<'tcx>,
+    ct: ConstValue,
     ty: Ty<'tcx>,
     fmt: &mut Formatter<'_>,
 ) -> fmt::Result {

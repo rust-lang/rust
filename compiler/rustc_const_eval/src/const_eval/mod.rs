@@ -28,7 +28,7 @@ const VALTREE_MAX_NODES: usize = 100000;
 #[instrument(skip(tcx), level = "debug")]
 pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
     tcx: TyCtxt<'tcx>,
-    val: mir::ConstValue<'tcx>,
+    val: mir::ConstValue,
     ty: Ty<'tcx>,
 ) -> Option<mir::DestructuredConstant<'tcx>> {
     let typing_env = ty::TypingEnv::fully_monomorphized();
