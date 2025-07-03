@@ -765,7 +765,8 @@ impl<'db> SourceAnalyzer<'db> {
             },
         };
 
-        let res = resolve_hir_path(db, &self.resolver, path, HygieneId::ROOT, Some(store))?;
+        let body_owner = self.resolver.body_owner();
+        let res = resolve_hir_value_path(db, &self.resolver, body_owner, path, HygieneId::ROOT)?;
         match res {
             PathResolution::Def(def) => Some(def),
             _ => None,
