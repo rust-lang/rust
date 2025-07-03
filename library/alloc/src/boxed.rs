@@ -1098,6 +1098,124 @@ impl<T: ?Sized> Box<T> {
     pub unsafe fn from_non_null(ptr: NonNull<T>) -> Self {
         unsafe { Self::from_raw(ptr.as_ptr()) }
     }
+
+    /// Consumes the `Box`, returning a wrapped raw pointer.
+    ///
+    /// The pointer will be properly aligned and non-null.
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `Box`. In particular, the
+    /// caller should properly destroy `T` and release the memory, taking
+    /// into account the [memory layout] used by `Box`. The easiest way to
+    /// do this is to convert the raw pointer back into a `Box` with the
+    /// [`Box::from_raw`] function, allowing the `Box` destructor to perform
+    /// the cleanup.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::into_raw(b)` instead of `b.into_raw()`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    /// Converting the raw pointer back into a `Box` with [`Box::from_raw`]
+    /// for automatic cleanup:
+    /// ```
+    /// let x = Box::new(String::from("Hello"));
+    /// let ptr = Box::into_raw(x);
+    /// let x = unsafe { Box::from_raw(ptr) };
+    /// ```
+    /// Manual cleanup by explicitly running the destructor and deallocating
+    /// the memory:
+    /// ```
+    /// use std::alloc::{dealloc, Layout};
+    /// use std::ptr;
+    ///
+    /// let x = Box::new(String::from("Hello"));
+    /// let ptr = Box::into_raw(x);
+    /// unsafe {
+    ///     ptr::drop_in_place(ptr);
+    ///     dealloc(ptr as *mut u8, Layout::new::<String>());
+    /// }
+    /// ```
+    /// Note: This is equivalent to the following:
+    /// ```
+    /// let x = Box::new(String::from("Hello"));
+    /// let ptr = Box::into_raw(x);
+    /// unsafe {
+    ///     drop(Box::from_raw(ptr));
+    /// }
+    /// ```
+    ///
+    /// [memory layout]: self#memory-layout
+    #[must_use = "losing the pointer will leak memory"]
+    #[stable(feature = "box_raw", since = "1.4.0")]
+    #[inline]
+    pub fn into_raw(b: Self) -> *mut T {
+        // Avoid `into_raw_with_allocator` as that interacts poorly with Miri's Stacked Borrows.
+        let mut b = mem::ManuallyDrop::new(b);
+        // We go through the built-in deref for `Box`, which is crucial for Miri to recognize this
+        // operation for it's alias tracking.
+        &raw mut **b
+    }
+
+    /// Consumes the `Box`, returning a wrapped `NonNull` pointer.
+    ///
+    /// The pointer will be properly aligned.
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `Box`. In particular, the
+    /// caller should properly destroy `T` and release the memory, taking
+    /// into account the [memory layout] used by `Box`. The easiest way to
+    /// do this is to convert the `NonNull` pointer back into a `Box` with the
+    /// [`Box::from_non_null`] function, allowing the `Box` destructor to
+    /// perform the cleanup.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::into_non_null(b)` instead of `b.into_non_null()`.
+    /// This is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    /// Converting the `NonNull` pointer back into a `Box` with [`Box::from_non_null`]
+    /// for automatic cleanup:
+    /// ```
+    /// #![feature(box_vec_non_null)]
+    ///
+    /// let x = Box::new(String::from("Hello"));
+    /// let non_null = Box::into_non_null(x);
+    /// let x = unsafe { Box::from_non_null(non_null) };
+    /// ```
+    /// Manual cleanup by explicitly running the destructor and deallocating
+    /// the memory:
+    /// ```
+    /// #![feature(box_vec_non_null)]
+    ///
+    /// use std::alloc::{dealloc, Layout};
+    ///
+    /// let x = Box::new(String::from("Hello"));
+    /// let non_null = Box::into_non_null(x);
+    /// unsafe {
+    ///     non_null.drop_in_place();
+    ///     dealloc(non_null.as_ptr().cast::<u8>(), Layout::new::<String>());
+    /// }
+    /// ```
+    /// Note: This is equivalent to the following:
+    /// ```
+    /// #![feature(box_vec_non_null)]
+    ///
+    /// let x = Box::new(String::from("Hello"));
+    /// let non_null = Box::into_non_null(x);
+    /// unsafe {
+    ///     drop(Box::from_non_null(non_null));
+    /// }
+    /// ```
+    ///
+    /// [memory layout]: self#memory-layout
+    #[must_use = "losing the pointer will leak memory"]
+    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    #[inline]
+    pub fn into_non_null(b: Self) -> NonNull<T> {
+        // SAFETY: `Box` is guaranteed to be non-null.
+        unsafe { NonNull::new_unchecked(Self::into_raw(b)) }
+    }
 }
 
 impl<T: ?Sized, A: Allocator> Box<T, A> {
@@ -1206,121 +1324,6 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     pub unsafe fn from_non_null_in(raw: NonNull<T>, alloc: A) -> Self {
         // SAFETY: guaranteed by the caller.
         unsafe { Box::from_raw_in(raw.as_ptr(), alloc) }
-    }
-
-    /// Consumes the `Box`, returning a wrapped raw pointer.
-    ///
-    /// The pointer will be properly aligned and non-null.
-    ///
-    /// After calling this function, the caller is responsible for the
-    /// memory previously managed by the `Box`. In particular, the
-    /// caller should properly destroy `T` and release the memory, taking
-    /// into account the [memory layout] used by `Box`. The easiest way to
-    /// do this is to convert the raw pointer back into a `Box` with the
-    /// [`Box::from_raw`] function, allowing the `Box` destructor to perform
-    /// the cleanup.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::into_raw(b)` instead of `b.into_raw()`. This
-    /// is so that there is no conflict with a method on the inner type.
-    ///
-    /// # Examples
-    /// Converting the raw pointer back into a `Box` with [`Box::from_raw`]
-    /// for automatic cleanup:
-    /// ```
-    /// let x = Box::new(String::from("Hello"));
-    /// let ptr = Box::into_raw(x);
-    /// let x = unsafe { Box::from_raw(ptr) };
-    /// ```
-    /// Manual cleanup by explicitly running the destructor and deallocating
-    /// the memory:
-    /// ```
-    /// use std::alloc::{dealloc, Layout};
-    /// use std::ptr;
-    ///
-    /// let x = Box::new(String::from("Hello"));
-    /// let ptr = Box::into_raw(x);
-    /// unsafe {
-    ///     ptr::drop_in_place(ptr);
-    ///     dealloc(ptr as *mut u8, Layout::new::<String>());
-    /// }
-    /// ```
-    /// Note: This is equivalent to the following:
-    /// ```
-    /// let x = Box::new(String::from("Hello"));
-    /// let ptr = Box::into_raw(x);
-    /// unsafe {
-    ///     drop(Box::from_raw(ptr));
-    /// }
-    /// ```
-    ///
-    /// [memory layout]: self#memory-layout
-    #[must_use = "losing the pointer will leak memory"]
-    #[stable(feature = "box_raw", since = "1.4.0")]
-    #[inline]
-    pub fn into_raw(b: Self) -> *mut T {
-        // Make sure Miri realizes that we transition from a noalias pointer to a raw pointer here.
-        unsafe { &raw mut *&mut *Self::into_raw_with_allocator(b).0 }
-    }
-
-    /// Consumes the `Box`, returning a wrapped `NonNull` pointer.
-    ///
-    /// The pointer will be properly aligned.
-    ///
-    /// After calling this function, the caller is responsible for the
-    /// memory previously managed by the `Box`. In particular, the
-    /// caller should properly destroy `T` and release the memory, taking
-    /// into account the [memory layout] used by `Box`. The easiest way to
-    /// do this is to convert the `NonNull` pointer back into a `Box` with the
-    /// [`Box::from_non_null`] function, allowing the `Box` destructor to
-    /// perform the cleanup.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::into_non_null(b)` instead of `b.into_non_null()`.
-    /// This is so that there is no conflict with a method on the inner type.
-    ///
-    /// # Examples
-    /// Converting the `NonNull` pointer back into a `Box` with [`Box::from_non_null`]
-    /// for automatic cleanup:
-    /// ```
-    /// #![feature(box_vec_non_null)]
-    ///
-    /// let x = Box::new(String::from("Hello"));
-    /// let non_null = Box::into_non_null(x);
-    /// let x = unsafe { Box::from_non_null(non_null) };
-    /// ```
-    /// Manual cleanup by explicitly running the destructor and deallocating
-    /// the memory:
-    /// ```
-    /// #![feature(box_vec_non_null)]
-    ///
-    /// use std::alloc::{dealloc, Layout};
-    ///
-    /// let x = Box::new(String::from("Hello"));
-    /// let non_null = Box::into_non_null(x);
-    /// unsafe {
-    ///     non_null.drop_in_place();
-    ///     dealloc(non_null.as_ptr().cast::<u8>(), Layout::new::<String>());
-    /// }
-    /// ```
-    /// Note: This is equivalent to the following:
-    /// ```
-    /// #![feature(box_vec_non_null)]
-    ///
-    /// let x = Box::new(String::from("Hello"));
-    /// let non_null = Box::into_non_null(x);
-    /// unsafe {
-    ///     drop(Box::from_non_null(non_null));
-    /// }
-    /// ```
-    ///
-    /// [memory layout]: self#memory-layout
-    #[must_use = "losing the pointer will leak memory"]
-    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
-    #[inline]
-    pub fn into_non_null(b: Self) -> NonNull<T> {
-        // SAFETY: `Box` is guaranteed to be non-null.
-        unsafe { NonNull::new_unchecked(Self::into_raw(b)) }
     }
 
     /// Consumes the `Box`, returning a wrapped raw pointer and the allocator.
@@ -1602,7 +1605,9 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     where
         A: 'a,
     {
-        unsafe { &mut *Box::into_raw(b) }
+        let (ptr, alloc) = Box::into_raw_with_allocator(b);
+        mem::forget(alloc);
+        unsafe { &mut *ptr }
     }
 
     /// Converts a `Box<T>` into a `Pin<Box<T>>`. If `T` does not implement [`Unpin`], then

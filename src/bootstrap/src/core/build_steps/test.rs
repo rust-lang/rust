@@ -1108,7 +1108,9 @@ impl Step for Tidy {
         if builder.config.cmd.bless() {
             cmd.arg("--bless");
         }
-        if let Some(s) = builder.config.cmd.extra_checks() {
+        if let Some(s) =
+            builder.config.cmd.extra_checks().or(builder.config.tidy_extra_checks.as_deref())
+        {
             cmd.arg(format!("--extra-checks={s}"));
         }
         let mut args = std::env::args_os();

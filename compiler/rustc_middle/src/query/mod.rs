@@ -440,7 +440,6 @@ rustc_queries! {
     query predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
         desc { |tcx| "computing predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
-        feedable
     }
 
     query opaque_types_defined_by(
@@ -1091,13 +1090,6 @@ rustc_queries! {
         desc { |tcx| "creating associated items for opaque types returned by `{}`", tcx.def_path_str(fn_def_id) }
         cache_on_disk_if { fn_def_id.is_local() }
         separate_provide_extern
-    }
-
-    /// Given an impl trait in trait `opaque_ty_def_id`, create and return the corresponding
-    /// associated item.
-    query associated_type_for_impl_trait_in_trait(opaque_ty_def_id: LocalDefId) -> LocalDefId {
-        desc { |tcx| "creating the associated item corresponding to the opaque type `{}`", tcx.def_path_str(opaque_ty_def_id.to_def_id()) }
-        cache_on_disk_if { true }
     }
 
     /// Given an `impl_id`, return the trait it implements along with some header information.

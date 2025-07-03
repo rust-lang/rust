@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at .value[0]: encountered uninitialized memory, but expected a raw pointer
+error: Undefined Behavior: constructing invalid value at [0]: encountered uninitialized memory, but expected a raw pointer
   --> tests/fail/validity/uninit_raw_ptr.rs:LL:CC
    |
 LL |     let _val = unsafe { std::mem::MaybeUninit::<[*const u8; 1]>::uninit().assume_init() };

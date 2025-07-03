@@ -49,7 +49,7 @@ impl TestCx<'_> {
             std::fs::remove_file(pdb_file).unwrap();
         }
 
-        // compile test file (it should have 'compile-flags:-g' in the header)
+        // compile test file (it should have 'compile-flags:-g' in the directive)
         let should_run = self.run_if_enabled();
         let compile_result = self.compile_test(should_run, Emit::None);
         if !compile_result.status.success() {
@@ -135,7 +135,7 @@ impl TestCx<'_> {
             .unwrap_or_else(|e| self.fatal(&e));
         let mut cmds = dbg_cmds.commands.join("\n");
 
-        // compile test file (it should have 'compile-flags:-g' in the header)
+        // compile test file (it should have 'compile-flags:-g' in the directive)
         let should_run = self.run_if_enabled();
         let compiler_run_result = self.compile_test(should_run, Emit::None);
         if !compiler_run_result.status.success() {
@@ -359,7 +359,7 @@ impl TestCx<'_> {
     }
 
     fn run_debuginfo_lldb_test_no_opt(&self) {
-        // compile test file (it should have 'compile-flags:-g' in the header)
+        // compile test file (it should have 'compile-flags:-g' in the directive)
         let should_run = self.run_if_enabled();
         let compile_result = self.compile_test(should_run, Emit::None);
         if !compile_result.status.success() {
