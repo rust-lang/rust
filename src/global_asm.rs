@@ -202,6 +202,9 @@ pub(crate) fn compile_global_asm(
             return Err(format!("Failed to assemble `{}`", global_asm));
         }
     } else {
+        // Escape { and }
+        let global_asm = global_asm.replace('{', "{{").replace('}', "}}");
+
         let mut child = Command::new(std::env::current_exe().unwrap())
             // Avoid a warning about the jobserver fd not being passed
             .env_remove("CARGO_MAKEFLAGS")
