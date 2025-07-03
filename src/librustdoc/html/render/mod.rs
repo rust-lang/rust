@@ -508,22 +508,21 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
       the Rustdoc book]({DOC_RUST_LANG_ORG_VERSION}/rustdoc/scraped-examples.html)."
     ));
 
-    let mut ids = IdMap::default();
     format!(
         "<div class=\"main-heading\">\
              <h1>About scraped examples</h1>\
          </div>\
          <div>{}</div>",
-        Markdown {
+        fmt::from_fn(|f| Markdown {
             content: &content,
             links: &[],
-            ids: &mut ids,
+            ids: &mut IdMap::default(),
             error_codes: shared.codes,
             edition: shared.edition(),
             playground: &shared.playground,
             heading_offset: HeadingOffset::H1,
         }
-        .into_string()
+        .write_into(f))
     )
 }
 
@@ -555,20 +554,18 @@ fn render_markdown(
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| {
-        write!(
-            f,
-            "<div class=\"docblock\">{}</div>",
-            Markdown {
-                content: md_text,
-                links: &links,
-                ids: &mut cx.id_map.borrow_mut(),
-                error_codes: cx.shared.codes,
-                edition: cx.shared.edition(),
-                playground: &cx.shared.playground,
-                heading_offset,
-            }
-            .into_string()
-        )
+        f.write_str("<div class=\"docblock\">")?;
+        Markdown {
+            content: md_text,
+            links: &links,
+            ids: &mut cx.id_map.borrow_mut(),
+            error_codes: cx.shared.codes,
+            edition: cx.shared.edition(),
+            playground: &cx.shared.playground,
+            heading_offset,
+        }
+        .write_into(&mut *f)?;
+        f.write_str("</div>")
     })
 }
 
@@ -752,7 +749,7 @@ fn short_item_info(
             let mut id_map = cx.id_map.borrow_mut();
             let html = MarkdownItemInfo(note, &mut id_map);
             message.push_str(": ");
-            message.push_str(&html.into_string());
+            html.write_into(&mut message).unwrap();
         }
         extra_info.push(ShortItemInfo::Deprecation { message });
     }
