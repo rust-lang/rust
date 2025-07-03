@@ -261,6 +261,14 @@ impl CStore {
         self.resolved_externs.insert(name, extern_crate);
     }
 
+    /// Crate resolved and loaded via the given extern name
+    /// (corresponds to names in `sess.opts.externs`)
+    ///
+    /// May be `None` if the crate wasn't used
+    pub fn resolved_extern_crate(&self, externs_name: Symbol) -> Option<CrateNum> {
+        self.resolved_externs.get(&externs_name).copied()
+    }
+
     pub(crate) fn iter_crate_data(&self) -> impl Iterator<Item = (CrateNum, &CrateMetadata)> {
         self.metas
             .iter_enumerated()
