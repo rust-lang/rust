@@ -982,14 +982,16 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     // Insert all of the (mapped) parts of the callee body into the caller.
     caller_body.local_decls.extend(callee_body.drain_vars_and_temps());
     caller_body.source_scopes.append(&mut callee_body.source_scopes);
+
+    // only "full" debug promises any variable-level information
     if tcx
         .sess
         .opts
         .unstable_opts
         .inline_mir_preserve_debug
-        .unwrap_or(tcx.sess.opts.debuginfo != DebugInfo::None)
+        .unwrap_or(tcx.sess.opts.debuginfo == DebugInfo::Full)
     {
-        // Note that we need to preserve these in the standard library so that
+        // -Zinline-mir-preserve-debug is enabled when building the standard library, so that
         // people working on rust can build with or without debuginfo while
         // still getting consistent results from the mir-opt tests.
         caller_body.var_debug_info.append(&mut callee_body.var_debug_info);
