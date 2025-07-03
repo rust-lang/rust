@@ -18,7 +18,7 @@ use std::{iter, mem};
 use hir::{ChangeWithProcMacros, ProcMacrosBuilder, db::DefDatabase};
 use ide_db::{
     FxHashMap,
-    base_db::{CrateGraphBuilder, ProcMacroPaths, salsa::Durability},
+    base_db::{CrateGraphBuilder, ProcMacroLoadingError, ProcMacroPaths, salsa::Durability},
 };
 use itertools::Itertools;
 use load_cargo::{ProjectFolders, load_proc_macro};
@@ -438,9 +438,11 @@ impl GlobalState {
 
                                 load_proc_macro(client, path, ignored_proc_macros)
                             }
-                            Err(e) => Err((e.clone(), true)),
+                            Err(e) => Err(e.clone()),
                         },
-                        Err(ref e) => Err((e.clone(), true)),
+                        Err(ref e) => Err(ProcMacroLoadingError::ProcMacroSrvError(
+                            e.clone().into_boxed_str(),
+                        )),
                     };
                     builder.insert(*crate_id, expansion_res)
                 }
@@ -753,14 +755,14 @@ impl GlobalState {
                 change.set_proc_macros(
                     crate_graph
                         .iter()
-                        .map(|id| (id, Err(("proc-macro has not been built yet".to_owned(), true))))
+                        .map(|id| (id, Err(ProcMacroLoadingError::NotYetBuilt)))
                         .collect(),
                 );
             } else {
                 change.set_proc_macros(
                     crate_graph
                         .iter()
-                        .map(|id| (id, Err(("proc-macro expansion is disabled".to_owned(), false))))
+                        .map(|id| (id, Err(ProcMacroLoadingError::Disabled)))
                         .collect(),
                 );
             }
