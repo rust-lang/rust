@@ -1,5 +1,7 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
+use build_helper::exit;
+
 use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
 };
@@ -9,10 +11,12 @@ use crate::core::builder::{
 };
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
-use crate::{Mode, Subcommand};
+use crate::{Compiler, Mode, Subcommand};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
+    /// Compiler that will check this std.
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
     /// Whether to build only a subset of crates.
     ///
@@ -25,8 +29,8 @@ pub struct Std {
 impl Std {
     const CRATE_OR_DEPS: &[&str] = &["sysroot", "coretests", "alloctests"];
 
-    pub fn new(target: TargetSelection) -> Self {
-        Self { target, crates: vec![] }
+    pub fn new(build_compiler: Compiler, target: TargetSelection) -> Self {
+        Self { build_compiler, target, crates: vec![] }
     }
 }
 
@@ -45,7 +49,11 @@ impl Step for Std {
 
     fn make_run(run: RunConfig<'_>) {
         let crates = std_crates_for_run_make(&run);
-        run.builder.ensure(Std { target: run.target, crates });
+        run.builder.ensure(Std {
+            build_compiler: run.builder.compiler(run.builder.top_stage, run.target),
+            target: run.target,
+            crates,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -56,9 +64,9 @@ impl Step for Std {
             return;
         }
 
-        let stage = builder.top_stage;
+        let build_compiler = self.build_compiler;
+        let stage = build_compiler.stage;
         let target = self.target;
-        let build_compiler = builder.compiler(stage, builder.config.host_target);
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -69,7 +77,7 @@ impl Step for Std {
             Kind::Check,
         );
 
-        std_cargo(builder, target, build_compiler.stage, &mut cargo);
+        std_cargo(builder, target, stage, &mut cargo);
         if matches!(builder.config.cmd, Subcommand::Fix) {
             // By default, cargo tries to fix all targets. Tell it not to fix tests until we've added `test` to the sysroot.
             cargo.arg("--lib");
@@ -126,12 +134,21 @@ impl Step for Std {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::check("std", self.target))
+        Some(StepMetadata::check("std", self.target).built_by(self.build_compiler))
     }
 }
 
+fn default_compiler_for_checking_rustc(builder: &Builder<'_>) -> Compiler {
+    // When checking the stage N compiler, we want to do it with the stage N-1 compiler,
+    builder.compiler(builder.top_stage - 1, builder.config.host_target)
+}
+
+/// Checks rustc using `build_compiler` and copies the built
+/// .rmeta files into the sysroot of `build_copoiler`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
+    /// Compiler that will check this rustc.
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
     /// Whether to build only a subset of crates.
     ///
@@ -142,13 +159,13 @@ pub struct Rustc {
 }
 
 impl Rustc {
-    pub fn new(target: TargetSelection, builder: &Builder<'_>) -> Self {
+    pub fn new(builder: &Builder<'_>, build_compiler: Compiler, target: TargetSelection) -> Self {
         let crates = builder
             .in_tree_crates("rustc-main", Some(target))
             .into_iter()
             .map(|krate| krate.name.to_string())
             .collect();
-        Self { target, crates }
+        Self { build_compiler, target, crates }
     }
 }
 
@@ -163,40 +180,46 @@ impl Step for Rustc {
 
     fn make_run(run: RunConfig<'_>) {
         let crates = run.make_run_crates(Alias::Compiler);
-        run.builder.ensure(Rustc { target: run.target, crates });
+        run.builder.ensure(Rustc {
+            target: run.target,
+            build_compiler: default_compiler_for_checking_rustc(run.builder),
+            crates,
+        });
     }
 
-    /// Builds the compiler.
+    /// Check the compiler.
     ///
-    /// This will build the compiler for a particular stage of the build using
+    /// This will check the compiler for a particular stage of the build using
     /// the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+        if builder.top_stage < 2 && builder.config.host_target != self.target {
+            eprintln!("Cannot do a cross-compilation check on stage 1, use stage 2");
+            exit!(1);
+        }
+
+        let build_compiler = self.build_compiler;
         let target = self.target;
 
-        if compiler.stage != 0 {
-            // If we're not in stage 0, then we won't have a std from the beta
-            // compiler around. That means we need to make sure there's one in
-            // the sysroot for the compiler to find. Otherwise, we're going to
-            // fail when building crates that need to generate code (e.g., build
-            // scripts and their dependencies).
-            builder.std(compiler, compiler.host);
-            builder.std(compiler, target);
-        } else {
-            builder.ensure(Std::new(target));
-        }
+        // Build host std for compiling build scripts
+        builder.std(build_compiler, build_compiler.host);
+
+        // Build target std so that the checked rustc can link to it during the check
+        // FIXME: maybe we can a way to only do a check of std here?
+        // But for that we would have to copy the stdlib rmetas to the sysroot of the build
+        // compiler, which conflicts with std rlibs, if we also build std.
+        builder.std(build_compiler, target);
 
         let mut cargo = builder::Cargo::new(
             builder,
-            compiler,
+            build_compiler,
             Mode::Rustc,
             SourceType::InTree,
             target,
             Kind::Check,
         );
 
-        rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
+        rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
 
         // Explicitly pass -p for all compiler crates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather
@@ -211,17 +234,18 @@ impl Step for Rustc {
             None,
         );
 
-        let stamp = build_stamp::librustc_stamp(builder, compiler, target).with_prefix("check");
+        let stamp =
+            build_stamp::librustc_stamp(builder, build_compiler, target).with_prefix("check");
 
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
 
-        let libdir = builder.sysroot_target_libdir(compiler, target);
-        let hostdir = builder.sysroot_target_libdir(compiler, compiler.host);
+        let libdir = builder.sysroot_target_libdir(build_compiler, target);
+        let hostdir = builder.sysroot_target_libdir(build_compiler, build_compiler.host);
         add_to_sysroot(builder, &libdir, &hostdir, &stamp);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::check("rustc", self.target))
+        Some(StepMetadata::check("rustc", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -462,7 +486,7 @@ fn run_tool_check_step(
     let display_name = path.rsplit('/').next().unwrap();
     let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
 
-    builder.ensure(Rustc::new(target, builder));
+    builder.ensure(Rustc::new(builder, compiler, target));
 
     let mut cargo = prepare_tool_cargo(
         builder,
