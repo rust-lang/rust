@@ -16,7 +16,7 @@ use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_qpath, walk_ty};
-use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, GenericArgs, HirId, Node, PathSegment, QPath, TyKind};
+use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, GenericArgs, HirId, Node, Param, PathSegment, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, AdtDef, GenericArgKind, Ty};
 use rustc_span::Span;
@@ -215,6 +215,20 @@ fn qpath_certainty(cx: &LateContext<'_>, qpath: &QPath<'_>, resolves_to_type: bo
     certainty
 }
 
+/// Tries to tell whether `param` resolves to something certain, e.g., a non-wildcard type if
+/// present. The certainty `DefId` is cleared before returning.
+fn param_certainty(cx: &LateContext<'_>, param: &Param<'_>) -> Certainty {
+    let owner_did = cx.tcx.hir_enclosing_body_owner(param.hir_id);
+    let Some(fn_decl) = cx.tcx.hir_fn_decl_by_hir_id(cx.tcx.local_def_id_to_hir_id(owner_did)) else {
+        return Certainty::Uncertain;
+    };
+    let inputs = fn_decl.inputs;
+    let body_params = cx.tcx.hir_body_owned_by(owner_did).params;
+    std::iter::zip(body_params, inputs)
+        .find(|(p, _)| p.hir_id == param.hir_id)
+        .map_or(Certainty::Uncertain, |(_, ty)| type_certainty(cx, ty).clear_def_id())
+}
+
 fn path_segment_certainty(
     cx: &LateContext<'_>,
     parent_certainty: Certainty,
@@ -267,8 +281,9 @@ fn path_segment_certainty(
 
         // `get_parent` because `hir_id` refers to a `Pat`, and we're interested in the node containing the `Pat`.
         Res::Local(hir_id) => match cx.tcx.parent_hir_node(hir_id) {
-            // An argument's type is always certain.
-            Node::Param(..) => Certainty::Certain(None),
+            // A parameter's type is not always certain, as it may come from an untyped closure definition,
+            // or from a wildcard in a typed closure definition.
+            Node::Param(param) => param_certainty(cx, param),
             // A local's type is certain if its type annotation is certain or it has an initializer whose
             // type is certain.
             Node::LetStmt(local) => {
