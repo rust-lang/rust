@@ -28,15 +28,15 @@ pub trait AsyncIterator {
     /// async iterator state:
     ///
     /// - `Poll::Pending` means that this async iterator's next value is not ready
-    /// yet. Implementations will ensure that the current task will be notified
-    /// when the next value may be ready.
+    ///   yet. Implementations will ensure that the current task will be notified
+    ///   when the next value may be ready.
     ///
     /// - `Poll::Ready(Some(val))` means that the async iterator has successfully
-    /// produced a value, `val`, and may produce further values on subsequent
-    /// `poll_next` calls.
+    ///   produced a value, `val`, and may produce further values on subsequent
+    ///   `poll_next` calls.
     ///
     /// - `Poll::Ready(None)` means that the async iterator has terminated, and
-    /// `poll_next` should not be invoked again.
+    ///   `poll_next` should not be invoked again.
     ///
     /// # Panics
     ///
