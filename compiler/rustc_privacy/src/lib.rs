@@ -755,8 +755,8 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
             }
             hir::ItemKind::ForeignMod { items, .. } => {
                 for foreign_item in items {
-                    if let Some(foreign_item_ev) = self.get(foreign_item.id.owner_id.def_id) {
-                        self.reach(foreign_item.id.owner_id.def_id, foreign_item_ev)
+                    if let Some(foreign_item_ev) = self.get(foreign_item.owner_id.def_id) {
+                        self.reach(foreign_item.owner_id.def_id, foreign_item_ev)
                             .generics()
                             .predicates()
                             .ty();
@@ -1658,8 +1658,8 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             DefKind::ForeignMod => {
                 let item = tcx.hir_item(id);
                 if let hir::ItemKind::ForeignMod { items, .. } = item.kind {
-                    for foreign_item in items {
-                        let foreign_item = tcx.hir_foreign_item(foreign_item.id);
+                    for &foreign_item in items {
+                        let foreign_item = tcx.hir_foreign_item(foreign_item);
 
                         let ev = self.get(foreign_item.owner_id.def_id);
                         let vis = tcx.local_visibility(foreign_item.owner_id.def_id);
