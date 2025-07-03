@@ -1898,10 +1898,6 @@ mod impls {
         fn eq(&self, _other: &()) -> bool {
             true
         }
-        #[inline]
-        fn ne(&self, _other: &()) -> bool {
-            false
-        }
     }
 
     macro_rules! eq_impl {
