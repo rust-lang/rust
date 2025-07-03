@@ -100,8 +100,8 @@ use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
 use crate::{errors, require_c_abi_if_c_variadic};
 
-pub fn provide(providers: &mut Providers) {
-    wfcheck::provide(providers);
+/// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
+pub(super) fn provide(providers: &mut Providers) {
     *providers = Providers {
         adt_destructor,
         adt_async_destructor,

@@ -150,6 +150,7 @@ fn require_c_abi_if_c_variadic(
     .emit();
 }
 
+/// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
 pub fn provide(providers: &mut Providers) {
     collect::provide(providers);
     coherence::provide(providers);
