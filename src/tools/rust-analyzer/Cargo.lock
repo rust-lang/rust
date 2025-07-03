@@ -1475,6 +1475,7 @@ dependencies = [
  "parser",
  "ra-ap-rustc_lexer",
  "rustc-hash 2.1.1",
+ "salsa",
  "smallvec",
  "span",
  "stdx",

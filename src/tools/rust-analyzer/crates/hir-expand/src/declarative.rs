@@ -42,6 +42,7 @@ impl DeclarativeMacroExpander {
             None => self
                 .mac
                 .expand(
+                    db,
                     &tt,
                     |s| {
                         s.ctx =
@@ -49,7 +50,6 @@ impl DeclarativeMacroExpander {
                     },
                     loc.kind.call_style(),
                     span,
-                    loc.def.edition,
                 )
                 .map_err(Into::into),
         }
@@ -57,10 +57,10 @@ impl DeclarativeMacroExpander {
 
     pub fn expand_unhygienic(
         &self,
+        db: &dyn ExpandDatabase,
         tt: tt::TopSubtree,
         call_style: MacroCallStyle,
         call_site: Span,
-        def_site_edition: Edition,
     ) -> ExpandResult<tt::TopSubtree> {
         match self.mac.err() {
             Some(_) => ExpandResult::new(
@@ -69,7 +69,7 @@ impl DeclarativeMacroExpander {
             ),
             None => self
                 .mac
-                .expand(&tt, |_| (), call_style, call_site, def_site_edition)
+                .expand(db, &tt, |_| (), call_style, call_site)
                 .map(TupleExt::head)
                 .map_err(Into::into),
         }

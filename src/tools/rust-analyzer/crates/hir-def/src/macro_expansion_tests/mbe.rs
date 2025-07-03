@@ -2051,3 +2051,33 @@ fn f() {
     "#]],
     );
 }
+
+#[test]
+fn per_token_edition() {
+    check(
+        r#"
+//- /foo.rs crate:foo edition:2024
+#[macro_export]
+macro_rules! m {
+    ($e:expr) => {};
+}
+//- /bar.rs crate:bar deps:foo edition:2021
+fn gen() -> usize {
+    0
+}
+
+fn foo() {
+    foo::m!(gen());
+}
+    "#,
+        expect![[r#"
+fn gen() -> usize {
+    0
+}
+
+fn foo() {
+    ;
+}
+    "#]],
+    );
+}
