@@ -4,7 +4,7 @@ error: unstable feature `feat_foo` is used without being enabled.
 LL |   type Assoc = Self;
    |                ^^^^
    |
-   = help: The feature can be enabled through #[unstable_feature_bound(feat_foo)] in std/core, or #[feature(feat_foo)] outside of std/core.
+   = help: The feature can be enabled by marking the current item with `#[unstable_feature_bound(feat_foo)]`
 note: required for `Foo` to implement `Bar`
   --> $DIR/unstable-impl-assoc-type.rs:19:6
    |

@@ -6,7 +6,7 @@
 #![cfg_attr(fail, feature(feat_bar))]
 
 extern crate unstable_feature;
-use unstable_feature::{Bar, Moo};
+use unstable_feature::{Foo, Bar, Moo};
 
 /// To use impls gated by both `feat_foo` and `feat_moo`,
 /// both features must be enabled.

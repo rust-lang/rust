@@ -1,7 +1,7 @@
 error[E0119]: conflicting implementations of trait `Trait` for type `LocalTy`
   --> $DIR/unstable_impl_coherence.rs:14:1
    |
-LL | impl aux::Trait for LocalTy{}
+LL | impl aux::Trait for LocalTy {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `unstable_impl_coherence_aux`:

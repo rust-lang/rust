@@ -4,7 +4,7 @@ error: unstable feature `feat_moo` is used without being enabled.
 LL |     Moo::foo();
    |     ^^^
    |
-   = help: The feature can be enabled through #[unstable_feature_bound(feat_moo)] in std/core, or #[feature(feat_moo)] outside of std/core.
+   = help: The feature can be enabled by adding `#![feature(feat_moo)]` to the crate root
    = note: required for `Moo` to implement `Foo`
 
 error: aborting due to 1 previous error

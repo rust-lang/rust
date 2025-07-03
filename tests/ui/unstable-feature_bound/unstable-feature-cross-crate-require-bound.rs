@@ -4,7 +4,7 @@
 
 #![cfg_attr(pass, feature(feat_bar))]
 extern crate unstable_feature;
-use unstable_feature::Bar;
+use unstable_feature::{Foo, Bar};
 
 /// #[feature(..)] is required to use unstable impl.
 
