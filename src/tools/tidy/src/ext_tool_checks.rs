@@ -39,6 +39,7 @@ const RUFF_CONFIG_PATH: &[&str] = &["src", "tools", "tidy", "config", "ruff.toml
 const RUFF_CACHE_PATH: &[&str] = &["cache", "ruff_cache"];
 const PIP_REQ_PATH: &[&str] = &["src", "tools", "tidy", "config", "requirements.txt"];
 
+// this must be kept in sync with with .github/workflows/spellcheck.yml
 const SPELLCHECK_DIRS: &[&str] = &["compiler", "library", "src/bootstrap", "src/librustdoc"];
 
 pub fn check(
@@ -74,7 +75,7 @@ fn check_impl(
             .split(',')
             .map(|s| {
                 if s == "spellcheck:fix" {
-                    eprintln!("warning: `spellcheck:fix` is no longer valid, use `--extra=check=spellcheck --bless`");
+                    eprintln!("warning: `spellcheck:fix` is no longer valid, use `--extra-checks=spellcheck --bless`");
                 }
                 (ExtraCheckArg::from_str(s), s)
             })
@@ -87,6 +88,7 @@ fn check_impl(
                     }
                 }
                 Err(err) => {
+                    // only warn because before bad extra checks would be silently ignored.
                     eprintln!("warning: bad extra check argument {src:?}: {err:?}");
                     None
                 }
@@ -260,7 +262,6 @@ fn check_impl(
 
     if spellcheck {
         let config_path = root_path.join("typos.toml");
-        // sync target files with .github/workflows/spellcheck.yml
         let mut args = vec!["-c", config_path.as_os_str().to_str().unwrap()];
 
         args.extend_from_slice(SPELLCHECK_DIRS);
@@ -666,6 +667,7 @@ enum ExtraCheckParseError {
     UnknownKind(String),
     #[allow(dead_code)]
     UnknownLang(String),
+    UnsupportedKindForLang,
     /// Too many `:`
     TooManyParts,
     /// Tried to parse the empty string
@@ -703,6 +705,21 @@ impl ExtraCheckArg {
         };
         !crate::files_modified(ci_info, |s| s.ends_with(ext))
     }
+
+    fn has_supported_kind(&self) -> bool {
+        let Some(kind) = self.kind else {
+            // "run all extra checks" mode is supported for all languages.
+            return true;
+        };
+        use ExtraCheckKind::*;
+        let supported_kinds: &[_] = match self.lang {
+            ExtraCheckLang::Py => &[Fmt, Lint],
+            ExtraCheckLang::Cpp => &[Fmt],
+            ExtraCheckLang::Shell => &[Lint],
+            ExtraCheckLang::Spellcheck => &[],
+        };
+        supported_kinds.contains(&kind)
+    }
 }
 
 impl FromStr for ExtraCheckArg {
@@ -725,7 +742,12 @@ impl FromStr for ExtraCheckArg {
         if parts.next().is_some() {
             return Err(ExtraCheckParseError::TooManyParts);
         }
-        Ok(Self { auto, lang: first.parse()?, kind: second.map(|s| s.parse()).transpose()? })
+        let arg = Self { auto, lang: first.parse()?, kind: second.map(|s| s.parse()).transpose()? };
+        if !arg.has_supported_kind() {
+            return Err(ExtraCheckParseError::UnsupportedKindForLang);
+        }
+
+        Ok(arg)
     }
 }
 
