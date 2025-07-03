@@ -59,7 +59,7 @@ fn equate_intrinsic_type<'tcx>(
 
 /// Returns the unsafety of the given intrinsic.
 fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hir::Safety {
-    let is_in_list = match tcx.item_name(intrinsic_id.into()) {
+    let is_in_list = match tcx.item_name(intrinsic_id) {
         // When adding a new intrinsic to this list,
         // it's usually worth updating that intrinsic's documentation
         // to note that it's safe to call, since
@@ -144,7 +144,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
             tcx.def_span(intrinsic_id),
             DiagMessage::from(format!(
                 "intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `{}`",
-                tcx.item_name(intrinsic_id.into())
+                tcx.item_name(intrinsic_id)
             )
         )).emit();
     }
