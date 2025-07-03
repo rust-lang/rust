@@ -187,6 +187,8 @@ impl Step for Rustc {
     /// This will check the compiler for a particular stage of the build using
     /// the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
+    ///
+    /// If we check a stage 2 compiler, we will have to first build a stage 1 compiler to check it.
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.build_compiler;
         let target = self.target;
