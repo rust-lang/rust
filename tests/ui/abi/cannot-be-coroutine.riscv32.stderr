@@ -4,7 +4,7 @@ error: functions with the "riscv-interrupt-m" ABI cannot be `async`
 LL | async extern "riscv-interrupt-m" fn riscv_m() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: remove the `async` keyword from this definiton
+help: remove the `async` keyword from this definition
    |
 LL - async extern "riscv-interrupt-m" fn riscv_m() {
 LL + extern "riscv-interrupt-m" fn riscv_m() {
@@ -16,7 +16,7 @@ error: functions with the "riscv-interrupt-s" ABI cannot be `async`
 LL | async extern "riscv-interrupt-s" fn riscv_s() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: remove the `async` keyword from this definiton
+help: remove the `async` keyword from this definition
    |
 LL - async extern "riscv-interrupt-s" fn riscv_s() {
 LL + extern "riscv-interrupt-s" fn riscv_s() {

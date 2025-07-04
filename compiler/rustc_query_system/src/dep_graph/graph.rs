@@ -1342,7 +1342,7 @@ impl DepNodeColorMap {
 
     /// This tries to atomically mark a node green and assign `index` as the new
     /// index. This returns `Ok` if `index` gets assigned, otherwise it returns
-    /// the alreadly allocated index in `Err`.
+    /// the already allocated index in `Err`.
     #[inline]
     pub(super) fn try_mark_green(
         &self,

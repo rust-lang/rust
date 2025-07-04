@@ -571,6 +571,13 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     pub(crate) fn builder(
         layout: TyAndLayout<'tcx>,
     ) -> Option<OperandRef<'tcx, Result<V, abi::Scalar>>> {
+        // Uninhabited types are weird, because for example `Result<!, !>`
+        // shows up as `FieldsShape::Primitive` and we need to be able to write
+        // a field into `(u32, !)`. We'll do that in an `alloca` instead.
+        if layout.uninhabited {
+            return None;
+        }
+
         let val = match layout.backend_repr {
             BackendRepr::Memory { .. } if layout.is_zst() => OperandValue::ZeroSized,
             BackendRepr::Scalar(s) => OperandValue::Immediate(Err(s)),
@@ -640,16 +647,46 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, Result<V, abi::Scalar>> {
         }
     }
 
+    /// Insert the immediate value `imm` for field `f` in the *type itself*,
+    /// rather than into one of the variants.
+    ///
+    /// Most things want [`OperandRef::insert_field`] instead, but this one is
+    /// necessary for writing things like enum tags that aren't in any variant.
+    pub(super) fn insert_imm(&mut self, f: FieldIdx, imm: V) {
+        let field_offset = self.layout.fields.offset(f.as_usize());
+        let is_zero_offset = field_offset == Size::ZERO;
+        match &mut self.val {
+            OperandValue::Immediate(val @ Err(_)) if is_zero_offset => {
+                *val = Ok(imm);
+            }
+            OperandValue::Pair(fst @ Err(_), _) if is_zero_offset => {
+                *fst = Ok(imm);
+            }
+            OperandValue::Pair(_, snd @ Err(_)) if !is_zero_offset => {
+                *snd = Ok(imm);
+            }
+            _ => bug!("Tried to insert {imm:?} into field {f:?} of {self:?}"),
+        }
+    }
+
     /// After having set all necessary fields, this converts the
     /// `OperandValue<Result<V, _>>` (as obtained from [`OperandRef::builder`])
     /// to the normal `OperandValue<V>`.
     ///
     /// ICEs if any required fields were not set.
-    pub fn build(&self) -> OperandRef<'tcx, V> {
+    pub fn build(&self, cx: &impl CodegenMethods<'tcx, Value = V>) -> OperandRef<'tcx, V> {
         let OperandRef { val, layout } = *self;
 
+        // For something like `Option::<u32>::None`, it's expected that the
+        // payload scalar will not actually have been set, so this converts
+        // unset scalars to corresponding `undef` values so long as the scalar
+        // from the layout allows uninit.
         let unwrap = |r: Result<V, abi::Scalar>| match r {
             Ok(v) => v,
+            Err(s) if s.is_uninit_valid() => {
+                let bty = cx.type_from_scalar(s);
+                cx.const_undef(bty)
+            }
             Err(_) => bug!("OperandRef::build called while fields are missing {self:?}"),
         };
 

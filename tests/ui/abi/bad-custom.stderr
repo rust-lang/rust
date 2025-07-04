@@ -166,7 +166,7 @@ error: functions with the "custom" ABI cannot be `async`
 LL | async unsafe extern "custom" fn no_async_fn() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: remove the `async` keyword from this definiton
+help: remove the `async` keyword from this definition
    |
 LL - async unsafe extern "custom" fn no_async_fn() {
 LL + unsafe extern "custom" fn no_async_fn() {

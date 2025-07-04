@@ -130,7 +130,11 @@ impl<'tcx> SmirCtxt<'tcx> {
 
     pub fn all_trait_decls(&self) -> stable_mir::TraitDecls {
         let mut tables = self.0.borrow_mut();
-        tables.tcx.all_traits().map(|trait_def_id| tables.trait_def(trait_def_id)).collect()
+        tables
+            .tcx
+            .all_traits_including_private()
+            .map(|trait_def_id| tables.trait_def(trait_def_id))
+            .collect()
     }
 
     pub fn trait_decls(&self, crate_num: CrateNum) -> stable_mir::TraitDecls {

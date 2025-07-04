@@ -904,7 +904,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let goal_kind =
             self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id()).unwrap();
 
-        // If we have not yet determiend the `ClosureKind` of the closure or coroutine-closure,
+        // If we have not yet determined the `ClosureKind` of the closure or coroutine-closure,
         // then additionally register an `AsyncFnKindHelper` goal which will fail if the kind
         // is constrained to an insufficient type later on.
         if let Some(closure_kind) = self.infcx.shallow_resolve(kind_ty).to_opt_closure_kind() {

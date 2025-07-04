@@ -107,7 +107,7 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
         sym::minimumf64 => ("llvm.minimum", &[bx.type_f64()]),
         // There are issues on x86_64 and aarch64 with the f128 variant,
-        // let's instead use the instrinsic fallback body.
+        // let's instead use the intrinsic fallback body.
         // sym::minimumf128 => ("llvm.minimum", &[cx.type_f128()]),
         sym::maxnumf16 => ("llvm.maxnum", &[bx.type_f16()]),
         sym::maxnumf32 => ("llvm.maxnum", &[bx.type_f32()]),
@@ -118,7 +118,7 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
         sym::maximumf64 => ("llvm.maximum", &[bx.type_f64()]),
         // There are issues on x86_64 and aarch64 with the f128 variant,
-        // let's instead use the instrinsic fallback body.
+        // let's instead use the intrinsic fallback body.
         // sym::maximumf128 => ("llvm.maximum", &[cx.type_f128()]),
         sym::copysignf16 => ("llvm.copysign", &[bx.type_f16()]),
         sym::copysignf32 => ("llvm.copysign", &[bx.type_f32()]),

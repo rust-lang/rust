@@ -588,7 +588,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let def_id = pick.item.def_id;
         let method_predicates = self.tcx.predicates_of(def_id).instantiate(self.tcx, all_args);
 
-        debug!("method_predicates after instantitation = {:?}", method_predicates);
+        debug!("method_predicates after instantiation = {:?}", method_predicates);
 
         let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, all_args);
         debug!("type scheme instantiated, sig={:?}", sig);

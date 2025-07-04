@@ -726,7 +726,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 Err(SelectionError::TraitDynIncompatible(_)) => {
                     // Dyn compatibility errors in coercion will *always* be due to the
                     // fact that the RHS of the coercion is a non-dyn compatible `dyn Trait`
-                    // writen in source somewhere (otherwise we will never have lowered
+                    // written in source somewhere (otherwise we will never have lowered
                     // the dyn trait from HIR to middle).
                     //
                     // There's no reason to emit yet another dyn compatibility error,

@@ -16,8 +16,8 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
 use crate::attributes::codegen_attrs::{
-    ColdParser, ExportNameParser, NakedParser, NoMangleParser, OptimizeParser, TrackCallerParser,
-    UsedParser,
+    ColdParser, ExportNameParser, NakedParser, NoMangleParser, OptimizeParser, TargetFeatureParser,
+    TrackCallerParser, UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
@@ -118,6 +118,7 @@ attribute_parsers!(
         Combine<AllowConstFnUnstableParser>,
         Combine<AllowInternalUnstableParser>,
         Combine<ReprParser>,
+        Combine<TargetFeatureParser>,
         // tidy-alphabetical-end
 
         // tidy-alphabetical-start
@@ -189,7 +190,7 @@ impl Stage for Late {
     }
 }
 
-/// used when parsing attributes for miscelaneous things *before* ast lowering
+/// used when parsing attributes for miscellaneous things *before* ast lowering
 pub struct Early;
 /// used when parsing attributes during ast lowering
 pub struct Late;

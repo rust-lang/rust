@@ -1600,7 +1600,7 @@ pub struct VariantIdx(usize);
 index_impl!(VariantIdx);
 
 crate_def! {
-    /// Hold infomation about an Opaque definition, particularly useful in `RPITIT`.
+    /// Hold information about an Opaque definition, particularly useful in `RPITIT`.
     #[derive(Serialize)]
     pub OpaqueDef;
 }
