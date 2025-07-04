@@ -1,15 +1,15 @@
 use std::str::FromStr;
 
-use rustc_abi::ExternAbi;
+use rustc_abi::{Align, ExternAbi};
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
 use rustc_attr_data_structures::{
-    AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr, ReprAttr, find_attr,
+    AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr, ReprAttr, UsedBy, find_attr,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
-use rustc_hir::{self as hir, HirId, LangItem, lang_items};
+use rustc_hir::{self as hir, LangItem, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
 };
@@ -87,7 +87,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
     let mut link_ordinal_span = None;
     let mut no_sanitize_span = None;
-    let mut mixed_export_name_no_mangle_lint_state = MixedExportNameAndNoMangleState::default();
 
     for attr in attrs.iter() {
         // In some cases, attribute are only valid on functions, but it's the `check_attr`
@@ -119,16 +118,18 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         .max();
                 }
                 AttributeKind::Cold(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
+                AttributeKind::ExportName { name, .. } => {
+                    codegen_fn_attrs.export_name = Some(*name);
+                }
                 AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
                 AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
+                AttributeKind::LinkName { name, .. } => codegen_fn_attrs.link_name = Some(*name),
+                AttributeKind::LinkSection { name, .. } => {
+                    codegen_fn_attrs.link_section = Some(*name)
+                }
                 AttributeKind::NoMangle(attr_span) => {
                     if tcx.opt_item_name(did.to_def_id()).is_some() {
                         codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
-                        mixed_export_name_no_mangle_lint_state.track_no_mangle(
-                            *attr_span,
-                            tcx.local_def_id_to_hir_id(did),
-                            attr,
-                        );
                     } else {
                         tcx.dcx().emit_err(NoMangleNameless {
                             span: *attr_span,
@@ -139,6 +140,49 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                             ),
                         });
                     }
+                }
+                AttributeKind::TargetFeature(features, attr_span) => {
+                    let Some(sig) = tcx.hir_node_by_def_id(did).fn_sig() else {
+                        tcx.dcx().span_delayed_bug(*attr_span, "target_feature applied to non-fn");
+                        continue;
+                    };
+                    let safe_target_features =
+                        matches!(sig.header.safety, hir::HeaderSafety::SafeTargetFeatures);
+                    codegen_fn_attrs.safe_target_features = safe_target_features;
+                    if safe_target_features {
+                        if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
+                            // The `#[target_feature]` attribute is allowed on
+                            // WebAssembly targets on all functions. Prior to stabilizing
+                            // the `target_feature_11` feature, `#[target_feature]` was
+                            // only permitted on unsafe functions because on most targets
+                            // execution of instructions that are not supported is
+                            // considered undefined behavior. For WebAssembly which is a
+                            // 100% safe target at execution time it's not possible to
+                            // execute undefined instructions, and even if a future
+                            // feature was added in some form for this it would be a
+                            // deterministic trap. There is no undefined behavior when
+                            // executing WebAssembly so `#[target_feature]` is allowed
+                            // on safe functions (but again, only for WebAssembly)
+                            //
+                            // Note that this is also allowed if `actually_rustdoc` so
+                            // if a target is documenting some wasm-specific code then
+                            // it's not spuriously denied.
+                            //
+                            // Now that `#[target_feature]` is permitted on safe functions,
+                            // this exception must still exist for allowing the attribute on
+                            // `main`, `start`, and other functions that are not usually
+                            // allowed.
+                        } else {
+                            check_target_feature_trait_unsafe(tcx, did, *attr_span);
+                        }
+                    }
+                    from_target_feature_attr(
+                        tcx,
+                        did,
+                        features,
+                        rust_target_features,
+                        &mut codegen_fn_attrs.target_features,
+                    );
                 }
                 AttributeKind::TrackCaller(attr_span) => {
                     let is_closure = tcx.is_closure_like(did.to_def_id());
@@ -163,6 +207,10 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     }
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER
                 }
+                AttributeKind::Used { used_by, .. } => match used_by {
+                    UsedBy::Compiler => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER,
+                    UsedBy::Linker => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER,
+                },
                 _ => {}
             }
         }
@@ -184,99 +232,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::rustc_std_internal_symbol => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
             }
-            sym::used => {
-                let inner = attr.meta_item_list();
-                match inner.as_deref() {
-                    Some([item]) if item.has_name(sym::linker) => {
-                        if !tcx.features().used_with_arg() {
-                            feature_err(
-                                &tcx.sess,
-                                sym::used_with_arg,
-                                attr.span(),
-                                "`#[used(linker)]` is currently unstable",
-                            )
-                            .emit();
-                        }
-                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER;
-                    }
-                    Some([item]) if item.has_name(sym::compiler) => {
-                        if !tcx.features().used_with_arg() {
-                            feature_err(
-                                &tcx.sess,
-                                sym::used_with_arg,
-                                attr.span(),
-                                "`#[used(compiler)]` is currently unstable",
-                            )
-                            .emit();
-                        }
-                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER;
-                    }
-                    Some(_) => {
-                        tcx.dcx().emit_err(errors::ExpectedUsedSymbol { span: attr.span() });
-                    }
-                    None => {
-                        // Unconditionally using `llvm.used` causes issues in handling
-                        // `.init_array` with the gold linker. Luckily gold has been
-                        // deprecated with GCC 15 and rustc now warns about using gold.
-                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER
-                    }
-                }
-            }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
-            sym::export_name => {
-                if let Some(s) = attr.value_str() {
-                    if s.as_str().contains('\0') {
-                        // `#[export_name = ...]` will be converted to a null-terminated string,
-                        // so it may not contain any null characters.
-                        tcx.dcx().emit_err(errors::NullOnExport { span: attr.span() });
-                    }
-                    codegen_fn_attrs.export_name = Some(s);
-                    mixed_export_name_no_mangle_lint_state.track_export_name(attr.span());
-                }
-            }
-            sym::target_feature => {
-                let Some(sig) = tcx.hir_node_by_def_id(did).fn_sig() else {
-                    tcx.dcx().span_delayed_bug(attr.span(), "target_feature applied to non-fn");
-                    continue;
-                };
-                let safe_target_features =
-                    matches!(sig.header.safety, hir::HeaderSafety::SafeTargetFeatures);
-                codegen_fn_attrs.safe_target_features = safe_target_features;
-                if safe_target_features {
-                    if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
-                        // The `#[target_feature]` attribute is allowed on
-                        // WebAssembly targets on all functions. Prior to stabilizing
-                        // the `target_feature_11` feature, `#[target_feature]` was
-                        // only permitted on unsafe functions because on most targets
-                        // execution of instructions that are not supported is
-                        // considered undefined behavior. For WebAssembly which is a
-                        // 100% safe target at execution time it's not possible to
-                        // execute undefined instructions, and even if a future
-                        // feature was added in some form for this it would be a
-                        // deterministic trap. There is no undefined behavior when
-                        // executing WebAssembly so `#[target_feature]` is allowed
-                        // on safe functions (but again, only for WebAssembly)
-                        //
-                        // Note that this is also allowed if `actually_rustdoc` so
-                        // if a target is documenting some wasm-specific code then
-                        // it's not spuriously denied.
-                        //
-                        // Now that `#[target_feature]` is permitted on safe functions,
-                        // this exception must still exist for allowing the attribute on
-                        // `main`, `start`, and other functions that are not usually
-                        // allowed.
-                    } else {
-                        check_target_feature_trait_unsafe(tcx, did, attr.span());
-                    }
-                }
-                from_target_feature_attr(
-                    tcx,
-                    did,
-                    attr,
-                    rust_target_features,
-                    &mut codegen_fn_attrs.target_features,
-                );
-            }
             sym::linkage => {
                 if let Some(val) = attr.value_str() {
                     let linkage = Some(linkage_by_name(tcx, did, val.as_str()));
@@ -300,17 +256,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     }
                 }
             }
-            sym::link_section => {
-                if let Some(val) = attr.value_str() {
-                    if val.as_str().bytes().any(|b| b == 0) {
-                        let msg = format!("illegal null byte in link_section value: `{val}`");
-                        tcx.dcx().span_err(attr.span(), msg);
-                    } else {
-                        codegen_fn_attrs.link_section = Some(val);
-                    }
-                }
-            }
-            sym::link_name => codegen_fn_attrs.link_name = attr.value_str(),
             sym::link_ordinal => {
                 link_ordinal_span = Some(attr.span());
                 if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
@@ -444,11 +389,14 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     }
 
-    mixed_export_name_no_mangle_lint_state.lint_if_mixed(tcx);
-
-    // Apply the minimum function alignment here, so that individual backends don't have to.
+    // Apply the minimum function alignment here. This ensures that a function's alignment is
+    // determined by the `-C` flags of the crate it is defined in, not the `-C` flags of the crate
+    // it happens to be codegen'd (or const-eval'd) in.
     codegen_fn_attrs.alignment =
         Ord::max(codegen_fn_attrs.alignment, tcx.sess.opts.unstable_opts.min_function_alignment);
+
+    // On trait methods, inherit the `#[align]` of the trait's method prototype.
+    codegen_fn_attrs.alignment = Ord::max(codegen_fn_attrs.alignment, tcx.inherited_align(did));
 
     let inline_span;
     (codegen_fn_attrs.inline, inline_span) = if let Some((inline_attr, span)) =
@@ -588,10 +536,10 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             .map(|features| (features.name.as_str(), true))
             .collect(),
     ) {
-        let span = tcx
-            .get_attrs(did, sym::target_feature)
-            .next()
-            .map_or_else(|| tcx.def_span(did), |a| a.span());
+        let span =
+            find_attr!(tcx.get_all_attrs(did), AttributeKind::TargetFeature(_, span) => *span)
+                .unwrap_or_else(|| tcx.def_span(did));
+
         tcx.dcx()
             .create_err(errors::TargetFeatureDisableOrEnable {
                 features,
@@ -604,17 +552,26 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     codegen_fn_attrs
 }
 
+/// If the provided DefId is a method in a trait impl, return the DefId of the method prototype.
+fn opt_trait_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
+    let impl_item = tcx.opt_associated_item(def_id)?;
+    match impl_item.container {
+        ty::AssocItemContainer::Impl => impl_item.trait_item_def_id,
+        _ => None,
+    }
+}
+
 /// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller
 /// applied to the method prototype.
 fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    if let Some(impl_item) = tcx.opt_associated_item(def_id)
-        && let ty::AssocItemContainer::Impl = impl_item.container
-        && let Some(trait_item) = impl_item.trait_item_def_id
-    {
-        return tcx.codegen_fn_attrs(trait_item).flags.intersects(CodegenFnAttrFlags::TRACK_CALLER);
-    }
+    let Some(trait_item) = opt_trait_item(tcx, def_id) else { return false };
+    tcx.codegen_fn_attrs(trait_item).flags.intersects(CodegenFnAttrFlags::TRACK_CALLER)
+}
 
-    false
+/// If the provided DefId is a method in a trait impl, return the value of the `#[align]`
+/// attribute on the method prototype (if any).
+fn inherited_align<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Align> {
+    tcx.codegen_fn_attrs(opt_trait_item(tcx, def_id)?).alignment
 }
 
 fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Option<u16> {
@@ -669,49 +626,6 @@ fn check_link_name_xor_ordinal(
         tcx.dcx().span_err(span, msg);
     } else {
         tcx.dcx().err(msg);
-    }
-}
-
-#[derive(Default)]
-struct MixedExportNameAndNoMangleState<'a> {
-    export_name: Option<Span>,
-    hir_id: Option<HirId>,
-    no_mangle: Option<Span>,
-    no_mangle_attr: Option<&'a hir::Attribute>,
-}
-
-impl<'a> MixedExportNameAndNoMangleState<'a> {
-    fn track_export_name(&mut self, span: Span) {
-        self.export_name = Some(span);
-    }
-
-    fn track_no_mangle(&mut self, span: Span, hir_id: HirId, attr_name: &'a hir::Attribute) {
-        self.no_mangle = Some(span);
-        self.hir_id = Some(hir_id);
-        self.no_mangle_attr = Some(attr_name);
-    }
-
-    /// Emit diagnostics if the lint condition is met.
-    fn lint_if_mixed(self, tcx: TyCtxt<'_>) {
-        if let Self {
-            export_name: Some(export_name),
-            no_mangle: Some(no_mangle),
-            hir_id: Some(hir_id),
-            no_mangle_attr: Some(_),
-        } = self
-        {
-            tcx.emit_node_span_lint(
-                lint::builtin::UNUSED_ATTRIBUTES,
-                hir_id,
-                no_mangle,
-                errors::MixedExportNameAndNoMangle {
-                    no_mangle,
-                    no_mangle_attr: "#[unsafe(no_mangle)]".to_string(),
-                    export_name,
-                    removal_span: no_mangle,
-                },
-            );
-        }
     }
 }
 
@@ -825,5 +739,6 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { codegen_fn_attrs, should_inherit_track_caller, ..*providers };
+    *providers =
+        Providers { codegen_fn_attrs, should_inherit_track_caller, inherited_align, ..*providers };
 }

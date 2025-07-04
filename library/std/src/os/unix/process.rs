@@ -385,7 +385,7 @@ pub trait ChildExt: Sealed {
     /// # Errors
     ///
     /// This function will return an error if the signal is invalid. The integer values associated
-    /// with signals are implemenation-specific, so it's encouraged to use a crate that provides
+    /// with signals are implementation-specific, so it's encouraged to use a crate that provides
     /// posix bindings.
     ///
     /// # Examples

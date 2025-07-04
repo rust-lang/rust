@@ -139,9 +139,12 @@ error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:96:12
    |
 LL | fn bar(_: &'a Trait) {}
-   |       -    ^^ undeclared lifetime
-   |       |
-   |       help: consider introducing lifetime `'a` here: `<'a>`
+   |            ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn bar<'a>(_: &'a Trait) {}
+   |       ++++
 
 error[E0106]: missing lifetime specifier
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:110:13
@@ -171,9 +174,12 @@ error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:122:17
    |
 LL | fn kitten() -> &'a Trait {
-   |          -      ^^ undeclared lifetime
-   |          |
-   |          help: consider introducing lifetime `'a` here: `<'a>`
+   |                 ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn kitten<'a>() -> &'a Trait {
+   |          ++++
 
 error[E0106]: missing lifetime specifier
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:133:16

@@ -810,7 +810,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
                 match repr {
                     ty::Dyn => p!("dyn "),
-                    ty::DynStar => p!("dyn* "),
                 }
                 p!(print(data));
                 if print_r {
@@ -1755,7 +1754,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     ) -> Result<(), PrintError> {
         define_scoped_cx!(self);
 
-        let (prov, offset) = ptr.into_parts();
+        let (prov, offset) = ptr.prov_and_relative_offset();
         match ty.kind() {
             // Byte strings (&[u8; N])
             ty::Ref(_, inner, _) => {
@@ -2077,7 +2076,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!("const ");
             }
             ty::BoundConstness::Maybe => {
-                p!("~const ");
+                p!("[const] ");
             }
         }
         Ok(())
@@ -3250,7 +3249,7 @@ define_print! {
     ty::HostEffectPredicate<'tcx> {
         let constness = match self.constness {
             ty::BoundConstness::Const => { "const" }
-            ty::BoundConstness::Maybe => { "~const" }
+            ty::BoundConstness::Maybe => { "[const]" }
         };
         p!(print(self.trait_ref.self_ty()), ": {constness} ");
         p!(print(self.trait_ref.print_trait_sugared()))

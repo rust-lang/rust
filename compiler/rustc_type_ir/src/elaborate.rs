@@ -179,7 +179,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                     ),
                 };
             }
-            // `T: ~const Trait` implies `T: ~const Supertrait`.
+            // `T: [const] Trait` implies `T: [const] Supertrait`.
             ty::ClauseKind::HostEffect(data) => self.extend_deduped(
                 cx.explicit_implied_const_bounds(data.def_id()).iter_identity().map(|trait_ref| {
                     elaboratable.child(
@@ -320,10 +320,10 @@ pub fn supertrait_def_ids<I: Interner>(
         let trait_def_id = stack.pop()?;
 
         for (predicate, _) in cx.explicit_super_predicates_of(trait_def_id).iter_identity() {
-            if let ty::ClauseKind::Trait(data) = predicate.kind().skip_binder() {
-                if set.insert(data.def_id()) {
-                    stack.push(data.def_id());
-                }
+            if let ty::ClauseKind::Trait(data) = predicate.kind().skip_binder()
+                && set.insert(data.def_id())
+            {
+                stack.push(data.def_id());
             }
         }
 

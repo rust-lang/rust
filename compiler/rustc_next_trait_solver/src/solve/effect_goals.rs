@@ -1,5 +1,5 @@
 //! Dealing with host effect goals, i.e. enforcing the constness in
-//! `T: const Trait` or `T: ~const Trait`.
+//! `T: const Trait` or `T: [const] Trait`.
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
@@ -42,20 +42,18 @@ where
         goal: Goal<I, Self>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
-        if let Some(host_clause) = assumption.as_host_effect_clause() {
-            if host_clause.def_id() == goal.predicate.def_id()
-                && host_clause.constness().satisfies(goal.predicate.constness)
-            {
-                if DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
-                    goal.predicate.trait_ref.args,
-                    host_clause.skip_binder().trait_ref.args,
-                ) {
-                    return Ok(());
-                }
-            }
+        if let Some(host_clause) = assumption.as_host_effect_clause()
+            && host_clause.def_id() == goal.predicate.def_id()
+            && host_clause.constness().satisfies(goal.predicate.constness)
+            && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
+                goal.predicate.trait_ref.args,
+                host_clause.skip_binder().trait_ref.args,
+            )
+        {
+            Ok(())
+        } else {
+            Err(NoSolution)
         }
-
-        Err(NoSolution)
     }
 
     fn match_assumption(
@@ -72,10 +70,10 @@ where
         then(ecx)
     }
 
-    /// Register additional assumptions for aliases corresponding to `~const` item bounds.
+    /// Register additional assumptions for aliases corresponding to `[const]` item bounds.
     ///
     /// Unlike item bounds, they are not simply implied by the well-formedness of the alias.
-    /// Instead, they only hold if the const conditons on the alias also hold. This is why
+    /// Instead, they only hold if the const conditions on the alias also hold. This is why
     /// we also register the const conditions of the alias after matching the goal against
     /// the assumption.
     fn consider_additional_alias_assumptions(
@@ -161,7 +159,7 @@ where
                 .map(|pred| goal.with(cx, pred));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
 
-            // For this impl to be `const`, we need to check its `~const` bounds too.
+            // For this impl to be `const`, we need to check its `[const]` bounds too.
             let const_conditions = cx
                 .const_conditions(impl_def_id)
                 .iter_instantiated(cx, impl_args)

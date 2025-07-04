@@ -486,6 +486,11 @@ passes_missing_panic_handler =
 passes_missing_stability_attr =
     {$descr} has missing stability attribute
 
+passes_mixed_export_name_and_no_mangle = `{$no_mangle_attr}` attribute may not be used in combination with `{$export_name_attr}`
+    .label = `{$no_mangle_attr}` is ignored
+    .note = `{$export_name_attr}` takes precedence
+    .suggestion = remove the `{$no_mangle_attr}` attribute
+
 passes_multiple_rustc_main =
     multiple functions with a `#[rustc_main]` attribute
     .first = first `#[rustc_main]` function
@@ -532,7 +537,7 @@ passes_no_sanitize =
     `#[no_sanitize({$attr_str})]` should be applied to {$accepted_kind}
     .label = not {$accepted_kind}
 
-passes_non_exaustive_with_default_field_values =
+passes_non_exhaustive_with_default_field_values =
     `#[non_exhaustive]` can't be used to annotate items with default field values
     .label = this struct has default field values
 
@@ -612,9 +617,6 @@ passes_rustc_force_inline =
 passes_rustc_force_inline_coro =
     attribute cannot be applied to a `async`, `gen` or `async gen` function
     .label = `async`, `gen` or `async gen` function
-
-passes_rustc_layout_scalar_valid_range_arg =
-    expected exactly one integer literal argument
 
 passes_rustc_layout_scalar_valid_range_not_struct =
     attribute should be applied to a struct
@@ -810,9 +812,6 @@ passes_unused_variable_try_prefix = unused variable: `{$name}`
     .label = unused variable
     .suggestion = if this is intentional, prefix it with an underscore
 
-
-passes_used_compiler_linker =
-    `used(compiler)` and `used(linker)` can't be used together
 
 passes_used_static =
     attribute must be applied to a `static` variable

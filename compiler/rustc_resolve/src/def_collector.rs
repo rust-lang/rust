@@ -2,12 +2,12 @@ use std::mem;
 
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
-use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::{AttributeParser, Early, OmitDoc};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::span_bug;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
@@ -380,20 +380,20 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
-        match &ty.kind {
+        match ty.kind {
             TyKind::MacCall(..) => self.visit_macro_invoc(ty.id),
-            TyKind::ImplTrait(id, _) => {
-                // HACK: pprust breaks strings with newlines when the type
-                // gets too long. We don't want these to show up in compiler
-                // output or built artifacts, so replace them here...
-                // Perhaps we should instead format APITs more robustly.
-                let name = Symbol::intern(&pprust::ty_to_string(ty).replace('\n', " "));
+            TyKind::ImplTrait(opaque_id, _) => {
+                let name = *self
+                    .resolver
+                    .impl_trait_names
+                    .get(&ty.id)
+                    .unwrap_or_else(|| span_bug!(ty.span, "expected this opaque to be named"));
                 let kind = match self.invocation_parent.impl_trait_context {
                     ImplTraitContext::Universal => DefKind::TyParam,
                     ImplTraitContext::Existential => DefKind::OpaqueTy,
                     ImplTraitContext::InBinding => return visit::walk_ty(self, ty),
                 };
-                let id = self.create_def(*id, Some(name), kind, ty.span);
+                let id = self.create_def(opaque_id, Some(name), kind, ty.span);
                 match self.invocation_parent.impl_trait_context {
                     // Do not nest APIT, as we desugar them as `impl_trait: bounds`,
                     // so the `impl_trait` node is not a parent to `bounds`.

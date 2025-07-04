@@ -3875,8 +3875,7 @@ impl<'a> Parser<'a> {
             // Check if a colon exists one ahead. This means we're parsing a fieldname.
             let is_shorthand = !this.look_ahead(1, |t| t == &token::Colon || t == &token::Eq);
             // Proactively check whether parsing the field will be incorrect.
-            let is_wrong = this.token.is_ident()
-                && !this.token.is_reserved_ident()
+            let is_wrong = this.token.is_non_reserved_ident()
                 && !this.look_ahead(1, |t| {
                     t == &token::Colon
                         || t == &token::Eq
@@ -4118,7 +4117,7 @@ impl MutVisitor for CondChecker<'_> {
                         LetChainsPolicy::AlwaysAllowed => (),
                         LetChainsPolicy::EditionDependent { current_edition } => {
                             if !current_edition.at_least_rust_2024() || !span.at_least_rust_2024() {
-                                self.parser.psess.gated_spans.gate(sym::let_chains, span);
+                                self.parser.dcx().emit_err(errors::LetChainPre2024 { span });
                             }
                         }
                     }

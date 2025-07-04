@@ -38,8 +38,8 @@ pub use self::error::{
     EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult, ExpectedKind,
     InterpErrorInfo, InterpErrorKind, InterpResult, InvalidMetaKind, InvalidProgramInfo,
     MachineStopType, Misalignment, PointerKind, ReportedErrorInfo, ResourceExhaustionInfo,
-    ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo, ValidationErrorInfo,
-    ValidationErrorKind, interp_ok,
+    ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo, ValTreeCreationError,
+    ValidationErrorInfo, ValidationErrorKind, interp_ok,
 };
 pub use self::pointer::{CtfeProvenance, Pointer, PointerArithmetic, Provenance};
 pub use self::value::Scalar;
@@ -77,7 +77,7 @@ impl<'tcx> GlobalId<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, HashStable)]
 pub struct LitToConstInput<'tcx> {
     /// The absolute value of the resultant constant.
-    pub lit: &'tcx LitKind,
+    pub lit: LitKind,
     /// The type of the constant.
     pub ty: Ty<'tcx>,
     /// If the constant is negative.

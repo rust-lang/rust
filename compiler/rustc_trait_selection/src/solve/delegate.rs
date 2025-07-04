@@ -143,6 +143,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     None
                 }
             }
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
+                let arg = self.shallow_resolve_term(arg);
+                if arg.is_trivially_wf(self.tcx) {
+                    Some(Certainty::Yes)
+                } else if arg.is_infer() {
+                    Some(Certainty::AMBIGUOUS)
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -154,7 +164,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     ) -> ty::GenericArg<'tcx> {
         match arg.kind() {
             ty::GenericArgKind::Lifetime(_) => {
-                self.next_region_var(RegionVariableOrigin::MiscVariable(span)).into()
+                self.next_region_var(RegionVariableOrigin::Misc(span)).into()
             }
             ty::GenericArgKind::Type(_) => self.next_ty_var(span).into(),
             ty::GenericArgKind::Const(_) => self.next_const_var(span).into(),

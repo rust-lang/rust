@@ -757,6 +757,12 @@ crate_def! {
 }
 
 impl CoroutineDef {
+    /// Retrieves the body of the coroutine definition. Returns None if the body
+    /// isn't available.
+    pub fn body(&self) -> Option<Body> {
+        with(|cx| cx.has_body(self.0).then(|| cx.mir_body(self.0)))
+    }
+
     pub fn discriminant_for_variant(&self, args: &GenericArgs, idx: VariantIdx) -> Discr {
         with(|cx| cx.coroutine_discr_for_variant(*self, args, idx))
     }
@@ -1199,7 +1205,6 @@ pub enum BoundRegionKind {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum DynKind {
     Dyn,
-    DynStar,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -1595,7 +1600,7 @@ pub struct VariantIdx(usize);
 index_impl!(VariantIdx);
 
 crate_def! {
-    /// Hold infomation about an Opaque definition, particularly useful in `RPITIT`.
+    /// Hold information about an Opaque definition, particularly useful in `RPITIT`.
     #[derive(Serialize)]
     pub OpaqueDef;
 }

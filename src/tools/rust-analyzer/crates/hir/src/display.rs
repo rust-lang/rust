@@ -404,7 +404,7 @@ impl HirDisplay for TupleField {
 impl HirDisplay for Variant {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write!(f, "{}", self.name(f.db).display(f.db, f.edition()))?;
-        let data = f.db.variant_fields(self.id.into());
+        let data = self.id.fields(f.db);
         match data.shape {
             FieldsShape::Unit => {}
             FieldsShape::Tuple => {
@@ -633,7 +633,7 @@ fn has_disaplayable_predicates(
     params: &GenericParams,
     store: &ExpressionStore,
 ) -> bool {
-    params.where_predicates().any(|pred| {
+    params.where_predicates().iter().any(|pred| {
         !matches!(
             pred,
             WherePredicate::TypeBound { target, .. }
@@ -668,7 +668,7 @@ fn write_where_predicates(
         _ => false,
     };
 
-    let mut iter = params.where_predicates().peekable();
+    let mut iter = params.where_predicates().iter().peekable();
     while let Some(pred) = iter.next() {
         if matches!(pred, TypeBound { target, .. } if is_unnamed_type_target(*target)) {
             continue;

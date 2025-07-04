@@ -334,7 +334,7 @@ impl<'a> SymbolCollector<'a> {
     fn collect_from_trait(&mut self, trait_id: TraitId, trait_do_not_complete: Complete) {
         let trait_data = self.db.trait_signature(trait_id);
         self.with_container_name(Some(trait_data.name.as_str().into()), |s| {
-            for &(ref name, assoc_item_id) in &self.db.trait_items(trait_id).items {
+            for &(ref name, assoc_item_id) in &trait_id.trait_items(self.db).items {
                 s.push_assoc_item(assoc_item_id, name, Some(trait_do_not_complete));
             }
         });

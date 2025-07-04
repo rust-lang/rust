@@ -334,7 +334,7 @@ pub struct OnUnimplementedNote {
     pub append_const_msg: Option<AppendConstMessage>,
 }
 
-/// Append a message for `~const Trait` errors.
+/// Append a message for `[const] Trait` errors.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum AppendConstMessage {
     #[default]

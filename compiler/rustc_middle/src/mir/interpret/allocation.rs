@@ -526,7 +526,7 @@ impl Allocation {
             let ptr_bytes = &mut bytes[idx..idx + ptr_size];
             let bits = read_target_uint(endian, ptr_bytes).unwrap();
             let (ptr_prov, ptr_offset) =
-                adjust_ptr(Pointer::new(alloc_id, Size::from_bytes(bits)))?.into_parts();
+                adjust_ptr(Pointer::new(alloc_id, Size::from_bytes(bits)))?.into_raw_parts();
             write_target_uint(endian, ptr_bytes, ptr_offset.bytes().into()).unwrap();
             new_provenance.push((offset, ptr_prov));
         }
@@ -769,7 +769,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         // as-is into memory. This also double-checks that `val.size()` matches `range.size`.
         let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size)? {
             Right(ptr) => {
-                let (provenance, offset) = ptr.into_parts();
+                let (provenance, offset) = ptr.into_raw_parts();
                 (u128::from(offset.bytes()), Some(provenance))
             }
             Left(data) => (data, None),
@@ -799,7 +799,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     /// Initialize all previously uninitialized bytes in the entire allocation, and set
     /// provenance of everything to `Wildcard`. Before calling this, make sure all
     /// provenance in this allocation is exposed!
-    pub fn prepare_for_native_write(&mut self) -> AllocResult {
+    pub fn prepare_for_native_access(&mut self) {
         let full_range = AllocRange { start: Size::ZERO, size: Size::from_bytes(self.len()) };
         // Overwrite uninitialized bytes with 0, to ensure we don't leak whatever their value happens to be.
         for chunk in self.init_mask.range_as_init_chunks(full_range) {
@@ -814,13 +814,6 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
 
         // Set provenance of all bytes to wildcard.
         self.provenance.write_wildcards(self.len());
-
-        // Also expose the provenance of the interpreter-level allocation, so it can
-        // be written by FFI. The `black_box` is defensive programming as LLVM likes
-        // to (incorrectly) optimize away ptr2int casts whose result is unused.
-        std::hint::black_box(self.get_bytes_unchecked_raw_mut().expose_provenance());
-
-        Ok(())
     }
 
     /// Remove all provenance in the given memory range.

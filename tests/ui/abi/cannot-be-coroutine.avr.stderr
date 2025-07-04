@@ -4,7 +4,7 @@ error: functions with the "avr-interrupt" ABI cannot be `async`
 LL | async extern "avr-interrupt" fn avr() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: remove the `async` keyword from this definiton
+help: remove the `async` keyword from this definition
    |
 LL - async extern "avr-interrupt" fn avr() {
 LL + extern "avr-interrupt" fn avr() {

@@ -11,9 +11,10 @@ mod tests;
 pub mod common;
 pub mod compute_diff;
 mod debuggers;
+pub mod diagnostics;
+pub mod directives;
 pub mod errors;
 mod executor;
-pub mod header;
 mod json;
 mod raise_fd_limit;
 mod read2;
@@ -33,16 +34,16 @@ use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use camino::{Utf8Path, Utf8PathBuf};
 use getopts::Options;
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use tracing::*;
+use tracing::debug;
 use walkdir::WalkDir;
 
-use self::header::{EarlyProps, make_test_description};
+use self::directives::{EarlyProps, make_test_description};
 use crate::common::{
     CompareMode, Config, Debugger, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path,
     output_base_dir, output_relative_path,
 };
+use crate::directives::DirectivesCache;
 use crate::executor::{CollectedTest, ColorConfig, OutputFormat};
-use crate::header::HeadersCache;
 use crate::util::logv;
 
 /// Creates the `Config` instance for this invocation of compiletest.
@@ -51,12 +52,6 @@ use crate::util::logv;
 /// some code here that inspects environment variables or even runs executables
 /// (e.g. when discovering debugger versions).
 pub fn parse_config(args: Vec<String>) -> Config {
-    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
-        eprintln!(
-            "WARNING: RUST_TEST_NOCAPTURE is not supported. Use the `--no-capture` flag instead."
-        );
-    }
-
     let mut opts = Options::new();
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
@@ -259,8 +254,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
     let llvm_version =
-        matches.opt_str("llvm-version").as_deref().map(header::extract_llvm_version).or_else(
-            || header::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
+        matches.opt_str("llvm-version").as_deref().map(directives::extract_llvm_version).or_else(
+            || directives::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
         );
 
     let run_ignored = matches.opt_present("ignored");
@@ -623,7 +618,7 @@ pub fn run_tests(config: Arc<Config>) {
 /// Read-only context data used during test collection.
 struct TestCollectorCx {
     config: Arc<Config>,
-    cache: HeadersCache,
+    cache: DirectivesCache,
     common_inputs_stamp: Stamp,
     modified_tests: Vec<Utf8PathBuf>,
 }
@@ -657,12 +652,9 @@ pub(crate) fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> 
     let common_inputs_stamp = common_inputs_stamp(&config);
     let modified_tests =
         modified_tests(&config, &config.src_test_suite_root).unwrap_or_else(|err| {
-            panic!(
-                "modified_tests got error from dir: {}, error: {}",
-                config.src_test_suite_root, err
-            )
+            fatal!("modified_tests: {}: {err}", config.src_test_suite_root);
         });
-    let cache = HeadersCache::load(&config);
+    let cache = DirectivesCache::load(&config);
 
     let cx = TestCollectorCx { config, cache, common_inputs_stamp, modified_tests };
     let collector = collect_tests_from_dir(&cx, &cx.config.src_test_suite_root, Utf8Path::new(""))
@@ -1109,5 +1101,22 @@ fn check_for_overlapping_test_paths(found_path_stems: &HashSet<Utf8PathBuf>) {
             "{collisions}\n\
             Tests cannot have overlapping names. Make sure they use unique prefixes."
         );
+    }
+}
+
+pub fn early_config_check(config: &Config) {
+    if !config.has_html_tidy && config.mode == Mode::Rustdoc {
+        warning!("`tidy` (html-tidy.org) is not installed; diffs will not be generated");
+    }
+
+    if !config.profiler_runtime && config.mode == Mode::CoverageRun {
+        let actioned = if config.bless { "blessed" } else { "checked" };
+        warning!("profiler runtime is not available, so `.coverage` files won't be {actioned}");
+        help!("try setting `profiler = true` in the `[build]` section of `bootstrap.toml`");
+    }
+
+    // `RUST_TEST_NOCAPTURE` is a libtest env var, but we don't callout to libtest.
+    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
+        warning!("`RUST_TEST_NOCAPTURE` is not supported; use the `--no-capture` flag instead");
     }
 }

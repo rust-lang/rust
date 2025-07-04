@@ -370,15 +370,15 @@ fn attempt_static(tcx: TyCtxt<'_>, unavailable: &mut Vec<CrateNum>) -> Option<De
     Some(ret)
 }
 
-// Given a list of how to link upstream dependencies so far, ensure that an
-// injected dependency is activated. This will not do anything if one was
-// transitively included already (e.g., via a dylib or explicitly so).
-//
-// If an injected dependency was not found then we're guaranteed the
-// metadata::creader module has injected that dependency (not listed as
-// a required dependency) in one of the session's field. If this field is not
-// set then this compilation doesn't actually need the dependency and we can
-// also skip this step entirely.
+/// Given a list of how to link upstream dependencies so far, ensure that an
+/// injected dependency is activated. This will not do anything if one was
+/// transitively included already (e.g., via a dylib or explicitly so).
+///
+/// If an injected dependency was not found then we're guaranteed the
+/// metadata::creader module has injected that dependency (not listed as
+/// a required dependency) in one of the session's field. If this field is not
+/// set then this compilation doesn't actually need the dependency and we can
+/// also skip this step entirely.
 fn activate_injected_dep(
     injected: Option<CrateNum>,
     list: &mut DependencyList,

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `N<T>: ~const Bar` is not satisfied
+error[E0277]: the trait bound `N<T>: [const] Bar` is not satisfied
   --> $DIR/item-bound-entailment-fails.rs:17:21
    |
 LL |     type Assoc<T> = N<T>
@@ -7,25 +7,25 @@ LL |     type Assoc<T> = N<T>
 note: required by a bound in `Foo::Assoc`
   --> $DIR/item-bound-entailment-fails.rs:5:20
    |
-LL |     type Assoc<T>: ~const Bar
-   |                    ^^^^^^^^^^ required by this bound in `Foo::Assoc`
+LL |     type Assoc<T>: [const] Bar
+   |                    ^^^^^^^^^^^ required by this bound in `Foo::Assoc`
 
-error[E0277]: the trait bound `T: ~const Bar` is not satisfied
+error[E0277]: the trait bound `T: [const] Bar` is not satisfied
   --> $DIR/item-bound-entailment-fails.rs:24:21
    |
 LL |     type Assoc<T> = C<T>
    |                     ^^^^
    |
-note: required for `C<T>` to implement `~const Bar`
+note: required for `C<T>` to implement `[const] Bar`
   --> $DIR/item-bound-entailment-fails.rs:14:15
    |
-LL | impl<T> const Bar for C<T> where T: ~const Bar {}
-   |               ^^^     ^^^^          ---------- unsatisfied trait bound introduced here
+LL | impl<T> const Bar for C<T> where T: [const] Bar {}
+   |               ^^^     ^^^^          ----------- unsatisfied trait bound introduced here
 note: required by a bound in `Foo::Assoc`
   --> $DIR/item-bound-entailment-fails.rs:5:20
    |
-LL |     type Assoc<T>: ~const Bar
-   |                    ^^^^^^^^^^ required by this bound in `Foo::Assoc`
+LL |     type Assoc<T>: [const] Bar
+   |                    ^^^^^^^^^^^ required by this bound in `Foo::Assoc`
 
 error: aborting due to 2 previous errors
 

@@ -284,12 +284,12 @@ where
         }
 
         // If they have no bound vars, relate normally.
-        if let Some(a_inner) = a.no_bound_vars() {
-            if let Some(b_inner) = b.no_bound_vars() {
-                self.relate(a_inner, b_inner)?;
-                return Ok(a);
-            }
-        };
+        if let Some(a_inner) = a.no_bound_vars()
+            && let Some(b_inner) = b.no_bound_vars()
+        {
+            self.relate(a_inner, b_inner)?;
+            return Ok(a);
+        }
 
         match self.ambient_variance {
             // Checks whether `for<..> sub <: for<..> sup` holds.

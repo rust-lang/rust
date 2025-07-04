@@ -365,11 +365,11 @@ fn extend_type_not_partial_eq<'tcx>(
     struct UsedParamsNeedInstantiationVisitor<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
-        /// The user has written `impl PartialEq for Ty` which means it's non-structual.
+        /// The user has written `impl PartialEq for Ty` which means it's non-structural.
         adts_with_manual_partialeq: FxHashSet<Span>,
         /// The type has no `PartialEq` implementation, neither manual or derived.
         adts_without_partialeq: FxHashSet<Span>,
-        /// The user has written `impl PartialEq for Ty` which means it's non-structual,
+        /// The user has written `impl PartialEq for Ty` which means it's non-structural,
         /// but we don't have a span to point at, so we'll just add them as a `note`.
         manual: FxHashSet<Ty<'tcx>>,
         /// The type has no `PartialEq` implementation, neither manual or derived, but

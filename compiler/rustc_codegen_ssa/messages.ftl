@@ -48,8 +48,6 @@ codegen_ssa_error_writing_def_file =
 
 codegen_ssa_expected_name_value_pair = expected name value pair
 
-codegen_ssa_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
-
 codegen_ssa_extern_funcs_not_found = some `extern` functions couldn't be found; some native libraries may need to be installed or have their path specified
 
 codegen_ssa_extract_bundled_libs_archive_member = failed to get data from archive member '{$rlib}': {$error}
@@ -63,6 +61,10 @@ codegen_ssa_extract_bundled_libs_write_file = failed to write file '{$rlib}': {$
 codegen_ssa_failed_to_get_layout = failed to get layout for {$ty}: {$err}
 
 codegen_ssa_failed_to_write = failed to write {$path}: {$error}
+
+codegen_ssa_feature_not_valid = the feature named `{$feature}` is not valid for this target
+    .label = `{$feature}` is not valid for this target
+    .help = consider removing the leading `+` in the feature name
 
 codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
 
@@ -205,11 +207,6 @@ codegen_ssa_missing_features = add the missing features in a `target_feature` at
 codegen_ssa_missing_query_depgraph =
     found CGU-reuse attribute but `-Zquery-dep-graph` was not specified
 
-codegen_ssa_mixed_export_name_and_no_mangle = `{$no_mangle_attr}` attribute may not be used in combination with `#[export_name]`
-    .label = `{$no_mangle_attr}` is ignored
-    .note = `#[export_name]` takes precedence
-    .suggestion = remove the `{$no_mangle_attr}` attribute
-
 codegen_ssa_msvc_missing_linker = the msvc targets depend on the msvc linker but `link.exe` was not found
 
 codegen_ssa_multiple_external_func_decl = multiple declarations of external function `{$function}` from library `{$library_name}` have different calling conventions
@@ -229,8 +226,6 @@ codegen_ssa_no_module_named =
 codegen_ssa_no_natvis_directory = error enumerating natvis directory: {$error}
 
 codegen_ssa_no_saved_object_file = cached cgu {$cgu_name} should have an object file, but doesn't
-
-codegen_ssa_null_on_export = `export_name` may not contain null characters
 
 codegen_ssa_out_of_range_integer = integer value out of range
     .label = value must be between `0` and `255`
@@ -298,7 +293,7 @@ codegen_ssa_thorin_missing_referenced_unit = unit {$unit} referenced by executab
 
 codegen_ssa_thorin_missing_required_section = input object missing required section `{$section}`
 
-codegen_ssa_thorin_mixed_input_encodings = input objects haved mixed encodings
+codegen_ssa_thorin_mixed_input_encodings = input objects have mixed encodings
 
 codegen_ssa_thorin_multiple_debug_info_section = multiple `.debug_info.dwo` sections
 

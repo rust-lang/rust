@@ -11,8 +11,8 @@ LL | impl const T for S {}
 error[E0658]: const trait impls are experimental
   --> $DIR/feature-gate.rs:13:15
    |
-LL | const fn f<A: ~const T>() {}
-   |               ^^^^^^
+LL | const fn f<A: [const] T>() {}
+   |               ^^^^^^^
    |
    = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
@@ -31,8 +31,8 @@ LL | fn g<A: const T>() {}
 error[E0658]: const trait impls are experimental
   --> $DIR/feature-gate.rs:18:17
    |
-LL | discard! { impl ~const T }
-   |                 ^^^^^^
+LL | discard! { impl [const] T }
+   |                 ^^^^^^^
    |
    = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable

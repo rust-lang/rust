@@ -1,5 +1,5 @@
 error[E0407]: method `unimplemented` is not a member of trait `std::ops::Add`
-  --> $DIR/post-analysis-user-facing-param-env.rs:11:5
+  --> $DIR/post-analysis-user-facing-param-env.rs:12:5
    |
 LL | /     fn unimplemented(self, _: &Foo) -> Self::Output {
 LL | |
@@ -17,6 +17,19 @@ LL | #![feature(generic_const_exprs)]
    = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
+error[E0046]: not all trait items implemented, missing: `Output`, `add`
+  --> $DIR/post-analysis-user-facing-param-env.rs:6:1
+   |
+LL | / impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
+LL | |
+LL | |
+LL | | where
+LL | |     [(); 1 + 0]: Sized,
+   | |_______________________^ missing `Output`, `add` in implementation
+   |
+   = help: implement the missing item: `type Output = /* Type */;`
+   = help: implement the missing item: `fn add(self, _: &'a Foo) -> <Self as Add<&'a Foo>>::Output { todo!() }`
+
 error[E0207]: the const parameter `NUM` is not constrained by the impl trait, self type, or predicates
   --> $DIR/post-analysis-user-facing-param-env.rs:6:10
    |
@@ -27,7 +40,7 @@ LL | impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
    = note: proving the result of expressions other than the parameter are unique is not supported
 
 error[E0284]: type annotations needed
-  --> $DIR/post-analysis-user-facing-param-env.rs:11:40
+  --> $DIR/post-analysis-user-facing-param-env.rs:12:40
    |
 LL |     fn unimplemented(self, _: &Foo) -> Self::Output {
    |                                        ^^^^^^^^^^^^ cannot infer the value of const parameter `NUM`
@@ -40,7 +53,7 @@ LL | impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
    |          |
    |          unsatisfied trait bound introduced here
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0207, E0284, E0407.
-For more information about an error, try `rustc --explain E0207`.
+Some errors have detailed explanations: E0046, E0207, E0284, E0407.
+For more information about an error, try `rustc --explain E0046`.

@@ -94,6 +94,8 @@ config_data! {
 
 
 
+        /// Enables highlighting of related return values while the cursor is on any `match`, `if`, or match arm arrow (`=>`).
+        highlightRelated_branchExitPoints_enable: bool = true,
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = true,
         /// Enables highlighting of all captures of a closure while the cursor is on the `|` or move keyword of a closure.
@@ -1629,6 +1631,7 @@ impl Config {
             exit_points: self.highlightRelated_exitPoints_enable().to_owned(),
             yield_points: self.highlightRelated_yieldPoints_enable().to_owned(),
             closure_captures: self.highlightRelated_closureCaptures_enable().to_owned(),
+            branch_exit_points: self.highlightRelated_branchExitPoints_enable().to_owned(),
         }
     }
 

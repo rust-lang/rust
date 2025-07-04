@@ -861,7 +861,7 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
 
     // On big-endian, for values smaller than the slot size we'd have to align the read to the end
     // of the slot rather than the start. While the ISA and GCC support big-endian, all the Xtensa
-    // targets supported by rustc are litte-endian so don't worry about it.
+    // targets supported by rustc are little-endian so don't worry about it.
 
     // if from_regsave {
     //     unsafe { *regsave_value_ptr }

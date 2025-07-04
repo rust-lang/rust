@@ -16,7 +16,7 @@ LL | impl<T> const FromResidual for T {
    = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
    = note: only traits defined in the current crate can be implemented for a type parameter
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated functions
   --> $DIR/ice-119717-constant-lifetime.rs:9:31
    |
 LL |     fn from_residual(t: T) -> _ {

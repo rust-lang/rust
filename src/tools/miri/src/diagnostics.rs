@@ -132,7 +132,9 @@ pub enum NonHaltingDiagnostic {
     Int2Ptr {
         details: bool,
     },
-    NativeCallSharedMem,
+    NativeCallSharedMem {
+        tracing: bool,
+    },
     WeakMemoryOutdatedLoad {
         ptr: Pointer,
     },
@@ -627,7 +629,7 @@ impl<'tcx> MiriMachine<'tcx> {
             RejectedIsolatedOp(_) =>
                 ("operation rejected by isolation".to_string(), DiagLevel::Warning),
             Int2Ptr { .. } => ("integer-to-pointer cast".to_string(), DiagLevel::Warning),
-            NativeCallSharedMem =>
+            NativeCallSharedMem { .. } =>
                 ("sharing memory with a native function".to_string(), DiagLevel::Warning),
             ExternTypeReborrow =>
                 ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
@@ -663,7 +665,8 @@ impl<'tcx> MiriMachine<'tcx> {
             ProgressReport { .. } =>
                 format!("progress report: current operation being executed is here"),
             Int2Ptr { .. } => format!("integer-to-pointer cast"),
-            NativeCallSharedMem => format!("sharing memory with a native function called via FFI"),
+            NativeCallSharedMem { .. } =>
+                format!("sharing memory with a native function called via FFI"),
             WeakMemoryOutdatedLoad { ptr } =>
                 format!("weak memory emulation: outdated value returned from load at {ptr}"),
             ExternTypeReborrow =>
@@ -709,22 +712,41 @@ impl<'tcx> MiriMachine<'tcx> {
                 }
                 v
             }
-            NativeCallSharedMem => {
-                vec![
-                    note!(
-                        "when memory is shared with a native function call, Miri stops tracking initialization and provenance for that memory"
-                    ),
-                    note!(
-                        "in particular, Miri assumes that the native call initializes all memory it has access to"
-                    ),
-                    note!(
-                        "Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory"
-                    ),
-                    note!(
-                        "what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free"
-                    ),
-                ]
-            }
+            NativeCallSharedMem { tracing } =>
+                if *tracing {
+                    vec![
+                        note!(
+                            "when memory is shared with a native function call, Miri can only track initialisation and provenance on a best-effort basis"
+                        ),
+                        note!(
+                            "in particular, Miri assumes that the native call initializes all memory it has written to"
+                        ),
+                        note!(
+                            "Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory"
+                        ),
+                        note!(
+                            "what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free"
+                        ),
+                        note!(
+                            "tracing memory accesses in native code is not yet fully implemented, so there can be further imprecisions beyond what is documented here"
+                        ),
+                    ]
+                } else {
+                    vec![
+                        note!(
+                            "when memory is shared with a native function call, Miri stops tracking initialization and provenance for that memory"
+                        ),
+                        note!(
+                            "in particular, Miri assumes that the native call initializes all memory it has access to"
+                        ),
+                        note!(
+                            "Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory"
+                        ),
+                        note!(
+                            "what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free"
+                        ),
+                    ]
+                },
             ExternTypeReborrow => {
                 assert!(self.borrow_tracker.as_ref().is_some_and(|b| {
                     matches!(

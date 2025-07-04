@@ -67,6 +67,7 @@ use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use rustc_abi::Align;
 use rustc_arena::TypedArena;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -354,7 +355,7 @@ rustc_queries! {
     /// Returns whether the type alias given by `DefId` is lazy.
     ///
     /// I.e., if the type alias expands / ought to expand to a [free] [alias type]
-    /// instead of the underyling aliased type.
+    /// instead of the underlying aliased type.
     ///
     /// Relevant for features `lazy_type_alias` and `type_alias_impl_trait`.
     ///
@@ -439,7 +440,6 @@ rustc_queries! {
     query predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
         desc { |tcx| "computing predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
-        feedable
     }
 
     query opaque_types_defined_by(
@@ -850,14 +850,14 @@ rustc_queries! {
     }
 
     /// Compute the conditions that need to hold for a conditionally-const item to be const.
-    /// That is, compute the set of `~const` where clauses for a given item.
+    /// That is, compute the set of `[const]` where clauses for a given item.
     ///
-    /// This can be thought of as the `~const` equivalent of `predicates_of`. These are the
+    /// This can be thought of as the `[const]` equivalent of `predicates_of`. These are the
     /// predicates that need to be proven at usage sites, and can be assumed at definition.
     ///
-    /// This query also computes the `~const` where clauses for associated types, which are
-    /// not "const", but which have item bounds which may be `~const`. These must hold for
-    /// the `~const` item bound to hold.
+    /// This query also computes the `[const]` where clauses for associated types, which are
+    /// not "const", but which have item bounds which may be `[const]`. These must hold for
+    /// the `[const]` item bound to hold.
     query const_conditions(
         key: DefId
     ) -> ty::ConstConditions<'tcx> {
@@ -869,13 +869,13 @@ rustc_queries! {
 
     /// Compute the const bounds that are implied for a conditionally-const item.
     ///
-    /// This can be though of as the `~const` equivalent of `explicit_item_bounds`. These
+    /// This can be though of as the `[const]` equivalent of `explicit_item_bounds`. These
     /// are the predicates that need to proven at definition sites, and can be assumed at
     /// usage sites.
     query explicit_implied_const_bounds(
         key: DefId
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
-        desc { |tcx| "computing the implied `~const` bounds for `{}`",
+        desc { |tcx| "computing the implied `[const]` bounds for `{}`",
             tcx.def_path_str(key)
         }
         separate_provide_extern
@@ -1092,13 +1092,6 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Given an impl trait in trait `opaque_ty_def_id`, create and return the corresponding
-    /// associated item.
-    query associated_type_for_impl_trait_in_trait(opaque_ty_def_id: LocalDefId) -> LocalDefId {
-        desc { |tcx| "creating the associated item corresponding to the opaque type `{}`", tcx.def_path_str(opaque_ty_def_id.to_def_id()) }
-        cache_on_disk_if { true }
-    }
-
     /// Given an `impl_id`, return the trait it implements along with some header information.
     /// Return `None` if this is an inherent impl.
     query impl_trait_header(impl_id: DefId) -> Option<ty::ImplTraitHeader<'tcx>> {
@@ -1283,15 +1276,15 @@ rustc_queries! {
         return_result_from_ensure_ok
     }
 
-    /// Check whether the function has any recursion that could cause the inliner to trigger
-    /// a cycle.
-    query mir_callgraph_reachable(key: (ty::Instance<'tcx>, LocalDefId)) -> bool {
+    /// Return the set of (transitive) callees that may result in a recursive call to `key`.
+    query mir_callgraph_cyclic(key: LocalDefId) -> &'tcx UnordSet<LocalDefId> {
         fatal_cycle
+        arena_cache
         desc { |tcx|
-            "computing if `{}` (transitively) calls `{}`",
-            key.0,
-            tcx.def_path_str(key.1),
+            "computing (transitive) callees of `{}` that may recurse",
+            tcx.def_path_str(key),
         }
+        cache_on_disk_if { true }
     }
 
     /// Obtain all the calls into other local functions
@@ -1311,7 +1304,7 @@ rustc_queries! {
     ///
     /// This query will panic for uninhabited variants and if the passed type is not an enum.
     query tag_for_variant(
-        key: (Ty<'tcx>, abi::VariantIdx)
+        key: PseudoCanonicalInput<'tcx, (Ty<'tcx>, abi::VariantIdx)>,
     ) -> Option<ty::ScalarInt> {
         desc { "computing variant tag for enum" }
     }
@@ -1479,6 +1472,10 @@ rustc_queries! {
 
     query should_inherit_track_caller(def_id: DefId) -> bool {
         desc { |tcx| "computing should_inherit_track_caller of `{}`", tcx.def_path_str(def_id) }
+    }
+
+    query inherited_align(def_id: DefId) -> Option<Align> {
+        desc { |tcx| "computing inherited_align of `{}`", tcx.def_path_str(def_id) }
     }
 
     query lookup_deprecation_entry(def_id: DefId) -> Option<DeprecationEntry> {
@@ -2312,13 +2309,32 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// The list of symbols exported from the given crate.
+    /// The list of non-generic symbols exported from the given crate.
     ///
-    /// - All names contained in `exported_symbols(cnum)` are guaranteed to
-    ///   correspond to a publicly visible symbol in `cnum` machine code.
-    /// - The `exported_symbols` sets of different crates do not intersect.
-    query exported_symbols(cnum: CrateNum) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
-        desc { "collecting exported symbols for crate `{}`", cnum}
+    /// This is separate from exported_generic_symbols to avoid having
+    /// to deserialize all non-generic symbols too for upstream crates
+    /// in the upstream_monomorphizations query.
+    ///
+    /// - All names contained in `exported_non_generic_symbols(cnum)` are
+    ///   guaranteed to correspond to a publicly visible symbol in `cnum`
+    ///   machine code.
+    /// - The `exported_non_generic_symbols` and `exported_generic_symbols`
+    ///   sets of different crates do not intersect.
+    query exported_non_generic_symbols(cnum: CrateNum) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
+        desc { "collecting exported non-generic symbols for crate `{}`", cnum}
+        cache_on_disk_if { *cnum == LOCAL_CRATE }
+        separate_provide_extern
+    }
+
+    /// The list of generic symbols exported from the given crate.
+    ///
+    /// - All names contained in `exported_generic_symbols(cnum)` are
+    ///   guaranteed to correspond to a publicly visible symbol in `cnum`
+    ///   machine code.
+    /// - The `exported_non_generic_symbols` and `exported_generic_symbols`
+    ///   sets of different crates do not intersect.
+    query exported_generic_symbols(cnum: CrateNum) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
+        desc { "collecting exported generic symbols for crate `{}`", cnum}
         cache_on_disk_if { *cnum == LOCAL_CRATE }
         separate_provide_extern
     }

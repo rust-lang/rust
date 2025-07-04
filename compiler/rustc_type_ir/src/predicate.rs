@@ -911,7 +911,7 @@ pub enum BoundConstness {
     ///
     /// A bound is required to be unconditionally const, even in a runtime function.
     Const,
-    /// `Type: ~const Trait`
+    /// `Type: [const] Trait`
     ///
     /// Requires resolving to const only when we are in a const context.
     Maybe,
@@ -929,7 +929,7 @@ impl BoundConstness {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Const => "const",
-            Self::Maybe => "~const",
+            Self::Maybe => "[const]",
         }
     }
 }
@@ -938,7 +938,7 @@ impl fmt::Display for BoundConstness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Const => f.write_str("const"),
-            Self::Maybe => f.write_str("~const"),
+            Self::Maybe => f.write_str("[const]"),
         }
     }
 }

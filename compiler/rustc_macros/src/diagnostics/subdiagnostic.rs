@@ -220,7 +220,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     }
 
     /// Generates the code for a field with no attributes.
-    fn generate_field_arg(&mut self, binding_info: &BindingInfo<'_>) -> (TokenStream, TokenStream) {
+    fn generate_field_arg(&mut self, binding_info: &BindingInfo<'_>) -> TokenStream {
         let diag = &self.parent.diag;
 
         let field = binding_info.ast();
@@ -230,16 +230,12 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let ident = field.ident.as_ref().unwrap();
         let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
 
-        let args = quote! {
+        quote! {
             #diag.arg(
                 stringify!(#ident),
                 #field_binding
             );
-        };
-        let remove_args = quote! {
-            #diag.remove_arg(stringify!(#ident));
-        };
-        (args, remove_args)
+        }
     }
 
     /// Generates the necessary code for all attributes on a field.
@@ -610,7 +606,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let restore_args = quote! {
             #diag.restore_args();
         };
-        let (plain_args, remove_args): (TokenStream, TokenStream) = self
+        let plain_args: TokenStream = self
             .variant
             .bindings()
             .iter()
@@ -623,9 +619,8 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         // For #[derive(Subdiagnostic)]
         //
         // - Store args of the main diagnostic for later restore.
-        // - add args of subdiagnostic.
+        // - Add args of subdiagnostic.
         // - Generate the calls, such as note, label, etc.
-        // - Remove the arguments for allowing Vec<Subdiagnostic> to be used.
         // - Restore the arguments for allowing main and subdiagnostic share the same fields.
         Ok(quote! {
             #init
@@ -634,7 +629,6 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             #store_args
             #plain_args
             #calls
-            #remove_args
             #restore_args
         })
     }

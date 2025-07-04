@@ -50,9 +50,12 @@ LL | fn bar<'a>(x: &'a isize) {
    |        -- lifetime parameter from outer item
 ...
 LL |     type X = Option<&'a isize>;
-   |           -          ^^ use of generic parameter from outer item
-   |           |
-   |           help: consider introducing lifetime `'a` here: `<'a>`
+   |                      ^^ use of generic parameter from outer item
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     type X<'a> = Option<&'a isize>;
+   |           ++++
 
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/regions-name-undeclared.rs:28:13
@@ -60,10 +63,13 @@ error[E0401]: can't use generic parameters from outer item
 LL | fn bar<'a>(x: &'a isize) {
    |        -- lifetime parameter from outer item
 ...
-LL |     enum E {
-   |           - help: consider introducing lifetime `'a` here: `<'a>`
 LL |         E1(&'a isize)
    |             ^^ use of generic parameter from outer item
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     enum E<'a> {
+   |           ++++
 
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/regions-name-undeclared.rs:31:13
@@ -71,10 +77,13 @@ error[E0401]: can't use generic parameters from outer item
 LL | fn bar<'a>(x: &'a isize) {
    |        -- lifetime parameter from outer item
 ...
-LL |     struct S {
-   |             - help: consider introducing lifetime `'a` here: `<'a>`
 LL |         f: &'a isize
    |             ^^ use of generic parameter from outer item
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     struct S<'a> {
+   |             ++++
 
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/regions-name-undeclared.rs:33:14
@@ -83,17 +92,23 @@ LL | fn bar<'a>(x: &'a isize) {
    |        -- lifetime parameter from outer item
 ...
 LL |     fn f(a: &'a isize) { }
-   |         -    ^^ use of generic parameter from outer item
-   |         |
-   |         help: consider introducing lifetime `'a` here: `<'a>`
+   |              ^^ use of generic parameter from outer item
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     fn f<'a>(a: &'a isize) { }
+   |         ++++
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:41:17
    |
 LL | fn fn_types(a: &'a isize,
-   |            -    ^^ undeclared lifetime
-   |            |
-   |            help: consider introducing lifetime `'a` here: `<'a>`
+   |                 ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn fn_types<'a>(a: &'a isize,
+   |            ++++
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:43:36
@@ -129,11 +144,13 @@ LL | fn fn_types<'b>(a: &'a isize,
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:47:17
    |
-LL | fn fn_types(a: &'a isize,
-   |            - help: consider introducing lifetime `'a` here: `<'a>`
-...
 LL |             c: &'a isize)
    |                 ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn fn_types<'a>(a: &'a isize,
+   |            ++++
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:53:31

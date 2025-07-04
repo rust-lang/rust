@@ -1,5 +1,4 @@
 use rustc_abi::{CanonAbi, FieldIdx, Size};
-use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{BytePos, Loc, Symbol, hygiene};
 use rustc_target::callconv::FnAbi;
@@ -105,7 +104,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.tcx.sess.source_map().lookup_char_pos(BytePos(offset.bytes().try_into().unwrap()));
 
         let name = fn_instance.to_string();
-        let filename = lo.file.name.prefer_remapped_unconditionaly().to_string();
+        let filename = lo.file.name.prefer_remapped_unconditionally().to_string();
 
         interp_ok((fn_instance, lo, name, filename))
     }

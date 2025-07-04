@@ -792,7 +792,7 @@
 //!
 //! 1.  *Structural [`Unpin`].* A struct can be [`Unpin`] only if all of its
 //!     structurally-pinned fields are, too. This is [`Unpin`]'s behavior by default.
-//!     However, as a libray author, it is your responsibility not to write something like
+//!     However, as a library author, it is your responsibility not to write something like
 //!     <code>impl\<T> [Unpin] for Struct\<T> {}</code> and then offer a method that provides
 //!     structural pinning to an inner field of `T`, which may not be [`Unpin`]! (Adding *any*
 //!     projection operation requires unsafe code, so the fact that [`Unpin`] is a safe trait does
@@ -1935,6 +1935,7 @@ unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 #[stable(feature = "pin_macro", since = "1.68.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(super_let)]
+#[rustc_diagnostic_item = "pin_macro"]
 // `super` gets removed by rustfmt
 #[rustfmt::skip]
 pub macro pin($value:expr $(,)?) {

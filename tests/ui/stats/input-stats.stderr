@@ -15,7 +15,7 @@ ast-stats - Ptr                       64 (NN.N%)             1
 ast-stats - Ref                       64 (NN.N%)             1
 ast-stats - ImplicitSelf             128 (NN.N%)             2
 ast-stats - Path                     640 (NN.N%)            10
-ast-stats PathSegment              864 (NN.N%)            36            24
+ast-stats PathSegment              888 (NN.N%)            37            24
 ast-stats Expr                     648 (NN.N%)             9            72
 ast-stats - InlineAsm                 72 (NN.N%)             1
 ast-stats - Match                     72 (NN.N%)             1
@@ -41,9 +41,9 @@ ast-stats - Let                       32 (NN.N%)             1
 ast-stats - Semi                      32 (NN.N%)             1
 ast-stats - Expr                      96 (NN.N%)             3
 ast-stats Param                    160 (NN.N%)             4            40
-ast-stats Attribute                128 (NN.N%)             4            32
+ast-stats Attribute                160 (NN.N%)             5            32
 ast-stats - DocComment                32 (NN.N%)             1
-ast-stats - Normal                    96 (NN.N%)             3
+ast-stats - Normal                   128 (NN.N%)             4
 ast-stats InlineAsm                120 (NN.N%)             1           120
 ast-stats FnDecl                   120 (NN.N%)             5            24
 ast-stats Local                     96 (NN.N%)             1            96
@@ -57,7 +57,7 @@ ast-stats GenericArgs               40 (NN.N%)             1            40
 ast-stats - AngleBracketed            40 (NN.N%)             1
 ast-stats Crate                     40 (NN.N%)             1            40
 ast-stats ----------------------------------------------------------------
-ast-stats Total                  7_416                   127
+ast-stats Total                  7_472                   129
 ast-stats ================================================================
 hir-stats ================================================================
 hir-stats HIR STATS: input_stats
@@ -93,7 +93,7 @@ hir-stats - Binding                  216 (NN.N%)             3
 hir-stats Block                    288 (NN.N%)             6            48
 hir-stats GenericBound             256 (NN.N%)             4            64
 hir-stats - Trait                    256 (NN.N%)             4
-hir-stats Attribute                160 (NN.N%)             4            40
+hir-stats Attribute                200 (NN.N%)             5            40
 hir-stats Variant                  144 (NN.N%)             2            72
 hir-stats GenericArgs              144 (NN.N%)             3            48
 hir-stats FieldDef                 128 (NN.N%)             2            64
@@ -119,5 +119,5 @@ hir-stats Mod                       32 (NN.N%)             1            32
 hir-stats Lifetime                  28 (NN.N%)             1            28
 hir-stats ForeignItemRef            24 (NN.N%)             1            24
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_676                   172
+hir-stats Total                  8_716                   173
 hir-stats ================================================================

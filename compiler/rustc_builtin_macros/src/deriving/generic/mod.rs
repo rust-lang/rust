@@ -664,10 +664,10 @@ impl<'a> TraitDef<'a> {
 
                     cx.typaram(param.ident.span.with_ctxt(ctxt), param.ident, bounds, None)
                 }
-                GenericParamKind::Const { ty, kw_span, .. } => {
+                GenericParamKind::Const { ty, span, .. } => {
                     let const_nodefault_kind = GenericParamKind::Const {
                         ty: ty.clone(),
-                        kw_span: kw_span.with_ctxt(ctxt),
+                        span: span.with_ctxt(ctxt),
 
                         // We can't have default values inside impl block
                         default: None,

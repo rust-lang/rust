@@ -298,6 +298,16 @@ fn configure_and_expand(
 fn print_macro_stats(ecx: &ExtCtxt<'_>) {
     use std::fmt::Write;
 
+    let crate_name = ecx.ecfg.crate_name.as_str();
+    let crate_name = if crate_name == "build_script_build" {
+        // This is a build script. Get the package name from the environment.
+        let pkg_name =
+            std::env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "<unknown crate>".to_string());
+        format!("{pkg_name} build script")
+    } else {
+        crate_name.to_string()
+    };
+
     // No instability because we immediately sort the produced vector.
     #[allow(rustc::potential_query_instability)]
     let mut macro_stats: Vec<_> = ecx
@@ -327,7 +337,7 @@ fn print_macro_stats(ecx: &ExtCtxt<'_>) {
     // non-interleaving, though.
     let mut s = String::new();
     _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
-    _ = writeln!(s, "{prefix} MACRO EXPANSION STATS: {}", ecx.ecfg.crate_name);
+    _ = writeln!(s, "{prefix} MACRO EXPANSION STATS: {}", crate_name);
     _ = writeln!(
         s,
         "{prefix} {:<name_w$}{:>uses_w$}{:>lines_w$}{:>avg_lines_w$}{:>bytes_w$}{:>avg_bytes_w$}",
@@ -341,20 +351,30 @@ fn print_macro_stats(ecx: &ExtCtxt<'_>) {
     }
     for (bytes, lines, uses, name, kind) in macro_stats {
         let mut name = ExpnKind::Macro(kind, *name).descr();
+        let uses_with_underscores = thousands::usize_with_underscores(uses);
         let avg_lines = lines as f64 / uses as f64;
         let avg_bytes = bytes as f64 / uses as f64;
-        if name.len() >= name_w {
-            // If the name is long, print it on a line by itself, then
-            // set the name to empty and print things normally, to show the
-            // stats on the next line.
+
+        // Ensure the "Macro Name" and "Uses" columns are as compact as possible.
+        let mut uses_w = uses_w;
+        if name.len() + uses_with_underscores.len() >= name_w + uses_w {
+            // The name would abut or overlap the uses value. Print the name
+            // on a line by itself, then set the name to empty and print things
+            // normally, to show the stats on the next line.
             _ = writeln!(s, "{prefix} {:<name_w$}", name);
             name = String::new();
-        }
+        } else if name.len() >= name_w {
+            // The name won't abut or overlap with the uses value, but it does
+            // overlap with the empty part of the uses column. Shrink the width
+            // of the uses column to account for the excess name length.
+            uses_w = uses_with_underscores.len() + 1
+        };
+
         _ = writeln!(
             s,
             "{prefix} {:<name_w$}{:>uses_w$}{:>lines_w$}{:>avg_lines_w$}{:>bytes_w$}{:>avg_bytes_w$}",
             name,
-            thousands::usize_with_underscores(uses),
+            uses_with_underscores,
             thousands::usize_with_underscores(lines),
             thousands::f64p1_with_underscores(avg_lines),
             thousands::usize_with_underscores(bytes),

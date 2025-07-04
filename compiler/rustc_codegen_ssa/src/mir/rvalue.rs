@@ -468,12 +468,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("unexpected non-pair operand");
                         }
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::DynStar, _) => {
-                        let (lldata, llextra) = operand.val.pointer_parts();
-                        let (lldata, llextra) =
-                            base::cast_to_dyn_star(bx, lldata, operand.layout, cast.ty, llextra);
-                        OperandValue::Pair(lldata, llextra)
-                    }
                     | mir::CastKind::IntToInt
                     | mir::CastKind::FloatToInt
                     | mir::CastKind::FloatToFloat
@@ -1123,7 +1117,7 @@ pub(super) fn transmute_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // While optimizations will remove no-op transmutes, they might still be
     // there in debug or things that aren't no-op in MIR because they change
     // the Rust type but not the underlying layout/niche.
-    if from_scalar == to_scalar {
+    if from_scalar == to_scalar && from_backend_ty == to_backend_ty {
         return imm;
     }
 
@@ -1142,13 +1136,7 @@ pub(super) fn transmute_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
 
     imm = match (from_scalar.primitive(), to_scalar.primitive()) {
-        (Int(..) | Float(_), Int(..) | Float(_)) => {
-            if from_backend_ty == to_backend_ty {
-                imm
-            } else {
-                bx.bitcast(imm, to_backend_ty)
-            }
-        }
+        (Int(..) | Float(_), Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
         (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
         (Int(..), Pointer(..)) => bx.ptradd(bx.const_null(bx.type_ptr()), imm),
         (Pointer(..), Int(..)) => {

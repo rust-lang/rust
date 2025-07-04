@@ -1,12 +1,11 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
-use crate::core::build_steps::compile;
 use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
 };
 use crate::core::build_steps::tool::{COMPILETEST_ALLOW_FEATURES, SourceType, prepare_tool_cargo};
 use crate::core::builder::{
-    self, Alias, Builder, Kind, RunConfig, ShouldRun, Step, crate_description,
+    self, Alias, Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
 };
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
@@ -67,8 +66,6 @@ impl Step for Std {
             return;
         }
 
-        builder.require_submodule("library/stdarch", None);
-
         let stage = self.custom_stage.unwrap_or(builder.top_stage);
 
         let target = self.target;
@@ -89,7 +86,7 @@ impl Step for Std {
             }
 
             // Reuse the stage0 libstd
-            builder.ensure(compile::Std::new(compiler, target));
+            builder.std(compiler, target);
             return;
         }
 
@@ -170,6 +167,10 @@ impl Step for Std {
         let _guard = builder.msg_check("library test/bench/example targets", target, Some(stage));
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check("std", self.target))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -223,8 +224,8 @@ impl Step for Rustc {
             // the sysroot for the compiler to find. Otherwise, we're going to
             // fail when building crates that need to generate code (e.g., build
             // scripts and their dependencies).
-            builder.ensure(crate::core::build_steps::compile::Std::new(compiler, compiler.host));
-            builder.ensure(crate::core::build_steps::compile::Std::new(compiler, target));
+            builder.std(compiler, compiler.host);
+            builder.std(compiler, target);
         } else {
             builder.ensure(Std::new(target));
         }
@@ -260,6 +261,10 @@ impl Step for Rustc {
         let libdir = builder.sysroot_target_libdir(compiler, target);
         let hostdir = builder.sysroot_target_libdir(compiler, compiler.host);
         add_to_sysroot(builder, &libdir, &hostdir, &stamp);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check("rustc", self.target))
     }
 }
 
@@ -318,6 +323,10 @@ impl Step for CodegenBackend {
 
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check(self.backend, self.target))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -375,6 +384,10 @@ impl Step for RustAnalyzer {
 
         let _guard = builder.msg_check("rust-analyzer artifacts", target, None);
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check("rust-analyzer", self.target))
     }
 }
 
@@ -435,6 +448,10 @@ impl Step for Compiletest {
         let _guard = builder.msg_check("compiletest artifacts", self.target, None);
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check("compiletest", self.target))
+    }
 }
 
 macro_rules! tool_check_step {
@@ -469,6 +486,10 @@ macro_rules! tool_check_step {
             fn run(self, builder: &Builder<'_>) {
                 let Self { target } = self;
                 run_tool_check_step(builder, target, stringify!($name), $path);
+            }
+
+            fn metadata(&self) -> Option<StepMetadata> {
+                Some(StepMetadata::check(stringify!($name), self.target))
             }
         }
     }

@@ -245,7 +245,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 })
             }
-            ExprKind::LoopMatch { state, region_scope, match_span, ref arms } => {
+            ExprKind::LoopMatch {
+                state,
+                region_scope,
+                match_data: box LoopMatchMatchData { box ref arms, span: match_span, scrutinee },
+            } => {
                 // Intuitively, this is a combination of a loop containing a labeled block
                 // containing a match.
                 //
@@ -292,8 +296,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     // Logic for `match`.
                     let scrutinee_place_builder =
-                        unpack!(body_block = this.as_place_builder(body_block, state));
-                    let scrutinee_span = this.thir.exprs[state].span;
+                        unpack!(body_block = this.as_place_builder(body_block, scrutinee));
+                    let scrutinee_span = this.thir.exprs[scrutinee].span;
                     let match_start_span = match_span.shrink_to_lo().to(scrutinee_span);
 
                     let mut patterns = Vec::with_capacity(arms.len());
@@ -335,7 +339,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             move |this| {
                                 this.in_breakable_scope(None, state_place, expr_span, |this| {
                                     Some(this.in_const_continuable_scope(
-                                        arms.clone(),
+                                        Box::from(arms),
                                         built_tree.clone(),
                                         state_place,
                                         expr_span,

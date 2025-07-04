@@ -6,7 +6,7 @@ use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::CastKind;
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::layout::{IntegerExt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty};
 use rustc_middle::{bug, span_bug};
 use tracing::trace;
@@ -123,20 +123,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         self.write_pointer(fn_ptr, dest)?;
                     }
                     _ => span_bug!(self.cur_span(), "closure fn pointer on {}", src.layout.ty),
-                }
-            }
-
-            CastKind::PointerCoercion(PointerCoercion::DynStar, _) => {
-                if let ty::Dynamic(data, _, ty::DynStar) = cast_ty.kind() {
-                    // Initial cast from sized to dyn trait
-                    let vtable = self.get_vtable_ptr(src.layout.ty, data)?;
-                    let vtable = Scalar::from_maybe_pointer(vtable, self);
-                    let data = self.read_immediate(src)?.to_scalar();
-                    let _assert_pointer_like = data.to_pointer(self)?;
-                    let val = Immediate::ScalarPair(data, vtable);
-                    self.write_immediate(val, dest)?;
-                } else {
-                    bug!()
                 }
             }
 

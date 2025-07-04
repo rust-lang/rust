@@ -2767,7 +2767,7 @@ fn add_upstream_rust_crates(
 
     if sess.target.is_like_aix {
         // Unlike ELF linkers, AIX doesn't feature `DT_SONAME` to override
-        // the dependency name when outputing a shared library. Thus, `ld` will
+        // the dependency name when outputting a shared library. Thus, `ld` will
         // use the full path to shared libraries as the dependency if passed it
         // by default unless `noipath` is passed.
         // https://www.ibm.com/docs/en/aix/7.3?topic=l-ld-command.
@@ -3051,7 +3051,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
     // Supported architecture names can be found in the source:
     // https://github.com/apple-oss-distributions/ld64/blob/ld64-951.9/src/abstraction/MachOFileAbstraction.hpp#L578-L648
     //
-    // Intentially verbose to ensure that the list always matches correctly
+    // Intentionally verbose to ensure that the list always matches correctly
     // with the list in the source above.
     let ld64_arch = match llvm_arch {
         "armv7k" => "armv7k",
@@ -3118,7 +3118,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         // We do not currently know the actual SDK version though, so we have a few options:
         // 1. Use the minimum version supported by rustc.
         // 2. Use the same as the deployment target.
-        // 3. Use an arbitary recent version.
+        // 3. Use an arbitrary recent version.
         // 4. Omit the version.
         //
         // The first option is too low / too conservative, and means that users will not get the

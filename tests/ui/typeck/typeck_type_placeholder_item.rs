@@ -33,7 +33,6 @@ fn test7(x: _) { let _x: usize = x; }
 
 fn test8(_f: fn() -> _) { }
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
-//~^^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
 
 struct Test9;
 
@@ -42,7 +41,7 @@ impl Test9 {
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
 
     fn test10(&self, _x : _) { }
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
 }
 
 fn test11(x: &usize) -> &_ {
@@ -57,16 +56,18 @@ unsafe fn test12(x: *const usize) -> *const *const _ {
 
 impl Clone for Test9 {
     fn clone(&self) -> _ { Test9 }
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
 
     fn clone_from(&mut self, other: _) { *self = Test9; }
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
 }
 
 struct Test10 {
     a: _,
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for structs
     b: (_, _),
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for structs
+    //~| ERROR the placeholder `_` is not allowed within types on item signatures for structs
 }
 
 pub fn main() {
@@ -99,7 +100,6 @@ pub fn main() {
 
     fn fn_test8(_f: fn() -> _) { }
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
-    //~^^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
 
     struct FnTest9;
 
@@ -108,21 +108,23 @@ pub fn main() {
         //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
 
         fn fn_test10(&self, _x : _) { }
-        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
     }
 
     impl Clone for FnTest9 {
         fn clone(&self) -> _ { FnTest9 }
-        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
 
         fn clone_from(&mut self, other: _) { *self = FnTest9; }
-        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
     }
 
     struct FnTest10 {
         a: _,
         //~^ ERROR the placeholder `_` is not allowed within types on item signatures for structs
         b: (_, _),
+        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for structs
+        //~| ERROR the placeholder `_` is not allowed within types on item signatures for structs
     }
 
     fn fn_test11(_: _) -> (_, _) { panic!() }
@@ -138,17 +140,19 @@ pub fn main() {
 
 trait T {
     fn method_test1(&self, x: _);
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
     fn method_test2(&self, x: _) -> _;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
+    //~| ERROR the placeholder `_` is not allowed within types on item signatures for methods
     fn method_test3(&self) -> _;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
     fn assoc_fn_test1(x: _);
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated functions
     fn assoc_fn_test2(x: _) -> _;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated functions
+    //~| ERROR the placeholder `_` is not allowed within types on item signatures for associated functions
     fn assoc_fn_test3() -> _;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated functions
 }
 
 struct BadStruct<_>(_);
@@ -158,9 +162,11 @@ trait BadTrait<_> {}
 //~^ ERROR expected identifier, found reserved identifier `_`
 impl BadTrait<_> for BadStruct<_> {}
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for implementations
+//~| ERROR the placeholder `_` is not allowed within types on item signatures for implementations
 
 fn impl_trait() -> impl BadTrait<_> {
-//~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+//~^ ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
+//~| ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
     unimplemented!()
 }
 
@@ -180,7 +186,8 @@ struct Struct;
 trait Trait<T> {}
 impl Trait<usize> for Struct {}
 type Y = impl Trait<_>;
-//~^ ERROR the placeholder `_` is not allowed within types on item signatures for type aliases
+//~^ ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
+//~| ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
 #[define_opaque(Y)]
 fn foo() -> Y {
     Struct
@@ -197,6 +204,7 @@ trait Qux {
     // type E: _; // FIXME: make the parser propagate the existence of `B`
     type F: std::ops::Fn(_);
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated types
+    //~| ERROR the placeholder `_` is not allowed within types on item signatures for associated types
 }
 impl Qux for Struct {
     //~^ ERROR not all trait items implemented, missing: `F`

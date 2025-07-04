@@ -301,11 +301,9 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
     type T = stable_mir::mir::CastKind;
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::CastKind::*;
-        use rustc_middle::ty::adjustment::PointerCoercion;
         match self {
             PointerExposeProvenance => stable_mir::mir::CastKind::PointerExposeAddress,
             PointerWithExposedProvenance => stable_mir::mir::CastKind::PointerWithExposedProvenance,
-            PointerCoercion(PointerCoercion::DynStar, _) => stable_mir::mir::CastKind::DynStar,
             PointerCoercion(c, _) => stable_mir::mir::CastKind::PointerCoercion(c.stable(tables)),
             IntToInt => stable_mir::mir::CastKind::IntToInt,
             FloatToInt => stable_mir::mir::CastKind::FloatToInt,
@@ -505,6 +503,9 @@ impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
             }
             AssertKind::NullPointerDereference => {
                 stable_mir::mir::AssertMessage::NullPointerDereference
+            }
+            AssertKind::InvalidEnumConstruction(source) => {
+                stable_mir::mir::AssertMessage::InvalidEnumConstruction(source.stable(tables))
             }
         }
     }

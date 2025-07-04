@@ -164,21 +164,18 @@ LL |         *b
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/deref-suggestion.rs:69:12
    |
-LL |        let val = if true {
-   |  ________________-
-LL | |          *a
-   | |          -- expected because of this
-LL | |      } else if true {
-   | | ____________^
-LL | ||
-LL | ||         b
-LL | ||     } else {
-LL | ||         &0
-LL | ||     };
-   | ||     ^
-   | ||_____|
-   |  |_____`if` and `else` have incompatible types
-   |        expected `i32`, found `&{integer}`
+LL |       let val = if true {
+   |                 ------- `if` and `else` have incompatible types
+LL |           *a
+   |           -- expected because of this
+LL |       } else if true {
+   |  ____________^
+LL | |
+LL | |         b
+LL | |     } else {
+LL | |         &0
+LL | |     };
+   | |_____^ expected `i32`, found `&{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:81:15

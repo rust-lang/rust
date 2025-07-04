@@ -29,7 +29,7 @@
 //! _b = some other value // also has VnIndex i
 //! ```
 //!
-//! We consider it to be replacable by:
+//! We consider it to be replaceable by:
 //! ```ignore (MIR)
 //! _a = some value // has VnIndex i
 //! // some MIR
@@ -102,7 +102,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
+use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
@@ -1625,7 +1625,7 @@ fn op_to_prop_const<'tcx>(
     // If this constant is already represented as an `Allocation`,
     // try putting it into global memory to return it.
     if let Either::Left(mplace) = op.as_mplace_or_imm() {
-        let (size, _align) = ecx.size_and_align_of_mplace(&mplace).discard_err()??;
+        let (size, _align) = ecx.size_and_align_of_val(&mplace).discard_err()??;
 
         // Do not try interning a value that contains provenance.
         // Due to https://github.com/rust-lang/rust/issues/79738, doing so could lead to bugs.
@@ -1636,7 +1636,7 @@ fn op_to_prop_const<'tcx>(
         }
 
         let pointer = mplace.ptr().into_pointer_or_addr().ok()?;
-        let (prov, offset) = pointer.into_parts();
+        let (prov, offset) = pointer.prov_and_relative_offset();
         let alloc_id = prov.alloc_id();
         intern_const_alloc_for_constprop(ecx, alloc_id).discard_err()?;
 

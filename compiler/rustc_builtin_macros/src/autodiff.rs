@@ -562,7 +562,7 @@ mod llvm_enzyme {
     /// so instead we manually build something that should pass the type checker.
     /// We also add a inline_asm line, as one more barrier for rustc to prevent inlining
     /// or const propagation. inline_asm will also triggers an Enzyme crash if due to another
-    /// bug would ever try to accidentially differentiate this placeholder function body.
+    /// bug would ever try to accidentally differentiate this placeholder function body.
     /// Finally, we also add back_box usages of all input arguments, to prevent rustc
     /// from optimizing any arguments away.
     fn gen_enzyme_body(
@@ -606,7 +606,7 @@ mod llvm_enzyme {
             return body;
         }
 
-        // Everything from here onwards just tries to fullfil the return type. Fun!
+        // Everything from here onwards just tries to fulfil the return type. Fun!
 
         // having an active-only return means we'll drop the original return type.
         // So that can be treated identical to not having one in the first place.

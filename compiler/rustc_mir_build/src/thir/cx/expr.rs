@@ -983,8 +983,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             data: region::ScopeData::Node,
                         },
 
-                        arms: arms.iter().map(|a| self.convert_arm(a)).collect(),
-                        match_span: block_body_expr.span,
+                        match_data: Box::new(LoopMatchMatchData {
+                            scrutinee: self.mirror_expr(scrutinee),
+                            arms: arms.iter().map(|a| self.convert_arm(a)).collect(),
+                            span: block_body_expr.span,
+                        }),
                     }
                 } else {
                     let block_ty = self.typeck_results.node_type(body.hir_id);

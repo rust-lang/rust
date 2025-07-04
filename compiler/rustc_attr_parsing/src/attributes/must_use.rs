@@ -21,7 +21,16 @@ impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
             span: cx.attr_span,
             reason: match args {
                 ArgParser::NoArgs => None,
-                ArgParser::NameValue(name_value) => name_value.value_as_str(),
+                ArgParser::NameValue(name_value) => {
+                    let Some(value_str) = name_value.value_as_str() else {
+                        cx.expected_string_literal(
+                            name_value.value_span,
+                            Some(&name_value.value_as_lit()),
+                        );
+                        return None;
+                    };
+                    Some(value_str)
+                }
                 ArgParser::List(_) => {
                     let suggestions =
                         <Self as SingleAttributeParser<S>>::TEMPLATE.suggestions(false, "must_use");

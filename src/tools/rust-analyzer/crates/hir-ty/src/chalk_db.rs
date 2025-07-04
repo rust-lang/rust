@@ -315,9 +315,8 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
             crate::ImplTraitId::AsyncBlockTypeImplTrait(..) => {
                 if let Some((future_trait, future_output)) =
                     LangItem::Future.resolve_trait(self.db, self.krate).and_then(|trait_| {
-                        let alias = self
-                            .db
-                            .trait_items(trait_)
+                        let alias = trait_
+                            .trait_items(self.db)
                             .associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
                         Some((trait_, alias))
                     })
@@ -711,7 +710,7 @@ pub(crate) fn trait_datum_query(
     };
     let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
     let associated_ty_ids =
-        db.trait_items(trait_).associated_types().map(to_assoc_type_id).collect();
+        trait_.trait_items(db).associated_types().map(to_assoc_type_id).collect();
     let trait_datum_bound = rust_ir::TraitDatumBound { where_clauses };
     let well_known = db.lang_attr(trait_.into()).and_then(well_known_trait_from_lang_item);
     let trait_datum = TraitDatum {
@@ -802,7 +801,7 @@ pub(crate) fn adt_datum_query(
 
     // this slows down rust-analyzer by quite a bit unfortunately, so enabling this is currently not worth it
     let _variant_id_to_fields = |id: VariantId| {
-        let variant_data = &id.variant_data(db);
+        let variant_data = &id.fields(db);
         let fields = if variant_data.fields().is_empty() {
             vec![]
         } else {
@@ -879,7 +878,7 @@ fn impl_def_datum(db: &dyn HirDatabase, krate: Crate, impl_id: hir_def::ImplId) 
     let polarity = if negative { rust_ir::Polarity::Negative } else { rust_ir::Polarity::Positive };
 
     let impl_datum_bound = rust_ir::ImplDatumBound { trait_ref, where_clauses };
-    let trait_data = db.trait_items(trait_);
+    let trait_data = trait_.trait_items(db);
     let associated_ty_value_ids = impl_id
         .impl_items(db)
         .items
@@ -931,8 +930,9 @@ fn type_alias_associated_ty_value(
         .into_value_and_skipped_binders()
         .0; // we don't return any assoc ty values if the impl'd trait can't be resolved
 
-    let assoc_ty = db
-        .trait_items(trait_ref.hir_trait_id())
+    let assoc_ty = trait_ref
+        .hir_trait_id()
+        .trait_items(db)
         .associated_type_by_name(&type_alias_data.name)
         .expect("assoc ty value should not exist"); // validated when building the impl data as well
     let (ty, binders) = db.ty(type_alias.into()).into_value_and_skipped_binders();

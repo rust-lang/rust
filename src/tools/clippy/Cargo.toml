@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.89"
+version = "0.1.90"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -24,6 +24,7 @@ path = "src/driver.rs"
 clippy_config = { path = "clippy_config" }
 clippy_lints = { path = "clippy_lints" }
 clippy_utils = { path = "clippy_utils" }
+declare_clippy_lint = { path = "declare_clippy_lint" }
 rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
 clippy_lints_internal = { path = "clippy_lints_internal", optional = true }
 tempfile = { version = "3.20", optional = true }

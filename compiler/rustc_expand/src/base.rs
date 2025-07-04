@@ -880,7 +880,7 @@ impl SyntaxExtension {
         is_local: bool,
     ) -> SyntaxExtension {
         let allow_internal_unstable =
-            find_attr!(attrs, AttributeKind::AllowInternalUnstable(i) => i)
+            find_attr!(attrs, AttributeKind::AllowInternalUnstable(i, _) => i)
                 .map(|i| i.as_slice())
                 .unwrap_or_default();
         // FIXME(jdonszelman): allow_internal_unsafe isn't yet new-style
@@ -1118,6 +1118,10 @@ pub trait ResolverExpand {
         trait_def_id: DefId,
         impl_def_id: LocalDefId,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate>;
+
+    /// Record the name of an opaque `Ty::ImplTrait` pre-expansion so that it can be used
+    /// to generate an item name later that does not reference placeholder macros.
+    fn insert_impl_trait_name(&mut self, id: NodeId, name: Symbol);
 }
 
 pub trait LintStoreExpand {

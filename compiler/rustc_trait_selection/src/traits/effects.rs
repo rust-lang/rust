@@ -44,6 +44,12 @@ pub fn evaluate_host_effect_obligation<'tcx>(
         Err(EvaluationFailure::NoSolution) => {}
     }
 
+    match evaluate_host_effect_from_conditionally_const_item_bounds(selcx, obligation) {
+        Ok(result) => return Ok(result),
+        Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
+        Err(EvaluationFailure::NoSolution) => {}
+    }
+
     match evaluate_host_effect_from_item_bounds(selcx, obligation) {
         Ok(result) => return Ok(result),
         Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
@@ -56,7 +62,7 @@ pub fn evaluate_host_effect_obligation<'tcx>(
         Err(EvaluationFailure::NoSolution) => {}
     }
 
-    match evaluate_host_effect_from_selection_candiate(selcx, obligation) {
+    match evaluate_host_effect_from_selection_candidate(selcx, obligation) {
         Ok(result) => return Ok(result),
         Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
         Err(EvaluationFailure::NoSolution) => {}
@@ -153,7 +159,9 @@ fn evaluate_host_effect_from_bounds<'tcx>(
     }
 }
 
-fn evaluate_host_effect_from_item_bounds<'tcx>(
+/// Assembles constness bounds from `~const` item bounds on alias types, which only
+/// hold if the `~const` where bounds also hold and the parent trait is `~const`.
+fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
@@ -232,6 +240,63 @@ fn evaluate_host_effect_from_item_bounds<'tcx>(
     }
 }
 
+/// Assembles constness bounds "normal" item bounds on aliases, which may include
+/// unconditionally `const` bounds that are *not* conditional and thus always hold.
+fn evaluate_host_effect_from_item_bounds<'tcx>(
+    selcx: &mut SelectionContext<'_, 'tcx>,
+    obligation: &HostEffectObligation<'tcx>,
+) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
+    let infcx = selcx.infcx;
+    let tcx = infcx.tcx;
+    let drcx = DeepRejectCtxt::relate_rigid_rigid(selcx.tcx());
+    let mut candidate = None;
+
+    let mut consider_ty = obligation.predicate.self_ty();
+    while let ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) = *consider_ty.kind() {
+        for clause in tcx.item_bounds(alias_ty.def_id).iter_instantiated(tcx, alias_ty.args) {
+            let bound_clause = clause.kind();
+            let ty::ClauseKind::HostEffect(data) = bound_clause.skip_binder() else {
+                continue;
+            };
+            let data = bound_clause.rebind(data);
+            if data.skip_binder().trait_ref.def_id != obligation.predicate.trait_ref.def_id {
+                continue;
+            }
+
+            if !drcx.args_may_unify(
+                obligation.predicate.trait_ref.args,
+                data.skip_binder().trait_ref.args,
+            ) {
+                continue;
+            }
+
+            let is_match =
+                infcx.probe(|_| match_candidate(selcx, obligation, data, true, |_, _| {}).is_ok());
+
+            if is_match {
+                if candidate.is_some() {
+                    return Err(EvaluationFailure::Ambiguous);
+                } else {
+                    candidate = Some(data);
+                }
+            }
+        }
+
+        if kind != ty::Projection {
+            break;
+        }
+
+        consider_ty = alias_ty.self_ty();
+    }
+
+    if let Some(data) = candidate {
+        Ok(match_candidate(selcx, obligation, data, true, |_, _| {})
+            .expect("candidate matched before, so it should match again"))
+    } else {
+        Err(EvaluationFailure::NoSolution)
+    }
+}
+
 fn evaluate_host_effect_from_builtin_impls<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
@@ -252,20 +317,20 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
     let self_ty = obligation.predicate.self_ty();
 
     let const_conditions = match *self_ty.kind() {
-        // `ManuallyDrop` is trivially `~const Destruct` as we do not run any drop glue on it.
+        // `ManuallyDrop` is trivially `[const] Destruct` as we do not run any drop glue on it.
         ty::Adt(adt_def, _) if adt_def.is_manually_drop() => thin_vec![],
 
-        // An ADT is `~const Destruct` only if all of the fields are,
-        // *and* if there is a `Drop` impl, that `Drop` impl is also `~const`.
+        // An ADT is `[const] Destruct` only if all of the fields are,
+        // *and* if there is a `Drop` impl, that `Drop` impl is also `[const]`.
         ty::Adt(adt_def, args) => {
             let mut const_conditions: ThinVec<_> = adt_def
                 .all_fields()
                 .map(|field| ty::TraitRef::new(tcx, destruct_def_id, [field.ty(tcx, args)]))
                 .collect();
             match adt_def.destructor(tcx).map(|dtor| tcx.constness(dtor.did)) {
-                // `Drop` impl exists, but it's not const. Type cannot be `~const Destruct`.
+                // `Drop` impl exists, but it's not const. Type cannot be `[const] Destruct`.
                 Some(hir::Constness::NotConst) => return Err(EvaluationFailure::NoSolution),
-                // `Drop` impl exists, and it's const. Require `Ty: ~const Drop` to hold.
+                // `Drop` impl exists, and it's const. Require `Ty: [const] Drop` to hold.
                 Some(hir::Constness::Const) => {
                     let drop_def_id = tcx.require_lang_item(LangItem::Drop, obligation.cause.span);
                     let drop_trait_ref = ty::TraitRef::new(tcx, drop_def_id, [self_ty]);
@@ -285,7 +350,7 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
             tys.iter().map(|field_ty| ty::TraitRef::new(tcx, destruct_def_id, [field_ty])).collect()
         }
 
-        // Trivially implement `~const Destruct`
+        // Trivially implement `[const] Destruct`
         ty::Bool
         | ty::Char
         | ty::Int(..)
@@ -300,14 +365,14 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
         | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
         | ty::Error(_) => thin_vec![],
 
-        // Coroutines and closures could implement `~const Drop`,
+        // Coroutines and closures could implement `[const] Drop`,
         // but they don't really need to right now.
         ty::Closure(_, _)
         | ty::CoroutineClosure(_, _)
         | ty::Coroutine(_, _)
         | ty::CoroutineWitness(_, _) => return Err(EvaluationFailure::NoSolution),
 
-        // FIXME(unsafe_binders): Unsafe binders could implement `~const Drop`
+        // FIXME(unsafe_binders): Unsafe binders could implement `[const] Drop`
         // if their inner type implements it.
         ty::UnsafeBinder(_) => return Err(EvaluationFailure::NoSolution),
 
@@ -333,7 +398,7 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
         .collect())
 }
 
-fn evaluate_host_effect_from_selection_candiate<'tcx>(
+fn evaluate_host_effect_from_selection_candidate<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
