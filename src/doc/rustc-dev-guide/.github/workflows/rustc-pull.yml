@@ -24,11 +24,10 @@ jobs:
         run: rustup update stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "josh-sync"
           # Cache the josh directory with checked out rustc
-          cache-directories: "/home/runner/.cache/rustc-dev-guide-josh"
-      - name: Install josh
-        run: RUSTFLAGS="--cap-lints warn" cargo install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
+          cache-directories: "/home/runner/.cache/rustc-josh"
+      - name: Install rustc-josh-sync
+        run: cargo install --locked --git https://github.com/rust-lang/josh-sync
       - name: Setup bot git name and email
         run: |
           git config --global user.name 'The rustc-dev-guide Cronjob Bot'
@@ -38,7 +37,7 @@ jobs:
         # Turn off -e to disable early exit
         shell: bash {0}
         run: |
-          cargo run --manifest-path josh-sync/Cargo.toml -- rustc-pull
+          rustc-josh-sync pull
           exitcode=$?
 
           # If no pull was performed, we want to mark this job as successful,
