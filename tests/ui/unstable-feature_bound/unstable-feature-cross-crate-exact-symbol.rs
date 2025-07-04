@@ -14,5 +14,5 @@ use unstable_feature::{Foo, Bar, Moo};
 fn main() {
     Bar::foo();
     Moo::foo();
-    //[fail]~^ ERROR: unstable feature `feat_moo` is used without being enabled.
+    //[fail]~^ ERROR:use of unstable library feature `feat_moo` [E0658]
 }

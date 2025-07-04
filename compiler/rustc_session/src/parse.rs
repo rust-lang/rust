@@ -205,6 +205,46 @@ pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
     }
 }
 
+/// This is only used by unstable_feature_bound as it does not have issue number information for now.
+/// This is basically the same as `feature_err_issue`
+/// but without the feature issue note. If we can do a lookup for issue number from feature name,
+/// then we should directly use `feature_err_issue` for ambiguity error of
+/// #[unstable_feature_bound].
+#[track_caller]
+pub fn feature_err_unstable_feature_bound(
+    sess: &Session,
+    feature: Symbol,
+    span: impl Into<MultiSpan>,
+    explain: impl Into<DiagMessage>,
+) -> Diag<'_> {
+    let span = span.into();
+
+    // Cancel an earlier warning for this same error, if it exists.
+    if let Some(span) = span.primary_span() {
+        if let Some(err) = sess.dcx().steal_non_err(span, StashKey::EarlySyntaxWarning) {
+            err.cancel()
+        }
+    }
+
+    let mut err = sess.dcx().create_err(FeatureGateError { span, explain: explain.into() });
+
+    // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
+    if sess.psess.unstable_features.is_nightly_build() {
+        err.subdiagnostic(FeatureDiagnosticHelp { feature });
+
+        if feature == sym::rustc_attrs {
+            // We're unlikely to stabilize something out of `rustc_attrs`
+            // without at least renaming it, so pointing out how old
+            // the compiler is will do little good.
+        } else if sess.opts.unstable_opts.ui_testing {
+            err.subdiagnostic(SuggestUpgradeCompiler::ui_testing());
+        } else if let Some(suggestion) = SuggestUpgradeCompiler::new() {
+            err.subdiagnostic(suggestion);
+        }
+    }
+    err
+}
+
 /// Info about a parsing session.
 pub struct ParseSess {
     dcx: DiagCtxt,

@@ -12,6 +12,7 @@ use rustc_infer::traits::{
     Obligation, ObligationCause, ObligationCauseCode, PolyTraitObligation, PredicateObligation,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _};
+use rustc_session::parse::feature_err_unstable_feature_bound;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use tracing::{debug, instrument};
 
@@ -615,17 +616,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     return e;
                 }
 
-                let mut err = self.dcx().struct_span_err(
-                    span,
-                    format!("unstable feature `{sym}` is used without being enabled."),
-                );
+                let mut err;
 
                 if self.tcx.features().staged_api() {
+                    err = self.dcx().struct_span_err(
+                        span,
+                        format!("unstable feature `{sym}` is used without being enabled."),
+                    );
+
                     err.help(format!("The feature can be enabled by marking the current item with `#[unstable_feature_bound({sym})]`"));
                 } else {
-                    err.help(format!("The feature can be enabled by adding `#![feature({sym})]` to the crate root"));
+                    err = feature_err_unstable_feature_bound(
+                        &self.tcx.sess,
+                        sym,
+                        span,
+                        format!("use of unstable library feature `{sym}`"),
+                    );
                 }
-
                 err
             }
 
