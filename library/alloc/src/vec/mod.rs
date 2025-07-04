@@ -2032,27 +2032,24 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
     pub fn insert(&mut self, index: usize, element: T) {
-        if intrinsics::unlikely(self.insert_mut(index, element).is_none()) {
-            panic!("insertion index (is {index}) should be <= len (is {})", self.len())
-        };
+        let _ = self.insert_mut(index, element);
     }
 
     /// Inserts an element at position `index` within the vector, shifting all
     /// elements after it to the right.
     ///
-    /// Returns [`None`] if the specified index is out of bounds.
+    /// # Panics
+    ///
+    /// Panics if `index > len`.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(push_mut)]
     /// let mut vec = vec![1, 3, 5, 9];
-    /// let x = vec.insert_mut(3, 6).unwrap();
+    /// let x = vec.insert_mut(3, 6);
     /// *x += 1;
     /// assert_eq!(vec, [1, 3, 5, 7, 9]);
-    ///
-    /// let y = vec.insert_mut(7, 6);
-    /// assert!(y.is_none());
     /// ```
     ///
     /// # Time complexity
@@ -2064,12 +2061,12 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "push_mut", issue = "135974")]
     #[track_caller]
-    #[must_use = "if you don't need a reference to the value or type-safe bound checking, use Vec::insert instead"]
-    pub fn insert_mut(&mut self, index: usize, element: T) -> Option<&mut T> {
+    #[must_use = "if you don't need a reference to the value, use Vec::insert instead"]
+    pub fn insert_mut(&mut self, index: usize, element: T) -> &mut T {
         let len = self.len();
-        if index > len {
-            return None;
-        }
+        if intrinsics::unlikely(index > len) {
+            panic!("insertion index (is {index}) should be <= len (is {})", len)
+        };
 
         // space for the new element
         if len == self.buf.capacity() {
@@ -2091,7 +2088,7 @@ impl<T, A: Allocator> Vec<T, A> {
                 ptr::write(p, element);
             }
             self.set_len(len + 1);
-            Some(&mut *p)
+            &mut *p
         }
     }
 
