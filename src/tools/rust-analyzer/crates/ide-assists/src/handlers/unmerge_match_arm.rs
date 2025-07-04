@@ -1,6 +1,5 @@
 use syntax::{
     Direction, SyntaxKind, T,
-    algo::neighbor,
     ast::{self, AstNode, edit::IndentLevel, syntax_factory::SyntaxFactory},
     syntax_editor::{Element, Position},
 };
@@ -88,15 +87,8 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
             //    body is a block, but we don't bother to check that.
             //  - Missing after the arm with arms after, if the arm body is a block. In this case
             //    we don't want to insert a comma at all.
-            let has_comma_after =
-                std::iter::successors(match_arm.syntax().last_child_or_token(), |it| {
-                    it.prev_sibling_or_token()
-                })
-                .map(|it| it.kind())
-                .find(|it| !it.is_trivia())
-                    == Some(T![,]);
-            let has_arms_after = neighbor(&match_arm, Direction::Next).is_some();
-            if !has_comma_after && !has_arms_after {
+            let has_comma_after = match_arm.comma_token().is_some();
+            if !has_comma_after && !match_arm.expr().unwrap().is_block_like() {
                 insert_after_old_arm.push(make.token(T![,]).into());
             }
 
@@ -105,9 +97,6 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
 
             insert_after_old_arm.push(new_match_arm.syntax().clone().into());
 
-            if has_comma_after {
-                insert_after_old_arm.push(make.token(T![,]).into());
-            }
             editor.insert_all(Position::after(match_arm.syntax()), insert_after_old_arm);
             editor.add_mappings(make.finish_with_mappings());
             edit.add_file_edits(ctx.vfs_file_id(), editor);
@@ -256,7 +245,7 @@ fn main() {
     let x = X::A;
     let y = match x {
         X::A => 1i32,
-        X::B => 1i32
+        X::B => 1i32,
     };
 }
 "#,
@@ -274,7 +263,7 @@ enum X { A, B }
 fn main() {
     let x = X::A;
     match x {
-        X::A $0| X::B => {},
+        X::A $0| X::B => {}
     }
 }
 "#,
@@ -285,8 +274,8 @@ enum X { A, B }
 fn main() {
     let x = X::A;
     match x {
-        X::A => {},
-        X::B => {},
+        X::A => {}
+        X::B => {}
     }
 }
 "#,
