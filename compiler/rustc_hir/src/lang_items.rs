@@ -367,8 +367,6 @@ language_item_table! {
     TryTraitBranch,          sym::branch,              branch_fn,                  Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     TryTraitFromYeet,        sym::from_yeet,           from_yeet_fn,               Target::Fn,             GenericRequirement::None;
 
-    PointerLike,             sym::pointer_like,        pointer_like,               Target::Trait,          GenericRequirement::Exact(0);
-
     CoercePointeeValidated, sym::coerce_pointee_validated, coerce_pointee_validated_trait, Target::Trait,     GenericRequirement::Exact(0);
 
     ConstParamTy,            sym::const_param_ty,      const_param_ty_trait,       Target::Trait,          GenericRequirement::Exact(0);
