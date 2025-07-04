@@ -242,6 +242,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::PassByValue(attr_span)) => {
                     self.check_pass_by_value(attr_span, span, target)
                 }
+                &Attribute::Parsed(AttributeKind::StdInternalSymbol(attr_span)) => {
+                    self.check_rustc_std_internal_symbol(attr_span, span, target)
+                }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
@@ -267,9 +270,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         ),
                         [sym::no_link, ..] => self.check_no_link(hir_id, attr, span, target),
                         [sym::debugger_visualizer, ..] => self.check_debugger_visualizer(attr, target),
-                        [sym::rustc_std_internal_symbol, ..] => {
-                            self.check_rustc_std_internal_symbol(attr, span, target)
-                        }
                         [sym::rustc_no_implicit_autorefs, ..] => {
                             self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
                         }
@@ -2220,13 +2220,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_rustc_std_internal_symbol(&self, attr: &Attribute, span: Span, target: Target) {
+    fn check_rustc_std_internal_symbol(&self, attr_span: Span, span: Span, target: Target) {
         match target {
             Target::Fn | Target::Static | Target::ForeignFn | Target::ForeignStatic => {}
             _ => {
-                self.tcx
-                    .dcx()
-                    .emit_err(errors::RustcStdInternalSymbol { attr_span: attr.span(), span });
+                self.tcx.dcx().emit_err(errors::RustcStdInternalSymbol { attr_span, span });
             }
         }
     }

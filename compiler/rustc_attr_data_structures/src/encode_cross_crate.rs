@@ -51,6 +51,7 @@ impl AttributeKind {
             RustcObjectLifetimeDefault => No,
             SkipDuringMethodDispatch { .. } => No,
             Stability { .. } => Yes,
+            StdInternalSymbol(..) => No,
             TargetFeature(..) => No,
             TrackCaller(..) => Yes,
             Used { .. } => No,

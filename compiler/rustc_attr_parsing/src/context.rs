@@ -24,6 +24,7 @@ use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
 use crate::attributes::link_attrs::{
     ExportStableParser, FfiConstParser, FfiPureParser, LinkNameParser, LinkSectionParser,
+    StdInternalSymbolParser,
 };
 use crate::attributes::lint_helpers::{AsPtrParser, PassByValueParser, PubTransparentParser};
 use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
@@ -157,6 +158,7 @@ attribute_parsers!(
         Single<WithoutArgs<NonExhaustiveParser>>,
         Single<WithoutArgs<PassByValueParser>>,
         Single<WithoutArgs<PubTransparentParser>>,
+        Single<WithoutArgs<StdInternalSymbolParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
         // tidy-alphabetical-end
     ];
