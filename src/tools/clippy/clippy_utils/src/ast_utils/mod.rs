@@ -886,13 +886,13 @@ pub fn eq_generic_param(l: &GenericParam, r: &GenericParam) -> bool {
             (
                 Const {
                     ty: lt,
-                    kw_span: _,
                     default: ld,
+                    span: _,
                 },
                 Const {
                     ty: rt,
-                    kw_span: _,
                     default: rd,
+                    span: _,
                 },
             ) => eq_ty(lt, rt) && both(ld.as_ref(), rd.as_ref(), eq_anon_const),
             _ => false,

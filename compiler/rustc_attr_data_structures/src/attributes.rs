@@ -131,6 +131,17 @@ impl Deprecation {
     }
 }
 
+/// There are three valid forms of the attribute:
+/// `#[used]`, which is semantically equivalent to `#[used(linker)]` except that the latter is currently unstable.
+/// `#[used(compiler)]`
+/// `#[used(linker)]`
+#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum UsedBy {
+    Compiler,
+    Linker,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -187,10 +198,10 @@ pub enum AttributeKind {
     Align { align: Align, span: Span },
 
     /// Represents `#[rustc_allow_const_fn_unstable]`.
-    AllowConstFnUnstable(ThinVec<Symbol>),
+    AllowConstFnUnstable(ThinVec<Symbol>, Span),
 
     /// Represents `#[allow_internal_unstable]`.
-    AllowInternalUnstable(ThinVec<(Symbol, Span)>),
+    AllowInternalUnstable(ThinVec<(Symbol, Span)>, Span),
 
     /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
     AsPtr(Span),
@@ -231,8 +242,22 @@ pub enum AttributeKind {
     /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
 
+    /// Represents [`#[export_name]`](https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute).
+    ExportName {
+        /// The name to export this item with.
+        /// It may not contain \0 bytes as it will be converted to a null-terminated string.
+        name: Symbol,
+        span: Span,
+    },
+
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
+
+    /// Represents `#[link_name]`.
+    LinkName { name: Symbol, span: Span },
+
+    /// Represents [`#[link_section]`](https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute)
+    LinkSection { name: Symbol, span: Span },
 
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
@@ -265,6 +290,15 @@ pub enum AttributeKind {
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr(ThinVec<(ReprAttr, Span)>),
 
+    /// Represents `#[rustc_layout_scalar_valid_range_end]`.
+    RustcLayoutScalarValidRangeEnd(Box<u128>, Span),
+
+    /// Represents `#[rustc_layout_scalar_valid_range_start]`.
+    RustcLayoutScalarValidRangeStart(Box<u128>, Span),
+
+    /// Represents `#[rustc_object_lifetime_default]`.
+    RustcObjectLifetimeDefault,
+
     /// Represents `#[rustc_skip_during_method_dispatch]`.
     SkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },
 
@@ -275,7 +309,13 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[target_feature(enable = "...")]`
+    TargetFeature(ThinVec<(Symbol, Span)>, Span),
+
     /// Represents `#[track_caller]`
     TrackCaller(Span),
+
+    /// Represents `#[used]`
+    Used { used_by: UsedBy, span: Span },
     // tidy-alphabetical-end
 }

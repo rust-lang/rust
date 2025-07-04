@@ -173,7 +173,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                         self.skip_resolved_segment();
                         let segment = self.current_or_prev_segment;
                         let found =
-                            self.ctx.db.trait_items(trait_).associated_type_by_name(segment.name);
+                            trait_.trait_items(self.ctx.db).associated_type_by_name(segment.name);
 
                         match found {
                             Some(associated_ty) => {

@@ -47,8 +47,8 @@ use crate::infer::{self, InferCtxt, InferCtxtExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{
     MismatchedProjectionTypes, NormalizeExt, Obligation, ObligationCause, ObligationCauseCode,
-    ObligationCtxt, Overflow, PredicateObligation, SelectionContext, SelectionError,
-    SignatureMismatch, TraitDynIncompatible, elaborate, specialization_graph,
+    ObligationCtxt, PredicateObligation, SelectionContext, SelectionError, elaborate,
+    specialization_graph,
 };
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
@@ -659,7 +659,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
 
-            SignatureMismatch(box SignatureMismatchData {
+            SelectionError::SignatureMismatch(box SignatureMismatchData {
                 found_trait_ref,
                 expected_trait_ref,
                 terr: terr @ TypeError::CyclicTy(_),
@@ -669,7 +669,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 expected_trait_ref,
                 terr,
             ),
-            SignatureMismatch(box SignatureMismatchData {
+            SelectionError::SignatureMismatch(box SignatureMismatchData {
                 found_trait_ref,
                 expected_trait_ref,
                 terr: _,
@@ -690,7 +690,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 def_id,
             ),
 
-            TraitDynIncompatible(did) => {
+            SelectionError::TraitDynIncompatible(did) => {
                 let violations = self.tcx.dyn_compatibility_violations(did);
                 report_dyn_incompatibility(self.tcx, span, None, did, violations)
             }
@@ -710,12 +710,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Already reported in the query.
             SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(guar)) |
             // Already reported.
-            Overflow(OverflowError::Error(guar)) => {
+            SelectionError::Overflow(OverflowError::Error(guar)) => {
                 self.set_tainted_by_errors(guar);
                 return guar
             },
 
-            Overflow(_) => {
+            SelectionError::Overflow(_) => {
                 bug!("overflow should be handled before the `report_selection_error` path");
             }
 
@@ -775,7 +775,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         span: Span,
     ) -> Diag<'a> {
-        // FIXME(const_trait_impl): We should recompute the predicate with `~const`
+        // FIXME(const_trait_impl): We should recompute the predicate with `[const]`
         // if it's `const`, and if it holds, explain that this bound only
         // *conditionally* holds. If that fails, we should also do selection
         // to drill this down to an impl or built-in source, so we can
@@ -1186,7 +1186,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> Diag<'a> {
-        let span = obligation.cause.span;
+        let param = obligation.cause.body_id;
+        let hir::GenericParamKind::Const { ty: &hir::Ty { span, .. }, .. } =
+            self.tcx.hir_node_by_def_id(param).expect_generic_param().kind
+        else {
+            bug!()
+        };
 
         let mut diag = match ty.kind() {
             ty::Float(_) => {

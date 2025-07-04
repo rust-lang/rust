@@ -685,7 +685,7 @@ impl<'a> Parser<'a> {
 
     /// Is the given keyword `kw` followed by a non-reserved identifier?
     fn is_kw_followed_by_ident(&self, kw: Symbol) -> bool {
-        self.token.is_keyword(kw) && self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
+        self.token.is_keyword(kw) && self.look_ahead(1, |t| t.is_non_reserved_ident())
     }
 
     #[inline]

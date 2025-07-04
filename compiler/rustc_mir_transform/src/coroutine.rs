@@ -252,16 +252,16 @@ impl<'tcx> TransformVisitor<'tcx> {
             }
         };
 
-        let statements = vec![Statement {
-            kind: StatementKind::Assign(Box::new((Place::return_place(), none_value))),
+        let statements = vec![Statement::new(
             source_info,
-        }];
+            StatementKind::Assign(Box::new((Place::return_place(), none_value))),
+        )];
 
-        body.basic_blocks_mut().push(BasicBlockData {
+        body.basic_blocks_mut().push(BasicBlockData::new_stmts(
             statements,
-            terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
-            is_cleanup: false,
-        });
+            Some(Terminator { source_info, kind: TerminatorKind::Return }),
+            false,
+        ));
 
         block
     }
@@ -342,10 +342,10 @@ impl<'tcx> TransformVisitor<'tcx> {
             }
         };
 
-        statements.push(Statement {
-            kind: StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
+        statements.push(Statement::new(
             source_info,
-        });
+            StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
+        ));
     }
 
     // Create a Place referencing a coroutine struct field
@@ -361,13 +361,13 @@ impl<'tcx> TransformVisitor<'tcx> {
     // Create a statement which changes the discriminant
     fn set_discr(&self, state_disc: VariantIdx, source_info: SourceInfo) -> Statement<'tcx> {
         let self_place = Place::from(SELF_ARG);
-        Statement {
+        Statement::new(
             source_info,
-            kind: StatementKind::SetDiscriminant {
+            StatementKind::SetDiscriminant {
                 place: Box::new(self_place),
                 variant_index: state_disc,
             },
-        }
+        )
     }
 
     // Create a statement which reads the discriminant into a temporary
@@ -377,10 +377,10 @@ impl<'tcx> TransformVisitor<'tcx> {
         let temp = Place::from(local_decls_len);
 
         let self_place = Place::from(SELF_ARG);
-        let assign = Statement {
-            source_info: SourceInfo::outermost(body.span),
-            kind: StatementKind::Assign(Box::new((temp, Rvalue::Discriminant(self_place)))),
-        };
+        let assign = Statement::new(
+            SourceInfo::outermost(body.span),
+            StatementKind::Assign(Box::new((temp, Rvalue::Discriminant(self_place)))),
+        );
         (assign, temp)
     }
 }
@@ -450,7 +450,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
                         && !self.always_live_locals.contains(l);
                     if needs_storage_dead {
                         data.statements
-                            .push(Statement { source_info, kind: StatementKind::StorageDead(l) });
+                            .push(Statement::new(source_info, StatementKind::StorageDead(l)));
                     }
                 }
 
@@ -596,10 +596,8 @@ fn eliminate_get_context_call<'tcx>(bb_data: &mut BasicBlockData<'tcx>) -> Local
     let local = arg.node.place().unwrap().local;
 
     let arg = Rvalue::Use(arg.node);
-    let assign = Statement {
-        source_info: terminator.source_info,
-        kind: StatementKind::Assign(Box::new((destination, arg))),
-    };
+    let assign =
+        Statement::new(terminator.source_info, StatementKind::Assign(Box::new((destination, arg))));
     bb_data.statements.push(assign);
     bb_data.terminator = Some(Terminator {
         source_info: terminator.source_info,
@@ -1075,11 +1073,11 @@ fn insert_switch<'tcx>(
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().raw.insert(
         0,
-        BasicBlockData {
-            statements: vec![assign],
-            terminator: Some(Terminator { source_info, kind: switch }),
-            is_cleanup: false,
-        },
+        BasicBlockData::new_stmts(
+            vec![assign],
+            Some(Terminator { source_info, kind: switch }),
+            false,
+        ),
     );
 
     for b in body.basic_blocks_mut().iter_mut() {
@@ -1089,11 +1087,7 @@ fn insert_switch<'tcx>(
 
 fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
     let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
-        terminator: Some(Terminator { source_info, kind }),
-        is_cleanup: false,
-    })
+    body.basic_blocks_mut().push(BasicBlockData::new(Some(Terminator { source_info, kind }), false))
 }
 
 fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) -> Statement<'tcx> {
@@ -1109,19 +1103,16 @@ fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) ->
         Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::from_usize(0), args, None, None)),
         IndexVec::from_raw(vec![val]),
     );
-    Statement {
-        kind: StatementKind::Assign(Box::new((Place::return_place(), ready_val))),
-        source_info,
-    }
+    Statement::new(source_info, StatementKind::Assign(Box::new((Place::return_place(), ready_val))))
 }
 
 fn insert_poll_ready_block<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> BasicBlock {
     let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().push(BasicBlockData {
-        statements: [return_poll_ready_assign(tcx, source_info)].to_vec(),
-        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
-        is_cleanup: false,
-    })
+    body.basic_blocks_mut().push(BasicBlockData::new_stmts(
+        [return_poll_ready_assign(tcx, source_info)].to_vec(),
+        Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        false,
+    ))
 }
 
 fn insert_panic_block<'tcx>(
@@ -1205,13 +1196,11 @@ fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
     body: &mut Body<'tcx>,
 ) {
     let source_info = SourceInfo::outermost(body.span);
-    let poison_block = body.basic_blocks_mut().push(BasicBlockData {
-        statements: vec![
-            transform.set_discr(VariantIdx::new(CoroutineArgs::POISONED), source_info),
-        ],
-        terminator: Some(Terminator { source_info, kind: TerminatorKind::UnwindResume }),
-        is_cleanup: true,
-    });
+    let poison_block = body.basic_blocks_mut().push(BasicBlockData::new_stmts(
+        vec![transform.set_discr(VariantIdx::new(CoroutineArgs::POISONED), source_info)],
+        Some(Terminator { source_info, kind: TerminatorKind::UnwindResume }),
+        true,
+    ));
 
     for (idx, block) in body.basic_blocks_mut().iter_enumerated_mut() {
         let source_info = block.terminator().source_info;
@@ -1345,32 +1334,28 @@ fn create_cases<'tcx>(
                         && !transform.remap.contains(l)
                         && !transform.always_live_locals.contains(l);
                     if needs_storage_live {
-                        statements
-                            .push(Statement { source_info, kind: StatementKind::StorageLive(l) });
+                        statements.push(Statement::new(source_info, StatementKind::StorageLive(l)));
                     }
                 }
 
                 if operation == Operation::Resume {
                     // Move the resume argument to the destination place of the `Yield` terminator
                     let resume_arg = CTX_ARG;
-                    statements.push(Statement {
+                    statements.push(Statement::new(
                         source_info,
-                        kind: StatementKind::Assign(Box::new((
+                        StatementKind::Assign(Box::new((
                             point.resume_arg,
                             Rvalue::Use(Operand::Move(resume_arg.into())),
                         ))),
-                    });
+                    ));
                 }
 
                 // Then jump to the real target
-                let block = body.basic_blocks_mut().push(BasicBlockData {
+                let block = body.basic_blocks_mut().push(BasicBlockData::new_stmts(
                     statements,
-                    terminator: Some(Terminator {
-                        source_info,
-                        kind: TerminatorKind::Goto { target },
-                    }),
-                    is_cleanup: false,
-                });
+                    Some(Terminator { source_info, kind: TerminatorKind::Goto { target } }),
+                    false,
+                ));
 
                 (point.state, block)
             })
@@ -1540,13 +1525,13 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         let stmts = &mut body.basic_blocks_mut()[START_BLOCK].statements;
         stmts.insert(
             0,
-            Statement {
+            Statement::new(
                 source_info,
-                kind: StatementKind::Assign(Box::new((
+                StatementKind::Assign(Box::new((
                     old_resume_local.into(),
                     Rvalue::Use(Operand::Move(resume_local.into())),
                 ))),
-            },
+            ),
         );
 
         let always_live_locals = always_storage_live_locals(body);

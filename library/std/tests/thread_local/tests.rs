@@ -348,7 +348,7 @@ fn join_orders_after_tls_destructors() {
 //
 // The test won't currently work without target_thread_local, aka with slow tls.
 // The runtime tries very hard to drop last the TLS variable that keeps the information about the
-// current thread, by using several tricks like deffering the drop to a later round of TLS destruction.
+// current thread, by using several tricks like deferring the drop to a later round of TLS destruction.
 // However, this only seems to work with fast tls.
 //
 // With slow TLS, it seems that multiple libc implementations will just set the value to null the first

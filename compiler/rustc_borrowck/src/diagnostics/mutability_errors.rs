@@ -1168,6 +1168,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     _,
                                     mir::Rvalue::Use(mir::Operand::Copy(place)),
                                 )),
+                            ..
                         }) = self.body[location.block].statements.get(location.statement_index)
                         {
                             self.body.local_decls[place.local].source_info.span

@@ -1387,13 +1387,15 @@ impl LinkCollector<'_, '_> {
         ori_link: &MarkdownLinkRange,
         item: &Item,
     ) {
-        let span = source_span_for_markdown_range(
+        let span = match source_span_for_markdown_range(
             self.cx.tcx,
             dox,
             ori_link.inner_range(),
             &item.attrs.doc_strings,
-        )
-        .unwrap_or_else(|| item.attr_span(self.cx.tcx));
+        ) {
+            Some((sp, _)) => sp,
+            None => item.attr_span(self.cx.tcx),
+        };
         rustc_session::parse::feature_err(
             self.cx.tcx.sess,
             sym::intra_doc_pointers,
@@ -1836,7 +1838,7 @@ fn report_diagnostic(
                 let mut md_range = md_range.clone();
                 let sp =
                     source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs.doc_strings)
-                        .map(|mut sp| {
+                        .map(|(mut sp, _)| {
                             while dox.as_bytes().get(md_range.start) == Some(&b' ')
                                 || dox.as_bytes().get(md_range.start) == Some(&b'`')
                             {
@@ -1854,7 +1856,8 @@ fn report_diagnostic(
                 (sp, MarkdownLinkRange::Destination(md_range))
             }
             MarkdownLinkRange::WholeLink(md_range) => (
-                source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings),
+                source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings)
+                    .map(|(sp, _)| sp),
                 link_range.clone(),
             ),
         };

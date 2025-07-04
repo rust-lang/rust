@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `S: ~const Foo` is not satisfied
+error[E0277]: the trait bound `S: [const] Foo` is not satisfied
   --> $DIR/super-traits-fail.rs:17:20
    |
 LL | impl const Bar for S {}

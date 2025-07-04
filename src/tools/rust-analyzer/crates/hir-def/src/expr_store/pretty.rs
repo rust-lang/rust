@@ -121,7 +121,7 @@ pub fn print_variant_body_hir(db: &dyn DefDatabase, owner: VariantId, edition: E
         VariantId::UnionId(it) => format!("union {}", item_name(db, it, "<missing>")),
     };
 
-    let fields = db.variant_fields(owner);
+    let fields = owner.fields(db);
 
     let mut p = Printer {
         db,

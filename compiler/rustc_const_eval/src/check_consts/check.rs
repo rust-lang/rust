@@ -421,7 +421,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             Some(ConstConditionsHold::Yes)
         } else {
             tcx.dcx()
-                .span_delayed_bug(call_span, "this should have reported a ~const error in HIR");
+                .span_delayed_bug(call_span, "this should have reported a [const] error in HIR");
             Some(ConstConditionsHold::No)
         }
     }
@@ -595,11 +595,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     self.const_kind() == hir::ConstContext::Static(hir::Mutability::Mut);
 
                 if !is_allowed && self.place_may_escape(place) {
-                    self.check_op(ops::EscapingMutBorrow(if matches!(rvalue, Rvalue::Ref(..)) {
-                        hir::BorrowKind::Ref
-                    } else {
-                        hir::BorrowKind::Raw
-                    }));
+                    self.check_op(ops::EscapingMutBorrow);
                 }
             }
 
@@ -640,14 +636,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 _,
             ) => {
                 // These are all okay; they only change the type, not the data.
-            }
-
-            Rvalue::Cast(
-                CastKind::PointerCoercion(PointerCoercion::Unsize | PointerCoercion::DynStar, _),
-                _,
-                _,
-            ) => {
-                // Unsizing and `dyn*` coercions are implemented for CTFE.
             }
 
             Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => {

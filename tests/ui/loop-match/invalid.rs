@@ -159,3 +159,34 @@ fn arm_has_guard(cond: bool) {
         }
     }
 }
+
+fn non_exhaustive() {
+    let mut state = State::A;
+    #[loop_match]
+    loop {
+        state = 'blk: {
+            match state {
+                //~^ ERROR non-exhaustive patterns: `State::B` and `State::C` not covered
+                State::A => State::B,
+            }
+        }
+    }
+}
+
+fn invalid_range_pattern(state: f32) {
+    #[loop_match]
+    loop {
+        state = 'blk: {
+            match state {
+                1.0 => {
+                    #[const_continue]
+                    break 'blk 2.5;
+                }
+                4.0..3.0 => {
+                    //~^ ERROR lower range bound must be less than upper
+                    todo!()
+                }
+            }
+        }
+    }
+}

@@ -12,7 +12,7 @@ use std::ops::Range;
 
 use rustc_abi::{self as abi, FieldIdx, Size, VariantIdx};
 use rustc_middle::ty::Ty;
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, mir, span_bug, ty};
 use tracing::{debug, instrument};
 
@@ -168,7 +168,7 @@ where
             // Re-use parent metadata to determine dynamic field layout.
             // With custom DSTS, this *will* execute user-defined code, but the same
             // happens at run-time so that's okay.
-            match self.size_and_align_of(&base_meta, &field_layout)? {
+            match self.size_and_align_from_meta(&base_meta, &field_layout)? {
                 Some((_, align)) => {
                     // For packed types, we need to cap alignment.
                     let align = if let ty::Adt(def, _) = base.layout().ty.kind()

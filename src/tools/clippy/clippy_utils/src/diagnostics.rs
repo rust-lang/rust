@@ -98,6 +98,7 @@ fn validate_diag(diag: &Diag<'_, impl EmissionGuarantee>) {
 /// 17 |     std::mem::forget(seven);
 ///    |     ^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
+#[track_caller]
 pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
     #[expect(clippy::disallowed_methods)]
     cx.span_lint(lint, sp, |diag| {
@@ -109,7 +110,7 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
     });
 }
 
-/// Same as `span_lint` but with an extra `help` message.
+/// Same as [`span_lint`] but with an extra `help` message.
 ///
 /// Use this if you want to provide some general help but
 /// can't provide a specific machine applicable suggestion.
@@ -143,6 +144,7 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
 ///    |
 ///    = help: consider using `f64::NAN` if you would like a constant representing NaN
 /// ```
+#[track_caller]
 pub fn span_lint_and_help<T: LintContext>(
     cx: &T,
     lint: &'static Lint,
@@ -166,7 +168,7 @@ pub fn span_lint_and_help<T: LintContext>(
     });
 }
 
-/// Like `span_lint` but with a `note` section instead of a `help` message.
+/// Like [`span_lint`] but with a `note` section instead of a `help` message.
 ///
 /// The `note` message is presented separately from the main lint message
 /// and is attached to a specific span:
@@ -203,6 +205,7 @@ pub fn span_lint_and_help<T: LintContext>(
 /// 10 |     forget(&SomeStruct);
 ///    |            ^^^^^^^^^^^
 /// ```
+#[track_caller]
 pub fn span_lint_and_note<T: LintContext>(
     cx: &T,
     lint: &'static Lint,
@@ -226,7 +229,7 @@ pub fn span_lint_and_note<T: LintContext>(
     });
 }
 
-/// Like `span_lint` but allows to add notes, help and suggestions using a closure.
+/// Like [`span_lint`] but allows to add notes, help and suggestions using a closure.
 ///
 /// If you need to customize your lint output a lot, use this function.
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`
@@ -244,6 +247,7 @@ pub fn span_lint_and_note<T: LintContext>(
 /// If you're unsure which function you should use, you can test if the `#[expect]` attribute works
 /// where you would expect it to.
 /// If it doesn't, you likely need to use [`span_lint_hir_and_then`] instead.
+#[track_caller]
 pub fn span_lint_and_then<C, S, M, F>(cx: &C, lint: &'static Lint, sp: S, msg: M, f: F)
 where
     C: LintContext,
@@ -286,6 +290,7 @@ where
 /// Instead, use this function and also pass the `HirId` of `<expr_1>`, which will let
 /// the compiler check lint level attributes at the place of the expression and
 /// the `#[allow]` will work.
+#[track_caller]
 pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: impl Into<DiagMessage>) {
     #[expect(clippy::disallowed_methods)]
     cx.tcx.node_span_lint(lint, hir_id, sp, |diag| {
@@ -321,6 +326,7 @@ pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, s
 /// Instead, use this function and also pass the `HirId` of `<expr_1>`, which will let
 /// the compiler check lint level attributes at the place of the expression and
 /// the `#[allow]` will work.
+#[track_caller]
 pub fn span_lint_hir_and_then(
     cx: &LateContext<'_>,
     lint: &'static Lint,
@@ -374,6 +380,7 @@ pub fn span_lint_hir_and_then(
 ///     = note: `-D fold-any` implied by `-D warnings`
 /// ```
 #[cfg_attr(not(debug_assertions), expect(clippy::collapsible_span_lint_calls))]
+#[track_caller]
 pub fn span_lint_and_sugg<T: LintContext>(
     cx: &T,
     lint: &'static Lint,

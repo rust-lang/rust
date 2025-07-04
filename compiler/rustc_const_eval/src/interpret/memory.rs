@@ -655,7 +655,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// The caller is responsible for calling the access hooks!
     ///
     /// You almost certainly want to use `get_ptr_alloc`/`get_ptr_alloc_mut` instead.
-    fn get_alloc_raw(
+    pub fn get_alloc_raw(
         &self,
         id: AllocId,
     ) -> InterpResult<'tcx, &Allocation<M::Provenance, M::AllocExtra, M::Bytes>> {
@@ -720,7 +720,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // do this after `check_and_deref_ptr` to ensure some basic sanity has already been checked.
         if !self.memory.validation_in_progress.get() {
             if let Ok((alloc_id, ..)) = self.ptr_try_get_alloc_id(ptr, size_i64) {
-                M::before_alloc_read(self, alloc_id)?;
+                M::before_alloc_access(self.tcx, &self.machine, alloc_id)?;
             }
         }
 
@@ -757,7 +757,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ///
     /// Also returns a ptr to `self.extra` so that the caller can use it in parallel with the
     /// allocation.
-    fn get_alloc_raw_mut(
+    ///
+    /// You almost certainly want to use `get_ptr_alloc`/`get_ptr_alloc_mut` instead.
+    pub fn get_alloc_raw_mut(
         &mut self,
         id: AllocId,
     ) -> InterpResult<'tcx, (&mut Allocation<M::Provenance, M::AllocExtra, M::Bytes>, &mut M)> {
@@ -821,6 +823,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if let Some((alloc_id, offset, prov, alloc, machine)) = ptr_and_alloc {
             let range = alloc_range(offset, size);
             if !validation_in_progress {
+                // For writes, it's okay to only call those when there actually is a non-zero
+                // amount of bytes to be written: a zero-sized write doesn't manifest anything.
+                M::before_alloc_access(tcx, machine, alloc_id)?;
                 M::before_memory_write(
                     tcx,
                     machine,
@@ -973,15 +978,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(())
     }
 
-    /// Handle the effect an FFI call might have on the state of allocations.
-    /// This overapproximates the modifications which external code might make to memory:
-    /// We set all reachable allocations as initialized, mark all reachable provenances as exposed
-    /// and overwrite them with `Provenance::WILDCARD`.
-    ///
-    /// The allocations in `ids` are assumed to be already exposed.
-    pub fn prepare_for_native_call(&mut self, ids: Vec<AllocId>) -> InterpResult<'tcx> {
+    /// Visit all allocations reachable from the given start set, by recursively traversing the
+    /// provenance information of those allocations.
+    pub fn visit_reachable_allocs(
+        &mut self,
+        start: Vec<AllocId>,
+        mut visit: impl FnMut(&mut Self, AllocId, &AllocInfo) -> InterpResult<'tcx>,
+    ) -> InterpResult<'tcx> {
         let mut done = FxHashSet::default();
-        let mut todo = ids;
+        let mut todo = start;
         while let Some(id) = todo.pop() {
             if !done.insert(id) {
                 // We already saw this allocation before, don't process it again.
@@ -989,31 +994,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             let info = self.get_alloc_info(id);
 
-            // If there is no data behind this pointer, skip this.
-            if !matches!(info.kind, AllocKind::LiveData) {
-                continue;
-            }
-
-            // Expose all provenances in this allocation, and add them to `todo`.
-            let alloc = self.get_alloc_raw(id)?;
-            for prov in alloc.provenance().provenances() {
-                M::expose_provenance(self, prov)?;
-                if let Some(id) = prov.get_alloc_id() {
-                    todo.push(id);
+            // Recurse, if there is data here.
+            // Do this *before* invoking the callback, as the callback might mutate the
+            // allocation and e.g. replace all provenance by wildcards!
+            if matches!(info.kind, AllocKind::LiveData) {
+                let alloc = self.get_alloc_raw(id)?;
+                for prov in alloc.provenance().provenances() {
+                    if let Some(id) = prov.get_alloc_id() {
+                        todo.push(id);
+                    }
                 }
             }
-            // Also expose the provenance of the interpreter-level allocation, so it can
-            // be read by FFI. The `black_box` is defensive programming as LLVM likes
-            // to (incorrectly) optimize away ptr2int casts whose result is unused.
-            std::hint::black_box(alloc.get_bytes_unchecked_raw().expose_provenance());
 
-            // Prepare for possible write from native code if mutable.
-            if info.mutbl.is_mut() {
-                self.get_alloc_raw_mut(id)?
-                    .0
-                    .prepare_for_native_write()
-                    .map_err(|e| e.to_interp_error(id))?;
-            }
+            // Call the callback.
+            visit(self, id, &info)?;
         }
         interp_ok(())
     }
@@ -1070,7 +1064,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             todo.extend(static_roots(self));
             while let Some(id) = todo.pop() {
                 if reachable.insert(id) {
-                    // This is a new allocation, add the allocation it points to `todo`.
+                    // This is a new allocation, add the allocations it points to `todo`.
+                    // We only need to care about `alloc_map` memory here, as entirely unchanged
+                    // global memory cannot point to memory relevant for the leak check.
                     if let Some((_, alloc)) = self.memory.alloc_map.get(id) {
                         todo.extend(
                             alloc.provenance().provenances().filter_map(|prov| prov.get_alloc_id()),
@@ -1396,6 +1392,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let src_parts = self.get_ptr_access(src, size)?;
         let dest_parts = self.get_ptr_access(dest, size * num_copies)?; // `Size` multiplication
 
+        // Similar to `get_ptr_alloc`, we need to call `before_alloc_access` even for zero-sized
+        // reads. However, just like in `get_ptr_alloc_mut`, the write part is okay to skip for
+        // zero-sized writes.
+        if let Ok((alloc_id, ..)) = self.ptr_try_get_alloc_id(src, size.bytes().try_into().unwrap())
+        {
+            M::before_alloc_access(tcx, &self.machine, alloc_id)?;
+        }
+
         // FIXME: we look up both allocations twice here, once before for the `check_ptr_access`
         // and once below to get the underlying `&[mut] Allocation`.
 
@@ -1408,12 +1412,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let src_range = alloc_range(src_offset, size);
         assert!(!self.memory.validation_in_progress.get(), "we can't be copying during validation");
 
-        // Trigger read hooks.
-        // For the overlapping case, it is crucial that we trigger the read hooks
+        // Trigger read hook.
+        // For the overlapping case, it is crucial that we trigger the read hook
         // before the write hook -- the aliasing model cares about the order.
-        if let Ok((alloc_id, ..)) = self.ptr_try_get_alloc_id(src, size.bytes() as i64) {
-            M::before_alloc_read(self, alloc_id)?;
-        }
         M::before_memory_read(
             tcx,
             &self.machine,
@@ -1438,16 +1439,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let provenance = src_alloc
             .provenance()
             .prepare_copy(src_range, dest_offset, num_copies, self)
-            .map_err(|e| e.to_interp_error(dest_alloc_id))?;
+            .map_err(|e| e.to_interp_error(src_alloc_id))?;
         // Prepare a copy of the initialization mask.
         let init = src_alloc.init_mask().prepare_copy(src_range);
 
-        // Destination alloc preparations and access hooks.
-        let (dest_alloc, extra) = self.get_alloc_raw_mut(dest_alloc_id)?;
+        // Destination alloc preparations...
+        let (dest_alloc, machine) = self.get_alloc_raw_mut(dest_alloc_id)?;
         let dest_range = alloc_range(dest_offset, size * num_copies);
+        // ...and access hooks.
+        M::before_alloc_access(tcx, machine, dest_alloc_id)?;
         M::before_memory_write(
             tcx,
-            extra,
+            machine,
             &mut dest_alloc.extra,
             dest,
             (dest_alloc_id, dest_prov),
@@ -1586,7 +1589,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 Some((alloc_id, offset, extra)) => Ok((alloc_id, offset, extra)),
                 None => {
                     assert!(M::Provenance::OFFSET_IS_ADDR);
-                    let (_, addr) = ptr.into_parts();
+                    // Offset is absolute, as we just asserted.
+                    let (_, addr) = ptr.into_raw_parts();
                     Err(addr.bytes())
                 }
             },

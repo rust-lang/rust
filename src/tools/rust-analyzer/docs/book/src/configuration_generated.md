@@ -612,6 +612,13 @@ Default: `"client"`
 Controls file watching implementation.
 
 
+## rust-analyzer.highlightRelated.branchExitPoints.enable {#highlightRelated.branchExitPoints.enable}
+
+Default: `true`
+
+Enables highlighting of related return values while the cursor is on any `match`, `if`, or match arm arrow (`=>`).
+
+
 ## rust-analyzer.highlightRelated.breakPoints.enable {#highlightRelated.breakPoints.enable}
 
 Default: `true`

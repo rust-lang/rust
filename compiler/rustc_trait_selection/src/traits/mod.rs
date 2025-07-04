@@ -36,8 +36,8 @@ use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode, Upcast,
 };
+use rustc_span::Span;
 use rustc_span::def_id::DefId;
-use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
 pub use self::coherence::{
@@ -481,7 +481,7 @@ pub enum EvaluateConstErr {
     /// some unevaluated constant with either generic parameters or inference variables in its
     /// generic arguments.
     HasGenericsOrInfers,
-    /// The type this constant evalauted to is not valid for use in const generics. This should
+    /// The type this constant evaluated to is not valid for use in const generics. This should
     /// always result in an error when checking the constant is correctly typed for the parameter
     /// it is an argument to, so a bug is delayed when encountering this.
     InvalidConstParamTy(ErrorGuaranteed),
@@ -644,7 +644,9 @@ pub fn try_evaluate_const<'tcx>(
             let erased_uv = tcx.erase_regions(uv);
 
             use rustc_middle::mir::interpret::ErrorHandled;
-            match tcx.const_eval_resolve_for_typeck(typing_env, erased_uv, DUMMY_SP) {
+            // FIXME: `def_span` will point at the definition of this const; ideally, we'd point at
+            // where it gets used as a const generic.
+            match tcx.const_eval_resolve_for_typeck(typing_env, erased_uv, tcx.def_span(uv.def)) {
                 Ok(Ok(val)) => Ok(ty::Const::new_value(
                     tcx,
                     val,

@@ -21,6 +21,8 @@ pub mod time;
 pub mod tls;
 
 pub use self::files::FdTable;
+//#[cfg(target_os = "linux")]
+//pub use self::native_lib::trace::{init_sv, register_retcode_sv};
 pub use self::unix::{DirTable, EpollInterestTable};
 
 /// What needs to be done after emulating an item (a shim or an intrinsic) is done.

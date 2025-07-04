@@ -103,23 +103,25 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::minnumf64 => ("llvm.minnum", &[bx.type_f64()]),
         sym::minnumf128 => ("llvm.minnum", &[bx.type_f128()]),
 
-        sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
-        sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
-        sym::minimumf64 => ("llvm.minimum", &[bx.type_f64()]),
-        // There are issues on x86_64 and aarch64 with the f128 variant,
-        // let's instead use the instrinsic fallback body.
-        // sym::minimumf128 => ("llvm.minimum", &[cx.type_f128()]),
+        // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
+        // when llvm/llvm-project#{139380,139381,140445} are fixed.
+        //sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
+        //sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
+        //sym::minimumf64 => ("llvm.minimum", &[bx.type_f64()]),
+        //sym::minimumf128 => ("llvm.minimum", &[cx.type_f128()]),
+        //
         sym::maxnumf16 => ("llvm.maxnum", &[bx.type_f16()]),
         sym::maxnumf32 => ("llvm.maxnum", &[bx.type_f32()]),
         sym::maxnumf64 => ("llvm.maxnum", &[bx.type_f64()]),
         sym::maxnumf128 => ("llvm.maxnum", &[bx.type_f128()]),
 
-        sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
-        sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
-        sym::maximumf64 => ("llvm.maximum", &[bx.type_f64()]),
-        // There are issues on x86_64 and aarch64 with the f128 variant,
-        // let's instead use the instrinsic fallback body.
-        // sym::maximumf128 => ("llvm.maximum", &[cx.type_f128()]),
+        // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
+        // when llvm/llvm-project#{139380,139381,140445} are fixed.
+        //sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
+        //sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
+        //sym::maximumf64 => ("llvm.maximum", &[bx.type_f64()]),
+        //sym::maximumf128 => ("llvm.maximum", &[cx.type_f128()]),
+        //
         sym::copysignf16 => ("llvm.copysign", &[bx.type_f16()]),
         sym::copysignf32 => ("llvm.copysign", &[bx.type_f32()]),
         sym::copysignf64 => ("llvm.copysign", &[bx.type_f64()]),
@@ -1537,6 +1539,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_fsin => "llvm.sin",
             sym::simd_fsqrt => "llvm.sqrt",
             sym::simd_round => "llvm.round",
+            sym::simd_round_ties_even => "llvm.rint",
             sym::simd_trunc => "llvm.trunc",
             _ => return_error!(InvalidMonomorphization::UnrecognizedIntrinsic { span, name }),
         };
@@ -1563,6 +1566,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             | sym::simd_fsqrt
             | sym::simd_relaxed_fma
             | sym::simd_round
+            | sym::simd_round_ties_even
             | sym::simd_trunc
     ) {
         return simd_simple_float_intrinsic(name, in_elem, in_ty, in_len, bx, span, args);
@@ -2309,7 +2313,13 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     // Unary integer intrinsics
     if matches!(
         name,
-        sym::simd_bswap | sym::simd_bitreverse | sym::simd_ctlz | sym::simd_ctpop | sym::simd_cttz
+        sym::simd_bswap
+            | sym::simd_bitreverse
+            | sym::simd_ctlz
+            | sym::simd_ctpop
+            | sym::simd_cttz
+            | sym::simd_funnel_shl
+            | sym::simd_funnel_shr
     ) {
         let vec_ty = bx.cx.type_vector(
             match *in_elem.kind() {
@@ -2330,6 +2340,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_ctlz => "llvm.ctlz",
             sym::simd_ctpop => "llvm.ctpop",
             sym::simd_cttz => "llvm.cttz",
+            sym::simd_funnel_shl => "llvm.fshl",
+            sym::simd_funnel_shr => "llvm.fshr",
             _ => unreachable!(),
         };
         let int_size = in_elem.int_size_and_signed(bx.tcx()).0.bits();
@@ -2350,6 +2362,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 // simple unary argument cases
                 Ok(bx.call_intrinsic(llvm_intrinsic, &[vec_ty], &[args[0].immediate()]))
             }
+            sym::simd_funnel_shl | sym::simd_funnel_shr => Ok(bx.call_intrinsic(
+                llvm_intrinsic,
+                &[vec_ty],
+                &[args[0].immediate(), args[1].immediate(), args[2].immediate()],
+            )),
             _ => unreachable!(),
         };
     }

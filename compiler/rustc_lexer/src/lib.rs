@@ -566,7 +566,7 @@ impl Cursor<'_> {
         }
 
         if !found {
-            // recovery strategy: a closing statement might have precending whitespace/newline
+            // recovery strategy: a closing statement might have preceding whitespace/newline
             // but not have enough dashes to properly close. In this case, we eat until there,
             // and report a mismatch in the parser.
             let mut rest = self.as_str();

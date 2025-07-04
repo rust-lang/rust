@@ -1,3 +1,6 @@
+//@revisions: edition2015 edition2024
+//@[edition2015] edition:2015
+//@[edition2024] edition:2024
 #![feature(impl_trait_in_fn_trait_return)]
 use std::fmt::Debug;
 

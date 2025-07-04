@@ -1,0 +1,224 @@
+error: unexpected token: $
+  --> $DIR/syntax-errors.rs:9:8
+   |
+LL |     ( $$ $a:ident ) => {
+   |        ^
+
+note: `$$` and meta-variable expressions are not allowed inside macro parameter definitions
+  --> $DIR/syntax-errors.rs:9:8
+   |
+LL |     ( $$ $a:ident ) => {
+   |        ^
+
+error: unexpected token: {
+  --> $DIR/syntax-errors.rs:15:8
+   |
+LL |     ( ${ len() } ) => {
+   |        ^^^^^^^^^
+
+note: `$$` and meta-variable expressions are not allowed inside macro parameter definitions
+  --> $DIR/syntax-errors.rs:15:8
+   |
+LL |     ( ${ len() } ) => {
+   |        ^^^^^^^^^
+
+error: expected one of: `*`, `+`, or `?`
+  --> $DIR/syntax-errors.rs:15:8
+   |
+LL |     ( ${ len() } ) => {
+   |        ^^^^^^^^^
+
+error: meta-variables within meta-variable expressions must be referenced using a dollar sign
+  --> $DIR/syntax-errors.rs:22:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ ignore() } };
+   |                                 ^^^^^^
+
+error: only unsuffixes integer literals are supported in meta-variable expressions
+  --> $DIR/syntax-errors.rs:27:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ index(1u32) } };
+   |                                 ^^^^^
+
+error: meta-variable expression parameter must be wrapped in parentheses
+  --> $DIR/syntax-errors.rs:32:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ count } };
+   |                                 ^^^^^
+
+error: meta-variable expression parameter must be wrapped in parentheses
+  --> $DIR/syntax-errors.rs:49:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ count{i} } };
+   |                                 ^^^^^
+
+error: expected identifier, found `123`
+  --> $DIR/syntax-errors.rs:54:23
+   |
+LL |     () => { ${ignore($123)} }
+   |                       ^^^ help: try removing `123`
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:66:19
+   |
+LL |         ${count() a b c}
+   |                   ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:66:19
+   |
+LL |         ${count() a b c}
+   |                   ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:68:20
+   |
+LL |         ${count($i a b c)}
+   |                    ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:68:20
+   |
+LL |         ${count($i a b c)}
+   |                    ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:70:23
+   |
+LL |         ${count($i, 1 a b c)}
+   |                       ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:70:23
+   |
+LL |         ${count($i, 1 a b c)}
+   |                       ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:72:21
+   |
+LL |         ${count($i) a b c}
+   |                     ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:72:21
+   |
+LL |         ${count($i) a b c}
+   |                     ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:75:22
+   |
+LL |         ${ignore($i) a b c}
+   |                      ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:75:22
+   |
+LL |         ${ignore($i) a b c}
+   |                      ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:77:21
+   |
+LL |         ${ignore($i a b c)}
+   |                     ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:77:21
+   |
+LL |         ${ignore($i a b c)}
+   |                     ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:80:19
+   |
+LL |         ${index() a b c}
+   |                   ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:80:19
+   |
+LL |         ${index() a b c}
+   |                   ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:82:19
+   |
+LL |         ${index(1 a b c)}
+   |                   ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:82:19
+   |
+LL |         ${index(1 a b c)}
+   |                   ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:85:19
+   |
+LL |         ${index() a b c}
+   |                   ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:85:19
+   |
+LL |         ${index() a b c}
+   |                   ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:87:19
+   |
+LL |         ${index(1 a b c)}
+   |                   ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:87:19
+   |
+LL |         ${index(1 a b c)}
+   |                   ^
+
+error: meta-variable expression depth must be a literal
+  --> $DIR/syntax-errors.rs:94:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ index(IDX) } };
+   |                                 ^^^^^
+
+error: meta-variables within meta-variable expressions must be referenced using a dollar sign
+  --> $DIR/syntax-errors.rs:100:11
+   |
+LL |         ${count(foo)}
+   |           ^^^^^
+
+error: meta-variables within meta-variable expressions must be referenced using a dollar sign
+  --> $DIR/syntax-errors.rs:107:11
+   |
+LL |         ${ignore(bar)}
+   |           ^^^^^^
+
+error: unrecognized meta-variable expression
+  --> $DIR/syntax-errors.rs:113:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
+   |                                 ^^^^^^^^^^^^^^ help: supported expressions are count, ignore, index and len
+
+error: expected identifier or string literal
+  --> $DIR/syntax-errors.rs:38:14
+   |
+LL |     () => { ${} };
+   |              ^^
+
+error: expected identifier, found `"hi"`
+  --> $DIR/syntax-errors.rs:44:17
+   |
+LL |      () => { ${ "hi" } };
+   |                 ^^^^ help: try removing `"hi"`
+
+error: expected identifier or string literal
+  --> $DIR/syntax-errors.rs:60:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ {} } };
+   |                                 ^^
+
+error: aborting due to 25 previous errors
+

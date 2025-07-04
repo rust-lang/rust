@@ -1,5 +1,4 @@
-#![cfg_attr(bootstrap, feature(cfg_match))]
-#![cfg_attr(not(bootstrap), feature(cfg_select))]
+#![feature(cfg_select)]
 #![feature(rustc_private)]
 #![feature(float_gamma)]
 #![feature(float_erf)]
@@ -16,7 +15,6 @@
 #![feature(unqualified_local_imports)]
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
-#![cfg_attr(bootstrap, feature(file_lock))]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -99,6 +97,11 @@ pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
 use rustc_middle::{bug, span_bug};
 use tracing::{info, trace};
 
+//#[cfg(target_os = "linux")]
+//pub mod native_lib {
+//    pub use crate::shims::{init_sv, register_retcode_sv};
+//}
+
 // Type aliases that set the provenance parameter.
 pub type Pointer = interpret::Pointer<Option<machine::Provenance>>;
 pub type StrictPointer = interpret::Pointer<machine::Provenance>;
@@ -168,7 +171,7 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     "-Zmir-emit-retag",
     "-Zmir-preserve-ub",
     "-Zmir-opt-level=0",
-    "-Zmir-enable-passes=-CheckAlignment,-CheckNull",
+    "-Zmir-enable-passes=-CheckAlignment,-CheckNull,-CheckEnums",
     // Deduplicating diagnostics means we miss events when tracking what happens during an
     // execution. Let's not do that.
     "-Zdeduplicate-diagnostics=no",

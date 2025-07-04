@@ -314,6 +314,22 @@ fn panic_null_pointer_dereference() -> ! {
     )
 }
 
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[track_caller]
+#[lang = "panic_invalid_enum_construction"] // needed by codegen for panic on invalid enum construction.
+#[rustc_nounwind] // `CheckEnums` MIR pass requires this function to never unwind
+fn panic_invalid_enum_construction(source: u128) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        super::intrinsics::abort()
+    }
+
+    panic_nounwind_fmt(
+        format_args!("trying to construct an enum from an invalid value {source:#x}"),
+        /* force_no_backtrace */ false,
+    )
+}
+
 /// Panics because we cannot unwind out of a function.
 ///
 /// This is a separate function to avoid the codesize impact of each crate containing the string to

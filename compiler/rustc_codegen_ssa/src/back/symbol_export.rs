@@ -131,6 +131,9 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                 used: codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                     || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
                     || used,
+                rustc_std_internal_symbol: codegen_attrs
+                    .flags
+                    .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL),
             };
             (def_id.to_def_id(), info)
         })
@@ -143,6 +146,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                 level: SymbolExportLevel::C,
                 kind: SymbolExportKind::Data,
                 used: false,
+                rustc_std_internal_symbol: false,
             },
         );
     }
@@ -164,7 +168,7 @@ fn is_reachable_non_generic_provider_extern(tcx: TyCtxt<'_>, def_id: DefId) -> b
     tcx.reachable_non_generics(def_id.krate).contains_key(&def_id)
 }
 
-fn exported_symbols_provider_local<'tcx>(
+fn exported_non_generic_symbols_provider_local<'tcx>(
     tcx: TyCtxt<'tcx>,
     _: LocalCrate,
 ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
@@ -191,6 +195,7 @@ fn exported_symbols_provider_local<'tcx>(
                         level: info.level,
                         kind: SymbolExportKind::Text,
                         used: info.used,
+                        rustc_std_internal_symbol: info.rustc_std_internal_symbol,
                     },
                 )
             })
@@ -207,6 +212,7 @@ fn exported_symbols_provider_local<'tcx>(
                 level: SymbolExportLevel::C,
                 kind: SymbolExportKind::Text,
                 used: false,
+                rustc_std_internal_symbol: false,
             },
         ));
     }
@@ -230,6 +236,7 @@ fn exported_symbols_provider_local<'tcx>(
                     level: SymbolExportLevel::Rust,
                     kind: SymbolExportKind::Text,
                     used: false,
+                    rustc_std_internal_symbol: true,
                 },
             ));
         }
@@ -250,6 +257,7 @@ fn exported_symbols_provider_local<'tcx>(
                     level: SymbolExportLevel::C,
                     kind: SymbolExportKind::Data,
                     used: false,
+                    rustc_std_internal_symbol: false,
                 },
             )
         }));
@@ -275,6 +283,7 @@ fn exported_symbols_provider_local<'tcx>(
                     level: SymbolExportLevel::C,
                     kind: SymbolExportKind::Data,
                     used: false,
+                    rustc_std_internal_symbol: false,
                 },
             )
         }));
@@ -292,9 +301,26 @@ fn exported_symbols_provider_local<'tcx>(
                 level: SymbolExportLevel::C,
                 kind: SymbolExportKind::Data,
                 used: true,
+                rustc_std_internal_symbol: false,
             },
         ));
     }
+
+    // Sort so we get a stable incr. comp. hash.
+    symbols.sort_by_cached_key(|s| s.0.symbol_name_for_local_instance(tcx));
+
+    tcx.arena.alloc_from_iter(symbols)
+}
+
+fn exported_generic_symbols_provider_local<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    _: LocalCrate,
+) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
+    if !tcx.sess.opts.output_types.should_codegen() && !tcx.is_sdylib_interface_build() {
+        return &[];
+    }
+
+    let mut symbols: Vec<_> = vec![];
 
     if tcx.local_crate_exports_generics() {
         use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
@@ -367,6 +393,8 @@ fn exported_symbols_provider_local<'tcx>(
                 }
             }
 
+            // Note: These all set rustc_std_internal_symbol to false as generic functions must not
+            // be marked with this attribute and we are only handling generic functions here.
             match *mono_item {
                 MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
                     let has_generics = args.non_erasable_generics().next().is_some();
@@ -382,6 +410,7 @@ fn exported_symbols_provider_local<'tcx>(
                                 level: SymbolExportLevel::Rust,
                                 kind: SymbolExportKind::Text,
                                 used: false,
+                                rustc_std_internal_symbol: false,
                             },
                         ));
                     }
@@ -404,6 +433,7 @@ fn exported_symbols_provider_local<'tcx>(
                                 level: SymbolExportLevel::Rust,
                                 kind: SymbolExportKind::Text,
                                 used: false,
+                                rustc_std_internal_symbol: false,
                             },
                         ));
                     }
@@ -420,6 +450,7 @@ fn exported_symbols_provider_local<'tcx>(
                             level: SymbolExportLevel::Rust,
                             kind: SymbolExportKind::Text,
                             used: false,
+                            rustc_std_internal_symbol: false,
                         },
                     ));
                 }
@@ -430,6 +461,7 @@ fn exported_symbols_provider_local<'tcx>(
                             level: SymbolExportLevel::Rust,
                             kind: SymbolExportKind::Text,
                             used: false,
+                            rustc_std_internal_symbol: false,
                         },
                     ));
                 }
@@ -458,7 +490,7 @@ fn upstream_monomorphizations_provider(
     let async_drop_in_place_fn_def_id = tcx.lang_items().async_drop_in_place_fn();
 
     for &cnum in cnums.iter() {
-        for (exported_symbol, _) in tcx.exported_symbols(cnum).iter() {
+        for (exported_symbol, _) in tcx.exported_generic_symbols(cnum).iter() {
             let (def_id, args) = match *exported_symbol {
                 ExportedSymbol::Generic(def_id, args) => (def_id, args),
                 ExportedSymbol::DropGlue(ty) => {
@@ -480,10 +512,7 @@ fn upstream_monomorphizations_provider(
                 ExportedSymbol::AsyncDropGlue(def_id, ty) => (def_id, tcx.mk_args(&[ty.into()])),
                 ExportedSymbol::NonGeneric(..)
                 | ExportedSymbol::ThreadLocalShim(..)
-                | ExportedSymbol::NoDefId(..) => {
-                    // These are no monomorphizations
-                    continue;
-                }
+                | ExportedSymbol::NoDefId(..) => unreachable!("{exported_symbol:?}"),
             };
 
             let args_map = instances.entry(def_id).or_default();
@@ -538,7 +567,8 @@ fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: LocalDefId)
 pub(crate) fn provide(providers: &mut Providers) {
     providers.reachable_non_generics = reachable_non_generics_provider;
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_local;
-    providers.exported_symbols = exported_symbols_provider_local;
+    providers.exported_non_generic_symbols = exported_non_generic_symbols_provider_local;
+    providers.exported_generic_symbols = exported_generic_symbols_provider_local;
     providers.upstream_monomorphizations = upstream_monomorphizations_provider;
     providers.is_unreachable_local_definition = is_unreachable_local_definition_provider;
     providers.upstream_drop_glue_for = upstream_drop_glue_for_provider;

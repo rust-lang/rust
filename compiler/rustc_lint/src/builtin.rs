@@ -977,9 +977,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
         };
         match it.kind {
             hir::ItemKind::Fn { generics, .. } => {
-                if let Some(attr_span) = attr::find_by_name(attrs, sym::export_name)
-                    .map(|at| at.span())
-                    .or_else(|| find_attr!(attrs, AttributeKind::NoMangle(span) => *span))
+                if let Some(attr_span) =
+                    find_attr!(attrs, AttributeKind::ExportName {span, ..} => *span)
+                        .or_else(|| find_attr!(attrs, AttributeKind::NoMangle(span) => *span))
                 {
                     check_no_mangle_on_generic_fn(attr_span, None, generics, it.span);
                 }
@@ -1010,9 +1010,11 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                 for it in *items {
                     if let hir::AssocItemKind::Fn { .. } = it.kind {
                         let attrs = cx.tcx.hir_attrs(it.id.hir_id());
-                        if let Some(attr_span) = attr::find_by_name(attrs, sym::export_name)
-                            .map(|at| at.span())
-                            .or_else(|| find_attr!(attrs, AttributeKind::NoMangle(span) => *span))
+                        if let Some(attr_span) =
+                            find_attr!(attrs, AttributeKind::ExportName {span, ..} => *span)
+                                .or_else(
+                                    || find_attr!(attrs, AttributeKind::NoMangle(span) => *span),
+                                )
                         {
                             check_no_mangle_on_generic_fn(
                                 attr_span,

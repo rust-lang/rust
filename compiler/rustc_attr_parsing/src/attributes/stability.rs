@@ -5,11 +5,12 @@ use rustc_attr_data_structures::{
     StableSince, UnstableReason, VERSION_PLACEHOLDER,
 };
 use rustc_errors::ErrorGuaranteed;
-use rustc_feature::{AttributeTemplate, template};
+use rustc_feature::template;
 use rustc_span::{Ident, Span, Symbol, sym};
 
 use super::util::parse_version;
-use super::{AcceptMapping, AttributeOrder, AttributeParser, OnDuplicate, SingleAttributeParser};
+use super::{AcceptMapping, AttributeParser, OnDuplicate};
+use crate::attributes::NoArgsAttributeParser;
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::parser::{ArgParser, MetaItemParser};
 use crate::session_diagnostics::{self, UnsupportedLiteralReason};
@@ -132,19 +133,10 @@ impl<S: Stage> AttributeParser<S> for BodyStabilityParser {
 }
 
 pub(crate) struct ConstStabilityIndirectParser;
-// FIXME(jdonszelmann): single word attribute group when we have these
-impl<S: Stage> SingleAttributeParser<S> for ConstStabilityIndirectParser {
+impl<S: Stage> NoArgsAttributeParser<S> for ConstStabilityIndirectParser {
     const PATH: &[Symbol] = &[sym::rustc_const_stable_indirect];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
-    const TEMPLATE: AttributeTemplate = template!(Word);
-
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
-        if let Err(span) = args.no_args() {
-            cx.expected_no_args(span);
-        }
-        Some(AttributeKind::ConstStabilityIndirect)
-    }
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ConstStabilityIndirect;
 }
 
 #[derive(Default)]

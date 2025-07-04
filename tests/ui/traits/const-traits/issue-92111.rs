@@ -14,7 +14,7 @@ pub struct S(i32);
 
 impl Tr for S {}
 
-const fn a<T: ~const Destruct>(t: T) {}
+const fn a<T: [const] Destruct>(t: T) {}
 
 fn main() {
     a(S(0));

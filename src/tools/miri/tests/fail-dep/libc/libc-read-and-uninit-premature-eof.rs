@@ -20,7 +20,7 @@ fn main() {
         let mut buf: MaybeUninit<[u8; 4]> = std::mem::MaybeUninit::uninit();
         // Read 4 bytes from a 3-byte file.
         assert_eq!(libc::read(fd, buf.as_mut_ptr().cast::<std::ffi::c_void>(), 4), 3);
-        buf.assume_init(); //~ERROR: Undefined Behavior: constructing invalid value at .value[3]: encountered uninitialized memory, but expected an integer
+        buf.assume_init(); //~ERROR: encountered uninitialized memory, but expected an integer
         assert_eq!(libc::close(fd), 0);
     }
     remove_file(&path).unwrap();

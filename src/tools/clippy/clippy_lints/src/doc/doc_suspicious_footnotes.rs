@@ -49,11 +49,7 @@ pub fn check(cx: &LateContext<'_>, doc: &str, range: Range<usize>, fragments: &F
                             .filter(|attr| attr.span().overlaps(this_fragment.span))
                             .rev()
                             .find_map(|attr| {
-                                Some((
-                                    attr,
-                                    attr.doc_str_and_comment_kind()?,
-                                    attr.doc_resolution_scope()?,
-                                ))
+                                Some((attr, attr.doc_str_and_comment_kind()?, attr.doc_resolution_scope()?))
                             })
                             .unwrap();
                         let (to_add, terminator) = match (doc_attr_comment_kind, attr_style) {

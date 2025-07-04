@@ -930,7 +930,6 @@ ui/dst/issue-90528-unsizing-suggestion-3.rs
 ui/dst/issue-90528-unsizing-suggestion-4.rs
 ui/dyn-keyword/issue-5153.rs
 ui/dyn-keyword/issue-56327-dyn-trait-in-macro-is-okay.rs
-ui/dyn-star/issue-102430.rs
 ui/empty/issue-37026.rs
 ui/entry-point/issue-118772.rs
 ui/enum-discriminant/auxiliary/issue-41394.rs
@@ -1368,7 +1367,6 @@ ui/infinite/issue-41731-infinite-macro-println.rs
 ui/intrinsics/issue-28575.rs
 ui/intrinsics/issue-84297-reifying-copy.rs
 ui/invalid/issue-114435-layout-type-err.rs
-ui/issue-11881.rs
 ui/issue-15924.rs
 ui/issue-16822.rs
 ui/issues-71798.rs
@@ -2847,7 +2845,6 @@ ui/macros/issue-98466.rs
 ui/macros/issue-99261.rs
 ui/macros/issue-99265.rs
 ui/macros/issue-99907.rs
-ui/macros/rfc-3086-metavar-expr/issue-111904.rs
 ui/malformed/issue-107423-unused-delim-only-one-no-pair.rs
 ui/malformed/issue-69341-malformed-derive-inert.rs
 ui/marker_trait_attr/issue-61651-type-mismatch.rs
@@ -3919,7 +3916,6 @@ ui/traits/const-traits/issue-79450.rs
 ui/traits/const-traits/issue-88155.rs
 ui/traits/const-traits/issue-92111.rs
 ui/traits/const-traits/issue-92230-wf-super-trait-env.rs
-ui/traits/const-traits/specialization/issue-95186-specialize-on-tilde-const.rs
 ui/traits/const-traits/specialization/issue-95187-same-trait-bound-different-constness.rs
 ui/traits/issue-103563.rs
 ui/traits/issue-104322.rs

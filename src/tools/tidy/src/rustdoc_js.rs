@@ -52,8 +52,7 @@ fn get_eslint_version() -> Option<String> {
 }
 
 pub fn check(librustdoc_path: &Path, tools_path: &Path, src_path: &Path, bad: &mut bool) {
-    let eslint_version_path =
-        src_path.join("ci/docker/host-x86_64/mingw-check-tidy/eslint.version");
+    let eslint_version_path = src_path.join("ci/docker/host-x86_64/tidy/eslint.version");
     let eslint_version = match std::fs::read_to_string(&eslint_version_path) {
         Ok(version) => version.trim().to_string(),
         Err(error) => {

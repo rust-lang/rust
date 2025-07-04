@@ -1,8 +1,8 @@
 error[E0275]: overflow normalizing the type alias `X`
-  --> $DIR/infinite-vec-type-recursion.rs:6:10
+  --> $DIR/infinite-vec-type-recursion.rs:6:1
    |
 LL | type X = Vec<X>;
-   |          ^^^^^^
+   | ^^^^^^
    |
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 

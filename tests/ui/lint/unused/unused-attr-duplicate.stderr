@@ -90,44 +90,6 @@ LL | #[automatically_derived]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:92:1
-   |
-LL | #[export_name = "exported_symbol_name"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:94:1
-   |
-LL | #[export_name = "exported_symbol_name2"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:102:1
-   |
-LL | #[used]
-   | ^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:101:1
-   |
-LL | #[used]
-   | ^^^^^^^
-
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:86:5
-   |
-LL |     #[link_name = "this_does_not_exist"]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:88:5
-   |
-LL |     #[link_name = "rust_dbg_extern_identity_u32"]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:14:1
    |
 LL | #![crate_name = "unused_attr_duplicate2"]
@@ -278,6 +240,32 @@ LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
 
 error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:86:5
+   |
+LL |     #[link_name = "this_does_not_exist"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:88:5
+   |
+LL |     #[link_name = "rust_dbg_extern_identity_u32"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:92:1
+   |
+LL | #[export_name = "exported_symbol_name"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:94:1
+   |
+LL | #[export_name = "exported_symbol_name2"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:98:1
    |
 LL | #[no_mangle]
@@ -289,5 +277,30 @@ note: attribute also specified here
 LL | #[no_mangle]
    | ^^^^^^^^^^^^
 
-error: aborting due to 23 previous errors
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:102:1
+   |
+LL | #[used]
+   | ^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:101:1
+   |
+LL | #[used]
+   | ^^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:105:1
+   |
+LL | #[link_section = ".text"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:108:1
+   |
+LL | #[link_section = ".bss"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: aborting due to 24 previous errors
 

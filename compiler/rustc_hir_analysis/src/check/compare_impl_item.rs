@@ -9,7 +9,7 @@ use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, pluralize, struct_
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisit};
-use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
@@ -264,9 +264,9 @@ fn compare_method_predicate_entailment<'tcx>(
     }
 
     // If we're within a const implementation, we need to make sure that the method
-    // does not assume stronger `~const` bounds than the trait definition.
+    // does not assume stronger `[const]` bounds than the trait definition.
     //
-    // This registers the `~const` bounds of the impl method, which we will prove
+    // This registers the `[const]` bounds of the impl method, which we will prove
     // using the hybrid param-env that we earlier augmented with the const conditions
     // from the impl header and trait method declaration.
     if is_conditionally_const {
@@ -311,7 +311,7 @@ fn compare_method_predicate_entailment<'tcx>(
 
     let unnormalized_impl_sig = infcx.instantiate_binder_with_fresh_vars(
         impl_m_span,
-        infer::HigherRankedType,
+        BoundRegionConversionTime::HigherRankedType,
         tcx.fn_sig(impl_m.def_id).instantiate_identity(),
     );
 
@@ -518,7 +518,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         param_env,
         infcx.instantiate_binder_with_fresh_vars(
             return_span,
-            infer::HigherRankedType,
+            BoundRegionConversionTime::HigherRankedType,
             tcx.fn_sig(impl_m.def_id).instantiate_identity(),
         ),
     );
@@ -2335,7 +2335,7 @@ pub(super) fn check_type_bounds<'tcx>(
     )
     .collect();
 
-    // Only in a const implementation do we need to check that the `~const` item bounds hold.
+    // Only in a const implementation do we need to check that the `[const]` item bounds hold.
     if tcx.is_conditionally_const(impl_ty_def_id) {
         obligations.extend(util::elaborate(
             tcx,

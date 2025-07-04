@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at .value[0]: encountered uninitialized memory, but expected an integer
+error: Undefined Behavior: constructing invalid value at [0]: encountered uninitialized memory, but expected an integer
   --> tests/fail/validity/uninit_integer.rs:LL:CC
    |
 LL |     let _val = unsafe { std::mem::MaybeUninit::<[usize; 1]>::uninit().assume_init() };

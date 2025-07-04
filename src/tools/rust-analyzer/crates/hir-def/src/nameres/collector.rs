@@ -41,6 +41,7 @@ use crate::{
     macro_call_as_call_id,
     nameres::{
         BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, ModuleData, ModuleOrigin, ResolveMode,
+        assoc::TraitItems,
         attr_resolution::{attr_macro_as_call_id, derive_macro_as_call_id},
         crate_def_map,
         diagnostics::DefDiagnostic,
@@ -1020,8 +1021,7 @@ impl<'db> DefCollector<'db> {
                         let resolutions = if true {
                             vec![]
                         } else {
-                            self.db
-                                .trait_items(it)
+                            TraitItems::query(self.db, it)
                                 .items
                                 .iter()
                                 .map(|&(ref name, variant)| {

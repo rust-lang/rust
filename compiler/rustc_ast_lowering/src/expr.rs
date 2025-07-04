@@ -144,11 +144,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Unary(op, ohs)
                 }
                 ExprKind::Lit(token_lit) => hir::ExprKind::Lit(self.lower_lit(token_lit, e.span)),
-                ExprKind::IncludedBytes(bytes) => {
-                    let lit = self.arena.alloc(respan(
+                ExprKind::IncludedBytes(byte_sym) => {
+                    let lit = respan(
                         self.lower_span(e.span),
-                        LitKind::ByteStr(Arc::clone(bytes), StrStyle::Cooked),
-                    ));
+                        LitKind::ByteStr(*byte_sym, StrStyle::Cooked),
+                    );
                     hir::ExprKind::Lit(lit)
                 }
                 ExprKind::Cast(expr, ty) => {
@@ -421,11 +421,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
-    pub(crate) fn lower_lit(
-        &mut self,
-        token_lit: &token::Lit,
-        span: Span,
-    ) -> &'hir Spanned<LitKind> {
+    pub(crate) fn lower_lit(&mut self, token_lit: &token::Lit, span: Span) -> hir::Lit {
         let lit_kind = match LitKind::from_token_lit(*token_lit) {
             Ok(lit_kind) => lit_kind,
             Err(err) => {
@@ -433,7 +429,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 LitKind::Err(guar)
             }
         };
-        self.arena.alloc(respan(self.lower_span(span), lit_kind))
+        respan(self.lower_span(span), lit_kind)
     }
 
     fn lower_unop(&mut self, u: UnOp) -> hir::UnOp {
@@ -2141,10 +2137,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn expr_uint(&mut self, sp: Span, ty: ast::UintTy, value: u128) -> hir::Expr<'hir> {
-        let lit = self.arena.alloc(hir::Lit {
+        let lit = hir::Lit {
             span: sp,
             node: ast::LitKind::Int(value.into(), ast::LitIntType::Unsigned(ty)),
-        });
+        };
         self.expr(sp, hir::ExprKind::Lit(lit))
     }
 
@@ -2161,9 +2157,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     pub(super) fn expr_str(&mut self, sp: Span, value: Symbol) -> hir::Expr<'hir> {
-        let lit = self
-            .arena
-            .alloc(hir::Lit { span: sp, node: ast::LitKind::Str(value, ast::StrStyle::Cooked) });
+        let lit = hir::Lit { span: sp, node: ast::LitKind::Str(value, ast::StrStyle::Cooked) };
         self.expr(sp, hir::ExprKind::Lit(lit))
     }
 

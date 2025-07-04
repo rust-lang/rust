@@ -42,7 +42,7 @@ where
         // Right now this includes both the impl and the assoc item where bounds,
         // and I don't think the assoc item where-bounds are allowed to be coinductive.
         //
-        // Projecting to the IAT also "steps out the impl contructor", so we would have
+        // Projecting to the IAT also "steps out the impl constructor", so we would have
         // to be very careful when changing the impl where-clauses to be productive.
         self.add_goals(
             GoalSource::Misc,

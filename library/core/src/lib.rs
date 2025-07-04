@@ -89,7 +89,7 @@
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
 #![warn(unreachable_pub)]
-// Do not check link redundancy on bootstraping phase
+// Do not check link redundancy on bootstrapping phase
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]
 //
@@ -150,8 +150,8 @@
 #![feature(doc_cfg_hide)]
 #![feature(doc_notable_trait)]
 #![feature(extern_types)]
-#![feature(f128)]
 #![feature(f16)]
+#![feature(f128)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
 #![feature(if_let_guard)]

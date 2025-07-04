@@ -518,11 +518,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 } = move_spans
                     && can_suggest_clone
                 {
-                    self.suggest_cloning(err, ty, expr, Some(move_spans));
+                    self.suggest_cloning(err, place.as_ref(), ty, expr, Some(move_spans));
                 } else if self.suggest_hoisting_call_outside_loop(err, expr) && can_suggest_clone {
                     // The place where the type moves would be misleading to suggest clone.
                     // #121466
-                    self.suggest_cloning(err, ty, expr, Some(move_spans));
+                    self.suggest_cloning(err, place.as_ref(), ty, expr, Some(move_spans));
                 }
             }
 
@@ -1224,6 +1224,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     pub(crate) fn suggest_cloning(
         &self,
         err: &mut Diag<'_>,
+        place: PlaceRef<'tcx>,
         ty: Ty<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
         use_spans: Option<UseSpans<'tcx>>,
@@ -1238,7 +1239,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
 
         if self.implements_clone(ty) {
-            self.suggest_cloning_inner(err, ty, expr);
+            if self.in_move_closure(expr) {
+                if let Some(name) = self.describe_place(place) {
+                    self.suggest_clone_of_captured_var_in_move_closure(err, &name, use_spans);
+                }
+            } else {
+                self.suggest_cloning_inner(err, ty, expr);
+            }
         } else if let ty::Adt(def, args) = ty.kind()
             && def.did().as_local().is_some()
             && def.variants().iter().all(|variant| {
@@ -1505,7 +1512,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             if let hir::ExprKind::AddrOf(_, _, borrowed_expr) = expr.kind
                 && let Some(ty) = typeck_results.expr_ty_opt(borrowed_expr)
             {
-                self.suggest_cloning(&mut err, ty, borrowed_expr, Some(move_spans));
+                self.suggest_cloning(&mut err, place.as_ref(), ty, borrowed_expr, Some(move_spans));
             } else if typeck_results.expr_adjustments(expr).first().is_some_and(|adj| {
                 matches!(
                     adj.kind,
@@ -1518,7 +1525,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 )
             }) && let Some(ty) = typeck_results.expr_ty_opt(expr)
             {
-                self.suggest_cloning(&mut err, ty, expr, Some(move_spans));
+                self.suggest_cloning(&mut err, place.as_ref(), ty, expr, Some(move_spans));
             }
         }
         self.buffer_error(err);

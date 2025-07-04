@@ -131,8 +131,8 @@ declare_lint_pass! {
         UNUSED_IMPORTS,
         UNUSED_LABELS,
         UNUSED_LIFETIMES,
-        UNUSED_MACRO_RULES,
         UNUSED_MACROS,
+        UNUSED_MACRO_RULES,
         UNUSED_MUT,
         UNUSED_QUALIFICATIONS,
         UNUSED_UNSAFE,
@@ -1224,7 +1224,7 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// A public `use` declaration should not be used to publicly re-export a
+    /// A public `use` declaration should not be used to publically re-export a
     /// private `extern crate`. `pub extern crate` should be used instead.
     ///
     /// This was historically allowed, but is not the intended behavior

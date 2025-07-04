@@ -4,7 +4,9 @@ mod simd;
 #[cfg(feature = "master")]
 use std::iter;
 
-use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, Type, UnaryOp};
+#[cfg(feature = "master")]
+use gccjit::Type;
+use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, UnaryOp};
 #[cfg(feature = "master")]
 use rustc_abi::ExternAbi;
 use rustc_abi::{BackendRepr, HasDataLayout};
@@ -112,7 +114,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         }
         sym::copysignf32 => "copysignf",
         sym::copysignf64 => "copysign",
-        sym::copysignf128 => "copysignl",
         sym::floorf32 => "floorf",
         sym::floorf64 => "floor",
         sym::ceilf32 => "ceilf",
@@ -236,6 +237,7 @@ fn get_simple_function_f128_2args<'gcc, 'tcx>(
     let func_name = match name {
         sym::maxnumf128 => "fmaxf128",
         sym::minnumf128 => "fminf128",
+        sym::copysignf128 => "copysignf128",
         _ => return None,
     };
     Some(cx.context.new_function(
@@ -259,6 +261,7 @@ fn f16_builtin<'gcc, 'tcx>(
     let f32_type = cx.type_f32();
     let builtin_name = match name {
         sym::ceilf16 => "__builtin_ceilf",
+        sym::copysignf16 => "__builtin_copysignf",
         sym::floorf16 => "__builtin_floorf",
         sym::fmaf16 => "fmaf",
         sym::maxnumf16 => "__builtin_fmaxf",
@@ -300,6 +303,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let fn_args = instance.args;
 
         let simple = get_simple_intrinsic(self, name);
+        // TODO(antoyo): Only call get_simple_function_f128 and get_simple_function_f128_2args when
+        // it is the symbols for the supported f128 builtins.
         let simple_func = get_simple_function(self, name)
             .or_else(|| get_simple_function_f128(self, name))
             .or_else(|| get_simple_function_f128_2args(self, name));
@@ -326,6 +331,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 )
             }
             sym::ceilf16
+            | sym::copysignf16
             | sym::floorf16
             | sym::fmaf16
             | sym::maxnumf16
@@ -441,7 +447,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 match int_type_width_signed(args[0].layout.ty, self) {
                     Some((width, signed)) => match name {
                         sym::ctlz | sym::cttz => {
-                            let func = self.current_func.borrow().expect("func");
+                            let func = self.current_func();
                             let then_block = func.new_block("then");
                             let else_block = func.new_block("else");
                             let after_block = func.new_block("after");
@@ -1109,7 +1115,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // for (int counter = 0; value != 0; counter++) {
         //     value &= value - 1;
         // }
-        let func = self.current_func.borrow().expect("func");
+        let func = self.current_func();
         let loop_head = func.new_block("head");
         let loop_body = func.new_block("body");
         let loop_tail = func.new_block("tail");
@@ -1188,7 +1194,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let result_type = lhs.get_type();
         if signed {
             // Based on algorithm from: https://stackoverflow.com/a/56531252/389119
-            let func = self.current_func.borrow().expect("func");
+            let func = self.current_func();
             let res = func.new_local(self.location, result_type, "saturating_sum");
             let supports_native_type = self.is_native_int_type(result_type);
             let overflow = if supports_native_type {
@@ -1259,7 +1265,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let result_type = lhs.get_type();
         if signed {
             // Based on algorithm from: https://stackoverflow.com/a/56531252/389119
-            let func = self.current_func.borrow().expect("func");
+            let func = self.current_func();
             let res = func.new_local(self.location, result_type, "saturating_diff");
             let supports_native_type = self.is_native_int_type(result_type);
             let overflow = if supports_native_type {
@@ -1483,10 +1489,9 @@ fn gen_fn<'a, 'gcc, 'tcx>(
     // FIXME(eddyb) find a nicer way to do this.
     cx.linkage.set(FunctionType::Internal);
     let func = cx.declare_fn(name, fn_abi);
-    let func_val = unsafe { std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(func) };
-    cx.set_frame_pointer_type(func_val);
-    cx.apply_target_cpu_attr(func_val);
-    let block = Builder::append_block(cx, func_val, "entry-block");
+    cx.set_frame_pointer_type(func);
+    cx.apply_target_cpu_attr(func);
+    let block = Builder::append_block(cx, func, "entry-block");
     let bx = Builder::build(cx, block);
     codegen(bx);
     (return_type, func)

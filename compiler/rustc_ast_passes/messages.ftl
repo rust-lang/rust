@@ -1,6 +1,6 @@
 ast_passes_abi_cannot_be_coroutine =
     functions with the {$abi} ABI cannot be `{$coroutine_kind_str}`
-    .suggestion = remove the `{$coroutine_kind_str}` keyword from this definiton
+    .suggestion = remove the `{$coroutine_kind_str}` keyword from this definition
 
 ast_passes_abi_custom_safe_foreign_function =
     foreign functions with the "custom" ABI cannot be safe
@@ -237,17 +237,17 @@ ast_passes_static_without_body =
     free static item without body
     .suggestion = provide a definition for the static
 
-ast_passes_tilde_const_disallowed = `~const` is not allowed here
-    .closure = closures cannot have `~const` trait bounds
-    .function = this function is not `const`, so it cannot have `~const` trait bounds
-    .trait = this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
-    .trait_impl = this impl is not `const`, so it cannot have `~const` trait bounds
-    .impl = inherent impls cannot have `~const` trait bounds
-    .trait_assoc_ty = associated types in non-`#[const_trait]` traits cannot have `~const` trait bounds
-    .trait_impl_assoc_ty = associated types in non-const impls cannot have `~const` trait bounds
-    .inherent_assoc_ty = inherent associated types cannot have `~const` trait bounds
-    .object = trait objects cannot have `~const` trait bounds
-    .item = this item cannot have `~const` trait bounds
+ast_passes_tilde_const_disallowed = `[const]` is not allowed here
+    .closure = closures cannot have `[const]` trait bounds
+    .function = this function is not `const`, so it cannot have `[const]` trait bounds
+    .trait = this trait is not a `#[const_trait]`, so it cannot have `[const]` trait bounds
+    .trait_impl = this impl is not `const`, so it cannot have `[const]` trait bounds
+    .impl = inherent impls cannot have `[const]` trait bounds
+    .trait_assoc_ty = associated types in non-`#[const_trait]` traits cannot have `[const]` trait bounds
+    .trait_impl_assoc_ty = associated types in non-const impls cannot have `[const]` trait bounds
+    .inherent_assoc_ty = inherent associated types cannot have `[const]` trait bounds
+    .object = trait objects cannot have `[const]` trait bounds
+    .item = this item cannot have `[const]` trait bounds
 
 ast_passes_trait_fn_const =
     functions in {$in_impl ->

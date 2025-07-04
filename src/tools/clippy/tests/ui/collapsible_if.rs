@@ -164,3 +164,12 @@ fn issue14722() {
         None
     };
 }
+
+fn issue14799() {
+    if true {
+        #[cfg(target_os = "freebsd")]
+        todo!();
+
+        if true {}
+    };
+}

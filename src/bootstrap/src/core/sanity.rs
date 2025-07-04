@@ -34,8 +34,6 @@ pub struct Finder {
 // Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
-    "loongarch32-unknown-none",
-    "loongarch32-unknown-none-softfloat",
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
@@ -202,7 +200,7 @@ than building it.
 
     let stage0_supported_target_list: HashSet<String> = command(&build.config.initial_rustc)
         .args(["--print", "target-list"])
-        .run_always()
+        .run_in_dry_run()
         .run_capture_stdout(&build)
         .stdout()
         .lines()
@@ -366,7 +364,7 @@ than building it.
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.
             let out =
-                command("cmake").arg("--help").run_always().run_capture_stdout(&build).stdout();
+                command("cmake").arg("--help").run_in_dry_run().run_capture_stdout(&build).stdout();
             if !out.contains("Visual Studio") {
                 panic!(
                     "

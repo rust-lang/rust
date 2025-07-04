@@ -50,6 +50,18 @@ pub(crate) struct ConstContinueAttr {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(passes_mixed_export_name_and_no_mangle)]
+pub(crate) struct MixedExportNameAndNoMangle {
+    #[label]
+    #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
+    pub no_mangle_span: Span,
+    #[note]
+    pub export_name_span: Span,
+    pub no_mangle_attr: &'static str,
+    pub export_name_attr: &'static str,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(passes_outer_crate_level_attr)]
 pub(crate) struct OuterCrateLevelAttr;
 
@@ -145,7 +157,7 @@ pub(crate) struct NonExhaustiveWrongLocation {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_non_exaustive_with_default_field_values)]
+#[diag(passes_non_exhaustive_with_default_field_values)]
 pub(crate) struct NonExhaustiveWithDefaultFieldValues {
     #[primary_span]
     pub attr_span: Span,
@@ -490,7 +502,7 @@ pub(crate) struct Link {
 #[warning]
 pub(crate) struct LinkName<'a> {
     #[help]
-    pub attr_span: Option<Span>,
+    pub help_span: Option<Span>,
     #[label]
     pub span: Span,
     pub value: &'a str,
@@ -521,13 +533,6 @@ pub(crate) struct RustcLayoutScalarValidRangeNotStruct {
     pub attr_span: Span,
     #[label]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_rustc_layout_scalar_valid_range_arg)]
-pub(crate) struct RustcLayoutScalarValidRangeArg {
-    #[primary_span]
-    pub attr_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -627,13 +632,6 @@ pub(crate) struct UsedStatic {
     #[label]
     pub span: Span,
     pub target: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_used_compiler_linker)]
-pub(crate) struct UsedCompilerLinker {
-    #[primary_span]
-    pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]

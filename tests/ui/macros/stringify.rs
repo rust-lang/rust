@@ -1,5 +1,5 @@
 //@ run-pass
-//@ edition:2021
+//@ edition:2024
 //@ compile-flags: --test
 
 #![allow(incomplete_features)]
@@ -10,7 +10,6 @@
 #![feature(decl_macro)]
 #![feature(explicit_tail_calls)]
 #![feature(if_let_guard)]
-#![feature(let_chains)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
 #![feature(trait_alias)]
@@ -483,7 +482,6 @@ fn test_item() {
     c1!(item, [ impl<T> Struct<T> {} ], "impl<T> Struct<T> {}");
     c1!(item, [ pub impl Trait for Struct {} ], "pub impl Trait for Struct {}");
     c1!(item, [ impl<T> const Trait for T {} ], "impl<T> const Trait for T {}");
-    c1!(item, [ impl ~const Struct {} ], "impl ~const Struct {}");
 
     // ItemKind::MacCall
     c1!(item, [ mac!(); ], "mac!();");
@@ -730,7 +728,7 @@ fn test_ty() {
     c1!(ty, [ dyn Send + 'a ], "dyn Send + 'a");
     c1!(ty, [ dyn 'a + Send ], "dyn 'a + Send");
     c1!(ty, [ dyn ?Sized ], "dyn ?Sized");
-    c1!(ty, [ dyn ~const Clone ], "dyn ~const Clone");
+    c1!(ty, [ dyn [const] Clone ], "dyn [const] Clone");
     c1!(ty, [ dyn for<'a> Send ], "dyn for<'a> Send");
 
     // TyKind::ImplTrait
@@ -738,7 +736,7 @@ fn test_ty() {
     c1!(ty, [ impl Send + 'a ], "impl Send + 'a");
     c1!(ty, [ impl 'a + Send ], "impl 'a + Send");
     c1!(ty, [ impl ?Sized ], "impl ?Sized");
-    c1!(ty, [ impl ~const Clone ], "impl ~const Clone");
+    c1!(ty, [ impl [const] Clone ], "impl [const] Clone");
     c1!(ty, [ impl for<'a> Send ], "impl for<'a> Send");
 
     // TyKind::Paren

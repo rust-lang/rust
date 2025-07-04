@@ -144,6 +144,19 @@ impl<'tcx> Const<'tcx> {
         let reported = tcx.dcx().span_delayed_bug(span, msg);
         Const::new_error(tcx, reported)
     }
+
+    pub fn is_trivially_wf(self) -> bool {
+        match self.kind() {
+            ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) | ty::ConstKind::Bound(..) => {
+                true
+            }
+            ty::ConstKind::Infer(_)
+            | ty::ConstKind::Unevaluated(..)
+            | ty::ConstKind::Value(_)
+            | ty::ConstKind::Error(_)
+            | ty::ConstKind::Expr(_) => false,
+        }
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {

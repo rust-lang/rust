@@ -1552,7 +1552,8 @@ impl<'a> Parser<'a> {
             })
             .map_err(|mut err| {
                 err.span_label(ident.span, "while parsing this enum");
-                if self.token == token::Colon {
+                // Try to recover `enum Foo { ident : Ty }`.
+                if self.prev_token.is_non_reserved_ident() && self.token == token::Colon {
                     let snapshot = self.create_snapshot_for_diagnostic();
                     self.bump();
                     match self.parse_ty() {

@@ -141,13 +141,6 @@ pub(crate) struct RequiresRustAbi {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_null_on_export, code = E0648)]
-pub(crate) struct NullOnExport {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_unsupported_instruction_set, code = E0779)]
 pub(crate) struct UnsupportedInstructionSet {
     #[primary_span]
@@ -734,13 +727,6 @@ pub struct UnknownArchiveKind<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_expected_used_symbol)]
-pub(crate) struct ExpectedUsedSymbol {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_multiple_main_functions)]
 #[help]
 pub(crate) struct MultipleMainFunctions {
@@ -1207,18 +1193,6 @@ pub(crate) struct ErrorCreatingImportLibrary<'a> {
 #[diag(codegen_ssa_aix_strip_not_used)]
 pub(crate) struct AixStripNotUsed;
 
-#[derive(LintDiagnostic)]
-#[diag(codegen_ssa_mixed_export_name_and_no_mangle)]
-pub(crate) struct MixedExportNameAndNoMangle {
-    #[label]
-    pub no_mangle: Span,
-    pub no_mangle_attr: String,
-    #[note]
-    pub export_name: Span,
-    #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
-    pub removal_span: Span,
-}
-
 #[derive(Diagnostic, Debug)]
 pub(crate) enum XcrunError {
     #[diag(codegen_ssa_xcrun_failed_invoking)]
@@ -1317,4 +1291,15 @@ pub(crate) struct NoMangleNameless {
     #[primary_span]
     pub span: Span,
     pub definition: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_feature_not_valid)]
+pub(crate) struct FeatureNotValid<'a> {
+    pub feature: &'a str,
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[help]
+    pub plus_hint: bool,
 }

@@ -48,6 +48,7 @@ pub struct CargoWorkspace {
     is_sysroot: bool,
     /// Environment variables set in the `.cargo/config` file.
     config_env: Env,
+    requires_rustc_private: bool,
 }
 
 impl ops::Index<Package> for CargoWorkspace {
@@ -513,6 +514,7 @@ impl CargoWorkspace {
         let workspace_root = AbsPathBuf::assert(meta.workspace_root);
         let target_directory = AbsPathBuf::assert(meta.target_directory);
         let mut is_virtual_workspace = true;
+        let mut requires_rustc_private = false;
 
         meta.packages.sort_by(|a, b| a.id.cmp(&b.id));
         for meta_pkg in meta.packages {
@@ -577,6 +579,7 @@ impl CargoWorkspace {
                 metadata: meta.rust_analyzer.unwrap_or_default(),
             });
             let pkg_data = &mut packages[pkg];
+            requires_rustc_private |= pkg_data.metadata.rustc_private;
             pkg_by_id.insert(id, pkg);
             for meta_tgt in meta_targets {
                 let cargo_metadata::Target { name, kind, required_features, src_path, .. } =
@@ -626,6 +629,7 @@ impl CargoWorkspace {
             target_directory,
             manifest_path: ws_manifest_path,
             is_virtual_workspace,
+            requires_rustc_private,
             is_sysroot,
             config_env: cargo_config_env,
         }
@@ -723,5 +727,9 @@ impl CargoWorkspace {
 
     pub fn is_sysroot(&self) -> bool {
         self.is_sysroot
+    }
+
+    pub fn requires_rustc_private(&self) -> bool {
+        self.requires_rustc_private
     }
 }

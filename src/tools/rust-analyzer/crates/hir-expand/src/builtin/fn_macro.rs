@@ -12,7 +12,7 @@ use span::{Edition, FileId, Span};
 use stdx::format_to;
 use syntax::{
     format_smolstr,
-    unescape::{Mode, unescape_byte, unescape_char, unescape_unicode},
+    unescape::{unescape_byte, unescape_char, unescape_str},
 };
 use syntax_bridge::syntax_node_to_token_tree;
 
@@ -430,7 +430,7 @@ fn compile_error_expand(
                 kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
                 suffix: _,
             })),
-        ] => ExpandError::other(span, Box::from(unescape_str(text).as_str())),
+        ] => ExpandError::other(span, Box::from(unescape_symbol(text).as_str())),
         _ => ExpandError::other(span, "`compile_error!` argument must be a string"),
     };
 
@@ -481,7 +481,7 @@ fn concat_expand(
                         format_to!(text, "{}", it.symbol.as_str())
                     }
                     tt::LitKind::Str => {
-                        text.push_str(unescape_str(&it.symbol).as_str());
+                        text.push_str(unescape_symbol(&it.symbol).as_str());
                         record_span(it.span);
                     }
                     tt::LitKind::StrRaw(_) => {
@@ -691,7 +691,7 @@ fn parse_string(tt: &tt::TopSubtree) -> Result<(Symbol, Span), ExpandError> {
                 span,
                 kind: tt::LitKind::Str,
                 suffix: _,
-            })) => Ok((unescape_str(text), *span)),
+            })) => Ok((unescape_symbol(text), *span)),
             TtElement::Leaf(tt::Leaf::Literal(tt::Literal {
                 symbol: text,
                 span,
@@ -712,7 +712,7 @@ fn parse_string(tt: &tt::TopSubtree) -> Result<(Symbol, Span), ExpandError> {
                             span,
                             kind: tt::LitKind::Str,
                             suffix: _,
-                        })) => Some((unescape_str(text), *span)),
+                        })) => Some((unescape_symbol(text), *span)),
                         TtElement::Leaf(tt::Leaf::Literal(tt::Literal {
                             symbol: text,
                             span,
@@ -897,11 +897,11 @@ fn quote_expand(
     )
 }
 
-fn unescape_str(s: &Symbol) -> Symbol {
+fn unescape_symbol(s: &Symbol) -> Symbol {
     if s.as_str().contains('\\') {
         let s = s.as_str();
         let mut buf = String::with_capacity(s.len());
-        unescape_unicode(s, Mode::Str, &mut |_, c| {
+        unescape_str(s, |_, c| {
             if let Ok(c) = c {
                 buf.push(c)
             }

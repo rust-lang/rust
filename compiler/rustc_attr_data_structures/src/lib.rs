@@ -49,6 +49,16 @@ pub trait PrintAttribute {
     fn print_attribute(&self, p: &mut Printer);
 }
 
+impl PrintAttribute for u128 {
+    fn should_render(&self) -> bool {
+        true
+    }
+
+    fn print_attribute(&self, p: &mut Printer) {
+        p.word(self.to_string())
+    }
+}
+
 impl<T: PrintAttribute> PrintAttribute for &T {
     fn should_render(&self) -> bool {
         T::should_render(self)

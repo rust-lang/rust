@@ -9,6 +9,7 @@ tests/ui/iterators/iter-sum-overflow-debug.rs
 tests/ui/iterators/iter-sum-overflow-overflow-checks.rs
 tests/ui/mir/mir_drop_order.rs
 tests/ui/mir/mir_let_chains_drop_order.rs
+tests/ui/mir/mir_match_guard_let_chains_drop_order.rs
 tests/ui/oom_unwind.rs
 tests/ui/panic-runtime/abort-link-to-unwinding-crates.rs
 tests/ui/panic-runtime/abort.rs

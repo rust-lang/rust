@@ -87,7 +87,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     //
     // This function is opt-in for back ends.
     //
-    // The default implementation calls `self.expect()` before emiting the branch
+    // The default implementation calls `self.expect()` before emitting the branch
     // by calling `self.cond_br()`
     fn cond_br_with_expect(
         &mut self,

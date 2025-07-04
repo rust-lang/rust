@@ -411,7 +411,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         AlignFromBytesError::TooLarge(_) => Align::MAX,
                     }
                 });
-                let (_, addr) = ptr.into_parts(); // we know the offset is absolute
+                let addr = ptr.addr();
                 // Cannot panic since `align` is a power of 2 and hence non-zero.
                 if addr.bytes().strict_rem(align.bytes()) != 0 {
                     throw_unsup_format!(

@@ -1794,7 +1794,10 @@ fn for_each_exported_symbols_include_dep<'tcx>(
     for (cnum, dep_format) in deps.iter_enumerated() {
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
-            for &(symbol, info) in tcx.exported_symbols(cnum).iter() {
+            for &(symbol, info) in tcx.exported_non_generic_symbols(cnum).iter() {
+                callback(symbol, info, cnum);
+            }
+            for &(symbol, info) in tcx.exported_generic_symbols(cnum).iter() {
                 callback(symbol, info, cnum);
             }
         }
@@ -1870,8 +1873,28 @@ pub(crate) fn linked_symbols(
     crate_type: CrateType,
 ) -> Vec<(String, SymbolExportKind)> {
     match crate_type {
-        CrateType::Executable | CrateType::Cdylib | CrateType::Dylib | CrateType::Sdylib => (),
-        CrateType::Staticlib | CrateType::ProcMacro | CrateType::Rlib => {
+        CrateType::Executable
+        | CrateType::ProcMacro
+        | CrateType::Cdylib
+        | CrateType::Dylib
+        | CrateType::Sdylib => (),
+        CrateType::Staticlib | CrateType::Rlib => {
+            // These are not linked, so no need to generate symbols.o for them.
+            return Vec::new();
+        }
+    }
+
+    match tcx.sess.lto() {
+        Lto::No | Lto::ThinLocal => {}
+        Lto::Thin | Lto::Fat => {
+            // We really only need symbols from upstream rlibs to end up in the linked symbols list.
+            // The rest are in separate object files which the linker will always link in and
+            // doesn't have rules around the order in which they need to appear.
+            // When doing LTO, some of the symbols in the linked symbols list happen to be
+            // internalized by LTO, which then prevents referencing them from symbols.o. When doing
+            // LTO, all object files that get linked in will be local object files rather than
+            // pulled in from rlibs, so an empty linked symbols list works fine to avoid referencing
+            // all those internalized symbols from symbols.o.
             return Vec::new();
         }
     }
@@ -1882,6 +1905,7 @@ pub(crate) fn linked_symbols(
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
         if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum)
             || info.used
+            || info.rustc_std_internal_symbol
         {
             symbols.push((
                 symbol_export::linking_symbol_name_for_instance_in_crate(

@@ -285,7 +285,7 @@ impl interpret::Provenance for Provenance {
     }
 
     fn fmt(ptr: &interpret::Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (prov, addr) = ptr.into_parts(); // address is absolute
+        let (prov, addr) = ptr.into_raw_parts(); // offset is absolute address
         write!(f, "{:#x}", addr.bytes())?;
         if f.alternate() {
             write!(f, "{prov:#?}")?;
@@ -1056,7 +1056,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             // What's the offset between us and the promised alignment?
             let distance = offset.bytes().wrapping_sub(promised_offset.bytes());
             // That must also be aligned.
-            if distance % align.bytes() == 0 {
+            if distance.is_multiple_of(align.bytes()) {
                 // All looking good!
                 None
             } else {
@@ -1612,7 +1612,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx.machine.since_gc += 1;
         // Possibly report our progress. This will point at the terminator we are about to execute.
         if let Some(report_progress) = ecx.machine.report_progress {
-            if ecx.machine.basic_block_count % u64::from(report_progress) == 0 {
+            if ecx.machine.basic_block_count.is_multiple_of(u64::from(report_progress)) {
                 ecx.emit_diagnostic(NonHaltingDiagnostic::ProgressReport {
                     block_count: ecx.machine.basic_block_count,
                 });

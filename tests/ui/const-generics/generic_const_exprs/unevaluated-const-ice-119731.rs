@@ -28,6 +28,10 @@ mod v20 {
     impl<const v10: usize> v17<v10, v2> {
         //~^ ERROR maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
         //~| ERROR maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
+        //~| ERROR maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
+        //~| ERROR maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
+        //~| ERROR maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
+        //~| ERROR maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
         pub const fn v21() -> v18 {
             //~^ ERROR cannot find type `v18` in this scope
             v18 { _p: () }

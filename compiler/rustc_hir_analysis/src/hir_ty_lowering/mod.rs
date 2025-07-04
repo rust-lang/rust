@@ -80,10 +80,10 @@ pub enum PredicateFilter {
     /// and `<Self as Tr>::A: B`.
     SelfAndAssociatedTypeBounds,
 
-    /// Filter only the `~const` bounds, which are lowered into `HostEffect` clauses.
+    /// Filter only the `[const]` bounds, which are lowered into `HostEffect` clauses.
     ConstIfConst,
 
-    /// Filter only the `~const` bounds which are *also* in the supertrait position.
+    /// Filter only the `[const]` bounds which are *also* in the supertrait position.
     SelfConstIfConst,
 }
 
@@ -885,7 +885,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     }
                 }
                 // On the flip side, when filtering `ConstIfConst` bounds, we only need to convert
-                // `~const` bounds. All other predicates are handled in their respective queries.
+                // `[const]` bounds. All other predicates are handled in their respective queries.
                 //
                 // Note that like `PredicateFilter::SelfOnly`, we don't need to do any filtering
                 // here because we only call this on self bounds, and deal with the recursive case
@@ -1088,7 +1088,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             // FIXME(#97583): Print associated item bindings properly (i.e., not as equality
             // predicates!).
-            // FIXME: Turn this into a structured, translateable & more actionable suggestion.
+            // FIXME: Turn this into a structured, translatable & more actionable suggestion.
             let mut where_bounds = vec![];
             for bound in [bound, bound2].into_iter().chain(matching_candidates) {
                 let bound_id = bound.def_id();
@@ -2364,9 +2364,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         let lit_input = match expr.kind {
-            hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
+            hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: lit.node, ty, neg: false }),
             hir::ExprKind::Unary(hir::UnOp::Neg, expr) => match expr.kind {
-                hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: true }),
+                hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: lit.node, ty, neg: true }),
                 _ => None,
             },
             _ => None,
@@ -2433,7 +2433,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 } else {
                     let repr = match repr {
                         TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
-                        TraitObjectSyntax::DynStar => ty::DynStar,
                     };
                     self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime, repr)
                 }
@@ -2460,13 +2459,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // type a projection.
                 let in_trait = match opaque_ty.origin {
                     hir::OpaqueTyOrigin::FnReturn {
+                        parent,
                         in_trait_or_impl: Some(hir::RpitContext::Trait),
                         ..
                     }
                     | hir::OpaqueTyOrigin::AsyncFn {
+                        parent,
                         in_trait_or_impl: Some(hir::RpitContext::Trait),
                         ..
-                    } => true,
+                    } => Some(parent),
                     hir::OpaqueTyOrigin::FnReturn {
                         in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
                         ..
@@ -2475,7 +2476,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
                         ..
                     }
-                    | hir::OpaqueTyOrigin::TyAlias { .. } => false,
+                    | hir::OpaqueTyOrigin::TyAlias { .. } => None,
                 };
 
                 self.lower_opaque_ty(opaque_ty.def_id, in_trait)
@@ -2595,17 +2596,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     /// Lower an opaque type (i.e., an existential impl-Trait type) from the HIR.
     #[instrument(level = "debug", skip(self), ret)]
-    fn lower_opaque_ty(&self, def_id: LocalDefId, in_trait: bool) -> Ty<'tcx> {
+    fn lower_opaque_ty(&self, def_id: LocalDefId, in_trait: Option<LocalDefId>) -> Ty<'tcx> {
         let tcx = self.tcx();
 
         let lifetimes = tcx.opaque_captured_lifetimes(def_id);
         debug!(?lifetimes);
 
-        // If this is an RPITIT and we are using the new RPITIT lowering scheme, we
-        // generate the def_id of an associated type for the trait and return as
-        // type a projection.
-        let def_id = if in_trait {
-            tcx.associated_type_for_impl_trait_in_trait(def_id).to_def_id()
+        // If this is an RPITIT and we are using the new RPITIT lowering scheme,
+        // do a linear search to map this to the synthetic associated type that
+        // it will be lowered to.
+        let def_id = if let Some(parent_def_id) = in_trait {
+            *tcx.associated_types_for_impl_traits_in_associated_fn(parent_def_id)
+                .iter()
+                .find(|rpitit| match tcx.opt_rpitit_info(**rpitit) {
+                    Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
+                        opaque_def_id.expect_local() == def_id
+                    }
+                    _ => unreachable!(),
+                })
+                .unwrap()
         } else {
             def_id.to_def_id()
         };
@@ -2628,7 +2637,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         });
         debug!(?args);
 
-        if in_trait {
+        if in_trait.is_some() {
             Ty::new_projection_from_args(tcx, def_id, args)
         } else {
             Ty::new_opaque(tcx, def_id, args)

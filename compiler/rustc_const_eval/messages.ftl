@@ -124,16 +124,12 @@ const_eval_incompatible_return_types =
 const_eval_incompatible_types =
     calling a function with argument of type {$callee_ty} passing data of type {$caller_ty}
 
-const_eval_interior_mutable_ref_escaping =
-    {const_eval_const_context}s cannot refer to interior mutable data
-    .label = this borrow of an interior mutable value may end up in the final value
-    .help = to fix this, the value can be extracted to a separate `static` item and then referenced
-    .teach_note =
-        References that escape into the final value of a constant or static must be immutable.
-        This is to avoid accidentally creating shared mutable state.
-
-
-        If you really want global mutable state, try using an interior mutable `static` or a `static mut`.
+const_eval_interior_mutable_borrow_escaping =
+    interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+    .label = this borrow of an interior mutable value refers to such a temporary
+    .note = Temporaries in constants and statics can have their lifetime extended until the end of the program
+    .note2 = To avoid accidentally creating global mutable state, such temporaries must be immutable
+    .help = If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 const_eval_intern_kind = {$kind ->
     [static] static
@@ -207,33 +203,20 @@ const_eval_long_running =
     .label = the const evaluator is currently interpreting this expression
     .help = the constant being evaluated
 
-const_eval_max_num_nodes_in_const = maximum number of nodes exceeded in constant {$global_const_id}
-
 const_eval_memory_exhausted =
     tried to allocate more memory than available to compiler
 
 const_eval_modified_global =
     modifying a static's initial value from another static's initializer
 
+const_eval_mutable_borrow_escaping =
+    mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+    .label = this mutable borrow refers to such a temporary
+    .note = Temporaries in constants and statics can have their lifetime extended until the end of the program
+    .note2 = To avoid accidentally creating global mutable state, such temporaries must be immutable
+    .help = If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
 const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
-
-const_eval_mutable_raw_escaping =
-    raw mutable pointers are not allowed in the final value of {const_eval_const_context}s
-    .teach_note =
-        Pointers that escape into the final value of a constant or static must be immutable.
-        This is to avoid accidentally creating shared mutable state.
-
-
-        If you really want global mutable state, try using an interior mutable `static` or a `static mut`.
-
-const_eval_mutable_ref_escaping =
-    mutable references are not allowed in the final value of {const_eval_const_context}s
-    .teach_note =
-        References that escape into the final value of a constant or static must be immutable.
-        This is to avoid accidentally creating shared mutable state.
-
-
-        If you really want global mutable state, try using an interior mutable `static` or a `static mut`.
 
 const_eval_nested_static_in_thread_local = #[thread_local] does not support implicit nested statics, please create explicit static items and refer to them instead
 
@@ -279,9 +262,6 @@ const_eval_non_const_try_block_from_output =
 
 const_eval_not_enough_caller_args =
     calling a function with fewer arguments than it requires
-
-const_eval_nullary_intrinsic_fail =
-    could not evaluate nullary intrinsic
 
 const_eval_offset_from_different_allocations =
     `{$name}` called on two different pointers that are not both derived from the same allocation
@@ -361,7 +341,7 @@ const_eval_realloc_or_alloc_with_offset =
         *[other] {""}
     } {$ptr} which does not point to the beginning of an object
 
-const_eval_recursive_static = encountered static that tried to initialize itself with itself
+const_eval_recursive_static = encountered static that tried to access itself during initialization
 
 const_eval_remainder_by_zero =
     calculating the remainder with a divisor of zero
@@ -437,9 +417,6 @@ const_eval_unwind_past_top =
 ## (We'd love to sort this differently to make that more clear but tidy won't let us...)
 const_eval_validation_box_to_uninhabited = {$front_matter}: encountered a box pointing to uninhabited type {$ty}
 
-const_eval_validation_const_ref_to_extern = {$front_matter}: encountered reference to `extern` static in `const`
-const_eval_validation_const_ref_to_mutable = {$front_matter}: encountered reference to mutable memory in `const`
-
 const_eval_validation_dangling_box_no_provenance = {$front_matter}: encountered a dangling box ({$pointer} has no provenance)
 const_eval_validation_dangling_box_out_of_bounds = {$front_matter}: encountered a dangling box (going beyond the bounds of its allocation)
 const_eval_validation_dangling_box_use_after_free = {$front_matter}: encountered a dangling box (use-after-free)
@@ -479,6 +456,7 @@ const_eval_validation_invalid_ref_meta = {$front_matter}: encountered invalid re
 const_eval_validation_invalid_ref_slice_meta = {$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object
 const_eval_validation_invalid_vtable_ptr = {$front_matter}: encountered {$value}, but expected a vtable pointer
 const_eval_validation_invalid_vtable_trait = {$front_matter}: wrong trait in wide pointer vtable: expected `{$expected_dyn_type}`, but encountered `{$vtable_dyn_type}`
+const_eval_validation_mutable_ref_in_const = {$front_matter}: encountered mutable reference in `const` value
 const_eval_validation_mutable_ref_to_immutable = {$front_matter}: encountered mutable reference or box pointing to read-only memory
 const_eval_validation_never_val = {$front_matter}: encountered a value of the never type `!`
 const_eval_validation_null_box = {$front_matter}: encountered a null box

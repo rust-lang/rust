@@ -30,6 +30,7 @@
 //! should go in sys/pal/windows/mod.rs rather than here. See `IoResult` as an example.
 
 use core::ffi::c_void;
+use core::marker::PhantomData;
 
 use super::c;
 
@@ -271,23 +272,95 @@ impl WinError {
     // tidy-alphabetical-start
     pub const ACCESS_DENIED: Self = Self::new(c::ERROR_ACCESS_DENIED);
     pub const ALREADY_EXISTS: Self = Self::new(c::ERROR_ALREADY_EXISTS);
-    pub const BAD_NET_NAME: Self = Self::new(c::ERROR_BAD_NET_NAME);
     pub const BAD_NETPATH: Self = Self::new(c::ERROR_BAD_NETPATH);
+    pub const BAD_NET_NAME: Self = Self::new(c::ERROR_BAD_NET_NAME);
     pub const CANT_ACCESS_FILE: Self = Self::new(c::ERROR_CANT_ACCESS_FILE);
     pub const DELETE_PENDING: Self = Self::new(c::ERROR_DELETE_PENDING);
-    pub const DIR_NOT_EMPTY: Self = Self::new(c::ERROR_DIR_NOT_EMPTY);
     pub const DIRECTORY: Self = Self::new(c::ERROR_DIRECTORY);
+    pub const DIR_NOT_EMPTY: Self = Self::new(c::ERROR_DIR_NOT_EMPTY);
     pub const FILE_NOT_FOUND: Self = Self::new(c::ERROR_FILE_NOT_FOUND);
     pub const INSUFFICIENT_BUFFER: Self = Self::new(c::ERROR_INSUFFICIENT_BUFFER);
     pub const INVALID_FUNCTION: Self = Self::new(c::ERROR_INVALID_FUNCTION);
     pub const INVALID_HANDLE: Self = Self::new(c::ERROR_INVALID_HANDLE);
     pub const INVALID_PARAMETER: Self = Self::new(c::ERROR_INVALID_PARAMETER);
-    pub const NO_MORE_FILES: Self = Self::new(c::ERROR_NO_MORE_FILES);
     pub const NOT_FOUND: Self = Self::new(c::ERROR_NOT_FOUND);
     pub const NOT_SUPPORTED: Self = Self::new(c::ERROR_NOT_SUPPORTED);
+    pub const NO_MORE_FILES: Self = Self::new(c::ERROR_NO_MORE_FILES);
     pub const OPERATION_ABORTED: Self = Self::new(c::ERROR_OPERATION_ABORTED);
     pub const PATH_NOT_FOUND: Self = Self::new(c::ERROR_PATH_NOT_FOUND);
     pub const SHARING_VIOLATION: Self = Self::new(c::ERROR_SHARING_VIOLATION);
     pub const TIMEOUT: Self = Self::new(c::ERROR_TIMEOUT);
     // tidy-alphabetical-end
+}
+
+/// A wrapper around a UNICODE_STRING that is equivalent to `&[u16]`.
+///
+/// It is preferable to use the `unicode_str!` macro as that contains mitigations for  #143078.
+///
+/// If the MaximumLength field of the underlying UNICODE_STRING is greater than
+/// the Length field then you can test if the string is null terminated by inspecting
+/// the u16 directly after the string. You cannot otherwise depend on nul termination.
+#[derive(Copy, Clone)]
+pub struct UnicodeStrRef<'a> {
+    s: c::UNICODE_STRING,
+    lifetime: PhantomData<&'a [u16]>,
+}
+
+static EMPTY_STRING_NULL_TERMINATED: &[u16] = &[0];
+
+impl UnicodeStrRef<'_> {
+    const fn new(slice: &[u16], is_null_terminated: bool) -> Self {
+        let (len, max_len, ptr) = if slice.is_empty() {
+            (0, 2, EMPTY_STRING_NULL_TERMINATED.as_ptr().cast_mut())
+        } else {
+            let len = slice.len() - (is_null_terminated as usize);
+            (len * 2, size_of_val(slice), slice.as_ptr().cast_mut())
+        };
+        Self {
+            s: c::UNICODE_STRING { Length: len as _, MaximumLength: max_len as _, Buffer: ptr },
+            lifetime: PhantomData,
+        }
+    }
+
+    pub const fn from_slice_with_nul(slice: &[u16]) -> Self {
+        if !slice.is_empty() {
+            debug_assert!(slice[slice.len() - 1] == 0);
+        }
+        Self::new(slice, true)
+    }
+
+    pub const fn from_slice(slice: &[u16]) -> Self {
+        Self::new(slice, false)
+    }
+
+    /// Returns a pointer to the underlying UNICODE_STRING
+    pub const fn as_ptr(&self) -> *const c::UNICODE_STRING {
+        &self.s
+    }
+}
+
+/// Create a UnicodeStringRef from a literal str or a u16 array.
+///
+/// To mitigate #143078, when using a literal str the created UNICODE_STRING
+/// will be nul terminated. The MaximumLength field of the UNICODE_STRING will
+/// be set greater than the Length field to indicate that a nul may be present.
+///
+/// If using a u16 array, the array is used exactly as provided and you cannot
+/// count on the string being nul terminated.
+/// This should generally be used for strings that come from the OS.
+///
+/// **NOTE:** we lack a UNICODE_STRING builder type as we don't currently have
+/// a use for it. If needing to dynamically build a UNICODE_STRING, the builder
+/// should try to ensure there's a nul one past the end of the string.
+pub macro unicode_str {
+    ($str:literal) => {const {
+        crate::sys::pal::windows::api::UnicodeStrRef::from_slice_with_nul(
+            crate::sys::pal::windows::api::wide_str!($str),
+        )
+    }},
+    ($array:expr) => {
+        crate::sys::pal::windows::api::UnicodeStrRef::from_slice(
+            $array,
+        )
+    }
 }

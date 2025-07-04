@@ -356,29 +356,38 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
             return IntersectionHasImpossibleObligations::Yes;
         }
 
-        let ocx = ObligationCtxt::new_with_diagnostics(infcx);
+        let ocx = ObligationCtxt::new(infcx);
         ocx.register_obligations(obligations.iter().cloned());
+        let hard_errors = ocx.select_where_possible();
+        if !hard_errors.is_empty() {
+            assert!(
+                hard_errors.iter().all(|e| e.is_true_error()),
+                "should not have detected ambiguity during first pass"
+            );
+            return IntersectionHasImpossibleObligations::Yes;
+        }
+
+        // Make a new `ObligationCtxt` and re-prove the ambiguities with a richer
+        // `FulfillmentError`. This is so that we can detect overflowing obligations
+        // without needing to run the `BestObligation` visitor on true errors.
+        let ambiguities = ocx.into_pending_obligations();
+        let ocx = ObligationCtxt::new_with_diagnostics(infcx);
+        ocx.register_obligations(ambiguities);
         let errors_and_ambiguities = ocx.select_all_or_error();
         // We only care about the obligations that are *definitely* true errors.
         // Ambiguities do not prove the disjointness of two impls.
         let (errors, ambiguities): (Vec<_>, Vec<_>) =
             errors_and_ambiguities.into_iter().partition(|error| error.is_true_error());
+        assert!(errors.is_empty(), "should not have ambiguities during second pass");
 
-        if errors.is_empty() {
-            IntersectionHasImpossibleObligations::No {
-                overflowing_predicates: ambiguities
-                    .into_iter()
-                    .filter(|error| {
-                        matches!(
-                            error.code,
-                            FulfillmentErrorCode::Ambiguity { overflow: Some(true) }
-                        )
-                    })
-                    .map(|e| infcx.resolve_vars_if_possible(e.obligation.predicate))
-                    .collect(),
-            }
-        } else {
-            IntersectionHasImpossibleObligations::Yes
+        IntersectionHasImpossibleObligations::No {
+            overflowing_predicates: ambiguities
+                .into_iter()
+                .filter(|error| {
+                    matches!(error.code, FulfillmentErrorCode::Ambiguity { overflow: Some(true) })
+                })
+                .map(|e| infcx.resolve_vars_if_possible(e.obligation.predicate))
+                .collect(),
         }
     } else {
         for obligation in obligations {

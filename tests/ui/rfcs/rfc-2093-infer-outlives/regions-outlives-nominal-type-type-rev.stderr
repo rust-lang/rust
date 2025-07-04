@@ -1,8 +1,8 @@
 error[E0491]: in type `&'a Foo<&'b i32>`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-outlives-nominal-type-type-rev.rs:17:20
+  --> $DIR/regions-outlives-nominal-type-type-rev.rs:17:9
    |
 LL |         type Out = &'a Foo<&'b i32>;
-   |                    ^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^
    |
 note: the pointer is valid for the lifetime `'a` as defined here
   --> $DIR/regions-outlives-nominal-type-type-rev.rs:16:10

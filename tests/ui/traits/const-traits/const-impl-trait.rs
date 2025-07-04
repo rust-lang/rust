@@ -8,23 +8,23 @@
 
 use std::marker::Destruct;
 
-const fn cmp(a: &impl ~const PartialEq) -> bool {
+const fn cmp(a: &impl [const] PartialEq) -> bool {
     a == a
 }
 
 const fn wrap(
-    x: impl ~const PartialEq + ~const Destruct,
-) -> impl ~const PartialEq + ~const Destruct {
+    x: impl [const] PartialEq + [const] Destruct,
+) -> impl [const] PartialEq + [const] Destruct {
     x
 }
 
 #[const_trait]
 trait Foo {
-    fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
+    fn huh() -> impl [const] PartialEq + [const] Destruct + Copy;
 }
 
 impl const Foo for () {
-    fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
+    fn huh() -> impl [const] PartialEq + [const] Destruct + Copy {
         123
     }
 }
@@ -43,16 +43,16 @@ trait T {}
 struct S;
 impl const T for S {}
 
-const fn rpit() -> impl ~const T {
+const fn rpit() -> impl [const] T {
     S
 }
 
-const fn apit(_: impl ~const T + ~const Destruct) {}
+const fn apit(_: impl [const] T + [const] Destruct) {}
 
-const fn rpit_assoc_bound() -> impl IntoIterator<Item: ~const T> {
+const fn rpit_assoc_bound() -> impl IntoIterator<Item: [const] T> {
     Some(S)
 }
 
-const fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T> + ~const Destruct) {}
+const fn apit_assoc_bound(_: impl IntoIterator<Item: [const] T> + [const] Destruct) {}
 
 fn main() {}

@@ -31,7 +31,7 @@ use crate::traits::{
 ///
 /// Currently that is `Self` in supertraits. This is needed
 /// because `dyn_compatibility_violations` can't be used during
-/// type collection, as type collection is needed for `dyn_compatiblity_violations` itself.
+/// type collection, as type collection is needed for `dyn_compatibility_violations` itself.
 #[instrument(level = "debug", skip(tcx), ret)]
 pub fn hir_ty_lowering_dyn_compatibility_violations(
     tcx: TyCtxt<'_>,
@@ -593,7 +593,7 @@ fn receiver_is_dispatchable<'tcx>(
         // will cause ambiguity that the user can't really avoid.
         //
         // We leave out certain complexities of the param-env query here. Specifically, we:
-        // 1. Do not add `~const` bounds since there are no `dyn const Trait`s.
+        // 1. Do not add `[const]` bounds since there are no `dyn const Trait`s.
         // 2. Do not add RPITIT self projection bounds for defaulted methods, since we
         //    are not constructing a param-env for "inside" of the body of the defaulted
         //    method, so we don't really care about projecting to a specific RPIT type,

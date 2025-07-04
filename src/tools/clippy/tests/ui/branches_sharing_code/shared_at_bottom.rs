@@ -276,3 +276,27 @@ mod issue14873 {
         }
     }
 }
+
+fn issue15004() {
+    let a = 12u32;
+    let b = 13u32;
+    let mut c = 8u32;
+
+    let mut result = if b > a {
+        c += 1;
+        0
+    } else {
+        c += 2;
+        0
+        //~^ branches_sharing_code
+    };
+
+    result = if b > a {
+        c += 1;
+        1
+    } else {
+        c += 2;
+        1
+        //~^ branches_sharing_code
+    };
+}

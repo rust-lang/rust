@@ -512,6 +512,8 @@ parse_leading_underscore_unicode_escape_label = invalid start of unicode escape
 parse_left_arrow_operator = unexpected token: `<-`
     .suggestion = if you meant to write a comparison against a negative value, add a space in between `<` and `-`
 
+parse_let_chain_pre_2024 = let chains are only allowed in Rust 2024 or later
+
 parse_lifetime_after_mut = lifetime must precede `mut`
     .suggestion = place the lifetime before `mut`
 

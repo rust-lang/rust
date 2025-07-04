@@ -149,7 +149,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 121976,
         severity: ChangeSeverity::Info,
-        summary: "A new `boostrap-cache-path` option has been introduced which can be utilized to modify the cache path for bootstrap.",
+        summary: "A new `bootstrap-cache-path` option has been introduced which can be utilized to modify the cache path for bootstrap.",
     },
     ChangeInfo {
         change_id: 122108,
@@ -404,7 +404,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 140438,
         severity: ChangeSeverity::Info,
-        summary: "Added a new option `rust.debug-assertions-tools` to control debug asssertions for tools.",
+        summary: "Added a new option `rust.debug-assertions-tools` to control debug assertions for tools.",
     },
     ChangeInfo {
         change_id: 140732,
@@ -425,5 +425,25 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         change_id: 142379,
         severity: ChangeSeverity::Info,
         summary: "Added new option `tool.TOOL_NAME.features` to specify the features to compile a tool with",
+    },
+    ChangeInfo {
+        change_id: 142581,
+        severity: ChangeSeverity::Warning,
+        summary: "It is no longer possible to `x build` with stage 0. All build commands have to be on stage 1+.",
+    },
+    ChangeInfo {
+        change_id: 143175,
+        severity: ChangeSeverity::Info,
+        summary: "It is no longer possible to combine `rust.lld = true` with configuring external LLVM using `llvm.llvm-config`.",
+    },
+    ChangeInfo {
+        change_id: 143255,
+        severity: ChangeSeverity::Warning,
+        summary: "`llvm.lld` is no longer enabled by default for the dist profile.",
+    },
+    ChangeInfo {
+        change_id: 143251,
+        severity: ChangeSeverity::Info,
+        summary: "Added new option `build.tidy-extra-checks` to specify a default value for the --extra-checks cli flag.",
     },
 ];
