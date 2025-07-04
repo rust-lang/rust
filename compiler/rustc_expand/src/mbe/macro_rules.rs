@@ -98,13 +98,18 @@ impl<'a> ParserAnyMacro<'a> {
     }
 }
 
+pub(super) struct MacroRule {
+    pub(super) lhs: Vec<MatcherLoc>,
+    lhs_span: Span,
+    rhs: mbe::TokenTree,
+}
+
 struct MacroRulesMacroExpander {
     node_id: NodeId,
     name: Ident,
     span: Span,
     transparency: Transparency,
-    lhses: Vec<Vec<MatcherLoc>>,
-    rhses: Vec<mbe::TokenTree>,
+    rules: Vec<MacroRule>,
 }
 
 impl TTMacroExpander for MacroRulesMacroExpander {
@@ -122,9 +127,14 @@ impl TTMacroExpander for MacroRulesMacroExpander {
             self.name,
             self.transparency,
             input,
-            &self.lhses,
-            &self.rhses,
+            &self.rules,
         ))
+    }
+
+    fn get_unused_rule(&self, rule_i: usize) -> Option<(&Ident, Span)> {
+        // If the rhs contains an invocation like `compile_error!`, don't report it as unused.
+        let rule = &self.rules[rule_i];
+        if has_compile_error_macro(&rule.rhs) { None } else { Some((&self.name, rule.lhs_span)) }
     }
 }
 
@@ -184,9 +194,8 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
     }
 }
 
-/// Expands the rules based macro defined by `lhses` and `rhses` for a given
-/// input `arg`.
-#[instrument(skip(cx, transparency, arg, lhses, rhses))]
+/// Expands the rules based macro defined by `rules` for a given input `arg`.
+#[instrument(skip(cx, transparency, arg, rules))]
 fn expand_macro<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
@@ -195,8 +204,7 @@ fn expand_macro<'cx>(
     name: Ident,
     transparency: Transparency,
     arg: TokenStream,
-    lhses: &[Vec<MatcherLoc>],
-    rhses: &[mbe::TokenTree],
+    rules: &[MacroRule],
 ) -> Box<dyn MacResult + 'cx> {
     let psess = &cx.sess.psess;
     // Macros defined in the current crate have a real node id,
@@ -209,14 +217,14 @@ fn expand_macro<'cx>(
     }
 
     // Track nothing for the best performance.
-    let try_success_result = try_match_macro(psess, name, &arg, lhses, &mut NoopTracker);
+    let try_success_result = try_match_macro(psess, name, &arg, rules, &mut NoopTracker);
 
     match try_success_result {
-        Ok((i, named_matches)) => {
-            let mbe::TokenTree::Delimited(rhs_span, _, ref rhs) = rhses[i] else {
+        Ok((i, rule, named_matches)) => {
+            let mbe::TokenTree::Delimited(rhs_span, _, ref rhs) = rule.rhs else {
                 cx.dcx().span_bug(sp, "malformed macro rhs");
             };
-            let arm_span = rhses[i].span();
+            let arm_span = rule.rhs.span();
 
             // rhs has holes ( `$id` and `$(...)` that need filled)
             let id = cx.current_expansion.id;
@@ -262,7 +270,7 @@ fn expand_macro<'cx>(
         Err(CanRetry::Yes) => {
             // Retry and emit a better error.
             let (span, guar) =
-                diagnostics::failed_to_match_macro(cx.psess(), sp, def_span, name, arg, lhses);
+                diagnostics::failed_to_match_macro(cx.psess(), sp, def_span, name, arg, rules);
             cx.trace_macros_diag();
             DummyResult::any(span, guar)
         }
@@ -278,14 +286,14 @@ pub(super) enum CanRetry {
 /// Try expanding the macro. Returns the index of the successful arm and its named_matches if it was successful,
 /// and nothing if it failed. On failure, it's the callers job to use `track` accordingly to record all errors
 /// correctly.
-#[instrument(level = "debug", skip(psess, arg, lhses, track), fields(tracking = %T::description()))]
+#[instrument(level = "debug", skip(psess, arg, rules, track), fields(tracking = %T::description()))]
 pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     psess: &ParseSess,
     name: Ident,
     arg: &TokenStream,
-    lhses: &'matcher [Vec<MatcherLoc>],
+    rules: &'matcher [MacroRule],
     track: &mut T,
-) -> Result<(usize, NamedMatches), CanRetry> {
+) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
     // We create a base parser that can be used for the "black box" parts.
     // Every iteration needs a fresh copy of that parser. However, the parser
     // is not mutated on many of the iterations, particularly when dealing with
@@ -308,7 +316,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     let parser = parser_from_cx(psess, arg.clone(), T::recovery());
     // Try each arm's matchers.
     let mut tt_parser = TtParser::new(name);
-    for (i, lhs) in lhses.iter().enumerate() {
+    for (i, rule) in rules.iter().enumerate() {
         let _tracing_span = trace_span!("Matching arm", %i);
 
         // Take a snapshot of the state of pre-expansion gating at this point.
@@ -317,7 +325,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
         let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
-        let result = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, track);
+        let result = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &rule.lhs, track);
 
         track.after_arm(&result);
 
@@ -328,7 +336,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
                 // Merge the gated spans from parsing the matcher with the preexisting ones.
                 psess.gated_spans.merge(gated_spans_snapshot);
 
-                return Ok((i, named_matches));
+                return Ok((i, rule, named_matches));
             }
             Failure(_) => {
                 trace!("Failed to match arm, trying the next one");
@@ -364,7 +372,7 @@ pub fn compile_declarative_macro(
     span: Span,
     node_id: NodeId,
     edition: Edition,
-) -> (SyntaxExtension, Vec<(usize, Span)>) {
+) -> (SyntaxExtension, usize) {
     let mk_syn_ext = |expander| {
         SyntaxExtension::new(
             sess,
@@ -377,7 +385,7 @@ pub fn compile_declarative_macro(
             node_id != DUMMY_NODE_ID,
         )
     };
-    let dummy_syn_ext = |guar| (mk_syn_ext(Arc::new(DummyExpander(guar))), Vec::new());
+    let dummy_syn_ext = |guar| (mk_syn_ext(Arc::new(DummyExpander(guar))), 0);
 
     let macro_rules = macro_def.macro_rules;
     let exp_sep = if macro_rules { exp!(Semi) } else { exp!(Comma) };
@@ -389,8 +397,7 @@ pub fn compile_declarative_macro(
     let mut guar = None;
     let mut check_emission = |ret: Result<(), ErrorGuaranteed>| guar = guar.or(ret.err());
 
-    let mut lhses = Vec::new();
-    let mut rhses = Vec::new();
+    let mut rules = Vec::new();
 
     while p.token != token::Eof {
         let lhs_tt = p.parse_token_tree();
@@ -415,8 +422,15 @@ pub fn compile_declarative_macro(
         let rhs_tt = parse_one_tt(rhs_tt, RulePart::Body, sess, node_id, features, edition);
         check_emission(check_rhs(sess, &rhs_tt));
         check_emission(macro_check::check_meta_variables(&sess.psess, node_id, &lhs_tt, &rhs_tt));
-        lhses.push(lhs_tt);
-        rhses.push(rhs_tt);
+        let lhs_span = lhs_tt.span();
+        // Convert the lhs into `MatcherLoc` form, which is better for doing the
+        // actual matching.
+        let lhs = if let mbe::TokenTree::Delimited(.., delimited) = lhs_tt {
+            mbe::macro_parser::compute_locs(&delimited.tts)
+        } else {
+            return dummy_syn_ext(guar.unwrap());
+        };
+        rules.push(MacroRule { lhs, lhs_span, rhs: rhs_tt });
         if p.token == token::Eof {
             break;
         }
@@ -425,7 +439,7 @@ pub fn compile_declarative_macro(
         }
     }
 
-    if lhses.is_empty() {
+    if rules.is_empty() {
         let guar = sess.dcx().span_err(span, "macros must contain at least one rule");
         return dummy_syn_ext(guar);
     }
@@ -439,48 +453,12 @@ pub fn compile_declarative_macro(
         return dummy_syn_ext(guar);
     }
 
-    // Compute the spans of the macro rules for unused rule linting.
-    // Also, we are only interested in non-foreign macros.
-    let rule_spans = if node_id != DUMMY_NODE_ID {
-        lhses
-            .iter()
-            .zip(rhses.iter())
-            .enumerate()
-            // If the rhs contains an invocation like compile_error!,
-            // don't consider the rule for the unused rule lint.
-            .filter(|(_idx, (_lhs, rhs))| !has_compile_error_macro(rhs))
-            // We only take the span of the lhs here,
-            // so that the spans of created warnings are smaller.
-            .map(|(idx, (lhs, _rhs))| (idx, lhs.span()))
-            .collect::<Vec<_>>()
-    } else {
-        Vec::new()
-    };
+    // Return the number of rules for unused rule linting, if this is a local macro.
+    let nrules = if node_id != DUMMY_NODE_ID { rules.len() } else { 0 };
 
-    // Convert the lhses into `MatcherLoc` form, which is better for doing the
-    // actual matching.
-    let lhses = lhses
-        .iter()
-        .map(|lhs| {
-            // Ignore the delimiters around the matcher.
-            match lhs {
-                mbe::TokenTree::Delimited(.., delimited) => {
-                    mbe::macro_parser::compute_locs(&delimited.tts)
-                }
-                _ => sess.dcx().span_bug(span, "malformed macro lhs"),
-            }
-        })
-        .collect();
-
-    let expander = Arc::new(MacroRulesMacroExpander {
-        name: ident,
-        span,
-        node_id,
-        transparency,
-        lhses,
-        rhses,
-    });
-    (mk_syn_ext(expander), rule_spans)
+    let expander =
+        Arc::new(MacroRulesMacroExpander { name: ident, span, node_id, transparency, rules });
+    (mk_syn_ext(expander), nrules)
 }
 
 fn check_lhs_nt_follows(
