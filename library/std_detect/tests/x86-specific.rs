@@ -1,11 +1,6 @@
 #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #![allow(internal_features)]
-#![feature(
-    stdarch_internal,
-    x86_amx_intrinsics,
-    xop_target_feature,
-    movrs_target_feature
-)]
+#![feature(stdarch_internal, x86_amx_intrinsics, xop_target_feature, movrs_target_feature)]
 
 #[macro_use]
 extern crate std_detect;
@@ -40,24 +35,15 @@ fn dump() {
     println!("avx512vl: {:?}", is_x86_feature_detected!("avx512vl"));
     println!("avx512_ifma: {:?}", is_x86_feature_detected!("avx512ifma"));
     println!("avx512vbmi {:?}", is_x86_feature_detected!("avx512vbmi"));
-    println!(
-        "avx512_vpopcntdq: {:?}",
-        is_x86_feature_detected!("avx512vpopcntdq")
-    );
+    println!("avx512_vpopcntdq: {:?}", is_x86_feature_detected!("avx512vpopcntdq"));
     println!("avx512vbmi2: {:?}", is_x86_feature_detected!("avx512vbmi2"));
     println!("gfni: {:?}", is_x86_feature_detected!("gfni"));
     println!("vaes: {:?}", is_x86_feature_detected!("vaes"));
     println!("vpclmulqdq: {:?}", is_x86_feature_detected!("vpclmulqdq"));
     println!("avx512vnni: {:?}", is_x86_feature_detected!("avx512vnni"));
-    println!(
-        "avx512bitalg: {:?}",
-        is_x86_feature_detected!("avx512bitalg")
-    );
+    println!("avx512bitalg: {:?}", is_x86_feature_detected!("avx512bitalg"));
     println!("avx512bf16: {:?}", is_x86_feature_detected!("avx512bf16"));
-    println!(
-        "avx512vp2intersect: {:?}",
-        is_x86_feature_detected!("avx512vp2intersect")
-    );
+    println!("avx512vp2intersect: {:?}", is_x86_feature_detected!("avx512vp2intersect"));
     println!("avx512fp16: {:?}", is_x86_feature_detected!("avx512fp16"));
     println!("fma: {:?}", is_x86_feature_detected!("fma"));
     println!("abm: {:?}", is_x86_feature_detected!("abm"));
@@ -77,15 +63,9 @@ fn dump() {
     println!("movbe: {:?}", is_x86_feature_detected!("movbe"));
     println!("avxvnni: {:?}", is_x86_feature_detected!("avxvnni"));
     println!("avxvnniint8: {:?}", is_x86_feature_detected!("avxvnniint8"));
-    println!(
-        "avxneconvert: {:?}",
-        is_x86_feature_detected!("avxneconvert")
-    );
+    println!("avxneconvert: {:?}", is_x86_feature_detected!("avxneconvert"));
     println!("avxifma: {:?}", is_x86_feature_detected!("avxifma"));
-    println!(
-        "avxvnniint16: {:?}",
-        is_x86_feature_detected!("avxvnniint16")
-    );
+    println!("avxvnniint16: {:?}", is_x86_feature_detected!("avxvnniint16"));
     println!("amx-bf16: {:?}", is_x86_feature_detected!("amx-bf16"));
     println!("amx-tile: {:?}", is_x86_feature_detected!("amx-tile"));
     println!("amx-int8: {:?}", is_x86_feature_detected!("amx-int8"));
@@ -96,10 +76,7 @@ fn dump() {
     println!("widekl: {:?}", is_x86_feature_detected!("widekl"));
     println!("movrs: {:?}", is_x86_feature_detected!("movrs"));
     println!("amx-fp8: {:?}", is_x86_feature_detected!("amx-fp8"));
-    println!(
-        "amx-transpose: {:?}",
-        is_x86_feature_detected!("amx-transpose")
-    );
+    println!("amx-transpose: {:?}", is_x86_feature_detected!("amx-transpose"));
     println!("amx-tf32: {:?}", is_x86_feature_detected!("amx-tf32"));
     println!("amx-avx512: {:?}", is_x86_feature_detected!("amx-avx512"));
     println!("amx-movrs: {:?}", is_x86_feature_detected!("amx-movrs"));
@@ -110,8 +87,5 @@ fn dump() {
 fn x86_deprecated() {
     println!("avx512gfni {:?}", is_x86_feature_detected!("avx512gfni"));
     println!("avx512vaes {:?}", is_x86_feature_detected!("avx512vaes"));
-    println!(
-        "avx512vpclmulqdq {:?}",
-        is_x86_feature_detected!("avx512vpclmulqdq")
-    );
+    println!("avx512vpclmulqdq {:?}", is_x86_feature_detected!("avx512vpclmulqdq"));
 }

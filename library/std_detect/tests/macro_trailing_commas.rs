@@ -29,10 +29,7 @@
     any(target_arch = "riscv32", target_arch = "riscv64"),
     feature(stdarch_riscv_feature_detection)
 )]
-#![cfg_attr(
-    target_arch = "loongarch64",
-    feature(stdarch_loongarch_feature_detection)
-)]
+#![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch_feature_detection))]
 
 #[cfg(any(
     target_arch = "arm",

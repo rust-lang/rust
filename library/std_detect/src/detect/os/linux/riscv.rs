@@ -112,16 +112,7 @@ fn _riscv_hwprobe(out: &mut [riscv_hwprobe]) -> bool {
         cpus: *mut libc::c_ulong,
         flags: libc::c_uint,
     ) -> libc::c_long {
-        unsafe {
-            libc::syscall(
-                __NR_riscv_hwprobe,
-                pairs,
-                pair_count,
-                cpu_set_size,
-                cpus,
-                flags,
-            )
-        }
+        unsafe { libc::syscall(__NR_riscv_hwprobe, pairs, pair_count, cpu_set_size, cpus, flags) }
     }
 
     let len = out.len();
@@ -157,26 +148,11 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // performance-related capabilities.
     'hwprobe: {
         let mut out = [
-            riscv_hwprobe {
-                key: RISCV_HWPROBE_KEY_BASE_BEHAVIOR,
-                value: 0,
-            },
-            riscv_hwprobe {
-                key: RISCV_HWPROBE_KEY_IMA_EXT_0,
-                value: 0,
-            },
-            riscv_hwprobe {
-                key: RISCV_HWPROBE_KEY_MISALIGNED_SCALAR_PERF,
-                value: 0,
-            },
-            riscv_hwprobe {
-                key: RISCV_HWPROBE_KEY_MISALIGNED_VECTOR_PERF,
-                value: 0,
-            },
-            riscv_hwprobe {
-                key: RISCV_HWPROBE_KEY_CPUPERF_0,
-                value: 0,
-            },
+            riscv_hwprobe { key: RISCV_HWPROBE_KEY_BASE_BEHAVIOR, value: 0 },
+            riscv_hwprobe { key: RISCV_HWPROBE_KEY_IMA_EXT_0, value: 0 },
+            riscv_hwprobe { key: RISCV_HWPROBE_KEY_MISALIGNED_SCALAR_PERF, value: 0 },
+            riscv_hwprobe { key: RISCV_HWPROBE_KEY_MISALIGNED_VECTOR_PERF, value: 0 },
+            riscv_hwprobe { key: RISCV_HWPROBE_KEY_CPUPERF_0, value: 0 },
         ];
         if !_riscv_hwprobe(&mut out) {
             break 'hwprobe;
