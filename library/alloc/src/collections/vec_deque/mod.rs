@@ -2102,7 +2102,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[track_caller]
     #[must_use = "if you don't need a reference to the value, use VecDeque::insert instead"]
     pub fn insert_mut(&mut self, index: usize, value: T) -> &mut T {
-        if intrinsics::unlikely(index > self.len) {
+        if core::intrinsics::unlikely(index > self.len) {
             panic!("insertion index (is {index}) should be <= len (is {})", self.len())
         };
         if self.is_full() {
