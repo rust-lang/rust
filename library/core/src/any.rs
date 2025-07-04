@@ -733,22 +733,21 @@ impl const PartialEq for TypeId {
         return crate::intrinsics::type_id_eq(*self, *other);
         #[cfg(not(miri))]
         {
-            const fn ct(a: &TypeId, b: &TypeId) -> bool {
-                crate::intrinsics::type_id_eq(*a, *b)
-            }
-
-            #[inline]
-            fn rt(a: &TypeId, b: &TypeId) -> bool {
-                a.data == b.data
-            }
-
-            // Ideally we would just invoke `type_id_eq` unconditionally here,
-            // but since we do not MIR inline intrinsics, because backends
-            // may want to override them (and miri does!), MIR opts do not
-            // clean up this call sufficiently for LLVM to turn repeated calls
-            // of `TypeId` comparisons against one specific `TypeId` into
-            // a lookup table.
-            core::intrinsics::const_eval_select((self, other), ct, rt)
+            let this = self;
+            crate::intrinsics::const_eval_select!(
+                @capture { this: &TypeId, other: &TypeId } -> bool:
+                if const {
+                    crate::intrinsics::type_id_eq(*this, *other)
+                } else {
+                    // Ideally we would just invoke `type_id_eq` unconditionally here,
+                    // but since we do not MIR inline intrinsics, because backends
+                    // may want to override them (and miri does!), MIR opts do not
+                    // clean up this call sufficiently for LLVM to turn repeated calls
+                    // of `TypeId` comparisons against one specific `TypeId` into
+                    // a lookup table.
+                    this.data == other.data
+                }
+            )
         }
     }
 }
