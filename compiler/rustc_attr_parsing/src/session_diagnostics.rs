@@ -473,6 +473,13 @@ pub(crate) struct EmptyConfusables {
     pub span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(attr_parsing_empty_attribute)]
+pub(crate) struct EmptyAttributeList {
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub attr_span: Span,
+}
+
 #[derive(Diagnostic)]
 #[diag(attr_parsing_invalid_alignment_value, code = E0589)]
 pub(crate) struct InvalidAlignmentValue {

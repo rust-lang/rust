@@ -26,7 +26,7 @@ impl AttributeKind {
             Inline(..) => No,
             LinkSection { .. } => No,
             MacroTransparency(..) => Yes,
-            Repr(..) => No,
+            Repr { .. } => No,
             Stability { .. } => Yes,
             Cold(..) => No,
             ConstContinue(..) => No,

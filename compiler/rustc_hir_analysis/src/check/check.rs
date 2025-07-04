@@ -1395,8 +1395,7 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
 pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
     let repr = def.repr();
     if repr.packed() {
-        if let Some(reprs) =
-            attrs::find_attr!(tcx.get_all_attrs(def.did()), attrs::AttributeKind::Repr(r) => r)
+        if let Some(reprs) = attrs::find_attr!(tcx.get_all_attrs(def.did()), attrs::AttributeKind::Repr { reprs, .. } => reprs)
         {
             for (r, _) in reprs {
                 if let ReprPacked(pack) = r
@@ -1619,10 +1618,10 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     if def.variants().is_empty() {
         attrs::find_attr!(
             tcx.get_all_attrs(def_id),
-            attrs::AttributeKind::Repr(rs) => {
+            attrs::AttributeKind::Repr { reprs, first_span } => {
                 struct_span_code_err!(
                     tcx.dcx(),
-                    rs.first().unwrap().1,
+                    reprs.first().map(|repr| repr.1).unwrap_or(*first_span),
                     E0084,
                     "unsupported representation for zero-variant enum"
                 )

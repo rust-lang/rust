@@ -109,7 +109,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
         if let hir::Attribute::Parsed(p) = attr {
             match p {
-                AttributeKind::Repr(reprs) => {
+                AttributeKind::Repr { reprs, first_span: _ } => {
                     codegen_fn_attrs.alignment = reprs
                         .iter()
                         .filter_map(
