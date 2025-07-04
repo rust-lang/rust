@@ -87,9 +87,14 @@ fn host_target() -> String {
 /// libraries.
 fn exec_cargo_with_args(target: &str, args: &[&str]) -> Vec<PathBuf> {
     let mut cmd = Command::new("cargo");
-    cmd.args(["build", "--target", target, "--message-format=json"])
-        .args(args)
-        .stdout(Stdio::piped());
+    cmd.args([
+        "build",
+        "--target",
+        target,
+        "--message-format=json-diagnostic-rendered-ansi",
+    ])
+    .args(args)
+    .stdout(Stdio::piped());
 
     println!("running: {cmd:?}");
     let mut child = cmd.spawn().expect("failed to launch Cargo");
@@ -100,11 +105,21 @@ fn exec_cargo_with_args(target: &str, args: &[&str]) -> Vec<PathBuf> {
 
     for line in reader.lines() {
         let line = line.expect("failed to read line");
-        println!("{line}"); // tee to stdout
-
-        // Select only steps that create files
         let j: Value = serde_json::from_str(&line).expect("failed to deserialize");
-        if j["reason"] != "compiler-artifact" {
+        let reason = &j["reason"];
+
+        // Forward output that is meant to be user-facing
+        if reason == "compiler-message" {
+            println!("{}", j["message"]["rendered"].as_str().unwrap());
+        } else if reason == "build-finished" {
+            println!("build finshed. success: {}", j["success"]);
+        } else if reason == "build-script-executed" {
+            let pretty = serde_json::to_string_pretty(&j).unwrap();
+            println!("build script output: {pretty}",);
+        }
+
+        // Only interested in the artifact list now
+        if reason != "compiler-artifact" {
             continue;
         }
 
