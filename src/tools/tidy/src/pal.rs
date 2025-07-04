@@ -37,6 +37,7 @@ use crate::walk::{filter_dirs, walk};
 // Paths that may contain platform-specific code.
 const EXCEPTION_PATHS: &[&str] = &[
     "library/compiler-builtins",
+    "library/std_detect",
     "library/windows_targets",
     "library/panic_abort",
     "library/panic_unwind",
