@@ -37,8 +37,9 @@ impl std::error::Error for MyError {
         // and eliminate redundant ones, rather than compare one-by-one.
 
         // CHECK-NEXT: start:
-        // CHECK-NEXT: %[[SCRUTINEE:[^ ]+]] = load i64, ptr
-        // CHECK-NEXT: switch i64 %[[SCRUTINEE]], label %{{.*}} [
+        // CHECK-NEXT: %[[SCRUTINEE:[^ ]+]] = load ptr, ptr
+        // CHECK-NEXT: %[[MAGICPTR:[^ ]+]] = ptrtoint ptr %[[SCRUTINEE]] to i64
+        // CHECK-NEXT: switch i64 %[[MAGICPTR]], label %{{.*}} [
         // CHECK-COUNT-3: i64 {{.*}}, label %{{.*}}
         // CHECK-NEXT: ]
         request

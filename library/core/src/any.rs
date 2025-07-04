@@ -707,19 +707,48 @@ impl dyn Any + Send + Sync {
 /// ```
 #[derive(Clone, Copy, Eq, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[lang = "type_id"]
 pub struct TypeId {
-    // We avoid using `u128` because that imposes higher alignment requirements on many platforms.
-    // See issue #115620 for more information.
-    t: (u64, u64),
-    #[cfg(feature = "debug_typeid")]
-    name: &'static str,
+    /// This needs to be an array of pointers, since there is provenance
+    /// in the first array field. This provenance knows exactly which type
+    /// the TypeId actually is, allowing CTFE and miri to operate based off it.
+    /// At runtime all the pointers in the array contain bits of the hash, making
+    /// the entire `TypeId` actually just be a `u128` hash of the type.
+    pub(crate) data: [*const (); 16 / size_of::<usize>()],
 }
 
+// SAFETY: the raw pointer is always an integer
 #[stable(feature = "rust1", since = "1.0.0")]
-impl PartialEq for TypeId {
+unsafe impl Send for TypeId {}
+// SAFETY: the raw pointer is always an integer
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl Sync for TypeId {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
+impl const PartialEq for TypeId {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.t == other.t
+        #[cfg(miri)]
+        return crate::intrinsics::type_id_eq(*self, *other);
+        #[cfg(not(miri))]
+        {
+            let this = self;
+            crate::intrinsics::const_eval_select!(
+                @capture { this: &TypeId, other: &TypeId } -> bool:
+                if const {
+                    crate::intrinsics::type_id_eq(*this, *other)
+                } else {
+                    // Ideally we would just invoke `type_id_eq` unconditionally here,
+                    // but since we do not MIR inline intrinsics, because backends
+                    // may want to override them (and miri does!), MIR opts do not
+                    // clean up this call sufficiently for LLVM to turn repeated calls
+                    // of `TypeId` comparisons against one specific `TypeId` into
+                    // a lookup table.
+                    this.data == other.data
+                }
+            )
+        }
     }
 }
 
@@ -742,19 +771,19 @@ impl TypeId {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
-        let t: u128 = const { intrinsics::type_id::<T>() };
-        let t1 = (t >> 64) as u64;
-        let t2 = t as u64;
-
-        TypeId {
-            t: (t1, t2),
-            #[cfg(feature = "debug_typeid")]
-            name: type_name::<T>(),
-        }
+        const { intrinsics::type_id::<T>() }
     }
 
     fn as_u128(self) -> u128 {
-        u128::from(self.t.0) << 64 | u128::from(self.t.1)
+        let mut bytes = [0; 16];
+
+        // This is a provenance-stripping memcpy.
+        for (i, chunk) in self.data.iter().copied().enumerate() {
+            let chunk = chunk.expose_provenance().to_ne_bytes();
+            let start = i * chunk.len();
+            bytes[start..(start + chunk.len())].copy_from_slice(&chunk);
+        }
+        u128::from_ne_bytes(bytes)
     }
 }
 
@@ -774,22 +803,16 @@ impl hash::Hash for TypeId {
         // - It is correct to do so -- only hashing a subset of `self` is still
         //   compatible with an `Eq` implementation that considers the entire
         //   value, as ours does.
-        self.t.1.hash(state);
+        // SAFETY: we know there are 16 bytes without provenance at this location
+        let data = unsafe { crate::ptr::read_unaligned(&self.data as *const _ as *const u64) };
+        data.hash(state);
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        #[cfg(feature = "debug_typeid")]
-        {
-            write!(f, "TypeId({:#034x} = {})", self.as_u128(), self.name)?;
-        }
-        #[cfg(not(feature = "debug_typeid"))]
-        {
-            write!(f, "TypeId({:#034x})", self.as_u128())?;
-        }
-        Ok(())
+        write!(f, "TypeId({:#034x})", self.as_u128())
     }
 }
 

@@ -571,40 +571,42 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     let alloc_actual_mutbl =
                         global_alloc.mutability(*self.ecx.tcx, self.ecx.typing_env);
 
-                    if let GlobalAlloc::Static(did) = global_alloc {
-                        let DefKind::Static { nested, .. } = self.ecx.tcx.def_kind(did) else {
-                            bug!()
-                        };
-                        // Special handling for pointers to statics (irrespective of their type).
-                        assert!(!self.ecx.tcx.is_thread_local_static(did));
-                        assert!(self.ecx.tcx.is_static(did));
-                        // Mode-specific checks
-                        match ctfe_mode {
-                            CtfeValidationMode::Static { .. }
-                            | CtfeValidationMode::Promoted { .. } => {
-                                // We skip recursively checking other statics. These statics must be sound by
-                                // themselves, and the only way to get broken statics here is by using
-                                // unsafe code.
-                                // The reasons we don't check other statics is twofold. For one, in all
-                                // sound cases, the static was already validated on its own, and second, we
-                                // trigger cycle errors if we try to compute the value of the other static
-                                // and that static refers back to us (potentially through a promoted).
-                                // This could miss some UB, but that's fine.
-                                // We still walk nested allocations, as they are fundamentally part of this validation run.
-                                // This means we will also recurse into nested statics of *other*
-                                // statics, even though we do not recurse into other statics directly.
-                                // That's somewhat inconsistent but harmless.
-                                skip_recursive_check = !nested;
-                            }
-                            CtfeValidationMode::Const { .. } => {
-                                // If this is mutable memory or an `extern static`, there's no point in checking it -- we'd
-                                // just get errors trying to read the value.
-                                if alloc_actual_mutbl.is_mut() || self.ecx.tcx.is_foreign_item(did)
-                                {
-                                    skip_recursive_check = true;
+                    match global_alloc {
+                        GlobalAlloc::Static(did) => {
+                            let DefKind::Static { nested, .. } = self.ecx.tcx.def_kind(did) else {
+                                bug!()
+                            };
+                            assert!(!self.ecx.tcx.is_thread_local_static(did));
+                            assert!(self.ecx.tcx.is_static(did));
+                            match ctfe_mode {
+                                CtfeValidationMode::Static { .. }
+                                | CtfeValidationMode::Promoted { .. } => {
+                                    // We skip recursively checking other statics. These statics must be sound by
+                                    // themselves, and the only way to get broken statics here is by using
+                                    // unsafe code.
+                                    // The reasons we don't check other statics is twofold. For one, in all
+                                    // sound cases, the static was already validated on its own, and second, we
+                                    // trigger cycle errors if we try to compute the value of the other static
+                                    // and that static refers back to us (potentially through a promoted).
+                                    // This could miss some UB, but that's fine.
+                                    // We still walk nested allocations, as they are fundamentally part of this validation run.
+                                    // This means we will also recurse into nested statics of *other*
+                                    // statics, even though we do not recurse into other statics directly.
+                                    // That's somewhat inconsistent but harmless.
+                                    skip_recursive_check = !nested;
+                                }
+                                CtfeValidationMode::Const { .. } => {
+                                    // If this is mutable memory or an `extern static`, there's no point in checking it -- we'd
+                                    // just get errors trying to read the value.
+                                    if alloc_actual_mutbl.is_mut()
+                                        || self.ecx.tcx.is_foreign_item(did)
+                                    {
+                                        skip_recursive_check = true;
+                                    }
                                 }
                             }
                         }
+                        _ => (),
                     }
 
                     // If this allocation has size zero, there is no actual mutability here.

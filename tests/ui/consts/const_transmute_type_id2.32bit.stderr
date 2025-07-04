@@ -1,0 +1,14 @@
+error[E0080]: pointer not dereferenceable: pointer must point to some allocation, but got 0xffffffff[noalloc] which is a dangling pointer (it has no provenance)
+  --> $DIR/const_transmute_type_id2.rs:10:13
+   |
+LL |     assert!(a == b);
+   |             ^^^^^^ evaluation of `_` failed inside this call
+   |
+note: inside `<TypeId as PartialEq>::eq`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+note: inside `<TypeId as PartialEq>::eq::ct`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.
