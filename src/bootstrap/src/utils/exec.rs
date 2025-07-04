@@ -223,7 +223,7 @@ impl<'a> BootstrapCommand {
 
     /// Mark the command as being executed, disarming the drop bomb.
     /// If this method is not called before the command is dropped, its drop will panic.
-    fn mark_as_executed(&mut self) {
+    pub fn mark_as_executed(&mut self) {
         self.drop_bomb.defuse();
     }
 
@@ -625,18 +625,12 @@ impl ExecutionContext {
         exit!(1);
     }
 
-<<<<<<< HEAD
-    pub fn stream<'a>(
-=======
     /// Spawns the command with configured stdout and stderr handling.
     ///
-    /// Returns `None` if in dry-run mode and the command is not allowed to run.
-    ///
-    /// Panics if the command fails to spawn.
+    /// Returns None if in dry-run mode or Panics if the command fails to spawn.
     pub fn stream(
->>>>>>> c2e83361cec (add comment to exec)
         &self,
-        command: &'a mut BootstrapCommand,
+        command: &mut BootstrapCommand,
         stdout: OutputMode,
         stderr: OutputMode,
     ) -> Option<StreamingCommand> {
