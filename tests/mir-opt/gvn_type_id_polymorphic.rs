@@ -1,3 +1,8 @@
+//! Regression test. When polymorphization was removed, there was leftover logic
+//! in `ensure_monomorphic_enough` that treated generic constants as monomorphic.
+//! This test checks that we actually monomorphize constants before allowing
+//! optimizations to treat them as monomorphic and potentially mis-optimize them.
+
 //@ test-mir-pass: GVN
 //@ compile-flags: -C opt-level=2
 
@@ -5,6 +10,12 @@
 
 fn generic<T>() {}
 
+// Since `type_id` contains provenance, we cannot turn it into an integer,
+// but for the purposes of this test, it is sufficient to use the length of the
+// type name as the first 8 bytes of the `u128` and the first 8 bytes of the type name
+// as the rest of the bytes of the `u128`. The main thing being tested is the result of
+// calling this function being simple enough that comparisons of it are turned into
+// a direct MIR `Eq` bin op.
 const fn type_id_of_val<T: 'static>(_: &T) -> u128 {
     let name = std::intrinsics::type_name::<T>();
     let len = name.len() as u64;
