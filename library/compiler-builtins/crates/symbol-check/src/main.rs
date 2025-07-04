@@ -18,10 +18,12 @@ const CHECK_EXTENSIONS: &[Option<&str>] = &[Some("rlib"), Some("a"), Some("exe")
 
 const USAGE: &str = "Usage:
 
-    symbol-check build-and-check CARGO_ARGS ...
+    symbol-check build-and-check [TARGET] -- CARGO_BUILD_ARGS ...
 
-Cargo will get invoked with `CARGO_ARGS` and all output
+Cargo will get invoked with `CARGO_ARGS` and the specified target. All output
 `compiler_builtins*.rlib` files will be checked.
+
+If TARGET is not specified, the host target is used.
 ";
 
 fn main() {
@@ -30,11 +32,13 @@ fn main() {
     let args_ref = args.iter().map(String::as_str).collect::<Vec<_>>();
 
     match &args_ref[1..] {
-        ["build-and-check", "--target", target, args @ ..] if !args.is_empty() => {
-            run_build_and_check(Some(target), args);
+        ["build-and-check", target, "--", args @ ..] if !args.is_empty() => {
+            check_cargo_args(args);
+            run_build_and_check(target, args);
         }
-        ["build-and-check", args @ ..] if !args.is_empty() => {
-            run_build_and_check(None, args);
+        ["build-and-check", "--", args @ ..] if !args.is_empty() => {
+            check_cargo_args(args);
+            run_build_and_check(&host_target(), args);
         }
         _ => {
             println!("{USAGE}");
@@ -43,7 +47,18 @@ fn main() {
     }
 }
 
-fn run_build_and_check(target: Option<&str>, args: &[&str]) {
+/// Make sure `--target` isn't passed to avoid confusion (since it should be proivded only once,
+/// positionally).
+fn check_cargo_args(args: &[&str]) {
+    for arg in args {
+        assert!(
+            !arg.contains("--target"),
+            "target must be passed positionally. {USAGE}"
+        );
+    }
+}
+
+fn run_build_and_check(target: &str, args: &[&str]) {
     let paths = exec_cargo_with_args(target, args);
     for path in paths {
         println!("Checking {}", path.display());
@@ -70,13 +85,7 @@ fn host_target() -> String {
 
 /// Run `cargo build` with the provided additional arguments, collecting the list of created
 /// libraries.
-fn exec_cargo_with_args(target: Option<&str>, args: &[&str]) -> Vec<PathBuf> {
-    let mut host = String::new();
-    let target = target.unwrap_or_else(|| {
-        host = host_target();
-        host.as_str()
-    });
-
+fn exec_cargo_with_args(target: &str, args: &[&str]) -> Vec<PathBuf> {
     let mut cmd = Command::new("cargo");
     cmd.args(["build", "--target", target, "--message-format=json"])
         .args(args)
