@@ -34,11 +34,6 @@ pub(crate) fn try_run_tests(
     cmd: &mut BootstrapCommand,
     stream: bool,
 ) -> bool {
-    if builder.config.dry_run() {
-        cmd.mark_as_executed();
-        return true;
-    }
-
     if !run_tests(builder, cmd, stream) {
         if builder.fail_fast {
             crate::exit!(1);
@@ -54,7 +49,9 @@ pub(crate) fn try_run_tests(
 fn run_tests(builder: &Builder<'_>, cmd: &mut BootstrapCommand, stream: bool) -> bool {
     builder.verbose(|| println!("running: {cmd:?}"));
 
-    let mut streaming_command = cmd.stream_capture_stdout(&builder.config.exec_ctx).unwrap();
+    let Some(mut streaming_command) = cmd.stream_capture_stdout(&builder.config.exec_ctx) else {
+        return true;
+    };
 
     // This runs until the stdout of the child is closed, which means the child exited. We don't
     // run this on another thread since the builder is not Sync.

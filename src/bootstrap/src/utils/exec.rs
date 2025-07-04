@@ -211,15 +211,6 @@ impl<'a> BootstrapCommand {
         exec_ctx.as_ref().start(self, OutputMode::Capture, OutputMode::Print)
     }
 
-    /// Spawn the command in background, while capturing and returns a handle to stream the output.
-    #[track_caller]
-    pub fn stream_capture(
-        &'a mut self,
-        exec_ctx: impl AsRef<ExecutionContext>,
-    ) -> Option<StreamingCommand> {
-        exec_ctx.as_ref().stream(self, OutputMode::Capture, OutputMode::Capture)
-    }
-
     /// Spawn the command in background, while capturing and returning stdout, and printing stderr.
     /// Returns None in dry-mode
     #[track_caller]
@@ -232,7 +223,7 @@ impl<'a> BootstrapCommand {
 
     /// Mark the command as being executed, disarming the drop bomb.
     /// If this method is not called before the command is dropped, its drop will panic.
-    pub fn mark_as_executed(&mut self) {
+    fn mark_as_executed(&mut self) {
         self.drop_bomb.defuse();
     }
 
@@ -664,7 +655,7 @@ impl ExecutionContext {
 
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();
-        return Some(StreamingCommand { child, stdout, stderr });
+        Some(StreamingCommand { child, stdout, stderr })
     }
 }
 
