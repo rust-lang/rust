@@ -40,8 +40,7 @@ pub fn build_array_s(x: [f32; 4]) -> S<4> {
 // CHECK-LABEL: @build_array_transmute_s
 #[no_mangle]
 pub fn build_array_transmute_s(x: [f32; 4]) -> S<4> {
-    // CHECK: %[[VAL:.+]] = load <4 x float>, ptr %x, align [[ARRAY_ALIGN]]
-    // CHECK: store <4 x float> %[[VAL:.+]], ptr %_0, align [[VECTOR_ALIGN]]
+    // CHECK: call void @llvm.memcpy.{{.+}}({{.*}} align [[VECTOR_ALIGN]] {{.*}} align [[ARRAY_ALIGN]] {{.*}}, [[USIZE]] 16, i1 false)
     unsafe { std::mem::transmute(x) }
 }
 
@@ -55,7 +54,6 @@ pub fn build_array_t(x: [f32; 4]) -> T {
 // CHECK-LABEL: @build_array_transmute_t
 #[no_mangle]
 pub fn build_array_transmute_t(x: [f32; 4]) -> T {
-    // CHECK: %[[VAL:.+]] = load <4 x float>, ptr %x, align [[ARRAY_ALIGN]]
-    // CHECK: store <4 x float> %[[VAL:.+]], ptr %_0, align [[VECTOR_ALIGN]]
+    // CHECK: call void @llvm.memcpy.{{.+}}({{.*}} align [[VECTOR_ALIGN]] {{.*}} align [[ARRAY_ALIGN]] {{.*}}, [[USIZE]] 16, i1 false)
     unsafe { std::mem::transmute(x) }
 }

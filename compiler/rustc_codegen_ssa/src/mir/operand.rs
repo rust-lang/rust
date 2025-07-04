@@ -346,6 +346,13 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
         let val = if field.is_zst() {
             OperandValue::ZeroSized
+        } else if let BackendRepr::SimdVector { .. } = self.layout.backend_repr {
+            // codegen_transmute_operand doesn't support SIMD, but since the previous
+            // check handled ZSTs, the only possible field access into something SIMD
+            // is to the `non_1zst_field` that's the same SIMD. (Other things, even
+            // just padding, would change the wrapper's representation type.)
+            assert_eq!(field.size, self.layout.size);
+            self.val
         } else if field.size == self.layout.size {
             assert_eq!(offset.bytes(), 0);
             fx.codegen_transmute_operand(bx, *self, field).unwrap_or_else(|| {
@@ -606,10 +613,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, Result<V, abi::Scalar>> {
         };
 
         let mut update = |tgt: &mut Result<V, abi::Scalar>, src, from_scalar| {
-            let from_bty = bx.cx().type_from_scalar(from_scalar);
             let to_scalar = tgt.unwrap_err();
-            let to_bty = bx.cx().type_from_scalar(to_scalar);
-            let imm = transmute_immediate(bx, src, from_scalar, from_bty, to_scalar, to_bty);
+            let imm = transmute_immediate(bx, src, from_scalar, to_scalar);
             *tgt = Ok(imm);
         };
 
