@@ -6,8 +6,9 @@ LL |     assert!(a == b);
    |
 note: inside `<TypeId as PartialEq>::eq`
   --> $SRC_DIR/core/src/any.rs:LL:COL
-note: inside `<TypeId as PartialEq>::eq::ct`
+note: inside `<TypeId as PartialEq>::eq::compiletime`
   --> $SRC_DIR/core/src/any.rs:LL:COL
+   = note: this error originates in the macro `$crate::intrinsics::const_eval_select` which comes from the expansion of the macro `crate::intrinsics::const_eval_select` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 
