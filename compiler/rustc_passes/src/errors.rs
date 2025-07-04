@@ -426,6 +426,24 @@ pub(crate) struct PassByValue {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_pass_indirectly_not_a_struct)]
+pub(crate) struct PassIndirectlyNotAStruct {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_pass_indirectly_unsupported_arch)]
+#[help]
+pub(crate) struct PassIndirectlyUnsupportedArch<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub arch: &'a str,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_allow_incoherent_impl)]
 pub(crate) struct AllowIncoherentImpl {
     #[primary_span]

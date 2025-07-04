@@ -1,0 +1,27 @@
+error: `#[rustc_pass_indirectly_in_non_rustic_abis]` can only be applied to `struct`s
+  --> $DIR/pass-indirectly.rs:17:1
+   |
+LL | #[rustc_pass_indirectly_in_non_rustic_abis]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn not_a_struct() {}
+   | -------------------- is not a `struct`
+
+error: support for `#[rustc_pass_indirectly_in_non_rustic_abis]` on `riscv64` has not yet been implemented
+  --> $DIR/pass-indirectly.rs:17:1
+   |
+LL | #[rustc_pass_indirectly_in_non_rustic_abis]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: see the comment near the top of `library/core/src/ffi/va_list.rs` for details
+
+error: support for `#[rustc_pass_indirectly_in_non_rustic_abis]` on `riscv64` has not yet been implemented
+  --> $DIR/pass-indirectly.rs:23:1
+   |
+LL | #[rustc_pass_indirectly_in_non_rustic_abis]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: see the comment near the top of `library/core/src/ffi/va_list.rs` for details
+
+error: aborting due to 3 previous errors
+

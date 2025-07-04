@@ -330,3 +330,10 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
         features
     }
 }
+
+pub(crate) struct RustcPassIndirectlyInNonRusticAbisParser;
+impl<S: Stage> NoArgsAttributeParser<S> for RustcPassIndirectlyInNonRusticAbisParser {
+    const PATH: &[Symbol] = &[sym::rustc_pass_indirectly_in_non_rustic_abis];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPassIndirectlyInNonRusticAbis;
+}
