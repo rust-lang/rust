@@ -2261,9 +2261,6 @@ rustc_queries! {
     query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
         desc { |tcx| "collecting upvars mentioned in `{}`", tcx.def_path_str(def_id) }
     }
-    query maybe_unused_trait_imports(_: ()) -> &'tcx FxIndexSet<LocalDefId> {
-        desc { "fetching potentially unused trait imports" }
-    }
     query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx FxIndexSet<Symbol> {
         desc { |tcx| "finding names imported by glob use for `{}`", tcx.def_path_str(def_id) }
     }
