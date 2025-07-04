@@ -4195,7 +4195,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let return_ty = sig.output();
         match return_ty.skip_binder().kind() {
             ty::Ref(return_region, _, _)
-                if return_region.has_name(self.infcx.tcx) && !is_closure =>
+                if return_region.is_named(self.infcx.tcx) && !is_closure =>
             {
                 // This is case 1 from above, return type is a named reference so we need to
                 // search for relevant arguments.

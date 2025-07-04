@@ -2338,7 +2338,7 @@ fn lint_redundant_lifetimes<'tcx>(
             lifetimes.push(ty::Region::new_late_param(tcx, owner_id.to_def_id(), kind));
         }
     }
-    lifetimes.retain(|candidate| candidate.has_name(tcx));
+    lifetimes.retain(|candidate| candidate.is_named(tcx));
 
     // Keep track of lifetimes which have already been replaced with other lifetimes.
     // This makes sure that if `'a = 'b = 'c`, we don't say `'c` should be replaced by

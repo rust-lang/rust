@@ -729,7 +729,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .dcx()
             .struct_span_err(span, format!("{labeled_user_string} may not live long enough"));
         err.code(match sub.kind() {
-            ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name(self.tcx) => E0309,
+            ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.is_named(self.tcx) => E0309,
             ty::ReStatic => E0310,
             _ => E0311,
         });
@@ -877,7 +877,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let (lifetime_def_id, lifetime_scope) =
             match self.tcx.is_suitable_region(generic_param_scope, lifetime) {
-                Some(info) if !lifetime.has_name(self.tcx) => {
+                Some(info) if !lifetime.is_named(self.tcx) => {
                     (info.region_def_id.expect_local(), info.scope)
                 }
                 _ => return lifetime.get_name_or_anon(self.tcx).to_string(),

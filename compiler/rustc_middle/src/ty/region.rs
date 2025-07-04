@@ -182,7 +182,7 @@ impl<'tcx> Region<'tcx> {
     }
 
     /// Is this region named by the user?
-    pub fn has_name(self, tcx: TyCtxt<'tcx>) -> bool {
+    pub fn is_named(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
             ty::ReEarlyParam(ebr) => ebr.is_named(),
             ty::ReBound(_, br) => br.kind.is_named(tcx),

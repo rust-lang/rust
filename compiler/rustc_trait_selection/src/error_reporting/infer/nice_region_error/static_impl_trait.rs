@@ -46,7 +46,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let param = self.find_param_with_region(*sup_r, *sub_r)?;
         let simple_ident = param.param.pat.simple_ident();
         let lifetime_name =
-            if sup_r.has_name(self.tcx()) { sup_r.to_string() } else { "'_".to_owned() };
+            if sup_r.is_named(self.tcx()) { sup_r.to_string() } else { "'_".to_owned() };
 
         let (mention_influencer, influencer_point) =
             if sup_origin.span().overlaps(param.param_ty_span) {
@@ -100,7 +100,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             // We don't need a note, it's already at the end, it can be shown as a `span_label`.
             require_span_as_label: (!require_as_note).then_some(require_span),
 
-            has_lifetime: sup_r.has_name(self.tcx()),
+            has_lifetime: sup_r.is_named(self.tcx()),
             lifetime: lifetime_name.clone(),
             has_param_name: simple_ident.is_some(),
             param_name: simple_ident.map(|x| x.to_string()).unwrap_or_default(),

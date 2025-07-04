@@ -25,12 +25,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // only introduced anonymous regions in parameters) as well as a
         // version new_ty of its type where the anonymous region is replaced
         // with the named one.
-        let (named, anon, anon_param_info, region_info) = if sub.has_name(self.tcx())
+        let (named, anon, anon_param_info, region_info) = if sub.is_named(self.tcx())
             && let Some(region_info) = self.tcx().is_suitable_region(self.generic_param_scope, sup)
             && let Some(anon_param_info) = self.find_param_with_region(sup, sub)
         {
             (sub, sup, anon_param_info, region_info)
-        } else if sup.has_name(self.tcx())
+        } else if sup.is_named(self.tcx())
             && let Some(region_info) = self.tcx().is_suitable_region(self.generic_param_scope, sub)
             && let Some(anon_param_info) = self.find_param_with_region(sub, sup)
         {
@@ -56,9 +56,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let scope_def_id = region_info.scope;
         let is_impl_item = region_info.is_impl_item;
 
-        if !anon_param_info.kind.is_named(self.tcx()) {
-            // Anon region
-        } else {
+        if anon_param_info.kind.is_named(self.tcx()) {
             /* not an anonymous region */
             debug!("try_report_named_anon_conflict: not an anonymous region");
             return None;
