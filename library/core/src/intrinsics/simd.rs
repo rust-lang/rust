@@ -160,7 +160,7 @@ pub unsafe fn simd_funnel_shl<T>(a: T, b: T, shift: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn simd_funnel_shr<T>(a: T, b: T, shift: T) -> T;
 
-/// "Ands" vectors elementwise.
+/// "And"s vectors elementwise.
 ///
 /// `T` must be a vector of integers.
 #[rustc_intrinsic]
@@ -522,7 +522,7 @@ pub unsafe fn simd_reduce_max<T, U>(x: T) -> U;
 #[rustc_nounwind]
 pub unsafe fn simd_reduce_min<T, U>(x: T) -> U;
 
-/// Logical "ands" all elements together.
+/// Logical "and"s all elements together.
 ///
 /// `T` must be a vector of integers or floats.
 ///

@@ -10,7 +10,7 @@ pub fn is_sep_byte(b: u8) -> bool {
     b == b'/' || b == b'\\'
 }
 
-/// Cygwin allways prefers `/` over `\`, and it always converts all `/` to `\`
+/// Cygwin always prefers `/` over `\`, and it always converts all `/` to `\`
 /// internally when calling Win32 APIs. Therefore, the server component of path
 /// `\\?\UNC\localhost/share` is `localhost/share` on Win32, but `localhost`
 /// on Cygwin.

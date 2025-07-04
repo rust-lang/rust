@@ -273,8 +273,8 @@ fn add_query_desc_cached_impl(
     // macro producing a higher order macro that has all its token in the macro declaration we lose
     // any meaningful spans, resulting in rust-analyzer being unable to make the connection between
     // the query name and the corresponding providers field. The trick to fix this is to have
-    // `rustc_queries` emit a field access with the given name's span which allows it to succesfully
-    // show references / go to definition to the correspondig provider assignment which is usually
+    // `rustc_queries` emit a field access with the given name's span which allows it to successfully
+    // show references / go to definition to the corresponding provider assignment which is usually
     // the more interesting place.
     let ra_hint = quote! {
         let crate::query::Providers { #name: _, .. };

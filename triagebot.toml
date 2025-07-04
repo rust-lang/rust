@@ -1,6 +1,11 @@
 # This file's format is documented at
 # https://forge.rust-lang.org/triagebot/pr-assignment.html#configuration
 
+
+# ------------------------------------------------------------------------------
+# Labels
+# ------------------------------------------------------------------------------
+
 [relabel]
 allow-unauthenticated = [
     "A-*",
@@ -43,6 +48,11 @@ review_labels = ["S-waiting-on-review"]
 remove_labels = ["S-waiting-on-author"]
 # Those labels are added when PR author requests a review from an assignee
 add_labels = ["S-waiting-on-review"]
+
+
+# ------------------------------------------------------------------------------
+# Ping groups
+# ------------------------------------------------------------------------------
 
 [ping.windows]
 message = """\
@@ -152,6 +162,11 @@ message = """\
 Hi relnotes-interest-group, this issue/PR could use some help in reviewing /
 adjusting release notes. Could you take a look if available? Thanks <3
 """
+
+
+# ------------------------------------------------------------------------------
+# Autolabels
+# ------------------------------------------------------------------------------
 
 [prioritize]
 label = "I-prioritize"
@@ -582,6 +597,11 @@ trigger_files = [
     "compiler/rustc_codegen_llvm",
 ]
 
+
+# ------------------------------------------------------------------------------
+# Prioritization and team nominations
+# ------------------------------------------------------------------------------
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/prioritization/alerts
 topic = "#{number} {title}"
@@ -597,6 +617,21 @@ message_on_add = """\
 message_on_remove = "Issue #{number}'s prioritization request has been removed."
 message_on_close = "Issue #{number} has been closed while requested for prioritization."
 message_on_reopen = "Issue #{number} has been reopened."
+
+[notify-zulip."I-types-nominated"]
+zulip_stream = 326866 # #T-types/nominated
+topic = "#{number}: {title}"
+message_on_add = """\
+@*T-types* issue #{number} "{title}" has been nominated for team discussion.
+"""
+message_on_remove = "Issue #{number}'s nomination has been removed. Thanks all for participating!"
+message_on_close = "Issue #{number} has been closed. Thanks for participating!"
+message_on_reopen = "Issue #{number} has been reopened. Pinging @*T-types*."
+
+
+# ------------------------------------------------------------------------------
+# Zulip notifications
+# ------------------------------------------------------------------------------
 
 [notify-zulip."beta-nominated".rustdoc]
 required_labels = ["T-rustdoc"]
@@ -661,15 +696,6 @@ message_on_remove = "PR #{number}'s stable-acceptance has been **removed**."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
-[notify-zulip."I-types-nominated"]
-zulip_stream = 326866 # #T-types/nominated
-topic = "#{number}: {title}"
-message_on_add = """\
-@*T-types* issue #{number} "{title}" has been nominated for team discussion.
-"""
-message_on_remove = "Issue #{number}'s nomination has been removed. Thanks all for participating!"
-message_on_close = "Issue #{number} has been closed. Thanks for participating!"
-message_on_reopen = "Issue #{number} has been reopened. Pinging @*T-types*."
 
 [notify-zulip."beta-nominated".compiler]
 required_labels = ["T-compiler"]
@@ -687,6 +713,13 @@ don't know
 """,
 ]
 message_on_remove = "PR #{number}'s beta-nomination has been removed."
+
+[notify-zulip."beta-accepted".compiler]
+required_labels = ["T-compiler"]
+zulip_stream = 474880 # #t-compiler/backports
+# Put it in the same thread as beta-nominated.
+topic = "#{number}: beta-nominated"
+message_on_add = "PR #{number} has been **accepted** for **beta** backport."
 
 [notify-zulip."stable-nominated".compiler]
 required_labels = ["T-compiler"]
@@ -706,6 +739,14 @@ don't know
 ]
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
 
+[notify-zulip."stable-accepted".compiler]
+required_labels = ["T-compiler"]
+zulip_stream = 474880 # #t-compiler/backports
+# Put it in the same thread as stable-nominated.
+topic = "#{number}: stable-nominated"
+message_on_add = "PR #{number} has been **accepted** for **stable** backport."
+
+
 [notify-zulip."beta-nominated".bootstrap]
 required_labels = ["T-bootstrap"]
 zulip_stream = 507486 # #t-infra/bootstrap/backports
@@ -722,6 +763,13 @@ don't know
 """,
 ]
 message_on_remove = "PR #{number}'s beta-nomination has been removed."
+
+[notify-zulip."beta-accepted".bootstrap]
+required_labels = ["T-bootstrap"]
+zulip_stream = 507486 # #t-infra/bootstrap/backports
+# Put it in the same thread as beta-nominated.
+topic = "#{number}: beta-nominated"
+message_on_add = "PR #{number} has been **accepted** for **beta** backport."
 
 [notify-zulip."stable-nominated".bootstrap]
 required_labels = ["T-bootstrap"]
@@ -741,6 +789,14 @@ don't know
 ]
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
 
+[notify-zulip."stable-accepted".bootstrap]
+required_labels = ["T-bootstrap"]
+zulip_stream = 507486 # #t-infra/bootstrap/backports
+# Put it in the same thread as stable-nominated.
+topic = "#{number}: stable-nominated"
+message_on_add = "PR #{number} has been **accepted** for **stable** backport."
+
+
 [notify-zulip."A-edition-2021"]
 required_labels = ["C-bug"]
 zulip_stream = 268952 # #edition
@@ -757,17 +813,10 @@ message_on_add = """\
 Issue #{number} "{title}" has been added.
 """
 
-[no-merges]
-exclude_titles = ["Rollup of", "subtree update", "Subtree update"]
-labels = ["has-merge-commits", "S-waiting-on-author"]
 
-[github-releases]
-format = "rustc"
-project-name = "Rust"
-changelog-path = "RELEASES.md"
-changelog-branch = "master"
-
-[shortcut]
+# ------------------------------------------------------------------------------
+# Mentions
+# ------------------------------------------------------------------------------
 
 [mentions."triagebot.toml"]
 message = "`triagebot.toml` has been modified, there may have been changes to the review queue."
@@ -1201,6 +1250,11 @@ cc = ["@m-ou-se"]
 [mentions."compiler/rustc_ast_lowering/src/format.rs"]
 cc = ["@m-ou-se"]
 
+
+# ------------------------------------------------------------------------------
+# PR assignments
+# ------------------------------------------------------------------------------
+
 [assign]
 warn_non_default_branch.enable = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
@@ -1441,6 +1495,23 @@ compiletest = [
 [assign.review_prefs]
 
 [pr-tracking]
+
+
+# ------------------------------------------------------------------------------
+# Misc
+# ------------------------------------------------------------------------------
+
+[no-merges]
+exclude_titles = ["Rollup of", "subtree update", "Subtree update"]
+labels = ["has-merge-commits", "S-waiting-on-author"]
+
+[github-releases]
+format = "rustc"
+project-name = "Rust"
+changelog-path = "RELEASES.md"
+changelog-branch = "master"
+
+[shortcut]
 
 # Enable issue transfers within the org
 # Documentation at: https://forge.rust-lang.org/triagebot/transfer.html

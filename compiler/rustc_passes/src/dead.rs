@@ -1199,7 +1199,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
         let def_kind = tcx.def_kind(item.owner_id);
 
         let mut dead_codes = Vec::new();
-        // Only diagnose unused assoc items in inherient impl and used trait,
+        // Only diagnose unused assoc items in inherent impl and used trait,
         // for unused assoc items in impls of trait,
         // we have diagnosed them in the trait if they are unused,
         // for unused assoc items in unused trait,

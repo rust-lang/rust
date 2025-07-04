@@ -66,8 +66,8 @@ use crate::visit_ast::Module as DocModule;
 pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let mut items: Vec<Item> = vec![];
     let mut inserted = FxHashSet::default();
-    items.extend(doc.foreigns.iter().map(|(item, renamed)| {
-        let item = clean_maybe_renamed_foreign_item(cx, item, *renamed);
+    items.extend(doc.foreigns.iter().map(|(item, renamed, import_id)| {
+        let item = clean_maybe_renamed_foreign_item(cx, item, *renamed, *import_id);
         if let Some(name) = item.name
             && (cx.render_options.document_hidden || !item.is_doc_hidden())
         {
@@ -89,7 +89,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         Some(item)
     }));
 
-    // Split up imports from all other items.
+    // Split up glob imports from all other items.
     //
     // This covers the case where somebody does an import which should pull in an item,
     // but there's already an item with the same namespace and same name. Rust gives
@@ -1171,7 +1171,7 @@ fn clean_poly_fn_sig<'tcx>(
     // If this comes from a fn item, let's not perpetuate anon params from Rust 2015; use `_` for them.
     // If this comes from a fn ptr ty, we just keep params unnamed since it's more conventional stylistically.
     // Since the param name is not part of the semantic type, these params never bear a name unlike
-    // in the HIR case, thus we can't peform any fancy fallback logic unlike `clean_bare_fn_ty`.
+    // in the HIR case, thus we can't perform any fancy fallback logic unlike `clean_bare_fn_ty`.
     let fallback = did.map(|_| kw::Underscore);
 
     let params = sig
@@ -2746,7 +2746,8 @@ fn add_without_unwanted_attributes<'hir>(
                     attrs.push((Cow::Owned(attr), import_parent));
                 }
             }
-            hir::Attribute::Parsed(..) if is_inline => {
+            // FIXME: make sure to exclude `#[cfg_trace]` here when it is ported to the new parsers
+            hir::Attribute::Parsed(..) => {
                 attrs.push((Cow::Owned(attr), import_parent));
             }
             _ => {}
@@ -2761,7 +2762,6 @@ fn clean_maybe_renamed_item<'tcx>(
     import_id: Option<LocalDefId>,
 ) -> Vec<Item> {
     use hir::ItemKind;
-
     fn get_name(
         cx: &DocContext<'_>,
         item: &hir::Item<'_>,
@@ -2973,6 +2973,7 @@ fn clean_extern_crate<'tcx>(
         && !cx.is_json_output();
 
     let krate_owner_def_id = krate.owner_id.def_id;
+
     if please_inline
         && let Some(items) = inline::try_inline(
             cx,
@@ -3134,6 +3135,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     cx: &mut DocContext<'tcx>,
     item: &hir::ForeignItem<'tcx>,
     renamed: Option<Symbol>,
+    import_id: Option<LocalDefId>,
 ) -> Item {
     let def_id = item.owner_id.to_def_id();
     cx.with_param_env(def_id, |cx| {
@@ -3149,11 +3151,13 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
             hir::ForeignItemKind::Type => ForeignTypeItem,
         };
 
-        Item::from_def_id_and_parts(
-            item.owner_id.def_id.to_def_id(),
-            Some(renamed.unwrap_or(item.ident.name)),
-            kind,
+        generate_item_with_correct_attrs(
             cx,
+            kind,
+            item.owner_id.def_id.to_def_id(),
+            item.ident.name,
+            import_id,
+            renamed,
         )
     })
 }

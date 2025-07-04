@@ -1088,7 +1088,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             // FIXME(#97583): Print associated item bindings properly (i.e., not as equality
             // predicates!).
-            // FIXME: Turn this into a structured, translateable & more actionable suggestion.
+            // FIXME: Turn this into a structured, translatable & more actionable suggestion.
             let mut where_bounds = vec![];
             for bound in [bound, bound2].into_iter().chain(matching_candidates) {
                 let bound_id = bound.def_id();
@@ -1588,7 +1588,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             &infcx_
         };
 
-        tcx.all_traits()
+        tcx.all_traits_including_private()
             .filter(|trait_def_id| {
                 // Consider only traits with the associated type
                 tcx.associated_items(*trait_def_id)

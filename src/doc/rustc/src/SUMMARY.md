@@ -130,7 +130,7 @@
     - [\*-win7-windows-msvc](platform-support/win7-windows-msvc.md)
     - [x86_64-fortanix-unknown-sgx](platform-support/x86_64-fortanix-unknown-sgx.md)
     - [x86_64-pc-cygwin](platform-support/x86_64-pc-cygwin.md)
-    - [x86_64-unknown-linux-none.md](platform-support/x86_64-unknown-linux-none.md)
+    - [x86_64-unknown-linux-none](platform-support/x86_64-unknown-linux-none.md)
     - [x86_64-unknown-none](platform-support/x86_64-unknown-none.md)
     - [xtensa-\*-none-elf](platform-support/xtensa.md)
     - [\*-nuttx-\*](platform-support/nuttx.md)

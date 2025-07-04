@@ -723,7 +723,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This is maximally flexible, allowing e.g., `Some(mut x) | &Some(mut x)`.
             // In that example, `Some(mut x)` results in `Peel` whereas `&Some(mut x)` in `Reset`.
             | PatKind::Or(_)
-            // Like or-patterns, guard patterns just propogate to their subpatterns.
+            // Like or-patterns, guard patterns just propagate to their subpatterns.
             | PatKind::Guard(..) => AdjustMode::Pass,
         }
     }

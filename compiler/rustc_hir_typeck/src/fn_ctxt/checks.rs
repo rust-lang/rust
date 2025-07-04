@@ -121,7 +121,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => {}
                 }
 
-                // We want to emit an error if the const is not structurally resolveable
+                // We want to emit an error if the const is not structurally resolvable
                 // as otherwise we can wind up conservatively proving `Copy` which may
                 // infer the repeat expr count to something that never required `Copy` in
                 // the first place.
@@ -2461,7 +2461,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             spans.push_span_label(param.param.span(), "");
                         }
                     }
-                    // Highligh each parameter being depended on for a generic type.
+                    // Highlight each parameter being depended on for a generic type.
                     for ((&(_, param), deps), &(_, expected_ty)) in
                         params_with_generics.iter().zip(&dependants).zip(formal_and_expected_inputs)
                     {

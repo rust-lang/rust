@@ -1301,7 +1301,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    /// FIXME(#57893): For backwards compatability with the old trait solver implementation,
+    /// FIXME(#57893): For backwards compatibility with the old trait solver implementation,
     /// we need to handle overlap between builtin and user-written impls for trait objects.
     ///
     /// This overlap is unsound in general and something which we intend to fix separately.

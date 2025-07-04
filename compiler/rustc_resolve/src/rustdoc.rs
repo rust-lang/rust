@@ -627,7 +627,7 @@ pub fn source_span_for_markdown_range_inner(
             let fragment = &fragments[i];
             let sp = fragment.span;
             // we need to calculate the span start,
-            // then use that in our calulations for the span end
+            // then use that in our calculations for the span end
             let lo = sp.lo() + BytePos(match_start as u32);
             return Some((
                 sp.with_lo(lo).with_hi(lo + BytePos((md_range.end - md_range.start) as u32)),

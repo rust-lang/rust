@@ -681,7 +681,7 @@ impl server::Span for Rustc<'_, '_> {
             .lookup_char_pos(span.lo())
             .file
             .name
-            .prefer_remapped_unconditionaly()
+            .prefer_remapped_unconditionally()
             .to_string()
     }
 

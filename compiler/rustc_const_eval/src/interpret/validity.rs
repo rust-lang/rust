@@ -865,7 +865,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     fn add_data_range(&mut self, ptr: Pointer<Option<M::Provenance>>, size: Size) {
         if let Some(data_bytes) = self.data_bytes.as_mut() {
             // We only have to store the offset, the rest is the same for all pointers here.
-            // The logic is agnostic to wether the offset is relative or absolute as long as
+            // The logic is agnostic to whether the offset is relative or absolute as long as
             // it is consistent.
             let (_prov, offset) = ptr.into_raw_parts();
             // Add this.
