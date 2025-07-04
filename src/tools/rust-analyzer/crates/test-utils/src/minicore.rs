@@ -228,8 +228,11 @@ pub mod hash {
     }
 
     // region:derive
-    #[rustc_builtin_macro]
-    pub macro Hash($item:item) {}
+    pub(crate) mod derive {
+        #[rustc_builtin_macro]
+        pub macro Hash($item:item) {}
+    }
+    pub use derive::Hash;
     // endregion:derive
 }
 // endregion:hash
@@ -1264,8 +1267,11 @@ pub mod fmt {
     }
 
     // region:derive
-    #[rustc_builtin_macro]
-    pub macro Debug($item:item) {}
+    pub(crate) mod derive {
+        #[rustc_builtin_macro]
+        pub macro Debug($item:item) {}
+    }
+    pub use derive::Debug;
     // endregion:derive
 
     // region:builtin_impls
@@ -1931,6 +1937,8 @@ pub mod prelude {
             panic,                                   // :panic
             result::Result::{self, Err, Ok},         // :result
             str::FromStr,                            // :str
+            fmt::derive::Debug,                      // :fmt, derive
+            hash::derive::Hash,                      // :hash, derive
         };
     }
 
