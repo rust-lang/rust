@@ -1,13 +1,17 @@
 //@ignore-target: windows # no libc time APIs on Windows
 //@compile-flags: -Zmiri-disable-isolation
 use std::{env, mem, ptr};
+use std::time::{Duration, Instant};
 
 fn main() {
     test_clocks();
     test_posix_gettimeofday();
+    test_nanosleep();
+    test_clock_nanosleep_absolute();
+    test_clock_nanosleep_relative();
+    test_localtime_r_epoch();
     test_localtime_r_gmt();
     test_localtime_r_pst();
-    test_localtime_r_epoch();
     #[cfg(any(
         target_os = "linux",
         target_os = "macos",
@@ -58,6 +62,99 @@ fn test_posix_gettimeofday() {
     let tz_ptr = tz.as_mut_ptr();
     let is_error = unsafe { libc::gettimeofday(tp.as_mut_ptr(), tz_ptr.cast()) };
     assert_eq!(is_error, -1);
+}
+
+fn test_nanosleep() {
+    // sleep zero seconds
+    let start_zero_second_sleep = Instant::now();
+    let timespec = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+    let remainder = ptr::null_mut::<libc::timespec>();
+    let is_error = unsafe { libc::nanosleep(&timespec, remainder) };
+    assert_eq!(is_error, 0);
+    assert!(start_zero_second_sleep.elapsed() < Duration::from_millis(100));
+
+    // sleep one second
+    let start_one_second_sleep = Instant::now();
+    let timespec = libc::timespec { tv_sec: 1, tv_nsec: 0 };
+    let remainder = ptr::null_mut::<libc::timespec>();
+    let is_error = unsafe { libc::nanosleep(&timespec, remainder) };
+    assert_eq!(is_error, 0);
+    assert!(start_one_second_sleep.elapsed() > Duration::from_secs(1));
+}
+
+/// Helper function to get the current time for testing relative sleeps
+fn timespec_now(clock: libc::clockid_t) -> libc::timespec {
+    let mut timespec = mem::MaybeUninit::<libc::timespec>::uninit();
+    let is_error = unsafe { libc::clock_gettime(clock, timespec.as_mut_ptr()) };
+    assert_eq!(is_error, 0);
+    unsafe { timespec.assume_init() }
+}
+
+fn test_clock_nanosleep_absolute() {
+    let start_zero_second_sleep = Instant::now();
+    let unix_time_zero = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+    let remainder = ptr::null_mut::<libc::timespec>();
+    let error = unsafe {
+        // this will not sleep since unix time zero is in the past
+        libc::clock_nanosleep(
+            libc::CLOCK_MONOTONIC,
+            libc::TIMER_ABSTIME,
+            &unix_time_zero,
+            remainder,
+        )
+    };
+    assert_eq!(error, 0);
+    assert!(start_zero_second_sleep.elapsed() < Duration::from_millis(100));
+
+    let start_one_second_sleep = Instant::now();
+    let mut one_second_from_now = timespec_now(libc::CLOCK_MONOTONIC);
+    one_second_from_now.tv_sec += 1;
+    let remainder = ptr::null_mut::<libc::timespec>();
+    let error = unsafe {
+        // this will not sleep since unix time zero is in the past
+        libc::clock_nanosleep(
+            libc::CLOCK_MONOTONIC,
+            libc::TIMER_ABSTIME,
+            &one_second_from_now,
+            remainder,
+        )
+    };
+    assert_eq!(error, 0);
+    assert!(start_one_second_sleep.elapsed() > Duration::from_secs(1));
+}
+
+fn test_clock_nanosleep_relative() {
+    const NO_FLAGS: i32 = 0;
+
+    let start_zero_second_sleep = Instant::now();
+    let zero_seconds = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+    let remainder = ptr::null_mut::<libc::timespec>();
+    let error = unsafe {
+        // this will not sleep since unix time zero is in the past
+        libc::clock_nanosleep(
+            libc::CLOCK_MONOTONIC,
+            NO_FLAGS,
+            &zero_seconds,
+            remainder,
+        )
+    };
+    assert_eq!(error, 0);
+    assert!(start_zero_second_sleep.elapsed() < Duration::from_millis(100));
+
+    let start_one_second_sleep = Instant::now();
+    let one_second = libc::timespec { tv_sec: 1, tv_nsec: 0 };
+    let remainder = ptr::null_mut::<libc::timespec>();
+    let error = unsafe {
+        // this will not sleep since unix time zero is in the past
+        libc::clock_nanosleep(
+            libc::CLOCK_MONOTONIC,
+            NO_FLAGS,
+            &one_second,
+            remainder,
+        )
+    };
+    assert_eq!(error, 0);
+    assert!(start_one_second_sleep.elapsed() > Duration::from_secs(1));
 }
 
 /// Helper function to create an empty tm struct.
