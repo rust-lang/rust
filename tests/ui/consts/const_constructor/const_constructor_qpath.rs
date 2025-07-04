@@ -1,4 +1,5 @@
 //@ run-pass
+#![allow(dead_code)]
 
 trait ConstDefault {
     const DEFAULT: Self;

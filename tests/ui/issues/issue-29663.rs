@@ -1,4 +1,5 @@
 //@ run-pass
+#![allow(dead_code)]
 #![allow(stable_features)]
 // write_volatile causes an LLVM assert with composite types
 

@@ -1,4 +1,6 @@
 //@ run-pass
+#![allow(dead_code)]
+
 #[derive(Debug,PartialEq,Clone)]
 struct Foo<T> {
     bar: T,

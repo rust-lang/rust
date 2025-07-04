@@ -6,6 +6,7 @@
 //@[nomiropt]compile-flags: -Z mir-opt-level=0
 
 #![allow(unused_variables)]
+#![allow(dead_code)]
 
 // Test the drop order for parameters relative to local variables and
 // temporaries created in the tail return expression of the function

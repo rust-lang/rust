@@ -1,4 +1,6 @@
 //@ run-pass
+#![allow(dead_code)]
+
 #[derive(Eq, PartialEq)]
 pub struct Data([u8; 4]);
 

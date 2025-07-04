@@ -1,5 +1,6 @@
 //@ run-pass
 #![allow(unreachable_code)]
+#![allow(dead_code)]
 
 #[derive(PartialEq, Debug)]
 struct Bar {

@@ -5,6 +5,7 @@
 //@ run-pass
 
 #![feature(core_intrinsics, generic_assert)]
+#![allow(dead_code)]
 
 use std::fmt::{Debug, Formatter};
 

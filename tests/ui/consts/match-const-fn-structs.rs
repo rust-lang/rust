@@ -1,5 +1,6 @@
 //@ run-pass
 #![allow(unused_variables)]
+#![allow(dead_code)]
 
 // https://github.com/rust-lang/rust/issues/46114
 

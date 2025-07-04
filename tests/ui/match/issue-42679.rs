@@ -1,5 +1,6 @@
 //@ run-pass
 #![feature(box_patterns)]
+#![allow(dead_code)]
 
 #[derive(Debug, PartialEq)]
 enum Test {

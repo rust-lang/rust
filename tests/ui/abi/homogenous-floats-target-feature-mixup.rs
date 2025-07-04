@@ -9,6 +9,7 @@
 
 #![allow(overflowing_literals)]
 #![allow(unused_variables)]
+#![allow(dead_code)]
 
 use std::process::{Command, ExitStatus};
 use std::env;
