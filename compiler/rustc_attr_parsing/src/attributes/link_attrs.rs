@@ -80,3 +80,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for FfiPureParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
 }
+
+pub(crate) struct StdInternalSymbolParser;
+impl<S: Stage> NoArgsAttributeParser<S> for StdInternalSymbolParser {
+    const PATH: &[Symbol] = &[sym::rustc_std_internal_symbol];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::StdInternalSymbol;
+}
