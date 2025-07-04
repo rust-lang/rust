@@ -15,9 +15,9 @@ use std::{fmt, ptr};
 use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_middle::bug;
 use rustc_middle::mir::display_allocation;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::{bug, throw_ub_format};
 use tracing::{debug, instrument, trace};
 
 use super::{
@@ -944,6 +944,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 _ => None,
             }
         }
+    }
+
+    /// Takes a pointer that is the first chunk of a `TypeId` and return the type that its
+    /// provenance refers to, as well as the segment of the hash that this pointer covers.
+    pub fn get_ptr_type_id(
+        &self,
+        ptr: Pointer<Option<M::Provenance>>,
+    ) -> InterpResult<'tcx, (Ty<'tcx>, Size)> {
+        let (alloc_id, offset, _meta) = self.ptr_get_alloc_id(ptr, 0)?;
+        let GlobalAlloc::Type { ty } = self.tcx.global_alloc(alloc_id) else {
+            throw_ub_format!("type_id_eq: `TypeId` provenance is not a type id")
+        };
+        interp_ok((ty, offset))
     }
 
     pub fn get_ptr_fn(
