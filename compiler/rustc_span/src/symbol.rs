@@ -624,6 +624,7 @@ symbols! {
         cfg_relocation_model,
         cfg_sanitize,
         cfg_sanitizer_cfi,
+        cfg_select,
         cfg_target_abi,
         cfg_target_compact,
         cfg_target_feature,

@@ -81,6 +81,12 @@ builtin_macros_cfg_accessible_literal_path = `cfg_accessible` path cannot be a l
 builtin_macros_cfg_accessible_multiple_paths = multiple `cfg_accessible` paths are specified
 builtin_macros_cfg_accessible_unspecified_path = `cfg_accessible` path is not specified
 
+builtin_macros_cfg_select_no_matches = none of the rules in this `cfg_select` evaluated to true
+
+builtin_macros_cfg_select_unreachable = unreachable rule
+    .label = always matches
+    .label2 = this rules is never reached
+
 builtin_macros_coerce_pointee_requires_maybe_sized = `derive(CoercePointee)` requires `{$name}` to be marked `?Sized`
 
 builtin_macros_coerce_pointee_requires_one_field = `CoercePointee` can only be derived on `struct`s with at least one field

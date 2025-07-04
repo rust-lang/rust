@@ -142,6 +142,10 @@ pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?)
 pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
 }
+#[rustc_builtin_macro]
+pub macro cfg_select($($tt:tt)*) {
+    /* compiler built-in */
+}
 
 #[rustc_builtin_macro]
 #[macro_export]

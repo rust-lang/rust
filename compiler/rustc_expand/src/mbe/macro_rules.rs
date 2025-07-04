@@ -183,6 +183,47 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
     }
 }
 
+#[instrument(skip(cx, tts))]
+pub fn expand_token_stream<'cx>(
+    cx: &'cx mut ExtCtxt<'_>,
+    sp: Span,
+    arm_span: Span,
+    node_id: NodeId,
+    name: Ident,
+    rule_index: usize,
+    tts: TokenStream,
+) -> Box<dyn MacResult + 'cx> {
+    let psess = &cx.sess.psess;
+    // Macros defined in the current crate have a real node id,
+    // whereas macros from an external crate have a dummy id.
+    let is_local = node_id != DUMMY_NODE_ID;
+
+    if cx.trace_macros() {
+        let msg = format!("to `{}`", pprust::tts_to_string(&tts));
+        trace_macros_note(&mut cx.expansions, sp, msg);
+    }
+
+    let p = Parser::new(psess, tts, None);
+
+    if is_local {
+        cx.resolver.record_macro_rule_usage(node_id, rule_index);
+    }
+
+    Box::new(ParserAnyMacro {
+        parser: p,
+
+        // Pass along the original expansion site and the name of the macro
+        // so we can print a useful error message if the parse of the expanded
+        // macro leaves unparsed tokens.
+        site_span: sp,
+        macro_ident: name,
+        lint_node_id: cx.current_expansion.lint_node_id,
+        is_trailing_mac: cx.current_expansion.is_trailing_mac,
+        arm_span,
+        is_local,
+    })
+}
+
 /// Expands the rules based macro defined by `lhses` and `rhses` for a given
 /// input `arg`.
 #[instrument(skip(cx, transparency, arg, lhses, rhses))]
@@ -198,9 +239,6 @@ fn expand_macro<'cx>(
     rhses: &[mbe::TokenTree],
 ) -> Box<dyn MacResult + 'cx> {
     let psess = &cx.sess.psess;
-    // Macros defined in the current crate have a real node id,
-    // whereas macros from an external crate have a dummy id.
-    let is_local = node_id != DUMMY_NODE_ID;
 
     if cx.trace_macros() {
         let msg = format!("expanding `{}! {{ {} }}`", name, pprust::tts_to_string(&arg));
@@ -211,12 +249,12 @@ fn expand_macro<'cx>(
     let try_success_result = try_match_macro(psess, name, &arg, lhses, &mut NoopTracker);
 
     match try_success_result {
-        Ok((i, named_matches)) => {
-            let (rhs, rhs_span): (&mbe::Delimited, DelimSpan) = match &rhses[i] {
+        Ok((rule_index, named_matches)) => {
+            let (rhs, rhs_span): (&mbe::Delimited, DelimSpan) = match &rhses[rule_index] {
                 mbe::TokenTree::Delimited(span, _, delimited) => (&delimited, *span),
                 _ => cx.dcx().span_bug(sp, "malformed macro rhs"),
             };
-            let arm_span = rhses[i].span();
+            let arm_span = rhses[rule_index].span();
 
             // rhs has holes ( `$id` and `$(...)` that need filled)
             let id = cx.current_expansion.id;
@@ -228,32 +266,9 @@ fn expand_macro<'cx>(
                 }
             };
 
-            if cx.trace_macros() {
-                let msg = format!("to `{}`", pprust::tts_to_string(&tts));
-                trace_macros_note(&mut cx.expansions, sp, msg);
-            }
-
-            let p = Parser::new(psess, tts, None);
-
-            if is_local {
-                cx.resolver.record_macro_rule_usage(node_id, i);
-            }
-
             // Let the context choose how to interpret the result.
             // Weird, but useful for X-macros.
-            Box::new(ParserAnyMacro {
-                parser: p,
-
-                // Pass along the original expansion site and the name of the macro
-                // so we can print a useful error message if the parse of the expanded
-                // macro leaves unparsed tokens.
-                site_span: sp,
-                macro_ident: name,
-                lint_node_id: cx.current_expansion.lint_node_id,
-                is_trailing_mac: cx.current_expansion.is_trailing_mac,
-                arm_span,
-                is_local,
-            })
+            expand_token_stream(cx, sp, arm_span, node_id, name, rule_index, tts)
         }
         Err(CanRetry::No(guar)) => {
             debug!("Will not retry matching as an error was emitted already");

@@ -33,6 +33,7 @@ mod autodiff;
 mod cfg;
 mod cfg_accessible;
 mod cfg_eval;
+mod cfg_select;
 mod compile_error;
 mod concat;
 mod concat_bytes;
@@ -79,6 +80,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         asm: asm::expand_asm,
         assert: assert::expand_assert,
         cfg: cfg::expand_cfg,
+        cfg_select: cfg_select::expand_cfg_select,
         column: source_util::expand_column,
         compile_error: compile_error::expand_compile_error,
         concat: concat::expand_concat,

@@ -183,6 +183,12 @@ fn _accepts_expressions() -> i32 {
     }
 }
 
+fn _accepts_only_wildcard() -> i32 {
+    cfg_select! {
+        _ => { 1 }
+    }
+}
+
 // The current implementation expands to a macro call, which allows the use of expression
 // statements.
 fn _allows_stmt_expr_attributes() {
@@ -195,12 +201,12 @@ fn _allows_stmt_expr_attributes() {
 }
 
 fn _expression() {
-    let _ = cfg_select!({
+    let _ = cfg_select!(
         windows => {
             " XP"
         }
         _ => {
             ""
         }
-    });
+    );
 }
