@@ -213,9 +213,8 @@ fn expand_macro<'cx>(
 
     match try_success_result {
         Ok((i, named_matches)) => {
-            let (rhs, rhs_span): (&mbe::Delimited, DelimSpan) = match &rhses[i] {
-                mbe::TokenTree::Delimited(span, _, delimited) => (&delimited, *span),
-                _ => cx.dcx().span_bug(sp, "malformed macro rhs"),
+            let mbe::TokenTree::Delimited(rhs_span, _, ref rhs) = rhses[i] else {
+                cx.dcx().span_bug(sp, "malformed macro rhs");
             };
             let arm_span = rhses[i].span();
 
