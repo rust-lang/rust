@@ -36,6 +36,7 @@ use crate::base::{
 };
 use crate::expand::{AstFragment, AstFragmentKind, ensure_complete_parse, parse_ast_fragment};
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, MatcherLoc, Success, TtParser};
+use crate::mbe::quoted::RulePart;
 use crate::mbe::transcribe::transcribe;
 use crate::mbe::{self, KleeneOp, macro_check};
 
@@ -396,7 +397,7 @@ pub fn compile_declarative_macro(
         let lhs_tt = p.parse_token_tree();
         let lhs_tt = mbe::quoted::parse(
             &TokenStream::new(vec![lhs_tt]),
-            true, // LHS
+            RulePart::Pattern,
             sess,
             node_id,
             features,
@@ -423,7 +424,7 @@ pub fn compile_declarative_macro(
         let rhs_tt = p.parse_token_tree();
         let rhs_tt = mbe::quoted::parse(
             &TokenStream::new(vec![rhs_tt]),
-            false, // RHS
+            RulePart::Body,
             sess,
             node_id,
             features,
