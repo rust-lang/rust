@@ -130,7 +130,7 @@ impl LateLintPass<'_> for WildcardImports {
         }
         if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind
             && (self.warn_on_all || !self.check_exceptions(cx, item, use_path.segments))
-            && let used_imports = cx.tcx.names_imported_by_glob_use(item.owner_id.def_id)
+            && let Some(used_imports) = cx.tcx.resolutions(()).glob_map.get(&item.owner_id.def_id)
             && !used_imports.is_empty() // Already handled by `unused_imports`
             && !used_imports.contains(&kw::Underscore)
         {

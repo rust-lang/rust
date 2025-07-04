@@ -303,6 +303,7 @@ fn emit_malformed_attribute(
             | sym::rustc_allow_const_fn_unstable
             | sym::naked
             | sym::no_mangle
+            | sym::non_exhaustive
             | sym::must_use
             | sym::track_caller
             | sym::link_name
