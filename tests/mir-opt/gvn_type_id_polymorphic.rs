@@ -5,6 +5,12 @@
 
 fn generic<T>() {}
 
+// Since `type_id` contains provenance, we cannot turn it into an integer,
+// but for the purposes of this test, it is sufficient to use the length of the
+// type name as the first 8 bytes of the `u128` and the first 8 bytes of the type name
+// as the rest of the bytes of the `u128`. The main thing being tested is the result of
+// calling this function being simple enough that comparisons of it are turned into
+// a direct MIR `Eq` bin op.
 const fn type_id_of_val<T: 'static>(_: &T) -> u128 {
     let name = std::intrinsics::type_name::<T>();
     let len = name.len() as u64;
