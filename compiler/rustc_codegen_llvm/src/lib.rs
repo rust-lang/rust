@@ -177,10 +177,9 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     fn run_and_optimize_fat_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<FatLtoInput<Self>>,
-        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
         diff_fncs: Vec<AutoDiffItem>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        let mut module = back::lto::run_fat(cgcx, modules, cached_modules)?;
+        let mut module = back::lto::run_fat(cgcx, modules)?;
 
         if !diff_fncs.is_empty() {
             builder::autodiff::differentiate(&module, cgcx, diff_fncs)?;
