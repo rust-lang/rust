@@ -42,7 +42,7 @@ Number of file 0 mappings: 17
 - Code(Counter(2)) at (prev + 2, 1) to (start + 0, 2)
 Highest counter ID seen: c3
 
-Function name: coroutine::main::{closure#0}
+Function name: coroutine::main::{closure:coroutine#0}
 Raw bytes (24): 0x[01, 01, 00, 04, 01, 16, 08, 00, 09, 01, 01, 09, 00, 1f, 05, 01, 10, 00, 15, 05, 01, 05, 00, 06]
 Number of files: 1
 - file 0 => $DIR/coroutine.rs

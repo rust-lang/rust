@@ -5,7 +5,7 @@ use rustc_ast::*;
 use rustc_attr_parsing::{AttributeParser, Early, OmitDoc};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind};
+use rustc_hir::def::{CoroutineDefKind, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
 use rustc_span::hygiene::LocalExpnId;
@@ -222,8 +222,11 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 // then the closure_def will never be used, and we should avoid generating a
                 // def-id for it.
                 if let Some(body) = body {
+                    let def_kind = DefKind::Closure {
+                        coroutine_kind: Some(coroutine_def_kind(&coroutine_kind)),
+                    };
                     let closure_def =
-                        self.create_def(coroutine_kind.closure_id(), None, DefKind::Closure, span);
+                        self.create_def(coroutine_kind.closure_id(), None, def_kind, span);
                     self.with_parent(closure_def, |this| this.visit_block(body));
                 }
             }
@@ -233,8 +236,12 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
+                // This is the inner coroutine-ish closure, so we should include
+                // the coroutine info.
+                let def_kind =
+                    DefKind::Closure { coroutine_kind: Some(coroutine_def_kind(coroutine_kind)) };
                 let coroutine_def =
-                    self.create_def(coroutine_kind.closure_id(), None, DefKind::Closure, span);
+                    self.create_def(coroutine_kind.closure_id(), None, def_kind, span);
                 self.with_parent(coroutine_def, |this| this.visit_expr(body));
             }
             _ => visit::walk_fn(self, fn_kind),
@@ -361,8 +368,30 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     fn visit_expr(&mut self, expr: &'a Expr) {
         let parent_def = match expr.kind {
             ExprKind::MacCall(..) => return self.visit_macro_invoc(expr.id),
-            ExprKind::Closure(..) | ExprKind::Gen(..) => {
-                self.create_def(expr.id, None, DefKind::Closure, expr.span)
+            ExprKind::Closure(ref closure) => {
+                let coroutine_kind = match closure.coroutine_kind {
+                    // A closure may actually be a coroutine if it has the `#[coroutine]` attr.
+                    // This is more like an `async {}` or `gen {}` block in that it's actually the
+                    // coroutine (instead of async/gen closures, where the desugared inner closure
+                    // is the real coroutine). So we should include the coroutine kind here.
+                    None if has_coroutine_attr(&expr.attrs) => Some(CoroutineDefKind::Coroutine),
+                    // For async/gen closures (`async || ...` / `gen || ...`), the desugared inner
+                    // closure will have `coroutine_kind = Some(_)`. This is the outer closure, so
+                    // we should not include it.
+                    _ => None,
+                };
+
+                self.create_def(expr.id, None, DefKind::Closure { coroutine_kind }, expr.span)
+            }
+            ExprKind::Gen(_, _, ref gen_kind, _) => {
+                let desugaring = match gen_kind {
+                    GenBlockKind::Async => hir::CoroutineDesugaring::Async,
+                    GenBlockKind::Gen => hir::CoroutineDesugaring::Gen,
+                    GenBlockKind::AsyncGen => hir::CoroutineDesugaring::AsyncGen,
+                };
+                let coroutine_kind = Some(CoroutineDefKind::Desugared(desugaring));
+
+                self.create_def(expr.id, None, DefKind::Closure { coroutine_kind }, expr.span)
             }
             ExprKind::ConstBlock(ref constant) => {
                 for attr in &expr.attrs {
@@ -508,4 +537,18 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             }
         }
     }
+}
+
+fn coroutine_def_kind(coroutine_kind: &CoroutineKind) -> CoroutineDefKind {
+    let desugaring = match coroutine_kind {
+        CoroutineKind::Async { .. } => hir::CoroutineDesugaring::Async,
+        CoroutineKind::Gen { .. } => hir::CoroutineDesugaring::Gen,
+        CoroutineKind::AsyncGen { .. } => hir::CoroutineDesugaring::AsyncGen,
+    };
+
+    CoroutineDefKind::Desugared(desugaring)
+}
+
+fn has_coroutine_attr(attrs: &[Attribute]) -> bool {
+    attrs.iter().any(|attr| attr.has_name(sym::coroutine))
 }

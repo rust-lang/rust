@@ -20,7 +20,7 @@ LL | pub fn callee_justified() {
    |
    = note: incompatible due to: #[rustc_no_mir_inline]
 
-error: `callee` could not be inlined into `async_caller::{closure#0}` but is required to be inlined
+error: `callee` could not be inlined into `async_caller::{closure:async#0}` but is required to be inlined
   --> $DIR/deny-async.rs:22:5
    |
 LL |     callee();
@@ -28,7 +28,7 @@ LL |     callee();
    |
    = note: could not be inlined due to: #[rustc_no_mir_inline]
 
-error: `callee_justified` could not be inlined into `async_caller::{closure#0}` but is required to be inlined
+error: `callee_justified` could not be inlined into `async_caller::{closure:async#0}` but is required to be inlined
   --> $DIR/deny-async.rs:24:5
    |
 LL |     callee_justified();

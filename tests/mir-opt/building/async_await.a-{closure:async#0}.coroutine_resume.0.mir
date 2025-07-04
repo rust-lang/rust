@@ -1,4 +1,4 @@
-// MIR for `a::{closure#0}` 0 coroutine_resume
+// MIR for `a::{closure:async#0}` 0 coroutine_resume
 /* coroutine_layout = CoroutineLayout {
     field_tys: {},
     variant_fields: {
@@ -9,7 +9,7 @@
     storage_conflicts: BitMatrix(0x0) {},
 } */
 
-fn a::{closure#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) -> Poll<()> {
+fn a::{closure:async#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) -> Poll<()> {
     debug _task_context => _4;
     let mut _0: std::task::Poll<()>;
     let mut _3: ();

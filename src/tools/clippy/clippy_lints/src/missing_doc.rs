@@ -119,7 +119,7 @@ impl MissingDoc {
             && let DefKind::AnonConst
             | DefKind::AssocConst
             | DefKind::AssocFn
-            | DefKind::Closure
+            | DefKind::Closure { .. }
             | DefKind::Const
             | DefKind::Fn
             | DefKind::InlineConst

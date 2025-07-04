@@ -1,6 +1,6 @@
-// MIR for `a::{closure#0}` 0 coroutine_drop_async
+// MIR for `a::{closure:async#0}` 0 coroutine_drop_async
 
-fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>) -> Poll<()> {
+fn a::{closure:async#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>) -> Poll<()> {
     debug _task_context => _19;
     debug x => ((*(_1.0: &mut {async fn body of a<T>()})).0: T);
     let mut _0: std::task::Poll<()>;

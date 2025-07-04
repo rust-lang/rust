@@ -17,7 +17,7 @@
   | async_closure::main::{closure#0}:
   |   LL|      1|    let async_closure = async || {};
   ------------------
-  | async_closure::main::{closure#0}::{closure#0}::<i16>:
+  | async_closure::main::{closure#0}::{closure:async#0}::<i16>:
   |   LL|      1|    let async_closure = async || {};
   ------------------
    LL|      1|    executor::block_on(async_closure());

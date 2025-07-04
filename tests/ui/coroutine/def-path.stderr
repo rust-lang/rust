@@ -1,0 +1,14 @@
+error[E0618]: expected function, found `{main::{closure:coroutine#0} upvar_tys=?3t resume_ty=() yield_ty=?4t return_ty=() witness=?5t}`
+  --> $DIR/def-path.rs:8:14
+   |
+LL |     let x = #[coroutine] || {};
+   |         - `x` has type `{main::{closure:coroutine#0} upvar_tys=?3t resume_ty=() yield_ty=?4t return_ty=() witness=?5t}`
+LL |
+LL |     let () = x();
+   |              ^--
+   |              |
+   |              call expression requires function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0618`.

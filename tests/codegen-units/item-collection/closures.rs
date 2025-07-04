@@ -2,7 +2,7 @@
 //@ compile-flags: -Clink-dead-code --crate-type=lib
 
 //~ MONO_ITEM fn async_fn @@
-//~ MONO_ITEM fn async_fn::{closure#0} @@
+//~ MONO_ITEM fn async_fn::{closure:async#0} @@
 pub async fn async_fn() {}
 
 //~ MONO_ITEM fn closure @@

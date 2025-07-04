@@ -15,7 +15,7 @@ impl Drop for HasDrop {
 
 fn callee() {}
 
-// EMIT_MIR coroutine_tiny.main-{closure#0}.coroutine_resume.0.mir
+// EMIT_MIR coroutine_tiny.main-{closure:coroutine#0}.coroutine_resume.0.mir
 fn main() {
     let _gen = #[coroutine]
     |_x: u8| {

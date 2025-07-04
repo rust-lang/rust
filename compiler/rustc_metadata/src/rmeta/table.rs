@@ -1,4 +1,4 @@
-use rustc_hir::def::CtorOf;
+use rustc_hir::def::{CoroutineDefKind, CtorOf};
 use rustc_index::Idx;
 
 use crate::rmeta::*;
@@ -154,7 +154,11 @@ fixed_size_enum! {
         ( GlobalAsm                                )
         ( Impl { of_trait: false }                 )
         ( Impl { of_trait: true }                  )
-        ( Closure                                  )
+        ( Closure { coroutine_kind: None }                            )
+        ( Closure { coroutine_kind: Some(CoroutineDefKind::Desugared(hir::CoroutineDesugaring::Async)) } )
+        ( Closure { coroutine_kind: Some(CoroutineDefKind::Desugared(hir::CoroutineDesugaring::Gen)) } )
+        ( Closure { coroutine_kind: Some(CoroutineDefKind::Desugared(hir::CoroutineDesugaring::AsyncGen)) } )
+        ( Closure { coroutine_kind: Some(CoroutineDefKind::Coroutine) } )
         ( Static { safety: hir::Safety::Unsafe, mutability: ast::Mutability::Not, nested: false } )
         ( Static { safety: hir::Safety::Safe, mutability: ast::Mutability::Not, nested: false } )
         ( Static { safety: hir::Safety::Unsafe, mutability: ast::Mutability::Mut, nested: false } )

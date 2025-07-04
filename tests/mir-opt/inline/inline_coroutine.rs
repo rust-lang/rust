@@ -9,7 +9,7 @@ use std::pin::Pin;
 fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: (inlined g)
-    // CHECK: (inlined g::{closure#0})
+    // CHECK: (inlined g::{closure:coroutine#0})
     let _r = Pin::new(&mut g()).resume(false);
 }
 

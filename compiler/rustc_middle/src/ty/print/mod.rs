@@ -138,7 +138,7 @@ pub trait Printer<'tcx>: Sized {
                     parent_args = &args[..generics.parent_count.min(args.len())];
 
                     match key.disambiguated_data.data {
-                        DefPathData::Closure => {
+                        DefPathData::Closure { .. } => {
                             // We need to additionally print the `kind` field of a coroutine if
                             // it is desugared from a coroutine-closure.
                             if let Some(hir::CoroutineKind::Desugared(

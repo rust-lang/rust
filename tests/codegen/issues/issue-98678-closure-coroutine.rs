@@ -18,8 +18,8 @@ pub fn foo() {
     let closure = |x| x;
     closure(0);
 
-    // NONMSVC-DAG: !DICompositeType({{.*"[{]}}coroutine_env#1{{[}]".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 3]],
-    // MSVC-DAG: !DICompositeType({{.*".*foo::}}coroutine_env$1>{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
+    // NONMSVC-DAG: !DICompositeType({{.*"[{]}}coroutine_env#0{{[}]".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 3]],
+    // MSVC-DAG: !DICompositeType({{.*".*foo::}}coroutine_env$0>{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
     let _coroutine = #[coroutine]
     || yield 1;
 }

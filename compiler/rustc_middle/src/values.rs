@@ -193,7 +193,7 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
                     && let Some(def_id) = cycle[0].query.def_id_for_ty_in_cycle
                     && let Some(def_id) = def_id.as_local()
                     && let def_kind = tcx.def_kind(def_id)
-                    && matches!(def_kind, DefKind::Closure)
+                    && matches!(def_kind, DefKind::Closure { .. })
                     && let Some(coroutine_kind) = tcx.coroutine_kind(def_id)
                 {
                     // FIXME: `def_span` for an fn-like coroutine will point to the fn's body

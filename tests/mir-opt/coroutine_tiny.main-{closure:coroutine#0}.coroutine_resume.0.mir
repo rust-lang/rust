@@ -1,4 +1,4 @@
-// MIR for `main::{closure#0}` 0 coroutine_resume
+// MIR for `main::{closure:coroutine#0}` 0 coroutine_resume
 /* coroutine_layout = CoroutineLayout {
     field_tys: {
         _0: CoroutineSavedTy {
@@ -21,7 +21,7 @@
     },
 } */
 
-fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13}>, _2: u8) -> CoroutineState<(), ()> {
+fn main::{closure:coroutine#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13}>, _2: u8) -> CoroutineState<(), ()> {
     debug _x => _10;
     let mut _0: std::ops::CoroutineState<(), ()>;
     let _3: HasDrop;

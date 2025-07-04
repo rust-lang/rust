@@ -126,7 +126,7 @@ fn is_not_const(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | DefKind::Ctor(..)
         | DefKind::AssocConst => false,
 
-        DefKind::Fn | DefKind::AssocFn | DefKind::Closure => tcx.constness(def_id) == Constness::NotConst,
+        DefKind::Fn | DefKind::AssocFn | DefKind::Closure { .. } => tcx.constness(def_id) == Constness::NotConst,
     }
 }
 

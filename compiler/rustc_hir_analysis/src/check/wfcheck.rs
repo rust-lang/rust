@@ -2312,7 +2312,7 @@ fn lint_redundant_lifetimes<'tcx>(
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::Closure
+        | DefKind::Closure { .. }
         | DefKind::SyntheticCoroutineBody => return,
     }
 

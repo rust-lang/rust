@@ -319,7 +319,7 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
     // Coroutine-closures (e.g. async closures) have an additional by-move MIR
     // body that isn't in the HIR.
     for body_owner in tcx.hir_body_owners() {
-        if let DefKind::Closure = tcx.def_kind(body_owner)
+        if let DefKind::Closure { .. } = tcx.def_kind(body_owner)
             && tcx.needs_coroutine_by_move_body_def_id(body_owner.to_def_id())
         {
             set.insert(tcx.coroutine_by_move_body_def_id(body_owner).expect_local());
@@ -406,7 +406,7 @@ fn mir_promoted(
     // Also this means promotion can rely on all const checks having been done.
 
     let const_qualifs = match tcx.def_kind(def) {
-        DefKind::Fn | DefKind::AssocFn | DefKind::Closure
+        DefKind::Fn | DefKind::AssocFn | DefKind::Closure { .. }
             if tcx.constness(def) == hir::Constness::Const
                 || tcx.is_const_default_method(def.to_def_id()) =>
         {

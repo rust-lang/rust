@@ -605,7 +605,7 @@ fn push_unqualified_item_name(
         DefPathData::CrateRoot => {
             output.push_str(tcx.crate_name(def_id.krate).as_str());
         }
-        DefPathData::Closure => {
+        DefPathData::Closure { .. } => {
             let label = coroutine_kind_label(tcx.coroutine_kind(def_id));
 
             push_disambiguated_special_name(
@@ -619,7 +619,7 @@ fn push_unqualified_item_name(
             DefPathDataName::Named(name) => {
                 output.push_str(name.as_str());
             }
-            DefPathDataName::Anon { namespace } => {
+            DefPathDataName::Anon { namespace, kind: _ } => {
                 push_disambiguated_special_name(
                     namespace.as_str(),
                     disambiguated_data.disambiguator,

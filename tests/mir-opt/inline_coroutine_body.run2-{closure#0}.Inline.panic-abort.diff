@@ -20,7 +20,7 @@
               debug fut => _4;
               scope 3 {
               }
-+             scope 6 (inlined ActionPermit::<'_, T>::perform::{closure#0}) {
++             scope 6 (inlined ActionPermit::<'_, T>::perform::{closure:async#0}) {
 +                 let _11: ActionPermit<'_, T>;
 +                 let mut _12: std::future::Ready<()>;
 +                 let mut _13: std::future::Ready<()>;

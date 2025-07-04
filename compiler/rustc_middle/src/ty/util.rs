@@ -603,7 +603,7 @@ impl<'tcx> TyCtxt<'tcx> {
     // a corresponding `NodeId`, since those are not yet phased out). The parent of
     // the closure's `DefId` will also be the context where it appears.
     pub fn is_closure_like(self, def_id: DefId) -> bool {
-        matches!(self.def_kind(def_id), DefKind::Closure)
+        matches!(self.def_kind(def_id), DefKind::Closure { .. })
     }
 
     /// Returns `true` if `def_id` refers to a definition that does not have its own
@@ -611,7 +611,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_typeck_child(self, def_id: DefId) -> bool {
         matches!(
             self.def_kind(def_id),
-            DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody
+            DefKind::Closure { .. } | DefKind::InlineConst | DefKind::SyntheticCoroutineBody
         )
     }
 
@@ -769,7 +769,7 @@ impl<'tcx> TyCtxt<'tcx> {
         match def_kind {
             DefKind::AssocFn if self.associated_item(def_id).is_method() => "method",
             DefKind::AssocTy if self.opt_rpitit_info(def_id).is_some() => "opaque type",
-            DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
+            DefKind::Closure { .. } if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
                 match coroutine_kind {
                     hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::Async,
@@ -823,7 +823,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_kind_descr_article(self, def_kind: DefKind, def_id: DefId) -> &'static str {
         match def_kind {
             DefKind::AssocFn if self.associated_item(def_id).is_method() => "a",
-            DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
+            DefKind::Closure { .. } if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
                 match coroutine_kind {
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, ..) => "an",
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, ..) => "an",

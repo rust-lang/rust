@@ -2046,7 +2046,7 @@ fn resolution_failure(
                             }
                             Variant
                             | Field
-                            | Closure
+                            | Closure { .. }
                             | AssocTy
                             | AssocConst
                             | AssocFn

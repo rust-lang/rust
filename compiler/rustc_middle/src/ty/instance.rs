@@ -314,7 +314,7 @@ impl<'tcx> InstanceKind<'tcx> {
         };
         matches!(
             tcx.def_key(def_id).disambiguated_data.data,
-            DefPathData::Ctor | DefPathData::Closure
+            DefPathData::Ctor | DefPathData::Closure { .. }
         )
     }
 
@@ -568,7 +568,7 @@ impl<'tcx> Instance<'tcx> {
                 | DefKind::InlineConst
                 | DefKind::Static { .. }
                 | DefKind::Ctor(_, CtorKind::Fn)
-                | DefKind::Closure
+                | DefKind::Closure { .. }
                 | DefKind::SyntheticCoroutineBody,
             "`Instance::try_resolve` should only be used to resolve instances of \
             functions, statics, and consts; to resolve associated types, use \

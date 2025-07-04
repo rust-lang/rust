@@ -460,7 +460,7 @@ fn construct_fn<'tcx>(
         .span();
 
     let mut abi = fn_sig.abi;
-    if let DefKind::Closure = tcx.def_kind(fn_def) {
+    if let DefKind::Closure { .. } = tcx.def_kind(fn_def) {
         // HACK(eddyb) Avoid having RustCall on closures,
         // as it adds unnecessary (and wrong) auto-tupling.
         abi = ExternAbi::Rust;
@@ -616,7 +616,7 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
             );
             (sig.inputs().to_vec(), sig.output(), None)
         }
-        DefKind::Closure => {
+        DefKind::Closure { .. } => {
             let closure_ty = tcx.type_of(def_id).instantiate_identity();
             match closure_ty.kind() {
                 ty::Closure(_, args) => {

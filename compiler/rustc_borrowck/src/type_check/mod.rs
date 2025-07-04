@@ -2483,7 +2483,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // We don't want to dispatch on 3 different kind of closures here, so take
             // advantage of the fact that the `parent_args` is the same length as the
             // `typeck_root_args`.
-            DefKind::Closure => {
+            DefKind::Closure { .. } => {
                 // FIXME(async_closures): It may be useful to add a debug assert here
                 // to actually call `type_of` and check the `parent_args` are the same
                 // length as the `typeck_root_args`.
