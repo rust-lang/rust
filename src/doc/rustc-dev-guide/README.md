@@ -74,22 +74,4 @@ including the `<!-- toc -->` marker at the place where you want the TOC.
 
 This repository is linked to `rust-lang/rust` as a [josh](https://josh-project.github.io/josh/intro.html) subtree. You can use the [rustc-josh-sync](https://github.com/rust-lang/josh-sync) tool to perform synchronization.
 
-You can install the tool using `cargo install --locked --git https://github.com/rust-lang/josh-sync`.
-
-### Pull changes from `rust-lang/rust` into this repository
-
-1) Checkout a new branch that will be used to create a PR into `rust-lang/rustc-dev-guide`
-2) Run the pull command
-    ```
-    rustc-josh-sync pull
-    ```
-3) Push the branch to your fork and create a PR into `rustc-dev-guide`
-   - If you have `gh` CLI installed, `rustc-josh-sync` can create the PR for you.
-
-### Push changes from this repository into `rust-lang/rust`
-
-1) Run the push command to create a branch named `<branch-name>` in a `rustc` fork under the `<gh-username>` account
-    ```
-    rustc-josh-sync push <branch-name> <gh-username>
-    ```
-2) Create a PR from `<branch-name>` into `rust-lang/rust`
+You can find a guide on how to perform the synchronization [here](./src/external-repos.md#synchronizing-a-josh-subtree).

@@ -9,7 +9,7 @@ There are three main ways we use dependencies:
 As a general rule:
 - Use crates.io for libraries that could be useful for others in the ecosystem
 - Use subtrees for tools that depend on compiler internals and need to be updated if there are breaking
-changes
+  changes
 - Use submodules for tools that are independent of the compiler
 
 ## External Dependencies (subtrees)
@@ -23,6 +23,8 @@ The following external projects are managed using some form of a `subtree`:
 * [rust-analyzer](https://github.com/rust-lang/rust-analyzer)
 * [rustc_codegen_cranelift](https://github.com/rust-lang/rustc_codegen_cranelift)
 * [rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide)
+* [compiler-builtins](https://github.com/rust-lang/compiler-builtins)
+* [stdarch](https://github.com/rust-lang/stdarch)
 
 In contrast to `submodule` dependencies
 (see below for those), the `subtree` dependencies are just regular files and directories which can
@@ -34,20 +36,57 @@ implement a new tool feature or test, that should happen in one collective rustc
 `subtree` dependencies are currently managed by two distinct approaches:
 
 * Using `git subtree`
-  * `clippy` ([sync guide](https://doc.rust-lang.org/nightly/clippy/development/infrastructure/sync.html#performing-the-sync-from-rust-langrust-to-clippy))
-  * `portable-simd` ([sync script](https://github.com/rust-lang/portable-simd/blob/master/subtree-sync.sh))
-  * `rustfmt`
-  * `rustc_codegen_cranelift` ([sync script](https://github.com/rust-lang/rustc_codegen_cranelift/blob/113af154d459e41b3dc2c5d7d878e3d3a8f33c69/scripts/rustup.sh#L7))
+    * `clippy` ([sync guide](https://doc.rust-lang.org/nightly/clippy/development/infrastructure/sync.html#performing-the-sync-from-rust-langrust-to-clippy))
+    * `portable-simd` ([sync script](https://github.com/rust-lang/portable-simd/blob/master/subtree-sync.sh))
+    * `rustfmt`
+    * `rustc_codegen_cranelift` ([sync script](https://github.com/rust-lang/rustc_codegen_cranelift/blob/113af154d459e41b3dc2c5d7d878e3d3a8f33c69/scripts/rustup.sh#L7))
 * Using the [josh] tool
-  * `miri` ([sync guide](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#advanced-topic-syncing-with-the-rustc-repo))
-  * `rust-analyzer` ([sync script](https://github.com/rust-lang/rust-analyzer/blob/2e13684be123eca7181aa48e043e185d8044a84a/xtask/src/release.rs#L147))
-  * `rustc-dev-guide` ([sync guide](https://github.com/rust-lang/rustc-dev-guide#synchronizing-josh-subtree-with-rustc))
+    * `miri` ([sync guide](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#advanced-topic-syncing-with-the-rustc-repo))
+    * `rust-analyzer` ([sync script](https://github.com/rust-lang/rust-analyzer/blob/2e13684be123eca7181aa48e043e185d8044a84a/xtask/src/release.rs#L147))
+    * `rustc-dev-guide`
+    * `compiler-builtins`
+    * `stdarch`
 
-The [josh] tool is an alternative to git subtrees, which manages git history in a different way and scales better to larger repositories. Specific tooling is required to work with josh, you can check out the `miri` or `rust-analyzer` scripts linked above for inspiration. If you want to migrate a repository dependency from `git subtree` or `git submodule` to josh, you can check out [this guide](https://hackmd.io/7pOuxnkdQDaL1Y1FQr65xg).
+### Josh subtrees
 
-Below you can find a guide on how to perform push and pull synchronization with the main rustc repo using `git subtree`, although these instructions might differ repo from repo.
+The [josh] tool is an alternative to git subtrees, which manages git history in a different way and scales better to larger repositories. Specific tooling is required to work with josh, you can check out the `miri` or `rust-analyzer` scripts linked above for inspiration. We provide a helper [`rustc-josh-sync`][josh-sync] tool to help with the synchronization, it is described [below](#synchronizing-a-josh-subtree).
 
-### Synchronizing a subtree
+### Synchronizing a Josh subtree
+
+We use a dedicated tool called [`rustc-josh-sync`][josh-sync] for performing Josh subtree updates.
+Currently, we are migrating Josh repositories to it. So far, it is used in:
+
+- rustc-dev-guide
+
+To use the tool, first install it with `cargo install --locked --git https://github.
+com/rust-lang/josh-sync`.
+
+Both pulls (synchronize changes from rust-lang/rust into the subtree) and pushes (synchronize
+changes from the subtree to rust-lang/rust) are performed from the subtree repository (so first
+switch to its repository checkout directory in your terminal).
+
+#### Performing pull
+1) Checkout a new branch that will be used to create a PR into the subtree
+2) Run the pull command
+    ```
+    rustc-josh-sync pull
+    ```
+3) Push the branch to your fork and create a PR into the subtree repository
+    - If you have `gh` CLI installed, `rustc-josh-sync` can create the PR for you.
+
+#### Performing push
+
+1) Run the push command to create a branch named `<branch-name>` in a `rustc` fork under the `<gh-username>` account
+    ```
+    rustc-josh-sync push <branch-name> <gh-username>
+    ```
+2) Create a PR from `<branch-name>` into `rust-lang/rust`
+
+### Creating a new Josh subtree dependency
+
+If you want to migrate a repository dependency from `git subtree` or `git submodule` to josh, you can check out [this guide](https://hackmd.io/7pOuxnkdQDaL1Y1FQr65xg).
+
+### Synchronizing a git subtree
 
 Periodically the changes made to subtree based dependencies need to be synchronized between this
 repository and the upstream tool repositories.
@@ -129,3 +168,4 @@ the week leading up to the beta cut.
 [toolstate website]: https://rust-lang-nursery.github.io/rust-toolstate/
 [Toolstate chapter]: https://forge.rust-lang.org/infra/toolstate.html
 [josh]: https://josh-project.github.io/josh/intro.html
+[josh-sync]: https://github.com/rust-lang/josh-sync
