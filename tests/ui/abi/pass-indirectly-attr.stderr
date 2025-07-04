@@ -1,0 +1,84 @@
+error: fn_abi_of(func) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: Type,
+                       layout: Layout {
+                           size: Size(1 bytes),
+                           align: AbiAlign {
+                               abi: Align(1 bytes),
+                           },
+                           backend_repr: Memory {
+                               sized: true,
+                           },
+                           fields: Arbitrary {
+                               offsets: [
+                                   Size(0 bytes),
+                               ],
+                               memory_index: [
+                                   0,
+                               ],
+                           },
+                           largest_niche: None,
+                           uninhabited: false,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: Align(1 bytes),
+                           randomization_seed: $SEED,
+                       },
+                   },
+                   mode: Indirect {
+                       attrs: ArgAttributes {
+                           regular: CapturesAddress | NoAlias | NonNull | NoUndef,
+                           arg_ext: None,
+                           pointee_size: Size(1 bytes),
+                           pointee_align: Some(
+                               Align(1 bytes),
+                           ),
+                       },
+                       meta_attrs: None,
+                       on_stack: false,
+                   },
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (),
+                   layout: Layout {
+                       size: Size(0 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
+                   },
+               },
+               mode: Ignore,
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: C,
+           can_unwind: false,
+       }
+  --> $DIR/pass-indirectly-attr.rs:13:1
+   |
+LL | pub extern "C" fn func(_: Type) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

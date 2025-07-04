@@ -114,6 +114,10 @@ where
         // Not touching this...
         return;
     }
+    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
+        return;
+    }
     if !arg.layout.is_aggregate() {
         if kind == AbiKind::DarwinPCS {
             // On Darwin, when passing an i8/i16, it must be sign-extended to 32 bits,
