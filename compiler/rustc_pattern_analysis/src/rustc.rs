@@ -221,27 +221,19 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         let slice = match ctor {
             Struct | Variant(_) | UnionField => match ty.kind() {
                 ty::Tuple(fs) => reveal_and_alloc(cx, fs.iter()),
-                ty::Adt(adt, args) => {
-                    if adt.is_box() {
-                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
-                        // patterns. If we're here we can assume this is a box pattern.
-                        reveal_and_alloc(cx, once(args.type_at(0)))
-                    } else {
-                        let variant =
-                            &adt.variant(RustcPatCtxt::variant_index_for_adt(&ctor, *adt));
-                        let tys = cx.variant_sub_tys(ty, variant).map(|(field, ty)| {
-                            let is_visible =
-                                adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
-                            let is_uninhabited = cx.is_uninhabited(*ty);
-                            let is_unstable =
-                                cx.tcx.lookup_stability(field.did).is_some_and(|stab| {
-                                    stab.is_unstable() && stab.feature != sym::rustc_private
-                                });
-                            let skip = is_uninhabited && (!is_visible || is_unstable);
-                            (ty, PrivateUninhabitedField(skip))
+                ty::Adt(adt, _) => {
+                    let variant = &adt.variant(RustcPatCtxt::variant_index_for_adt(&ctor, *adt));
+                    let tys = cx.variant_sub_tys(ty, variant).map(|(field, ty)| {
+                        let is_visible =
+                            adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
+                        let is_uninhabited = cx.is_uninhabited(*ty);
+                        let is_unstable = cx.tcx.lookup_stability(field.did).is_some_and(|stab| {
+                            stab.is_unstable() && stab.feature != sym::rustc_private
                         });
-                        cx.dropless_arena.alloc_from_iter(tys)
-                    }
+                        let skip = is_uninhabited && (!is_visible || is_unstable);
+                        (ty, PrivateUninhabitedField(skip))
+                    });
+                    cx.dropless_arena.alloc_from_iter(tys)
                 }
                 _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
             },
@@ -273,14 +265,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             Struct | Variant(_) | UnionField => match ty.kind() {
                 ty::Tuple(fs) => fs.len(),
                 ty::Adt(adt, ..) => {
-                    if adt.is_box() {
-                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
-                        // patterns. If we're here we can assume this is a box pattern.
-                        1
-                    } else {
-                        let variant_idx = RustcPatCtxt::variant_index_for_adt(&ctor, *adt);
-                        adt.variant(variant_idx).fields.len()
-                    }
+                    let variant_idx = RustcPatCtxt::variant_index_for_adt(&ctor, *adt);
+                    adt.variant(variant_idx).fields.len()
                 }
                 _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
             },
@@ -470,8 +456,6 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 fields = vec![self.lower_pat(subpattern).at_index(0)];
                 arity = 1;
                 ctor = match ty.kind() {
-                    // This is a box pattern.
-                    ty::Adt(adt, ..) if adt.is_box() => Struct,
                     ty::Ref(..) => Ref,
                     _ => span_bug!(
                         pat.span,
@@ -500,28 +484,6 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                             .iter()
                             .map(|ipat| self.lower_pat(&ipat.pattern).at_index(ipat.field.index()))
                             .collect();
-                    }
-                    ty::Adt(adt, _) if adt.is_box() => {
-                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
-                        // patterns. If we're here we can assume this is a box pattern.
-                        // FIXME(Nadrieril): A `Box` can in theory be matched either with `Box(_,
-                        // _)` or a box pattern. As a hack to avoid an ICE with the former, we
-                        // ignore other fields than the first one. This will trigger an error later
-                        // anyway.
-                        // See https://github.com/rust-lang/rust/issues/82772,
-                        // explanation: https://github.com/rust-lang/rust/pull/82789#issuecomment-796921977
-                        // The problem is that we can't know from the type whether we'll match
-                        // normally or through box-patterns. We'll have to figure out a proper
-                        // solution when we introduce generalized deref patterns. Also need to
-                        // prevent mixing of those two options.
-                        let pattern = subpatterns.into_iter().find(|pat| pat.field.index() == 0);
-                        if let Some(pat) = pattern {
-                            fields = vec![self.lower_pat(&pat.pattern).at_index(0)];
-                        } else {
-                            fields = vec![];
-                        }
-                        ctor = Struct;
-                        arity = 1;
                     }
                     ty::Adt(adt, _) => {
                         ctor = match pat.kind {
@@ -825,11 +787,6 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             Bool(b) => b.to_string(),
             Str(s) => s.to_string(),
             IntRange(range) => return self.print_pat_range(range, *pat.ty()),
-            Struct if pat.ty().is_box() => {
-                // Outside of the `alloc` crate, the only way to create a struct pattern
-                // of type `Box` is to use a `box` pattern via #[feature(box_patterns)].
-                format!("box {}", print(&pat.fields[0]))
-            }
             Struct | Variant(_) | UnionField => {
                 let enum_info = match *pat.ty().kind() {
                     ty::Adt(adt_def, _) if adt_def.is_enum() => EnumInfo::Enum {
@@ -865,6 +822,14 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 let mut s = String::new();
                 print::write_ref_like(&mut s, pat.ty().inner(), &print(&pat.fields[0])).unwrap();
                 s
+            }
+            DerefPattern(_) if pat.ty().is_box() && !self.tcx.features().deref_patterns() => {
+                // FIXME(deref_patterns): Remove this special handling once `box_patterns` is gone.
+                // HACK(@dianne): `box _` syntax is exposed on stable in diagnostics, e.g. to
+                // witness non-exhaustiveness of `match Box::new(0) { Box { .. } if false => {} }`.
+                // To avoid changing diagnostics before deref pattern syntax is finalized, let's use
+                // `box _` syntax unless `deref_patterns` is enabled.
+                format!("box {}", print(&pat.fields[0]))
             }
             DerefPattern(_) => format!("deref!({})", print(&pat.fields[0])),
             Slice(slice) => {
@@ -964,12 +929,8 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         ty: &Self::Ty,
     ) -> fmt::Result {
         if let ty::Adt(adt, _) = ty.kind() {
-            if adt.is_box() {
-                write!(f, "Box")?
-            } else {
-                let variant = adt.variant(Self::variant_index_for_adt(ctor, *adt));
-                write!(f, "{}", variant.name)?;
-            }
+            let variant = adt.variant(Self::variant_index_for_adt(ctor, *adt));
+            write!(f, "{}", variant.name)?;
         }
         Ok(())
     }
