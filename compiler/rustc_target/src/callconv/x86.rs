@@ -64,6 +64,11 @@ where
             continue;
         }
 
+        if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+            arg.make_indirect();
+            continue;
+        }
+
         let t = cx.target_spec();
         let align_4 = Align::from_bytes(4).unwrap();
         let align_16 = Align::from_bytes(16).unwrap();

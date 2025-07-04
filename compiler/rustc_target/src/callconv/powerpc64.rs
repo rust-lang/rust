@@ -52,6 +52,10 @@ where
         // Not touching this...
         return;
     }
+    if !is_ret && arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
+        return;
+    }
     if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(64);
         return;
