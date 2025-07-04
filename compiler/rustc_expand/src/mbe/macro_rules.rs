@@ -96,6 +96,30 @@ impl<'a> ParserAnyMacro<'a> {
         ensure_complete_parse(parser, &path, kind.name(), site_span);
         fragment
     }
+
+    #[instrument(skip(cx, tts))]
+    pub(crate) fn from_tts<'cx>(
+        cx: &'cx mut ExtCtxt<'a>,
+        tts: TokenStream,
+        site_span: Span,
+        arm_span: Span,
+        is_local: bool,
+        macro_ident: Ident,
+    ) -> Self {
+        Self {
+            parser: Parser::new(&cx.sess.psess, tts, None),
+
+            // Pass along the original expansion site and the name of the macro
+            // so we can print a useful error message if the parse of the expanded
+            // macro leaves unparsed tokens.
+            site_span,
+            macro_ident,
+            lint_node_id: cx.current_expansion.lint_node_id,
+            is_trailing_mac: cx.current_expansion.is_trailing_mac,
+            arm_span,
+            is_local,
+        }
+    }
 }
 
 pub(super) struct MacroRule {
@@ -207,9 +231,6 @@ fn expand_macro<'cx>(
     rules: &[MacroRule],
 ) -> Box<dyn MacResult + 'cx> {
     let psess = &cx.sess.psess;
-    // Macros defined in the current crate have a real node id,
-    // whereas macros from an external crate have a dummy id.
-    let is_local = node_id != DUMMY_NODE_ID;
 
     if cx.trace_macros() {
         let msg = format!("expanding `{}! {{ {} }}`", name, pprust::tts_to_string(&arg));
@@ -220,7 +241,7 @@ fn expand_macro<'cx>(
     let try_success_result = try_match_macro(psess, name, &arg, rules, &mut NoopTracker);
 
     match try_success_result {
-        Ok((i, rule, named_matches)) => {
+        Ok((rule_index, rule, named_matches)) => {
             let mbe::TokenTree::Delimited(rhs_span, _, ref rhs) = rule.rhs else {
                 cx.dcx().span_bug(sp, "malformed macro rhs");
             };
@@ -241,27 +262,13 @@ fn expand_macro<'cx>(
                 trace_macros_note(&mut cx.expansions, sp, msg);
             }
 
-            let p = Parser::new(psess, tts, None);
-
+            let is_local = is_defined_in_current_crate(node_id);
             if is_local {
-                cx.resolver.record_macro_rule_usage(node_id, i);
+                cx.resolver.record_macro_rule_usage(node_id, rule_index);
             }
 
-            // Let the context choose how to interpret the result.
-            // Weird, but useful for X-macros.
-            Box::new(ParserAnyMacro {
-                parser: p,
-
-                // Pass along the original expansion site and the name of the macro
-                // so we can print a useful error message if the parse of the expanded
-                // macro leaves unparsed tokens.
-                site_span: sp,
-                macro_ident: name,
-                lint_node_id: cx.current_expansion.lint_node_id,
-                is_trailing_mac: cx.current_expansion.is_trailing_mac,
-                arm_span,
-                is_local,
-            })
+            // Let the context choose how to interpret the result. Weird, but useful for X-macros.
+            Box::new(ParserAnyMacro::from_tts(cx, tts, sp, arm_span, is_local, name))
         }
         Err(CanRetry::No(guar)) => {
             debug!("Will not retry matching as an error was emitted already");
@@ -373,9 +380,9 @@ pub fn compile_declarative_macro(
     node_id: NodeId,
     edition: Edition,
 ) -> (SyntaxExtension, usize) {
-    let is_local = node_id != DUMMY_NODE_ID;
     let mk_syn_ext = |expander| {
         let kind = SyntaxExtensionKind::LegacyBang(expander);
+        let is_local = is_defined_in_current_crate(node_id);
         SyntaxExtension::new(sess, kind, span, Vec::new(), edition, ident.name, attrs, is_local)
     };
     let dummy_syn_ext = |guar| (mk_syn_ext(Arc::new(DummyExpander(guar))), 0);
@@ -439,7 +446,7 @@ pub fn compile_declarative_macro(
     }
 
     // Return the number of rules for unused rule linting, if this is a local macro.
-    let nrules = if is_local { rules.len() } else { 0 };
+    let nrules = if is_defined_in_current_crate(node_id) { rules.len() } else { 0 };
 
     let expander =
         Arc::new(MacroRulesMacroExpander { name: ident, span, node_id, transparency, rules });
@@ -1034,9 +1041,7 @@ fn check_matcher_core<'tt>(
                     // definition of this macro_rules, not while (re)parsing
                     // the macro when compiling another crate that is using the
                     // macro. (See #86567.)
-                    // Macros defined in the current crate have a real node id,
-                    // whereas macros from an external crate have a dummy id.
-                    if node_id != DUMMY_NODE_ID
+                    if is_defined_in_current_crate(node_id)
                         && matches!(kind, NonterminalKind::Pat(PatParam { inferred: true }))
                         && matches!(
                             next_token,
@@ -1294,6 +1299,12 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
              in follow set checker"
         ),
     }
+}
+
+fn is_defined_in_current_crate(node_id: NodeId) -> bool {
+    // Macros defined in the current crate have a real node id,
+    // whereas macros from an external crate have a dummy id.
+    node_id != DUMMY_NODE_ID
 }
 
 pub(super) fn parser_from_cx(
