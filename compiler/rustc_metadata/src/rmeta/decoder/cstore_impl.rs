@@ -3,7 +3,7 @@ use std::mem;
 use std::sync::Arc;
 
 use rustc_attr_data_structures::Deprecation;
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::arena::ArenaAllocatable;
@@ -510,10 +510,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         }
                         Entry::Vacant(entry) => {
                             entry.insert(parent);
-                            if matches!(
-                                child.res,
-                                Res::Def(DefKind::Mod | DefKind::Enum | DefKind::Trait, _)
-                            ) {
+                            if child.res.module_like_def_id().is_some() {
                                 bfs_queue.push_back(def_id);
                             }
                         }

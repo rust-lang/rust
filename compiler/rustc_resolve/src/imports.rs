@@ -679,9 +679,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             NameBindingKind::Res(res) => {
                                 Some(self.def_id_to_node_id(res.def_id().expect_local()))
                             }
-                            NameBindingKind::Module(module) => {
-                                Some(self.def_id_to_node_id(module.def_id().expect_local()))
-                            }
                             NameBindingKind::Import { import, .. } => import.id(),
                         };
                         if let Some(binding_id) = binding_id {

@@ -39,21 +39,6 @@ use crate::{
 
 type Res = def::Res<NodeId>;
 
-impl<'ra, Id: Into<DefId>> ToNameBinding<'ra>
-    for (Module<'ra>, ty::Visibility<Id>, Span, LocalExpnId)
-{
-    fn to_name_binding(self, arenas: &'ra ResolverArenas<'ra>) -> NameBinding<'ra> {
-        arenas.alloc_name_binding(NameBindingData {
-            kind: NameBindingKind::Module(self.0),
-            ambiguity: None,
-            warn_ambiguity: false,
-            vis: self.1.to_def_id(),
-            span: self.2,
-            expansion: self.3,
-        })
-    }
-}
-
 impl<'ra, Id: Into<DefId>> ToNameBinding<'ra> for (Res, ty::Visibility<Id>, Span, LocalExpnId) {
     fn to_name_binding(self, arenas: &'ra ResolverArenas<'ra>) -> NameBinding<'ra> {
         arenas.alloc_name_binding(NameBindingData {
@@ -121,7 +106,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if !def_id.is_local() {
             // Query `def_kind` is not used because query system overhead is too expensive here.
             let def_kind = self.cstore().def_kind_untracked(def_id);
-            if let DefKind::Mod | DefKind::Enum | DefKind::Trait = def_kind {
+            if def_kind.is_module_like() {
                 let parent = self
                     .tcx
                     .opt_parent(def_id)
@@ -223,12 +208,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let expansion = parent_scope.expansion;
         // Record primary definitions.
         match res {
-            Res::Def(DefKind::Mod | DefKind::Enum | DefKind::Trait, def_id) => {
-                let module = self.expect_module(def_id);
-                self.define(parent, ident, TypeNS, (module, vis, span, expansion));
-            }
             Res::Def(
-                DefKind::Struct
+                DefKind::Mod
+                | DefKind::Enum
+                | DefKind::Trait
+                | DefKind::Struct
                 | DefKind::Union
                 | DefKind::Variant
                 | DefKind::TyAlias
@@ -766,7 +750,12 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             ItemKind::Mod(_, ident, ref mod_kind) => {
-                let module = self.r.new_module(
+                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
+
+                if let ast::ModKind::Loaded(_, _, _, Err(_)) = mod_kind {
+                    self.r.mods_with_parse_errors.insert(def_id);
+                }
+                self.parent_scope.module = self.r.new_module(
                     Some(parent),
                     ModuleKind::Def(def_kind, def_id, Some(ident.name)),
                     expansion.to_expn_id(),
@@ -774,14 +763,6 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     parent.no_implicit_prelude
                         || ast::attr::contains_name(&item.attrs, sym::no_implicit_prelude),
                 );
-                self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
-
-                if let ast::ModKind::Loaded(_, _, _, Err(_)) = mod_kind {
-                    self.r.mods_with_parse_errors.insert(def_id);
-                }
-
-                // Descend into the module.
-                self.parent_scope.module = module;
             }
 
             // These items live in the value namespace.
@@ -804,15 +785,15 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             ItemKind::Enum(ident, _, _) | ItemKind::Trait(box ast::Trait { ident, .. }) => {
-                let module = self.r.new_module(
+                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
+
+                self.parent_scope.module = self.r.new_module(
                     Some(parent),
                     ModuleKind::Def(def_kind, def_id, Some(ident.name)),
                     expansion.to_expn_id(),
                     item.span,
                     parent.no_implicit_prelude,
                 );
-                self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
-                self.parent_scope.module = module;
             }
 
             // These items live in both the type and value namespaces.
@@ -920,8 +901,9 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         }
         .map(|module| {
             let used = self.process_macro_use_imports(item, module);
+            let res = module.res().unwrap();
             let vis = ty::Visibility::<LocalDefId>::Public;
-            let binding = (module, vis, sp, expansion).to_name_binding(self.r.arenas);
+            let binding = (res, vis, sp, expansion).to_name_binding(self.r.arenas);
             (used, Some(ModuleOrUniformRoot::Module(module)), binding)
         })
         .unwrap_or((true, None, self.r.dummy_binding));

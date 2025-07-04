@@ -1637,11 +1637,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
 
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(res);
-                    if let Some(next_module) = binding.module() {
-                        if self.mods_with_parse_errors.contains(&next_module.def_id()) {
+                    if let Some(def_id) = binding.res().module_like_def_id() {
+                        if self.mods_with_parse_errors.contains(&def_id) {
                             module_had_parse_errors = true;
                         }
-                        module = Some(ModuleOrUniformRoot::Module(next_module));
+                        module = Some(ModuleOrUniformRoot::Module(self.expect_module(def_id)));
                         record_segment_res(self, res);
                     } else if res == Res::ToolMod && !is_last && opt_ns.is_some() {
                         if binding.is_import() {
