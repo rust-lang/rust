@@ -59,6 +59,15 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
         let storage_to_remove = if tcx.sess.emit_lifetime_markers() {
             storage_to_remove.clear();
 
+            // If the local is borrowed, we cannot easily determine if it is used, so we have to remove the storage statements.
+            let borrowed_locals = ssa.borrowed_locals();
+            
+            for (local, &head) in ssa.copy_classes().iter_enumerated() {
+                if local != head && borrowed_locals.contains(local) {
+                    storage_to_remove.insert(head);
+                }
+            }
+
             let maybe_uninit = MaybeUninitializedLocals::new()
                 .iterate_to_fixpoint(tcx, body, Some("mir_opt::copy_prop"))
                 .into_results_cursor(body);
@@ -66,7 +75,6 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
             let mut storage_checker = StorageChecker {
                 maybe_uninit,
                 copy_classes: ssa.copy_classes(),
-                borrowed_locals: ssa.borrowed_locals(),
                 storage_to_remove,
             };
 
@@ -193,7 +201,6 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
 struct StorageChecker<'a, 'tcx> {
     maybe_uninit: ResultsCursor<'a, 'tcx, MaybeUninitializedLocals>,
     copy_classes: &'a IndexSlice<Local, Local>,
-    borrowed_locals: &'a DenseBitSet<Local>,
     storage_to_remove: DenseBitSet<Local>,
 }
 
@@ -217,12 +224,6 @@ impl<'a, 'tcx> Visitor<'tcx> for StorageChecker<'a, 'tcx> {
 
         // If the local is the head, or if we already marked it for deletion, we do not need to check it.
         if head == local || self.storage_to_remove.contains(head) {
-            return;
-        }
-
-        // If the local is borrowed, we cannot easily determine if it is used, so we have to remove the storage statements.
-        if self.borrowed_locals.contains(local) {
-            self.storage_to_remove.insert(head);
             return;
         }
 
