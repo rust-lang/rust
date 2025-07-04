@@ -768,16 +768,6 @@ impl std::hash::Hash for NameBindingData<'_> {
     }
 }
 
-trait ToNameBinding<'ra> {
-    fn to_name_binding(self, arenas: &'ra ResolverArenas<'ra>) -> NameBinding<'ra>;
-}
-
-impl<'ra> ToNameBinding<'ra> for NameBinding<'ra> {
-    fn to_name_binding(self, _: &'ra ResolverArenas<'ra>) -> NameBinding<'ra> {
-        self
-    }
-}
-
 #[derive(Clone, Copy, Debug)]
 enum NameBindingKind<'ra> {
     Res(Res),
@@ -1240,6 +1230,32 @@ pub struct ResolverArenas<'ra> {
 }
 
 impl<'ra> ResolverArenas<'ra> {
+    fn new_res_binding(
+        &'ra self,
+        res: Res,
+        vis: ty::Visibility<DefId>,
+        span: Span,
+        expansion: LocalExpnId,
+    ) -> NameBinding<'ra> {
+        self.alloc_name_binding(NameBindingData {
+            kind: NameBindingKind::Res(res),
+            ambiguity: None,
+            warn_ambiguity: false,
+            vis,
+            span,
+            expansion,
+        })
+    }
+
+    fn new_pub_res_binding(
+        &'ra self,
+        res: Res,
+        span: Span,
+        expn_id: LocalExpnId,
+    ) -> NameBinding<'ra> {
+        self.new_res_binding(res, Visibility::Public, span, expn_id)
+    }
+
     fn new_module(
         &'ra self,
         parent: Option<Module<'ra>>,
@@ -1263,9 +1279,8 @@ impl<'ra> ResolverArenas<'ra> {
         }
         if let Some(def_id) = def_id {
             module_map.insert(def_id, module);
-            let vis = ty::Visibility::<DefId>::Public;
             let res = module.res().unwrap();
-            let binding = (res, vis, module.span, LocalExpnId::ROOT).to_name_binding(self);
+            let binding = self.new_pub_res_binding(res, module.span, LocalExpnId::ROOT);
             module_self_bindings.insert(module, binding);
         }
         module
@@ -1456,8 +1471,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         let registered_tools = tcx.registered_tools(());
-
-        let pub_vis = ty::Visibility::<DefId>::Public;
         let edition = tcx.sess.edition();
 
         let mut resolver = Resolver {
@@ -1506,12 +1519,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             macro_expanded_macro_export_errors: BTreeSet::new(),
 
             arenas,
-            dummy_binding: (Res::Err, pub_vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(arenas),
+            dummy_binding: arenas.new_pub_res_binding(Res::Err, DUMMY_SP, LocalExpnId::ROOT),
             builtin_types_bindings: PrimTy::ALL
                 .iter()
                 .map(|prim_ty| {
-                    let binding = (Res::PrimTy(*prim_ty), pub_vis, DUMMY_SP, LocalExpnId::ROOT)
-                        .to_name_binding(arenas);
+                    let res = Res::PrimTy(*prim_ty);
+                    let binding = arenas.new_pub_res_binding(res, DUMMY_SP, LocalExpnId::ROOT);
                     (prim_ty.name(), binding)
                 })
                 .collect(),
@@ -1519,16 +1532,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .iter()
                 .map(|builtin_attr| {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin(builtin_attr.name));
-                    let binding =
-                        (res, pub_vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(arenas);
+                    let binding = arenas.new_pub_res_binding(res, DUMMY_SP, LocalExpnId::ROOT);
                     (builtin_attr.name, binding)
                 })
                 .collect(),
             registered_tool_bindings: registered_tools
                 .iter()
                 .map(|ident| {
-                    let binding = (Res::ToolMod, pub_vis, ident.span, LocalExpnId::ROOT)
-                        .to_name_binding(arenas);
+                    let res = Res::ToolMod;
+                    let binding = arenas.new_pub_res_binding(res, ident.span, LocalExpnId::ROOT);
                     (*ident, binding)
                 })
                 .collect(),
@@ -2162,8 +2174,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     self.crate_loader(|c| c.maybe_process_path_extern(ident.name))?
                 };
                 let res = Res::Def(DefKind::Mod, crate_id.as_def_id());
-                let vis = ty::Visibility::<DefId>::Public;
-                (res, vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(self.arenas)
+                self.arenas.new_pub_res_binding(res, DUMMY_SP, LocalExpnId::ROOT)
             })
         });
 
