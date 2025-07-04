@@ -1207,7 +1207,7 @@ macro_rules! common_visitor_and_walkers {
                     visit_opt!(vis, visit_anon_const, end);
                 }
                 TyPatKind::Or(variants) => walk_list!(vis, visit_ty_pat, variants),
-                TyPatKind::Err(_) => {}
+                TyPatKind::NotNull | TyPatKind::Err(_) => {}
             }
             visit_span(vis, span)
         }
