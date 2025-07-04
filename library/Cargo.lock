@@ -340,10 +340,10 @@ dependencies = [
 name = "std_detect"
 version = "0.1.5"
 dependencies = [
+ "alloc",
  "cfg-if",
+ "core",
  "libc",
- "rustc-std-workspace-alloc",
- "rustc-std-workspace-core",
 ]
 
 [[package]]
