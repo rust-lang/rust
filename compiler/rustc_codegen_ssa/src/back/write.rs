@@ -808,7 +808,7 @@ pub(crate) enum WorkItemResult<B: WriteBackendMethods> {
 }
 
 pub enum FatLtoInput<B: WriteBackendMethods> {
-    Serialized { name: String, buffer: B::ModuleBuffer },
+    Serialized { name: String, buffer: SerializedModule<B::ModuleBuffer> },
     InMemory(ModuleCodegen<B::Module>),
 }
 
@@ -897,7 +897,10 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
                 fs::write(&path, buffer.data()).unwrap_or_else(|e| {
                     panic!("Error writing pre-lto-bitcode file `{}`: {}", path.display(), e);
                 });
-                Ok(WorkItemResult::NeedsFatLto(FatLtoInput::Serialized { name, buffer }))
+                Ok(WorkItemResult::NeedsFatLto(FatLtoInput::Serialized {
+                    name,
+                    buffer: SerializedModule::Local(buffer),
+                }))
             }
             None => Ok(WorkItemResult::NeedsFatLto(FatLtoInput::InMemory(module))),
         },
@@ -990,12 +993,16 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 
 fn execute_fat_lto_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
-    needs_fat_lto: Vec<FatLtoInput<B>>,
+    mut needs_fat_lto: Vec<FatLtoInput<B>>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
     autodiff: Vec<AutoDiffItem>,
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
-    let module = B::run_and_optimize_fat_lto(cgcx, needs_fat_lto, import_only_modules, autodiff)?;
+    for (module, wp) in import_only_modules {
+        needs_fat_lto.push(FatLtoInput::Serialized { name: wp.cgu_name, buffer: module })
+    }
+
+    let module = B::run_and_optimize_fat_lto(cgcx, needs_fat_lto, autodiff)?;
     let module = B::codegen(cgcx, module, module_config)?;
     Ok(WorkItemResult::Finished(module))
 }

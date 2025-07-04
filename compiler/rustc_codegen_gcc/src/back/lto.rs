@@ -175,7 +175,6 @@ fn save_as_file(obj: &[u8], path: &Path) -> Result<(), LtoBitcodeFromRlib> {
 pub(crate) fn run_fat(
     cgcx: &CodegenContext<GccCodegenBackend>,
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
-    cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<ModuleCodegen<GccContext>, FatalError> {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
@@ -186,7 +185,6 @@ pub(crate) fn run_fat(
         cgcx,
         dcx,
         modules,
-        cached_modules,
         lto_data.upstream_modules,
         lto_data.tmp_path,
         //&lto_data.symbols_below_threshold,
@@ -197,7 +195,6 @@ fn fat_lto(
     cgcx: &CodegenContext<GccCodegenBackend>,
     _dcx: DiagCtxtHandle<'_>,
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
-    cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     tmp_path: TempDir,
     //symbols_below_threshold: &[String],
@@ -211,21 +208,12 @@ fn fat_lto(
     //   modules that are serialized in-memory.
     // * `in_memory` contains modules which are already parsed and in-memory,
     //   such as from multi-CGU builds.
-    //
-    // All of `cached_modules` (cached from previous incremental builds) can
-    // immediately go onto the `serialized_modules` modules list and then we can
-    // split the `modules` array into these two lists.
     let mut in_memory = Vec::new();
-    serialized_modules.extend(cached_modules.into_iter().map(|(buffer, wp)| {
-        info!("pushing cached module {:?}", wp.cgu_name);
-        (buffer, CString::new(wp.cgu_name).unwrap())
-    }));
     for module in modules {
         match module {
             FatLtoInput::InMemory(m) => in_memory.push(m),
             FatLtoInput::Serialized { name, buffer } => {
                 info!("pushing serialized module {:?}", name);
-                let buffer = SerializedModule::Local(buffer);
                 serialized_modules.push((buffer, CString::new(name).unwrap()));
             }
         }
