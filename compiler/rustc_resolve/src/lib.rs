@@ -46,7 +46,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::FreezeReadGuard;
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
@@ -1031,7 +1031,7 @@ pub struct Resolver<'ra, 'tcx> {
     tcx: TyCtxt<'tcx>,
 
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
-    expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
+    expn_that_defined: UnordMap<LocalDefId, ExpnId>,
 
     graph_root: Module<'ra>,
 
@@ -1208,7 +1208,7 @@ pub struct Resolver<'ra, 'tcx> {
     effective_visibilities: EffectiveVisibilities,
     doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
-    all_macro_rules: FxHashSet<Symbol>,
+    all_macro_rules: UnordSet<Symbol>,
 
     /// Invocation ids of all glob delegations.
     glob_delegation_invoc_ids: FxHashSet<LocalExpnId>,
@@ -1653,16 +1653,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let confused_type_with_std_module = self.confused_type_with_std_module;
         let effective_visibilities = self.effective_visibilities;
 
-        let stripped_cfg_items = Steal::new(
-            self.stripped_cfg_items
-                .into_iter()
-                .filter_map(|item| {
-                    let parent_module =
-                        self.node_id_to_def_id.get(&item.parent_module)?.key().to_def_id();
-                    Some(StrippedCfgItem { parent_module, ident: item.ident, cfg: item.cfg })
-                })
-                .collect(),
-        );
+        let stripped_cfg_items = self
+            .stripped_cfg_items
+            .into_iter()
+            .filter_map(|item| {
+                let parent_module =
+                    self.node_id_to_def_id.get(&item.parent_module)?.key().to_def_id();
+                Some(StrippedCfgItem { parent_module, ident: item.ident, cfg: item.cfg })
+            })
+            .collect();
 
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,

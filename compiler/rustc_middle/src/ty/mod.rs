@@ -33,7 +33,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
@@ -176,11 +176,11 @@ pub struct ResolverOutputs {
     pub ast_lowering: ResolverAstLowering,
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub struct ResolverGlobalCtxt {
     pub visibilities_for_hashing: Vec<(LocalDefId, Visibility)>,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
-    pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
+    pub expn_that_defined: UnordMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
     pub extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
@@ -196,8 +196,8 @@ pub struct ResolverGlobalCtxt {
     pub confused_type_with_std_module: FxIndexMap<Span, Span>,
     pub doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     pub doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
-    pub all_macro_rules: FxHashSet<Symbol>,
-    pub stripped_cfg_items: Steal<Vec<StrippedCfgItem>>,
+    pub all_macro_rules: UnordSet<Symbol>,
+    pub stripped_cfg_items: Vec<StrippedCfgItem>,
 }
 
 /// Resolutions that should only be used for lowering.
@@ -243,7 +243,7 @@ pub struct DelegationFnSig {
     pub target_feature: bool,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, HashStable)]
 pub struct MainDefinition {
     pub res: Res<ast::NodeId>,
     pub is_import: bool,
