@@ -7,27 +7,24 @@ use std::sync::Arc;
 use std::{io, iter, slice};
 
 use object::read::archive::ArchiveFile;
-use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule, ThinShared};
-use rustc_codegen_ssa::back::symbol_export;
+use rustc_codegen_ssa::back::lto::{
+    SerializedModule, ThinModule, ThinShared, exported_symbols_for_lto,
+};
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::{DiagCtxtHandle, FatalError};
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
-use rustc_session::config::{self, CrateType, Lto};
+use rustc_session::config::{self, Lto};
 use tracing::{debug, info};
 
 use crate::back::write::{
     self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, save_temp_bitcode,
 };
-use crate::errors::{
-    DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
-};
+use crate::errors::{LlvmError, LtoBitcodeFromRlib};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, build_string};
 use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes};
@@ -36,45 +33,19 @@ use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes};
 /// session to determine which CGUs we can reuse.
 const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
 
-fn crate_type_allows_lto(crate_type: CrateType) -> bool {
-    match crate_type {
-        CrateType::Executable
-        | CrateType::Dylib
-        | CrateType::Staticlib
-        | CrateType::Cdylib
-        | CrateType::ProcMacro
-        | CrateType::Sdylib => true,
-        CrateType::Rlib => false,
-    }
-}
-
 fn prepare_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
 ) -> Result<(Vec<CString>, Vec<(SerializedModule<ModuleBuffer>, CString)>), FatalError> {
-    let export_threshold = match cgcx.lto {
-        // We're just doing LTO for our one crate
-        Lto::ThinLocal => SymbolExportLevel::Rust,
+    let mut symbols_below_threshold = exported_symbols_for_lto(cgcx, dcx)?
+        .into_iter()
+        .map(|symbol| CString::new(symbol).unwrap())
+        .collect::<Vec<CString>>();
 
-        // We're doing LTO for the entire crate graph
-        Lto::Fat | Lto::Thin => symbol_export::crates_export_threshold(&cgcx.crate_types),
-
-        Lto::No => panic!("didn't request LTO but we're doing LTO"),
-    };
-
-    let symbol_filter = &|&(ref name, info): &(String, SymbolExportInfo)| {
-        if info.level.is_below_threshold(export_threshold) || info.used {
-            Some(CString::new(name.as_str()).unwrap())
-        } else {
-            None
-        }
-    };
-    let exported_symbols = cgcx.exported_symbols.as_ref().expect("needs exported symbols for LTO");
-    let mut symbols_below_threshold = {
-        let _timer = cgcx.prof.generic_activity("LLVM_lto_generate_symbols_below_threshold");
-        exported_symbols[&LOCAL_CRATE].iter().filter_map(symbol_filter).collect::<Vec<CString>>()
-    };
-    info!("{} symbols to preserve in this crate", symbols_below_threshold.len());
+    // __llvm_profile_counter_bias is pulled in at link time by an undefined reference to
+    // __llvm_profile_runtime, therefore we won't know until link time if this symbol
+    // should have default visibility.
+    symbols_below_threshold.push(c"__llvm_profile_counter_bias".to_owned());
 
     // If we're performing LTO for the entire crate graph, then for each of our
     // upstream dependencies, find the corresponding rlib and load the bitcode
@@ -84,37 +55,7 @@ fn prepare_lto(
     // with either fat or thin LTO
     let mut upstream_modules = Vec::new();
     if cgcx.lto != Lto::ThinLocal {
-        // Make sure we actually can run LTO
-        for crate_type in cgcx.crate_types.iter() {
-            if !crate_type_allows_lto(*crate_type) {
-                dcx.emit_err(LtoDisallowed);
-                return Err(FatalError);
-            } else if *crate_type == CrateType::Dylib {
-                if !cgcx.opts.unstable_opts.dylib_lto {
-                    dcx.emit_err(LtoDylib);
-                    return Err(FatalError);
-                }
-            } else if *crate_type == CrateType::ProcMacro && !cgcx.opts.unstable_opts.dylib_lto {
-                dcx.emit_err(LtoProcMacro);
-                return Err(FatalError);
-            }
-        }
-
-        if cgcx.opts.cg.prefer_dynamic && !cgcx.opts.unstable_opts.dylib_lto {
-            dcx.emit_err(DynamicLinkingWithLTO);
-            return Err(FatalError);
-        }
-
-        for &(cnum, ref path) in cgcx.each_linked_rlib_for_lto.iter() {
-            let exported_symbols =
-                cgcx.exported_symbols.as_ref().expect("needs exported symbols for LTO");
-            {
-                let _timer =
-                    cgcx.prof.generic_activity("LLVM_lto_generate_symbols_below_threshold");
-                symbols_below_threshold
-                    .extend(exported_symbols[&cnum].iter().filter_map(symbol_filter));
-            }
-
+        for &(_cnum, ref path) in cgcx.each_linked_rlib_for_lto.iter() {
             let archive_data = unsafe {
                 Mmap::map(std::fs::File::open(&path).expect("couldn't open rlib"))
                     .expect("couldn't map rlib")
@@ -147,10 +88,6 @@ fn prepare_lto(
         }
     }
 
-    // __llvm_profile_counter_bias is pulled in at link time by an undefined reference to
-    // __llvm_profile_runtime, therefore we won't know until link time if this symbol
-    // should have default visibility.
-    symbols_below_threshold.push(c"__llvm_profile_counter_bias".to_owned());
     Ok((symbols_below_threshold, upstream_modules))
 }
 
