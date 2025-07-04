@@ -209,6 +209,7 @@ impl Sysroot {
     pub fn load_workspace(
         &self,
         sysroot_source_config: &RustSourceWorkspaceConfig,
+        no_deps: bool,
         current_dir: &AbsPath,
         progress: &dyn Fn(String),
     ) -> Option<RustLibSrcWorkspace> {
@@ -224,6 +225,7 @@ impl Sysroot {
                     &library_manifest,
                     current_dir,
                     cargo_config,
+                    no_deps,
                     progress,
                 ) {
                     Ok(loaded) => return Some(loaded),
@@ -318,6 +320,7 @@ impl Sysroot {
         library_manifest: &ManifestPath,
         current_dir: &AbsPath,
         cargo_config: &CargoMetadataConfig,
+        no_deps: bool,
         progress: &dyn Fn(String),
     ) -> Result<RustLibSrcWorkspace> {
         tracing::debug!("Loading library metadata: {library_manifest}");
@@ -333,7 +336,7 @@ impl Sysroot {
             current_dir,
             &cargo_config,
             self,
-            false,
+            no_deps,
             // Make sure we never attempt to write to the sysroot
             true,
             progress,
