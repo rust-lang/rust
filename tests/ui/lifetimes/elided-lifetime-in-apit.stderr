@@ -1,0 +1,56 @@
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/elided-lifetime-in-apit.rs:11:30
+   |
+LL |         self: impl FnMut(Box<impl FnMut(&mut Self)>),
+   |               ---------------^^^^^^^^^^^^^^^^^^^^^--
+   |               |              |
+   |               |              nested `impl Trait` here
+   |               outer `impl Trait`
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/elided-lifetime-in-apit.rs:15:10
+   |
+LL |     ) -> &u32 {
+   |          ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+   |
+LL |     ) -> &'static u32 {
+   |           +++++++
+help: consider introducing a named lifetime parameter
+   |
+LL ~     fn box_box_ref_Struct<'a>(
+LL ~         self: impl FnMut(Box<impl FnMut(&'a Self)>),
+LL |
+LL |
+LL |
+LL ~     ) -> &'a u32 {
+   |
+help: alternatively, you might want to return an owned value
+   |
+LL -     ) -> &u32 {
+LL +     ) -> u32 {
+   |
+
+error[E0562]: `impl Trait` is not allowed in the parameters of `Fn` trait bounds
+  --> $DIR/elided-lifetime-in-apit.rs:11:30
+   |
+LL |         self: impl FnMut(Box<impl FnMut(&mut Self)>),
+   |                              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error[E0801]: invalid generic `self` parameter type: `impl FnMut(Box<impl FnMut(&mut Self)>)`
+  --> $DIR/elided-lifetime-in-apit.rs:11:15
+   |
+LL |         self: impl FnMut(Box<impl FnMut(&mut Self)>),
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0106, E0562, E0666, E0801.
+For more information about an error, try `rustc --explain E0106`.
