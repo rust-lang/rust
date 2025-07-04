@@ -5,6 +5,7 @@
 // See rust-lang/rust#62336.
 
 //@ run-pass
+#![allow(dead_code)]
 
 #[derive(PartialEq, Debug)]
 struct B(i32);

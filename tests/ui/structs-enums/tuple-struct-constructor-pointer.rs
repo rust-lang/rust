@@ -1,4 +1,6 @@
 //@ run-pass
+#![allow(dead_code)]
+
 #[derive(PartialEq, Debug)]
 struct Foo(isize);
 #[derive(PartialEq, Debug)]

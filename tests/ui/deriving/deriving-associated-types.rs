@@ -1,4 +1,6 @@
 //@ run-pass
+#![allow(dead_code)]
+
 pub trait DeclaredTrait {
     type Type;
 }

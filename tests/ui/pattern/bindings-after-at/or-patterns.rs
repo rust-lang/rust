@@ -2,6 +2,7 @@
 
 //@ run-pass
 
+#![allow(dead_code)]
 
 #[derive(Debug, PartialEq)]
 enum MatchArm {

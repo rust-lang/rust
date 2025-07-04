@@ -1,3 +1,24 @@
+warning: fields `lt`, `le`, `gt`, `ge`, `eq`, and `ne` are never read
+  --> $DIR/mir_raw_fat_ptr.rs:11:5
+   |
+LL | struct ComparisonResults {
+   |        ----------------- fields in this struct
+LL |     lt: bool,
+   |     ^^
+LL |     le: bool,
+   |     ^^
+LL |     gt: bool,
+   |     ^^
+LL |     ge: bool,
+   |     ^^
+LL |     eq: bool,
+   |     ^^
+LL |     ne: bool
+   |     ^^
+   |
+   = note: `ComparisonResults` has derived impls for the traits `PartialEq` and `Debug`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` on by default
+
 warning: method `foo` is never used
   --> $DIR/mir_raw_fat_ptr.rs:100:16
    |
@@ -5,8 +26,6 @@ LL | trait Foo { fn foo(&self) -> usize; }
    |       ---      ^^^
    |       |
    |       method in this trait
-   |
-   = note: `#[warn(dead_code)]` on by default
 
-warning: 1 warning emitted
+warning: 2 warnings emitted
 
