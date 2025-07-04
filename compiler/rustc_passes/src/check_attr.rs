@@ -284,6 +284,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcCoherenceIsCore(..)
                     | AttributeKind::DebuggerVisualizer(..)
                     | AttributeKind::RustcMain
+                    | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
                     | AttributeKind::PinV2(..),
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {

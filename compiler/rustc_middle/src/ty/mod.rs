@@ -1573,6 +1573,14 @@ impl<'tcx> TyCtxt<'tcx> {
             flags.insert(ReprFlags::IS_LINEAR);
         }
 
+        // See `TyAndLayout::pass_indirectly_in_non_rustic_abis` for details.
+        if find_attr!(
+            self.get_all_attrs(did),
+            AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
+        ) {
+            flags.insert(ReprFlags::PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS);
+        }
+
         ReprOptions { int: size, align: max_align, pack: min_pack, flags, field_shuffle_seed }
     }
 
