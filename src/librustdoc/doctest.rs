@@ -336,6 +336,7 @@ pub(crate) fn run_tests(
                 scraped_test.langstr.test_harness,
                 &opts,
                 Some(&opts.crate_name),
+                scraped_test.langstr.should_panic,
             );
             standalone_tests.push(generate_test_desc_and_fn(
                 doctest,
@@ -773,9 +774,11 @@ fn run_test(
     match result {
         Err(e) => return Err(TestFailure::ExecutionError(e)),
         Ok(out) => {
-            if langstr.should_panic && out.status.success() {
+            // If the test panicked, then `should_panic` will return 0 as exit code as it is the
+            // the expected result.
+            if langstr.should_panic && !out.status.success() {
                 return Err(TestFailure::UnexpectedRunPass);
-            } else if !langstr.should_panic && !out.status.success() {
+            } else if !out.status.success() {
                 return Err(TestFailure::ExecutionFailure(out));
             }
         }
@@ -1059,6 +1062,7 @@ fn doctest_run_fn(
         scraped_test.langstr.test_harness,
         &global_opts,
         Some(&global_opts.crate_name),
+        scraped_test.langstr.should_panic,
     );
     let runnable_test = RunnableDocTest {
         full_test_code: wrapped.to_string(),
@@ -1083,7 +1087,7 @@ fn doctest_run_fn(
                 eprint!("Test compiled successfully, but it's marked `compile_fail`.");
             }
             TestFailure::UnexpectedRunPass => {
-                eprint!("Test executable succeeded, but it's marked `should_panic`.");
+                eprint!("Test didn't panic, but it's marked `should_panic`.");
             }
             TestFailure::MissingErrorCodes(codes) => {
                 eprint!("Some expected error codes were not found: {codes:?}");

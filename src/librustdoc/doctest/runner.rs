@@ -129,7 +129,7 @@ mod __doctest_mod {{
     }}
 
     #[allow(unused)]
-    pub fn doctest_runner(bin: &std::path::Path, test_nb: usize) -> ExitCode {{
+    pub fn doctest_runner(bin: &std::path::Path, test_nb: usize, should_panic: bool) -> ExitCode {{
         let out = std::process::Command::new(bin)
             .env(self::RUN_OPTION, test_nb.to_string())
             .args(std::env::args().skip(1).collect::<Vec<_>>())
@@ -137,7 +137,11 @@ mod __doctest_mod {{
             .expect(\"failed to run command\");
         if !out.status.success() {{
             if let Some(code) = out.status.code() {{
-                eprintln!(\"Test executable failed (exit status: {{code}}).\");
+                if should_panic {{
+                    eprintln!(\"Test didn't panic, but it's marked `should_panic`.\");
+                }} else {{
+                    eprintln!(\"Test executable failed (exit status: {{code}}).\");
+                }}
             }} else {{
                 eprintln!(\"Test executable failed (terminated by signal).\");
             }}
@@ -220,6 +224,7 @@ fn generate_mergeable_doctest(
     output_merged_tests: &mut String,
 ) -> String {
     let test_id = format!("__doctest_{id}");
+    let should_panic = !scraped_test.langstr.no_run && scraped_test.langstr.should_panic;
 
     if ignore {
         // We generate nothing else.
@@ -227,10 +232,12 @@ fn generate_mergeable_doctest(
     } else {
         writeln!(output, "pub mod {test_id} {{\n{}{}", doctest.crates, doctest.maybe_crate_attrs)
             .unwrap();
+        let mut returns_result = false;
         if doctest.has_main_fn {
             output.push_str(&doctest.everything_else);
         } else {
-            let returns_result = if doctest.everything_else.trim_end().ends_with("(())") {
+            let return_value = if doctest.everything_else.trim_end().ends_with("(())") {
+                returns_result = true;
                 "-> Result<(), impl core::fmt::Debug>"
             } else {
                 ""
@@ -238,16 +245,19 @@ fn generate_mergeable_doctest(
             write!(
                 output,
                 "\
-fn main() {returns_result} {{
+fn main() {return_value} {{
 {}
 }}",
                 doctest.everything_else
             )
             .unwrap();
         }
+        let (should_panic_pre, should_panic_post) =
+            super::make::should_panic_wrapper(should_panic, returns_result);
         writeln!(
             output,
-            "\npub fn __main_fn() -> impl std::process::Termination {{ main() }} \n}}\n"
+            "\npub fn __main_fn() -> impl std::process::Termination {{{should_panic_pre}main()\
+{should_panic_post}}} \n}}\n"
         )
         .unwrap();
     }
@@ -257,7 +267,7 @@ fn main() {returns_result} {{
         "
 mod {test_id} {{
 pub const TEST: test::TestDescAndFn = test::TestDescAndFn::new_doctest(
-{test_name:?}, {ignore}, {file:?}, {line}, {no_run}, {should_panic},
+{test_name:?}, {ignore}, {file:?}, {line}, {no_run}, false,
 test::StaticTestFn(
     || {{{runner}}},
 ));
@@ -266,7 +276,6 @@ test::StaticTestFn(
         file = scraped_test.path(),
         line = scraped_test.line,
         no_run = scraped_test.langstr.no_run,
-        should_panic = !scraped_test.langstr.no_run && scraped_test.langstr.should_panic,
         // Setting `no_run` to `true` in `TestDesc` still makes the test run, so we simply
         // don't give it the function to run.
         runner = if not_running {
@@ -275,7 +284,7 @@ test::StaticTestFn(
             format!(
                 "
 if let Some(bin_path) = crate::__doctest_mod::doctest_path() {{
-    test::assert_test_result(crate::__doctest_mod::doctest_runner(bin_path, {id}))
+    test::assert_test_result(crate::__doctest_mod::doctest_runner(bin_path, {id}, {should_panic}))
 }} else {{
     test::assert_test_result(doctest_bundle::{test_id}::__main_fn())
 }}

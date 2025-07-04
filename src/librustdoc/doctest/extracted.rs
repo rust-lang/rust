@@ -60,6 +60,7 @@ impl ExtractedDocTests {
             langstr.test_harness,
             opts,
             Some(&opts.crate_name),
+            langstr.should_panic,
         );
         self.doctests.push(ExtractedDocTest {
             file: filename.prefer_remapped_unconditionally().to_string(),

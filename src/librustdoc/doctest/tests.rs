@@ -25,7 +25,7 @@ fn make_test(
     }
     let doctest = builder.build(None);
     let (wrapped, line_offset) =
-        doctest.generate_unique_doctest(test_code, dont_insert_main, opts, crate_name);
+        doctest.generate_unique_doctest(test_code, dont_insert_main, opts, crate_name, false);
     (wrapped.to_string(), line_offset)
 }
 
