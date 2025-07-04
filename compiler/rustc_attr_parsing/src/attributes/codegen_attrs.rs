@@ -382,3 +382,11 @@ impl<S: Stage> NoArgsAttributeParser<S> for OmitGdbPrettyPrinterSectionParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::OmitGdbPrettyPrinterSection;
 }
+
+pub(crate) struct RustcPassIndirectlyInNonRusticAbisParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcPassIndirectlyInNonRusticAbisParser {
+    const PATH: &[Symbol] = &[sym::rustc_pass_indirectly_in_non_rustic_abis];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPassIndirectlyInNonRusticAbis;
+}
