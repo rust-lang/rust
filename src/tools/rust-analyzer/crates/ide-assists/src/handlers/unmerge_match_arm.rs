@@ -1,8 +1,8 @@
 use syntax::{
     Direction, SyntaxKind, T,
     algo::neighbor,
-    ast::{self, AstNode, edit::IndentLevel, make},
-    ted::{self, Position},
+    ast::{self, AstNode, edit::IndentLevel, syntax_factory::SyntaxFactory},
+    syntax_editor::{Element, Position},
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -33,7 +33,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let pipe_token = ctx.find_token_syntax_at_offset(T![|])?;
-    let or_pat = ast::OrPat::cast(pipe_token.parent()?)?.clone_for_update();
+    let or_pat = ast::OrPat::cast(pipe_token.parent()?)?;
     if or_pat.leading_pipe().is_some_and(|it| it == pipe_token) {
         return None;
     }
@@ -44,13 +44,14 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     // without `OrPat`.
 
     let new_parent = match_arm.syntax().parent()?;
-    let old_parent_range = new_parent.text_range();
 
     acc.add(
         AssistId::refactor_rewrite("unmerge_match_arm"),
         "Unmerge match arm",
         pipe_token.text_range(),
         |edit| {
+            let make = SyntaxFactory::with_mappings();
+            let mut editor = edit.make_editor(&new_parent);
             let pats_after = pipe_token
                 .siblings_with_tokens(Direction::Next)
                 .filter_map(|it| ast::Pat::cast(it.into_node()?))
@@ -59,11 +60,9 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
             let new_pat = if pats_after.len() == 1 {
                 pats_after[0].clone()
             } else {
-                make::or_pat(pats_after, or_pat.leading_pipe().is_some()).into()
+                make.or_pat(pats_after, or_pat.leading_pipe().is_some()).into()
             };
-            let new_match_arm =
-                make::match_arm(new_pat, match_arm.guard(), match_arm_body).clone_for_update();
-
+            let new_match_arm = make.match_arm(new_pat, match_arm.guard(), match_arm_body);
             let mut pipe_index = pipe_token.index();
             if pipe_token
                 .prev_sibling_or_token()
@@ -71,10 +70,13 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
             {
                 pipe_index -= 1;
             }
-            or_pat.syntax().splice_children(
-                pipe_index..or_pat.syntax().children_with_tokens().count(),
-                Vec::new(),
-            );
+            for child in or_pat
+                .syntax()
+                .children_with_tokens()
+                .skip_while(|child| child.index() < pipe_index)
+            {
+                editor.delete(child.syntax_element());
+            }
 
             let mut insert_after_old_arm = Vec::new();
 
@@ -95,24 +97,20 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
                     == Some(T![,]);
             let has_arms_after = neighbor(&match_arm, Direction::Next).is_some();
             if !has_comma_after && !has_arms_after {
-                insert_after_old_arm.push(make::token(T![,]).into());
+                insert_after_old_arm.push(make.token(T![,]).into());
             }
 
             let indent = IndentLevel::from_node(match_arm.syntax());
-            insert_after_old_arm.push(make::tokens::whitespace(&format!("\n{indent}")).into());
+            insert_after_old_arm.push(make.whitespace(&format!("\n{indent}")).into());
 
             insert_after_old_arm.push(new_match_arm.syntax().clone().into());
 
-            ted::insert_all_raw(Position::after(match_arm.syntax()), insert_after_old_arm);
-
             if has_comma_after {
-                ted::insert_raw(
-                    Position::last_child_of(new_match_arm.syntax()),
-                    make::token(T![,]),
-                );
+                insert_after_old_arm.push(make.token(T![,]).into());
             }
-
-            edit.replace(old_parent_range, new_parent.to_string());
+            editor.insert_all(Position::after(match_arm.syntax()), insert_after_old_arm);
+            editor.add_mappings(make.finish_with_mappings());
+            edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
