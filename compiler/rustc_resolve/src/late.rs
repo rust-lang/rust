@@ -770,6 +770,8 @@ struct LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     /// Count the number of places a lifetime is used.
     lifetime_uses: FxHashMap<LocalDefId, LifetimeUseSet>,
+
+    current_subtrait_did: Option<LocalDefId>,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -994,16 +996,23 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
             span,
             |this| {
                 this.visit_generic_params(&tref.bound_generic_params, false);
-                this.smart_resolve_path(
-                    tref.trait_ref.ref_id,
-                    &None,
-                    &tref.trait_ref.path,
-                    PathSource::Trait(AliasPossibility::Maybe),
-                );
+                if tref.is_supertrait()
+                    && let Some(subtrait) = this.current_subtrait_did
+                {
+                    this.collect_supertrait_defs(subtrait, &tref.trait_ref);
+                } else {
+                    this.smart_resolve_path(
+                        tref.trait_ref.ref_id,
+                        &None,
+                        &tref.trait_ref.path,
+                        PathSource::Trait(AliasPossibility::Maybe),
+                    );
+                }
                 this.visit_trait_ref(&tref.trait_ref);
             },
         );
     }
+
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
         self.resolve_doc_links(&foreign_item.attrs, MaybeExported::Ok(foreign_item.id));
         let def_kind = self.r.local_def_kind(foreign_item.id);
@@ -1449,6 +1458,18 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
             self.resolve_anon_const(v, AnonConstKind::FieldDefaultValue);
         }
     }
+
+    #[instrument(level = "debug", skip(self))]
+    fn visit_param_bound(&mut self, bound: &'ast GenericBound, ctxt: BoundKind) {
+        if let BoundKind::SuperTraits { subtrait } = ctxt {
+            let prev_subtrait_did = self.current_subtrait_did;
+            self.current_subtrait_did = Some(subtrait);
+            visit::walk_param_bound(self, bound);
+            self.current_subtrait_did = prev_subtrait_did;
+        } else {
+            visit::walk_param_bound(self, bound);
+        }
+    }
 }
 
 impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
@@ -1475,6 +1496,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             // errors at module scope should always be reported
             in_func_body: false,
             lifetime_uses: Default::default(),
+            current_subtrait_did: None,
         }
     }
 
@@ -2604,6 +2626,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn resolve_item(&mut self, item: &'ast Item) {
         let mod_inner_docs =
             matches!(item.kind, ItemKind::Mod(..)) && rustdoc::inner_docs(&item.attrs);
@@ -2672,12 +2695,21 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     LifetimeBinderKind::Item,
                     generics.span,
                     |this| {
-                        let local_def_id = this.r.local_def_id(item.id).to_def_id();
-                        this.with_self_rib(Res::SelfTyParam { trait_: local_def_id }, |this| {
-                            this.visit_generics(generics);
-                            walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits);
-                            this.resolve_trait_items(items);
-                        });
+                        let local_def_id = this.r.local_def_id(item.id);
+                        this.with_self_rib(
+                            Res::SelfTyParam { trait_: local_def_id.to_def_id() },
+                            |this| {
+                                this.visit_generics(generics);
+                                debug!(?bounds);
+                                walk_list!(
+                                    this,
+                                    visit_param_bound,
+                                    bounds,
+                                    BoundKind::SuperTraits { subtrait: local_def_id }
+                                );
+                                this.resolve_trait_items(items);
+                            },
+                        );
                     },
                 );
             }
@@ -3142,7 +3174,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     fn with_optional_trait_ref<T>(
         &mut self,
         opt_trait_ref: Option<&TraitRef>,
-        self_type: &'ast Ty,
+        self_type: &Ty,
         f: impl FnOnce(&mut Self, Option<DefId>) -> T,
     ) -> T {
         let mut new_val = None;
@@ -3423,6 +3455,39 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
+    fn collect_supertrait_defs(&mut self, subtrait: LocalDefId, supertrait_ref: &TraitRef) {
+        let subtrait_module = self.r.expect_module(subtrait.to_def_id());
+        let mut subtrait_module_supertraits = subtrait_module.supertraits.borrow_mut();
+
+        let supertrait_path: Vec<_> = Segment::from_path(&supertrait_ref.path);
+        let res = self.smart_resolve_path_fragment(
+            &None,
+            &supertrait_path,
+            PathSource::Trait(AliasPossibility::Maybe),
+            Finalize::new(supertrait_ref.ref_id, supertrait_ref.path.span),
+            RecordPartialRes::Yes,
+            None,
+        );
+
+        if let Some(did) = res.expect_full_res().opt_def_id()
+            && did != subtrait.to_def_id()
+            && subtrait_module_supertraits.insert(did)
+            && let Some(module) = self.r.get_module(did)
+        {
+            let module_supertraits = self.r.supertraits(module).borrow();
+            let all_supertraits = module_supertraits.iter().copied().chain([module.def_id()]);
+            let resolver_module_supertraits =
+                self.r.module_supertraits.entry(subtrait).or_default();
+            // These are the supertraits that come into scope in the future, too
+            for supertrait in all_supertraits {
+                resolver_module_supertraits.insert(supertrait);
+                subtrait_module_supertraits.insert(supertrait);
+            }
+        }
+    }
+
+    #[instrument(level = "debug", skip(self, seen_trait_items, err), fields(current_trait = ?self.current_trait_ref))]
     fn check_trait_item<F>(
         &mut self,
         id: NodeId,
@@ -3443,6 +3508,31 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let key = BindingKey::new(ident, ns);
         let mut binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);
         debug!(?binding);
+        if binding.is_none() {
+            // First resolve the name again in the supertraits
+            // and we need to resolve it against all of them
+            // to reject ambiguity.
+
+            for &supertrait in &*module.supertraits.borrow() {
+                let Some(supertrait_mod) = self.r.get_module(supertrait) else { continue };
+                if let Some(supertrait_binding) =
+                    self.r.resolution(supertrait_mod, key).try_borrow().ok().and_then(|r| r.binding)
+                {
+                    if let Some(another_binding) = binding {
+                        self.report_error(
+                            span,
+                            ResolutionError::SupertraitImplAmbiguous {
+                                name: ident,
+                                one: another_binding.res().def_id(),
+                                another: supertrait_binding.res().def_id(),
+                            },
+                        )
+                    } else {
+                        binding = Some(supertrait_binding);
+                    }
+                }
+            }
+        }
         if binding.is_none() {
             // We could not find the trait item in the correct namespace.
             // Check the other namespace to report an error.

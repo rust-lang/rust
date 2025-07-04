@@ -1208,6 +1208,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         bound_generic_params: ThinVec::new(),
                         modifiers: TraitBoundModifiers::NONE,
                         trait_ref: TraitRef { path: path.clone(), ref_id: t.id },
+                        source: TraitRefSource::Any,
                         span: t.span,
                         parens: ast::Parens::No,
                     },
@@ -2018,7 +2019,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let bound_generic_params =
             self.lower_lifetime_binder(p.trait_ref.ref_id, &p.bound_generic_params);
         let trait_ref = self.lower_trait_ref(p.modifiers, &p.trait_ref, itctx);
-        let modifiers = self.lower_trait_bound_modifiers(p.modifiers);
+        let modifiers = self.lower_trait_bound_modifiers(p.modifiers, p.source);
         hir::PolyTraitRef {
             bound_generic_params,
             modifiers,
@@ -2253,8 +2254,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_trait_bound_modifiers(
         &mut self,
         modifiers: TraitBoundModifiers,
+        source: TraitRefSource,
     ) -> hir::TraitBoundModifiers {
-        hir::TraitBoundModifiers { constness: modifiers.constness, polarity: modifiers.polarity }
+        hir::TraitBoundModifiers {
+            constness: modifiers.constness,
+            polarity: modifiers.polarity,
+            source,
+        }
     }
 
     // Helper methods for building HIR.

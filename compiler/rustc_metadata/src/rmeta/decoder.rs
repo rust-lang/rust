@@ -1312,6 +1312,11 @@ impl<'a> CrateMetadataRef<'a> {
         }
     }
 
+    fn get_module_supertraits(self, id: DefIndex, sess: &'a Session) -> impl Iterator<Item = DefId> {
+        let supertraits = self.root.tables.module_supertraits.get(self, id);
+        supertraits.decode((self, sess)).into_iter()
+    }
+
     fn is_ctfe_mir_available(self, id: DefIndex) -> bool {
         self.root.tables.mir_for_ctfe.get(self, id).is_some()
     }

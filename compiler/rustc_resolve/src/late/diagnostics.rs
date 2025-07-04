@@ -3831,6 +3831,7 @@ fn mk_where_bound_predicate(
                 path: ast::Path { segments: modified_segments, span: DUMMY_SP, tokens: None },
                 ref_id: DUMMY_NODE_ID,
             },
+            source: ast::TraitRefSource::Any,
             span: DUMMY_SP,
             parens: ast::Parens::No,
         })],

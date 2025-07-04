@@ -482,7 +482,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             match hir_bound {
                 hir::GenericBound::Trait(poly_trait_ref) => {
-                    let hir::TraitBoundModifiers { constness, polarity } = poly_trait_ref.modifiers;
+                    let hir::TraitBoundModifiers { constness, polarity, source: _ } =
+                        poly_trait_ref.modifiers;
                     let _ = self.lower_poly_trait_ref(
                         &poly_trait_ref.trait_ref,
                         poly_trait_ref.span,
@@ -513,6 +514,47 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     // We don't actually lower `use` into the type layer.
                 }
             }
+        }
+    }
+
+    pub(crate) fn lower_supertrait_auto_impls<'hir>(
+        &self,
+        param_ty: Ty<'tcx>,
+        hir_bounds: impl IntoIterator<Item = &'hir hir::GenericBound<'tcx>>,
+        supertrait_auto_impl: &mut Vec<(ty::Clause<'tcx>, hir::TraitRefSource)>,
+    ) where
+        'tcx: 'hir,
+    {
+        let predicate_filter = PredicateFilter::SelfOnly;
+        for hir_bound in hir_bounds {
+            if self.should_skip_sizedness_bound(hir_bound) {
+                continue;
+            }
+            let hir::GenericBound::Trait(poly_trait_ref) = hir_bound else { continue };
+            let hir::TraitBoundModifiers { constness, polarity, source } = poly_trait_ref.modifiers;
+            if !matches!(
+                source,
+                hir::TraitRefSource::Supertrait | hir::TraitRefSource::SupertraitAutoImpl
+            ) {
+                continue;
+            }
+            let mut bounds = vec![];
+            let _ = self.lower_poly_trait_ref(
+                &poly_trait_ref.trait_ref,
+                poly_trait_ref.span,
+                constness,
+                polarity,
+                param_ty,
+                &mut bounds,
+                predicate_filter,
+            );
+            supertrait_auto_impl.extend(bounds.into_iter().filter_map(|(clause, _)| {
+                if matches!(clause.kind().skip_binder(), ty::ClauseKind::Trait(..)) {
+                    Some((clause, source))
+                } else {
+                    None
+                }
+            }));
         }
     }
 

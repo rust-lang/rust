@@ -4,8 +4,8 @@ use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnRetTy,
     GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability,
-    Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
-    TyKind, UnsafeBinderTy,
+    Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax,
+    TraitRefSource, Ty, TyKind, UnsafeBinderTy,
 };
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult};
@@ -469,7 +469,7 @@ impl<'a> Parser<'a> {
             });
         }
         Ok(TyKind::TraitObject(
-            self.parse_generic_bounds_common(allow_plus)?,
+            self.parse_generic_bounds_common(allow_plus, false)?,
             TraitObjectSyntax::None,
         ))
     }
@@ -516,6 +516,7 @@ impl<'a> Parser<'a> {
             generic_params,
             path,
             TraitBoundModifiers::NONE,
+            TraitRefSource::Any,
             lo.to(self.prev_token.span),
             parens,
         );
@@ -531,7 +532,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, TyKind> {
         if plus {
             self.eat_plus(); // `+`, or `+=` gets split and `+` is discarded
-            bounds.append(&mut self.parse_generic_bounds()?);
+            bounds.append(&mut self.parse_generic_bounds(false)?);
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
     }
@@ -760,7 +761,7 @@ impl<'a> Parser<'a> {
         }
 
         // Always parse bounds greedily for better error recovery.
-        let bounds = self.parse_generic_bounds()?;
+        let bounds = self.parse_generic_bounds(false)?;
 
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::Plus;
 
@@ -819,7 +820,7 @@ impl<'a> Parser<'a> {
         let syntax = TraitObjectSyntax::Dyn;
 
         // Always parse bounds greedily for better error recovery.
-        let bounds = self.parse_generic_bounds()?;
+        let bounds = self.parse_generic_bounds(false)?;
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::Plus;
         Ok(TyKind::TraitObject(bounds, syntax))
     }
@@ -850,14 +851,21 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn parse_generic_bounds(&mut self) -> PResult<'a, GenericBounds> {
-        self.parse_generic_bounds_common(AllowPlus::Yes)
+    pub(super) fn parse_generic_bounds(
+        &mut self,
+        in_supertrait_context: bool,
+    ) -> PResult<'a, GenericBounds> {
+        self.parse_generic_bounds_common(AllowPlus::Yes, in_supertrait_context)
     }
 
     /// Parses bounds of a type parameter `BOUND + BOUND + ...`, possibly with trailing `+`.
     ///
     /// See `parse_generic_bound` for the `BOUND` grammar.
-    fn parse_generic_bounds_common(&mut self, allow_plus: AllowPlus) -> PResult<'a, GenericBounds> {
+    fn parse_generic_bounds_common(
+        &mut self,
+        allow_plus: AllowPlus,
+        in_supertrait_context: bool,
+    ) -> PResult<'a, GenericBounds> {
         let mut bounds = Vec::new();
 
         // In addition to looping while we find generic bounds:
@@ -878,7 +886,7 @@ impl<'a> Parser<'a> {
                     suggestion: self.prev_token.span.until(self.token.span),
                 });
             }
-            bounds.push(self.parse_generic_bound()?);
+            bounds.push(self.parse_generic_bound(in_supertrait_context)?);
             if allow_plus == AllowPlus::No || !self.eat_plus() {
                 break;
             }
@@ -906,7 +914,7 @@ impl<'a> Parser<'a> {
     /// ```ebnf
     /// BOUND = TY_BOUND | LT_BOUND
     /// ```
-    fn parse_generic_bound(&mut self) -> PResult<'a, GenericBound> {
+    fn parse_generic_bound(&mut self, in_supertrait_context: bool) -> PResult<'a, GenericBound> {
         let lo = self.token.span;
         let leading_token = self.prev_token;
         let parens = if self.eat(exp!(OpenParen)) { ast::Parens::Yes } else { ast::Parens::No };
@@ -921,7 +929,7 @@ impl<'a> Parser<'a> {
             let (args, args_span) = self.parse_precise_capturing_args()?;
             GenericBound::Use(args, use_span.to(args_span))
         } else {
-            self.parse_generic_ty_bound(lo, parens, &leading_token)?
+            self.parse_generic_ty_bound(lo, parens, in_supertrait_context, &leading_token)?
         };
 
         Ok(bound)
@@ -1112,8 +1120,15 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         parens: ast::Parens,
+        in_supertrait_context: bool,
         leading_token: &Token,
     ) -> PResult<'a, GenericBound> {
+        let auto_impl = if in_supertrait_context && self.eat_keyword(exp!(Auto)) {
+            self.expect_keyword(exp!(Impl))?;
+            true
+        } else {
+            false
+        };
         let (mut lifetime_defs, binder_span) = self.parse_late_bound_lifetime_defs()?;
 
         let modifiers_lo = self.token.span;
@@ -1223,8 +1238,20 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let poly_trait =
-            PolyTraitRef::new(lifetime_defs, path, modifiers, lo.to(self.prev_token.span), parens);
+        let poly_trait = PolyTraitRef::new(
+            lifetime_defs,
+            path,
+            modifiers,
+            if auto_impl {
+                TraitRefSource::SupertraitAutoImpl
+            } else if in_supertrait_context {
+                TraitRefSource::Supertrait
+            } else {
+                TraitRefSource::Any
+            },
+            lo.to(self.prev_token.span),
+            parens,
+        );
         Ok(GenericBound::Trait(poly_trait))
     }
 

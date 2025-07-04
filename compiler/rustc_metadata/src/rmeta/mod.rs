@@ -410,6 +410,10 @@ define_tables! {
     // That's why the encoded list needs to contain `ModChild` structures describing all the names
     // individually instead of `DefId`s.
     module_children_reexports: Table<DefIndex, LazyArray<ModChild>>,
+    // We only propagate just supertrait defs in spite of multiplicity
+    // because this is only to help with name resolution
+    module_supertraits: Table<DefIndex, LazyArray<DefId>>,
+    supertrait_auto_impls: Table<DefIndex, LazyArray<(ty::Clause<'static>, ty::TraitRefSource)>>,
     cross_crate_inlinable: Table<DefIndex, bool>,
 
 - optional:

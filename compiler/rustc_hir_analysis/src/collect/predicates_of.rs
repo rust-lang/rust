@@ -713,6 +713,33 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
     ty::EarlyBinder::bind(implied_bounds)
 }
 
+/// This query collects supertraits that should be implicitly `impl`ed
+/// within the context of a subtrait `impl`.
+/// In doing so, this subtrait may authorise the compiler to generate `impl`s
+/// on marker supertraits.
+/// This query also reports the authorisation.
+pub(super) fn supertrait_auto_impls<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_def_id: LocalDefId,
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, hir::TraitRefSource)]> {
+    let Node::Item(item) = tcx.hir_node_by_def_id(trait_def_id) else {
+        bug!("trait_def_id {trait_def_id:?} is not an item");
+    };
+
+    let superbounds = match item.kind {
+        hir::ItemKind::Trait(_, _, _, _, supertraits, _)
+        | hir::ItemKind::TraitAlias(_, _, supertraits) => supertraits,
+        _ => span_bug!(item.span, "supertrait_auto_impls invoked on non-trait"),
+    };
+
+    let icx = ItemCtxt::new(tcx, trait_def_id);
+
+    let self_param_ty = tcx.types.self_param;
+    let mut bounds = vec![];
+    icx.lowerer().lower_supertrait_auto_impls(self_param_ty, superbounds, &mut bounds);
+    ty::EarlyBinder::bind(&*tcx.arena.alloc_from_iter(bounds))
+}
+
 // Make sure when elaborating supertraits, probing for associated types, etc.,
 // we really truly are elaborating clauses that have `ty` as their self type.
 // This is very important since downstream code relies on this being correct.

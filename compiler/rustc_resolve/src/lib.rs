@@ -7,6 +7,7 @@
 //! Type-relative name resolution (methods, fields, associated items) happens in `rustc_hir_analysis`.
 
 // tidy-alphabetical-start
+#![allow(unused)]
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
@@ -62,6 +63,7 @@ use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
+use rustc_middle::ty::data_structures::{IndexMap, IndexSet};
 use rustc_middle::ty::{
     self, DelegationFnSig, Feed, MainDefinition, RegisteredTools, ResolverGlobalCtxt,
     ResolverOutputs, TyCtxt, TyCtxtFeed,
@@ -304,6 +306,8 @@ enum ResolutionError<'ra> {
     },
     /// Error E0201: multiple impl items for the same trait item.
     TraitImplDuplicate { name: Ident, trait_item_span: Span, old_span: Span },
+    /// Error E????: supertrait item is ambiguous
+    SupertraitImplAmbiguous { name: Ident, one: DefId, another: DefId },
     /// Inline asm `sym` operand must refer to a `fn` or `static`.
     InvalidAsmSym,
     /// `self` used instead of `Self` in a generic parameter
@@ -580,6 +584,9 @@ struct ModuleData<'ra> {
     /// Used to memoize the traits in this module for faster searches through all traits in scope.
     traits: RefCell<Option<Box<[(Ident, NameBinding<'ra>)]>>>,
 
+    /// In case supertraits are relevant in the module, the DefIds are collected, too.
+    supertraits: RefCell<IndexSet<DefId>>,
+
     /// Span of the module itself. Used for error reporting.
     span: Span,
 
@@ -627,6 +634,7 @@ impl<'ra> ModuleData<'ra> {
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new(Vec::new()),
             traits: RefCell::new(None),
+            supertraits: RefCell::new(Default::default()),
             span,
             expansion,
         }
@@ -1229,6 +1237,7 @@ pub struct Resolver<'ra, 'tcx> {
     // that were encountered during resolution. These names are used to generate item names
     // for APITs, so we don't want to leak details of resolution into these names.
     impl_trait_names: FxHashMap<NodeId, Symbol>,
+    module_supertraits: IndexMap<LocalDefId, IndexSet<DefId>>,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1486,6 +1495,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             extra_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
             module_children: Default::default(),
+            module_supertraits: Default::default(),
             trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
             empty_module,
@@ -1669,6 +1679,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             effective_visibilities,
             extern_crate_map,
             module_children: self.module_children,
+            module_supertraits: self
+                .module_supertraits
+                .into_iter()
+                .map(|(did, supertraits)| (did, supertraits.into_iter().collect()))
+                .collect(),
             glob_map,
             maybe_unused_trait_imports,
             main_def,
@@ -1807,6 +1822,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         found_traits
     }
 
+    /// Collect all trait items in the given module
     fn traits_in_module(
         &mut self,
         module: Module<'ra>,
@@ -1879,6 +1895,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.build_reduced_graph_external(module);
         }
         &module.0.0.lazy_resolutions
+    }
+
+    fn supertraits(&mut self, module: Module<'ra>) -> &'ra RefCell<IndexSet<DefId>> {
+        if module.populate_on_access.get() {
+            module.populate_on_access.set(false);
+            self.build_reduced_graph_external(module);
+        }
+        &module.0.0.supertraits
     }
 
     fn resolution(

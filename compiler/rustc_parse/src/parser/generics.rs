@@ -84,7 +84,7 @@ impl<'a> Parser<'a> {
                 }
                 self.restore_snapshot(snapshot);
             }
-            self.parse_generic_bounds()?
+            self.parse_generic_bounds(false)?
         } else {
             Vec::new()
         };
@@ -528,7 +528,7 @@ impl<'a> Parser<'a> {
         // or with mandatory equality sign and the second type.
         let ty = self.parse_ty_for_where_clause()?;
         if self.eat(exp!(Colon)) {
-            let bounds = self.parse_generic_bounds()?;
+            let bounds = self.parse_generic_bounds(false)?;
             Ok(ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
                 bound_generic_params: lifetime_defs,
                 bounded_ty: ty,

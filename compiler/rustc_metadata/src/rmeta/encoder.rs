@@ -1534,6 +1534,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let module_children = self.tcx.module_children_local(local_id);
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
                     module_children.iter().map(|child| child.res.def_id().index));
+                record_defaulted_array!(self.tables.module_supertraits[def_id] <-
+                    self.tcx.module_supertraits_local(local_id));
+                record_defaulted_array!(self.tables.supertrait_auto_impls[def_id] <-
+                    self.tcx.supertrait_auto_impls(local_id).skip_binder());
                 if self.tcx.is_const_trait(def_id) {
                     record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
                         <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());

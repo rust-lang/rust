@@ -12,7 +12,7 @@ use rustc_ast::{
 pub use rustc_ast::{
     AssignOp, AssignOpKind, AttrId, AttrStyle, BinOp, BinOpKind, BindingMode, BorrowKind,
     BoundConstness, BoundPolarity, ByRef, CaptureBy, DelimArgs, ImplPolarity, IsAuto,
-    MetaItemInner, MetaItemLit, Movability, Mutability, UnOp,
+    MetaItemInner, MetaItemLit, Movability, Mutability, TraitRefSource, UnOp,
 };
 use rustc_attr_data_structures::AttributeKind;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -707,11 +707,15 @@ pub enum GenericArgsParentheses {
 pub struct TraitBoundModifiers {
     pub constness: BoundConstness,
     pub polarity: BoundPolarity,
+    pub source: TraitRefSource,
 }
 
 impl TraitBoundModifiers {
-    pub const NONE: Self =
-        TraitBoundModifiers { constness: BoundConstness::Never, polarity: BoundPolarity::Positive };
+    pub const NONE: Self = TraitBoundModifiers {
+        constness: BoundConstness::Never,
+        polarity: BoundPolarity::Positive,
+        source: TraitRefSource::Any,
+    };
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -4966,7 +4970,7 @@ mod size_asserts {
     static_assert_size!(ForeignItem<'_>, 96);
     static_assert_size!(ForeignItemKind<'_>, 56);
     static_assert_size!(GenericArg<'_>, 16);
-    static_assert_size!(GenericBound<'_>, 64);
+    static_assert_size!(GenericBound<'_>, 72);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);
     static_assert_size!(ImplItem<'_>, 88);

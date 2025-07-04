@@ -201,6 +201,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let parent_scope = ParentScope::module(module, self);
             self.build_reduced_graph_for_external_crate_res(child, parent_scope)
         }
+        // Populate the supertrait `DefId`s if the module is allowed
+        // to refer to their associated items.
+        module.supertraits.borrow_mut().extend(self.tcx.module_supertraits(module.def_id()));
     }
 
     /// Builds the reduced graph for a single item in an external crate.
@@ -1427,7 +1430,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             self.r.feed_visibility(feed, vis);
         }
 
-        if ctxt == AssocCtxt::Trait {
+        if matches!(ctxt, AssocCtxt::Trait) {
             let parent = self.parent_scope.module;
             let expansion = self.parent_scope.expansion;
             self.r.define(parent, ident, ns, (self.res(def_id), vis, item.span, expansion));

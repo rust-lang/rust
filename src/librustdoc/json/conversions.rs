@@ -517,7 +517,7 @@ impl FromClean<rustc_hir::TraitBoundModifiers> for TraitBoundModifier {
         _renderer: &JsonRenderer<'_>,
     ) -> Self {
         use rustc_hir as hir;
-        let hir::TraitBoundModifiers { constness, polarity } = modifiers;
+        let hir::TraitBoundModifiers { constness, polarity, source: _ } = modifiers;
         match (constness, polarity) {
             (hir::BoundConstness::Never, hir::BoundPolarity::Positive) => TraitBoundModifier::None,
             (hir::BoundConstness::Never, hir::BoundPolarity::Maybe(_)) => TraitBoundModifier::Maybe,

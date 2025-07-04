@@ -20,6 +20,7 @@ use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::print::{FmtPrinter, Printer};
 use rustc_session::Session;
 use rustc_session::lint::builtin::{
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS,
@@ -973,6 +974,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     trait_item_span,
                 })
                 .with_code(code),
+            ResolutionError::SupertraitImplAmbiguous { name, one, another } => {
+                let mut fmt = FmtPrinter::new(self.tcx, Namespace::ValueNS);
+                let _ = fmt.print_def_path(one, &[]);
+                let one = fmt.into_buffer();
+                let mut fmt = FmtPrinter::new(self.tcx, Namespace::ValueNS);
+                let _ = fmt.print_def_path(another, &[]);
+                let another = fmt.into_buffer();
+                self.dcx().create_err(errors::SupertraitImplAmbiguous { span, name, one, another })
+            }
             ResolutionError::TraitImplDuplicate { name, trait_item_span, old_span } => self
                 .dcx()
                 .create_err(errs::TraitImplDuplicate { span, name, trait_item_span, old_span }),

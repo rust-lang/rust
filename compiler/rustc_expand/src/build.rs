@@ -194,6 +194,7 @@ impl<'a> ExtCtxt<'a> {
                 asyncness: ast::BoundAsyncness::Normal,
             },
             trait_ref: self.trait_ref(path),
+            source: ast::TraitRefSource::Any,
             span,
             parens: ast::Parens::No,
         }

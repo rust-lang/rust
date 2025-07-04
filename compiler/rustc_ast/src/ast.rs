@@ -23,7 +23,7 @@ use std::{cmp, fmt};
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
-pub use rustc_ast_ir::{Movability, Mutability, Pinnedness};
+pub use rustc_ast_ir::{Movability, Mutability, Pinnedness, TraitRefSource};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -1386,6 +1386,7 @@ impl Expr {
                 ThinVec::new(),
                 path.clone(),
                 TraitBoundModifiers::NONE,
+                TraitRefSource::Any,
                 self.span,
                 Parens::No,
             ))),
@@ -3382,6 +3383,11 @@ pub struct PolyTraitRef {
     /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`.
     pub trait_ref: TraitRef,
 
+    /// The source of this trait ref
+    /// and whether this trait ref should be regarded as
+    /// a nominal subtrait-supertrait relation.
+    pub source: TraitRefSource,
+
     pub span: Span,
 
     /// When `Yes`, the first and last character of `span` are an opening
@@ -3390,10 +3396,17 @@ pub struct PolyTraitRef {
 }
 
 impl PolyTraitRef {
+    pub fn is_supertrait(&self) -> bool {
+        matches!(self.source, TraitRefSource::Supertrait)
+    }
+}
+
+impl PolyTraitRef {
     pub fn new(
         generic_params: ThinVec<GenericParam>,
         path: Path,
         modifiers: TraitBoundModifiers,
+        source: TraitRefSource,
         span: Span,
         parens: Parens,
     ) -> Self {
@@ -3401,6 +3414,7 @@ impl PolyTraitRef {
             bound_generic_params: generic_params,
             modifiers,
             trait_ref: TraitRef { path, ref_id: DUMMY_NODE_ID },
+            source,
             span,
             parens,
         }

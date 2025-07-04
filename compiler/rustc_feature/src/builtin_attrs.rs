@@ -1260,6 +1260,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         TEST, pattern_complexity_limit, CrateLevel, template!(NameValueStr: "N"),
         ErrorFollowing, EncodeCrossCrate::No,
     ),
+    rustc_attr!(
+        TEST, rustc_supertrait_in_subtrait_impl, Normal, template!(Word),
+        WarnFollowing, EncodeCrossCrate::Yes,
+    ),
 ];
 
 pub fn is_builtin_attr_name(name: Symbol) -> bool {

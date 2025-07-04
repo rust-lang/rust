@@ -824,6 +824,12 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query supertrait_auto_impls(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, ty::TraitRefSource)]> {
+        desc { |tcx| "computing the supertrait auto-impls of `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { key.is_local() }
+        separate_provide_extern
+    }
+
     /// The predicates of the trait that are implied during elaboration.
     ///
     /// This is a superset of the super-predicates of the trait, but a subset of the predicates
@@ -2138,6 +2144,10 @@ rustc_queries! {
     }
     query module_children(def_id: DefId) -> &'tcx [ModChild] {
         desc { |tcx| "collecting child items of module `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+    query module_supertraits(def_id: DefId) -> &'tcx [DefId] {
+        desc { |tcx| "collecting supertraits of module `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
     query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {

@@ -90,9 +90,9 @@ hir-stats Pat                      360 (NN.N%)             5            72
 hir-stats - Struct                    72 (NN.N%)             1
 hir-stats - Wild                      72 (NN.N%)             1
 hir-stats - Binding                  216 (NN.N%)             3
+hir-stats GenericBound             288 (NN.N%)             4            72
+hir-stats - Trait                    288 (NN.N%)             4
 hir-stats Block                    288 (NN.N%)             6            48
-hir-stats GenericBound             256 (NN.N%)             4            64
-hir-stats - Trait                    256 (NN.N%)             4
 hir-stats Attribute                200 (NN.N%)             5            40
 hir-stats Variant                  144 (NN.N%)             2            72
 hir-stats GenericArgs              144 (NN.N%)             3            48
@@ -119,5 +119,5 @@ hir-stats Mod                       32 (NN.N%)             1            32
 hir-stats Lifetime                  28 (NN.N%)             1            28
 hir-stats ForeignItemRef            24 (NN.N%)             1            24
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_716                   173
+hir-stats Total                  8_748                   173
 hir-stats ================================================================
