@@ -2051,7 +2051,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if `index` is strictly greater than deque's length
+    /// Panics if `index` is strictly greater than the deque's length.
     ///
     /// # Examples
     ///
@@ -2073,7 +2073,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     #[track_caller]
     pub fn insert(&mut self, index: usize, value: T) {
-        assert!(self.insert_mut(index, value).is_some(), "index out of bounds");
+        let _ = self.insert_mut(index, value);
     }
 
     /// Inserts an element at `index` within the deque, shifting all elements
@@ -2082,7 +2082,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// Element at index 0 is the front of the queue.
     ///
-    /// Returns [`None`] if `index` is strictly greater than deque's length.
+    /// # Panics
+    ///
+    /// Panics if `index` is strictly greater than the deque's length.
     ///
     /// # Examples
     ///
@@ -2092,20 +2094,17 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// let mut vec_deque = VecDeque::from([1, 2, 3]);
     ///
-    /// let x = vec_deque.insert_mut(1, 5).unwrap();
+    /// let x = vec_deque.insert_mut(1, 5);
     /// *x += 7;
     /// assert_eq!(vec_deque, &[1, 12, 2, 3]);
-    ///
-    /// let y = vec_deque.insert_mut(7, 5);
-    /// assert!(y.is_none());
     /// ```
     #[unstable(feature = "push_mut", issue = "135974")]
     #[track_caller]
-    #[must_use = "if you don't need a reference to the value or type-safe bound checking, use VecDeque::insert instead"]
-    pub fn insert_mut(&mut self, index: usize, value: T) -> Option<&mut T> {
-        if index > self.len() {
-            return None;
-        }
+    #[must_use = "if you don't need a reference to the value, use VecDeque::insert instead"]
+    pub fn insert_mut(&mut self, index: usize, value: T) -> &mut T {
+        if intrinsics::unlikely(index > self.len) {
+            panic!("insertion index (is {index}) should be <= len (is {})", self.len())
+        };
         if self.is_full() {
             self.grow();
         }
@@ -2119,8 +2118,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 // see `remove()` for explanation why this wrap_copy() call is safe.
                 self.wrap_copy(self.to_physical_idx(index), self.to_physical_idx(index + 1), k);
                 self.len += 1;
-                let ptr = self.buffer_write(self.to_physical_idx(index), value);
-                Some(ptr)
+                self.buffer_write(self.to_physical_idx(index), value)
             }
         } else {
             let old_head = self.head;
@@ -2128,8 +2126,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
             unsafe {
                 self.wrap_copy(old_head, self.head, index);
                 self.len += 1;
-                let ptr = self.buffer_write(self.to_physical_idx(index), value);
-                Some(ptr)
+                self.buffer_write(self.to_physical_idx(index), value)
             }
         }
     }
