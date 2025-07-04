@@ -79,7 +79,7 @@ mod ssa;
 macro_rules! declare_passes {
     (
         $(
-            $vis:vis mod $mod_name:ident : $($pass_name:ident $( { $($ident:ident),* } )?),+ $(,)?;
+            $vis:vis mod $mod_name:ident : $($pass_name:ident $( { $($ident:ident),* $(,)? } )?),+ $(,)?;
         )*
     ) => {
         $(
@@ -160,12 +160,12 @@ declare_passes! {
     mod prettify : ReorderBasicBlocks, ReorderLocals;
     mod promote_consts : PromoteTemps;
     mod ref_prop : ReferencePropagation;
-    mod remove_noop_landing_pads : RemoveNoopLandingPads;
+    pub mod remove_noop_landing_pads : RemoveNoopLandingPads;
     mod remove_place_mention : RemovePlaceMention;
     mod remove_storage_markers : RemoveStorageMarkers;
     mod remove_uninit_drops : RemoveUninitDrops;
-    mod remove_unneeded_drops : RemoveUnneededDrops;
-    mod remove_zsts : RemoveZsts;
+    pub mod remove_unneeded_drops : RemoveUnneededDrops;
+    pub mod remove_zsts : RemoveZsts;
     mod required_consts : RequiredConstsVisitor;
     mod post_analysis_normalize : PostAnalysisNormalize;
     mod sanity_check : SanityCheck;
@@ -179,23 +179,26 @@ declare_passes! {
             PreOptimizations,
             Final,
             MakeShim,
-            AfterUnreachableEnumBranching
+            AfterUnreachableEnumBranching,
+            Monomorphic,
         },
         SimplifyLocals {
             BeforeConstProp,
             AfterGVN,
-            Final
+            Final,
+            Monomorphic,
         };
-    mod simplify_branches : SimplifyConstCondition {
+    pub mod simplify_branches : SimplifyConstCondition {
         AfterConstProp,
-        Final
+        Final,
+        Monomorphic,
     };
     mod simplify_comparison_integral : SimplifyComparisonIntegral;
     mod single_use_consts : SingleUseConsts;
     mod sroa : ScalarReplacementOfAggregates;
     mod strip_debuginfo : StripDebugInfo;
-    mod unreachable_enum_branching : UnreachableEnumBranching;
-    mod unreachable_prop : UnreachablePropagation;
+    pub mod unreachable_enum_branching : UnreachableEnumBranching;
+    pub mod unreachable_prop : UnreachablePropagation;
     mod validate : Validator;
 }
 

@@ -42,7 +42,7 @@ use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
 use tracing::{debug, trace};
 
-pub(super) enum SimplifyCfg {
+pub enum SimplifyCfg {
     Initial,
     PromoteConsts,
     RemoveFalseEdges,
@@ -54,6 +54,7 @@ pub(super) enum SimplifyCfg {
     Final,
     MakeShim,
     AfterUnreachableEnumBranching,
+    Monomorphic,
 }
 
 impl SimplifyCfg {
@@ -69,6 +70,7 @@ impl SimplifyCfg {
             SimplifyCfg::AfterUnreachableEnumBranching => {
                 "SimplifyCfg-after-unreachable-enum-branching"
             }
+            SimplifyCfg::Monomorphic => "SimplifyCfg-monomorphic",
         }
     }
 }
@@ -391,10 +393,11 @@ pub(super) fn remove_dead_blocks(body: &mut Body<'_>) {
     }
 }
 
-pub(super) enum SimplifyLocals {
+pub enum SimplifyLocals {
     BeforeConstProp,
     AfterGVN,
     Final,
+    Monomorphic,
 }
 
 impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
@@ -403,6 +406,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
             SimplifyLocals::BeforeConstProp => "SimplifyLocals-before-const-prop",
             SimplifyLocals::AfterGVN => "SimplifyLocals-after-value-numbering",
             SimplifyLocals::Final => "SimplifyLocals-final",
+            SimplifyLocals::Monomorphic => "SimplifyLocals-monomorphic",
         }
     }
 

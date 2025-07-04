@@ -11,7 +11,7 @@ use tracing::{debug, trace};
 
 use super::simplify::simplify_cfg;
 
-pub(super) struct RemoveUnneededDrops;
+pub struct RemoveUnneededDrops;
 
 impl<'tcx> crate::MirPass<'tcx> for RemoveUnneededDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

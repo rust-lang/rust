@@ -9,7 +9,7 @@ use crate::patch::MirPatch;
 /// A pass that removes noop landing pads and replaces jumps to them with
 /// `UnwindAction::Continue`. This is important because otherwise LLVM generates
 /// terrible code for these.
-pub(super) struct RemoveNoopLandingPads;
+pub struct RemoveNoopLandingPads;
 
 impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {

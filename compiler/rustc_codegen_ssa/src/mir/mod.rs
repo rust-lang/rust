@@ -7,7 +7,10 @@ use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_mir_transform::{add_call_guards, dump_mir, pass_manager};
+use rustc_mir_transform::{
+    add_call_guards, dump_mir, pass_manager, remove_noop_landing_pads, remove_unneeded_drops,
+    remove_zsts, simplify, simplify_branches, unreachable_enum_branching, unreachable_prop,
+};
 use rustc_target::callconv::{FnAbi, PassMode};
 use tracing::{debug, instrument};
 
@@ -172,6 +175,15 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx.tcx(),
         &mut mir,
         &[
+            // Monomorphization may introduce ZST, non-drop and uninhabited types.
+            &remove_zsts::RemoveZsts,
+            &remove_unneeded_drops::RemoveUnneededDrops,
+            &unreachable_enum_branching::UnreachableEnumBranching,
+            &unreachable_prop::UnreachablePropagation,
+            &remove_noop_landing_pads::RemoveNoopLandingPads,
+            &simplify_branches::SimplifyConstCondition::Monomorphic,
+            &simplify::SimplifyCfg::Monomorphic,
+            &simplify::SimplifyLocals::Monomorphic,
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
             &add_call_guards::CriticalCallEdges,
             // Dump the end result for testing and debugging purposes.

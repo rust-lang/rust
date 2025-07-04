@@ -4,7 +4,7 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-pub(super) struct RemoveZsts;
+pub struct RemoveZsts;
 
 impl<'tcx> crate::MirPass<'tcx> for RemoveZsts {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {

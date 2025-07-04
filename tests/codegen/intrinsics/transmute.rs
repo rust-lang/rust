@@ -56,7 +56,7 @@ pub unsafe fn check_bigger_array(x: [u32; 3]) -> [u32; 7] {
 
 // CHECK-LABEL: @check_to_empty_array(
 #[no_mangle]
-#[custom_mir(dialect = "runtime", phase = "optimized")]
+#[custom_mir(dialect = "runtime", phase = "monomorphic")]
 pub unsafe fn check_to_empty_array(x: [u32; 5]) -> [u32; 0] {
     // CHECK-NOT: trap
     // CHECK: call void @llvm.trap
@@ -397,7 +397,7 @@ pub unsafe fn check_issue_109992(x: ()) -> [(); 1] {
 
 // CHECK-LABEL: @check_unit_to_never(
 #[no_mangle]
-#[custom_mir(dialect = "runtime", phase = "optimized")]
+#[custom_mir(dialect = "runtime", phase = "monomorphic")]
 pub unsafe fn check_unit_to_never(x: ()) {
     // This uses custom MIR to avoid MIR optimizations having removed ZST ops.
 

@@ -13,7 +13,7 @@ use tracing::trace;
 
 use crate::patch::MirPatch;
 
-pub(super) struct UnreachableEnumBranching;
+pub struct UnreachableEnumBranching;
 
 fn get_discriminant_local(terminator: &TerminatorKind<'_>) -> Option<Local> {
     if let TerminatorKind::SwitchInt { discr: Operand::Move(p), .. } = terminator {
