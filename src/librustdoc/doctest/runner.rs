@@ -135,8 +135,13 @@ mod __doctest_mod {{
             .args(std::env::args().skip(1).collect::<Vec<_>>())
             .output()
             .expect(\"failed to run command\");
-        if should_panic && out.status.code() != Some(101) {{
-            eprintln!(\"Test didn't panic, but it's marked `should_panic`.\");
+        if should_panic {{
+            if out.status.code() != Some(101) {{
+                eprintln!(\"Test didn't panic, but it's marked `should_panic`.\");
+                ExitCode::FAILURE
+            }} else {{
+                ExitCode::SUCCESS
+            }}
         }} else if !out.status.success() {{
             if let Some(code) = out.status.code() {{
                 eprintln!(\"Test executable failed (exit status: {{code}}).\");
@@ -281,7 +286,7 @@ if let Some(bin_path) = crate::__doctest_mod::doctest_path() {{
     test::assert_test_result(doctest_bundle::{test_id}::__main_fn())
 }}
 ",
-                should_panic = !scraped_test.langstr.no_run && scraped_test.langstr.should_panic,
+                should_panic = scraped_test.langstr.should_panic,
             )
         },
     )
