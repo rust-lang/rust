@@ -47,7 +47,8 @@ pub fn g() -> usize {
             _2 = _1;
             _3 = _2;
             RET = _3 + _3;
-            // Even though the storage statements are in reverse order, we should be able to keep the ones for _1.
+            // Even though the storage statements are in reverse order,
+            // we should be able to keep the ones for _1.
             StorageDead(_1);
             StorageDead(_2);
             Return()
