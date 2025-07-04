@@ -65,21 +65,19 @@ fn test_posix_gettimeofday() {
 }
 
 fn test_nanosleep() {
-    // sleep zero seconds
-    let start_zero_second_sleep = Instant::now();
-    let timespec = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+    let start_test_sleep = Instant::now();
+    let duration_zero = libc::timespec { tv_sec: 0, tv_nsec: 0 };
     let remainder = ptr::null_mut::<libc::timespec>();
-    let is_error = unsafe { libc::nanosleep(&timespec, remainder) };
+    let is_error = unsafe { libc::nanosleep(&duration_zero, remainder) };
     assert_eq!(is_error, 0);
-    assert!(start_zero_second_sleep.elapsed() < Duration::from_millis(100));
+    assert!(start_test_sleep.elapsed() < Duration::from_millis(10));
 
-    // sleep one second
-    let start_one_second_sleep = Instant::now();
-    let timespec = libc::timespec { tv_sec: 1, tv_nsec: 0 };
+    let start_test_sleep = Instant::now();
+    let duration_100_millis = libc::timespec { tv_sec: 0, tv_nsec: 1_000_000_000 / 10 };
     let remainder = ptr::null_mut::<libc::timespec>();
-    let is_error = unsafe { libc::nanosleep(&timespec, remainder) };
+    let is_error = unsafe { libc::nanosleep(&duration_100_millis, remainder) };
     assert_eq!(is_error, 0);
-    assert!(start_one_second_sleep.elapsed() > Duration::from_secs(1));
+    assert!(start_test_sleep.elapsed() > Duration::from_millis(100));
 }
 
 /// Helper function to get the current time for testing relative sleeps
@@ -91,70 +89,55 @@ fn timespec_now(clock: libc::clockid_t) -> libc::timespec {
 }
 
 fn test_clock_nanosleep_absolute() {
-    let start_zero_second_sleep = Instant::now();
-    let unix_time_zero = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+    let start_test_sleep = Instant::now();
+    let before_start = libc::timespec { tv_sec: 0, tv_nsec: 0 };
     let remainder = ptr::null_mut::<libc::timespec>();
     let error = unsafe {
         // this will not sleep since unix time zero is in the past
-        libc::clock_nanosleep(
-            libc::CLOCK_MONOTONIC,
-            libc::TIMER_ABSTIME,
-            &unix_time_zero,
-            remainder,
-        )
+        libc::clock_nanosleep(libc::CLOCK_MONOTONIC, libc::TIMER_ABSTIME, &before_start, remainder)
     };
     assert_eq!(error, 0);
-    assert!(start_zero_second_sleep.elapsed() < Duration::from_millis(100));
+    assert!(start_test_sleep.elapsed() < Duration::from_millis(10));
 
-    let start_one_second_sleep = Instant::now();
-    let mut one_second_from_now = timespec_now(libc::CLOCK_MONOTONIC);
-    one_second_from_now.tv_sec += 1;
+    let start_test_sleep = Instant::now();
+    let hunderd_millis_after_start = {
+        let mut ts = timespec_now(libc::CLOCK_MONOTONIC);
+        ts.tv_nsec += 1_000_000_000 / 10;
+        ts
+    };
     let remainder = ptr::null_mut::<libc::timespec>();
     let error = unsafe {
-        // this will not sleep since unix time zero is in the past
         libc::clock_nanosleep(
             libc::CLOCK_MONOTONIC,
             libc::TIMER_ABSTIME,
-            &one_second_from_now,
+            &hunderd_millis_after_start,
             remainder,
         )
     };
     assert_eq!(error, 0);
-    assert!(start_one_second_sleep.elapsed() > Duration::from_secs(1));
+    assert!(start_test_sleep.elapsed() > Duration::from_millis(100));
 }
 
 fn test_clock_nanosleep_relative() {
     const NO_FLAGS: i32 = 0;
 
-    let start_zero_second_sleep = Instant::now();
-    let zero_seconds = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+    let start_test_sleep = Instant::now();
+    let duration_zero = libc::timespec { tv_sec: 0, tv_nsec: 0 };
     let remainder = ptr::null_mut::<libc::timespec>();
     let error = unsafe {
-        // this will not sleep since unix time zero is in the past
-        libc::clock_nanosleep(
-            libc::CLOCK_MONOTONIC,
-            NO_FLAGS,
-            &zero_seconds,
-            remainder,
-        )
+        libc::clock_nanosleep(libc::CLOCK_MONOTONIC, NO_FLAGS, &duration_zero, remainder)
     };
     assert_eq!(error, 0);
-    assert!(start_zero_second_sleep.elapsed() < Duration::from_millis(100));
+    assert!(start_test_sleep.elapsed() < Duration::from_millis(10));
 
-    let start_one_second_sleep = Instant::now();
-    let one_second = libc::timespec { tv_sec: 1, tv_nsec: 0 };
+    let start_test_sleep = Instant::now();
+    let duration_100_millis = libc::timespec { tv_sec: 0, tv_nsec: 1_000_000_000 / 10 };
     let remainder = ptr::null_mut::<libc::timespec>();
     let error = unsafe {
-        // this will not sleep since unix time zero is in the past
-        libc::clock_nanosleep(
-            libc::CLOCK_MONOTONIC,
-            NO_FLAGS,
-            &one_second,
-            remainder,
-        )
+        libc::clock_nanosleep(libc::CLOCK_MONOTONIC, NO_FLAGS, &duration_100_millis, remainder)
     };
     assert_eq!(error, 0);
-    assert!(start_one_second_sleep.elapsed() > Duration::from_secs(1));
+    assert!(start_test_sleep.elapsed() > Duration::from_millis(100));
 }
 
 /// Helper function to create an empty tm struct.

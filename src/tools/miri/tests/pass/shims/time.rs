@@ -18,8 +18,8 @@ fn test_sleep() {
 
 fn test_sleep_until() {
     let before = Instant::now();
-    let one_second_from_now = before + Duration::from_millis(100);
-    std::thread::sleep_until(one_second_from_now);
+    let hunderd_millis_after_start = before + Duration::from_millis(100);
+    std::thread::sleep_until(hunderd_millis_after_start);
     let after = Instant::now();
     assert!((after - before).as_millis() >= 100);
 }
