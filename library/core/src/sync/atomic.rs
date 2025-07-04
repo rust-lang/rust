@@ -3801,9 +3801,9 @@ atomic_int! {
     8,
     u64 AtomicU64
 }
-#[cfg(target_has_atomic_load_store = "128")]
+#[cfg(any(target_has_atomic_load_store = "128", doc))]
 atomic_int! {
-    cfg(target_has_atomic = "128"),
+    cfg(any(target_has_atomic = "128", doc)),
     cfg(target_has_atomic_equal_alignment = "128"),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
@@ -3820,9 +3820,9 @@ atomic_int! {
     16,
     i128 AtomicI128
 }
-#[cfg(target_has_atomic_load_store = "128")]
+#[cfg(target_has_atomic_load_store = "128", doc)]
 atomic_int! {
-    cfg(target_has_atomic = "128"),
+    cfg(any(target_has_atomic = "128", doc)),
     cfg(target_has_atomic_equal_alignment = "128"),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
