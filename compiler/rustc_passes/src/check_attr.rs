@@ -310,6 +310,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::Coverage(attr_span, _)) => {
                     self.check_coverage(attr_span, span, target)
                 }
+                &Attribute::Parsed(AttributeKind::RustcPassIndirectlyInNonRusticAbis(
+                    attr_span,
+                )) => {
+                    self.check_pass_indirectly_in_non_rustic_abis(attr_span, span, target);
+                }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
@@ -2175,6 +2180,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hint_spans.collect::<Vec<Span>>(),
                 errors::ReprConflictingLint,
             );
+        }
+    }
+
+    fn check_pass_indirectly_in_non_rustic_abis(
+        &self,
+        attr_span: Span,
+        span: Span,
+        target: Target,
+    ) {
+        if target != Target::Struct {
+            self.dcx().emit_err(errors::PassIndirectlyNotAStruct { attr_span, span });
         }
     }
 

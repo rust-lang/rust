@@ -66,6 +66,7 @@ impl AttributeKind {
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
             RustcObjectLifetimeDefault => No,
+            RustcPassIndirectlyInNonRusticAbis(..) => No,
             SkipDuringMethodDispatch { .. } => No,
             SpecializationTrait(..) => No,
             Stability { .. } => Yes,
