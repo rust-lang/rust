@@ -120,6 +120,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         for attr in attrs {
             let mut style = None;
             match attr {
+                Attribute::Parsed(AttributeKind::Cfg(..)) => {} // checked elsewhere
                 Attribute::Parsed(AttributeKind::SkipDuringMethodDispatch {
                     span: attr_span,
                     ..
@@ -334,7 +335,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::forbid
                             | sym::cfg
                             | sym::cfg_attr
-                            | sym::cfg_trace
                             | sym::cfg_attr_trace
                             | sym::export_stable // handled in `check_export`
                             // need to be fixed

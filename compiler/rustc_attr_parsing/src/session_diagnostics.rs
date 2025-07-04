@@ -518,6 +518,7 @@ pub(crate) enum AttributeParseErrorReason {
     ExpectedNoArgs,
     ExpectedStringLiteral { byte_string: Option<Span> },
     ExpectedIntegerLiteral,
+    ExpectedBooleanLiteral,
     ExpectedAtLeastOneArgument,
     ExpectedSingleArgument,
     ExpectedList,
@@ -560,6 +561,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
             }
             AttributeParseErrorReason::ExpectedIntegerLiteral => {
                 diag.span_label(self.span, "expected an integer literal here");
+            }
+            AttributeParseErrorReason::ExpectedBooleanLiteral => {
+                diag.span_label(self.span, "expected a boolean literal here");
             }
             AttributeParseErrorReason::ExpectedSingleArgument => {
                 diag.span_label(self.span, "expected a single argument here");

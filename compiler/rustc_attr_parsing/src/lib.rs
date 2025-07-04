@@ -91,6 +91,7 @@ pub mod parser;
 mod session_diagnostics;
 
 pub use attributes::cfg::*;
+pub use attributes::cfg_new::*;
 pub use attributes::util::{
     find_crate_name, is_builtin_attr, is_doc_alias_attrs_contain_symbol, parse_version,
 };

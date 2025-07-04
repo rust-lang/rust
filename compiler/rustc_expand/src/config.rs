@@ -1,6 +1,6 @@
 //! Conditional compilation stripping.
 
-use std::iter;
+use std::{iter, slice};
 
 use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{
@@ -10,7 +10,9 @@ use rustc_ast::{
     self as ast, AttrKind, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner,
     NodeId, NormalAttr,
 };
+use rustc_attr_data_structures::AttributeKind;
 use rustc_attr_parsing as attr;
+use rustc_attr_parsing::{AttributeParser, EvalConfigResult, eval_config_entry};
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeSafety, EnabledLangFeature, EnabledLibFeature, Features,
@@ -161,7 +163,10 @@ pub fn pre_configure_attrs(sess: &Session, attrs: &[Attribute]) -> ast::AttrVec 
     attrs
         .iter()
         .flat_map(|attr| strip_unconfigured.process_cfg_attr(attr))
-        .take_while(|attr| !is_cfg(attr) || strip_unconfigured.cfg_true(attr).0)
+        .take_while(|attr| {
+            !is_cfg(attr)
+                || strip_unconfigured.cfg_true(attr, strip_unconfigured.lint_node_id).as_bool()
+        })
         .collect()
 }
 
@@ -394,26 +399,25 @@ impl<'a> StripUnconfigured<'a> {
 
     /// Determines if a node with the given attributes should be included in this configuration.
     fn in_cfg(&self, attrs: &[Attribute]) -> bool {
-        attrs.iter().all(|attr| !is_cfg(attr) || self.cfg_true(attr).0)
+        attrs.iter().all(|attr| !is_cfg(attr) || self.cfg_true(attr, self.lint_node_id).as_bool())
     }
 
-    pub(crate) fn cfg_true(&self, attr: &Attribute) -> (bool, Option<MetaItem>) {
-        let meta_item = match validate_attr::parse_meta(&self.sess.psess, attr) {
-            Ok(meta_item) => meta_item,
-            Err(err) => {
-                err.emit();
-                return (true, None);
-            }
+    pub(crate) fn cfg_true(&self, attr: &Attribute, node: NodeId) -> EvalConfigResult {
+        let Some(rustc_hir::Attribute::Parsed(AttributeKind::Cfg(cfg, _))) =
+            AttributeParser::parse_limited(
+                self.sess,
+                slice::from_ref(attr),
+                sym::cfg,
+                attr.span,
+                node,
+                self.features,
+            )
+        else {
+            // Cfg attribute was not parsable, give up
+            return EvalConfigResult::True;
         };
 
-        validate_attr::deny_builtin_meta_unsafety(&self.sess.psess, &meta_item);
-
-        (
-            parse_cfg(&meta_item, self.sess).is_none_or(|meta_item| {
-                attr::cfg_matches(meta_item, &self.sess, self.lint_node_id, self.features)
-            }),
-            Some(meta_item),
-        )
+        eval_config_entry(self.sess, &cfg, self.lint_node_id, self.features)
     }
 
     /// If attributes are not allowed on expressions, emit an error for `attr`

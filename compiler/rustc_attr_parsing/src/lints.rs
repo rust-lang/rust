@@ -1,6 +1,7 @@
 use rustc_attr_data_structures::lints::{AttributeLint, AttributeLintKind};
 use rustc_errors::{DiagArgValue, LintEmitter};
 use rustc_hir::HirId;
+use rustc_session::lint::BuiltinLintDiag;
 
 use crate::session_diagnostics;
 

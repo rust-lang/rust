@@ -15,6 +15,7 @@ use rustc_session::Session;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
+use crate::attributes::cfg_new::{CfgParser, CfgTraceParser};
 use crate::attributes::codegen_attrs::{
     ColdParser, ExportNameParser, NakedParser, NoMangleParser, OptimizeParser, TargetFeatureParser,
     TrackCallerParser, UsedParser,
@@ -118,6 +119,8 @@ attribute_parsers!(
         // tidy-alphabetical-start
         Combine<AllowConstFnUnstableParser>,
         Combine<AllowInternalUnstableParser>,
+        Combine<CfgParser>,
+        Combine<CfgTraceParser>,
         Combine<ReprParser>,
         Combine<TargetFeatureParser>,
         // tidy-alphabetical-end
@@ -299,6 +302,16 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedIntegerLiteral,
+        })
+    }
+
+    pub(crate) fn expected_boolean_literal(&self, span: Span) -> ErrorGuaranteed {
+        self.emit_err(AttributeParseError {
+            span,
+            attr_span: self.attr_span,
+            template: self.template.clone(),
+            attribute: self.attr_path.clone(),
+            reason: AttributeParseErrorReason::ExpectedBooleanLiteral,
         })
     }
 
@@ -531,14 +544,10 @@ impl<'sess> AttributeParser<'sess, Early> {
         sym: Symbol,
         target_span: Span,
         target_node_id: NodeId,
+        features: Option<&'sess Features>,
     ) -> Option<Attribute> {
-        let mut p = Self {
-            features: None,
-            tools: Vec::new(),
-            parse_only: Some(sym),
-            sess,
-            stage: PhantomData,
-        };
+        let mut p =
+            Self { features, tools: Vec::new(), parse_only: Some(sym), sess, stage: PhantomData };
         let mut parsed = p.parse_attribute_list(
             attrs,
             target_span,
