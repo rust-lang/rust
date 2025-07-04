@@ -3820,7 +3820,7 @@ atomic_int! {
     16,
     i128 AtomicI128
 }
-#[cfg(target_has_atomic_load_store = "128", doc)]
+#[cfg(any(target_has_atomic_load_store = "128", doc))]
 atomic_int! {
     cfg(any(target_has_atomic = "128", doc)),
     cfg(target_has_atomic_equal_alignment = "128"),
