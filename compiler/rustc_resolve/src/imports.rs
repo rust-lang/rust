@@ -865,7 +865,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                         let imported_binding = this.import(binding, import);
                         target_bindings[ns].set(Some(imported_binding));
-                        this.define(parent, target, ns, imported_binding);
+                        this.define_binding(parent, target, ns, imported_binding);
                     }
                     Err(Determined) => {
                         // Don't update the resolution for underscores, because it was never added.
