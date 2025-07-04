@@ -1037,7 +1037,7 @@ pub(crate) enum Message<B: WriteBackendMethods> {
 
     /// The backend has finished processing a work item for a codegen unit.
     /// Sent from a backend worker thread.
-    WorkItem { result: Result<WorkItemResult<B>, Option<WorkerFatalError>>, worker_id: usize },
+    WorkItem { result: Result<WorkItemResult<B>, Option<WorkerFatalError>> },
 
     /// The frontend has finished generating something (backend IR or a
     /// post-LTO artifact) for a codegen unit, and it should be passed to the
@@ -1355,18 +1355,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // necessary. There's already optimizations in place to avoid sending work
     // back to the coordinator if LTO isn't requested.
     return B::spawn_named_thread(cgcx.time_trace, "coordinator".to_string(), move || {
-        let mut worker_id_counter = 0;
-        let mut free_worker_ids = Vec::new();
-        let mut get_worker_id = |free_worker_ids: &mut Vec<usize>| {
-            if let Some(id) = free_worker_ids.pop() {
-                id
-            } else {
-                let id = worker_id_counter;
-                worker_id_counter += 1;
-                id
-            }
-        };
-
         // This is where we collect codegen units that have gone all the way
         // through codegen and LLVM.
         let mut compiled_modules = vec![];
@@ -1447,12 +1435,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         let (item, _) =
                             work_items.pop().expect("queue empty - queue_full_enough() broken?");
                         main_thread_state = MainThreadState::Lending;
-                        spawn_work(
-                            &cgcx,
-                            &mut llvm_start_time,
-                            get_worker_id(&mut free_worker_ids),
-                            item,
-                        );
+                        spawn_work(&cgcx, &mut llvm_start_time, item);
                     }
                 }
             } else if codegen_state == Completed {
@@ -1521,12 +1504,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     MainThreadState::Idle => {
                         if let Some((item, _)) = work_items.pop() {
                             main_thread_state = MainThreadState::Lending;
-                            spawn_work(
-                                &cgcx,
-                                &mut llvm_start_time,
-                                get_worker_id(&mut free_worker_ids),
-                                item,
-                            );
+                            spawn_work(&cgcx, &mut llvm_start_time, item);
                         } else {
                             // There is no unstarted work, so let the main thread
                             // take over for a running worker. Otherwise the
@@ -1562,33 +1540,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 while running_with_own_token < tokens.len()
                     && let Some((item, _)) = work_items.pop()
                 {
-                    spawn_work(
-                        &cgcx,
-                        &mut llvm_start_time,
-                        get_worker_id(&mut free_worker_ids),
-                        item,
-                    );
+                    spawn_work(&cgcx, &mut llvm_start_time, item);
                     running_with_own_token += 1;
                 }
             }
 
             // Relinquish accidentally acquired extra tokens.
             tokens.truncate(running_with_own_token);
-
-            // If a thread exits successfully then we drop a token associated
-            // with that worker and update our `running_with_own_token` count.
-            // We may later re-acquire a token to continue running more work.
-            // We may also not actually drop a token here if the worker was
-            // running with an "ephemeral token".
-            let mut free_worker = |worker_id| {
-                if main_thread_state == MainThreadState::Lending {
-                    main_thread_state = MainThreadState::Idle;
-                } else {
-                    running_with_own_token -= 1;
-                }
-
-                free_worker_ids.push(worker_id);
-            };
 
             let msg = coordinator_receive.recv().unwrap();
             match *msg.downcast::<Message<B>>().ok().unwrap() {
@@ -1658,8 +1616,17 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     codegen_state = Aborted;
                 }
 
-                Message::WorkItem { result, worker_id } => {
-                    free_worker(worker_id);
+                Message::WorkItem { result } => {
+                    // If a thread exits successfully then we drop a token associated
+                    // with that worker and update our `running_with_own_token` count.
+                    // We may later re-acquire a token to continue running more work.
+                    // We may also not actually drop a token here if the worker was
+                    // running with an "ephemeral token".
+                    if main_thread_state == MainThreadState::Lending {
+                        main_thread_state = MainThreadState::Idle;
+                    } else {
+                        running_with_own_token -= 1;
+                    }
 
                     match result {
                         Ok(WorkItemResult::Finished(compiled_module)) => {
@@ -1805,7 +1772,6 @@ pub(crate) struct WorkerFatalError;
 fn spawn_work<'a, B: ExtraBackendMethods>(
     cgcx: &'a CodegenContext<B>,
     llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
-    worker_id: usize,
     work: WorkItem<B>,
 ) {
     if cgcx.config(work.module_kind()).time_module && llvm_start_time.is_none() {
@@ -1820,24 +1786,21 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
         struct Bomb<B: ExtraBackendMethods> {
             coordinator_send: Sender<Box<dyn Any + Send>>,
             result: Option<Result<WorkItemResult<B>, FatalError>>,
-            worker_id: usize,
         }
         impl<B: ExtraBackendMethods> Drop for Bomb<B> {
             fn drop(&mut self) {
-                let worker_id = self.worker_id;
                 let msg = match self.result.take() {
-                    Some(Ok(result)) => Message::WorkItem::<B> { result: Ok(result), worker_id },
+                    Some(Ok(result)) => Message::WorkItem::<B> { result: Ok(result) },
                     Some(Err(FatalError)) => {
-                        Message::WorkItem::<B> { result: Err(Some(WorkerFatalError)), worker_id }
+                        Message::WorkItem::<B> { result: Err(Some(WorkerFatalError)) }
                     }
-                    None => Message::WorkItem::<B> { result: Err(None), worker_id },
+                    None => Message::WorkItem::<B> { result: Err(None) },
                 };
                 drop(self.coordinator_send.send(Box::new(msg)));
             }
         }
 
-        let mut bomb =
-            Bomb::<B> { coordinator_send: cgcx.coordinator_send.clone(), result: None, worker_id };
+        let mut bomb = Bomb::<B> { coordinator_send: cgcx.coordinator_send.clone(), result: None };
 
         // Execute the work itself, and if it finishes successfully then flag
         // ourselves as a success as well.
