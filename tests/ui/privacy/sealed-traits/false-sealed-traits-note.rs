@@ -1,4 +1,4 @@
-// when we impl TraitA for Struct, it can compile, we should not emit sealed traits note, see issue #143392
+// We should not emit sealed traits note, see issue #143392
 
 mod inner {
     pub trait TraitA {}
