@@ -879,6 +879,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-thumbv8m.base-none-eabi",
     "ignore-thumbv8m.main-none-eabi",
     "ignore-tvos",
+    "ignore-uefi",
     "ignore-unix",
     "ignore-unknown",
     "ignore-uwp",
