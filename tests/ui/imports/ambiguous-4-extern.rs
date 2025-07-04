@@ -1,4 +1,3 @@
-//@ check-pass
 // https://github.com/rust-lang/rust/pull/112743#issuecomment-1601986883
 
 macro_rules! m {
@@ -21,6 +20,6 @@ mod handwritten {
 
 fn main() {
     id();
-    //~^ WARNING `id` is ambiguous
+    //~^ ERROR `id` is ambiguous
     //~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 }
