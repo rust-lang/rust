@@ -256,14 +256,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandValue::Immediate(imm),
                 abi::BackendRepr::Scalar(from_scalar),
                 abi::BackendRepr::Scalar(to_scalar),
-            ) => OperandValue::Immediate(transmute_immediate(bx, imm, from_scalar, to_scalar)),
+            ) => OperandValue::Immediate(transmute_scalar(bx, imm, from_scalar, to_scalar)),
             (
                 OperandValue::Pair(imm_a, imm_b),
                 abi::BackendRepr::ScalarPair(in_a, in_b),
                 abi::BackendRepr::ScalarPair(out_a, out_b),
             ) => OperandValue::Pair(
-                transmute_immediate(bx, imm_a, in_a, out_a),
-                transmute_immediate(bx, imm_b, in_b, out_b),
+                transmute_scalar(bx, imm_a, in_a, out_a),
+                transmute_scalar(bx, imm_b, in_b, out_b),
             ),
             _ => return None,
         })
@@ -1017,12 +1017,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 }
 
-/// Transmutes one of the immediates from an [`OperandValue::Immediate`]
-/// or an [`OperandValue::Pair`] to an immediate of the target type.
+/// Transmutes a single scalar value `imm` from `from_scalar` to `to_scalar`.
 ///
-/// `to_backend_ty` must be the *non*-immediate backend type (so it will be
-/// `i8`, not `i1`, for `bool`-like types.)
-pub(super) fn transmute_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+/// This is expected to be in *immediate* form, as seen in [`OperandValue::Immediate`]
+/// or [`OperandValue::Pair`] (so `i1` for bools, not `i8`, for example).
+///
+/// ICEs if the passed-in `imm` is not a value of the expected type for
+/// `from_scalar`, such as if it's a vector or a pair.
+pub(super) fn transmute_scalar<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     mut imm: Bx::Value,
     from_scalar: abi::Scalar,
@@ -1033,7 +1035,7 @@ pub(super) fn transmute_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     assert_ne!(
         bx.cx().type_kind(imm_ty),
         TypeKind::Vector,
-        "Vector type {imm_ty:?} not allowed in transmute_immediate {from_scalar:?} -> {to_scalar:?}"
+        "Vector type {imm_ty:?} not allowed in transmute_scalar {from_scalar:?} -> {to_scalar:?}"
     );
 
     // While optimizations will remove no-op transmutes, they might still be

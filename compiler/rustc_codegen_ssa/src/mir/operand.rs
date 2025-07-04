@@ -13,7 +13,7 @@ use rustc_session::config::OptLevel;
 use tracing::{debug, instrument};
 
 use super::place::{PlaceRef, PlaceValue};
-use super::rvalue::transmute_immediate;
+use super::rvalue::transmute_scalar;
 use super::{FunctionCx, LocalRef};
 use crate::common::IntPredicate;
 use crate::traits::*;
@@ -614,7 +614,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, Result<V, abi::Scalar>> {
 
         let mut update = |tgt: &mut Result<V, abi::Scalar>, src, from_scalar| {
             let to_scalar = tgt.unwrap_err();
-            let imm = transmute_immediate(bx, src, from_scalar, to_scalar);
+            let imm = transmute_scalar(bx, src, from_scalar, to_scalar);
             *tgt = Ok(imm);
         };
 
