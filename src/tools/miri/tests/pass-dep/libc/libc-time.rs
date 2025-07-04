@@ -1,14 +1,23 @@
 //@ignore-target: windows # no libc time APIs on Windows
 //@compile-flags: -Zmiri-disable-isolation
-use std::{env, mem, ptr};
 use std::time::{Duration, Instant};
+use std::{env, mem, ptr};
 
 fn main() {
     test_clocks();
     test_posix_gettimeofday();
     test_nanosleep();
-    test_clock_nanosleep_absolute();
-    test_clock_nanosleep_relative();
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "solaris",
+        target_os = "illumos"
+    ))]
+    {
+        test_clock_nanosleep_absolute();
+        test_clock_nanosleep_relative();
+    }
     test_localtime_r_epoch();
     test_localtime_r_gmt();
     test_localtime_r_pst();
