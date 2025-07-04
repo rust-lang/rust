@@ -7,6 +7,7 @@ use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
+use rustc_mir_transform::{add_call_guards, dump_mir, pass_manager};
 use rustc_target::callconv::{FnAbi, PassMode};
 use tracing::{debug, instrument};
 
@@ -166,6 +167,18 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         tcx,
         ty::TypingEnv::fully_monomorphized(),
         ty::EarlyBinder::bind(mir.clone()),
+    );
+    pass_manager::run_passes(
+        cx.tcx(),
+        &mut mir,
+        &[
+            // Some cleanup necessary at least for LLVM and potentially other codegen backends.
+            &add_call_guards::CriticalCallEdges,
+            // Dump the end result for testing and debugging purposes.
+            &dump_mir::Marker("Monomorphic"),
+        ],
+        Some(mir::MirPhase::Runtime(mir::RuntimePhase::Monomorphic)),
+        pass_manager::Optimizations::Allowed,
     );
     if tcx.features().ergonomic_clones() {
         mir = optimize_use_clone::<Bx>(cx, mir);

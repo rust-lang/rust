@@ -103,6 +103,7 @@ impl MirPhase {
             MirPhase::Runtime(RuntimePhase::Initial) => "runtime",
             MirPhase::Runtime(RuntimePhase::PostCleanup) => "runtime-post-cleanup",
             MirPhase::Runtime(RuntimePhase::Optimized) => "runtime-optimized",
+            MirPhase::Runtime(RuntimePhase::Monomorphic) => "runtime-monomorphic",
         }
     }
 
@@ -154,6 +155,7 @@ impl RuntimePhase {
             "initial" => Self::Initial,
             "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
             "optimized" => Self::Optimized,
+            "monomorphic" => Self::Monomorphic,
             _ => bug!("Unknown runtime phase: '{}'", phase),
         }
     }

@@ -35,7 +35,7 @@ use rustc_span::{DUMMY_SP, sym};
 use tracing::debug;
 
 #[macro_use]
-mod pass_manager;
+pub mod pass_manager;
 
 use std::sync::LazyLock;
 
@@ -94,6 +94,7 @@ macro_rules! declare_passes {
         static PASS_NAMES: LazyLock<FxIndexSet<&str>> = LazyLock::new(|| [
             // Fake marker pass
             "PreCodegen",
+            "Monomorphic",
             $(
                 $(
                     stringify!($pass_name),
@@ -110,7 +111,7 @@ macro_rules! declare_passes {
 
 declare_passes! {
     mod abort_unwinding_calls : AbortUnwindingCalls;
-    mod add_call_guards : AddCallGuards { AllCallEdges, CriticalCallEdges };
+    pub mod add_call_guards : AddCallGuards { AllCallEdges, CriticalCallEdges };
     mod add_moves_for_packed_drops : AddMovesForPackedDrops;
     mod add_retag : AddRetag;
     mod add_subtyping_projections : Subtyper;
@@ -722,8 +723,6 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
             &large_enums::EnumSizeOpt { discrepancy: 128 },
-            // Some cleanup necessary at least for LLVM and potentially other codegen backends.
-            &add_call_guards::CriticalCallEdges,
             // Cleanup for human readability, off by default.
             &prettify::ReorderBasicBlocks,
             &prettify::ReorderLocals,

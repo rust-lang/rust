@@ -4,11 +4,11 @@ use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
 #[derive(PartialEq)]
-pub(super) enum AddCallGuards {
+pub enum AddCallGuards {
     AllCallEdges,
     CriticalCallEdges,
 }
-pub(super) use self::AddCallGuards::*;
+pub use self::AddCallGuards::*;
 
 /**
  * Breaks outgoing critical edges for call terminators in the MIR.

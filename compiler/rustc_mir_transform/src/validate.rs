@@ -390,10 +390,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
                     // The code generation assumes that there are no critical call edges. The
                     // assumption is used to simplify inserting code that should be executed along
-                    // the return edge from the call. FIXME(tmiasko): Since this is a strictly code
-                    // generation concern, the code generation should be responsible for handling
-                    // it.
-                    if self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
+                    // the return edge from the call.
+                    if self.body.phase >= MirPhase::Runtime(RuntimePhase::Monomorphic)
                         && self.is_critical_call_edge(target, unwind)
                     {
                         self.fail(

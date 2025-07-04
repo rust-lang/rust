@@ -2,15 +2,14 @@
 //
 //@ build-fail
 //@ edition: 2021
-//@ compile-flags: --crate-type=lib
+//@ compile-flags: --crate-type=lib -Zvalidate-mir
 //@ failure-status: 101
 //@ dont-check-compiler-stderr
 
 #![feature(custom_mir, core_intrinsics)]
 use core::intrinsics::mir::*;
 
-#[custom_mir(dialect = "runtime", phase = "optimized")]
-#[inline(always)]
+#[custom_mir(dialect = "runtime", phase = "monomorphic")]
 pub fn f(a: u32) -> u32 {
     mir! {
         {

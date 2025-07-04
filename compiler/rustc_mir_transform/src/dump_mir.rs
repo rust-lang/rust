@@ -7,7 +7,7 @@ use rustc_middle::mir::{Body, write_mir_pretty};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OutFileName, OutputType};
 
-pub(super) struct Marker(pub &'static str);
+pub struct Marker(pub &'static str);
 
 impl<'tcx> crate::MirPass<'tcx> for Marker {
     fn name(&self) -> &'static str {

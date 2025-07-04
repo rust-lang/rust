@@ -60,7 +60,7 @@ const fn c_name(name: &'static str) -> &'static str {
 /// A streamlined trait that you can implement to create a pass; the
 /// pass will be named after the type, and it will consist of a main
 /// loop that goes over each available MIR and applies `run_pass`.
-pub(super) trait MirPass<'tcx> {
+pub trait MirPass<'tcx> {
     fn name(&self) -> &'static str {
         // FIXME(const-hack) Simplify the implementation once more `str` methods get const-stable.
         // See copypaste in `MirLint`
@@ -172,7 +172,7 @@ where
 ///
 /// [required]: MirPass::is_required
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum Optimizations {
+pub enum Optimizations {
     Suppressed,
     Allowed,
 }
@@ -189,7 +189,7 @@ pub(super) fn run_passes_no_validate<'tcx>(
 }
 
 /// The optional `phase_change` is applied after executing all the passes, if present
-pub(super) fn run_passes<'tcx>(
+pub fn run_passes<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
     passes: &[&dyn MirPass<'tcx>],

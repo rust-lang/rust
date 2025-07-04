@@ -143,6 +143,8 @@ pub enum RuntimePhase {
     /// * [`ProjectionElem::Deref`] of `Box`
     PostCleanup = 1,
     Optimized = 2,
+    /// This corresponds to monomorphised MIR that is being processed by codegen.
+    Monomorphic = 3,
 }
 
 ///////////////////////////////////////////////////////////////////////////
