@@ -283,6 +283,9 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                     }
                     GlobalAlloc::TypeId { .. } => {
                         let val = self.const_usize(offset.bytes());
+                        // This is still a variable of pointer type, even though we only use the provenance
+                        // of that pointer in CTFE and Miri. But to make LLVM's type system happy,
+                        // we need an int-to-ptr cast here (it doesn't matter at all which provenance that picks).
                         return self.context.new_cast(None, val, ty);
                     }
                     GlobalAlloc::Static(def_id) => {

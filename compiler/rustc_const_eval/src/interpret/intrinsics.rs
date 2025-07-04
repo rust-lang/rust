@@ -93,11 +93,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_type_id(tp_ty, dest)?;
             }
             sym::type_id_eq => {
+                // Both operands are `TypeId`, which is a newtype around an array of pointers.
+                // Project until we have the array elements.
                 let a_fields = self.project_field(&args[0], FieldIdx::ZERO)?;
                 let b_fields = self.project_field(&args[1], FieldIdx::ZERO)?;
 
                 let mut a_fields = self.project_array_fields(&a_fields)?;
-
                 let mut b_fields = self.project_array_fields(&b_fields)?;
 
                 let (_idx, a) = a_fields
