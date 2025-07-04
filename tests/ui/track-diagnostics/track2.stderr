@@ -6,8 +6,8 @@ LL |     let _moved @ _from = String::from("foo");
    |         |        |
    |         |        value moved here
    |         value used here after move
--Ztrack-diagnostics: created at compiler/rustc_borrowck/src/borrowck_errors.rs:LL:CC
    |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_borrowck/src/borrowck_errors.rs:LL:CC
 help: borrow this binding in the pattern to avoid moving the value
    |
 LL |     let ref _moved @ ref _from = String::from("foo");

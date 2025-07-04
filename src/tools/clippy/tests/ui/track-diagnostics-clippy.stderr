@@ -3,8 +3,8 @@ error: casting to the same type is unnecessary (`u32` -> `u32`)
    |
 LL |     let b = a as u32;
    |             ^^^^^^^^ help: try: `a`
--Ztrack-diagnostics: created at src/tools/clippy/clippy_lints/src/casts/unnecessary_cast.rs:LL:CC
    |
+   = note: -Ztrack-diagnostics: created at src/tools/clippy/clippy_lints/src/casts/unnecessary_cast.rs:LL:CC
    = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_cast)]`
 
@@ -15,8 +15,8 @@ LL |         let d = 42;
    |         ----------- unnecessary `let` binding
 LL |         d
    |         ^
--Ztrack-diagnostics: created at src/tools/clippy/clippy_lints/src/returns.rs:LL:CC
    |
+   = note: -Ztrack-diagnostics: created at src/tools/clippy/clippy_lints/src/returns.rs:LL:CC
    = note: `-D clippy::let-and-return` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::let_and_return)]`
 help: return the expression directly
