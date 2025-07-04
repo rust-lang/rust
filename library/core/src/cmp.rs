@@ -1449,7 +1449,6 @@ pub trait PartialOrd<Rhs: PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
     /// check `==` and `<` separately to do rather than needing to calculate
     /// (then optimize out) the three-way `Ordering` result.
     #[inline]
-    #[must_use]
     // Added to improve the behaviour of tuples; not necessarily stabilization-track.
     #[unstable(feature = "partial_ord_chaining_methods", issue = "none")]
     #[doc(hidden)]
@@ -1459,7 +1458,6 @@ pub trait PartialOrd<Rhs: PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
 
     /// Same as `__chaining_lt`, but for `<=` instead of `<`.
     #[inline]
-    #[must_use]
     #[unstable(feature = "partial_ord_chaining_methods", issue = "none")]
     #[doc(hidden)]
     fn __chaining_le(&self, other: &Rhs) -> ControlFlow<bool> {
@@ -1468,7 +1466,6 @@ pub trait PartialOrd<Rhs: PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
 
     /// Same as `__chaining_lt`, but for `>` instead of `<`.
     #[inline]
-    #[must_use]
     #[unstable(feature = "partial_ord_chaining_methods", issue = "none")]
     #[doc(hidden)]
     fn __chaining_gt(&self, other: &Rhs) -> ControlFlow<bool> {
@@ -1477,7 +1474,6 @@ pub trait PartialOrd<Rhs: PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
 
     /// Same as `__chaining_lt`, but for `>=` instead of `<`.
     #[inline]
-    #[must_use]
     #[unstable(feature = "partial_ord_chaining_methods", issue = "none")]
     #[doc(hidden)]
     fn __chaining_ge(&self, other: &Rhs) -> ControlFlow<bool> {

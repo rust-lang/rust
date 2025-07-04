@@ -647,7 +647,20 @@ impl Item {
         ) -> hir::FnHeader {
             let sig = tcx.fn_sig(def_id).skip_binder();
             let constness = if tcx.is_const_fn(def_id) {
-                hir::Constness::Const
+                // rustc's `is_const_fn` returns `true` for associated functions that have an `impl const` parent
+                // or that have a `#[const_trait]` parent. Do not display those as `const` in rustdoc because we
+                // won't be printing correct syntax plus the syntax is unstable.
+                match tcx.opt_associated_item(def_id) {
+                    Some(ty::AssocItem {
+                        container: ty::AssocItemContainer::Impl,
+                        trait_item_def_id: Some(_),
+                        ..
+                    })
+                    | Some(ty::AssocItem { container: ty::AssocItemContainer::Trait, .. }) => {
+                        hir::Constness::NotConst
+                    }
+                    None | Some(_) => hir::Constness::Const,
+                }
             } else {
                 hir::Constness::NotConst
             };

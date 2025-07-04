@@ -124,7 +124,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                                 GenericParamKind::Type { default: _ } => {
                                     cx.typaram(p.span(), p.ident, p.bounds.clone(), None)
                                 }
-                                GenericParamKind::Const { ty, kw_span: _, default: _ } => cx
+                                GenericParamKind::Const { ty, span: _, default: _ } => cx
                                     .const_param(
                                         p.span(),
                                         p.ident,
