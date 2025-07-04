@@ -673,7 +673,6 @@ impl<'ra> Module<'ra> {
         }
     }
 
-    // Public for rustdoc.
     fn def_id(self) -> DefId {
         self.opt_def_id().expect("`ModuleData::def_id` is called on a block module")
     }
@@ -781,7 +780,6 @@ impl<'ra> ToNameBinding<'ra> for NameBinding<'ra> {
 #[derive(Clone, Copy, Debug)]
 enum NameBindingKind<'ra> {
     Res(Res),
-    Module(Module<'ra>),
     Import { binding: NameBinding<'ra>, import: Import<'ra> },
 }
 
@@ -874,18 +872,9 @@ struct AmbiguityError<'ra> {
 }
 
 impl<'ra> NameBindingData<'ra> {
-    fn module(&self) -> Option<Module<'ra>> {
-        match self.kind {
-            NameBindingKind::Module(module) => Some(module),
-            NameBindingKind::Import { binding, .. } => binding.module(),
-            _ => None,
-        }
-    }
-
     fn res(&self) -> Res {
         match self.kind {
             NameBindingKind::Res(res) => res,
-            NameBindingKind::Module(module) => module.res().unwrap(),
             NameBindingKind::Import { binding, .. } => binding.res(),
         }
     }
@@ -913,7 +902,7 @@ impl<'ra> NameBindingData<'ra> {
                 DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..),
                 _,
             )) => true,
-            NameBindingKind::Res(..) | NameBindingKind::Module(..) => false,
+            NameBindingKind::Res(..) => false,
         }
     }
 
@@ -922,11 +911,7 @@ impl<'ra> NameBindingData<'ra> {
             NameBindingKind::Import { import, .. } => {
                 matches!(import.kind, ImportKind::ExternCrate { .. })
             }
-            NameBindingKind::Module(module)
-                if let ModuleKind::Def(DefKind::Mod, def_id, _) = module.kind =>
-            {
-                def_id.is_crate_root()
-            }
+            NameBindingKind::Res(Res::Def(_, def_id)) => def_id.is_crate_root(),
             _ => false,
         }
     }
@@ -1268,7 +1253,8 @@ impl<'ra> ResolverArenas<'ra> {
         if let Some(def_id) = def_id {
             module_map.insert(def_id, module);
             let vis = ty::Visibility::<DefId>::Public;
-            let binding = (module, vis, module.span, LocalExpnId::ROOT).to_name_binding(self);
+            let res = module.res().unwrap();
+            let binding = (res, vis, module.span, LocalExpnId::ROOT).to_name_binding(self);
             module_self_bindings.insert(module, binding);
         }
         module
@@ -1816,7 +1802,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         module.ensure_traits(self);
         let traits = module.traits.borrow();
         for (trait_name, trait_binding) in traits.as_ref().unwrap().iter() {
-            if self.trait_may_have_item(trait_binding.module(), assoc_item) {
+            let trait_module = self.get_module(trait_binding.res().def_id());
+            if self.trait_may_have_item(trait_module, assoc_item) {
                 let def_id = trait_binding.res().def_id();
                 let import_ids = self.find_transitive_imports(&trait_binding.kind, *trait_name);
                 found_traits.push(TraitCandidate { def_id, import_ids });
@@ -2152,9 +2139,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 } else {
                     self.crate_loader(|c| c.maybe_process_path_extern(ident.name))?
                 };
-                let crate_root = self.expect_module(crate_id.as_def_id());
+                let res = Res::Def(DefKind::Mod, crate_id.as_def_id());
                 let vis = ty::Visibility::<DefId>::Public;
-                (crate_root, vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(self.arenas)
+                (res, vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(self.arenas)
             })
         });
 
