@@ -1,8 +1,9 @@
 //! Run-time feature detection for LoongArch on Linux.
 
+use core::arch::asm;
+
 use super::auxvec;
 use crate::detect::{Feature, bit, cache};
-use core::arch::asm;
 
 /// Try to read the features from the auxiliary vector.
 pub(crate) fn detect_features() -> cache::Initializer {
@@ -43,16 +44,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
     //
     // [hwcap]: https://github.com/torvalds/linux/blob/master/arch/loongarch/include/uapi/asm/hwcap.h
     if let Ok(auxv) = auxvec::auxv() {
-        enable_feature(
-            &mut value,
-            Feature::f,
-            bit::test(cpucfg2, 1) && bit::test(auxv.hwcap, 3),
-        );
-        enable_feature(
-            &mut value,
-            Feature::d,
-            bit::test(cpucfg2, 2) && bit::test(auxv.hwcap, 3),
-        );
+        enable_feature(&mut value, Feature::f, bit::test(cpucfg2, 1) && bit::test(auxv.hwcap, 3));
+        enable_feature(&mut value, Feature::d, bit::test(cpucfg2, 2) && bit::test(auxv.hwcap, 3));
         enable_feature(&mut value, Feature::lsx, bit::test(auxv.hwcap, 4));
         enable_feature(&mut value, Feature::lasx, bit::test(auxv.hwcap, 5));
         enable_feature(

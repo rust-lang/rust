@@ -343,14 +343,8 @@ impl AtHwcap {
             enable_feature(Feature::sve2, sve2);
             enable_feature(Feature::sve2p1, self.sve2p1 && sve2);
             // SVE2 extensions require SVE2 and crypto features
-            enable_feature(
-                Feature::sve2_aes,
-                self.sveaes && self.svepmull && sve2 && self.aes,
-            );
-            enable_feature(
-                Feature::sve2_sm4,
-                self.svesm4 && sve2 && self.sm3 && self.sm4,
-            );
+            enable_feature(Feature::sve2_aes, self.sveaes && self.svepmull && sve2 && self.aes);
+            enable_feature(Feature::sve2_sm4, self.svesm4 && sve2 && self.sm3 && self.sm4);
             enable_feature(
                 Feature::sve2_sha3,
                 self.svesha3 && sve2 && self.sha512 && self.sha3 && self.sha1 && self.sha2,
