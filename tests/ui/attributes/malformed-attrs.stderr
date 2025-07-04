@@ -65,12 +65,6 @@ error: malformed `no_sanitize` attribute input
 LL | #[no_sanitize]
    | ^^^^^^^^^^^^^^ help: must be of the form: `#[no_sanitize(address, kcfi, memory, thread)]`
 
-error: malformed `no_implicit_prelude` attribute input
-  --> $DIR/malformed-attrs.rs:96:1
-   |
-LL | #[no_implicit_prelude = 23]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[no_implicit_prelude]`
-
 error: malformed `proc_macro` attribute input
   --> $DIR/malformed-attrs.rs:98:1
    |
@@ -513,6 +507,15 @@ error[E0539]: malformed `link_section` attribute input
    |
 LL | #[link_section]
    | ^^^^^^^^^^^^^^^ help: must be of the form: `#[link_section = "name"]`
+
+error[E0565]: malformed `no_implicit_prelude` attribute input
+  --> $DIR/malformed-attrs.rs:96:1
+   |
+LL | #[no_implicit_prelude = 23]
+   | ^^^^^^^^^^^^^^^^^^^^^^----^
+   | |                     |
+   | |                     didn't expect any arguments here
+   | help: must be of the form: `#[no_implicit_prelude]`
 
 error[E0539]: malformed `must_use` attribute input
   --> $DIR/malformed-attrs.rs:118:1
