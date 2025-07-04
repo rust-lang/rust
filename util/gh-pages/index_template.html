@@ -151,8 +151,8 @@ Otherwise, have a great day =^.^=
                     <label for="label-{{lint.id}}"> {# #}
                         <h2 class="lint-title"> {# #}
                             <div class="panel-title-name" id="lint-{{lint.id}}"> {# #}
-                                <span>{{lint.id}}</span> {#+ #}
-                                <a href="#{{lint.id}}" class="lint-anchor anchor label label-default">&para;</a> {#+ #}
+                                {{lint.id +}}
+                                <a href="#{{lint.id}}" class="anchor label label-default">&para;</a> {#+ #}
                                 <a href="" class="copy-to-clipboard anchor label label-default"> {# #}
                                     &#128203; {# #}
                                 </a> {# #}
@@ -170,24 +170,24 @@ Otherwise, have a great day =^.^=
                         <div class="list-group-item lint-doc-md">{{Self::markdown(lint.docs)}}</div> {# #}
                         <div class="lint-additional-info-container">
                             {# Applicability #}
-                            <div class="lint-additional-info-item"> {# #}
-                                <span> Applicability: </span> {# #}
+                            <div> {# #}
+                                Applicability: {#+ #}
                                 <span class="label label-default label-applicability">{{ lint.applicability_str() }}</span> {# #}
                                 <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/enum.Applicability.html#variants">(?)</a> {# #}
                             </div>
                             {# Clippy version #}
-                            <div class="lint-additional-info-item"> {# #}
-                                <span>{% if lint.group == "deprecated" %}Deprecated{% else %} Added{% endif +%} in: </span> {# #}
+                            <div> {# #}
+                                {% if lint.group == "deprecated" %}Deprecated{% else %} Added{% endif +%} in: {#+ #}
                                 <span class="label label-default label-version">{{lint.version}}</span> {# #}
                             </div>
                             {# Open related issues #}
-                            <div class="lint-additional-info-item"> {# #}
+                            <div> {# #}
                                 <a href="https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+{{lint.id}}">Related Issues</a> {# #}
                             </div>
 
                             {# Jump to source #}
                             {% if let Some(id_location) = lint.id_location %}
-                                <div class="lint-additional-info-item"> {# #}
+                                <div> {# #}
                                     <a href="https://github.com/rust-lang/rust-clippy/blob/master/{{id_location}}">View Source</a> {# #}
                                 </div>
                             {% endif %}
