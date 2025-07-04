@@ -6,6 +6,10 @@ attr_parsing_deprecated_item_suggestion =
     .help = add `#![feature(deprecated_suggestion)]` to the crate root
     .note = see #94785 for more details
 
+attr_parsing_empty_attribute =
+    unused attribute
+    .suggestion = remove this attribute
+
 attr_parsing_empty_confusables =
     expected at least one confusable name
 attr_parsing_expected_one_cfg_pattern =

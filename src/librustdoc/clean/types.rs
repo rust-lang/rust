@@ -784,7 +784,7 @@ impl Item {
                         // don't want it it `Item::attrs`.
                         hir::Attribute::Parsed(AttributeKind::Deprecation { .. }) => None,
                         // We have separate pretty-printing logic for `#[repr(..)]` attributes.
-                        hir::Attribute::Parsed(AttributeKind::Repr(..)) => None,
+                        hir::Attribute::Parsed(AttributeKind::Repr { .. }) => None,
                         // target_feature is special-cased because cargo-semver-checks uses it
                         hir::Attribute::Parsed(AttributeKind::TargetFeature(features, _)) => {
                             let mut output = String::new();
