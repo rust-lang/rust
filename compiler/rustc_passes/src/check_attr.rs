@@ -230,6 +230,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::PassByValue(attr_span)) => {
                     self.check_pass_by_value(attr_span, span, target)
                 }
+                Attribute::Parsed(AttributeKind::RustcPassIndirectlyInNonRusticAbis(attr_span)) => {
+                    self.check_pass_indirectly_in_non_rustic_abis(*attr_span, span, target);
+                }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
@@ -2102,6 +2105,29 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hir_id,
                 hint_spans.collect::<Vec<Span>>(),
                 errors::ReprConflictingLint,
+            );
+        }
+    }
+
+    fn check_pass_indirectly_in_non_rustic_abis(
+        &self,
+        attr_span: Span,
+        span: Span,
+        target: Target,
+    ) {
+        if target != Target::Struct {
+            self.dcx().emit_err(errors::PassIndirectlyNotAStruct { attr_span, span });
+        }
+        // Currently this attribute is only supported on architectures where it is required for the
+        // `VaList` type. See the comment near the top of `library/core/src/ffi/va_list.rs` for
+        // details.
+        let supported_architectures = ["aarch64", "powerpc", "s390x", "x86_64", "xtensa"];
+        let arch = &*self.tcx.sess.target.arch;
+        if !supported_architectures.contains(&arch) {
+            span_bug!(
+                attr_span,
+                "support for `#[rustc_pass_indirectly_in_non_rustic_abis]` on `{arch}` has not yet been implemented; \
+                see the comment near the top of `library/core/src/ffi/va_list.rs` for details"
             );
         }
     }

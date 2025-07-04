@@ -1,0 +1,11 @@
+error: `#[rustc_pass_indirectly_in_non_rustic_abis]` can only be applied to `struct`s
+  --> $DIR/pass-indirectly.rs:15:1
+   |
+LL | #[rustc_pass_indirectly_in_non_rustic_abis]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn not_a_struct() {}
+   | -------------------- is not a `struct`
+
+error: aborting due to 1 previous error
+
