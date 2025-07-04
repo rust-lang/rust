@@ -3,7 +3,7 @@ use crate::io;
 use crate::net::SocketAddr;
 
 pub(crate) enum Tcp {
-    V4(#[expect(dead_code)] tcp4::Tcp4),
+    V4(tcp4::Tcp4),
 }
 
 impl Tcp {
@@ -16,6 +16,12 @@ impl Tcp {
                 Ok(Tcp::V4(temp))
             }
             SocketAddr::V6(_) => todo!(),
+        }
+    }
+
+    pub(crate) fn write(&self, buf: &[u8]) -> io::Result<usize> {
+        match self {
+            Self::V4(client) => client.write(buf),
         }
     }
 }
