@@ -65,7 +65,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{
     self, DelegationFnSig, Feed, MainDefinition, RegisteredTools, ResolverGlobalCtxt,
-    ResolverOutputs, TyCtxt, TyCtxtFeed,
+    ResolverOutputs, TyCtxt, TyCtxtFeed, Visibility,
 };
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
@@ -748,7 +748,7 @@ struct NameBindingData<'ra> {
     warn_ambiguity: bool,
     expansion: LocalExpnId,
     span: Span,
-    vis: ty::Visibility<DefId>,
+    vis: Visibility<DefId>,
 }
 
 /// All name bindings are unique and allocated on a same arena,
@@ -1083,7 +1083,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
     glob_error: Option<ErrorGuaranteed>,
-    visibilities_for_hashing: Vec<(LocalDefId, ty::Visibility)>,
+    visibilities_for_hashing: Vec<(LocalDefId, Visibility)>,
     used_imports: FxHashSet<NodeId>,
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
 
@@ -1156,7 +1156,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
     /// Also includes of list of each fields visibility
-    struct_constructors: LocalDefIdMap<(Res, ty::Visibility<DefId>, Vec<ty::Visibility<DefId>>)>,
+    struct_constructors: LocalDefIdMap<(Res, Visibility<DefId>, Vec<Visibility<DefId>>)>,
 
     lint_buffer: LintBuffer,
 
@@ -1233,7 +1233,7 @@ impl<'ra> ResolverArenas<'ra> {
     fn new_res_binding(
         &'ra self,
         res: Res,
-        vis: ty::Visibility<DefId>,
+        vis: Visibility<DefId>,
         span: Span,
         expansion: LocalExpnId,
     ) -> NameBinding<'ra> {
@@ -1603,7 +1603,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
         resolver.invocation_parent_scopes.insert(LocalExpnId::ROOT, root_parent_scope);
-        resolver.feed_visibility(crate_feed, ty::Visibility::Public);
+        resolver.feed_visibility(crate_feed, Visibility::Public);
 
         resolver
     }
@@ -1657,7 +1657,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         Default::default()
     }
 
-    fn feed_visibility(&mut self, feed: Feed<'tcx, LocalDefId>, vis: ty::Visibility) {
+    fn feed_visibility(&mut self, feed: Feed<'tcx, LocalDefId>, vis: Visibility) {
         let feed = feed.upgrade(self.tcx);
         feed.visibility(vis.to_def_id());
         self.visibilities_for_hashing.push((feed.def_id(), vis));
@@ -2109,11 +2109,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.pat_span_map.insert(node, span);
     }
 
-    fn is_accessible_from(
-        &self,
-        vis: ty::Visibility<impl Into<DefId>>,
-        module: Module<'ra>,
-    ) -> bool {
+    fn is_accessible_from(&self, vis: Visibility<impl Into<DefId>>, module: Module<'ra>) -> bool {
         vis.is_accessible_from(module.nearest_parent_mod(), self.tcx)
     }
 

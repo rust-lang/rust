@@ -20,9 +20,9 @@ use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::LoadedMacro;
+use rustc_middle::bug;
 use rustc_middle::metadata::ModChild;
-use rustc_middle::ty::Feed;
-use rustc_middle::{bug, ty};
+use rustc_middle::ty::{Feed, Visibility};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
 use rustc_span::{Ident, Span, Symbol, kw, sym};
 use tracing::debug;
@@ -61,7 +61,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ident: Ident,
         ns: Namespace,
         res: Res,
-        vis: ty::Visibility<impl Into<DefId>>,
+        vis: Visibility<impl Into<DefId>>,
         span: Span,
         expn_id: LocalExpnId,
     ) {
@@ -281,10 +281,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         Res::Def(self.r.tcx.def_kind(def_id), def_id)
     }
 
-    fn resolve_visibility(&mut self, vis: &ast::Visibility) -> ty::Visibility {
+    fn resolve_visibility(&mut self, vis: &ast::Visibility) -> Visibility {
         self.try_resolve_visibility(vis, true).unwrap_or_else(|err| {
             self.r.report_vis_error(err);
-            ty::Visibility::Public
+            Visibility::Public
         })
     }
 
@@ -292,10 +292,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         &mut self,
         vis: &'ast ast::Visibility,
         finalize: bool,
-    ) -> Result<ty::Visibility, VisResolutionError<'ast>> {
+    ) -> Result<Visibility, VisResolutionError<'ast>> {
         let parent_scope = &self.parent_scope;
         match vis.kind {
-            ast::VisibilityKind::Public => Ok(ty::Visibility::Public),
+            ast::VisibilityKind::Public => Ok(Visibility::Public),
             ast::VisibilityKind::Inherited => {
                 Ok(match self.parent_scope.module.kind {
                     // Any inherited visibility resolved directly inside an enum or trait
@@ -305,7 +305,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         self.r.tcx.visibility(def_id).expect_local()
                     }
                     // Otherwise, the visibility is restricted to the nearest parent `mod` item.
-                    _ => ty::Visibility::Restricted(
+                    _ => Visibility::Restricted(
                         self.parent_scope.module.nearest_parent_mod().expect_local(),
                     ),
                 })
@@ -353,9 +353,9 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         }
                         if module.is_normal() {
                             match res {
-                                Res::Err => Ok(ty::Visibility::Public),
+                                Res::Err => Ok(Visibility::Public),
                                 _ => {
-                                    let vis = ty::Visibility::Restricted(res.def_id());
+                                    let vis = Visibility::Restricted(res.def_id());
                                     if self.r.is_accessible_from(vis, parent_scope.module) {
                                         Ok(vis.expect_local())
                                     } else {
@@ -420,7 +420,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         item: &ast::Item,
         root_span: Span,
         root_id: NodeId,
-        vis: ty::Visibility,
+        vis: Visibility,
     ) {
         let current_module = self.parent_scope.module;
         let import = self.r.arenas.alloc_import(ImportData {
@@ -468,7 +468,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         list_stem: bool,
         // The whole `use` item
         item: &Item,
-        vis: ty::Visibility,
+        vis: Visibility,
         root_span: Span,
     ) {
         debug!(
@@ -677,7 +677,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         true,
                         // The whole `use` item
                         item,
-                        ty::Visibility::Restricted(
+                        Visibility::Restricted(
                             self.parent_scope.module.nearest_parent_mod().expect_local(),
                         ),
                         root_span,
@@ -693,7 +693,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         ident: Ident,
         feed: Feed<'tcx, LocalDefId>,
         adt_res: Res,
-        adt_vis: ty::Visibility,
+        adt_vis: Visibility,
         adt_span: Span,
     ) {
         let parent_scope = &self.parent_scope;
@@ -818,7 +818,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     let mut ctor_vis = if vis.is_public()
                         && ast::attr::contains_name(&item.attrs, sym::non_exhaustive)
                     {
-                        ty::Visibility::Restricted(CRATE_DEF_ID)
+                        Visibility::Restricted(CRATE_DEF_ID)
                     } else {
                         vis
                     };
@@ -831,7 +831,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         // constructor visibility should still be determined correctly.
                         let field_vis = self
                             .try_resolve_visibility(&field.vis, false)
-                            .unwrap_or(ty::Visibility::Public);
+                            .unwrap_or(Visibility::Public);
                         if ctor_vis.is_at_least(field_vis, self.r.tcx) {
                             ctor_vis = field_vis;
                         }
@@ -880,7 +880,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         item: &Item,
         ident: Ident,
         local_def_id: LocalDefId,
-        vis: ty::Visibility,
+        vis: Visibility,
         parent: Module<'ra>,
     ) {
         let sp = item.span;
@@ -1064,7 +1064,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 root_span: span,
                 span,
                 module_path: Vec::new(),
-                vis: ty::Visibility::Restricted(CRATE_DEF_ID),
+                vis: Visibility::Restricted(CRATE_DEF_ID),
             })
         };
 
@@ -1214,9 +1214,9 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             self.r.macro_names.insert(ident);
             let is_macro_export = ast::attr::contains_name(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {
-                ty::Visibility::Public
+                Visibility::Public
             } else {
-                ty::Visibility::Restricted(CRATE_DEF_ID)
+                Visibility::Restricted(CRATE_DEF_ID)
             };
             let binding = self.r.arenas.new_res_binding(res, vis.to_def_id(), span, expansion);
             self.r.set_binding_parent_module(binding, parent_scope.module);
@@ -1258,7 +1258,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 // Visibilities must not be resolved non-speculatively twice
                 // and we already resolved this one as a `fn` item visibility.
                 ItemKind::Fn(..) => {
-                    self.try_resolve_visibility(&item.vis, false).unwrap_or(ty::Visibility::Public)
+                    self.try_resolve_visibility(&item.vis, false).unwrap_or(Visibility::Public)
                 }
                 _ => self.resolve_visibility(&item.vis),
             };
@@ -1492,7 +1492,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         // If the variant is marked as non_exhaustive then lower the visibility to within the crate.
         let ctor_vis =
             if vis.is_public() && ast::attr::contains_name(&variant.attrs, sym::non_exhaustive) {
-                ty::Visibility::Restricted(CRATE_DEF_ID)
+                Visibility::Restricted(CRATE_DEF_ID)
             } else {
                 vis
             };
