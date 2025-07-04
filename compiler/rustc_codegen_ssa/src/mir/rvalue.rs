@@ -188,6 +188,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
+    /// Transmutes the `src` value to the destination type by writing it to `dst`.
+    ///
+    /// See also [`Self::codegen_transmute_operand`] for cases that can be done
+    /// without needing a pre-allocated place for the destination.
     fn codegen_transmute(
         &mut self,
         bx: &mut Bx,
@@ -198,31 +202,36 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         assert!(src.layout.is_sized());
         assert!(dst.layout.is_sized());
 
-        if src.layout.size == dst.layout.size {
+        if src.layout.size != dst.layout.size
+            || src.layout.is_uninhabited()
+            || dst.layout.is_uninhabited()
+        {
+            // These cases are all UB to actually hit, so don't emit code for them.
+            // (The size mismatches are reachable via `transmute_unchecked`.)
+            // We can't use unreachable because that's a terminator, and we
+            // need something that can be in the middle of a basic block.
+            bx.assume(bx.cx().const_bool(false))
+        } else {
             // Since in this path we have a place anyway, we can store or copy to it,
             // making sure we use the destination place's alignment even if the
             // source would normally have a higher one.
             src.val.store(bx, dst.val.with_type(src.layout));
-        } else if src.layout.is_uninhabited() {
-            bx.unreachable()
-        } else {
-            // Since this is known statically and the input could have existed
-            // without already having hit UB, might as well trap for it, even
-            // though it's UB so we *could* also unreachable it.
-            bx.abort();
         }
     }
 
-    /// Attempts to transmute an `OperandValue` to another `OperandValue`.
+    /// Transmutes an `OperandValue` to another `OperandValue`.
     ///
-    /// Returns `None` for cases that can't work in that framework, such as for
-    /// `Immediate`->`Ref` that needs an `alloca` to get the location.
+    /// This is supported only for cases where [`Self::rvalue_creates_operand`]
+    /// returns `true`, and will ICE otherwise. (In particular, anything that
+    /// would need to `alloca` in order to return a `PlaceValue` will ICE,
+    /// expecting those to go via [`Self::codegen_transmute`] instead where
+    /// the destination place is already allocated.)
     pub(crate) fn codegen_transmute_operand(
         &mut self,
         bx: &mut Bx,
         operand: OperandRef<'tcx, Bx::Value>,
         cast: TyAndLayout<'tcx>,
-    ) -> Option<OperandValue<Bx::Value>> {
+    ) -> OperandValue<Bx::Value> {
         // Check for transmutes that are always UB.
         if operand.layout.size != cast.size
             || operand.layout.is_uninhabited()
@@ -236,17 +245,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             // Because this transmute is UB, return something easy to generate,
             // since it's fine that later uses of the value are probably UB.
-            return Some(OperandValue::poison(bx, cast));
+            return OperandValue::poison(bx, cast);
         }
 
-        Some(match (operand.val, operand.layout.backend_repr, cast.backend_repr) {
+        match (operand.val, operand.layout.backend_repr, cast.backend_repr) {
             _ if cast.is_zst() => OperandValue::ZeroSized,
-            (OperandValue::ZeroSized, _, _) => bug!(),
-            (
-                OperandValue::Ref(source_place_val),
-                abi::BackendRepr::Memory { .. },
-                abi::BackendRepr::Scalar(_) | abi::BackendRepr::ScalarPair(_, _),
-            ) => {
+            (_, _, abi::BackendRepr::Memory { .. }) => {
+                bug!("Cannot `codegen_transmute_operand` to non-ZST memory-ABI output {cast:?}");
+            }
+            (OperandValue::Ref(source_place_val), abi::BackendRepr::Memory { .. }, _) => {
                 assert_eq!(source_place_val.llextra, None);
                 // The existing alignment is part of `source_place_val`,
                 // so that alignment will be used, not `cast`'s.
@@ -265,8 +272,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 transmute_scalar(bx, imm_a, in_a, out_a),
                 transmute_scalar(bx, imm_b, in_b, out_b),
             ),
-            _ => return None,
-        })
+            _ => bug!("Cannot `codegen_transmute_operand` {operand:?} to {cast:?}"),
+        }
     }
 
     /// Cast one of the immediates from an [`OperandValue::Immediate`]
@@ -458,9 +465,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             })
                     }
                     mir::CastKind::Transmute => {
-                        self.codegen_transmute_operand(bx, operand, cast).unwrap_or_else(|| {
-                            bug!("Unsupported transmute-as-operand of {operand:?} to {cast:?}");
-                        })
+                        self.codegen_transmute_operand(bx, operand, cast)
                     }
                 };
                 OperandRef { val, layout: cast }
@@ -942,6 +947,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         OperandValue::Pair(val, of)
     }
 
+    /// Returns `true` if the `rvalue` can be computed into an [`OperandRef`],
+    /// rather than needing a full `PlaceRef` for the assignment destination.
+    ///
+    /// This is used by the [`super::analyze`] code to decide which MIR locals
+    /// can stay as SSA values (as opposed to generating `alloca` slots for them).
+    /// As such, some paths here return `true` even where the specific rvalue
+    /// will not actually take the operand path because the result type is such
+    /// that it always gets an `alloca`, but where it's not worth re-checking the
+    /// layout in this code when the right thing will happen anyway.
     pub(crate) fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
         match *rvalue {
             mir::Rvalue::Cast(mir::CastKind::Transmute, ref operand, cast_ty) => {
@@ -949,8 +963,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cast_layout = self.cx.layout_of(self.monomorphize(cast_ty));
                 let operand_layout = self.cx.layout_of(self.monomorphize(operand_ty));
                 match (operand_layout.backend_repr, cast_layout.backend_repr) {
-                    // If the input is in a place we can load immediates from there.
-                    (abi::BackendRepr::Memory { .. }, abi::BackendRepr::Scalar(_) | abi::BackendRepr::ScalarPair(_, _)) => true,
+                    // When the output will be in memory anyway, just use its place
+                    // (instead of the operand path) unless it's the trivial ZST case.
+                    (_, abi::BackendRepr::Memory { .. }) => cast_layout.is_zst(),
+
+                    // Otherwise (for a non-memory output) if the input is memory
+                    // then we can just read the value from the place.
+                    (abi::BackendRepr::Memory { .. }, _) => true,
 
                     // When we have scalar immediates, we can only convert things
                     // where the sizes match, to avoid endianness questions.
@@ -959,18 +978,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     (abi::BackendRepr::ScalarPair(a0, a1), abi::BackendRepr::ScalarPair(b0, b1)) =>
                         a0.size(self.cx) == b0.size(self.cx) && a1.size(self.cx) == b1.size(self.cx),
 
-                    // SIMD vectors don't work like normal immediates,
-                    // so always send them through memory.
-                    (abi::BackendRepr::SimdVector { .. }, _) | (_, abi::BackendRepr::SimdVector { .. }) => false,
-
-                    // When the output will be in memory anyway, just use its place
-                    // (instead of the operand path) unless it's the trivial ZST case.
-                    (_, abi::BackendRepr::Memory { .. }) => cast_layout.is_zst(),
-
                     // Mixing Scalars and ScalarPairs can get quite complicated when
                     // padding and undef get involved, so leave that to the memory path.
                     (abi::BackendRepr::Scalar(_), abi::BackendRepr::ScalarPair(_, _)) |
                     (abi::BackendRepr::ScalarPair(_, _), abi::BackendRepr::Scalar(_)) => false,
+
+                    // SIMD vectors aren't worth the trouble of dealing with complex
+                    // cases like from vectors of f32 to vectors of pointers or
+                    // from fat pointers to vectors of u16. (See #143194 #110021 ...)
+                    (abi::BackendRepr::SimdVector { .. }, _) | (_, abi::BackendRepr::SimdVector { .. }) => false,
                 }
             }
             mir::Rvalue::Ref(..) |

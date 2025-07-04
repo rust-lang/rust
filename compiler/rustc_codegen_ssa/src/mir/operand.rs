@@ -355,12 +355,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             self.val
         } else if field.size == self.layout.size {
             assert_eq!(offset.bytes(), 0);
-            fx.codegen_transmute_operand(bx, *self, field).unwrap_or_else(|| {
-                bug!(
-                    "Expected `codegen_transmute_operand` to handle equal-size \
-                      field {i:?} projection from {self:?} to {field:?}"
-                )
-            })
+            fx.codegen_transmute_operand(bx, *self, field)
         } else {
             let (in_scalar, imm) = match (self.val, self.layout.backend_repr) {
                 // Extract a scalar component from a pair.
