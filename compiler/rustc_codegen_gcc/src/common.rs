@@ -281,7 +281,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                         let init = self.const_data_from_alloc(alloc);
                         self.static_addr_of(init, alloc.inner().align, None)
                     }
-                    GlobalAlloc::Type { .. } => {
+                    GlobalAlloc::TypeId { .. } => {
                         let val = self.const_usize(offset.bytes());
                         return self.context.new_cast(None, val, ty);
                     }

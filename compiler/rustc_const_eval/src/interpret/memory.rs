@@ -346,7 +346,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         kind = "vtable",
                     )
                 }
-                Some(GlobalAlloc::Type { .. }) => {
+                Some(GlobalAlloc::TypeId { .. }) => {
                     err_ub_custom!(
                         fluent::const_eval_invalid_dealloc,
                         alloc_id = alloc_id,
@@ -622,7 +622,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             Some(GlobalAlloc::Function { .. }) => throw_ub!(DerefFunctionPointer(id)),
             Some(GlobalAlloc::VTable(..)) => throw_ub!(DerefVTablePointer(id)),
-            Some(GlobalAlloc::Type { .. }) => throw_ub!(DerefTypeIdPointer(id)),
+            Some(GlobalAlloc::TypeId { .. }) => throw_ub!(DerefTypeIdPointer(id)),
             None => throw_ub!(PointerUseAfterFree(id, CheckInAllocMsg::MemoryAccess)),
             Some(GlobalAlloc::Static(def_id)) => {
                 assert!(self.tcx.is_static(def_id));
@@ -904,7 +904,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let (size, align) = global_alloc.size_and_align(*self.tcx, self.typing_env);
             let mutbl = global_alloc.mutability(*self.tcx, self.typing_env);
             let kind = match global_alloc {
-                GlobalAlloc::Type { .. }
+                GlobalAlloc::TypeId { .. }
                 | GlobalAlloc::Static { .. }
                 | GlobalAlloc::Memory { .. } => AllocKind::LiveData,
                 GlobalAlloc::Function { .. } => bug!("We already checked function pointers above"),
@@ -953,7 +953,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
     ) -> InterpResult<'tcx, (Ty<'tcx>, Size)> {
         let (alloc_id, offset, _meta) = self.ptr_get_alloc_id(ptr, 0)?;
-        let GlobalAlloc::Type { ty } = self.tcx.global_alloc(alloc_id) else {
+        let GlobalAlloc::TypeId { ty } = self.tcx.global_alloc(alloc_id) else {
             throw_ub_format!("type_id_eq: `TypeId` provenance is not a type id")
         };
         interp_ok((ty, offset))
@@ -1220,7 +1220,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> std::fmt::Debug for DumpAllocs<'a, 'tcx, M> {
                         Some(GlobalAlloc::VTable(ty, dyn_ty)) => {
                             write!(fmt, " (vtable: impl {dyn_ty} for {ty})")?;
                         }
-                        Some(GlobalAlloc::Type { ty }) => {
+                        Some(GlobalAlloc::TypeId { ty }) => {
                             write!(fmt, " (typeid for {ty})")?;
                         }
                         Some(GlobalAlloc::Static(did)) => {

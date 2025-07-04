@@ -324,7 +324,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                         assert!(!self.tcx.is_thread_local_static(def_id));
                         self.get_static(def_id)
                     }
-                    GlobalAlloc::Type { .. } => {
+                    GlobalAlloc::TypeId { .. } => {
                         // Drop the provenance, the offset contains the bytes of the hash
                         let llval = self.const_usize(offset.bytes());
                         return unsafe { llvm::LLVMConstIntToPtr(llval, llty) };
