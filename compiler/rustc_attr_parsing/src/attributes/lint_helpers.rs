@@ -17,3 +17,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for PubTransparentParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::PubTransparent;
 }
+
+pub(crate) struct PassByValueParser;
+impl<S: Stage> NoArgsAttributeParser<S> for PassByValueParser {
+    const PATH: &[Symbol] = &[sym::rustc_pass_by_value];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::PassByValue;
+}

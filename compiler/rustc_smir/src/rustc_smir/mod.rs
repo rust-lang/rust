@@ -7,91 +7,263 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use std::marker::PointeeSized;
-use std::ops::RangeInclusive;
+use std::cell::RefCell;
+use std::fmt::Debug;
+use std::hash::Hash;
+use std::ops::Index;
 
-use rustc_hir::def::DefKind;
+use bridge::*;
+use context::SmirCtxt;
+use rustc_data_structures::fx::{self, FxIndexMap};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::Span;
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use stable_mir::abi::Layout;
-use stable_mir::mir::mono::{InstanceDef, StaticDef};
-use stable_mir::ty::{FnDef, MirConstId, Span, TyConstId};
-use stable_mir::{CtorKind, ItemKind};
-use tracing::debug;
 
-use crate::rustc_internal::IndexMap;
-use crate::stable_mir;
-
-mod alloc;
+pub mod alloc;
+pub mod bridge;
 mod builder;
 pub mod context;
-mod convert;
 
-pub struct Tables<'tcx> {
-    pub(crate) tcx: TyCtxt<'tcx>,
-    pub(crate) def_ids: IndexMap<DefId, stable_mir::DefId>,
-    pub(crate) alloc_ids: IndexMap<AllocId, stable_mir::mir::alloc::AllocId>,
-    pub(crate) spans: IndexMap<rustc_span::Span, Span>,
-    pub(crate) types: IndexMap<Ty<'tcx>, stable_mir::ty::Ty>,
-    pub(crate) instances: IndexMap<ty::Instance<'tcx>, InstanceDef>,
-    pub(crate) ty_consts: IndexMap<ty::Const<'tcx>, TyConstId>,
-    pub(crate) mir_consts: IndexMap<mir::Const<'tcx>, MirConstId>,
-    pub(crate) layouts: IndexMap<rustc_abi::Layout<'tcx>, Layout>,
+/// A container which is used for TLS.
+pub struct SmirContainer<'tcx, B: Bridge> {
+    pub tables: RefCell<Tables<'tcx, B>>,
+    pub cx: RefCell<SmirCtxt<'tcx, B>>,
 }
 
-impl<'tcx> Tables<'tcx> {
-    pub(crate) fn intern_ty(&mut self, ty: Ty<'tcx>) -> stable_mir::ty::Ty {
+pub struct Tables<'tcx, B: Bridge> {
+    pub def_ids: IndexMap<DefId, B::DefId>,
+    pub alloc_ids: IndexMap<AllocId, B::AllocId>,
+    pub spans: IndexMap<rustc_span::Span, B::Span>,
+    pub types: IndexMap<Ty<'tcx>, B::Ty>,
+    pub instances: IndexMap<ty::Instance<'tcx>, B::InstanceDef>,
+    pub ty_consts: IndexMap<ty::Const<'tcx>, B::TyConstId>,
+    pub mir_consts: IndexMap<mir::Const<'tcx>, B::MirConstId>,
+    pub layouts: IndexMap<rustc_abi::Layout<'tcx>, B::Layout>,
+}
+
+impl<'tcx, B: Bridge> Default for Tables<'tcx, B> {
+    fn default() -> Self {
+        Self {
+            def_ids: IndexMap::default(),
+            alloc_ids: IndexMap::default(),
+            spans: IndexMap::default(),
+            types: IndexMap::default(),
+            instances: IndexMap::default(),
+            ty_consts: IndexMap::default(),
+            mir_consts: IndexMap::default(),
+            layouts: IndexMap::default(),
+        }
+    }
+}
+
+impl<'tcx, B: Bridge> Index<B::DefId> for Tables<'tcx, B> {
+    type Output = DefId;
+
+    #[inline(always)]
+    fn index(&self, index: B::DefId) -> &Self::Output {
+        &self.def_ids[index]
+    }
+}
+
+impl<'tcx, B: Bridge> Tables<'tcx, B> {
+    pub fn intern_ty(&mut self, ty: Ty<'tcx>) -> B::Ty {
         self.types.create_or_fetch(ty)
     }
 
-    pub(crate) fn intern_ty_const(&mut self, ct: ty::Const<'tcx>) -> TyConstId {
+    pub fn intern_ty_const(&mut self, ct: ty::Const<'tcx>) -> B::TyConstId {
         self.ty_consts.create_or_fetch(ct)
     }
 
-    pub(crate) fn intern_mir_const(&mut self, constant: mir::Const<'tcx>) -> MirConstId {
+    pub fn intern_mir_const(&mut self, constant: mir::Const<'tcx>) -> B::MirConstId {
         self.mir_consts.create_or_fetch(constant)
     }
 
-    /// Return whether the instance as a body available.
-    ///
-    /// Items and intrinsics may have a body available from its definition.
-    /// Shims body may be generated depending on their type.
-    pub(crate) fn instance_has_body(&self, instance: Instance<'tcx>) -> bool {
-        let def_id = instance.def_id();
-        self.item_has_body(def_id)
-            || !matches!(
-                instance.def,
-                ty::InstanceKind::Virtual(..)
-                    | ty::InstanceKind::Intrinsic(..)
-                    | ty::InstanceKind::Item(..)
-            )
+    pub fn create_def_id(&mut self, did: DefId) -> B::DefId {
+        self.def_ids.create_or_fetch(did)
     }
 
-    /// Return whether the item has a body defined by the user.
-    ///
-    /// Note that intrinsics may have a placeholder body that shouldn't be used in practice.
-    /// In StableMIR, we handle this case as if the body is not available.
-    pub(crate) fn item_has_body(&self, def_id: DefId) -> bool {
-        let must_override = if let Some(intrinsic) = self.tcx.intrinsic(def_id) {
-            intrinsic.must_be_overridden
-        } else {
-            false
-        };
-        !must_override && self.tcx.is_mir_available(def_id)
+    pub fn create_alloc_id(&mut self, aid: AllocId) -> B::AllocId {
+        self.alloc_ids.create_or_fetch(aid)
     }
 
-    fn to_fn_def(&mut self, def_id: DefId) -> Option<FnDef> {
-        if matches!(self.tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
-            Some(self.fn_def(def_id))
-        } else {
-            None
-        }
+    pub fn create_span(&mut self, span: Span) -> B::Span {
+        self.spans.create_or_fetch(span)
     }
 
-    fn to_static(&mut self, def_id: DefId) -> Option<StaticDef> {
-        matches!(self.tcx.def_kind(def_id), DefKind::Static { .. }).then(|| self.static_def(def_id))
+    pub fn instance_def(&mut self, instance: ty::Instance<'tcx>) -> B::InstanceDef {
+        self.instances.create_or_fetch(instance)
+    }
+
+    pub fn layout_id(&mut self, layout: rustc_abi::Layout<'tcx>) -> B::Layout {
+        self.layouts.create_or_fetch(layout)
+    }
+
+    pub fn crate_item(&mut self, did: rustc_span::def_id::DefId) -> B::CrateItem {
+        B::CrateItem::new(self.create_def_id(did))
+    }
+
+    pub fn adt_def(&mut self, did: rustc_span::def_id::DefId) -> B::AdtDef {
+        B::AdtDef::new(self.create_def_id(did))
+    }
+
+    pub fn foreign_module_def(&mut self, did: rustc_span::def_id::DefId) -> B::ForeignModuleDef {
+        B::ForeignModuleDef::new(self.create_def_id(did))
+    }
+
+    pub fn foreign_def(&mut self, did: rustc_span::def_id::DefId) -> B::ForeignDef {
+        B::ForeignDef::new(self.create_def_id(did))
+    }
+
+    pub fn fn_def(&mut self, did: rustc_span::def_id::DefId) -> B::FnDef {
+        B::FnDef::new(self.create_def_id(did))
+    }
+
+    pub fn closure_def(&mut self, did: rustc_span::def_id::DefId) -> B::ClosureDef {
+        B::ClosureDef::new(self.create_def_id(did))
+    }
+
+    pub fn coroutine_def(&mut self, did: rustc_span::def_id::DefId) -> B::CoroutineDef {
+        B::CoroutineDef::new(self.create_def_id(did))
+    }
+
+    pub fn coroutine_closure_def(
+        &mut self,
+        did: rustc_span::def_id::DefId,
+    ) -> B::CoroutineClosureDef {
+        B::CoroutineClosureDef::new(self.create_def_id(did))
+    }
+
+    pub fn alias_def(&mut self, did: rustc_span::def_id::DefId) -> B::AliasDef {
+        B::AliasDef::new(self.create_def_id(did))
+    }
+
+    pub fn param_def(&mut self, did: rustc_span::def_id::DefId) -> B::ParamDef {
+        B::ParamDef::new(self.create_def_id(did))
+    }
+
+    pub fn br_named_def(&mut self, did: rustc_span::def_id::DefId) -> B::BrNamedDef {
+        B::BrNamedDef::new(self.create_def_id(did))
+    }
+
+    pub fn trait_def(&mut self, did: rustc_span::def_id::DefId) -> B::TraitDef {
+        B::TraitDef::new(self.create_def_id(did))
+    }
+
+    pub fn generic_def(&mut self, did: rustc_span::def_id::DefId) -> B::GenericDef {
+        B::GenericDef::new(self.create_def_id(did))
+    }
+
+    pub fn const_def(&mut self, did: rustc_span::def_id::DefId) -> B::ConstDef {
+        B::ConstDef::new(self.create_def_id(did))
+    }
+
+    pub fn impl_def(&mut self, did: rustc_span::def_id::DefId) -> B::ImplDef {
+        B::ImplDef::new(self.create_def_id(did))
+    }
+
+    pub fn region_def(&mut self, did: rustc_span::def_id::DefId) -> B::RegionDef {
+        B::RegionDef::new(self.create_def_id(did))
+    }
+
+    pub fn coroutine_witness_def(
+        &mut self,
+        did: rustc_span::def_id::DefId,
+    ) -> B::CoroutineWitnessDef {
+        B::CoroutineWitnessDef::new(self.create_def_id(did))
+    }
+
+    pub fn assoc_def(&mut self, did: rustc_span::def_id::DefId) -> B::AssocDef {
+        B::AssocDef::new(self.create_def_id(did))
+    }
+
+    pub fn opaque_def(&mut self, did: rustc_span::def_id::DefId) -> B::OpaqueDef {
+        B::OpaqueDef::new(self.create_def_id(did))
+    }
+
+    pub fn prov(&mut self, aid: rustc_middle::mir::interpret::AllocId) -> B::Prov {
+        B::Prov::new(self.create_alloc_id(aid))
+    }
+
+    pub fn static_def(&mut self, did: rustc_span::def_id::DefId) -> B::StaticDef {
+        B::StaticDef::new(self.create_def_id(did))
+    }
+}
+
+/// A trait defining types that are used to emulate StableMIR components, which is really
+/// useful when programming in stable_mir-agnostic settings.
+pub trait Bridge: Sized {
+    type DefId: Copy + Debug + PartialEq + IndexedVal;
+    type AllocId: Copy + Debug + PartialEq + IndexedVal;
+    type Span: Copy + Debug + PartialEq + IndexedVal;
+    type Ty: Copy + Debug + PartialEq + IndexedVal;
+    type InstanceDef: Copy + Debug + PartialEq + IndexedVal;
+    type TyConstId: Copy + Debug + PartialEq + IndexedVal;
+    type MirConstId: Copy + Debug + PartialEq + IndexedVal;
+    type Layout: Copy + Debug + PartialEq + IndexedVal;
+
+    type Error: SmirError;
+    type CrateItem: CrateItem<Self>;
+    type AdtDef: AdtDef<Self>;
+    type ForeignModuleDef: ForeignModuleDef<Self>;
+    type ForeignDef: ForeignDef<Self>;
+    type FnDef: FnDef<Self>;
+    type ClosureDef: ClosureDef<Self>;
+    type CoroutineDef: CoroutineDef<Self>;
+    type CoroutineClosureDef: CoroutineClosureDef<Self>;
+    type AliasDef: AliasDef<Self>;
+    type ParamDef: ParamDef<Self>;
+    type BrNamedDef: BrNamedDef<Self>;
+    type TraitDef: TraitDef<Self>;
+    type GenericDef: GenericDef<Self>;
+    type ConstDef: ConstDef<Self>;
+    type ImplDef: ImplDef<Self>;
+    type RegionDef: RegionDef<Self>;
+    type CoroutineWitnessDef: CoroutineWitnessDef<Self>;
+    type AssocDef: AssocDef<Self>;
+    type OpaqueDef: OpaqueDef<Self>;
+    type Prov: Prov<Self>;
+    type StaticDef: StaticDef<Self>;
+
+    type Allocation: Allocation<Self>;
+}
+
+pub trait IndexedVal {
+    fn to_val(index: usize) -> Self;
+
+    fn to_index(&self) -> usize;
+}
+
+/// Similar to rustc's `FxIndexMap`, `IndexMap` with extra
+/// safety features added.
+pub struct IndexMap<K, V> {
+    index_map: fx::FxIndexMap<K, V>,
+}
+
+impl<K, V> Default for IndexMap<K, V> {
+    fn default() -> Self {
+        Self { index_map: FxIndexMap::default() }
+    }
+}
+
+impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> IndexMap<K, V> {
+    pub fn create_or_fetch(&mut self, key: K) -> V {
+        let len = self.index_map.len();
+        let v = self.index_map.entry(key).or_insert(V::to_val(len));
+        *v
+    }
+}
+
+impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> Index<V>
+    for IndexMap<K, V>
+{
+    type Output = K;
+
+    fn index(&self, index: V) -> &Self::Output {
+        let (k, v) = self.index_map.get_index(index.to_index()).unwrap();
+        assert_eq!(*v, index, "Provided value doesn't match with indexed value");
+        k
     }
 }
 
@@ -110,126 +282,5 @@ where
                 func(def_id)
             })
             .collect()
-    }
-}
-
-/// Build a stable mir crate from a given crate number.
-pub(crate) fn smir_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> stable_mir::Crate {
-    let crate_name = tcx.crate_name(crate_num).to_string();
-    let is_local = crate_num == LOCAL_CRATE;
-    debug!(?crate_name, ?crate_num, "smir_crate");
-    stable_mir::Crate { id: crate_num.into(), name: crate_name, is_local }
-}
-
-pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
-    match kind {
-        DefKind::Mod
-        | DefKind::Struct
-        | DefKind::Union
-        | DefKind::Enum
-        | DefKind::Variant
-        | DefKind::Trait
-        | DefKind::TyAlias
-        | DefKind::ForeignTy
-        | DefKind::TraitAlias
-        | DefKind::AssocTy
-        | DefKind::TyParam
-        | DefKind::ConstParam
-        | DefKind::Macro(_)
-        | DefKind::ExternCrate
-        | DefKind::Use
-        | DefKind::ForeignMod
-        | DefKind::OpaqueTy
-        | DefKind::Field
-        | DefKind::LifetimeParam
-        | DefKind::Impl { .. }
-        | DefKind::GlobalAsm => {
-            unreachable!("Not a valid item kind: {kind:?}");
-        }
-        DefKind::Closure | DefKind::AssocFn | DefKind::Fn | DefKind::SyntheticCoroutineBody => {
-            ItemKind::Fn
-        }
-        DefKind::Const | DefKind::InlineConst | DefKind::AssocConst | DefKind::AnonConst => {
-            ItemKind::Const
-        }
-        DefKind::Static { .. } => ItemKind::Static,
-        DefKind::Ctor(_, rustc_hir::def::CtorKind::Const) => ItemKind::Ctor(CtorKind::Const),
-        DefKind::Ctor(_, rustc_hir::def::CtorKind::Fn) => ItemKind::Ctor(CtorKind::Fn),
-    }
-}
-
-/// Trait used to convert between an internal MIR type to a Stable MIR type.
-pub trait Stable<'cx>: PointeeSized {
-    /// The stable representation of the type implementing Stable.
-    type T;
-    /// Converts an object to the equivalent Stable MIR representation.
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T;
-}
-
-impl<'tcx, T> Stable<'tcx> for &T
-where
-    T: Stable<'tcx>,
-{
-    type T = T::T;
-
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        (*self).stable(tables)
-    }
-}
-
-impl<'tcx, T> Stable<'tcx> for Option<T>
-where
-    T: Stable<'tcx>,
-{
-    type T = Option<T::T>;
-
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        self.as_ref().map(|value| value.stable(tables))
-    }
-}
-
-impl<'tcx, T, E> Stable<'tcx> for Result<T, E>
-where
-    T: Stable<'tcx>,
-    E: Stable<'tcx>,
-{
-    type T = Result<T::T, E::T>;
-
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        match self {
-            Ok(val) => Ok(val.stable(tables)),
-            Err(error) => Err(error.stable(tables)),
-        }
-    }
-}
-
-impl<'tcx, T> Stable<'tcx> for &[T]
-where
-    T: Stable<'tcx>,
-{
-    type T = Vec<T::T>;
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        self.iter().map(|e| e.stable(tables)).collect()
-    }
-}
-
-impl<'tcx, T, U> Stable<'tcx> for (T, U)
-where
-    T: Stable<'tcx>,
-    U: Stable<'tcx>,
-{
-    type T = (T::T, U::T);
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        (self.0.stable(tables), self.1.stable(tables))
-    }
-}
-
-impl<'tcx, T> Stable<'tcx> for RangeInclusive<T>
-where
-    T: Stable<'tcx>,
-{
-    type T = RangeInclusive<T::T>;
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        RangeInclusive::new(self.start().stable(tables), self.end().stable(tables))
     }
 }
