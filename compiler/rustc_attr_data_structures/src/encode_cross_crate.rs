@@ -36,6 +36,7 @@ impl AttributeKind {
             Naked(..) => No,
             NoImplicitPrelude(..) => No,
             NoMangle(..) => No,
+            NonExhaustive(..) => Yes,
             Optimize(..) => No,
             PassByValue(..) => Yes,
             PubTransparent(..) => Yes,

@@ -206,12 +206,6 @@ error: malformed `automatically_derived` attribute input
 LL | #[automatically_derived = 18]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[automatically_derived]`
 
-error: malformed `non_exhaustive` attribute input
-  --> $DIR/malformed-attrs.rs:196:1
-   |
-LL | #[non_exhaustive = 1]
-   | ^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[non_exhaustive]`
-
 error: malformed `thread_local` attribute input
   --> $DIR/malformed-attrs.rs:202:1
    |
@@ -551,6 +545,15 @@ LL | #[rustc_layout_scalar_valid_range_end]
    | |
    | expected this to be a list
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
+
+error[E0565]: malformed `non_exhaustive` attribute input
+  --> $DIR/malformed-attrs.rs:196:1
+   |
+LL | #[non_exhaustive = 1]
+   | ^^^^^^^^^^^^^^^^^---^
+   | |                |
+   | |                didn't expect any arguments here
+   | help: must be of the form: `#[non_exhaustive]`
 
 error: attribute should be applied to `const fn`
   --> $DIR/malformed-attrs.rs:34:1
