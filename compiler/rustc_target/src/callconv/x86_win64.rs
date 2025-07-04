@@ -1,11 +1,14 @@
-use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind, Size};
+use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind, Size, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg};
 use crate::spec::{HasTargetSpec, RustcAbi};
 
 // Win64 ABI: https://docs.microsoft.com/en-us/cpp/build/parameter-passing
 
-pub(crate) fn compute_abi_info<Ty>(cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'_, Ty>) {
+pub(crate) fn compute_abi_info<'a, Ty, C: HasTargetSpec>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
     let fixup = |a: &mut ArgAbi<'_, Ty>, is_ret: bool| {
         match a.layout.backend_repr {
             BackendRepr::Memory { sized: false } => {}
@@ -57,6 +60,10 @@ pub(crate) fn compute_abi_info<Ty>(cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'
             // We try to match clang and gcc (which allow ZST is their windows-gnu targets), so we
             // pass ZST via pointer indirection.
             arg.make_indirect_from_ignore();
+            continue;
+        }
+        if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+            arg.make_indirect();
             continue;
         }
         fixup(arg, false);
