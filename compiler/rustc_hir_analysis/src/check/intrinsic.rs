@@ -506,10 +506,6 @@ pub(crate) fn check_intrinsic_type(
             )
         }
 
-        sym::va_start | sym::va_end => {
-            (0, 0, vec![mk_va_list_ty(hir::Mutability::Mut).0], tcx.types.unit)
-        }
-
         sym::va_copy => {
             let (va_list_ref_ty, va_list_ty) = mk_va_list_ty(hir::Mutability::Not);
             let va_list_ptr_ty = Ty::new_mut_ptr(tcx, va_list_ty);
