@@ -411,6 +411,15 @@ pub fn compile_declarative_macro(
         if let Err(e) = p.expect(exp!(FatArrow)) {
             return dummy_syn_ext(e.emit());
         }
+        if p.token == token::Eof {
+            let err_sp = p.token.span.shrink_to_hi();
+            let guar = sess
+                .dcx()
+                .struct_span_err(err_sp, "macro definition ended unexpectedly")
+                .with_span_label(err_sp, "expected right-hand side of macro rule")
+                .emit();
+            return dummy_syn_ext(guar);
+        }
         let rhs_tt = p.parse_token_tree();
         let rhs_tt = mbe::quoted::parse(
             &TokenStream::new(vec![rhs_tt]),

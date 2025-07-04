@@ -621,7 +621,7 @@ impl Item {
     }
 
     pub(crate) fn is_non_exhaustive(&self) -> bool {
-        self.attrs.other_attrs.iter().any(|a| a.has_name(sym::non_exhaustive))
+        find_attr!(&self.attrs.other_attrs, AttributeKind::NonExhaustive(..))
     }
 
     /// Returns a documentation-level item type from the item.
@@ -776,6 +776,8 @@ impl Item {
                 } else if let hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) = attr
                 {
                     Some(format!("#[export_name = \"{name}\"]"))
+                } else if let hir::Attribute::Parsed(AttributeKind::NonExhaustive(..)) = attr {
+                    Some("#[non_exhaustive]".to_string())
                 } else if is_json {
                     match attr {
                         // rustdoc-json stores this in `Item::deprecation`, so we
