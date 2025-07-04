@@ -61,7 +61,7 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
 
             // If the local is borrowed, we cannot easily determine if it is used, so we have to remove the storage statements.
             let borrowed_locals = ssa.borrowed_locals();
-            
+
             for (local, &head) in ssa.copy_classes().iter_enumerated() {
                 if local != head && borrowed_locals.contains(local) {
                     storage_to_remove.insert(head);
@@ -206,19 +206,9 @@ struct StorageChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for StorageChecker<'a, 'tcx> {
     fn visit_local(&mut self, local: Local, context: PlaceContext, loc: Location) {
-        // We don't need to check storage statements and statements for which the local doesn't need to be initialized.
-        match context {
-            PlaceContext::MutatingUse(
-                MutatingUseContext::Store
-                | MutatingUseContext::Call
-                | MutatingUseContext::Yield
-                | MutatingUseContext::AsmOutput,
-            )
-            | PlaceContext::NonUse(_) => {
-                return;
-            }
-            _ => {}
-        };
+        if !context.is_use() {
+            return;
+        }
 
         let head = self.copy_classes[local];
 
