@@ -4474,6 +4474,7 @@ dependencies = [
  "rustc_feature",
  "rustc_fluent_macro",
  "rustc_hir",
+ "rustc_index",
  "rustc_macros",
  "rustc_metadata",
  "rustc_middle",
