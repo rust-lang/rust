@@ -1,5 +1,6 @@
-// Be smart about span of parenthesized expression in macro.
+//! Check that error spans in parenthesized macro expressions point to the call site.
 
+#[rustfmt::skip]
 macro_rules! paren {
     ($e:expr) => (($e))
     //            ^^^^ do not highlight here
@@ -7,8 +8,9 @@ macro_rules! paren {
 
 mod m {
     pub struct S {
-        x: i32
+        x: i32,
     }
+
     pub fn make() -> S {
         S { x: 0 }
     }
