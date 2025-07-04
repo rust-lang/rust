@@ -8,12 +8,11 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::{env, fs, iter};
 
-use clap_complete::shells;
-
 use crate::core::build_steps::compile::{Std, run_cargo};
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
+use crate::core::build_steps::run::get_completion_paths;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{self, COMPILETEST_ALLOW_FEATURES, SourceType, Tool};
 use crate::core::build_steps::toolstate::ToolState;
@@ -1153,14 +1152,12 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         cmd.delay_failure().run(builder);
 
         builder.info("x.py completions check");
-        let [bash, zsh, fish, powershell] = ["x.py.sh", "x.py.zsh", "x.py.fish", "x.py.ps1"]
-            .map(|filename| builder.src.join("src/etc/completions").join(filename));
+        let completion_paths = get_completion_paths(builder);
         if builder.config.cmd.bless() {
             builder.ensure(crate::core::build_steps::run::GenerateCompletions);
-        } else if get_completion(shells::Bash, &bash).is_some()
-            || get_completion(shells::Fish, &fish).is_some()
-            || get_completion(shells::PowerShell, &powershell).is_some()
-            || crate::flags::get_completion(shells::Zsh, &zsh).is_some()
+        } else if completion_paths
+            .into_iter()
+            .any(|(shell, path)| get_completion(shell, &path).is_some())
         {
             eprintln!(
                 "x.py completions were changed; run `x.py run generate-completions` to update them"
