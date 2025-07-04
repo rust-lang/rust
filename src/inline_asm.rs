@@ -125,7 +125,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                     let wrapper_name = format!(
                         "{}__inline_asm_{}_wrapper_n{}",
                         fx.symbol_name,
-                        fx.cx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
+                        fx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
                         fx.inline_asm_index,
                     );
                     fx.inline_asm_index += 1;
@@ -189,7 +189,7 @@ pub(crate) fn codegen_inline_asm_inner<'tcx>(
     let asm_name = format!(
         "{}__inline_asm_{}_n{}",
         fx.symbol_name,
-        fx.cx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
+        fx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
         fx.inline_asm_index,
     );
     fx.inline_asm_index += 1;

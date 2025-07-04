@@ -64,6 +64,7 @@ use cranelift_codegen::ir::Fact;
 use cranelift_codegen::ir::entities::AnyEntity;
 use cranelift_codegen::write::{FuncWriter, PlainWriter};
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_session::Session;
 use rustc_session::config::{OutputFilenames, OutputType};
 use rustc_target::callconv::FnAbi;
 
@@ -83,7 +84,7 @@ impl CommentWriter {
         instance: Instance<'tcx>,
         fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
     ) -> Self {
-        let enabled = should_write_ir(tcx);
+        let enabled = should_write_ir(tcx.sess);
         let global_comments = if enabled {
             with_no_trimmed_paths!({
                 vec![
@@ -247,8 +248,8 @@ impl FunctionCx<'_, '_, '_> {
     }
 }
 
-pub(crate) fn should_write_ir(tcx: TyCtxt<'_>) -> bool {
-    tcx.sess.opts.output_types.contains_key(&OutputType::LlvmAssembly)
+pub(crate) fn should_write_ir(sess: &Session) -> bool {
+    sess.opts.output_types.contains_key(&OutputType::LlvmAssembly)
 }
 
 pub(crate) fn write_ir_file(

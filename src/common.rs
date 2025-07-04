@@ -6,6 +6,7 @@ use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
 };
+use rustc_span::Symbol;
 use rustc_span::source_map::Spanned;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, Target};
@@ -268,14 +269,15 @@ pub(crate) fn create_wrapper_function(
 }
 
 pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
-    pub(crate) cx: &'clif mut crate::CodegenCx,
     pub(crate) module: &'m mut dyn Module,
+    pub(crate) debug_context: Option<&'clif mut DebugContext>,
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) target_config: TargetFrontendConfig, // Cached from module
     pub(crate) pointer_type: Type,                  // Cached from module
     pub(crate) constants_cx: ConstantCx,
     pub(crate) func_debug_cx: Option<FunctionDebugContext>,
 
+    pub(crate) cgu_name: Symbol,
     pub(crate) instance: Instance<'tcx>,
     pub(crate) symbol_name: String,
     pub(crate) mir: &'tcx Body<'tcx>,
@@ -407,7 +409,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     }
 
     pub(crate) fn set_debug_loc(&mut self, source_info: mir::SourceInfo) {
-        if let Some(debug_context) = &mut self.cx.debug_context {
+        if let Some(debug_context) = &mut self.debug_context {
             let (file_id, line, column) =
                 debug_context.get_span_loc(self.tcx, self.mir.span, source_info.span);
 

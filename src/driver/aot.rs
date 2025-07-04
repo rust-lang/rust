@@ -25,9 +25,8 @@ use rustc_middle::mir::mono::{
     CodegenUnit, Linkage as RLinkage, MonoItem, MonoItemData, Visibility,
 };
 use rustc_session::Session;
-use rustc_session::config::{DebugInfo, OutFileName, OutputFilenames, OutputType};
+use rustc_session::config::{OutFileName, OutputFilenames, OutputType};
 
-use crate::CodegenCx;
 use crate::base::CodegenedFunction;
 use crate::concurrency_limiter::{ConcurrencyLimiter, ConcurrencyLimiterToken};
 use crate::debuginfo::TypeDebugContext;
@@ -512,18 +511,13 @@ fn codegen_cgu_content(
     tcx: TyCtxt<'_>,
     module: &mut dyn Module,
     cgu_name: rustc_span::Symbol,
-) -> (CodegenCx, Vec<CodegenedFunction>, String) {
+) -> (Option<DebugContext>, Vec<CodegenedFunction>, String) {
     let _timer = tcx.prof.generic_activity_with_arg("codegen cgu", cgu_name.as_str());
 
     let cgu = tcx.codegen_unit(cgu_name);
     let mono_items = cgu.items_in_deterministic_order(tcx);
 
-    let mut cx = crate::CodegenCx::new(
-        tcx,
-        module.isa(),
-        tcx.sess.opts.debuginfo != DebugInfo::None,
-        cgu_name,
-    );
+    let mut debug_context = DebugContext::new(tcx, module.isa(), false, cgu_name.as_str());
     let mut global_asm = String::new();
     let mut type_dbg = TypeDebugContext::default();
     super::predefine_mono_items(tcx, module, &mono_items);
@@ -550,7 +544,8 @@ fn codegen_cgu_content(
                 }
                 let codegened_function = crate::base::codegen_fn(
                     tcx,
-                    &mut cx,
+                    cgu_name,
+                    debug_context.as_mut(),
                     &mut type_dbg,
                     Function::new(),
                     module,
@@ -560,7 +555,7 @@ fn codegen_cgu_content(
             }
             MonoItem::Static(def_id) => {
                 let data_id = crate::constant::codegen_static(tcx, module, def_id);
-                if let Some(debug_context) = &mut cx.debug_context {
+                if let Some(debug_context) = debug_context.as_mut() {
                     debug_context.define_static(tcx, &mut type_dbg, def_id, data_id);
                 }
             }
@@ -574,7 +569,7 @@ fn codegen_cgu_content(
     }
     crate::main_shim::maybe_create_entry_wrapper(tcx, module, false, cgu.is_primary());
 
-    (cx, codegened_functions, global_asm)
+    (debug_context, codegened_functions, global_asm)
 }
 
 fn module_codegen(
@@ -587,7 +582,7 @@ fn module_codegen(
 ) -> OngoingModuleCodegen {
     let mut module = make_module(tcx.sess, cgu_name.as_str().to_string());
 
-    let (mut cx, codegened_functions, mut global_asm) =
+    let (mut debug_context, codegened_functions, mut global_asm) =
         codegen_cgu_content(tcx, &mut module, cgu_name);
 
     let cgu_name = cgu_name.as_str().to_owned();
@@ -597,6 +592,7 @@ fn module_codegen(
     let profiler = tcx.prof.clone();
     let invocation_temp = tcx.sess.invocation_temp.clone();
     let output_filenames = tcx.output_filenames(()).clone();
+    let should_write_ir = crate::pretty_clif::should_write_ir(tcx.sess);
 
     OngoingModuleCodegen::Async(std::thread::spawn(move || {
         profiler.clone().generic_activity_with_arg("compile functions", &*cgu_name).run(|| {
@@ -607,11 +603,12 @@ fn module_codegen(
             let mut cached_context = Context::new();
             for codegened_func in codegened_functions {
                 crate::base::compile_fn(
-                    &mut cx,
                     &profiler,
                     &output_filenames,
+                    should_write_ir,
                     &mut cached_context,
                     &mut module,
+                    debug_context.as_mut(),
                     &mut global_asm,
                     codegened_func,
                 );
@@ -636,7 +633,7 @@ fn module_codegen(
                     &profiler,
                     cgu_name,
                     module,
-                    cx.debug_context,
+                    debug_context,
                     global_asm_object_file,
                     &producer,
                 )

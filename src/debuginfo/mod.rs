@@ -20,6 +20,7 @@ use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefIdMap;
 use rustc_session::Session;
+use rustc_session::config::DebugInfo;
 use rustc_span::{FileNameDisplayPreference, SourceFileHash, StableSourceFileId};
 use rustc_target::callconv::FnAbi;
 
@@ -53,7 +54,19 @@ pub(crate) struct FunctionDebugContext {
 }
 
 impl DebugContext {
-    pub(crate) fn new(tcx: TyCtxt<'_>, isa: &dyn TargetIsa, cgu_name: &str) -> Self {
+    pub(crate) fn new(
+        tcx: TyCtxt<'_>,
+        isa: &dyn TargetIsa,
+        force_disable_debuginfo: bool,
+        cgu_name: &str,
+    ) -> Option<Self> {
+        if tcx.sess.opts.debuginfo == DebugInfo::None
+            || force_disable_debuginfo
+            || tcx.sess.target.options.is_like_windows
+        {
+            return None;
+        }
+
         let encoding = Encoding {
             format: Format::Dwarf32,
             // FIXME this should be configurable
@@ -146,7 +159,7 @@ impl DebugContext {
             AttributeValue::Udata(isa.frontend_config().pointer_bytes().into()),
         );
 
-        DebugContext {
+        Some(DebugContext {
             endian,
             dwarf,
             unit_range_list: RangeList(Vec::new()),
@@ -155,7 +168,7 @@ impl DebugContext {
             namespace_map: DefIdMap::default(),
             array_size_type,
             filename_display_preference,
-        }
+        })
     }
 
     fn item_namespace(&mut self, tcx: TyCtxt<'_>, def_id: DefId) -> UnitEntryId {

@@ -123,31 +123,6 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
     }
 }
 
-/// The codegen context holds any information shared between the codegen of individual functions
-/// inside a single codegen unit with the exception of the Cranelift [`Module`](cranelift_module::Module).
-struct CodegenCx {
-    should_write_ir: bool,
-    debug_context: Option<DebugContext>,
-    cgu_name: Symbol,
-}
-
-impl CodegenCx {
-    fn new(tcx: TyCtxt<'_>, isa: &dyn TargetIsa, debug_info: bool, cgu_name: Symbol) -> Self {
-        assert_eq!(pointer_ty(tcx), isa.pointer_type());
-
-        let debug_context = if debug_info && !tcx.sess.target.options.is_like_windows {
-            Some(DebugContext::new(tcx, isa, cgu_name.as_str()))
-        } else {
-            None
-        };
-        CodegenCx {
-            should_write_ir: crate::pretty_clif::should_write_ir(tcx),
-            debug_context,
-            cgu_name,
-        }
-    }
-}
-
 pub struct CraneliftCodegenBackend {
     pub config: Option<BackendConfig>,
 }

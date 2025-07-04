@@ -12,12 +12,11 @@ use rustc_session::Session;
 use rustc_session::config::OutputFilenames;
 use rustc_span::sym;
 
-use crate::CodegenCx;
 use crate::debuginfo::TypeDebugContext;
 use crate::prelude::*;
 use crate::unwind_module::UnwindModule;
 
-fn create_jit_module(tcx: TyCtxt<'_>) -> (UnwindModule<JITModule>, CodegenCx) {
+fn create_jit_module(tcx: TyCtxt<'_>) -> (UnwindModule<JITModule>, Option<DebugContext>) {
     let crate_info = CrateInfo::new(tcx, "dummy_target_cpu".to_string());
 
     let isa = crate::build_isa(tcx.sess, true);
@@ -26,7 +25,7 @@ fn create_jit_module(tcx: TyCtxt<'_>) -> (UnwindModule<JITModule>, CodegenCx) {
     jit_builder.symbol_lookup_fn(dep_symbol_lookup_fn(tcx.sess, crate_info));
     let mut jit_module = UnwindModule::new(JITModule::new(jit_builder), false);
 
-    let cx = crate::CodegenCx::new(tcx, jit_module.isa(), false, sym::dummy_cgu_name);
+    let cx = DebugContext::new(tcx, jit_module.isa(), false, "dummy_cgu_name");
 
     crate::allocator::codegen(tcx, &mut jit_module);
 
@@ -43,7 +42,8 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, jit_args: Vec<String>) -> ! {
     }
 
     let output_filenames = tcx.output_filenames(());
-    let (mut jit_module, mut cx) = create_jit_module(tcx);
+    let should_write_ir = crate::pretty_clif::should_write_ir(tcx.sess);
+    let (mut jit_module, mut debug_context) = create_jit_module(tcx);
     let mut cached_context = Context::new();
 
     let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
@@ -63,7 +63,8 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, jit_args: Vec<String>) -> ! {
                     codegen_and_compile_fn(
                         tcx,
                         &output_filenames,
-                        &mut cx,
+                        should_write_ir,
+                        debug_context.as_mut(),
                         &mut cached_context,
                         &mut jit_module,
                         inst,
@@ -122,7 +123,8 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, jit_args: Vec<String>) -> ! {
 fn codegen_and_compile_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
     output_filenames: &OutputFilenames,
-    cx: &mut crate::CodegenCx,
+    should_write_ir: bool,
+    mut debug_context: Option<&mut DebugContext>,
     cached_context: &mut Context,
     module: &mut dyn Module,
     instance: Instance<'tcx>,
@@ -143,7 +145,8 @@ fn codegen_and_compile_fn<'tcx>(
         let cached_func = std::mem::replace(&mut cached_context.func, Function::new());
         let codegened_func = crate::base::codegen_fn(
             tcx,
-            cx,
+            sym::dummy_cgu_name,
+            debug_context.as_deref_mut(),
             &mut TypeDebugContext::default(),
             cached_func,
             module,
@@ -152,11 +155,12 @@ fn codegen_and_compile_fn<'tcx>(
 
         let mut global_asm = String::new();
         crate::base::compile_fn(
-            cx,
             &tcx.prof,
             output_filenames,
+            should_write_ir,
             cached_context,
             module,
+            debug_context.as_deref_mut(),
             &mut global_asm,
             codegened_func,
         );
