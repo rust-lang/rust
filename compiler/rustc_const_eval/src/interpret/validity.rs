@@ -606,8 +606,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                                 }
                             }
                         }
-                        // These are controlled by rustc and not available for CTFE
-                        GlobalAlloc::Type { .. } => skip_recursive_check = true,
                         _ => (),
                     }
 
