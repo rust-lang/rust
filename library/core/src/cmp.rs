@@ -247,6 +247,7 @@ use crate::ops::ControlFlow;
     append_const_msg
 )]
 #[rustc_diagnostic_item = "PartialEq"]
+#[rustc_trivial_field_reads]
 #[const_trait]
 #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
 pub trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
