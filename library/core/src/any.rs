@@ -775,8 +775,15 @@ impl TypeId {
     }
 
     fn as_u128(self) -> u128 {
-        // SAFETY: we know there are 16 bytes without provenance at this location
-        unsafe { crate::ptr::read_unaligned(&self.data as *const _ as *const u128) }
+        let mut bytes = [0; 16];
+
+        // This is a provenance-stripping memcpy.
+        for (i, chunk) in self.data.iter().copied().enumerate() {
+            let chunk = chunk.expose_provenance().to_ne_bytes();
+            let start = i * chunk.len();
+            bytes[start..(start + chunk.len())].copy_from_slice(&chunk);
+        }
+        u128::from_ne_bytes(bytes)
     }
 }
 
