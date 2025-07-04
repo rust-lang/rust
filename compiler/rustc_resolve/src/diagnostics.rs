@@ -5,7 +5,7 @@ use rustc_ast::{
     self as ast, CRATE_NODE_ID, Crate, ItemKind, MetaItemInner, MetaItemKind, ModKind, NodeId, Path,
 };
 use rustc_ast_pretty::pprust;
-use rustc_attr_data_structures::{self as attr, Stability};
+use rustc_attr_data_structures::{self as attr, AttributeKind, Stability, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
@@ -1998,9 +1998,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Otherwise, point out if the struct has any private fields.
         if let Some(def_id) = res.opt_def_id()
             && !def_id.is_local()
-            && let Some(attr) = self.tcx.get_attr(def_id, sym::non_exhaustive)
+            && let Some(attr_span) = find_attr!(self.tcx.get_all_attrs(def_id), AttributeKind::NonExhaustive(span) => *span)
         {
-            non_exhaustive = Some(attr.span());
+            non_exhaustive = Some(attr_span);
         } else if let Some(span) = ctor_fields_span {
             let label = errors::ConstructorPrivateIfAnyFieldPrivate { span };
             err.subdiagnostic(label);
