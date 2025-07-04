@@ -8,7 +8,7 @@ pub struct LaneCount<const N: usize>;
 
 impl<const N: usize> LaneCount<N> {
     /// The number of bytes in a bitmask with this many lanes.
-    pub const BITMASK_LEN: usize = (N + 7) / 8;
+    pub const BITMASK_LEN: usize = N.div_ceil(8);
 }
 
 /// Statically guarantees that a lane count is marked as supported.
@@ -27,7 +27,7 @@ macro_rules! supported_lane_count {
     ($($lanes:literal),+) => {
         $(
             impl SupportedLaneCount for LaneCount<$lanes> {
-                type BitMask = [u8; ($lanes + 7) / 8];
+                type BitMask = [u8; ($lanes as usize).div_ceil(8)];
             }
         )+
     };
