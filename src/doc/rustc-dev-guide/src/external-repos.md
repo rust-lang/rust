@@ -49,7 +49,7 @@ implement a new tool feature or test, that should happen in one collective rustc
 
 ### Josh subtrees
 
-The [josh] tool is an alternative to git subtrees, which manages git history in a different way and scales better to larger repositories. Specific tooling is required to work with josh, you can check out the `miri` or `rust-analyzer` scripts linked above for inspiration. We provide a helper [`rustc-josh-sync`][josh-sync] tool to help with the synchronization, it is described [below](#synchronizing-a-josh-subtree).
+The [josh] tool is an alternative to git subtrees, which manages git history in a different way and scales better to larger repositories. Specific tooling is required to work with josh; you can check out the `miri` or `rust-analyzer` scripts linked above for inspiration. We provide a helper [`rustc-josh-sync`][josh-sync] tool to help with the synchronization, described [below](#synchronizing-a-josh-subtree).
 
 ### Synchronizing a Josh subtree
 
@@ -58,8 +58,7 @@ Currently, we are migrating Josh repositories to it. So far, it is used in:
 
 - rustc-dev-guide
 
-To use the tool, first install it with `cargo install --locked --git https://github.
-com/rust-lang/josh-sync`.
+To use the tool, first install it with `cargo install --locked --git https://github.com/rust-lang/josh-sync`.
 
 Both pulls (synchronize changes from rust-lang/rust into the subtree) and pushes (synchronize
 changes from the subtree to rust-lang/rust) are performed from the subtree repository (so first
