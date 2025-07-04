@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
-//@compile-flags: -Zmiri-track-alloc-id=19 -Zmiri-track-alloc-accesses -Cpanic=abort
-//@normalize-stderr-test: "id 19" -> "id $$ALLOC"
+//@compile-flags: -Zmiri-track-alloc-id=18 -Zmiri-track-alloc-accesses -Cpanic=abort
+//@normalize-stderr-test: "id 18" -> "id $$ALLOC"
 //@only-target: linux # alloc IDs differ between OSes (due to extern static allocations)
 
 extern "Rust" {
