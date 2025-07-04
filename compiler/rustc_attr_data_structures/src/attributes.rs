@@ -287,6 +287,9 @@ pub enum AttributeKind {
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 
+    /// Represents `#[path]`
+    Path(Symbol, Span),
+
     /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
     PubTransparent(Span),
 

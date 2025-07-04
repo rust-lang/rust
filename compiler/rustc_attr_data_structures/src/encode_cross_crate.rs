@@ -38,6 +38,7 @@ impl AttributeKind {
             NoImplicitPrelude(..) => No,
             NoMangle(..) => No,
             Optimize(..) => No,
+            Path(..) => No,
             PubTransparent(..) => Yes,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
