@@ -4,7 +4,6 @@
 use core::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::*;
-
 use core::mem;
 
 use crate::detect::{Feature, bit, cache};
@@ -42,12 +41,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // 0x8000_0000]. - The vendor ID is stored in 12 u8 ascii chars,
     // returned in EBX, EDX, and   ECX (in that order):
     let (max_basic_leaf, vendor_id) = unsafe {
-        let CpuidResult {
-            eax: max_basic_leaf,
-            ebx,
-            ecx,
-            edx,
-        } = __cpuid(0);
+        let CpuidResult { eax: max_basic_leaf, ebx, ecx, edx } = __cpuid(0);
         let vendor_id: [[u8; 4]; 3] = [ebx.to_ne_bytes(), edx.to_ne_bytes(), ecx.to_ne_bytes()];
         let vendor_id: [u8; 12] = mem::transmute(vendor_id);
         (max_basic_leaf, vendor_id)
@@ -60,11 +54,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
     // EAX = 1, ECX = 0: Queries "Processor Info and Feature Bits";
     // Contains information about most x86 features.
-    let CpuidResult {
-        ecx: proc_info_ecx,
-        edx: proc_info_edx,
-        ..
-    } = unsafe { __cpuid(0x0000_0001_u32) };
+    let CpuidResult { ecx: proc_info_ecx, edx: proc_info_edx, .. } =
+        unsafe { __cpuid(0x0000_0001_u32) };
 
     // EAX = 7: Queries "Extended Features";
     // Contains information about bmi,bmi2, and avx2 support.
@@ -76,11 +67,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
         extended_features_edx_leaf_1,
     ) = if max_basic_leaf >= 7 {
         let CpuidResult { ebx, ecx, edx, .. } = unsafe { __cpuid(0x0000_0007_u32) };
-        let CpuidResult {
-            eax: eax_1,
-            edx: edx_1,
-            ..
-        } = unsafe { __cpuid_count(0x0000_0007_u32, 0x0000_0001_u32) };
+        let CpuidResult { eax: eax_1, edx: edx_1, .. } =
+            unsafe { __cpuid_count(0x0000_0007_u32, 0x0000_0001_u32) };
         (ebx, ecx, edx, eax_1, edx_1)
     } else {
         (0, 0, 0, 0, 0) // CPUID does not support "Extended Features"
@@ -89,10 +77,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // EAX = 0x8000_0000, ECX = 0: Get Highest Extended Function Supported
     // - EAX returns the max leaf value for extended information, that is,
     // `cpuid` calls in range [0x8000_0000; u32::MAX]:
-    let CpuidResult {
-        eax: extended_max_basic_leaf,
-        ..
-    } = unsafe { __cpuid(0x8000_0000_u32) };
+    let CpuidResult { eax: extended_max_basic_leaf, .. } = unsafe { __cpuid(0x8000_0000_u32) };
 
     // EAX = 0x8000_0001, ECX=0: Queries "Extended Processor Info and Feature
     // Bits"
@@ -208,10 +193,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
                     // Processor Extended State Enumeration Sub-leaf (EAX = 0DH,
                     // ECX = 1):
                     if max_basic_leaf >= 0xd {
-                        let CpuidResult {
-                            eax: proc_extended_state1_eax,
-                            ..
-                        } = unsafe { __cpuid_count(0xd_u32, 1) };
+                        let CpuidResult { eax: proc_extended_state1_eax, .. } =
+                            unsafe { __cpuid_count(0xd_u32, 1) };
                         enable(proc_extended_state1_eax, 0, Feature::xsaveopt);
                         enable(proc_extended_state1_eax, 1, Feature::xsavec);
                         enable(proc_extended_state1_eax, 3, Feature::xsaves);
@@ -269,10 +252,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
                     enable(extended_features_edx_leaf_1, 8, Feature::amx_complex);
 
                     if max_basic_leaf >= 0x1e {
-                        let CpuidResult {
-                            eax: amx_feature_flags_eax,
-                            ..
-                        } = unsafe { __cpuid_count(0x1e_u32, 1) };
+                        let CpuidResult { eax: amx_feature_flags_eax, .. } =
+                            unsafe { __cpuid_count(0x1e_u32, 1) };
 
                         enable(amx_feature_flags_eax, 4, Feature::amx_fp8);
                         enable(amx_feature_flags_eax, 5, Feature::amx_transpose);

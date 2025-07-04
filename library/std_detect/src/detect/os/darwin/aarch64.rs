@@ -2,8 +2,9 @@
 //!
 //! <https://developer.apple.com/documentation/kernel/1387446-sysctlbyname/determining_instruction_set_characteristics>
 
-use crate::detect::{Feature, cache};
 use core::ffi::CStr;
+
+use crate::detect::{Feature, cache};
 
 #[inline]
 fn _sysctlbyname(name: &CStr) -> bool {
@@ -14,13 +15,7 @@ fn _sysctlbyname(name: &CStr) -> bool {
     let enabled_ptr = &mut enabled as *mut i32 as *mut libc::c_void;
 
     let ret = unsafe {
-        libc::sysctlbyname(
-            name.as_ptr(),
-            enabled_ptr,
-            &mut enabled_len,
-            core::ptr::null_mut(),
-            0,
-        )
+        libc::sysctlbyname(name.as_ptr(), enabled_ptr, &mut enabled_len, core::ptr::null_mut(), 0)
     };
 
     match ret {

@@ -54,11 +54,8 @@ fn archauxv(key: libc::c_int) -> usize {
         // https://github.com/freebsd/freebsd-src/blob/release/11.4.0/sys/sys/auxv.h
         // FreeBSD 11 support in std has been removed in Rust 1.75 (https://github.com/rust-lang/rust/pull/114521),
         // so we can safely use this function.
-        let res = libc::elf_aux_info(
-            key,
-            &mut out as *mut libc::c_ulong as *mut libc::c_void,
-            OUT_LEN,
-        );
+        let res =
+            libc::elf_aux_info(key, &mut out as *mut libc::c_ulong as *mut libc::c_void, OUT_LEN);
         // If elf_aux_info fails, `out` will be left at zero (which is the proper default value).
         debug_assert!(res == 0 || out == 0);
     }

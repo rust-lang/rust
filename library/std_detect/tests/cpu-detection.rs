@@ -59,10 +59,7 @@ fn arm_linux() {
 }
 
 #[test]
-#[cfg(all(
-    target_arch = "aarch64",
-    any(target_os = "linux", target_os = "android")
-))]
+#[cfg(all(target_arch = "aarch64", any(target_os = "linux", target_os = "android")))]
 fn aarch64_linux() {
     println!("asimd: {}", is_aarch64_feature_detected!("asimd"));
     println!("neon: {}", is_aarch64_feature_detected!("neon"));
@@ -97,10 +94,7 @@ fn aarch64_linux() {
     println!("sve2-aes: {}", is_aarch64_feature_detected!("sve2-aes"));
     println!("sve2-sm4: {}", is_aarch64_feature_detected!("sve2-sm4"));
     println!("sve2-sha3: {}", is_aarch64_feature_detected!("sve2-sha3"));
-    println!(
-        "sve2-bitperm: {}",
-        is_aarch64_feature_detected!("sve2-bitperm")
-    );
+    println!("sve2-bitperm: {}", is_aarch64_feature_detected!("sve2-bitperm"));
     println!("frintts: {}", is_aarch64_feature_detected!("frintts"));
     println!("i8mm: {}", is_aarch64_feature_detected!("i8mm"));
     println!("f32mm: {}", is_aarch64_feature_detected!("f32mm"));
@@ -138,25 +132,13 @@ fn aarch64_linux() {
     println!("sme-lutv2: {}", is_aarch64_feature_detected!("sme-lutv2"));
     println!("sme-f8f16: {}", is_aarch64_feature_detected!("sme-f8f16"));
     println!("sme-f8f32: {}", is_aarch64_feature_detected!("sme-f8f32"));
-    println!(
-        "ssve-fp8fma: {}",
-        is_aarch64_feature_detected!("ssve-fp8fma")
-    );
-    println!(
-        "ssve-fp8dot4: {}",
-        is_aarch64_feature_detected!("ssve-fp8dot4")
-    );
-    println!(
-        "ssve-fp8dot2: {}",
-        is_aarch64_feature_detected!("ssve-fp8dot2")
-    );
+    println!("ssve-fp8fma: {}", is_aarch64_feature_detected!("ssve-fp8fma"));
+    println!("ssve-fp8dot4: {}", is_aarch64_feature_detected!("ssve-fp8dot4"));
+    println!("ssve-fp8dot2: {}", is_aarch64_feature_detected!("ssve-fp8dot2"));
 }
 
 #[test]
-#[cfg(all(
-    any(target_arch = "aarch64", target_arch = "arm64ec"),
-    target_os = "windows"
-))]
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_os = "windows"))]
 fn aarch64_windows() {
     println!("asimd: {:?}", is_aarch64_feature_detected!("asimd"));
     println!("fp: {:?}", is_aarch64_feature_detected!("fp"));
@@ -171,10 +153,7 @@ fn aarch64_windows() {
 }
 
 #[test]
-#[cfg(all(
-    target_arch = "aarch64",
-    any(target_os = "freebsd", target_os = "openbsd")
-))]
+#[cfg(all(target_arch = "aarch64", any(target_os = "freebsd", target_os = "openbsd")))]
 fn aarch64_bsd() {
     println!("asimd: {:?}", is_aarch64_feature_detected!("asimd"));
     println!("pmull: {:?}", is_aarch64_feature_detected!("pmull"));
@@ -236,14 +215,8 @@ fn riscv_linux() {
     println!("rv32e: {}", is_riscv_feature_detected!("rv32e"));
     println!("rv64i: {}", is_riscv_feature_detected!("rv64i"));
     println!("rv128i: {}", is_riscv_feature_detected!("rv128i"));
-    println!(
-        "unaligned-scalar-mem: {}",
-        is_riscv_feature_detected!("unaligned-scalar-mem")
-    );
-    println!(
-        "unaligned-vector-mem: {}",
-        is_riscv_feature_detected!("unaligned-vector-mem")
-    );
+    println!("unaligned-scalar-mem: {}", is_riscv_feature_detected!("unaligned-scalar-mem"));
+    println!("unaligned-vector-mem: {}", is_riscv_feature_detected!("unaligned-vector-mem"));
     println!("zicsr: {}", is_riscv_feature_detected!("zicsr"));
     println!("zicntr: {}", is_riscv_feature_detected!("zicntr"));
     println!("zihpm: {}", is_riscv_feature_detected!("zihpm"));
@@ -336,10 +309,7 @@ fn powerpc_linux() {
 }
 
 #[test]
-#[cfg(all(
-    target_arch = "powerpc64",
-    any(target_os = "linux", target_os = "freebsd"),
-))]
+#[cfg(all(target_arch = "powerpc64", any(target_os = "linux", target_os = "freebsd"),))]
 fn powerpc64_linux_or_freebsd() {
     println!("altivec: {}", is_powerpc64_feature_detected!("altivec"));
     println!("vsx: {}", is_powerpc64_feature_detected!("vsx"));

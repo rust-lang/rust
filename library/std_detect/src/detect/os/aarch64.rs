@@ -17,8 +17,9 @@
 //! - [Linux documentation](https://www.kernel.org/doc/Documentation/arm64/cpu-feature-registers.txt)
 //! - [ARM documentation](https://developer.arm.com/documentation/ddi0601/2022-12/AArch64-Registers?lang=en)
 
-use crate::detect::{Feature, cache};
 use core::arch::asm;
+
+use crate::detect::{Feature, cache};
 
 /// Try to read the features from the system registers.
 ///
@@ -104,10 +105,7 @@ pub(crate) fn parse_system_registers(
         let sha2 = bits_shift(aa64isar0, 15, 12) >= 1;
         enable_feature(Feature::sha2, asimd && sha1 && sha2);
         enable_feature(Feature::rdm, asimd && bits_shift(aa64isar0, 31, 28) >= 1);
-        enable_feature(
-            Feature::dotprod,
-            asimd && bits_shift(aa64isar0, 47, 44) >= 1,
-        );
+        enable_feature(Feature::dotprod, asimd && bits_shift(aa64isar0, 47, 44) >= 1);
         enable_feature(Feature::sve, asimd && bits_shift(aa64pfr0, 35, 32) >= 1);
     }
 
