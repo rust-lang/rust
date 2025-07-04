@@ -68,7 +68,7 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
                 }
             }
 
-            let maybe_uninit = MaybeUninitializedLocals::new()
+            let maybe_uninit = MaybeUninitializedLocals
                 .iterate_to_fixpoint(tcx, body, Some("mir_opt::copy_prop"))
                 .into_results_cursor(body);
 

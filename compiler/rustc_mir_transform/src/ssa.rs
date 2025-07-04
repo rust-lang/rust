@@ -399,12 +399,6 @@ impl StorageLiveLocals {
 /// individual fields.
 pub(crate) struct MaybeUninitializedLocals;
 
-impl MaybeUninitializedLocals {
-    pub(crate) fn new() -> Self {
-        Self {}
-    }
-}
-
 impl<'tcx> Analysis<'tcx> for MaybeUninitializedLocals {
     type Domain = DenseBitSet<Local>;
 

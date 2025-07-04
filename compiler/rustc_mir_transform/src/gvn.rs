@@ -156,7 +156,7 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
         // as this enables better optimizations. For each local use location, we mark it for storage removal
         // only if it might be uninitialized at that point.
         let storage_to_remove = if tcx.sess.emit_lifetime_markers() {
-            let maybe_uninit = MaybeUninitializedLocals::new()
+            let maybe_uninit = MaybeUninitializedLocals
                 .iterate_to_fixpoint(tcx, body, Some("mir_opt::gvn"))
                 .into_results_cursor(body);
 
