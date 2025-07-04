@@ -6,7 +6,7 @@ mod simd;
 use std::ops::Neg;
 
 use rand::Rng;
-use rustc_abi::{FieldIdx, Size};
+use rustc_abi::Size;
 use rustc_apfloat::ieee::{IeeeFloat, Semantics};
 use rustc_apfloat::{self, Float, Round};
 use rustc_middle::mir;
@@ -459,28 +459,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             "assert_inhabited" | "assert_zero_valid" | "assert_mem_uninitialized_valid" => {
                 // Make these a NOP, so we get the better Miri-native error messages.
-            }
-
-            "type_id_eq" => {
-                let [a, b] = check_intrinsic_arg_count(args)?;
-
-                let a = this.project_field(a, FieldIdx::ZERO)?;
-                let mut a = this.project_array_fields(&a)?;
-                let b = this.project_field(b, FieldIdx::ZERO)?;
-                let mut b = this.project_array_fields(&b)?;
-
-                while let Some((_, a)) = a.next(this)? {
-                    let (_, b) = b.next(this)?.unwrap();
-
-                    let a = this.read_pointer(&a)?;
-                    let b = this.read_pointer(&b)?;
-
-                    if a != b {
-                        this.write_int(0, dest)?;
-                        return interp_ok(EmulateItemResult::NeedsReturn);
-                    }
-                }
-                this.write_int(1, dest)?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),

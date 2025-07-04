@@ -296,7 +296,11 @@ where
         base: &'a P,
     ) -> InterpResult<'tcx, ArrayIterator<'a, 'tcx, M::Provenance, P>> {
         let abi::FieldsShape::Array { stride, .. } = base.layout().fields else {
-            span_bug!(self.cur_span(), "project_array_fields: expected an array layout");
+            span_bug!(
+                self.cur_span(),
+                "project_array_fields: expected an array layout, got {:#?}",
+                base.layout()
+            );
         };
         let len = base.len(self)?;
         let field_layout = base.layout().field(self, 0);

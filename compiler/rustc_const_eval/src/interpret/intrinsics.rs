@@ -6,6 +6,7 @@ use std::assert_matches::assert_matches;
 
 use rustc_abi::{FieldIdx, Size};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -91,6 +92,47 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let tp_ty = instance.args.type_at(0);
                 ensure_monomorphic_enough(tcx, tp_ty)?;
                 self.write_type_id(tp_ty, dest)?;
+            }
+            sym::type_id_eq => {
+                let a_fields = self.project_field(&args[0], FieldIdx::ZERO)?;
+                let b_fields = self.project_field(&args[1], FieldIdx::ZERO)?;
+
+                let mut a_fields = self.project_array_fields(&a_fields)?;
+
+                let mut b_fields = self.project_array_fields(&b_fields)?;
+
+                let (_idx, a) = a_fields
+                    .next(self)?
+                    .expect("we know the layout of TypeId has at least 2 array elements");
+                let a = self.deref_pointer(&a)?;
+                let (a, offset_a, _) = self.ptr_get_alloc_id(a.ptr(), 0)?;
+                let GlobalAlloc::Type { ty: a } = self.tcx.global_alloc(a) else { bug!() };
+
+                let (_idx, b) = b_fields
+                    .next(self)?
+                    .expect("we know the layout of TypeId has at least 2 array elements");
+                let b = self.deref_pointer(&b)?;
+                let (b, offset_b, _) = self.ptr_get_alloc_id(b.ptr(), 0)?;
+                let GlobalAlloc::Type { ty: b } = self.tcx.global_alloc(b) else { bug!() };
+
+                let provenance_matches = a == b;
+
+                if offset_a != offset_b && provenance_matches {
+                    throw_ub_format!("modifying `TypeId` internals is not permitted")
+                }
+
+                while let Some((_, a)) = a_fields.next(self)? {
+                    let (_, b) = b_fields.next(self)?.unwrap();
+
+                    let a = self.read_target_usize(&a)?;
+                    let b = self.read_target_usize(&b)?;
+
+                    if a != b && provenance_matches {
+                        throw_ub_format!("modifying `TypeId` internals is not permitted")
+                    }
+                }
+
+                self.write_scalar(Scalar::from_bool(provenance_matches), dest)?;
             }
             sym::variant_count => {
                 let tp_ty = instance.args.type_at(0);
