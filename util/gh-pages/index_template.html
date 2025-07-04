@@ -149,25 +149,21 @@ Otherwise, have a great day =^.^=
                 <article class="panel panel-default" id="{{lint.id}}"> {# #}
                     <input id="label-{{lint.id}}" type="checkbox"> {# #}
                     <label for="label-{{lint.id}}"> {# #}
-                        <header class="panel-heading"> {# #}
-                            <h2 class="panel-title"> {# #}
-                                <div class="panel-title-name" id="lint-{{lint.id}}"> {# #}
-                                    <span>{{lint.id}}</span> {#+ #}
-                                    <a href="#{{lint.id}}" class="lint-anchor anchor label label-default">&para;</a> {#+ #}
-                                    <a href="" class="copy-to-clipboard anchor label label-default"> {# #}
-                                        &#128203; {# #}
-                                    </a> {# #}
-                                </div> {# #}
+                        <h2 class="lint-title"> {# #}
+                            <div class="panel-title-name" id="lint-{{lint.id}}"> {# #}
+                                <span>{{lint.id}}</span> {#+ #}
+                                <a href="#{{lint.id}}" class="lint-anchor anchor label label-default">&para;</a> {#+ #}
+                                <a href="" class="copy-to-clipboard anchor label label-default"> {# #}
+                                    &#128203; {# #}
+                                </a> {# #}
+                            </div> {# #}
 
-                                <div class="panel-title-addons"> {# #}
-                                    <span class="label label-lint-group label-default label-group-{{lint.group}}">{{lint.group}}</span> {#+ #}
+                            <span class="label label-lint-group label-default label-group-{{lint.group}}">{{lint.group}}</span> {#+ #}
 
-                                    <span class="label label-lint-level label-lint-level-{{lint.level}}">{{lint.level}}</span> {#+ #}
+                            <span class="label label-lint-level label-lint-level-{{lint.level}}">{{lint.level}}</span> {#+ #}
 
-                                    <span class="label label-doc-folding"></span> {# #}
-                                </div> {# #}
-                            </h2> {# #}
-                        </header> {# #}
+                            <span class="label label-doc-folding"></span> {# #}
+                        </h2> {# #}
                     </label> {# #}
 
                     <div class="list-group lint-docs"> {# #}
