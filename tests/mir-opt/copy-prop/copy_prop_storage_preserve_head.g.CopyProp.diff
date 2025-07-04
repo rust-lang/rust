@@ -1,0 +1,23 @@
+- // MIR for `g` before CopyProp
++ // MIR for `g` after CopyProp
+  
+  fn g() -> usize {
+      let mut _0: usize;
+      let mut _1: usize;
+      let mut _2: usize;
+      let mut _3: usize;
+  
+      bb0: {
+-         StorageLive(_2);
+          StorageLive(_1);
+          _1 = const 0_usize;
+-         _2 = copy _1;
+-         _3 = copy _2;
+-         _0 = Add(copy _3, copy _3);
++         _0 = Add(copy _1, copy _1);
+          StorageDead(_1);
+-         StorageDead(_2);
+          return;
+      }
+  }
+  
