@@ -36,7 +36,7 @@ use crate::base::{
 };
 use crate::expand::{AstFragment, AstFragmentKind, ensure_complete_parse, parse_ast_fragment};
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, MatcherLoc, Success, TtParser};
-use crate::mbe::quoted::RulePart;
+use crate::mbe::quoted::{RulePart, parse_one_tt};
 use crate::mbe::transcribe::transcribe;
 use crate::mbe::{self, KleeneOp, macro_check};
 
@@ -395,16 +395,7 @@ pub fn compile_declarative_macro(
 
     while p.token != token::Eof {
         let lhs_tt = p.parse_token_tree();
-        let lhs_tt = mbe::quoted::parse(
-            &TokenStream::new(vec![lhs_tt]),
-            RulePart::Pattern,
-            sess,
-            node_id,
-            features,
-            edition,
-        )
-        .pop()
-        .unwrap();
+        let lhs_tt = parse_one_tt(lhs_tt, RulePart::Pattern, sess, node_id, features, edition);
         // We don't handle errors here, the driver will abort after parsing/expansion. We can
         // report every error in every macro this way.
         check_emission(check_lhs_nt_follows(sess, node_id, &lhs_tt));
@@ -422,16 +413,7 @@ pub fn compile_declarative_macro(
             return dummy_syn_ext(guar);
         }
         let rhs_tt = p.parse_token_tree();
-        let rhs_tt = mbe::quoted::parse(
-            &TokenStream::new(vec![rhs_tt]),
-            RulePart::Body,
-            sess,
-            node_id,
-            features,
-            edition,
-        )
-        .pop()
-        .unwrap();
+        let rhs_tt = parse_one_tt(rhs_tt, RulePart::Body, sess, node_id, features, edition);
         check_emission(check_rhs(sess, &rhs_tt));
         check_emission(macro_check::check_meta_variables(&sess.psess, node_id, &lhs_tt, &rhs_tt));
         lhses.push(lhs_tt);

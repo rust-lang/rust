@@ -57,7 +57,7 @@ impl RulePart {
 /// # Returns
 ///
 /// A collection of `self::TokenTree`. There may also be some errors emitted to `sess`.
-pub(super) fn parse(
+fn parse(
     input: &tokenstream::TokenStream,
     part: RulePart,
     sess: &Session,
@@ -150,6 +150,22 @@ pub(super) fn parse(
         }
     }
     result
+}
+
+/// Takes a `tokenstream::TokenTree` and returns a `self::TokenTree`. Like `parse`, but for a
+/// single token tree. Emits errors to `sess` if needed.
+#[inline]
+pub(super) fn parse_one_tt(
+    input: tokenstream::TokenTree,
+    part: RulePart,
+    sess: &Session,
+    node_id: NodeId,
+    features: &Features,
+    edition: Edition,
+) -> TokenTree {
+    parse(&tokenstream::TokenStream::new(vec![input]), part, sess, node_id, features, edition)
+        .pop()
+        .unwrap()
 }
 
 /// Asks for the `macro_metavar_expr` feature if it is not enabled
