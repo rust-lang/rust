@@ -1,9 +1,9 @@
-// Ensure that auto trait checks `T` when it encounters a `PhantomData<T>` field, instead of
-// checking the `PhantomData<T>` type itself (which almost always implements an auto trait).
+//! Ensure that auto trait checks `T` when it encounters a `PhantomData<T>` field, instead of
+//! checking the `PhantomData<T>` type itself (which almost always implements an auto trait).
 
 #![feature(auto_traits)]
 
-use std::marker::{PhantomData};
+use std::marker::PhantomData;
 
 unsafe auto trait Zen {}
 

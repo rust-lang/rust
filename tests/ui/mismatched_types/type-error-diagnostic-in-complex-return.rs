@@ -1,4 +1,8 @@
-fn unrelated() -> Result<(), std::string::ParseError> {  // #57664
+//! Regression test for <https://github.com/rust-lang/rust/issues/57664>.
+//! Checks that compiler doesn't get confused by `?` operator and complex
+//! return types when reporting type mismatches.
+
+fn unrelated() -> Result<(), std::string::ParseError> {
     let x = 0;
 
     match x {

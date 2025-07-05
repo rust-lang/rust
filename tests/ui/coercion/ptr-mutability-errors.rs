@@ -1,5 +1,4 @@
-// Test coercions between pointers which don't do anything fancy like unsizing.
-// These are testing that we don't lose mutability when converting to raw pointers.
+//! Tests that pointer coercions preserving mutability are enforced:
 
 //@ dont-require-annotations: NOTE
 
