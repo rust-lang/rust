@@ -1,6 +1,7 @@
 use rand::RngCore;
 
 use crate::assert_matches::assert_matches;
+use crate::bstr::ByteStr;
 use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
@@ -599,11 +600,13 @@ fn file_test_append_write_at() {
     let msg = b"it's not working!";
     check!(fs::write(&filename, &msg));
     // write_at should work even in in append mode
-    let f = check!(fs::File::options().append(true).open(&filename));
+    let mut f = check!(fs::File::options().append(true).open(&filename));
+    assert_eq!(check!(f.stream_position()), 0);
     assert_eq!(check!(f.write_at(b"   ", 5)), 3);
+    assert_eq!(check!(f.stream_position()), 0);
 
     let content = check!(fs::read(&filename));
-    assert_eq!(&content, b"it's     working!");
+    assert_eq!(ByteStr::new(&content), ByteStr::new(b"it's     working!"));
 }
 
 #[test]
