@@ -18,7 +18,7 @@ use crate::*;
 const TASK_COMM_LEN: u64 = 16;
 
 pub fn is_dyn_sym(name: &str) -> bool {
-    matches!(name, "statx")
+    matches!(name, "gettid" | "statx")
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -117,7 +117,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "gettid" => {
                 let [] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
-                let result = this.linux_gettid()?;
+                let result = this.unix_gettid(link_name.as_str())?;
                 this.write_scalar(result, dest)?;
             }
 
