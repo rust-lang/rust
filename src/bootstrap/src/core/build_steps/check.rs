@@ -502,6 +502,13 @@ macro_rules! tool_check_step {
             fn make_run(run: RunConfig<'_>) {
                 let target = run.target;
                 let build_compiler = prepare_compiler_for_check(run.builder, target, $mode);
+
+                // It doesn't make sense to cross-check bootstrap tools
+                if $mode == Mode::ToolBootstrap && target != run.builder.host_target {
+                    println!("WARNING: not checking bootstrap tool {} for target {target} as it is a bootstrap (host-only) tool", stringify!($path));
+                    return;
+                };
+
                 run.builder.ensure($name { target, build_compiler });
             }
 
