@@ -9,7 +9,8 @@
 // Some attributes are only computed for release builds:
 //@ compile-flags: -O
 //@ revisions: generic riscv64
-//@ [riscv64] only-riscv64
+//@ [riscv64] compile-flags: --target riscv64gc-unknown-linux-gnu
+//@ [riscv64] needs-llvm-components: riscv
 //@ [generic] ignore-riscv64
 #![feature(rustc_attrs)]
 #![crate_type = "lib"]
