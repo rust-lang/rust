@@ -1027,6 +1027,21 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
             );
         }
     }
+
+    fn lint_overlapping_alternatives_under_guard(
+        &self,
+        pat1: &crate::pat::DeconstructedPat<Self>,
+        pat2: &crate::pat::DeconstructedPat<Self>,
+    ) {
+        self.tcx
+            .dcx()
+            .struct_span_err(
+                pat1.data().span,
+                format!("pattern overlaps with or-alternative under a guard"),
+            )
+            .with_span_label(pat2.data().span, "overlaps with")
+            .emit();
+    }
 }
 
 /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
