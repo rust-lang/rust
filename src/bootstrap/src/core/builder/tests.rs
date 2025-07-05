@@ -1313,11 +1313,9 @@ mod snapshot {
         [check] rustc 1 <host> -> Clippy 2 <target1>
         [check] rustc 1 <host> -> Miri 2 <target1>
         [check] rustc 1 <host> -> CargoMiri 2 <target1>
-        [check] rustc 0 <host> -> MiroptTestTools 1 <target1>
         [check] rustc 1 <host> -> Rustfmt 2 <target1>
         [check] rustc 1 <host> -> rust-analyzer 2 <target1>
         [check] rustc 1 <host> -> TestFloatParse 2 <target1>
-        [check] rustc 0 <host> -> FeaturesStatusDump 1 <target1>
         [check] rustc 1 <host> -> std 1 <target1>
         ");
     }
