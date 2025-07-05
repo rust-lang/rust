@@ -21,9 +21,10 @@ use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::DiagInner;
 use rustc_hashes::Hash64;
 use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefPathHash;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::Span;
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 
 pub use self::config::{HashResult, QueryConfig};
 use crate::dep_graph::{DepKind, DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
@@ -147,6 +148,19 @@ pub enum QuerySideEffect {
     /// the query as green, as that query will have the side
     /// effect dep node as a dependency.
     Diagnostic(DiagInner),
+
+    /// A `DefId` that was created during query execution.
+    /// These `DefId`s will be re-created when we mark the query as green.
+    Definition(DefIdInfo),
+}
+
+#[derive(Debug, Clone, Encodable, Decodable, PartialEq)]
+pub struct DefIdInfo {
+    pub parent: LocalDefId,
+    pub data: rustc_hir::definitions::DefPathData,
+    pub hash: DefPathHash,
+    /// Disambiguator
+    pub disambiguator: u32,
 }
 
 pub trait QueryContext: HasDepContext {
