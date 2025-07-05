@@ -128,19 +128,16 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
         let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
         let mode = metadata.mode.to_uint(this.libc_ty_layout("mode_t").size)?;
-        let dev = metadata.dev;
-        let uid = metadata.uid;
-        let gid = metadata.gid;
 
         let buf = this.deref_pointer_as(buf_op, this.libc_ty_layout("stat"))?;
         this.write_int_fields_named(
             &[
-                ("st_dev", dev.into()),
+                ("st_dev", metadata.dev.into()),
                 ("st_mode", mode.try_into().unwrap()),
                 ("st_nlink", 0),
                 ("st_ino", 0),
-                ("st_uid", uid.into()),
-                ("st_gid", gid.into()),
+                ("st_uid", metadata.uid.into()),
+                ("st_gid", metadata.gid.into()),
                 ("st_rdev", 0),
                 ("st_atime", access_sec.into()),
                 ("st_mtime", modified_sec.into()),
@@ -1581,9 +1578,6 @@ impl FileMetadata {
         ecx: &mut MiriInterpCx<'tcx>,
         metadata: Result<std::fs::Metadata, std::io::Error>,
     ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
-        #[cfg(unix)]
-        use std::os::unix::fs::MetadataExt;
-
         let metadata = match metadata {
             Ok(metadata) => metadata,
             Err(e) => {
@@ -1613,6 +1607,7 @@ impl FileMetadata {
 
         cfg_select! {
             unix => {
+                use std::os::unix::fs::MetadataExt;
                 let dev = metadata.dev();
                 let uid = metadata.uid();
                 let gid = metadata.gid();
