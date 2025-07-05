@@ -215,6 +215,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::MayDangle(attr_span)) => {
                     self.check_may_dangle(hir_id, *attr_span)
                 }
+                Attribute::Parsed(AttributeKind::Ignore { span, .. }) => {
+                    self.check_generic_attr(hir_id, sym::ignore, *span, target, Target::Fn)
+                }
                 Attribute::Parsed(AttributeKind::MustUse { span, .. }) => {
                     self.check_must_use(hir_id, *span, target)
                 }
@@ -303,7 +306,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::path, ..] => self.check_generic_attr_unparsed(hir_id, attr, target, Target::Mod),
                         [sym::macro_export, ..] => self.check_macro_export(hir_id, attr, target),
-                        [sym::ignore, ..] | [sym::should_panic, ..] => {
+                        [sym::should_panic, ..] => {
                             self.check_generic_attr_unparsed(hir_id, attr, target, Target::Fn)
                         }
                         [sym::automatically_derived, ..] => {

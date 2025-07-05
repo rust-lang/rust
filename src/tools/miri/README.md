@@ -11,12 +11,12 @@ instance:
 * Not sufficiently aligned memory accesses and references
 * Violation of basic type invariants (a `bool` that is not 0 or 1, for example,
   or an invalid enum discriminant)
+* Data races and emulation of *some* weak memory effects, i.e.,
+  atomic reads can return outdated values
 * **Experimental**: Violations of the [Stacked Borrows] rules governing aliasing
   for reference types
 * **Experimental**: Violations of the [Tree Borrows] aliasing rules, as an optional
   alternative to [Stacked Borrows]
-* **Experimental**: Data races and emulation of weak memory effects, i.e.,
-  atomic reads can return outdated values.
 
 On top of that, Miri will also tell you about memory leaks: when there is memory
 still allocated at the end of the execution, and that memory is not reachable

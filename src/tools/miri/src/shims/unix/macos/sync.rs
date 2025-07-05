@@ -68,10 +68,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // LAZY_INIT_COOKIE). This can't be hit via `std::sync::Mutex`.
                 interp_ok(MacOsUnfairLock::Poisoned)
             },
-            |ecx| {
-                let mutex_ref = ecx.machine.sync.mutex_create();
-                interp_ok(MacOsUnfairLock::Active { mutex_ref })
-            },
+            |_| interp_ok(MacOsUnfairLock::Active { mutex_ref: MutexRef::new() }),
         )
     }
 }

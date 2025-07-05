@@ -219,4 +219,11 @@ macro_rules! slump {
     () => {}
 }
 
+#[ignore = 1]
+//~^ ERROR valid forms for the attribute are
+//~| WARN this was previously accepted by the compiler
+fn thing() {
+
+}
+
 fn main() {}

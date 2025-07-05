@@ -1,7 +1,3 @@
-// Only works on Unix targets
-//@ignore-target: windows wasm
-//@only-on-host
-
 fn main() {
     test_access_pointer();
     test_access_simple();

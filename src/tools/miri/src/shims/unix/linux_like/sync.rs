@@ -15,12 +15,13 @@ pub fn futex<'tcx>(
 ) -> InterpResult<'tcx> {
     let [addr, op, val] = check_min_vararg_count("`syscall(SYS_futex, ...)`", varargs)?;
 
+    // See <https://man7.org/linux/man-pages/man2/futex.2.html> for docs.
     // The first three arguments (after the syscall number itself) are the same to all futex operations:
-    //     (int *addr, int op, int val).
+    //     (uint32_t *addr, int op, uint32_t val).
     // We checked above that these definitely exist.
     let addr = ecx.read_pointer(addr)?;
     let op = ecx.read_scalar(op)?.to_i32()?;
-    let val = ecx.read_scalar(val)?.to_i32()?;
+    let val = ecx.read_scalar(val)?.to_u32()?;
 
     // This is a vararg function so we have to bring our own type for this pointer.
     let addr = ecx.ptr_to_mplace(addr, ecx.machine.layouts.i32);
@@ -138,7 +139,7 @@ pub fn futex<'tcx>(
             // It's not uncommon for `addr` to be passed as another type than `*mut i32`, such as `*const AtomicI32`.
             // We do an acquire read -- it only seems reasonable that if we observe a value here, we
             // actually establish an ordering with that value.
-            let futex_val = ecx.read_scalar_atomic(&addr, AtomicReadOrd::Acquire)?.to_i32()?;
+            let futex_val = ecx.read_scalar_atomic(&addr, AtomicReadOrd::Acquire)?.to_u32()?;
             if val == futex_val {
                 // The value still matches, so we block the thread and make it wait for FUTEX_WAKE.
 

@@ -166,6 +166,10 @@ impl Handle {
     /// Structurally invalid handles return [`HandleError::InvalidHandle`].
     /// If the handle is structurally valid but semantically invalid, e.g. a for non-existent thread
     /// ID, returns [`HandleError::ThreadNotFound`].
+    ///
+    /// This function is deliberately private; shims should always use `read_handle`.
+    /// That enforces handle validity even when Windows does not: for now, we argue invalid
+    /// handles are always a bug and programmers likely want to know about them.
     fn try_from_scalar<'tcx>(
         handle: Scalar,
         cx: &MiriInterpCx<'tcx>,

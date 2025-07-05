@@ -41,18 +41,6 @@ LL | #[path = "auxiliary/lint_unused_extern_crate.rs"]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:53:1
-   |
-LL | #[ignore = "some text"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:52:1
-   |
-LL | #[ignore]
-   | ^^^^^^^^^
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:55:1
    |
 LL | #[should_panic(expected = "values don't match")]
@@ -164,6 +152,18 @@ note: attribute also specified here
    |
 LL |     #[macro_export]
    |     ^^^^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:53:1
+   |
+LL | #[ignore = "some text"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:52:1
+   |
+LL | #[ignore]
+   | ^^^^^^^^^
 
 error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:60:1
