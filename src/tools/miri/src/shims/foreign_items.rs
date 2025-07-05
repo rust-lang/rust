@@ -615,7 +615,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // This is a no-op shim that only exists to prevent making the allocator shims instantly stable.
                 let [] = this.check_shim(abi, CanonAbi::Rust, link_name, args)?;
             }
-            name if name == this.mangle_internal_symbol("__rust_alloc_error_handler_should_panic_v2") => {
+            name if name
+                == this.mangle_internal_symbol("__rust_alloc_error_handler_should_panic_v2") =>
+            {
                 // Gets the value of the `oom` option.
                 let [] = this.check_shim(abi, CanonAbi::Rust, link_name, args)?;
                 let val = this.tcx.sess.opts.unstable_opts.oom.should_panic();
