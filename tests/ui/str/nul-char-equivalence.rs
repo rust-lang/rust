@@ -1,7 +1,8 @@
+//! Checks that different NUL character representations are equivalent in strings and chars.
+
 //@ run-pass
 
-pub fn main()
-{
+pub fn main() {
     let all_nuls1 = "\0\x00\u{0}\u{0}";
     let all_nuls2 = "\u{0}\u{0}\x00\0";
     let all_nuls3 = "\u{0}\u{0}\x00\0";
@@ -17,11 +18,9 @@ pub fn main()
     assert_eq!(all_nuls3, all_nuls4);
 
     // all extracted characters in all_nuls are equivalent to each other
-    for c1 in all_nuls1.chars()
-    {
-        for c2 in all_nuls1.chars()
-        {
-            assert_eq!(c1,c2);
+    for c1 in all_nuls1.chars() {
+        for c2 in all_nuls1.chars() {
+            assert_eq!(c1, c2);
         }
     }
 
