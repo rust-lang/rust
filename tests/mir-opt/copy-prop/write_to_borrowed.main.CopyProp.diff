@@ -16,11 +16,10 @@
           _3 = const 'b';
           _5 = copy _3;
           _6 = &_3;
--         _4 = copy _5;
+          _4 = copy _5;
           (*_1) = copy (*_6);
           _6 = &_5;
--         _7 = dump_var::<char>(copy _4) -> [return: bb1, unwind unreachable];
-+         _7 = dump_var::<char>(copy _5) -> [return: bb1, unwind unreachable];
+          _7 = dump_var::<char>(copy _4) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {

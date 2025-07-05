@@ -239,7 +239,7 @@
 +         _48 = &mut (_19.0: &mut std::future::Ready<()>);
 +         _45 = copy (_19.0: &mut std::future::Ready<()>);
 +         StorageDead(_48);
-+         _47 = Pin::<&mut std::future::Ready<()>> { pointer: copy _45 };
++         _47 = copy _19;
 +         StorageDead(_47);
 +         _44 = &mut ((*_45).0: std::option::Option<()>);
 +         StorageLive(_49);
