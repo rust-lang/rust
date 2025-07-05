@@ -340,7 +340,7 @@ impl Step for CodegenBackend {
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
         rustc_cargo_env(builder, &mut cargo, target, build_compiler.stage);
 
-        let _guard = builder.msg_check(&format!("rustc_codegen_{backend}"), target, None);
+        let _guard = builder.msg_check(format!("rustc_codegen_{backend}"), target, None);
 
         let stamp = build_stamp::codegen_backend_stamp(builder, build_compiler, target, backend)
             .with_prefix("check");
