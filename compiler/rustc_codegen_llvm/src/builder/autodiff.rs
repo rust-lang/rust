@@ -1,6 +1,7 @@
 use std::ptr;
 
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem, DiffActivity, DiffMode};
+use rustc_ast::expand::typetree::{FncTree, TypeTree};
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::back::write::ModuleConfig;
 use rustc_codegen_ssa::common::TypeKind;
@@ -16,8 +17,10 @@ use crate::declare::declare_simple_fn;
 use crate::errors::{AutoDiffWithoutEnable, LlvmError};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{Metadata, True};
+use crate::typetree::to_enzyme_typetree;
 use crate::value::Value;
-use crate::{CodegenContext, LlvmCodegenBackend, ModuleLlvm, attributes, llvm};
+use crate::{CodegenContext, LlvmCodegenBackend, ModuleLlvm, attributes, llvm, DiffTypeTree};
+use rustc_data_structures::fx::FxHashMap;
 
 fn get_params(fnc: &Value) -> Vec<&Value> {
     let param_num = llvm::LLVMCountParams(fnc) as usize;
@@ -294,6 +297,7 @@ fn generate_enzyme_call<'ll>(
     fn_to_diff: &'ll Value,
     outer_fn: &'ll Value,
     attrs: AutoDiffAttrs,
+    fnc_tree: Option<FncTree>,
 ) {
     // We have to pick the name depending on whether we want forward or reverse mode autodiff.
     let mut ad_name: String = match attrs.mode {
@@ -360,6 +364,15 @@ fn generate_enzyme_call<'ll>(
         // do it's work.
         let attr = llvm::AttributeKind::NoInline.create_attr(cx.llcx);
         attributes::apply_to_llfn(ad_fn, Function, &[attr]);
+
+        // TODO(KMJ-007): Add type tree metadata if available
+        // This requires adding CreateTypeTreeAttribute to LLVM bindings
+        // if let Some(tree) = fnc_tree {
+        //     let data_layout = cx.data_layout();
+        //     let enzyme_tree = to_enzyme_typetree(tree, data_layout, cx.llcx);
+        //     let tt_attr = llvm::CreateTypeTreeAttribute(cx.llcx, enzyme_tree);
+        //     attributes::apply_to_llfn(ad_fn, Function, &[tt_attr]);
+        // }
 
         // We add a made-up attribute just such that we can recognize it after AD to update
         // (no)-inline attributes. We'll then also remove this attribute.
@@ -461,6 +474,7 @@ pub(crate) fn differentiate<'ll>(
     module: &'ll ModuleCodegen<ModuleLlvm>,
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diff_items: Vec<AutoDiffItem>,
+    typetrees: FxHashMap<String, DiffTypeTree>,
     _config: &ModuleConfig,
 ) -> Result<(), FatalError> {
     for item in &diff_items {
@@ -505,7 +519,22 @@ pub(crate) fn differentiate<'ll>(
             ));
         };
 
-        generate_enzyme_call(&cx, fn_def, fn_target, item.attrs.clone());
+        // Use type trees from the typetrees map if available, otherwise construct from item
+        let fnc_tree = if let Some(diff_tt) = typetrees.get(&item.source) {
+            Some(FncTree {
+                inputs: diff_tt.input_tt.clone(),
+                output: diff_tt.ret_tt.clone(),
+            })
+        } else if !item.inputs.is_empty() || !item.output.0.is_empty() {
+            Some(FncTree {
+                inputs: item.inputs.clone(),
+                output: item.output.clone(),
+            })
+        } else {
+            None
+        };
+
+        generate_enzyme_call(&cx, fn_def, fn_target, item.attrs.clone(), fnc_tree);
     }
 
     // FIXME(ZuseZ4): support SanitizeHWAddress and prevent illegal/unsupported opts

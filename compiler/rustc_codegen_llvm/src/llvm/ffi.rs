@@ -2670,4 +2670,7 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustSetNoSanitizeAddress(Global: &Value);
     pub(crate) fn LLVMRustSetNoSanitizeHWAddress(Global: &Value);
+
+    // Type Tree Attribute Functions
+    pub fn CreateTypeTreeAttribute<'a>(llcx: &'a Context, typetree: &'a TypeTree) -> &'a Attribute;
 }

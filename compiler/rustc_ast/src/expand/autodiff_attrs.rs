@@ -9,6 +9,7 @@ use std::str::FromStr;
 use crate::expand::{Decodable, Encodable, HashStable_Generic};
 use crate::ptr::P;
 use crate::{Ty, TyKind};
+use crate::expand::typetree::TypeTree;
 
 /// Forward and Reverse Mode are well known names for automatic differentiation implementations.
 /// Enzyme does support both, but with different semantics, see DiffActivity. The First variants
@@ -85,6 +86,9 @@ pub struct AutoDiffItem {
     /// The name of the function being generated
     pub target: String,
     pub attrs: AutoDiffAttrs,
+    // --- TypeTree support ---
+    pub inputs: Vec<TypeTree>,
+    pub output: TypeTree,
 }
 
 #[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -111,6 +115,10 @@ pub struct AutoDiffAttrs {
 impl AutoDiffAttrs {
     pub fn has_primal_ret(&self) -> bool {
         matches!(self.ret_activity, DiffActivity::Active | DiffActivity::Dual)
+    }
+    /// New constructor for type tree support
+    pub fn into_item(self, source: String, target: String, inputs: Vec<TypeTree>, output: TypeTree) -> AutoDiffItem {
+        AutoDiffItem { source, target, attrs: self, inputs, output }
     }
 }
 
@@ -284,6 +292,8 @@ impl AutoDiffAttrs {
 impl fmt::Display for AutoDiffItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Differentiating {} -> {}", self.source, self.target)?;
-        write!(f, " with attributes: {:?}", self.attrs)
+        write!(f, " with attributes: {:?}", self.attrs)?;
+        write!(f, " with inputs: {:?}", self.inputs)?;
+        write!(f, " with output: {:?}", self.output)
     }
 }
