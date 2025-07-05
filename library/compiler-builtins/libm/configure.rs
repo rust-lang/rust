@@ -43,8 +43,15 @@ impl Config {
         let out = cmd
             .output()
             .unwrap_or_else(|e| panic!("failed to run `{cmd:?}`: {e}"));
-        assert!(out.status.success(), "failed to run `{cmd:?}`");
         let rustc_cfg = str::from_utf8(&out.stdout).unwrap();
+
+        // If we couldn't query `rustc` (e.g. a custom JSON target was used), make the safe
+        // choice and leave `f16` and `f128` disabled.
+        let rustc_output_ok = out.status.success();
+        let reliable_f128 =
+            rustc_output_ok && rustc_cfg.lines().any(|l| l == "target_has_reliable_f128");
+        let reliable_f16 =
+            rustc_output_ok && rustc_cfg.lines().any(|l| l == "target_has_reliable_f16");
 
         Self {
             target_triple,
@@ -59,8 +66,8 @@ impl Config {
             target_string: env::var("TARGET").unwrap(),
             target_vendor: env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),
             target_features,
-            reliable_f128: rustc_cfg.lines().any(|l| l == "target_has_reliable_f128"),
-            reliable_f16: rustc_cfg.lines().any(|l| l == "target_has_reliable_f16"),
+            reliable_f128,
+            reliable_f16,
         }
     }
 }
