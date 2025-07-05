@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   libssl-dev \
   pkg-config \
+  strace \
   mingw-w64 \
   && rm -rf /var/lib/apt/lists/*
 
@@ -31,21 +32,6 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV SCRIPT \
-        python3 ../x.py check && \
-        python3 ../x.py clippy ci --stage 2 && \
-        python3 ../x.py test --stage 1 core alloc std test proc_macro && \
-        # Elsewhere, we run all tests for the host. A number of codegen tests are sensitive to the target pointer
-        # width, for example because they mention a usize. wasm32-wasip1 in test-various, so using it here can't make
-        # PR CI more strict than full CI.
-        python3 ../x.py test --stage 1 tests/codegen-llvm --target wasm32-wasip1 && \
-        python3 ../x.py test --stage 1 src/tools/compiletest && \
-        python3 ../x.py doc bootstrap --stage 1 && \
-        # Build both public and internal documentation.
-        RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc compiler --stage 1 && \
-        RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc library --stage 1 && \
-        mkdir -p /checkout/obj/staging/doc && \
-        cp -r build/x86_64-unknown-linux-gnu/doc /checkout/obj/staging && \
-        RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc library/test --stage 1 && \
-        # The BOOTSTRAP_TRACING flag is added to verify whether the
-        # bootstrap process compiles successfully with this flag enabled.
-        BOOTSTRAP_TRACING=1 python3 ../x.py --help
+        ldd --version && \
+        python3 ../x.py test --stage 1 std -- "write_at" || \
+        strace -ffe write,pwritev2,pwrite64,pwritev python3 ../x.py test --stage 1 std -- "write_at"

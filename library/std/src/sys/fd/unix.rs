@@ -702,6 +702,7 @@ impl FileDesc {
                     if let Some(err) = e.raw_os_error()
                         && (err == libc::EOPNOTSUPP || err == libc::ENOSYS) =>
                 {
+                    eprintln!("pwritev2 NOAPPEND error: {err}");
                     NOAPPEND_SUPPORTED.store(false, core::sync::atomic::Ordering::Relaxed);
                     return None;
                 }
