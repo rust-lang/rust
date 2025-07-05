@@ -221,17 +221,18 @@ impl ReprOptions {
 /// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
 pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
 
-/// Informations relative to a specific address space.
+/// How pointers are represented in a given address space
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct AddressSpaceInfo {
+pub struct PointerSpec {
     /// The size of the bitwise representation of the pointer.
     pointer_size: Size,
-    /// The ABI alignment requirements for pointers in this address space.
+    /// The alignment of pointers for this address space
     pointer_align: AbiAlign,
-    /// The preferred alignment specification for pointers in this address space.
-    pointer_preferred_align: AbiAlign,
-    /// The size of the index that used for address calculations on pointers in this address space.
-    pointer_index: Size,
+    /// The size of the value a pointer can be offset by in this address space.
+    pointer_offset: Size,
+    /// Pointers into this address space contain extra metadata
+    /// FIXME(workingjubilee): Consider adequately reflecting this in the compiler?
+    _is_fat: bool,
 }
 
 /// Parsed [Data layout](https://llvm.org/docs/LangRef.html#data-layout)
@@ -255,15 +256,15 @@ pub struct TargetDataLayout {
     pub vector_align: Vec<(Size, AbiAlign)>,
 
     pub default_address_space: AddressSpace,
-    pub default_address_space_info: AddressSpaceInfo,
+    pub default_address_space_pointer_spec: PointerSpec,
 
-    /// The address space informations relative to all the known address spaces.
+    /// Address space information of all known address spaces.
     ///
     /// # Note
     ///
-    /// This vector does not contain the [`AddressSpaceInfo`] relative to the default address space,
-    /// which instead lives in [`Self::default_address_space_info`].
-    address_space_info: Vec<(AddressSpace, AddressSpaceInfo)>,
+    /// This vector does not contain the [`PointerSpec`] relative to the default address space,
+    /// which instead lives in [`Self::default_address_space_pointer_spec`].
+    address_space_info: Vec<(AddressSpace, PointerSpec)>,
 
     pub instruction_address_space: AddressSpace,
 
@@ -295,11 +296,11 @@ impl Default for TargetDataLayout {
                 (Size::from_bits(128), AbiAlign::new(align(128))),
             ],
             default_address_space: AddressSpace::ZERO,
-            default_address_space_info: AddressSpaceInfo {
+            default_address_space_pointer_spec: PointerSpec {
                 pointer_size: Size::from_bits(64),
                 pointer_align: AbiAlign::new(align(64)),
-                pointer_preferred_align: AbiAlign::new(align(64)),
-                pointer_index: Size::from_bits(64),
+                pointer_offset: Size::from_bits(64),
+                _is_fat: false,
             },
             address_space_info: vec![],
             instruction_address_space: AddressSpace::ZERO,
@@ -388,11 +389,18 @@ impl TargetDataLayout {
                 ["f64", a @ ..] => dl.f64_align = parse_align_seq(a, "f64")?,
                 ["f128", a @ ..] => dl.f128_align = parse_align_seq(a, "f128")?,
                 [p, s, a @ ..] if p.starts_with("p") => {
-                    let p = p.strip_prefix('p').unwrap();
+                    let mut p = p.strip_prefix('p').unwrap();
+                    let mut _is_fat = false;
 
                     // Some targets, such as CHERI, use the 'f' suffix in the p- spec to signal that
                     // they use 'fat' pointers. The resulting prefix may look like `pf<addr_space>`.
-                    // However, we currently don't take into account those further specifications:
+
+                    if p.starts_with('f') {
+                        p = p.strip_prefix('f').unwrap();
+                        _is_fat = true;
+                    }
+
+                    // However, we currently don't take into account further specifications:
                     // an error is emitted instead.
                     if p.starts_with(char::is_alphabetic) {
                         return Err(TargetDataLayoutErrors::UnknownPointerSpecification {
@@ -408,14 +416,14 @@ impl TargetDataLayout {
 
                     let pointer_size = parse_size(s, "p-")?;
                     let pointer_align = parse_align_seq(a, "p-")?;
-                    let info = AddressSpaceInfo {
-                        pointer_index: pointer_size,
+                    let info = PointerSpec {
+                        pointer_offset: pointer_size,
                         pointer_size,
-                        pointer_preferred_align: pointer_align,
                         pointer_align,
+                        _is_fat,
                     };
                     if addr_space == default_address_space {
-                        dl.default_address_space_info = info;
+                        dl.default_address_space_pointer_spec = info;
                     } else {
                         match dl.address_space_info.iter_mut().find(|(a, _)| *a == addr_space) {
                             Some(e) => e.1 = info,
@@ -425,12 +433,19 @@ impl TargetDataLayout {
                         }
                     }
                 }
-                [p, s, a, pr, i] if p.starts_with("p") => {
-                    let p = p.strip_prefix('p').unwrap();
+                [p, s, a, _pr, i] if p.starts_with("p") => {
+                    let mut p = p.strip_prefix('p').unwrap();
+                    let mut _is_fat = false;
 
                     // Some targets, such as CHERI, use the 'f' suffix in the p- spec to signal that
                     // they use 'fat' pointers. The resulting prefix may look like `pf<addr_space>`.
-                    // However, we currently don't take into account those further specifications:
+
+                    if p.starts_with('f') {
+                        p = p.strip_prefix('f').unwrap();
+                        _is_fat = true;
+                    }
+
+                    // However, we currently don't take into account further specifications:
                     // an error is emitted instead.
                     if p.starts_with(char::is_alphabetic) {
                         return Err(TargetDataLayoutErrors::UnknownPointerSpecification {
@@ -444,15 +459,15 @@ impl TargetDataLayout {
                         AddressSpace::ZERO
                     };
 
-                    let info = AddressSpaceInfo {
+                    let info = PointerSpec {
                         pointer_size: parse_size(s, "p-")?,
                         pointer_align: parse_align_str(a, "p-")?,
-                        pointer_preferred_align: parse_align_str(pr, "p-")?,
-                        pointer_index: parse_size(i, "p-")?,
+                        pointer_offset: parse_size(i, "p-")?,
+                        _is_fat,
                     };
 
                     if addr_space == default_address_space {
-                        dl.default_address_space_info = info;
+                        dl.default_address_space_pointer_spec = info;
                     } else {
                         match dl.address_space_info.iter_mut().find(|(a, _)| *a == addr_space) {
                             Some(e) => e.1 = info,
@@ -498,7 +513,7 @@ impl TargetDataLayout {
             }
         }
 
-        // Inherit, if not given, address space informations for specific LLVM elements from the
+        // Inherit, if not given, address space information for specific LLVM elements from the
         // default data address space.
         if (dl.instruction_address_space != dl.default_address_space)
             && dl
@@ -507,8 +522,10 @@ impl TargetDataLayout {
                 .find(|(a, _)| *a == dl.instruction_address_space)
                 .is_none()
         {
-            dl.address_space_info
-                .push((dl.instruction_address_space, dl.default_address_space_info.clone()));
+            dl.address_space_info.push((
+                dl.instruction_address_space,
+                dl.default_address_space_pointer_spec.clone(),
+            ));
         }
 
         Ok(dl)
@@ -556,7 +573,7 @@ impl TargetDataLayout {
     #[inline]
     pub fn ptr_sized_integer(&self) -> Integer {
         use Integer::*;
-        match self.pointer_index().bits() {
+        match self.pointer_offset().bits() {
             16 => I16,
             32 => I32,
             64 => I64,
@@ -567,7 +584,7 @@ impl TargetDataLayout {
     #[inline]
     pub fn ptr_sized_integer_in(&self, address_space: AddressSpace) -> Integer {
         use Integer::*;
-        match self.pointer_index_in(address_space).bits() {
+        match self.pointer_offset_in(address_space).bits() {
             16 => I16,
             32 => I32,
             64 => I64,
@@ -595,14 +612,14 @@ impl TargetDataLayout {
     /// Get the pointer size in the default data address space.
     #[inline]
     pub fn pointer_size(&self) -> Size {
-        self.default_address_space_info.pointer_size
+        self.default_address_space_pointer_spec.pointer_size
     }
 
     /// Get the pointer size in a specific address space.
     #[inline]
     pub fn pointer_size_in(&self, c: AddressSpace) -> Size {
         if c == self.default_address_space {
-            return self.default_address_space_info.pointer_size;
+            return self.default_address_space_pointer_spec.pointer_size;
         }
 
         if let Some(e) = self.address_space_info.iter().find(|(a, _)| a == &c) {
@@ -614,19 +631,19 @@ impl TargetDataLayout {
 
     /// Get the pointer index in the default data address space.
     #[inline]
-    pub fn pointer_index(&self) -> Size {
-        self.default_address_space_info.pointer_index
+    pub fn pointer_offset(&self) -> Size {
+        self.default_address_space_pointer_spec.pointer_offset
     }
 
     /// Get the pointer index in a specific address space.
     #[inline]
-    pub fn pointer_index_in(&self, c: AddressSpace) -> Size {
+    pub fn pointer_offset_in(&self, c: AddressSpace) -> Size {
         if c == self.default_address_space {
-            return self.default_address_space_info.pointer_index;
+            return self.default_address_space_pointer_spec.pointer_offset;
         }
 
         if let Some(e) = self.address_space_info.iter().find(|(a, _)| a == &c) {
-            e.1.pointer_index
+            e.1.pointer_offset
         } else {
             panic!("Use of unknown address space {c:?}");
         }
@@ -635,38 +652,18 @@ impl TargetDataLayout {
     /// Get the pointer alignment in the default data address space.
     #[inline]
     pub fn pointer_align(&self) -> AbiAlign {
-        self.default_address_space_info.pointer_align
+        self.default_address_space_pointer_spec.pointer_align
     }
 
     /// Get the pointer alignment in a specific address space.
     #[inline]
     pub fn pointer_align_in(&self, c: AddressSpace) -> AbiAlign {
         if c == self.default_address_space {
-            return self.default_address_space_info.pointer_align;
+            return self.default_address_space_pointer_spec.pointer_align;
         }
 
         if let Some(e) = self.address_space_info.iter().find(|(a, _)| a == &c) {
             e.1.pointer_align
-        } else {
-            panic!("Use of unknown address space {c:?}");
-        }
-    }
-
-    /// Get the preferred pointer alignment in the default data address space.
-    #[inline]
-    pub fn pointer_preferred_align(&self) -> AbiAlign {
-        self.default_address_space_info.pointer_preferred_align
-    }
-
-    /// Get the preferred pointer alignment in a specific address space.
-    #[inline]
-    pub fn pointer_preferred_align_in(&self, c: AddressSpace) -> AbiAlign {
-        if c == self.default_address_space {
-            return self.default_address_space_info.pointer_preferred_align;
-        }
-
-        if let Some(e) = self.address_space_info.iter().find(|(a, _)| a == &c) {
-            e.1.pointer_preferred_align
         } else {
             panic!("Use of unknown address space {c:?}");
         }
