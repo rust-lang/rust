@@ -1,0 +1,13 @@
+error[E0428]: the name `method` is defined multiple times
+  --> $DIR/rpitit-duplicate-associated-fn.rs:5:5
+   |
+LL |     fn method() -> impl Sized;
+   |     -------------------------- previous definition of the value `method` here
+LL |     fn method() -> impl Sized;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ `method` redefined here
+   |
+   = note: `method` must be defined only once in the value namespace of this trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0428`.
