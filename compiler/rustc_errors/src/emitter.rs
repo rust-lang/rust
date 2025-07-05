@@ -28,7 +28,6 @@ use rustc_span::{FileLines, FileName, SourceFile, Span, char_width, str_width};
 use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tracing::{debug, instrument, trace, warn};
 
-use crate::diagnostic::DiagLocation;
 use crate::registry::Registry;
 use crate::snippet::{
     Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
@@ -505,6 +504,10 @@ impl Emitter for HumanEmitter {
     fn emit_diagnostic(&mut self, mut diag: DiagInner, _registry: &Registry) {
         let fluent_args = to_fluent_args(diag.args.iter());
 
+        if self.track_diagnostics && diag.span.has_primary_spans() && !diag.span.is_dummy() {
+            diag.children.insert(0, diag.emitted_at_sub_diag());
+        }
+
         let mut suggestions = diag.suggestions.unwrap_tag();
         self.primary_span_formatted(&mut diag.span, &mut suggestions, &fluent_args);
 
@@ -523,7 +526,6 @@ impl Emitter for HumanEmitter {
             &diag.span,
             &diag.children,
             &suggestions,
-            self.track_diagnostics.then_some(&diag.emitted_at),
         );
     }
 
@@ -1468,7 +1470,6 @@ impl HumanEmitter {
         level: &Level,
         max_line_num_len: usize,
         is_secondary: bool,
-        emitted_at: Option<&DiagLocation>,
         is_cont: bool,
     ) -> io::Result<()> {
         let mut buffer = StyledBuffer::new();
@@ -1978,12 +1979,6 @@ impl HumanEmitter {
             trace!("buffer: {:#?}", buffer.render());
         }
 
-        if let Some(tracked) = emitted_at {
-            let track = format!("-Ztrack-diagnostics: created at {tracked}");
-            let len = buffer.num_lines();
-            buffer.append(len, &track, Style::NoStyle);
-        }
-
         // final step: take our styled buffer, render it, then output it
         emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
 
@@ -2478,7 +2473,6 @@ impl HumanEmitter {
         span: &MultiSpan,
         children: &[Subdiag],
         suggestions: &[CodeSuggestion],
-        emitted_at: Option<&DiagLocation>,
     ) {
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()
@@ -2495,7 +2489,6 @@ impl HumanEmitter {
             level,
             max_line_num_len,
             false,
-            emitted_at,
             !children.is_empty()
                 || suggestions.iter().any(|s| s.style != SuggestionStyle::CompletelyHidden),
         ) {
@@ -2541,7 +2534,6 @@ impl HumanEmitter {
                             &child.level,
                             max_line_num_len,
                             true,
-                            None,
                             !should_close,
                         ) {
                             panic!("failed to emit error: {err}");
@@ -2561,7 +2553,6 @@ impl HumanEmitter {
                                     &Level::Help,
                                     max_line_num_len,
                                     true,
-                                    None,
                                     // FIXME: this needs to account for the suggestion type,
                                     //        some don't take any space.
                                     i + 1 != suggestions.len(),

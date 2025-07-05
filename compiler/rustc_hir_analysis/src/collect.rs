@@ -61,6 +61,7 @@ mod type_of;
 
 ///////////////////////////////////////////////////////////////////////////
 
+/// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
 pub(crate) fn provide(providers: &mut Providers) {
     resolve_bound_vars::provide(providers);
     *providers = Providers {
@@ -778,9 +779,11 @@ fn lower_variant<'tcx>(
         fields,
         parent_did.to_def_id(),
         recovered,
-        adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, sym::non_exhaustive)
-            || variant_did
-                .is_some_and(|variant_did| tcx.has_attr(variant_did, sym::non_exhaustive)),
+        adt_kind == AdtKind::Struct
+            && find_attr!(tcx.get_all_attrs(parent_did), AttributeKind::NonExhaustive(..))
+            || variant_did.is_some_and(|variant_did| {
+                find_attr!(tcx.get_all_attrs(variant_did), AttributeKind::NonExhaustive(..))
+            }),
     )
 }
 

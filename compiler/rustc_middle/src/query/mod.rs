@@ -195,7 +195,6 @@ rustc_queries! {
     }
 
     query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
-        no_hash
         desc { "getting the resolver outputs" }
     }
 
@@ -2264,9 +2263,6 @@ rustc_queries! {
     }
     query maybe_unused_trait_imports(_: ()) -> &'tcx FxIndexSet<LocalDefId> {
         desc { "fetching potentially unused trait imports" }
-    }
-    query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx FxIndexSet<Symbol> {
-        desc { |tcx| "finding names imported by glob use for `{}`", tcx.def_path_str(def_id) }
     }
 
     query stability_index(_: ()) -> &'tcx stability::Index {

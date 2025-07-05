@@ -1404,6 +1404,9 @@ project-exploit-mitigations = [
 compiletest = [
     "@jieyouxu",
 ]
+dep-bumps = [
+    "@clubby789",
+]
 
 [assign.owners]
 "/.github/workflows" =                                   ["infra-ci"]

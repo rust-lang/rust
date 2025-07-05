@@ -222,6 +222,7 @@ enum BinderScopeType {
 
 type ScopeRef<'a> = &'a Scope<'a>;
 
+/// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         resolve_bound_vars,

@@ -130,6 +130,7 @@ fn enforce_empty_impls_for_marker_traits(
     .emit())
 }
 
+/// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`].
 pub(crate) fn provide(providers: &mut Providers) {
     use self::builtin::coerce_unsized_info;
     use self::inherent_impls::{

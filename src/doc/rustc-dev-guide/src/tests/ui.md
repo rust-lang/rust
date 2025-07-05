@@ -453,9 +453,9 @@ even run the resulting program. Just add one of the following
   - `//@ check-fail` — compilation should fail (the codegen phase is skipped).
     This is the default for UI tests.
   - `//@ build-fail` — compilation should fail during the codegen phase.
-    This will run `rustc` twice, once to verify that it compiles successfully
-    without the codegen phase, then a second time the full compile should
-    fail.
+    This will run `rustc` twice:
+    - First time is to ensure that the compile succeeds without the codegen phase
+    - Second time is to ensure that the full compile fails
   - `//@ run-fail` — compilation should succeed, but running the resulting
     binary should fail.
 

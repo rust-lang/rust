@@ -2,6 +2,24 @@
 
 <!-- toc -->
 
+<div class="warning">
+
+For `profile = "library"` users, or users who use `download-rustc = true | "if-unchanged"`, please be advised that
+the `./x test library/std` flow where `download-rustc` is active (i.e. no compiler changes) is currently broken.
+This is tracked in <https://github.com/rust-lang/rust/issues/142505>. Only the `./x test` flow is affected in this
+case, `./x {check,build} library/std` should still work.
+
+In the short-term, you may need to disable `download-rustc` for `./x test library/std`. This can be done either by:
+
+1. `./x test library/std --set rust.download-rustc=false`
+2. Or set `rust.download-rustc=false` in `bootstrap.toml`.
+
+Unfortunately that will require building the stage 1 compiler. The bootstrap team is working on this, but
+implementing a maintainable fix is taking some time.
+
+</div>
+
+
 The compiler is built using a tool called `x.py`. You will need to
 have Python installed to run it.
 

@@ -621,7 +621,7 @@ impl Item {
     }
 
     pub(crate) fn is_non_exhaustive(&self) -> bool {
-        self.attrs.other_attrs.iter().any(|a| a.has_name(sym::non_exhaustive))
+        find_attr!(&self.attrs.other_attrs, AttributeKind::NonExhaustive(..))
     }
 
     /// Returns a documentation-level item type from the item.
@@ -647,7 +647,20 @@ impl Item {
         ) -> hir::FnHeader {
             let sig = tcx.fn_sig(def_id).skip_binder();
             let constness = if tcx.is_const_fn(def_id) {
-                hir::Constness::Const
+                // rustc's `is_const_fn` returns `true` for associated functions that have an `impl const` parent
+                // or that have a `#[const_trait]` parent. Do not display those as `const` in rustdoc because we
+                // won't be printing correct syntax plus the syntax is unstable.
+                match tcx.opt_associated_item(def_id) {
+                    Some(ty::AssocItem {
+                        container: ty::AssocItemContainer::Impl,
+                        trait_item_def_id: Some(_),
+                        ..
+                    })
+                    | Some(ty::AssocItem { container: ty::AssocItemContainer::Trait, .. }) => {
+                        hir::Constness::NotConst
+                    }
+                    None | Some(_) => hir::Constness::Const,
+                }
             } else {
                 hir::Constness::NotConst
             };
@@ -763,6 +776,8 @@ impl Item {
                 } else if let hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) = attr
                 {
                     Some(format!("#[export_name = \"{name}\"]"))
+                } else if let hir::Attribute::Parsed(AttributeKind::NonExhaustive(..)) = attr {
+                    Some("#[non_exhaustive]".to_string())
                 } else if is_json {
                     match attr {
                         // rustdoc-json stores this in `Item::deprecation`, so we

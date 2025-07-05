@@ -5,8 +5,8 @@ use std::io::Read;
 use serde::Serialize;
 use stable_mir::mir::mono::{Instance, StaticDef};
 use stable_mir::target::{Endian, MachineInfo};
-use stable_mir::ty::{Allocation, Binder, ExistentialTraitRef, IndexedVal, Ty};
-use stable_mir::{Error, with};
+use stable_mir::ty::{Allocation, Binder, ExistentialTraitRef, Ty};
+use stable_mir::{Error, IndexedVal, with};
 
 use crate::stable_mir;
 

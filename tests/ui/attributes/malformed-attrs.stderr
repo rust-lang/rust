@@ -65,12 +65,6 @@ error: malformed `no_sanitize` attribute input
 LL | #[no_sanitize]
    | ^^^^^^^^^^^^^^ help: must be of the form: `#[no_sanitize(address, kcfi, memory, thread)]`
 
-error: malformed `no_implicit_prelude` attribute input
-  --> $DIR/malformed-attrs.rs:96:1
-   |
-LL | #[no_implicit_prelude = 23]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[no_implicit_prelude]`
-
 error: malformed `proc_macro` attribute input
   --> $DIR/malformed-attrs.rs:98:1
    |
@@ -211,12 +205,6 @@ error: malformed `automatically_derived` attribute input
    |
 LL | #[automatically_derived = 18]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[automatically_derived]`
-
-error: malformed `non_exhaustive` attribute input
-  --> $DIR/malformed-attrs.rs:196:1
-   |
-LL | #[non_exhaustive = 1]
-   | ^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[non_exhaustive]`
 
 error: malformed `thread_local` attribute input
   --> $DIR/malformed-attrs.rs:202:1
@@ -514,6 +502,15 @@ error[E0539]: malformed `link_section` attribute input
 LL | #[link_section]
    | ^^^^^^^^^^^^^^^ help: must be of the form: `#[link_section = "name"]`
 
+error[E0565]: malformed `no_implicit_prelude` attribute input
+  --> $DIR/malformed-attrs.rs:96:1
+   |
+LL | #[no_implicit_prelude = 23]
+   | ^^^^^^^^^^^^^^^^^^^^^^----^
+   | |                     |
+   | |                     didn't expect any arguments here
+   | help: must be of the form: `#[no_implicit_prelude]`
+
 error[E0539]: malformed `must_use` attribute input
   --> $DIR/malformed-attrs.rs:118:1
    |
@@ -548,6 +545,15 @@ LL | #[rustc_layout_scalar_valid_range_end]
    | |
    | expected this to be a list
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
+
+error[E0565]: malformed `non_exhaustive` attribute input
+  --> $DIR/malformed-attrs.rs:196:1
+   |
+LL | #[non_exhaustive = 1]
+   | ^^^^^^^^^^^^^^^^^---^
+   | |                |
+   | |                didn't expect any arguments here
+   | help: must be of the form: `#[non_exhaustive]`
 
 error: attribute should be applied to `const fn`
   --> $DIR/malformed-attrs.rs:34:1
