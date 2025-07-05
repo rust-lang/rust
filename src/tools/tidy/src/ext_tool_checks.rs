@@ -65,6 +65,13 @@ fn check_impl(
         None => vec![],
     };
 
+    if lint_args.contains(&"spellcheck:fix") {
+        return Err(Error::Generic(
+            "`spellcheck:fix` is no longer valid, use `--extra=check=spellcheck --bless`"
+                .to_string(),
+        ));
+    }
+
     let python_all = lint_args.contains(&"py");
     let python_lint = lint_args.contains(&"py:lint") || python_all;
     let python_fmt = lint_args.contains(&"py:fmt") || python_all;
