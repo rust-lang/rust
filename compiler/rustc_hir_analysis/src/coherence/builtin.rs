@@ -654,7 +654,7 @@ fn infringing_fields_error<'tcx>(
                                 .or_default()
                                 .push(origin.span());
                             if let ty::RegionKind::ReEarlyParam(ebr) = b.kind()
-                                && ebr.has_name()
+                                && ebr.is_named()
                             {
                                 bounds.push((b.to_string(), a.to_string(), None));
                             }

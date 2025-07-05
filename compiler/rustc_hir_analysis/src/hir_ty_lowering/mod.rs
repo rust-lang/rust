@@ -392,16 +392,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     #[instrument(level = "debug", skip(self), ret)]
     pub fn lower_resolved_lifetime(&self, resolved: rbv::ResolvedArg) -> ty::Region<'tcx> {
         let tcx = self.tcx();
-        let lifetime_name = |def_id| tcx.hir_name(tcx.local_def_id_to_hir_id(def_id));
 
         match resolved {
             rbv::ResolvedArg::StaticLifetime => tcx.lifetimes.re_static,
 
             rbv::ResolvedArg::LateBound(debruijn, index, def_id) => {
-                let name = lifetime_name(def_id);
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_u32(index),
-                    kind: ty::BoundRegionKind::Named(def_id.to_def_id(), name),
+                    kind: ty::BoundRegionKind::Named(def_id.to_def_id()),
                 };
                 ty::Region::new_bound(tcx, debruijn, br)
             }
@@ -415,11 +413,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
 
             rbv::ResolvedArg::Free(scope, id) => {
-                let name = lifetime_name(id);
                 ty::Region::new_late_param(
                     tcx,
                     scope.to_def_id(),
-                    ty::LateParamRegionKind::Named(id.to_def_id(), name),
+                    ty::LateParamRegionKind::Named(id.to_def_id()),
                 )
 
                 // (*) -- not late-bound, won't change
@@ -2070,10 +2067,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
         match tcx.named_bound_var(hir_id) {
             Some(rbv::ResolvedArg::LateBound(debruijn, index, def_id)) => {
-                let name = tcx.item_name(def_id.to_def_id());
                 let br = ty::BoundTy {
                     var: ty::BoundVar::from_u32(index),
-                    kind: ty::BoundTyKind::Param(def_id.to_def_id(), name),
+                    kind: ty::BoundTyKind::Param(def_id.to_def_id()),
                 };
                 Ty::new_bound(tcx, debruijn, br)
             }
@@ -2749,18 +2745,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         generate_err: impl Fn(&str) -> Diag<'cx>,
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
-            let br_name = match *br {
-                ty::BoundRegionKind::Named(_, kw::UnderscoreLifetime)
-                | ty::BoundRegionKind::Anon
-                | ty::BoundRegionKind::ClosureEnv => "an anonymous lifetime".to_string(),
-                ty::BoundRegionKind::Named(_, name) => format!("lifetime `{name}`"),
+            let br_name = if let Some(name) = br.get_name(self.tcx()) {
+                format!("lifetime `{name}`")
+            } else {
+                "an anonymous lifetime".to_string()
             };
 
             let mut err = generate_err(&br_name);
 
-            if let ty::BoundRegionKind::Named(_, kw::UnderscoreLifetime)
-            | ty::BoundRegionKind::Anon = *br
-            {
+            if !br.is_named(self.tcx()) {
                 // The only way for an anonymous lifetime to wind up
                 // in the return type but **also** be unconstrained is
                 // if it only appears in "associated types" in the
