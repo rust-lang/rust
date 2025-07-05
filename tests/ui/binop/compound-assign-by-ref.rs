@@ -1,9 +1,8 @@
+//! Test compound assignment operators with reference right-hand side.
+
 //@ run-pass
 
 fn main() {
-    // test compound assignment operators with ref as right-hand side,
-    // for each operator, with various types as operands.
-
     // test AddAssign
     {
         let mut x = 3i8;

@@ -1,5 +1,5 @@
 error[E0275]: overflow assigning `Clam<_>` to `_`
-  --> $DIR/occurs-check-3.rs:6:17
+  --> $DIR/enum-self-reference-occurs-check.rs:11:17
    |
 LL |     c = Clam::A(c);
    |                 ^

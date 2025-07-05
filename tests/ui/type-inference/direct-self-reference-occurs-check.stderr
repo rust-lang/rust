@@ -1,8 +1,8 @@
 error[E0275]: overflow assigning `Box<_>` to `_`
-  --> $DIR/occurs-check-2.rs:6:9
+  --> $DIR/direct-self-reference-occurs-check.rs:7:18
    |
-LL |     g = f;
-   |         ^
+LL |     f = Box::new(f);
+   |                  ^
 
 error: aborting due to 1 previous error
 

@@ -1,3 +1,5 @@
+//! Test that out-of-memory conditions trigger catchable panics with `-Z oom=panic`.
+
 //@ compile-flags: -Z oom=panic
 //@ run-pass
 //@ no-prefer-dynamic
