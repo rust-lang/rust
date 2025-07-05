@@ -537,7 +537,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         #[inline]
         fn is_offset_misaligned(offset: u64, align: Align) -> Option<Misalignment> {
-            if offset % align.bytes() == 0 {
+            if offset.is_multiple_of(align.bytes()) {
                 None
             } else {
                 // The biggest power of two through which `offset` is divisible.
@@ -1554,7 +1554,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         // If the allocation is N-aligned, and the offset is not divisible by N,
                         // then `base + offset` has a non-zero remainder after division by `N`,
                         // which means `base + offset` cannot be null.
-                        if offset.bytes() % info.align.bytes() != 0 {
+                        if !offset.bytes().is_multiple_of(info.align.bytes()) {
                             return interp_ok(false);
                         }
                         // We don't know enough, this might be null.

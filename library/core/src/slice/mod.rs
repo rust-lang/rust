@@ -1316,7 +1316,7 @@ impl<T> [T] {
         assert_unsafe_precondition!(
             check_language_ub,
             "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
-            (n: usize = N, len: usize = self.len()) => n != 0 && len % n == 0,
+            (n: usize = N, len: usize = self.len()) => n != 0 && len.is_multiple_of(n),
         );
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe { exact_div(self.len(), N) };
@@ -1512,7 +1512,7 @@ impl<T> [T] {
         assert_unsafe_precondition!(
             check_language_ub,
             "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
-            (n: usize = N, len: usize = self.len()) => n != 0 && len % n == 0
+            (n: usize = N, len: usize = self.len()) => n != 0 && len.is_multiple_of(n)
         );
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe { exact_div(self.len(), N) };
@@ -4866,7 +4866,7 @@ impl<T> [T] {
 
         let byte_offset = elem_start.wrapping_sub(self_start);
 
-        if byte_offset % size_of::<T>() != 0 {
+        if !byte_offset.is_multiple_of(size_of::<T>()) {
             return None;
         }
 
@@ -4920,7 +4920,7 @@ impl<T> [T] {
 
         let byte_start = subslice_start.wrapping_sub(self_start);
 
-        if byte_start % size_of::<T>() != 0 {
+        if !byte_start.is_multiple_of(size_of::<T>()) {
             return None;
         }
 
