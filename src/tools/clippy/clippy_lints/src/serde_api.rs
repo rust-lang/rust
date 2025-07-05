@@ -36,9 +36,9 @@ impl<'tcx> LateLintPass<'tcx> for SerdeApi {
                 let mut seen_str = None;
                 let mut seen_string = None;
                 for item in *items {
-                    match item.ident.name {
-                        sym::visit_str => seen_str = Some(item.span),
-                        sym::visit_string => seen_string = Some(item.span),
+                    match cx.tcx.item_name(item.owner_id) {
+                        sym::visit_str => seen_str = Some(cx.tcx.def_span(item.owner_id)),
+                        sym::visit_string => seen_string = Some(cx.tcx.def_span(item.owner_id)),
                         _ => {},
                     }
                 }

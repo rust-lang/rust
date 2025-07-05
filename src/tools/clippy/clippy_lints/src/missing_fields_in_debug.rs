@@ -8,7 +8,7 @@ use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
-    Block, Expr, ExprKind, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, Node, QPath, TyKind, VariantData,
+    Block, Expr, ExprKind, Impl, Item, ItemKind, LangItem, Node, QPath, TyKind, VariantData,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{Ty, TypeckResults};
@@ -200,7 +200,7 @@ fn check_struct<'tcx>(
 impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         // is this an `impl Debug for X` block?
-        if let ItemKind::Impl(Impl { of_trait: Some(trait_ref), self_ty, items, .. }) = item.kind
+        if let ItemKind::Impl(Impl { of_trait: Some(trait_ref), self_ty, .. }) = item.kind
             && let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res
             && let TyKind::Path(QPath::Resolved(_, self_path)) = &self_ty.kind
             // make sure that the self type is either a struct, an enum or a union
@@ -212,9 +212,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
             && !cx.tcx.is_automatically_derived(item.owner_id.to_def_id())
             && !item.span.from_expansion()
             // find `Debug::fmt` function
-            && let Some(fmt_item) = items.iter().find(|i| i.ident.name == sym::fmt)
-            && let ImplItem { kind: ImplItemKind::Fn(_, body_id), .. } = cx.tcx.hir_impl_item(fmt_item.id)
-            && let body = cx.tcx.hir_body(*body_id)
+            && let Some(fmt_item) = cx.tcx.associated_items(item.owner_id).filter_by_name_unhygienic(sym::fmt).next()
+            && let body = cx.tcx.hir_body_owned_by(fmt_item.def_id.expect_local())
             && let ExprKind::Block(block, _) = body.value.kind
             // inspect `self`
             && let self_ty = cx.tcx.type_of(self_path_did).skip_binder().peel_refs()
@@ -222,7 +221,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
             && let Some(self_def_id) = self_adt.did().as_local()
             && let Node::Item(self_item) = cx.tcx.hir_node_by_def_id(self_def_id)
             // NB: can't call cx.typeck_results() as we are not in a body
-            && let typeck_results = cx.tcx.typeck_body(*body_id)
+            && let typeck_results = cx.tcx.typeck_body(body.id())
             && should_lint(cx, typeck_results, block)
             // we intentionally only lint structs, see lint description
             && let ItemKind::Struct(_, _, data) = &self_item.kind
