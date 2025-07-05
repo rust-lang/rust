@@ -445,6 +445,14 @@ pub enum AsciiChar {
 }
 
 impl AsciiChar {
+    /// The character with the lowest ASCII code.
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    pub const MIN: Self = Self::Null;
+
+    /// The character with the highest ASCII code.
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    pub const MAX: Self = Self::Delete;
+
     /// Creates an ASCII character from the byte `b`,
     /// or returns `None` if it's too large.
     #[unstable(feature = "ascii_char", issue = "110998")]
