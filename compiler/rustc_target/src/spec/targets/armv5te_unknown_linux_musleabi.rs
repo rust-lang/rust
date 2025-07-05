@@ -4,7 +4,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv5te-unknown-linux-musleabi".into(),
         metadata: TargetMetadata {
-            description: Some("Armv5TE Linux with musl 1.2.3".into()),
+            description: Some("Armv5TE Linux with musl 1.2.5".into()),
             tier: Some(2),
             host_tools: Some(false),
             std: Some(true),
