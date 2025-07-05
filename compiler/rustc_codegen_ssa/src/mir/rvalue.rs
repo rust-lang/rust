@@ -4,10 +4,9 @@ use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_session::config::OptLevel;
-use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
-use super::operand::{OperandRef, OperandValue};
+use super::operand::{OperandRef, OperandRefBuilder, OperandValue};
 use super::place::{PlaceRef, codegen_tag_value};
 use super::{FunctionCx, LocalRef};
 use crate::common::{IntPredicate, TypeKind};
@@ -181,7 +180,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             _ => {
-                assert!(self.rvalue_creates_operand(rvalue, DUMMY_SP));
+                assert!(self.rvalue_creates_operand(rvalue));
                 let temp = self.codegen_rvalue_operand(bx, rvalue);
                 temp.val.store(bx, dest);
             }
@@ -354,10 +353,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         rvalue: &mir::Rvalue<'tcx>,
     ) -> OperandRef<'tcx, Bx::Value> {
-        assert!(
-            self.rvalue_creates_operand(rvalue, DUMMY_SP),
-            "cannot codegen {rvalue:?} to operand",
-        );
+        assert!(self.rvalue_creates_operand(rvalue), "cannot codegen {rvalue:?} to operand",);
 
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref source, mir_cast_ty) => {
@@ -668,9 +664,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 // `rvalue_creates_operand` has arranged that we only get here if
                 // we can build the aggregate immediate from the field immediates.
-                let Some(mut builder) = OperandRef::builder(layout) else {
-                    bug!("Cannot use type in operand builder: {layout:?}")
-                };
+                let mut builder = OperandRefBuilder::new(layout);
                 for (field_idx, field) in fields.iter_enumerated() {
                     let op = self.codegen_operand(bx, field);
                     let fi = active_field_index.unwrap_or(field_idx);
@@ -980,7 +974,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// will not actually take the operand path because the result type is such
     /// that it always gets an `alloca`, but where it's not worth re-checking the
     /// layout in this code when the right thing will happen anyway.
-    pub(crate) fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
+    pub(crate) fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
         match *rvalue {
             mir::Rvalue::Cast(mir::CastKind::Transmute, ref operand, cast_ty) => {
                 let operand_ty = operand.ty(self.mir, self.cx.tcx());
@@ -1025,18 +1019,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::NullaryOp(..) |
             mir::Rvalue::ThreadLocalRef(_) |
             mir::Rvalue::Use(..) |
+            mir::Rvalue::Aggregate(..) | // (*)
             mir::Rvalue::WrapUnsafeBinder(..) => // (*)
                 true,
             // Arrays are always aggregates, so it's not worth checking anything here.
             // (If it's really `[(); N]` or `[T; 0]` and we use the place path, fine.)
             mir::Rvalue::Repeat(..) => false,
-            mir::Rvalue::Aggregate(..) => {
-                    let ty = rvalue.ty(self.mir, self.cx.tcx());
-                    let ty = self.monomorphize(ty);
-                    let layout = self.cx.spanned_layout_of(ty, span);
-                    OperandRef::<Bx::Value>::builder(layout).is_some()
-                }
-            }
+        }
 
         // (*) this is only true if the type is suitable
     }
