@@ -1,3 +1,5 @@
+//! Check that a local `use` declaration can shadow a re-exported item within the same module.
+
 //@ run-pass
 
 #![allow(unused_imports)]

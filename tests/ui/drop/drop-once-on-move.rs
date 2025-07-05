@@ -1,3 +1,7 @@
+//! Check that types not implementing `Copy` are moved, not copied, during assignment
+//! operations, and their `Drop` implementation is called exactly once when the
+//! value goes out of scope.
+
 //@ run-pass
 
 #![allow(non_camel_case_types)]
@@ -15,9 +19,7 @@ impl<'a> Drop for r<'a> {
 }
 
 fn r(i: &Cell<isize>) -> r<'_> {
-    r {
-        i: i
-    }
+    r { i }
 }
 
 pub fn main() {
