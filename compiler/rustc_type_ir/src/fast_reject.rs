@@ -198,26 +198,27 @@ pub struct DeepRejectCtxt<
     const INSTANTIATE_RHS_WITH_INFER: bool,
 > {
     _interner: PhantomData<I>,
+    self_param: Option<I::Ty>,
 }
 
 impl<I: Interner> DeepRejectCtxt<I, false, false> {
     /// Treat parameters in both the lhs and the rhs as rigid.
     pub fn relate_rigid_rigid(_interner: I) -> DeepRejectCtxt<I, false, false> {
-        DeepRejectCtxt { _interner: PhantomData }
+        DeepRejectCtxt { _interner: PhantomData, self_param: None }
     }
 }
 
 impl<I: Interner> DeepRejectCtxt<I, true, true> {
     /// Treat parameters in both the lhs and the rhs as infer vars.
     pub fn relate_infer_infer(_interner: I) -> DeepRejectCtxt<I, true, true> {
-        DeepRejectCtxt { _interner: PhantomData }
+        DeepRejectCtxt { _interner: PhantomData, self_param: None }
     }
 }
 
 impl<I: Interner> DeepRejectCtxt<I, false, true> {
     /// Treat parameters in the lhs as rigid, and in rhs as infer vars.
     pub fn relate_rigid_infer(_interner: I) -> DeepRejectCtxt<I, false, true> {
-        DeepRejectCtxt { _interner: PhantomData }
+        DeepRejectCtxt { _interner: PhantomData, self_param: None }
     }
 }
 
@@ -229,23 +230,28 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
     const STARTING_DEPTH: usize = 8;
 
     pub fn args_may_unify(
-        self,
+        mut self,
         obligation_args: I::GenericArgs,
         impl_args: I::GenericArgs,
     ) -> bool {
         self.args_may_unify_inner(obligation_args, impl_args, Self::STARTING_DEPTH)
     }
 
-    pub fn types_may_unify(self, lhs: I::Ty, rhs: I::Ty) -> bool {
+    pub fn types_may_unify(mut self, lhs: I::Ty, rhs: I::Ty) -> bool {
         self.types_may_unify_inner(lhs, rhs, Self::STARTING_DEPTH)
     }
 
-    pub fn types_may_unify_with_depth(self, lhs: I::Ty, rhs: I::Ty, depth_limit: usize) -> bool {
+    pub fn types_may_unify_with_depth(
+        mut self,
+        lhs: I::Ty,
+        rhs: I::Ty,
+        depth_limit: usize,
+    ) -> bool {
         self.types_may_unify_inner(lhs, rhs, depth_limit)
     }
 
     fn args_may_unify_inner(
-        self,
+        &mut self,
         obligation_args: I::GenericArgs,
         impl_args: I::GenericArgs,
         depth: usize,
@@ -268,7 +274,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         })
     }
 
-    fn types_may_unify_inner(self, lhs: I::Ty, rhs: I::Ty, depth: usize) -> bool {
+    fn types_may_unify_inner(&mut self, lhs: I::Ty, rhs: I::Ty, depth: usize) -> bool {
         if lhs == rhs {
             return true;
         }
@@ -276,8 +282,19 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         match rhs.kind() {
             // Start by checking whether the `rhs` type may unify with
             // pretty much everything. Just return `true` in that case.
-            ty::Param(_) => {
+            ty::Param(p) => {
                 if INSTANTIATE_RHS_WITH_INFER {
+                    if !INSTANTIATE_LHS_WITH_INFER && p.index() == 0 {
+                        if let Some(self_param) = self.self_param {
+                            return DeepRejectCtxt::<I, false, false> {
+                                _interner: PhantomData,
+                                self_param: None,
+                            }
+                            .types_may_unify(self_param, lhs);
+                        } else {
+                            self.self_param = Some(lhs);
+                        }
+                    }
                     return true;
                 }
             }
@@ -479,7 +496,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
 
     // Unlike `types_may_unify_inner`, this does not take a depth as
     // we never recurse from this function.
-    fn consts_may_unify_inner(self, lhs: I::Const, rhs: I::Const) -> bool {
+    fn consts_may_unify_inner(&mut self, lhs: I::Const, rhs: I::Const) -> bool {
         match rhs.kind() {
             ty::ConstKind::Param(_) => {
                 if INSTANTIATE_RHS_WITH_INFER {
@@ -527,7 +544,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         }
     }
 
-    fn var_and_ty_may_unify(self, var: ty::InferTy, ty: I::Ty) -> bool {
+    fn var_and_ty_may_unify(&mut self, var: ty::InferTy, ty: I::Ty) -> bool {
         if !ty.is_known_rigid() {
             return true;
         }
