@@ -731,9 +731,32 @@ impl InferenceContext<'_> {
                     &Pat::Expr(expr) => {
                         Some(self.infer_expr(expr, &Expectation::none(), ExprIsRead::No))
                     }
-                    Pat::Path(path) => Some(self.infer_expr_path(path, target.into(), tgt_expr)),
+                    Pat::Path(path) => {
+                        let resolver_guard =
+                            self.resolver.update_to_inner_scope(self.db, self.owner, tgt_expr);
+                        let resolution = self.resolver.resolve_path_in_value_ns_fully(
+                            self.db,
+                            path,
+                            self.body.pat_path_hygiene(target),
+                        );
+                        self.resolver.reset_to_guard(resolver_guard);
+
+                        if matches!(
+                            resolution,
+                            Some(
+                                ValueNs::ConstId(_)
+                                    | ValueNs::StructId(_)
+                                    | ValueNs::EnumVariantId(_)
+                            )
+                        ) {
+                            None
+                        } else {
+                            Some(self.infer_expr_path(path, target.into(), tgt_expr))
+                        }
+                    }
                     _ => None,
                 };
+                let is_destructuring_assignment = lhs_ty.is_none();
 
                 if let Some(lhs_ty) = lhs_ty {
                     self.write_pat_ty(target, lhs_ty.clone());
@@ -747,7 +770,15 @@ impl InferenceContext<'_> {
                     self.inside_assignment = false;
                     self.resolver.reset_to_guard(resolver_guard);
                 }
-                self.result.standard_types.unit.clone()
+                if is_destructuring_assignment && self.diverges.is_always() {
+                    // Ordinary assignments always return `()`, even when they diverge.
+                    // However, rustc lowers destructuring assignments into blocks, and blocks return `!` if they have no tail
+                    // expression and they diverge. Therefore, we have to do the same here, even though we don't lower destructuring
+                    // assignments into blocks.
+                    self.table.new_maybe_never_var()
+                } else {
+                    self.result.standard_types.unit.clone()
+                }
             }
             Expr::Range { lhs, rhs, range_type } => {
                 let lhs_ty =
