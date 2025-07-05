@@ -360,6 +360,7 @@ mod test_clock_nanosleep {
     fn add_100_millis(mut ts: libc::timespec) -> libc::timespec {
         const SECOND: i64 = 1_000_000_000;
         ts.tv_nsec += SECOND / 10;
+        // If this pushes tv_nsec to SECOND or higher, we need to overflow to tv_sec.
         ts.tv_sec += ts.tv_nsec / SECOND;
         ts.tv_nsec %= SECOND;
         ts
