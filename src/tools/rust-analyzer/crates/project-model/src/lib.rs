@@ -24,7 +24,7 @@ pub mod toolchain_info {
 
     use std::path::Path;
 
-    use crate::{ManifestPath, Sysroot};
+    use crate::{ManifestPath, Sysroot, cargo_config_file::CargoConfigFile};
 
     #[derive(Copy, Clone)]
     pub enum QueryConfig<'a> {
@@ -32,11 +32,12 @@ pub mod toolchain_info {
         Rustc(&'a Sysroot, &'a Path),
         /// Attempt to use cargo to query the desired information, honoring cargo configurations.
         /// If this fails, falls back to invoking `rustc` directly.
-        Cargo(&'a Sysroot, &'a ManifestPath),
+        Cargo(&'a Sysroot, &'a ManifestPath, &'a Option<CargoConfigFile>),
     }
 }
 
 mod build_dependencies;
+mod cargo_config_file;
 mod cargo_workspace;
 mod env;
 mod manifest_path;

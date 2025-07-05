@@ -25,11 +25,9 @@ use crate::{
     ProjectJson, ProjectManifest, RustSourceWorkspaceConfig, Sysroot, TargetData, TargetKind,
     WorkspaceBuildScripts,
     build_dependencies::BuildScriptOutput,
+    cargo_config_file,
     cargo_workspace::{CargoMetadataConfig, DepKind, PackageData, RustLibSource},
-    env::{
-        cargo_config_build_target_dir, cargo_config_env, inject_cargo_env,
-        inject_cargo_package_env, inject_rustc_tool_env,
-    },
+    env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
     project_json::{Crate, CrateArrayIdx},
     sysroot::RustLibSrcWorkspace,
     toolchain_info::{QueryConfig, rustc_cfg, target_data_layout, target_tuple, version},
@@ -270,7 +268,9 @@ impl ProjectWorkspace {
 
         tracing::info!(workspace = %cargo_toml, src_root = ?sysroot.rust_lib_src_root(), root = ?sysroot.root(), "Using sysroot");
         progress("querying project metadata".to_owned());
-        let toolchain_config = QueryConfig::Cargo(&sysroot, cargo_toml);
+        let config_file = cargo_config_file::read(cargo_toml, extra_env, &sysroot);
+        let config_file_ = config_file.clone();
+        let toolchain_config = QueryConfig::Cargo(&sysroot, cargo_toml, &config_file_);
         let targets =
             target_tuple::get(toolchain_config, target.as_deref(), extra_env).unwrap_or_default();
         let toolchain = version::get(toolchain_config, extra_env)
@@ -285,7 +285,7 @@ impl ProjectWorkspace {
         let target_dir = config
             .target_dir
             .clone()
-            .or_else(|| cargo_config_build_target_dir(cargo_toml, extra_env, &sysroot))
+            .or_else(|| cargo_target_dir(cargo_toml, extra_env, &sysroot))
             .unwrap_or_else(|| workspace_dir.join("target").into());
 
         // We spawn a bunch of processes to query various information about the workspace's
@@ -397,7 +397,7 @@ impl ProjectWorkspace {
                 )
             });
             let cargo_config_extra_env =
-                s.spawn(|| cargo_config_env(cargo_toml, extra_env, &sysroot));
+                s.spawn(move || cargo_config_env(cargo_toml, &config_file));
             thread::Result::Ok((
                 rustc_cfg.join()?,
                 data_layout.join()?,
@@ -476,9 +476,7 @@ impl ProjectWorkspace {
         let target_dir = config
             .target_dir
             .clone()
-            .or_else(|| {
-                cargo_config_build_target_dir(project_json.manifest()?, &config.extra_env, &sysroot)
-            })
+            .or_else(|| cargo_target_dir(project_json.manifest()?, &config.extra_env, &sysroot))
             .unwrap_or_else(|| project_root.join("target").into());
 
         // We spawn a bunch of processes to query various information about the workspace's
@@ -554,7 +552,8 @@ impl ProjectWorkspace {
             None => Sysroot::empty(),
         };
 
-        let query_config = QueryConfig::Cargo(&sysroot, detached_file);
+        let config_file = cargo_config_file::read(detached_file, &config.extra_env, &sysroot);
+        let query_config = QueryConfig::Cargo(&sysroot, detached_file, &config_file);
         let toolchain = version::get(query_config, &config.extra_env).ok().flatten();
         let targets = target_tuple::get(query_config, config.target.as_deref(), &config.extra_env)
             .unwrap_or_default();
@@ -563,7 +562,7 @@ impl ProjectWorkspace {
         let target_dir = config
             .target_dir
             .clone()
-            .or_else(|| cargo_config_build_target_dir(detached_file, &config.extra_env, &sysroot))
+            .or_else(|| cargo_target_dir(detached_file, &config.extra_env, &sysroot))
             .unwrap_or_else(|| dir.join("target").into());
 
         let loaded_sysroot = sysroot.load_workspace(
@@ -600,8 +599,7 @@ impl ProjectWorkspace {
         )
         .ok()
         .map(|(ws, error)| {
-            let cargo_config_extra_env =
-                cargo_config_env(detached_file, &config.extra_env, &sysroot);
+            let cargo_config_extra_env = cargo_config_env(detached_file, &config_file);
             (
                 CargoWorkspace::new(ws, detached_file.clone(), cargo_config_extra_env, false),
                 WorkspaceBuildScripts::default(),
@@ -1900,4 +1898,24 @@ fn sysroot_metadata_config(
         toolchain_version,
         kind: "sysroot",
     }
+}
+
+fn cargo_target_dir(
+    manifest: &ManifestPath,
+    extra_env: &FxHashMap<String, Option<String>>,
+    sysroot: &Sysroot,
+) -> Option<Utf8PathBuf> {
+    let cargo = sysroot.tool(Tool::Cargo, manifest.parent(), extra_env);
+    let mut meta = cargo_metadata::MetadataCommand::new();
+    meta.cargo_path(cargo.get_program());
+    meta.manifest_path(manifest);
+    // `--no-deps` doesn't (over)write lockfiles as it doesn't do any package resolve.
+    // So we can use it to get `target_directory` before copying lockfiles
+    let mut other_options = vec!["--no-deps".to_owned()];
+    if manifest.is_rust_manifest() {
+        meta.env("RUSTC_BOOTSTRAP", "1");
+        other_options.push("-Zscript".to_owned());
+    }
+    meta.other_options(other_options);
+    meta.exec().map(|m| m.target_directory).ok()
 }
