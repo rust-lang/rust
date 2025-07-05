@@ -340,7 +340,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // before uses of `U`. This avoids false ambiguity errors
     // in trait checking. See `setup_constraining_predicates`
     // for details.
-    if let Node::Item(&Item { kind: ItemKind::Impl { .. }, .. }) = node {
+    if let Node::Item(&Item { kind: ItemKind::Impl { .. }, .. }) = node
+        && !tcx.next_trait_solver_globally()
+    {
         let self_ty = tcx.type_of(def_id).instantiate_identity();
         let trait_ref = tcx.impl_trait_ref(def_id).map(ty::EarlyBinder::instantiate_identity);
         cgp::setup_constraining_predicates(
