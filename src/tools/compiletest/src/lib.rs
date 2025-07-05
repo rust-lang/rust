@@ -242,9 +242,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let target = opt_str2(matches.opt_str("target"));
     let android_cross_path = opt_path(matches, "android-cross-path");
+    // FIXME: `cdb_version` is *derived* from cdb, but it's *not* technically a config!
     let (cdb, cdb_version) = debuggers::analyze_cdb(matches.opt_str("cdb"), &target);
+    // FIXME: `gdb_version` is *derived* from gdb, but it's *not* technically a config!
     let (gdb, gdb_version) =
         debuggers::analyze_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
+    // FIXME: `lldb_version` is *derived* from lldb, but it's *not* technically a config!
     let lldb_version =
         matches.opt_str("lldb-version").as_deref().and_then(debuggers::extract_lldb_version);
     let color = match matches.opt_str("color").as_deref() {
@@ -253,6 +256,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some("never") => ColorConfig::NeverColor,
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
+    // FIXME: this is very questionable, we really should be obtaining LLVM version info from
+    // `bootstrap`, and not trying to be figuring out that in `compiletest` by running the
+    // `FileCheck` binary.
     let llvm_version =
         matches.opt_str("llvm-version").as_deref().map(directives::extract_llvm_version).or_else(
             || directives::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
@@ -370,6 +376,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             mode.parse::<PassMode>()
                 .unwrap_or_else(|_| panic!("unknown `--pass` option `{}` given", mode))
         }),
+        // FIXME: this run scheme is... confusing.
         run: matches.opt_str("run").and_then(|mode| match mode.as_str() {
             "auto" => None,
             "always" => Some(true),
@@ -545,6 +552,10 @@ pub fn run_tests(config: Arc<Config>) {
                 Some(Debugger::Cdb) => configs.extend(debuggers::configure_cdb(&config)),
                 Some(Debugger::Gdb) => configs.extend(debuggers::configure_gdb(&config)),
                 Some(Debugger::Lldb) => configs.extend(debuggers::configure_lldb(&config)),
+                // FIXME: the *implicit* debugger discovery makes it really difficult to control
+                // which {`cdb`, `gdb`, `lldb`} are used. These should **not** be implicitly
+                // discovered by `compiletest`; these should be explicit `bootstrap` configuration
+                // options that are passed to `compiletest`!
                 None => {
                     configs.extend(debuggers::configure_cdb(&config));
                     configs.extend(debuggers::configure_gdb(&config));
