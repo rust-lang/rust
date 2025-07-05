@@ -392,13 +392,13 @@ pub mod convert {
 
 pub mod borrow {
     // region:borrow
-    pub trait Borrow<Borrowed: crate::marker::PointeeSized>: crate::marker::PointeeSized {
+    pub trait Borrow<Borrowed: ?Sized> {
         fn borrow(&self) -> &Borrowed;
     }
     // endregion:borrow
 
     // region:borrow_mut
-    pub trait BorrowMut<Borrowed: crate::marker::PointeeSized>: Borrow<Borrowed> {
+    pub trait BorrowMut<Borrowed: ?Sized>: Borrow<Borrowed> {
         fn borrow_mut(&mut self) -> &mut Borrowed;
     }
     // endregion:borrow_mut
