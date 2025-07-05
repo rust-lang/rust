@@ -10,7 +10,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{ErrorGuaranteed, Ident, Span};
 use tracing::debug;
 
-use super::macro_rules::{NoopTracker, parser_from_cx};
+use super::macro_rules::{MacroRule, NoopTracker, parser_from_cx};
 use crate::expand::{AstFragmentKind, parse_ast_fragment};
 use crate::mbe::macro_parser::ParseResult::*;
 use crate::mbe::macro_parser::{MatcherLoc, NamedParseResult, TtParser};
@@ -22,14 +22,14 @@ pub(super) fn failed_to_match_macro(
     def_span: Span,
     name: Ident,
     arg: TokenStream,
-    lhses: &[Vec<MatcherLoc>],
+    rules: &[MacroRule],
 ) -> (Span, ErrorGuaranteed) {
     debug!("failed to match macro");
     // An error occurred, try the expansion again, tracking the expansion closely for better
     // diagnostics.
     let mut tracker = CollectTrackerAndEmitter::new(psess.dcx(), sp);
 
-    let try_success_result = try_match_macro(psess, name, &arg, lhses, &mut tracker);
+    let try_success_result = try_match_macro(psess, name, &arg, rules, &mut tracker);
 
     if try_success_result.is_ok() {
         // Nonterminal parser recovery might turn failed matches into successful ones,
@@ -80,12 +80,12 @@ pub(super) fn failed_to_match_macro(
 
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
     if let Some((arg, comma_span)) = arg.add_comma() {
-        for lhs in lhses {
+        for rule in rules {
             let parser = parser_from_cx(psess, arg.clone(), Recovery::Allowed);
             let mut tt_parser = TtParser::new(name);
 
             if let Success(_) =
-                tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, &mut NoopTracker)
+                tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &rule.lhs, &mut NoopTracker)
             {
                 if comma_span.is_dummy() {
                     err.note("you might be missing a comma");

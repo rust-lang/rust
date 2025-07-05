@@ -46,7 +46,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::FreezeReadGuard;
-use rustc_data_structures::unord::{UnordMap, UnordSet};
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
@@ -57,6 +57,7 @@ use rustc_hir::def::{
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::DisambiguatorState;
 use rustc_hir::{PrimTy, TraitCandidate};
+use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
@@ -1014,13 +1015,13 @@ struct DeriveData {
 
 struct MacroData {
     ext: Arc<SyntaxExtension>,
-    rule_spans: Vec<(usize, Span)>,
+    nrules: usize,
     macro_rules: bool,
 }
 
 impl MacroData {
     fn new(ext: Arc<SyntaxExtension>) -> MacroData {
-        MacroData { ext, rule_spans: Vec::new(), macro_rules: false }
+        MacroData { ext, nrules: 0, macro_rules: false }
     }
 }
 
@@ -1135,7 +1136,7 @@ pub struct Resolver<'ra, 'tcx> {
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'ra>>,
     unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident)>,
     /// A map from the macro to all its potentially unused arms.
-    unused_macro_rules: FxIndexMap<NodeId, UnordMap<usize, (Ident, Span)>>,
+    unused_macro_rules: FxIndexMap<NodeId, DenseBitSet<usize>>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
