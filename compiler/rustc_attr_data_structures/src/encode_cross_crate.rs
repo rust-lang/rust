@@ -26,6 +26,7 @@ impl AttributeKind {
             Deprecation { .. } => Yes,
             DocComment { .. } => Yes,
             ExportName { .. } => Yes,
+            Ignore { .. } => No,
             Inline(..) => No,
             LinkName { .. } => Yes,
             LinkSection { .. } => No,
