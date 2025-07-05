@@ -3,6 +3,7 @@
 use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
 };
+use crate::core::build_steps::tool;
 use crate::core::build_steps::tool::{COMPILETEST_ALLOW_FEATURES, SourceType, prepare_tool_cargo};
 use crate::core::builder::{
     self, Alias, Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
@@ -477,6 +478,7 @@ macro_rules! tool_check_step {
             path: $path:literal
             $(, alt_path: $alt_path:literal )*
             , mode: $mode:path
+            $(, allow_features: $allow_features:expr )?
             $(, default: $default:literal )?
             $( , )?
         }
@@ -505,7 +507,12 @@ macro_rules! tool_check_step {
 
             fn run(self, builder: &Builder<'_>) {
                 let Self { target, build_compiler } = self;
-                run_tool_check_step(builder, build_compiler, target, $path, $mode);
+                let allow_features = {
+                    let mut _value = "";
+                    $( _value = $allow_features; )?
+                    _value
+                };
+                run_tool_check_step(builder, build_compiler, target, $path, $mode, allow_features);
             }
 
             fn metadata(&self) -> Option<StepMetadata> {
@@ -522,6 +529,7 @@ fn run_tool_check_step(
     target: TargetSelection,
     path: &str,
     mode: Mode,
+    allow_features: &str,
 ) {
     let display_name = path.rsplit('/').next().unwrap();
 
@@ -539,6 +547,7 @@ fn run_tool_check_step(
         SourceType::InTree,
         &[],
     );
+    cargo.allow_features(allow_features);
 
     // FIXME: check bootstrap doesn't currently work with --all-targets
     cargo.arg("--all-targets");
@@ -575,7 +584,11 @@ tool_check_step!(MiroptTestTools {
     mode: Mode::ToolBootstrap
 });
 // We want to test the local std
-tool_check_step!(TestFloatParse { path: "src/tools/test-float-parse", mode: Mode::ToolStd });
+tool_check_step!(TestFloatParse {
+    path: "src/tools/test-float-parse",
+    mode: Mode::ToolStd,
+    allow_features: tool::TestFloatParse::ALLOW_FEATURES
+});
 tool_check_step!(FeaturesStatusDump {
     path: "src/tools/features-status-dump",
     mode: Mode::ToolBootstrap
