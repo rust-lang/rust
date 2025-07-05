@@ -290,7 +290,7 @@ error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability.rs:179:9
    |
 LL |         fn trait_unstable(&self) {}
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
