@@ -54,6 +54,7 @@
 )]
 #![allow(missing_docs)]
 
+use crate::ffi::{VaArgSafe, VaList};
 use crate::marker::{ConstParamTy, DiscriminantKind, PointeeSized, Tuple};
 use crate::ptr;
 
@@ -3142,3 +3143,14 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
         }
     )
 }
+
+/// Copies the current location of arglist `src` to the arglist `dst`.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn va_copy<'f>(dest: *mut VaList<'f>, src: &VaList<'f>);
+
+/// Loads an argument of type `T` from the `va_list` `ap` and increment the
+/// argument `ap` points to.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;

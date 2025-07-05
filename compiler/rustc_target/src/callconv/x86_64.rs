@@ -186,6 +186,11 @@ where
             // Not touching this...
             return;
         }
+        if is_arg && arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+            int_regs = int_regs.saturating_sub(1);
+            arg.make_indirect();
+            return;
+        }
         let mut cls_or_mem = classify_arg(cx, arg);
 
         if is_arg {

@@ -579,6 +579,14 @@ passes_pass_by_value =
     `pass_by_value` attribute should be applied to a struct, enum or type alias
     .label = is not a struct, enum or type alias
 
+passes_pass_indirectly_not_a_struct =
+    `#[rustc_pass_indirectly_in_non_rustic_abis]` can only be applied to `struct`s
+    .label = is not a `struct`
+
+passes_pass_indirectly_unsupported_arch =
+    support for `#[rustc_pass_indirectly_in_non_rustic_abis]` on `{$arch}` has not yet been implemented
+    .help = see the comment near the top of `library/core/src/ffi/va_list.rs` for details
+
 passes_proc_macro_bad_sig = {$kind} has incorrect signature
 
 passes_remove_fields =

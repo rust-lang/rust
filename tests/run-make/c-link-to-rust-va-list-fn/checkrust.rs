@@ -58,11 +58,8 @@ pub unsafe extern "C" fn check_list_copy_0(mut ap: VaList) -> usize {
     continue_if!(ap.arg::<c_int>() == 16);
     continue_if!(ap.arg::<c_int>() == 'A' as c_int);
     continue_if!(compare_c_str(ap.arg::<*const c_char>(), "Skip Me!"));
-    ap.with_copy(
-        |mut ap| {
-            if compare_c_str(ap.arg::<*const c_char>(), "Correct") { 0 } else { 0xff }
-        },
-    )
+    let mut ap = ap.clone();
+    if compare_c_str(ap.arg::<*const c_char>(), "Correct") { 0 } else { 0xff }
 }
 
 #[unsafe(no_mangle)]

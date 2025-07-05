@@ -16,8 +16,8 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
 use crate::attributes::codegen_attrs::{
-    ColdParser, ExportNameParser, NakedParser, NoMangleParser, OptimizeParser, TargetFeatureParser,
-    TrackCallerParser, UsedParser,
+    ColdParser, ExportNameParser, NakedParser, NoMangleParser, OptimizeParser,
+    RustcPassIndirectlyInNonRusticAbisParser, TargetFeatureParser, TrackCallerParser, UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
@@ -148,6 +148,7 @@ attribute_parsers!(
         Single<WithoutArgs<NonExhaustiveParser>>,
         Single<WithoutArgs<PassByValueParser>>,
         Single<WithoutArgs<PubTransparentParser>>,
+        Single<WithoutArgs<RustcPassIndirectlyInNonRusticAbisParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
         // tidy-alphabetical-end
     ];

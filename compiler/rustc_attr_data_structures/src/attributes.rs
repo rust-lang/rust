@@ -308,6 +308,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
 
+    /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
+    RustcPassIndirectlyInNonRusticAbis(Span),
+
     /// Represents `#[rustc_skip_during_method_dispatch]`.
     SkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },
 
