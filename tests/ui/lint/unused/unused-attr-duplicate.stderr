@@ -66,18 +66,6 @@ LL | #[should_panic]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:66:1
-   |
-LL | #[non_exhaustive]
-   | ^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:65:1
-   |
-LL | #[non_exhaustive]
-   | ^^^^^^^^^^^^^^^^^
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:70:1
    |
 LL | #[automatically_derived]
@@ -141,18 +129,6 @@ LL | #![no_std]
    | ^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:25:1
-   |
-LL | #![no_implicit_prelude]
-   | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:24:1
-   |
-LL | #![no_implicit_prelude]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:27:1
    |
 LL | #![windows_subsystem = "windows"]
@@ -201,6 +177,18 @@ note: attribute also specified here
 LL | #[must_use]
    | ^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:66:1
+   |
+LL | #[non_exhaustive]
+   | ^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:65:1
+   |
+LL | #[non_exhaustive]
+   | ^^^^^^^^^^^^^^^^^
 
 error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:74:1
@@ -301,6 +289,18 @@ note: attribute also specified here
 LL | #[link_section = ".bss"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:25:1
+   |
+LL | #![no_implicit_prelude]
+   | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:24:1
+   |
+LL | #![no_implicit_prelude]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 24 previous errors
 

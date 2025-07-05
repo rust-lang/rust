@@ -16,6 +16,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir_pretty::id_to_string;
+use rustc_middle::dep_graph::WorkProductId;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::metadata_symbol_name;
 use rustc_middle::mir::interpret;
@@ -2307,6 +2308,8 @@ pub struct EncodedMetadata {
     // This is an optional stub metadata containing only the crate header.
     // The header should be very small, so we load it directly into memory.
     stub_metadata: Option<Vec<u8>>,
+    // The path containing the metadata, to record as work product.
+    path: Option<Box<Path>>,
     // We need to carry MaybeTempDir to avoid deleting the temporary
     // directory while accessing the Mmap.
     _temp_dir: Option<MaybeTempDir>,
@@ -2322,14 +2325,24 @@ impl EncodedMetadata {
         let file = std::fs::File::open(&path)?;
         let file_metadata = file.metadata()?;
         if file_metadata.len() == 0 {
-            return Ok(Self { full_metadata: None, stub_metadata: None, _temp_dir: None });
+            return Ok(Self {
+                full_metadata: None,
+                stub_metadata: None,
+                path: None,
+                _temp_dir: None,
+            });
         }
         let full_mmap = unsafe { Some(Mmap::map(file)?) };
 
         let stub =
             if let Some(stub_path) = stub_path { Some(std::fs::read(stub_path)?) } else { None };
 
-        Ok(Self { full_metadata: full_mmap, stub_metadata: stub, _temp_dir: temp_dir })
+        Ok(Self {
+            full_metadata: full_mmap,
+            stub_metadata: stub,
+            path: Some(path.into()),
+            _temp_dir: temp_dir,
+        })
     }
 
     #[inline]
@@ -2340,6 +2353,11 @@ impl EncodedMetadata {
     #[inline]
     pub fn stub_or_full(&self) -> &[u8] {
         self.stub_metadata.as_deref().unwrap_or(self.full())
+    }
+
+    #[inline]
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
     }
 }
 
@@ -2365,16 +2383,52 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
             None
         };
 
-        Self { full_metadata, stub_metadata: stub, _temp_dir: None }
+        Self { full_metadata, stub_metadata: stub, path: None, _temp_dir: None }
     }
 }
 
+#[instrument(level = "trace", skip(tcx))]
 pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
-    let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
-
     // Since encoding metadata is not in a query, and nothing is cached,
     // there's no need to do dep-graph tracking for any of it.
     tcx.dep_graph.assert_ignored();
+
+    // Generate the metadata stub manually, as that is a small file compared to full metadata.
+    if let Some(ref_path) = ref_path {
+        let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
+
+        with_encode_metadata_header(tcx, ref_path, |ecx| {
+            let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
+                name: tcx.crate_name(LOCAL_CRATE),
+                triple: tcx.sess.opts.target_triple.clone(),
+                hash: tcx.crate_hash(LOCAL_CRATE),
+                is_proc_macro_crate: false,
+                is_stub: true,
+            });
+            header.position.get()
+        })
+    }
+
+    let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
+
+    let dep_node = tcx.metadata_dep_node();
+
+    // If the metadata dep-node is green, try to reuse the saved work product.
+    if tcx.dep_graph.is_fully_enabled()
+        && let work_product_id = WorkProductId::from_cgu_name("metadata")
+        && let Some(work_product) = tcx.dep_graph.previous_work_product(&work_product_id)
+        && tcx.try_mark_green(&dep_node)
+    {
+        let saved_path = &work_product.saved_files["rmeta"];
+        let incr_comp_session_dir = tcx.sess.incr_comp_session_dir_opt().unwrap();
+        let source_file = rustc_incremental::in_incr_comp_dir(&incr_comp_session_dir, saved_path);
+        debug!("copying preexisting metadata from {source_file:?} to {path:?}");
+        match rustc_fs_util::link_or_copy(&source_file, path) {
+            Ok(_) => {}
+            Err(err) => tcx.dcx().emit_fatal(FailCreateFileEncoder { err }),
+        };
+        return;
+    };
 
     if tcx.sess.threads() != 1 {
         // Prefetch some queries used by metadata encoding.
@@ -2389,35 +2443,32 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         );
     }
 
-    with_encode_metadata_header(tcx, path, |ecx| {
-        // Encode all the entries and extra information in the crate,
-        // culminating in the `CrateRoot` which points to all of it.
-        let root = ecx.encode_crate_root();
+    // Perform metadata encoding inside a task, so the dep-graph can check if any encoded
+    // information changes, and maybe reuse the work product.
+    tcx.dep_graph.with_task(
+        dep_node,
+        tcx,
+        path,
+        |tcx, path| {
+            with_encode_metadata_header(tcx, path, |ecx| {
+                // Encode all the entries and extra information in the crate,
+                // culminating in the `CrateRoot` which points to all of it.
+                let root = ecx.encode_crate_root();
 
-        // Flush buffer to ensure backing file has the correct size.
-        ecx.opaque.flush();
-        // Record metadata size for self-profiling
-        tcx.prof.artifact_size(
-            "crate_metadata",
-            "crate_metadata",
-            ecx.opaque.file().metadata().unwrap().len(),
-        );
+                // Flush buffer to ensure backing file has the correct size.
+                ecx.opaque.flush();
+                // Record metadata size for self-profiling
+                tcx.prof.artifact_size(
+                    "crate_metadata",
+                    "crate_metadata",
+                    ecx.opaque.file().metadata().unwrap().len(),
+                );
 
-        root.position.get()
-    });
-
-    if let Some(ref_path) = ref_path {
-        with_encode_metadata_header(tcx, ref_path, |ecx| {
-            let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
-                name: tcx.crate_name(LOCAL_CRATE),
-                triple: tcx.sess.opts.target_triple.clone(),
-                hash: tcx.crate_hash(LOCAL_CRATE),
-                is_proc_macro_crate: false,
-                is_stub: true,
-            });
-            header.position.get()
-        });
-    }
+                root.position.get()
+            })
+        },
+        None,
+    );
 }
 
 fn with_encode_metadata_header(

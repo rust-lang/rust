@@ -183,8 +183,19 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Naked(attr_span)) => {
                     self.check_naked(hir_id, *attr_span, span, target)
                 }
+                Attribute::Parsed(AttributeKind::NoImplicitPrelude(attr_span)) => self
+                    .check_generic_attr(
+                        hir_id,
+                        sym::no_implicit_prelude,
+                        *attr_span,
+                        target,
+                        Target::Mod,
+                    ),
                 Attribute::Parsed(AttributeKind::TrackCaller(attr_span)) => {
                     self.check_track_caller(hir_id, *attr_span, attrs, span, target)
+                }
+                Attribute::Parsed(AttributeKind::NonExhaustive(attr_span)) => {
+                    self.check_non_exhaustive(hir_id, *attr_span, span, target, item)
                 }
                 Attribute::Parsed(
                     AttributeKind::RustcLayoutScalarValidRangeStart(_num, attr_span)
@@ -213,6 +224,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Used { span: attr_span, .. }) => {
                     self.check_used(*attr_span, target, span);
                 }
+                &Attribute::Parsed(AttributeKind::PassByValue(attr_span)) => {
+                    self.check_pass_by_value(attr_span, span, target)
+                }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
@@ -226,7 +240,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::no_sanitize, ..] => {
                             self.check_no_sanitize(attr, span, target)
                         }
-                        [sym::non_exhaustive, ..] => self.check_non_exhaustive(hir_id, attr, span, target, item),
                         [sym::marker, ..] => self.check_marker(hir_id, attr, span, target),
                         [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
                         [sym::doc, ..] => self.check_doc_attrs(
@@ -275,7 +288,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | [sym::const_trait, ..] => self.check_must_be_applied_to_trait(attr.span(), span, target),
                         [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                         [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
-                        [sym::rustc_pass_by_value, ..] => self.check_pass_by_value(attr, span, target),
                         [sym::rustc_allow_incoherent_impl, ..] => {
                             self.check_allow_incoherent_impl(attr, span, target)
                         }
@@ -289,16 +301,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::macro_use, ..] | [sym::macro_escape, ..] => {
                             self.check_macro_use(hir_id, attr, target)
                         }
-                        [sym::path, ..] => self.check_generic_attr(hir_id, attr, target, Target::Mod),
+                        [sym::path, ..] => self.check_generic_attr_unparsed(hir_id, attr, target, Target::Mod),
                         [sym::macro_export, ..] => self.check_macro_export(hir_id, attr, target),
                         [sym::ignore, ..] | [sym::should_panic, ..] => {
-                            self.check_generic_attr(hir_id, attr, target, Target::Fn)
+                            self.check_generic_attr_unparsed(hir_id, attr, target, Target::Fn)
                         }
                         [sym::automatically_derived, ..] => {
-                            self.check_generic_attr(hir_id, attr, target, Target::Impl)
-                        }
-                        [sym::no_implicit_prelude, ..] => {
-                            self.check_generic_attr(hir_id, attr, target, Target::Mod)
+                            self.check_generic_attr_unparsed(hir_id, attr, target, Target::Impl)
                         }
                         [sym::proc_macro, ..] => {
                             self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
@@ -307,7 +316,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_proc_macro(hir_id, target, ProcMacroKind::Attribute);
                         }
                         [sym::proc_macro_derive, ..] => {
-                            self.check_generic_attr(hir_id, attr, target, Target::Fn);
+                            self.check_generic_attr_unparsed(hir_id, attr, target, Target::Fn);
                             self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
                         }
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
@@ -616,7 +625,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_generic_attr(
+    /// FIXME: Remove when all attributes are ported to the new parser
+    fn check_generic_attr_unparsed(
         &self,
         hir_id: HirId,
         attr: &Attribute,
@@ -633,6 +643,27 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 attr.span(),
                 errors::OnlyHasEffectOn {
                     attr_name,
+                    target_name: allowed_target.name().replace(' ', "_"),
+                },
+            );
+        }
+    }
+
+    fn check_generic_attr(
+        &self,
+        hir_id: HirId,
+        attr_name: Symbol,
+        attr_span: Span,
+        target: Target,
+        allowed_target: Target,
+    ) {
+        if target != allowed_target {
+            self.tcx.emit_node_span_lint(
+                UNUSED_ATTRIBUTES,
+                hir_id,
+                attr_span,
+                errors::OnlyHasEffectOn {
+                    attr_name: attr_name.to_string(),
                     target_name: allowed_target.name().replace(' ', "_"),
                 },
             );
@@ -750,7 +781,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_non_exhaustive(
         &self,
         hir_id: HirId,
-        attr: &Attribute,
+        attr_span: Span,
         span: Span,
         target: Target,
         item: Option<ItemLike<'_>>,
@@ -765,7 +796,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     && fields.iter().any(|f| f.default.is_some())
                 {
                     self.dcx().emit_err(errors::NonExhaustiveWithDefaultFieldValues {
-                        attr_span: attr.span(),
+                        attr_span,
                         defn_span: span,
                     });
                 }
@@ -776,13 +807,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "non_exhaustive");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr_span, "non_exhaustive");
             }
             _ => {
-                self.dcx().emit_err(errors::NonExhaustiveWrongLocation {
-                    attr_span: attr.span(),
-                    defn_span: span,
-                });
+                self.dcx()
+                    .emit_err(errors::NonExhaustiveWrongLocation { attr_span, defn_span: span });
             }
         }
     }
@@ -1438,11 +1467,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Warns against some misuses of `#[pass_by_value]`
-    fn check_pass_by_value(&self, attr: &Attribute, span: Span, target: Target) {
+    fn check_pass_by_value(&self, attr_span: Span, span: Span, target: Target) {
         match target {
             Target::Struct | Target::Enum | Target::TyAlias => {}
             _ => {
-                self.dcx().emit_err(errors::PassByValue { attr_span: attr.span(), span });
+                self.dcx().emit_err(errors::PassByValue { attr_span, span });
             }
         }
     }

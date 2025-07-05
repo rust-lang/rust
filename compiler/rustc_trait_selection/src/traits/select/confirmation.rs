@@ -14,9 +14,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
-use rustc_middle::ty::{
-    self, GenericArgsRef, Region, SizedTraitKind, Ty, TyCtxt, Upcast, elaborate,
-};
+use rustc_middle::ty::{self, GenericArgsRef, Region, SizedTraitKind, Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use thin_vec::thin_vec;
@@ -1147,38 +1145,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::ClauseKind::TypeOutlives(outlives).upcast(tcx),
                 ));
 
-                // Require that all AFIT will return something that can be coerced into `dyn*`
-                // -- a shim will be responsible for doing the actual coercion to `dyn*`.
-                if let Some(principal) = data.principal() {
-                    for supertrait in
-                        elaborate::supertraits(tcx, principal.with_self_ty(tcx, source))
-                    {
-                        if tcx.is_trait_alias(supertrait.def_id()) {
-                            continue;
-                        }
-
-                        for &assoc_item in tcx.associated_item_def_ids(supertrait.def_id()) {
-                            if !tcx.is_impl_trait_in_trait(assoc_item) {
-                                continue;
-                            }
-
-                            // RPITITs with `Self: Sized` don't need to be checked.
-                            if tcx.generics_require_sized_self(assoc_item) {
-                                continue;
-                            }
-
-                            let pointer_like_goal = pointer_like_goal_for_rpitit(
-                                tcx,
-                                supertrait,
-                                assoc_item,
-                                &obligation.cause,
-                            );
-
-                            nested.push(predicate_to_obligation(pointer_like_goal.upcast(tcx)));
-                        }
-                    }
-                }
-
                 ImplSource::Builtin(BuiltinImplSource::Misc, nested)
             }
 
@@ -1343,47 +1309,4 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
     }
-}
-
-/// Compute a goal that some RPITIT (right now, only RPITITs corresponding to Futures)
-/// implements the `PointerLike` trait, which is a requirement for the RPITIT to be
-/// coercible to `dyn* Future`, which is itself a requirement for the RPITIT's parent
-/// trait to be coercible to `dyn Trait`.
-///
-/// We do this given a supertrait's substitutions, and then augment the substitutions
-/// with bound variables to compute the goal universally. Given that `PointerLike` has
-/// no region requirements (at least for the built-in pointer types), this shouldn't
-/// *really* matter, but it is the best choice for soundness.
-fn pointer_like_goal_for_rpitit<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    supertrait: ty::PolyTraitRef<'tcx>,
-    rpitit_item: DefId,
-    cause: &ObligationCause<'tcx>,
-) -> ty::PolyTraitRef<'tcx> {
-    let mut bound_vars = supertrait.bound_vars().to_vec();
-
-    let args = supertrait.skip_binder().args.extend_to(tcx, rpitit_item, |arg, _| match arg.kind {
-        ty::GenericParamDefKind::Lifetime => {
-            let kind = ty::BoundRegionKind::Named(arg.def_id, tcx.item_name(arg.def_id));
-            bound_vars.push(ty::BoundVariableKind::Region(kind));
-            ty::Region::new_bound(
-                tcx,
-                ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
-            )
-            .into()
-        }
-        ty::GenericParamDefKind::Type { .. } | ty::GenericParamDefKind::Const { .. } => {
-            unreachable!()
-        }
-    });
-
-    ty::Binder::bind_with_vars(
-        ty::TraitRef::new(
-            tcx,
-            tcx.require_lang_item(LangItem::PointerLike, cause.span),
-            [Ty::new_projection_from_args(tcx, rpitit_item, args)],
-        ),
-        tcx.mk_bound_variable_kinds(&bound_vars),
-    )
 }

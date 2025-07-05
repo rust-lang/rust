@@ -84,19 +84,34 @@ fn codegen_inner(
         &mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind)),
     );
 
-    let data_id = module
-        .declare_data(
-            &mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
-            Linkage::Export,
-            false,
-            false,
-        )
-        .unwrap();
-    let mut data = DataDescription::new();
-    data.set_align(1);
-    let val = oom_strategy.should_panic();
-    data.define(Box::new([val]));
-    module.define_data(data_id, &data).unwrap();
+    {
+        let sig = Signature {
+            call_conv: module.target_config().default_call_conv,
+            params: vec![],
+            returns: vec![AbiParam::new(types::I8)],
+        };
+        let func_id = module
+            .declare_function(
+                &mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
+                Linkage::Export,
+                &sig,
+            )
+            .unwrap();
+        let mut ctx = Context::new();
+        ctx.func.signature = sig;
+        {
+            let mut func_ctx = FunctionBuilderContext::new();
+            let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
+
+            let block = bcx.create_block();
+            bcx.switch_to_block(block);
+            let value = bcx.ins().iconst(types::I8, oom_strategy.should_panic() as i64);
+            bcx.ins().return_(&[value]);
+            bcx.seal_all_blocks();
+            bcx.finalize();
+        }
+        module.define_function(func_id, &mut ctx).unwrap();
+    }
 
     {
         let sig = Signature {

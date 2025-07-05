@@ -1,0 +1,12 @@
+- // MIR for `no_optimize` before GVN
++ // MIR for `no_optimize` after GVN
+  
+  fn no_optimize() -> bool {
+      let mut _0: bool;
+  
+      bb0: {
+          _0 = Eq(const no_optimize::<T>::{constant#0}, const no_optimize::<T>::{constant#1});
+          return;
+      }
+  }
+  

@@ -581,7 +581,7 @@ dependencies = [
  "serde_json",
  "syn 2.0.104",
  "tempfile",
- "termize",
+ "termize 0.1.1",
  "tokio",
  "toml 0.7.8",
  "ui_test",
@@ -3761,7 +3761,7 @@ dependencies = [
  "serde",
  "serde_json",
  "termcolor",
- "termize",
+ "termize 0.2.0",
  "tracing",
  "windows 0.61.3",
 ]
@@ -4133,6 +4133,7 @@ dependencies = [
  "rustc_fs_util",
  "rustc_hir",
  "rustc_hir_pretty",
+ "rustc_incremental",
  "rustc_index",
  "rustc_macros",
  "rustc_middle",
@@ -4522,7 +4523,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_span",
  "rustc_target",
- "termize",
+ "termize 0.2.0",
  "tracing",
  "windows 0.61.3",
 ]
@@ -5292,6 +5293,16 @@ checksum = "1706be6b564323ce7092f5f7e6b118a14c8ef7ed0e69c8c5329c914a9f101295"
 dependencies = [
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "termize"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a8da106d1a19c5b9c53c03311936568a0439926a7607815bd3461139cbab1cc"
+dependencies = [
+ "libc",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
