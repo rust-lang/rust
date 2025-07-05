@@ -579,7 +579,7 @@ struct ModuleData<'ra> {
     globs: RefCell<Vec<Import<'ra>>>,
 
     /// Used to memoize the traits in this module for faster searches through all traits in scope.
-    traits: RefCell<Option<Box<[(Ident, NameBinding<'ra>)]>>>,
+    traits: RefCell<Option<Box<[(Ident, NameBinding<'ra>, Option<Module<'ra>>)]>>>,
 
     /// Span of the module itself. Used for error reporting.
     span: Span,
@@ -655,12 +655,12 @@ impl<'ra> Module<'ra> {
         let mut traits = self.traits.borrow_mut();
         if traits.is_none() {
             let mut collected_traits = Vec::new();
-            self.for_each_child(resolver, |_, name, ns, binding| {
+            self.for_each_child(resolver, |r, name, ns, binding| {
                 if ns != TypeNS {
                     return;
                 }
-                if let Res::Def(DefKind::Trait | DefKind::TraitAlias, _) = binding.res() {
-                    collected_traits.push((name, binding))
+                if let Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) = binding.res() {
+                    collected_traits.push((name, binding, r.as_mut().get_module(def_id)))
                 }
             });
             *traits = Some(collected_traits.into_boxed_slice());
@@ -1835,11 +1835,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) {
         module.ensure_traits(self);
         let traits = module.traits.borrow();
-        for (trait_name, trait_binding) in traits.as_ref().unwrap().iter() {
-            let trait_module = self.get_module(trait_binding.res().def_id());
+        for &(trait_name, trait_binding, trait_module) in traits.as_ref().unwrap().iter() {
             if self.trait_may_have_item(trait_module, assoc_item) {
                 let def_id = trait_binding.res().def_id();
-                let import_ids = self.find_transitive_imports(&trait_binding.kind, *trait_name);
+                let import_ids = self.find_transitive_imports(&trait_binding.kind, trait_name);
                 found_traits.push(TraitCandidate { def_id, import_ids });
             }
         }
