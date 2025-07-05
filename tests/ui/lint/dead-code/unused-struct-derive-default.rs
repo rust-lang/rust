@@ -1,4 +1,4 @@
-#![deny(dead_code)]
+#![deny(dead_code)] //~ NOTE the lint level is defined here
 
 #[derive(Default)]
 struct T; //~ ERROR struct `T` is never constructed
@@ -7,7 +7,7 @@ struct T; //~ ERROR struct `T` is never constructed
 struct Used;
 
 #[derive(Default)]
-enum E {
+enum E { //~ NOTE variant in this enum
     #[default]
     A,
     B, //~ ERROR variant `B` is never constructed
