@@ -144,6 +144,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "object"
+version = "0.37.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03fd943161069e1768b4b3d050890ba48730e590f57e56d4aa04e7e090e61b4a"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -179,6 +188,7 @@ dependencies = [
  "boml",
  "gccjit",
  "lang_tester",
+ "object",
  "tempfile",
 ]
 
