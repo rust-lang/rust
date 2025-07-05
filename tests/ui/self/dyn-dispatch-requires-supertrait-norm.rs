@@ -1,10 +1,9 @@
 //@ check-pass
 
-#![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 
-use std::ops::Deref;
 use std::marker::CoercePointee;
+use std::ops::Deref;
 use std::sync::Arc;
 
 trait MyTrait<T> {}
