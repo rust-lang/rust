@@ -48,8 +48,7 @@ ENV SCRIPT \
   python3 ../x.py build src/tools/build-manifest && \
   python3 ../x.py test --stage 0 src/tools/compiletest && \
   python3 ../x.py check compiletest --set build.compiletest-use-stage0-libtest=true && \
-  # We use --stage 2 because we're cross-compiling
-  python3 ../x.py check --stage 2 --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu && \
+  python3 ../x.py check --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu && \
   python3 ../x.py check --set build.optimized-compiler-builtins=false core alloc std --target=aarch64-unknown-linux-gnu,i686-pc-windows-msvc,i686-unknown-linux-gnu,x86_64-apple-darwin,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc && \
   /scripts/validate-toolstate.sh && \
   reuse --include-submodules lint && \
