@@ -348,6 +348,10 @@ pub trait TTMacroExpander {
         span: Span,
         input: TokenStream,
     ) -> MacroExpanderResult<'cx>;
+
+    fn get_unused_rule(&self, _rule_i: usize) -> Option<(&Ident, Span)> {
+        None
+    }
 }
 
 pub type MacroExpanderResult<'cx> = ExpandResult<Box<dyn MacResult + 'cx>, ()>;

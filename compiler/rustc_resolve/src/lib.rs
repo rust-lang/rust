@@ -1014,13 +1014,13 @@ struct DeriveData {
 
 struct MacroData {
     ext: Arc<SyntaxExtension>,
-    rule_spans: Vec<(usize, Span)>,
+    nrules: usize,
     macro_rules: bool,
 }
 
 impl MacroData {
     fn new(ext: Arc<SyntaxExtension>) -> MacroData {
-        MacroData { ext, rule_spans: Vec::new(), macro_rules: false }
+        MacroData { ext, nrules: 0, macro_rules: false }
     }
 }
 
@@ -1135,7 +1135,7 @@ pub struct Resolver<'ra, 'tcx> {
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'ra>>,
     unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident)>,
     /// A map from the macro to all its potentially unused arms.
-    unused_macro_rules: FxIndexMap<NodeId, UnordMap<usize, (Ident, Span)>>,
+    unused_macro_rules: FxIndexMap<NodeId, UnordSet<usize>>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
