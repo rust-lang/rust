@@ -7,6 +7,7 @@ use std::mem;
 // That means the untagged variants is in the niche variant range!
 // However, using the corresponding value (2+1 = 3) is not a valid encoding of this variant.
 #[derive(Copy, Clone, PartialEq)]
+#[allow(dead_code)]
 enum Foo {
     Var1,
     Var2(bool),
