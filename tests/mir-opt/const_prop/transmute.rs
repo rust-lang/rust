@@ -56,7 +56,7 @@ pub unsafe fn undef_union_as_integer() -> u32 {
 pub unsafe fn unreachable_direct() -> ! {
     // CHECK-LABEL: fn unreachable_direct(
     // CHECK: = const ();
-    // CHECK: = const () as Never (Transmute);
+    // CHECK: = const ZeroSized: Never;
     let x: Never = unsafe { transmute(()) };
     match x {}
 }
