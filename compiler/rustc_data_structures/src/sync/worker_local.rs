@@ -12,7 +12,13 @@ use crate::sync::CacheAligned;
 /// A pointer to the `RegistryData` which uniquely identifies a registry.
 /// This identifier can be reused if the registry gets freed.
 #[derive(Clone, Copy, PartialEq)]
-struct RegistryId(*const RegistryData);
+struct RegistryId(
+    #[cfg_attr(
+        not(bootstrap),
+        expect(dead_code, reason = "This field is only used for equality comparisons")
+    )]
+    *const RegistryData,
+);
 
 impl RegistryId {
     #[inline(always)]
