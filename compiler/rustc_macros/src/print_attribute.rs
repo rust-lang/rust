@@ -21,7 +21,8 @@ fn print_fields(name: &Ident, fields: &Fields) -> (TokenStream, TokenStream, Tok
                             __p.word_space(",");
                         }
                         __p.word(#string_name);
-                        __p.word_space(":");
+                        __p.word(":");
+                        __p.nbsp();
                         __printed_anything = true;
                     }
                     #name.print_attribute(__p);

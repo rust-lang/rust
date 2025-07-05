@@ -9,12 +9,12 @@ extern crate std;
 #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
 struct PlainDeprecated;
 
-#[attr = Deprecation {deprecation: Deprecation {since: Unspecified, note:
-"here's why this is deprecated"}}]
+#[attr = Deprecation {deprecation: Deprecation {since: Unspecified,
+note: "here's why this is deprecated"}}]
 struct DirectNote;
 
-#[attr = Deprecation {deprecation: Deprecation {since: Unspecified, note:
-"here's why this is deprecated"}}]
+#[attr = Deprecation {deprecation: Deprecation {since: Unspecified,
+note: "here's why this is deprecated"}}]
 struct ExplicitNote;
 
 #[attr = Deprecation {deprecation: Deprecation {since: NonStandard("1.2.3"),
@@ -28,8 +28,6 @@ struct FlippedOrder;
 fn f() {
 
     // Attribute is ignored here (with a warning), but still preserved in HIR
-    #[attr = Deprecation {deprecation:
-    Deprecation {since:
-    Unspecified}}]
+    #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
     0
 }
