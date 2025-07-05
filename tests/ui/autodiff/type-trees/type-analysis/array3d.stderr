@@ -1,0 +1,473 @@
+analyzing function callee
+ + knowndata: ptr %X : {[-1]:Pointer} - {}
+ + retdata: {[-1]:Float@float}
+updating analysis of val: ptr %X current: {} new {[-1]:Pointer} from ptr %X Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from ptr %X Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+ skipping update into float 0.000000e+00 of {} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ]
+ skipping update into   %X = phi float [ %X, %X ], !dbg !N of {} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] current: {} new {} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] current: {} new {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] Changed=1 legal=1
+ skipping update into i1 true of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+ skipping update into i1 false of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=0 legal=1
+ skipping update into i64 0 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {} new {} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+ skipping update into   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+ skipping update into   %X = phi float [ %X, %X ], !dbg !N of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {} new {} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {} new {} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+ skipping update into i1 true of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+ skipping update into i1 false of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=0 legal=1
+ skipping update into i64 0 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+ skipping update into   %X = phi float [ %X, %X ], [ %X, %X ] of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+ skipping update into   %X = fadd float %X, %X, !dbg !N of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {} new {} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {} new {} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+ skipping update into i1 true of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+ skipping update into i1 false of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=0 legal=1
+ skipping update into i64 0 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+ skipping update into   %X = phi float [ %X, %X ], [ %X, %X ] of {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ]
+ skipping update into   %X = fadd float %X, %X, !dbg !N of {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+ skipping update into   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+ skipping update into   %X = phi float [ %X, %X ], !dbg !N of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=1 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=1 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+ skipping update into   %X = phi float [ %X, %X ], [ %X, %X ] of {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ]
+ skipping update into   %X = fadd float %X, %X, !dbg !N of {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+ skipping update into float 0.000000e+00 of {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ]
+ skipping update into   %X = phi float [ %X, %X ], !dbg !N of {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+analyzing function preprocess_callee
+ + knowndata: ptr %X : {[-1]:Pointer, [-1,0]:Float@float} - {}
+ + retdata: {[-1]:Float@float}
+updating analysis of val: ptr %X current: {} new {[-1]:Pointer, [-1,0]:Float@float} from ptr %X Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from ptr %X Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+ skipping update into   %X = add nuw nsw i64 %X, 1 of {} from   %X = phi i64 [ %X, %X ], [ 0, %X ]
+ skipping update into i64 0 of {} from   %X = phi i64 [ %X, %X ], [ 0, %X ]
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {} new {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ] Changed=0 legal=1
+ skipping update into float 0.000000e+00 of {} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ]
+ skipping update into   %X = fadd float %X, %X, !dbg !N of {} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] current: {} new {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] Changed=0 legal=1
+ skipping update into i1 true of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+ skipping update into i1 false of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=0 legal=1
+ skipping update into i64 0 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = add nuw nsw i64 %X, 1 Changed=0 legal=1
+updating analysis of val:   %X = add nuw nsw i64 %X, 1 current: {} new {[-1]:Integer} from   %X = add nuw nsw i64 %X, 1 Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+ skipping update into   %X = add nuw nsw i64 %X, 1 of {} from   %X = phi i64 [ %X, %X ], [ 0, %X ]
+ skipping update into i64 0 of {} from   %X = phi i64 [ %X, %X ], [ 0, %X ]
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {} new {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ] Changed=0 legal=1
+ skipping update into   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+ skipping update into   %X = fadd float %X, %X, !dbg !N of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+ skipping update into i1 true of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+ skipping update into i1 false of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=0 legal=1
+ skipping update into i64 0 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = add nuw nsw i64 %X, 1 Changed=0 legal=1
+updating analysis of val:   %X = add nuw nsw i64 %X, 1 current: {} new {[-1]:Integer} from   %X = add nuw nsw i64 %X, 1 Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+ skipping update into   %X = add nuw nsw i64 %X, 1, !dbg !N of {} from   %X = phi i64 [ %X, %X ], [ 0, %X ]
+ skipping update into i64 0 of {} from   %X = phi i64 [ %X, %X ], [ 0, %X ]
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {} new {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ] Changed=0 legal=1
+ skipping update into   %X = phi float [ %X, %X ], [ %X, %X ] of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+ skipping update into   %X = fadd float %X, %X, !dbg !N of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+ skipping update into i1 true of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+ skipping update into i1 false of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=0 legal=1
+ skipping update into i64 0 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = add nuw nsw i64 %X, 1, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = add nuw nsw i64 %X, 1, !dbg !N current: {} new {[-1]:Integer} from   %X = add nuw nsw i64 %X, 1, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+ skipping update into   %X = add nuw nsw i64 %X, 1 of {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ]
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ]
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ] Changed=0 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+ skipping update into float 0.000000e+00 of {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ]
+ skipping update into   %X = fadd float %X, %X, !dbg !N of {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] Changed=0 legal=1
+ skipping update into   %X = add nuw nsw i64 %X, 1 of {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ]
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ]
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+ skipping update into   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] of {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ]
+ skipping update into   %X = fadd float %X, %X, !dbg !N of {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+ skipping update into   %X = add nuw nsw i64 %X, 1, !dbg !N of {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ]
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ]
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ %X, %X ], [ 0, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ %X, %X ], [ 0, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+ skipping update into   %X = phi float [ %X, %X ], [ %X, %X ] of {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ]
+ skipping update into   %X = fadd float %X, %X, !dbg !N of {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+analyzing function callee
+ + knowndata: ptr %X : {[-1]:Pointer} - {}
+ + retdata: {[-1]:Float@float}
+updating analysis of val: ptr %X current: {} new {[-1]:Pointer} from ptr %X Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from ptr %X Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+ skipping update into float 0.000000e+00 of {} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ]
+ skipping update into   %X = phi float [ %X, %X ], !dbg !N of {} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] current: {} new {} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] current: {} new {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] Changed=1 legal=1
+ skipping update into i1 true of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+ skipping update into i1 false of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=0 legal=1
+ skipping update into i64 0 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {} new {} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+ skipping update into   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+ skipping update into   %X = phi float [ %X, %X ], !dbg !N of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {} new {} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {} new {} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+ skipping update into i1 true of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+ skipping update into i1 false of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=0 legal=1
+ skipping update into i64 0 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+ skipping update into   %X = phi float [ %X, %X ], [ %X, %X ] of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+ skipping update into   %X = fadd float %X, %X, !dbg !N of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {} new {} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {} new {} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+ skipping update into i1 true of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+ skipping update into i1 false of {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ]
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i1 [ true, %X ], [ false, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i1 [ true, %X ], [ false, %X ] Changed=0 legal=1
+ skipping update into i64 0 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+ skipping update into   %X = phi float [ %X, %X ], [ %X, %X ] of {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ]
+ skipping update into   %X = fadd float %X, %X, !dbg !N of {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+ skipping update into   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+ skipping update into   %X = phi float [ %X, %X ], !dbg !N of {} from   %X = phi float [ %X, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=1 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X Changed=1 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X Changed=1 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+ skipping update into   %X = phi float [ %X, %X ], [ %X, %X ] of {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ]
+ skipping update into   %X = fadd float %X, %X, !dbg !N of {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], [ %X, %X ] Changed=0 legal=1
+ skipping update into float 0.000000e+00 of {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ]
+ skipping update into   %X = phi float [ %X, %X ], !dbg !N of {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ]
+updating analysis of val:   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ 0.000000e+00, %X ], [ %X, %X ] Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = phi float [ %X, %X ], !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = phi float [ %X, %X ], !dbg !N Changed=0 legal=1
+ skipping update into i64 0 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+ skipping update into i64 1 of {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ]
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1
+updating analysis of val:   %X = phi i64 [ 0, %X ], [ 1, %X ] current: {[-1]:Integer} new {[-1]:Integer} from   %X = phi i64 [ 0, %X ], [ 1, %X ] Changed=0 legal=1

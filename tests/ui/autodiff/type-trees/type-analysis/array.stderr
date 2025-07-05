@@ -1,0 +1,198 @@
+analyzing function callee
+ + knowndata: ptr %X : {[-1]:Pointer} - {}
+ + retdata: {[-1]:Float@float}
+updating analysis of val: ptr %X current: {} new {[-1]:Pointer} from ptr %X Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from ptr %X Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer, [-1,4]:Float@float} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} new {[-1]:Pointer, [-1,8]:Float@float} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer, [-1,4]:Float@float} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+analyzing function preprocess_callee
+ + knowndata: ptr %X : {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} - {}
+ + retdata: {[-1]:Float@float}
+updating analysis of val: ptr %X current: {} new {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} from ptr %X Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} from ptr %X Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} new {[-1]:Pointer} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer, [-1,4]:Float@float, [-1,8]:Float@float} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer, [-1,8]:Float@float} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+analyzing function callee
+ + knowndata: ptr %X : {[-1]:Pointer} - {}
+ + retdata: {[-1]:Float@float}
+updating analysis of val: ptr %X current: {} new {[-1]:Pointer} from ptr %X Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from ptr %X Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fadd float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fadd float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer, [-1,4]:Float@float} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = fmul float %X, %X, !dbg !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = fmul float %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} new {[-1]:Pointer, [-1,8]:Float@float} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float} new {[-1]:Pointer, [-1,4]:Float@float} from   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N current: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float} new {[-1]:Pointer, [-1,0]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N current: {[-1]:Float@float} new {[-1]:Float@float} from   %X = load float, ptr %X, align 4, !dbg !N, !noundef !N Changed=0 legal=1

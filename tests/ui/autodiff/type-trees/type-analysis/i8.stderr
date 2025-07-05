@@ -1,0 +1,12 @@
+analyzing function callee
+ + knowndata: ptr %X : {[-1]:Pointer} - {}
+ + retdata: {[-1]:Integer}
+updating analysis of val: ptr %X current: {} new {[-1]:Pointer} from ptr %X Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from ptr %X Changed=0 legal=1
+updating analysis of val:   %X = mul i8 %X, %X, !dbg !N current: {} new {[-1]:Integer} from   %X = mul i8 %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = mul i8 %X, %X, !dbg !N current: {[-1]:Integer} new {[-1]:Integer} from   %X = mul i8 %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Integer} from   %X = load i8, ptr %X, align 1, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load i8, ptr %X, align 1, !dbg !N, !noundef !N current: {} new {[-1]:Integer} from   %X = load i8, ptr %X, align 1, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load i8, ptr %X, align 1, !dbg !N, !noundef !N current: {[-1]:Integer} new {[-1]:Integer} from   %X = mul i8 %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = load i8, ptr %X, align 1, !dbg !N, !noundef !N current: {[-1]:Integer} new {[-1]:Integer} from   %X = mul i8 %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = mul i8 %X, %X, !dbg !N current: {[-1]:Integer} new {[-1]:Integer} from   %X = mul i8 %X, %X, !dbg !N Changed=0 legal=1

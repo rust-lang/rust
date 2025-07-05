@@ -1,0 +1,12 @@
+callee - {[-1]:Integer} |{[-1]:Pointer}:{} 
+ptr %X: {[-1]:Pointer, [-1,0]:Integer}
+
+  %X = load i8, ptr %X, align 1, !dbg !N, !noundef !N: {[-1]:Integer}
+  %X = mul i8 %X, %X, !dbg !N: {[-1]:Integer}
+  ret i8 %X, !dbg !N: {}
+callee - {[-1]:Integer} |{[-1]:Pointer, [-1,0]:Integer}:{} 
+ptr %X: {[-1]:Pointer, [-1,0]:Integer}
+
+  %X = load i8, ptr %X, align 1, !dbg !N, !noundef !N: {[-1]:Integer}
+  %X = mul i8 %X, %X, !dbg !N: {[-1]:Integer}
+  ret i8 %X, !dbg !N: {}

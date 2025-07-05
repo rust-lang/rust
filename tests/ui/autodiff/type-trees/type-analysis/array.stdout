@@ -1,0 +1,28 @@
+callee - {[-1]:Float@float} |{[-1]:Pointer}:{} 
+ptr %X: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float}
+
+  %X = load float, ptr %X, align 4, !dbg !N, !noundef !N: {[-1]:Float@float}
+  %X = fmul float %X, %X, !dbg !N: {[-1]:Float@float}
+  %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float}
+  %X = load float, ptr %X, align 4, !dbg !N, !noundef !N: {[-1]:Float@float}
+  %X = fmul float %X, %X, !dbg !N: {[-1]:Float@float}
+  %X = fadd float %X, %X, !dbg !N: {[-1]:Float@float}
+  %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N: {[-1]:Pointer, [-1,0]:Float@float}
+  %X = load float, ptr %X, align 4, !dbg !N, !noundef !N: {[-1]:Float@float}
+  %X = fmul float %X, %X, !dbg !N: {[-1]:Float@float}
+  %X = fadd float %X, %X, !dbg !N: {[-1]:Float@float}
+  ret float %X, !dbg !N: {}
+callee - {[-1]:Float@float} |{[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float}:{} 
+ptr %X: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float}
+
+  %X = load float, ptr %X, align 4, !dbg !N, !noundef !N: {[-1]:Float@float}
+  %X = fmul float %X, %X, !dbg !N: {[-1]:Float@float}
+  %X = getelementptr inbounds nuw i8, ptr %X, i64 4, !dbg !N: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float}
+  %X = load float, ptr %X, align 4, !dbg !N, !noundef !N: {[-1]:Float@float}
+  %X = fmul float %X, %X, !dbg !N: {[-1]:Float@float}
+  %X = fadd float %X, %X, !dbg !N: {[-1]:Float@float}
+  %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N: {[-1]:Pointer, [-1,0]:Float@float}
+  %X = load float, ptr %X, align 4, !dbg !N, !noundef !N: {[-1]:Float@float}
+  %X = fmul float %X, %X, !dbg !N: {[-1]:Float@float}
+  %X = fadd float %X, %X, !dbg !N: {[-1]:Float@float}
+  ret float %X, !dbg !N: {}

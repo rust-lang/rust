@@ -1,0 +1,21 @@
+callee - {[-1]:Float@float} |{[-1]:Pointer}:{} 
+ptr %X: {[-1]:Pointer}
+
+  %X = getelementptr inbounds nuw i8, ptr %X, i64 8, !dbg !N: {[-1]:Pointer}
+  %X = load ptr, ptr %X, align 8, !dbg !N, !nonnull !102, !noundef !N: {}
+  %X = getelementptr inbounds nuw i8, ptr %X, i64 16, !dbg !N: {[-1]:Pointer}
+  %X = load i64, ptr %X, align 8, !dbg !N, !noundef !N: {}
+  %X = icmp eq i64 %X, 0, !dbg !N: {[-1]:Integer}
+  br i1 %X, label %X, label %X, !dbg !N: {}
+
+  %X = phi i64 [ %X, %X ], [ 0, %X ], !dbg !N: {[-1]:Integer}
+  %X = phi float [ %X, %X ], [ -0.000000e+00, %X ], !dbg !N: {[-1]:Float@float}
+  %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N: {[-1]:Pointer, [-1,0]:Float@float}
+  %X = load float, ptr %X, align 4, !dbg !N, !noundef !N: {[-1]:Float@float}
+  %X = fadd float %X, %X, !dbg !N: {[-1]:Float@float}
+  %X = add nuw i64 %X, 1, !dbg !N: {[-1]:Integer}
+  %X = icmp eq i64 %X, %X, !dbg !N: {[-1]:Integer}
+  br i1 %X, label %X, label %X, !dbg !N: {}
+
+  %X = phi float [ -0.000000e+00, %X ], [ %X, %X ], !dbg !N: {[-1]:Float@float}
+  ret float %X, !dbg !N: {}

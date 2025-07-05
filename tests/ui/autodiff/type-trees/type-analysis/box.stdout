@@ -1,0 +1,14 @@
+callee - {[-1]:Float@float} |{[-1]:Pointer}:{} 
+ptr %X: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,0]:Float@float}
+
+  %X = load ptr, ptr %X, align 8, !dbg !N, !nonnull !N, !align !N, !noundef !N: {[-1]:Pointer, [-1,0]:Float@float}
+  %X = load float, ptr %X, align 4, !dbg !N, !noundef !N: {[-1]:Float@float}
+  %X = fmul float %X, %X, !dbg !N: {[-1]:Float@float}
+  ret float %X, !dbg !N: {}
+callee - {[-1]:Float@float} |{[-1]:Pointer, [-1,0]:Pointer, [-1,0,0]:Float@float}:{} 
+ptr %X: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,0]:Float@float}
+
+  %X = load ptr, ptr %X, align 8, !dbg !N, !nonnull !N, !align !N, !noundef !N: {[-1]:Pointer, [-1,0]:Float@float}
+  %X = load float, ptr %X, align 4, !dbg !N, !noundef !N: {[-1]:Float@float}
+  %X = fmul float %X, %X, !dbg !N: {[-1]:Float@float}
+  ret float %X, !dbg !N: {}
