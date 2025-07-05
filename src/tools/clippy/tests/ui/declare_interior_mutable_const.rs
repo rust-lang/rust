@@ -1,6 +1,6 @@
 #![deny(clippy::declare_interior_mutable_const)]
 #![allow(clippy::missing_const_for_thread_local)]
-
+#![allow(interior_mutable_consts)]
 use core::cell::{Cell, RefCell, UnsafeCell};
 use core::mem::{ManuallyDrop, MaybeUninit};
 use core::ptr;
