@@ -112,17 +112,14 @@ fn make_uninhabited_err_indirectly(n: Never) -> Result<u32, Never> {
 
 #[no_mangle]
 fn make_fully_uninhabited_result(v: u32, n: Never) -> Result<(u32, Never), (Never, u32)> {
-    // We don't try to do this in SSA form since the whole type is uninhabited.
+    // Actually reaching this would be UB, so we don't actually build a result.
 
     // CHECK-LABEL: { i32, i32 } @make_fully_uninhabited_result(i32 %v)
-    // CHECK: %[[ALLOC_V:.+]] = alloca [4 x i8]
-    // CHECK: %[[RET:.+]] = alloca [8 x i8]
-    // CHECK: store i32 %v, ptr %[[ALLOC_V]]
-    // CHECK: %[[TEMP_V:.+]] = load i32, ptr %[[ALLOC_V]]
-    // CHECK: %[[INNER:.+]] = getelementptr inbounds i8, ptr %[[RET]]
-    // CHECK: store i32 %[[TEMP_V]], ptr %[[INNER]]
-    // CHECK: call void @llvm.trap()
-    // CHECK: unreachable
+    // CHECK-NEXT: start:
+    // CHECK-NEXT: call void @llvm.trap()
+    // CHECK-NEXT: call void @llvm.trap()
+    // CHECK-NEXT: call void @llvm.trap()
+    // CHECK-NEXT: unreachable
     Ok((v, n))
 }
 

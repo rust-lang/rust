@@ -565,86 +565,127 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
         }
     }
-
-    /// Creates an incomplete operand containing the [`abi::Scalar`]s expected based
-    /// on the `layout` passed. This is for use with [`OperandRef::insert_field`]
-    /// later to set the necessary immediate(s), one-by-one converting all the `Right` to `Left`.
-    ///
-    /// Returns `None` for `layout`s which cannot be built this way.
-    pub(crate) fn builder(
-        layout: TyAndLayout<'tcx>,
-    ) -> Option<OperandRef<'tcx, Either<V, abi::Scalar>>> {
-        // Uninhabited types are weird, because for example `Result<!, !>`
-        // shows up as `FieldsShape::Primitive` and we need to be able to write
-        // a field into `(u32, !)`. We'll do that in an `alloca` instead.
-        if layout.uninhabited {
-            return None;
-        }
-
-        let val = match layout.backend_repr {
-            BackendRepr::Memory { .. } if layout.is_zst() => OperandValue::ZeroSized,
-            BackendRepr::Scalar(s) => OperandValue::Immediate(Either::Right(s)),
-            BackendRepr::ScalarPair(a, b) => OperandValue::Pair(Either::Right(a), Either::Right(b)),
-            BackendRepr::Memory { .. } | BackendRepr::SimdVector { .. } => return None,
-        };
-        Some(OperandRef { val, layout })
-    }
 }
 
-impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, Either<V, abi::Scalar>> {
-    pub(crate) fn insert_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+/// Each of these variants starts out as `Either::Right` when it's uninitialized,
+/// then setting the field changes that to `Either::Left` with the backend value.
+#[derive(Debug, Copy, Clone)]
+enum OperandValueBuilder<V> {
+    ZeroSized,
+    Immediate(Either<V, abi::Scalar>),
+    Pair(Either<V, abi::Scalar>, Either<V, abi::Scalar>),
+    /// SIMD vectors need special handling because they're the only case where
+    /// a type with a (non-ZST) `Memory`-ABI field can be `Scalar`-ABI.
+    /// (Also you can't represent a vector type with just an `abi::Scalar`.)
+    Vector(Either<V, ()>),
+}
+
+/// Allows building up an `OperandRef` by setting fields one at a time.
+#[derive(Debug, Copy, Clone)]
+pub(super) struct OperandRefBuilder<'tcx, V> {
+    val: OperandValueBuilder<V>,
+    layout: TyAndLayout<'tcx>,
+}
+
+impl<'a, 'tcx, V: CodegenObject> OperandRefBuilder<'tcx, V> {
+    /// Creates an uninitialized builder for an instance of the `layout`.
+    ///
+    /// ICEs for [`BackendRepr::Memory`] types (other than ZSTs), which should
+    /// be built up inside a [`PlaceRef`] instead as they need an allocated place
+    /// into which to write the values of the fields.
+    pub(super) fn new(layout: TyAndLayout<'tcx>) -> Self {
+        let val = match layout.backend_repr {
+            BackendRepr::Memory { .. } if layout.is_zst() => OperandValueBuilder::ZeroSized,
+            BackendRepr::Scalar(s) => OperandValueBuilder::Immediate(Either::Right(s)),
+            BackendRepr::ScalarPair(a, b) => {
+                OperandValueBuilder::Pair(Either::Right(a), Either::Right(b))
+            }
+            BackendRepr::SimdVector { .. } => OperandValueBuilder::Vector(Either::Right(())),
+            BackendRepr::Memory { .. } => {
+                bug!("Cannot use non-ZST Memory-ABI type in operand builder: {layout:?}");
+            }
+        };
+        OperandRefBuilder { val, layout }
+    }
+
+    pub(super) fn insert_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &mut self,
         bx: &mut Bx,
-        v: VariantIdx,
-        f: FieldIdx,
+        variant: VariantIdx,
+        field: FieldIdx,
         operand: OperandRef<'tcx, V>,
     ) {
-        let (expect_zst, is_zero_offset) = if let abi::FieldsShape::Primitive = self.layout.fields {
+        if let OperandValue::ZeroSized = operand.val {
+            // A ZST never adds any state, so just ignore it.
+            // This special-casing is worth it because of things like
+            // `Result<!, !>` where `Ok(never)` is legal to write,
+            // but the type shows as FieldShape::Primitive so we can't
+            // actually look at the layout for the field being set.
+            return;
+        }
+
+        let is_zero_offset = if let abi::FieldsShape::Primitive = self.layout.fields {
             // The other branch looking at field layouts ICEs for primitives,
             // so we need to handle them separately.
-            // Multiple fields is possible for cases such as aggregating
-            // a thin pointer, where the second field is the unit.
+            // Because we handled ZSTs above (like the metadata in a thin pointer),
+            // the only possibility is that we're setting the one-and-only field.
             assert!(!self.layout.is_zst());
-            assert_eq!(v, FIRST_VARIANT);
-            let first_field = f == FieldIdx::ZERO;
-            (!first_field, first_field)
+            assert_eq!(variant, FIRST_VARIANT);
+            assert_eq!(field, FieldIdx::ZERO);
+            true
         } else {
-            let variant_layout = self.layout.for_variant(bx.cx(), v);
-            let field_layout = variant_layout.field(bx.cx(), f.as_usize());
-            let field_offset = variant_layout.fields.offset(f.as_usize());
-            (field_layout.is_zst(), field_offset == Size::ZERO)
+            let variant_layout = self.layout.for_variant(bx.cx(), variant);
+            let field_offset = variant_layout.fields.offset(field.as_usize());
+            field_offset == Size::ZERO
         };
 
         let mut update = |tgt: &mut Either<V, abi::Scalar>, src, from_scalar| {
             let to_scalar = tgt.unwrap_right();
+            // We transmute here (rather than just `from_immediate`) because in
+            // `Result<usize, *const ()>` the field of the `Ok` is an integer,
+            // but the corresponding scalar in the enum is a pointer.
             let imm = transmute_scalar(bx, src, from_scalar, to_scalar);
             *tgt = Either::Left(imm);
         };
 
         match (operand.val, operand.layout.backend_repr) {
-            (OperandValue::ZeroSized, _) if expect_zst => {}
+            (OperandValue::ZeroSized, _) => unreachable!("Handled above"),
             (OperandValue::Immediate(v), BackendRepr::Scalar(from_scalar)) => match &mut self.val {
-                OperandValue::Immediate(val @ Either::Right(_)) if is_zero_offset => {
+                OperandValueBuilder::Immediate(val @ Either::Right(_)) if is_zero_offset => {
                     update(val, v, from_scalar);
                 }
-                OperandValue::Pair(fst @ Either::Right(_), _) if is_zero_offset => {
+                OperandValueBuilder::Pair(fst @ Either::Right(_), _) if is_zero_offset => {
                     update(fst, v, from_scalar);
                 }
-                OperandValue::Pair(_, snd @ Either::Right(_)) if !is_zero_offset => {
+                OperandValueBuilder::Pair(_, snd @ Either::Right(_)) if !is_zero_offset => {
                     update(snd, v, from_scalar);
                 }
-                _ => bug!("Tried to insert {operand:?} into {v:?}.{f:?} of {self:?}"),
+                _ => bug!("Tried to insert {operand:?} into {variant:?}.{field:?} of {self:?}"),
+            },
+            (OperandValue::Immediate(v), BackendRepr::SimdVector { .. }) => match &mut self.val {
+                OperandValueBuilder::Vector(val @ Either::Right(())) if is_zero_offset => {
+                    *val = Either::Left(v);
+                }
+                _ => bug!("Tried to insert {operand:?} into {variant:?}.{field:?} of {self:?}"),
             },
             (OperandValue::Pair(a, b), BackendRepr::ScalarPair(from_sa, from_sb)) => {
                 match &mut self.val {
-                    OperandValue::Pair(fst @ Either::Right(_), snd @ Either::Right(_)) => {
+                    OperandValueBuilder::Pair(fst @ Either::Right(_), snd @ Either::Right(_)) => {
                         update(fst, a, from_sa);
                         update(snd, b, from_sb);
                     }
-                    _ => bug!("Tried to insert {operand:?} into {v:?}.{f:?} of {self:?}"),
+                    _ => bug!("Tried to insert {operand:?} into {variant:?}.{field:?} of {self:?}"),
                 }
             }
-            _ => bug!("Unsupported operand {operand:?} inserting into {v:?}.{f:?} of {self:?}"),
+            (OperandValue::Ref(place), BackendRepr::Memory { .. }) => match &mut self.val {
+                OperandValueBuilder::Vector(val @ Either::Right(())) => {
+                    let ibty = bx.cx().immediate_backend_type(self.layout);
+                    let simd = bx.load_from_place(ibty, place);
+                    *val = Either::Left(simd);
+                }
+                _ => bug!("Tried to insert {operand:?} into {variant:?}.{field:?} of {self:?}"),
+            },
+            _ => bug!("Operand cannot be used with `insert_field`: {operand:?}"),
         }
     }
 
@@ -657,13 +698,13 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, Either<V, abi::Scalar>> {
         let field_offset = self.layout.fields.offset(f.as_usize());
         let is_zero_offset = field_offset == Size::ZERO;
         match &mut self.val {
-            OperandValue::Immediate(val @ Either::Right(_)) if is_zero_offset => {
+            OperandValueBuilder::Immediate(val @ Either::Right(_)) if is_zero_offset => {
                 *val = Either::Left(imm);
             }
-            OperandValue::Pair(fst @ Either::Right(_), _) if is_zero_offset => {
+            OperandValueBuilder::Pair(fst @ Either::Right(_), _) if is_zero_offset => {
                 *fst = Either::Left(imm);
             }
-            OperandValue::Pair(_, snd @ Either::Right(_)) if !is_zero_offset => {
+            OperandValueBuilder::Pair(_, snd @ Either::Right(_)) if !is_zero_offset => {
                 *snd = Either::Left(imm);
             }
             _ => bug!("Tried to insert {imm:?} into field {f:?} of {self:?}"),
@@ -675,8 +716,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, Either<V, abi::Scalar>> {
     /// to the normal `OperandValue<V>`.
     ///
     /// ICEs if any required fields were not set.
-    pub fn build(&self, cx: &impl CodegenMethods<'tcx, Value = V>) -> OperandRef<'tcx, V> {
-        let OperandRef { val, layout } = *self;
+    pub(super) fn build(&self, cx: &impl CodegenMethods<'tcx, Value = V>) -> OperandRef<'tcx, V> {
+        let OperandRefBuilder { val, layout } = *self;
 
         // For something like `Option::<u32>::None`, it's expected that the
         // payload scalar will not actually have been set, so this converts
@@ -692,10 +733,15 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, Either<V, abi::Scalar>> {
         };
 
         let val = match val {
-            OperandValue::ZeroSized => OperandValue::ZeroSized,
-            OperandValue::Immediate(v) => OperandValue::Immediate(unwrap(v)),
-            OperandValue::Pair(a, b) => OperandValue::Pair(unwrap(a), unwrap(b)),
-            OperandValue::Ref(_) => bug!(),
+            OperandValueBuilder::ZeroSized => OperandValue::ZeroSized,
+            OperandValueBuilder::Immediate(v) => OperandValue::Immediate(unwrap(v)),
+            OperandValueBuilder::Pair(a, b) => OperandValue::Pair(unwrap(a), unwrap(b)),
+            OperandValueBuilder::Vector(v) => match v {
+                Either::Left(v) => OperandValue::Immediate(v),
+                Either::Right(()) => {
+                    bug!("OperandRef::build called while fields are missing {self:?}")
+                }
+            },
         };
         OperandRef { val, layout }
     }
