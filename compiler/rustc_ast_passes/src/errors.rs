@@ -404,6 +404,7 @@ impl Subdiagnostic for EmptyLabelManySpans {
 #[diag(ast_passes_pattern_in_fn_pointer, code = E0561)]
 pub(crate) struct PatternFnPointer {
     #[primary_span]
+    #[suggestion(code = "_", style = "verbose")]
     pub span: Span,
 }
 
@@ -685,6 +686,7 @@ pub(crate) struct PatternInForeign {
 pub(crate) struct PatternInBodiless {
     #[primary_span]
     #[label]
+    #[suggestion(code = "_", style = "verbose")]
     pub span: Span,
 }
 

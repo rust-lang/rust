@@ -753,8 +753,9 @@ parse_path_found_c_variadic_params = `Trait(...)` syntax does not support c_vari
 parse_path_found_named_params = `Trait(...)` syntax does not support named parameters
     .suggestion = remove the parameter name
 
-parse_pattern_method_param_without_body = patterns aren't allowed in methods without bodies
-    .suggestion = give this argument a name or use an underscore to ignore it
+parse_pattern_in_trait_fn_in_2015 = patterns aren't allowed in trait methods in the 2015 edition
+    .note = upgrading editions will fix this error
+    .suggestion = in this edition, give this argument a name or use an underscore to ignore it
 
 parse_pattern_on_wrong_side_of_at = pattern on wrong side of `@`
     .label_pattern = pattern on the left, should be on the right
