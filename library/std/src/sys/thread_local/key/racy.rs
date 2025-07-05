@@ -34,7 +34,7 @@ impl LazyKey {
         LazyKey { key: AtomicUsize::new(KEY_SENTVAL), dtor }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn force(&self) -> super::Key {
         match self.key.load(Ordering::Acquire) {
             KEY_SENTVAL => self.lazy_init() as super::Key,
@@ -42,6 +42,8 @@ impl LazyKey {
         }
     }
 
+    #[cold]
+    #[inline(never)]
     fn lazy_init(&self) -> usize {
         // POSIX allows the key created here to be KEY_SENTVAL, but the compare_exchange
         // below relies on using KEY_SENTVAL as a sentinel value to check who won the

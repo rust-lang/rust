@@ -67,6 +67,7 @@ unsafe extern "Rust" {
     static DTORS: Atomic<*mut Node>;
 }
 
+#[inline]
 fn tls_ptr_addr() -> *mut *mut u8 {
     let mut tp: usize;
     unsafe {
@@ -80,14 +81,20 @@ fn tls_ptr_addr() -> *mut *mut u8 {
 
 /// Creates an area of memory that's unique per thread. This area will
 /// contain all thread local pointers.
+#[inline]
 fn tls_table() -> &'static mut [*mut u8] {
     let tp = tls_ptr_addr();
 
     if !tp.is_null() {
-        return unsafe {
-            core::slice::from_raw_parts_mut(tp, TLS_MEMORY_SIZE / size_of::<*mut u8>())
-        };
+        unsafe { core::slice::from_raw_parts_mut(tp, TLS_MEMORY_SIZE / size_of::<*mut u8>()) }
+    } else {
+        tls_table_slow()
     }
+}
+
+#[cold]
+#[inline(never)]
+fn tls_table_slow() -> &'static mut [*mut u8] {
     // If the TP register is `0`, then this thread hasn't initialized
     // its TLS yet. Allocate a new page to store this memory.
     let tp = unsafe {

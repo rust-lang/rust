@@ -68,6 +68,7 @@ impl<T: 'static> Storage<T> {
     ///
     /// The resulting pointer may not be used after reentrant inialialization
     /// or thread destruction has occurred.
+    #[inline]
     pub fn get(&'static self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
         let key = self.key.force();
         let ptr = unsafe { get(key) as *mut Value<T> };
@@ -84,6 +85,8 @@ impl<T: 'static> Storage<T> {
     /// # Safety
     /// * `key` must be the result of calling `self.key.force()`
     /// * `ptr` must be the current value associated with `key`.
+    #[cold]
+    #[inline(never)]
     unsafe fn try_initialize(
         key: Key,
         ptr: *mut Value<T>,
