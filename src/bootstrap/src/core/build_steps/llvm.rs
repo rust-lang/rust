@@ -263,6 +263,15 @@ impl Step for Llvm {
     }
 
     /// Compile LLVM for `target`.
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "debug",
+            name = "Llvm::run",
+            skip_all,
+            fields(target = ?self.target),
+        ),
+    )]
     fn run(self, builder: &Builder<'_>) -> LlvmResult {
         let target = self.target;
         let target_native = if self.target.starts_with("riscv") {
