@@ -356,6 +356,23 @@ fn test_nanosleep() {
 mod test_clock_nanosleep {
     use super::*;
 
+    /// Helper function used to create an instant in the future
+    fn add_100_millis(mut ts: libc::timespec) -> libc::timespec {
+        const SECOND: i64 = 1_000_000_000;
+        ts.tv_nsec += SECOND / 10;
+        ts.tv_sec = ts.tv_nsec / SECOND;
+        ts.tv_nsec %= SECOND;
+        ts
+    }
+
+    /// Helper function to get the current time for testing relative sleeps
+    fn timespec_now(clock: libc::clockid_t) -> libc::timespec {
+        let mut timespec = mem::MaybeUninit::<libc::timespec>::uninit();
+        let is_error = unsafe { libc::clock_gettime(clock, timespec.as_mut_ptr()) };
+        assert_eq!(is_error, 0);
+        unsafe { timespec.assume_init() }
+    }
+
     pub fn absolute() {
         let start_test_sleep = Instant::now();
         let before_start = libc::timespec { tv_sec: 0, tv_nsec: 0 };
@@ -407,23 +424,6 @@ mod test_clock_nanosleep {
         };
         assert_eq!(error, 0);
         assert!(start_test_sleep.elapsed() > Duration::from_millis(100));
-    }
-
-    /// Helper function to get the current time for testing relative sleeps
-    fn timespec_now(clock: libc::clockid_t) -> libc::timespec {
-        let mut timespec = mem::MaybeUninit::<libc::timespec>::uninit();
-        let is_error = unsafe { libc::clock_gettime(clock, timespec.as_mut_ptr()) };
-        assert_eq!(is_error, 0);
-        unsafe { timespec.assume_init() }
-    }
-
-    /// Helper function used to create an instant in the future
-    fn add_100_millis(mut ts: libc::timespec) -> libc::timespec {
-        const SECOND: i64 = 1_000_000_000;
-        ts.tv_nsec += SECOND / 10;
-        ts.tv_sec = ts.tv_nsec / SECOND;
-        ts.tv_nsec %= SECOND;
-        ts
     }
 }
 
