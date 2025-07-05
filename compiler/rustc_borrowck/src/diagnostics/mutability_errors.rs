@@ -5,6 +5,7 @@ use core::ops::ControlFlow;
 
 use hir::{ExprKind, Param};
 use rustc_abi::FieldIdx;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Node};
@@ -121,8 +122,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                 }
             }
-            PlaceRef { local: _, projection: [proj_base @ .., ProjectionElem::Deref] } => {
-                if the_place_err.local == ty::CAPTURE_STRUCT_LOCAL
+            PlaceRef { local, projection: [proj_base @ .., ProjectionElem::Deref] } => {
+                if local == ty::CAPTURE_STRUCT_LOCAL
                     && proj_base.is_empty()
                     && !self.upvars.is_empty()
                 {
@@ -136,10 +137,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         ", as `Fn` closures cannot mutate their captured variables".to_string()
                     }
                 } else {
-                    let source = self.borrowed_content_source(PlaceRef {
-                        local: the_place_err.local,
-                        projection: proj_base,
-                    });
+                    let source =
+                        self.borrowed_content_source(PlaceRef { local, projection: proj_base });
                     let pointer_type = source.describe_for_immutable_place(self.infcx.tcx);
                     opt_source = Some(source);
                     if let Some(desc) = self.describe_place(access_place.as_ref()) {
@@ -506,6 +505,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             PlaceRef { local, projection: [ProjectionElem::Deref] }
                 if local == ty::CAPTURE_STRUCT_LOCAL && !self.upvars.is_empty() =>
             {
+                self.point_at_binding_outside_closure(&mut err, local, access_place);
                 self.expected_fn_found_fn_mut_call(&mut err, span, act);
             }
 
@@ -939,6 +939,76 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
+    /// When modifying a binding from inside of an `Fn` closure, point at the binding definition
+    /// and suggest using an `std::sync` type that would allow the code to compile.
+    fn point_at_binding_outside_closure(
+        &self,
+        err: &mut Diag<'_>,
+        local: Local,
+        access_place: Place<'tcx>,
+    ) {
+        let place = access_place.as_ref();
+        for (index, elem) in place.projection.into_iter().enumerate() {
+            if let ProjectionElem::Deref = elem {
+                if index == 0 {
+                    if self.body.local_decls[local].is_ref_for_guard() {
+                        continue;
+                    }
+                    if let LocalInfo::StaticRef { .. } = *self.body.local_decls[local].local_info()
+                    {
+                        continue;
+                    }
+                }
+                if let Some(field) = self.is_upvar_field_projection(PlaceRef {
+                    local,
+                    projection: place.projection.split_at(index + 1).0,
+                }) {
+                    let var_index = field.index();
+                    let upvar = self.upvars[var_index];
+                    if let Some(hir_id) = upvar.info.capture_kind_expr_id {
+                        let node = self.infcx.tcx.hir_node(hir_id);
+                        if let hir::Node::Expr(expr) = node
+                            && let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
+                            && let hir::def::Res::Local(hir_id) = path.res
+                            && let hir::Node::Pat(pat) = self.infcx.tcx.hir_node(hir_id)
+                        {
+                            let hir = self.infcx.tcx.hir();
+                            let def_id = hir.enclosing_body_owner(self.mir_hir_id());
+                            let typeck_results = self.infcx.tcx.typeck(def_id);
+                            let ty = typeck_results.node_type_opt(expr.hir_id);
+                            if let Some(ty) = ty {
+                                let mutex = format!("std::sync::atomic::Mutex<{ty}>");
+                                let mutex = mutex.as_str();
+                                let suggestions: FxHashMap<_, _> = [
+                                    (self.infcx.tcx.types.isize, "std::sync::atomic::AtomicIsize"),
+                                    (self.infcx.tcx.types.usize, "std::sync::atomic::AtomicUsize"),
+                                    (self.infcx.tcx.types.i64, "std::sync::atomic::AtomicI64"),
+                                    (self.infcx.tcx.types.u64, "std::sync::atomic::AtomicU64"),
+                                    (self.infcx.tcx.types.i32, "std::sync::atomic::AtomicI32"),
+                                    (self.infcx.tcx.types.u32, "std::sync::atomic::AtomicU32"),
+                                    (self.infcx.tcx.types.i16, "std::sync::atomic::AtomicI16"),
+                                    (self.infcx.tcx.types.u16, "std::sync::atomic::AtomicU16"),
+                                    (self.infcx.tcx.types.i8, "std::sync::atomic::AtomicI8"),
+                                    (self.infcx.tcx.types.u8, "std::sync::atomic::AtomicU8"),
+                                    (self.infcx.tcx.types.bool, "std::sync::atomic::AtomicBool"),
+                                ]
+                                .into_iter()
+                                .collect();
+                                let ty = suggestions.get(&ty).unwrap_or(&mutex);
+                                err.help(format!("consider using `{ty}` instead, which allows for multiple threads to access and modify the value"));
+                            }
+                            let name = upvar.to_string(self.infcx.tcx);
+                            err.span_label(
+                                pat.span,
+                                format!("`{name}` declared here, outside the closure"),
+                            );
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
     /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
     fn expected_fn_found_fn_mut_call(&self, err: &mut Diag<'_>, sp: Span, act: &str) {
         err.span_label(sp, format!("cannot {act}"));
@@ -951,6 +1021,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let def_id = tcx.hir_enclosing_body_owner(fn_call_id);
         let mut look_at_return = true;
 
+        err.span_label(closure_span, "in this closure");
         // If the HIR node is a function or method call gets the def ID
         // of the called function or method and the span and args of the call expr
         let get_call_details = || {
@@ -1021,7 +1092,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             if let Some(span) = arg {
                 err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
                 err.span_label(call_span, "expects `Fn` instead of `FnMut`");
-                err.span_label(closure_span, "in this closure");
                 look_at_return = false;
             }
         }
@@ -1048,7 +1118,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         sig.decl.output.span(),
                         "change this to return `FnMut` instead of `Fn`",
                     );
-                    err.span_label(closure_span, "in this closure");
                 }
                 _ => {}
             }
