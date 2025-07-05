@@ -121,6 +121,8 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
         }
 
         _ => {
+            // FIXME: this logic seems strange as well.
+
             // android has its own gdb handling
             if config.debugger == Some(Debugger::Gdb) && config.gdb.is_none() {
                 panic!("gdb not available but debuginfo gdb debuginfo test requested");
@@ -1055,18 +1057,20 @@ impl<'test> TestCx<'test> {
         let proc_res = match &*self.config.target {
             // This is pretty similar to below, we're transforming:
             //
-            //      program arg1 arg2
+            // ```text
+            // program arg1 arg2
+            // ```
             //
             // into
             //
-            //      remote-test-client run program 2 support-lib.so support-lib2.so arg1 arg2
+            // ```text
+            // remote-test-client run program 2 support-lib.so support-lib2.so arg1 arg2
+            // ```
             //
-            // The test-client program will upload `program` to the emulator
-            // along with all other support libraries listed (in this case
-            // `support-lib.so` and `support-lib2.so`. It will then execute
-            // the program on the emulator with the arguments specified
-            // (in the environment we give the process) and then report back
-            // the same result.
+            // The test-client program will upload `program` to the emulator along with all other
+            // support libraries listed (in this case `support-lib.so` and `support-lib2.so`. It
+            // will then execute the program on the emulator with the arguments specified (in the
+            // environment we give the process) and then report back the same result.
             _ if self.config.remote_test_client.is_some() => {
                 let aux_dir = self.aux_output_dir_name();
                 let ProcArgs { prog, args } = self.make_run_args();
@@ -1532,6 +1536,8 @@ impl<'test> TestCx<'test> {
         ));
 
         // Optionally prevent default --sysroot if specified in test compile-flags.
+        //
+        // FIXME: I feel like this logic is fairly sus.
         if !self.props.compile_flags.iter().any(|flag| flag.starts_with("--sysroot"))
             && !self.config.host_rustcflags.iter().any(|flag| flag == "--sysroot")
         {
