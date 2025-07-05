@@ -1,9 +1,9 @@
 // Not in interpret to make sure we do not use private implementation details
 
 use rustc_abi::{FieldIdx, VariantIdx};
-use rustc_middle::query::Key;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
+use rustc_span::DUMMY_SP;
 use tracing::instrument;
 
 use crate::interpret::InterpCx;
@@ -71,8 +71,7 @@ pub fn tag_for_variant_provider<'tcx>(
     let (ty, variant_index) = key.value;
     assert!(ty.is_enum());
 
-    let ecx =
-        InterpCx::new(tcx, ty.default_span(tcx), key.typing_env, crate::const_eval::DummyMachine);
+    let ecx = InterpCx::new(tcx, DUMMY_SP, key.typing_env, crate::const_eval::DummyMachine);
 
     let layout = ecx.layout_of(ty).unwrap();
     ecx.tag_for_variant(layout, variant_index).unwrap().map(|(tag, _tag_field)| tag)
