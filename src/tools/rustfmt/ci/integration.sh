@@ -2,7 +2,7 @@
 
 set -ex
 
-: ${INTEGRATION?"The INTEGRATION environment variable must be set."}
+: "${INTEGRATION?'The INTEGRATION environment variable must be set.'}"
 
 # FIXME: this means we can get a stale cargo-fmt from a previous run.
 #
@@ -42,8 +42,9 @@ function check_fmt_with_lib_tests {
 
 function check_fmt_base {
     local test_args="$1"
-    local build=$(cargo test $test_args 2>&1)
-    if [[ "$build" =~ "build failed" ]] || [[ "$build" =~ "test result: FAILED." ]]; then
+    local build
+    build=$(cargo test "$test_args" 2>&1)
+    if [[ "$build" =~ "build failed" ]] || [[ "$build" =~ test\ result\:\ FAILED\. ]]; then
           return 0
     fi
     touch rustfmt.toml
@@ -53,16 +54,19 @@ function check_fmt_base {
         return 1
     fi
     cat rustfmt_output
-    ! cat rustfmt_output | grep -q "internal error"
-    if [[ $? != 0 ]]; then
+    grep -q "internal error" < rustfmt_output
+    cmd_ret=$?
+    if [[ $cmd_ret == 0 ]]; then
         return 1
     fi
-    ! cat rustfmt_output | grep -q "warning"
-    if [[ $? != 0 ]]; then
+    grep -q "warning" < rustfmt_output
+    cmd_ret=$?
+    if [[ $cmd_ret == 0 ]]; then
         return 1
     fi
-    ! cat rustfmt_output | grep -q "Warning"
-    if [[ $? != 0 ]]; then
+    grep -q "Warning" < rustfmt_output
+    cmd_ret=$?
+    if [[ $cmd_ret == 0 ]]; then
         return 1
     fi
     cargo fmt --all -- --check |& tee rustfmt_check_output
@@ -70,50 +74,52 @@ function check_fmt_base {
         cat rustfmt_check_output
         return 1
     fi
-    cargo test $test_args
-    if [[ $? != 0 ]]; then
-        return $?
+    cargo test "$test_args"
+    cargo_ret=$?
+    if [[ $cargo_ret != 0 ]]; then
+        return $cargo_ret
     fi
 }
 
 function show_head {
-    local head=$(git rev-parse HEAD)
+    local head
+    head=$(git rev-parse HEAD)
     echo "Head commit of ${INTEGRATION}: $head"
 }
 
 case ${INTEGRATION} in
     cargo)
-        git clone --depth=1 https://github.com/rust-lang/${INTEGRATION}.git
-        cd ${INTEGRATION}
+        git clone --depth=1 "https://github.com/rust-lang/${INTEGRATION}.git"
+        cd "${INTEGRATION}"
         show_head
         export CFG_DISABLE_CROSS_TESTS=1
         check_fmt_with_all_tests
         cd -
         ;;
     crater)
-        git clone --depth=1 https://github.com/rust-lang/${INTEGRATION}.git
-        cd ${INTEGRATION}
+        git clone --depth=1 "https://github.com/rust-lang/${INTEGRATION}.git"
+        cd "${INTEGRATION}"
         show_head
         check_fmt_with_lib_tests
         cd -
         ;;
     bitflags)
-        git clone --depth=1 https://github.com/bitflags/${INTEGRATION}.git
-        cd ${INTEGRATION}
+        git clone --depth=1 "https://github.com/bitflags/${INTEGRATION}.git"
+        cd "${INTEGRATION}"
         show_head
         check_fmt_with_all_tests
         cd -
         ;;
     tempdir)
-        git clone --depth=1 https://github.com/rust-lang-deprecated/${INTEGRATION}.git
-        cd ${INTEGRATION}
+        git clone --depth=1 "https://github.com/rust-lang-deprecated/${INTEGRATION}.git"
+        cd "${INTEGRATION}"
         show_head
         check_fmt_with_all_tests
         cd -
         ;;
     *)
-        git clone --depth=1 https://github.com/rust-lang/${INTEGRATION}.git
-        cd ${INTEGRATION}
+        git clone --depth=1 "https://github.com/rust-lang/${INTEGRATION}.git"
+        cd "${INTEGRATION}"
         show_head
         check_fmt_with_all_tests
         cd -
