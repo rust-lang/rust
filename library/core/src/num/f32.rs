@@ -10,6 +10,7 @@
 //! defined directly on the `f32` type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![allow(clippy::excessive_precision)]
 
 use crate::convert::FloatToInt;
 use crate::num::FpCategory;
@@ -491,13 +492,15 @@ impl f32 {
     /// The concrete bit pattern may change across Rust versions and target platforms.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     #[rustc_diagnostic_item = "f32_nan"]
-    #[allow(clippy::eq_op)]
+    #[allow(clippy::eq_op, clippy::zero_divided_by_zero)]
     pub const NAN: f32 = 0.0_f32 / 0.0_f32;
     /// Infinity (∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
+    #[allow(clippy::zero_divided_by_zero)]
     pub const INFINITY: f32 = 1.0_f32 / 0.0_f32;
     /// Negative infinity (−∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
+    #[allow(clippy::zero_divided_by_zero)]
     pub const NEG_INFINITY: f32 = -1.0_f32 / 0.0_f32;
 
     /// Sign bit

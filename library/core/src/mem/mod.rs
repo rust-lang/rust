@@ -36,7 +36,7 @@ pub use crate::intrinsics::transmute;
 /// * If you want to leak memory, see [`Box::leak`].
 /// * If you want to obtain a raw pointer to the memory, see [`Box::into_raw`].
 /// * If you want to dispose of a value properly, running its destructor, see
-/// [`mem::drop`].
+///   [`mem::drop`].
 ///
 /// # Safety
 ///
@@ -803,6 +803,7 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
 #[inline]
 #[stable(feature = "mem_take", since = "1.40.0")]
 pub fn take<T: Default>(dest: &mut T) -> T {
+    #[allow(clippy::mem_replace_with_default)] // exempt by being the one true definition
     replace(dest, T::default())
 }
 

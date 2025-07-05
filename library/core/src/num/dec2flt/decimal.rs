@@ -58,6 +58,7 @@ impl Decimal {
         // of the x87 FPU stack to be changed so that it directly rounds to 64/32 bit.
         // The `set_precision` function takes care of setting the precision on architectures which
         // require setting it by changing the global state (like the control word of the x87 FPU).
+        #[allow(clippy::let_unit_value)]
         let _cw = set_precision::<F>();
 
         if !self.can_use_fast_path::<F>() {

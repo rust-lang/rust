@@ -142,6 +142,7 @@ pub fn max_pow10_no_more_than(x: u32) -> (u8, u32) {
     const X2: u32 = 100;
     const X1: u32 = 10;
 
+    #[allow(clippy::collapsible_else_if)]
     if x < X4 {
         if x < X2 {
             if x < X1 { (0, 1) } else { (1, X1) }
