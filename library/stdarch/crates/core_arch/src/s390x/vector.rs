@@ -51,7 +51,7 @@ types! {
     pub struct vector_double(2 x f64);
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct PackedTuple<T, U> {
     x: T,
     y: U,
@@ -4787,7 +4787,7 @@ pub unsafe fn vec_splat_s8<const IMM: i8>() -> vector_signed_char {
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 #[cfg_attr(test, assert_instr(vrepih, IMM = 42))]
 pub unsafe fn vec_splat_s16<const IMM: i16>() -> vector_signed_short {
-    vector_signed_short([IMM as i16; 8])
+    vector_signed_short([IMM; 8])
 }
 
 /// Vector Splat Signed Word
