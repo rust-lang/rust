@@ -129,6 +129,16 @@ pub trait PatCx: Sized + fmt::Debug {
         deref_pat: &DeconstructedPat<Self>,
         normal_pat: &DeconstructedPat<Self>,
     ) -> Self::Error;
+
+    /// Lint that an or-pattern will cause a guard to be tried several times because there's a value
+    /// that matches several of the or-alternatives.
+    /// The default implementation does nothing.
+    fn lint_overlapping_alternatives_under_guard(
+        &self,
+        _pat1: &DeconstructedPat<Self>,
+        _pat2: &DeconstructedPat<Self>,
+    ) {
+    }
 }
 
 /// The arm of a match expression.

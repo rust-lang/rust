@@ -1106,14 +1106,20 @@ impl<'p, Cx: PatCx> fmt::Debug for PatStack<'p, Cx> {
 /// A row of the matrix.
 #[derive(Clone)]
 struct MatrixRow<'p, Cx: PatCx> {
-    // The patterns in the row.
+    /// The patterns in the row.
     pats: PatStack<'p, Cx>,
+    /// A (sub)pattern this row comes from. When expanding or-patterns, this tracks the last
+    /// alternative expanded, e.g. in `(0|1, 2|3)` we'd keep `3` for the last row. Used only for
+    /// diagnostics.
+    origin: &'p DeconstructedPat<Cx>,
     /// Whether the original arm had a guard. This is inherited when specializing.
     is_under_guard: bool,
     /// When we specialize, we remember which row of the original matrix produced a given row of the
     /// specialized matrix. When we unspecialize, we use this to propagate usefulness back up the
     /// callstack. On creation, this stores the index of the original match arm.
     parent_row: usize,
+    /// Remember the match arm this came from.
+    arm_id: usize,
     /// False when the matrix is just built. This is set to `true` by
     /// [`compute_exhaustiveness_and_usefulness`] if the arm is found to be useful.
     /// This is reset to `false` when specializing.
@@ -1143,7 +1149,9 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
     fn new(arm: &MatchArm<'p, Cx>, arm_id: usize) -> Self {
         MatrixRow {
             pats: PatStack::from_pattern(arm.pat),
+            origin: arm.pat,
             parent_row: arm_id,
+            arm_id,
             is_under_guard: arm.has_guard,
             useful: false,
             intersects_at_least: DenseBitSet::new_empty(0), // Initialized in `Matrix::push`.
@@ -1168,8 +1176,10 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
     fn expand_or_pat(&self, parent_row: usize) -> impl Iterator<Item = MatrixRow<'p, Cx>> {
         let is_or_pat = self.pats.head().is_or_pat();
         self.pats.expand_or_pat().map(move |patstack| MatrixRow {
+            origin: if is_or_pat { patstack.head().as_pat().unwrap() } else { self.origin },
             pats: patstack,
             parent_row,
+            arm_id: self.arm_id,
             is_under_guard: self.is_under_guard,
             useful: false,
             intersects_at_least: DenseBitSet::new_empty(0), // Initialized in `Matrix::push`.
@@ -1189,7 +1199,9 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
     ) -> Result<MatrixRow<'p, Cx>, Cx::Error> {
         Ok(MatrixRow {
             pats: self.pats.pop_head_constructor(cx, ctor, ctor_arity, ctor_is_relevant)?,
+            origin: self.origin,
             parent_row,
+            arm_id: self.arm_id,
             is_under_guard: self.is_under_guard,
             useful: false,
             intersects_at_least: DenseBitSet::new_empty(0), // Initialized in `Matrix::push`.
@@ -1724,6 +1736,11 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: PatCx>(
             row.intersects_at_least.insert_range(0..i);
             // The next rows stays useful if this one is under a guard.
             useful &= row.is_under_guard;
+        }
+        for (row1, row2) in matrix.rows().zip(matrix.rows().skip(1)) {
+            if row1.arm_id == row2.arm_id && row1.is_under_guard {
+                mcx.tycx.lint_overlapping_alternatives_under_guard(row1.origin, row2.origin);
+            }
         }
         return if useful && matrix.wildcard_row_is_relevant {
             // The wildcard row is useful; the match is non-exhaustive.
