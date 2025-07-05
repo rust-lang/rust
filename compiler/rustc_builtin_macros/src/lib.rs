@@ -51,6 +51,7 @@ mod pattern_type;
 mod source_util;
 mod test;
 mod trace_macros;
+mod typetree;
 
 pub mod asm;
 pub mod cmdline_attrs;
