@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::fmt;
 use std::iter::once;
 
@@ -99,6 +100,16 @@ pub struct RustcPatCtxt<'p, 'tcx: 'p> {
     /// Whether the data at the scrutinee is known to be valid. This is false if the scrutinee comes
     /// from a union field, a pointer deref, or a reference deref (pending opsem decisions).
     pub known_valid_scrutinee: bool,
+    pub internal_state: RustcPatCtxtState,
+}
+
+/// Private fields of [`RustcPatCtxt`], separated out to permit record initialization syntax.
+#[derive(Clone, Default)]
+pub struct RustcPatCtxtState {
+    /// Has a deref pattern been lowered? This is initialized to `false` and is updated by
+    /// [`RustcPatCtxt::lower_pat`] in order to avoid performing deref-pattern-specific validation
+    /// for everything containing patterns.
+    has_lowered_deref_pat: Cell<bool>,
 }
 
 impl<'p, 'tcx: 'p> fmt::Debug for RustcPatCtxt<'p, 'tcx> {
@@ -474,6 +485,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 fields = vec![self.lower_pat(subpattern).at_index(0)];
                 arity = 1;
                 ctor = DerefPattern(cx.reveal_opaque_ty(subpattern.ty));
+                self.internal_state.has_lowered_deref_pat.set(true);
             }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
                 match ty.kind() {
@@ -1026,6 +1038,10 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                 },
             );
         }
+    }
+
+    fn match_may_contain_deref_pats(&self) -> bool {
+        self.internal_state.has_lowered_deref_pat.get()
     }
 
     fn report_mixed_deref_pat_ctors(

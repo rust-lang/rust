@@ -109,6 +109,11 @@ pub trait PatCx: Sized + fmt::Debug {
     ) {
     }
 
+    /// Check if we may need to perform additional deref-pattern-specific validation.
+    fn match_may_contain_deref_pats(&self) -> bool {
+        true
+    }
+
     /// The current implementation of deref patterns requires that they can't match on the same
     /// place as a normal constructor. Since this isn't caught by type-checking, we check it in the
     /// `PatCx` before running the analysis. This reports an error if the check fails.

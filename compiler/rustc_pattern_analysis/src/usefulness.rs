@@ -1837,7 +1837,9 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
     complexity_limit: usize,
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
     // The analysis doesn't support deref patterns mixed with normal constructors; error if present.
-    checks::detect_mixed_deref_pat_ctors(tycx, arms)?;
+    if tycx.match_may_contain_deref_pats() {
+        checks::detect_mixed_deref_pat_ctors(tycx, arms)?;
+    }
 
     let mut cx = UsefulnessCtxt {
         tycx,
