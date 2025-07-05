@@ -4,6 +4,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     debug slice => _1;
     debug f => _2;
     let mut _0: ();
+    let mut _10: *const T;
     let mut _11: std::ptr::NonNull<T>;
     let mut _12: *const T;
     let mut _26: std::option::Option<&T>;
@@ -73,7 +74,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
             let _3: usize;
             let mut _7: *mut T;
             let mut _8: *mut T;
-            let mut _10: *const T;
             scope 5 {
                 let _6: std::ptr::NonNull<T>;
                 scope 6 {
@@ -105,6 +105,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb0: {
         StorageLive(_3);
+        StorageLive(_9);
         StorageLive(_4);
         _3 = PtrMetadata(copy _1);
         _4 = &raw const (*_1);
@@ -112,7 +113,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         _5 = copy _4 as *const T (PtrToPtr);
         _6 = NonNull::<T> { pointer: move _5 };
         StorageDead(_5);
-        StorageLive(_9);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
     }
 
@@ -134,8 +134,8 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb3: {
         _10 = copy _9;
-        StorageDead(_9);
         StorageDead(_4);
+        StorageDead(_9);
         StorageDead(_3);
         StorageLive(_11);
         StorageLive(_12);
