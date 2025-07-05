@@ -1299,7 +1299,6 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("check")
-                .stage(2)
                 .targets(&[TEST_TRIPLE_1])
                 .hosts(&[TEST_TRIPLE_1])
                 .render_steps(), @r"
@@ -1307,7 +1306,6 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> std 1 <target1>
-        [build] llvm <target1>
         [check] rustc 1 <host> -> rustc 2 <target1>
         [check] rustc 1 <host> -> Rustdoc 2 <target1>
         [check] rustc 1 <host> -> cranelift 2 <target1>
@@ -1318,12 +1316,9 @@ mod snapshot {
         [check] rustc 0 <host> -> MiroptTestTools 1 <target1>
         [check] rustc 1 <host> -> Rustfmt 2 <target1>
         [check] rustc 1 <host> -> rust-analyzer 2 <target1>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 2 <host> -> std 2 <target1>
-        [check] rustc 2 <host> -> TestFloatParse 3 <target1>
+        [check] rustc 1 <host> -> TestFloatParse 2 <target1>
         [check] rustc 0 <host> -> FeaturesStatusDump 1 <target1>
-        [check] rustc 2 <host> -> std 2 <target1>
+        [check] rustc 1 <host> -> std 1 <target1>
         ");
     }
 
