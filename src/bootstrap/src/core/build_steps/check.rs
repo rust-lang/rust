@@ -1,7 +1,5 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
-use build_helper::exit;
-
 use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
 };
@@ -264,19 +262,23 @@ fn prepare_compiler_for_check(
             build_compiler
         }
         Mode::ToolRustc | Mode::Codegen => {
+            // FIXME: this is a hack, see description of Mode::Rustc below
+            let stage = if host == target { builder.top_stage - 1 } else { builder.top_stage };
             // When checking tool stage N, we check it with compiler stage N-1
-            let build_compiler = builder.compiler(builder.top_stage - 1, host);
+            let build_compiler = builder.compiler(stage, host);
             builder.ensure(Rustc::new(builder, build_compiler, target));
             build_compiler
         }
         Mode::Rustc => {
-            if builder.top_stage < 2 && host != target {
-                eprintln!("Cannot do a cross-compilation check of rustc on stage 1, use stage 2");
-                exit!(1);
-            }
-
-            // When checking the stage N compiler, we want to do it with the stage N-1 compiler
-            builder.compiler(builder.top_stage - 1, host)
+            // This is a horrible hack, because we actually change the compiler stage numbering
+            // here. If you do `x check --stage 1 --host FOO`, we build stage 1 host rustc,
+            // and use that to check stage 1 FOO rustc (which actually makes that stage 2 FOO
+            // rustc).
+            //
+            // FIXME: remove this and either fix cross-compilation check on stage 2 (which has a
+            // myriad of other problems) or disable cross-checking on stage 1.
+            let stage = if host == target { builder.top_stage - 1 } else { builder.top_stage };
+            builder.compiler(stage, host)
         }
         Mode::Std => {
             // When checking std stage N, we want to do it with the stage N compiler
