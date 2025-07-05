@@ -942,7 +942,8 @@ impl<T> [T] {
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
         assert_unsafe_precondition!(
             check_library_ub,
-            "slice::swap_unchecked requires that the indices are within the slice",
+            "slice::swap_unchecked requires that the indices are within the slice \
+            (a:{a}, b:{b}, len:{len})",
             (
                 len: usize = self.len(),
                 a: usize = a,
@@ -1315,7 +1316,8 @@ impl<T> [T] {
     pub const unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
         assert_unsafe_precondition!(
             check_language_ub,
-            "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
+            "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks \
+            (N:{n}, len:{len})",
             (n: usize = N, len: usize = self.len()) => n != 0 && len % n == 0,
         );
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
@@ -1511,7 +1513,8 @@ impl<T> [T] {
     pub const unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
         assert_unsafe_precondition!(
             check_language_ub,
-            "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
+            "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks \
+            (N:{n}, len:{len})",
             (n: usize = N, len: usize = self.len()) => n != 0 && len % n == 0
         );
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
@@ -2078,7 +2081,8 @@ impl<T> [T] {
 
         assert_unsafe_precondition!(
             check_library_ub,
-            "slice::split_at_unchecked requires the index to be within the slice",
+            "slice::split_at_unchecked requires the index to be within the slice \
+            (mid:{mid}, len:{len})",
             (mid: usize = mid, len: usize = len) => mid <= len,
         );
 
@@ -2128,7 +2132,8 @@ impl<T> [T] {
 
         assert_unsafe_precondition!(
             check_library_ub,
-            "slice::split_at_mut_unchecked requires the index to be within the slice",
+            "slice::split_at_mut_unchecked requires the index to be within the slice \
+            (mid:{mid}, len:{len})",
             (mid: usize = mid, len: usize = len) => mid <= len,
         );
 
