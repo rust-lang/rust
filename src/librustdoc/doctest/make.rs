@@ -270,6 +270,29 @@ impl std::string::ToString for DocTestWrapResult {
     }
 }
 
+/// `catch_unwind` wrapper to ensure that a `should_panic` doctest actually panicked.
+///
+/// Returns `(wrapper_pre, wrapper_post)`.
+pub(crate) fn should_panic_wrapper(
+    should_panic: bool,
+    returns_result: bool,
+) -> (&'static str, String) {
+    if !should_panic {
+        return ("", String::new());
+    }
+    (
+        "match std::panic::catch_unwind(core::panic::AssertUnwindSafe(|| {\n",
+        format!(
+            "
+}})) {{
+    Ok(_) => std::process::exit(1),
+    {}
+}}\n",
+            if returns_result { "Err(err) => err," } else { "Err(_) => {}" },
+        ),
+    )
+}
+
 impl DocTestBuilder {
     fn invalid(
         global_crate_attrs: Vec<String>,
@@ -302,6 +325,7 @@ impl DocTestBuilder {
         dont_insert_main: bool,
         opts: &GlobalTestOptions,
         crate_name: Option<&str>,
+        should_panic: bool,
     ) -> (DocTestWrapResult, usize) {
         if self.invalid_ast {
             // If the AST failed to compile, no need to go generate a complete doctest, the error
@@ -384,20 +408,24 @@ impl DocTestBuilder {
                 "_inner".into()
             };
             let inner_attr = if self.test_id.is_some() { "#[allow(non_snake_case)] " } else { "" };
+            let (should_panic_pre, should_panic_post) =
+                should_panic_wrapper(should_panic, returns_result);
             let (main_pre, main_post) = if returns_result {
                 (
                     format!(
-                        "fn main() {{ {inner_attr}fn {inner_fn_name}() -> core::result::Result<(), impl core::fmt::Debug> {{\n",
+                        "\
+fn main() {{ {inner_attr}fn {inner_fn_name}() -> core::result::Result<(), impl core::fmt::Debug> {{
+{should_panic_pre}",
                     ),
-                    format!("\n}} {inner_fn_name}().unwrap() }}"),
+                    format!("{should_panic_post}\n}} {inner_fn_name}().unwrap() }}"),
                 )
             } else if self.test_id.is_some() {
                 (
-                    format!("fn main() {{ {inner_attr}fn {inner_fn_name}() {{\n",),
-                    format!("\n}} {inner_fn_name}() }}"),
+                    format!("fn main() {{ {inner_attr}fn {inner_fn_name}() {{\n{should_panic_pre}"),
+                    format!("{should_panic_post}\n}} {inner_fn_name}() }}"),
                 )
             } else {
-                ("fn main() {\n".into(), "\n}".into())
+                (format!("fn main() {{\n{should_panic_pre}"), format!("{should_panic_post}\n}}"))
             };
             // Note on newlines: We insert a line/newline *before*, and *after*
             // the doctest and adjust the `line_offset` accordingly.
