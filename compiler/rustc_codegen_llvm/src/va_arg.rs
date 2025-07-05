@@ -172,10 +172,10 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
 
     let gr_type = target_ty.is_any_ptr() || target_ty.is_integral();
     let (reg_off, reg_top, slot_size) = if gr_type {
-        let nreg = (layout.size.bytes() + 7) / 8;
+        let nreg = layout.size.bytes().div_ceil(8);
         (gr_offs, gr_top, nreg * 8)
     } else {
-        let nreg = (layout.size.bytes() + 15) / 16;
+        let nreg = layout.size.bytes().div_ceil(16);
         (vr_offs, vr_top, nreg * 16)
     };
 
