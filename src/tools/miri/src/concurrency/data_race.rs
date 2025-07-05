@@ -971,14 +971,6 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         }
     }
 
-    /// After all threads are done running, this allows data races to occur for subsequent
-    /// 'administrative' machine accesses (that logically happen outside of the Abstract Machine).
-    fn allow_data_races_all_threads_done(&mut self) {
-        let this = self.eval_context_ref();
-        assert!(this.have_all_terminated());
-        this.machine.data_race.set_ongoing_action_data_race_free(true);
-    }
-
     /// Calls the callback with the "release" clock of the current thread.
     /// Other threads can acquire this clock in the future to establish synchronization
     /// with this program point.

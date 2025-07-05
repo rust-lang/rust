@@ -1,6 +1,6 @@
+use std::env;
 use std::ffi::{OsStr, OsString};
 use std::io::ErrorKind;
-use std::{env, mem};
 
 use rustc_abi::{FieldIdx, Size};
 use rustc_data_structures::fx::FxHashMap;
@@ -48,20 +48,6 @@ impl<'tcx> UnixEnvVars<'tcx> {
         ecx.write_pointer(environ_block, &environ)?;
 
         interp_ok(UnixEnvVars { map: env_vars_machine, environ })
-    }
-
-    pub(crate) fn cleanup(ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>) -> InterpResult<'tcx> {
-        // Deallocate individual env vars.
-        let env_vars = mem::take(&mut ecx.machine.env_vars.unix_mut().map);
-        for (_name, ptr) in env_vars {
-            ecx.deallocate_ptr(ptr, None, MiriMemoryKind::Runtime.into())?;
-        }
-        // Deallocate environ var list.
-        let environ = &ecx.machine.env_vars.unix().environ;
-        let old_vars_ptr = ecx.read_pointer(environ)?;
-        ecx.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Runtime.into())?;
-
-        interp_ok(())
     }
 
     pub(crate) fn environ(&self) -> Pointer {
@@ -112,7 +98,7 @@ fn alloc_env_var<'tcx>(
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
     name_osstring.push(value);
-    ecx.alloc_os_str_as_c_str(name_osstring.as_os_str(), MiriMemoryKind::Runtime.into())
+    ecx.alloc_os_str_as_c_str(name_osstring.as_os_str(), MiriMemoryKind::Machine.into())
 }
 
 /// Allocates an `environ` block with the given list of pointers.
@@ -128,7 +114,7 @@ fn alloc_environ_block<'tcx>(
         ecx.machine.layouts.mut_raw_ptr.ty,
         u64::try_from(vars.len()).unwrap(),
     ))?;
-    let vars_place = ecx.allocate(vars_layout, MiriMemoryKind::Runtime.into())?;
+    let vars_place = ecx.allocate(vars_layout, MiriMemoryKind::Machine.into())?;
     for (idx, var) in vars.into_iter_enumerated() {
         let place = ecx.project_field(&vars_place, idx)?;
         ecx.write_pointer(var, &place)?;
@@ -171,7 +157,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let Some((name, value)) = new {
             let var_ptr = alloc_env_var(this, &name, &value)?;
             if let Some(var) = this.machine.env_vars.unix_mut().map.insert(name, var_ptr) {
-                this.deallocate_ptr(var, None, MiriMemoryKind::Runtime.into())?;
+                this.deallocate_ptr(var, None, MiriMemoryKind::Machine.into())?;
             }
             this.update_environ()?;
             interp_ok(Scalar::from_i32(0)) // return zero on success
@@ -195,7 +181,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         if let Some(old) = success {
             if let Some(var) = old {
-                this.deallocate_ptr(var, None, MiriMemoryKind::Runtime.into())?;
+                this.deallocate_ptr(var, None, MiriMemoryKind::Machine.into())?;
             }
             this.update_environ()?;
             interp_ok(Scalar::from_i32(0))
@@ -253,7 +239,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Deallocate the old environ list.
         let environ = this.machine.env_vars.unix().environ.clone();
         let old_vars_ptr = this.read_pointer(&environ)?;
-        this.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Runtime.into())?;
+        this.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Machine.into())?;
 
         // Write the new list.
         let vals = this.machine.env_vars.unix().map.values().copied().collect();
@@ -274,15 +260,52 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_u32(this.get_pid()))
     }
 
-    fn linux_gettid(&mut self) -> InterpResult<'tcx, Scalar> {
+    /// The `gettid`-like function for Unix platforms that take no parameters and return a 32-bit
+    /// integer. It is not always named "gettid".
+    fn unix_gettid(&mut self, link_name: &str) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_ref();
-        this.assert_target_os("linux", "gettid");
+        this.assert_target_os_is_unix(link_name);
 
-        let index = this.machine.threads.active_thread().to_u32();
+        // For most platforms the return type is an `i32`, but some are unsigned. The TID
+        // will always be positive so we don't need to differentiate.
+        interp_ok(Scalar::from_u32(this.get_current_tid()))
+    }
 
-        // Compute a TID for this thread, ensuring that the main thread has PID == TID.
-        let tid = this.get_pid().strict_add(index);
+    /// The Apple-specific `int pthread_threadid_np(pthread_t thread, uint64_t *thread_id)`, which
+    /// allows querying the ID for arbitrary threads, identified by their pthread_t.
+    ///
+    /// API documentation: <https://www.manpagez.com/man/3/pthread_threadid_np/>.
+    fn apple_pthread_threadip_np(
+        &mut self,
+        thread_op: &OpTy<'tcx>,
+        tid_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+        this.assert_target_os("macos", "pthread_threadip_np");
 
-        interp_ok(Scalar::from_u32(tid))
+        let tid_dest = this.read_pointer(tid_op)?;
+        if this.ptr_is_null(tid_dest)? {
+            // If NULL is passed, an error is immediately returned
+            return interp_ok(this.eval_libc("EINVAL"));
+        }
+
+        let thread = this.read_scalar(thread_op)?.to_int(this.libc_ty_layout("pthread_t").size)?;
+        let thread = if thread == 0 {
+            // Null thread ID indicates that we are querying the active thread.
+            this.machine.threads.active_thread()
+        } else {
+            // Our pthread_t is just the raw ThreadId.
+            let Ok(thread) = this.thread_id_try_from(thread) else {
+                return interp_ok(this.eval_libc("ESRCH"));
+            };
+            thread
+        };
+
+        let tid = this.get_tid(thread);
+        let tid_dest = this.deref_pointer_as(tid_op, this.machine.layouts.u64)?;
+        this.write_int(tid, &tid_dest)?;
+
+        // Possible errors have been handled, return success.
+        interp_ok(Scalar::from_u32(0))
     }
 }

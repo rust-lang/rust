@@ -1,7 +1,3 @@
-// Only works on Unix targets
-//@ignore-target: windows wasm
-//@only-on-host
-
 extern "C" {
     fn add_one_int(x: i32) -> i32;
     fn add_int16(x: i16) -> i16;

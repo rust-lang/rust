@@ -29,20 +29,17 @@ fn miri_path() -> PathBuf {
     PathBuf::from(env::var("MIRI").unwrap_or_else(|_| env!("CARGO_BIN_EXE_miri").into()))
 }
 
-fn get_host() -> String {
-    rustc_version::VersionMeta::for_command(std::process::Command::new(miri_path()))
-        .expect("failed to parse rustc version info")
-        .host
-}
-
 pub fn flagsplit(flags: &str) -> Vec<String> {
     // This code is taken from `RUSTFLAGS` handling in cargo.
     flags.split(' ').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect()
 }
 
 // Build the shared object file for testing native function calls.
-fn build_native_lib() -> PathBuf {
-    let cc = env::var("CC").unwrap_or_else(|_| "cc".into());
+fn build_native_lib(target: &str) -> PathBuf {
+    // Loosely follow the logic of the `cc` crate for finding the compiler.
+    let cc = env::var(format!("CC_{target}"))
+        .or_else(|_| env::var("CC"))
+        .unwrap_or_else(|_| "cc".into());
     // Target directory that we can write to.
     let so_target_dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("miri-native-lib");
     // Create the directory if it does not already exist.
@@ -201,7 +198,7 @@ fn run_tests(
     // If we're testing the native-lib functionality, then build the shared object file for testing
     // external C function calls and push the relevant compiler flag.
     if path.starts_with("tests/native-lib/") {
-        let native_lib = build_native_lib();
+        let native_lib = build_native_lib(target);
         let mut flag = std::ffi::OsString::from("-Zmiri-native-lib=");
         flag.push(native_lib.into_os_string());
         config.program.args.push(flag);
@@ -305,14 +302,21 @@ fn ui(
         .with_context(|| format!("ui tests in {path} for {target} failed"))
 }
 
-fn get_target() -> String {
-    env::var("MIRI_TEST_TARGET").ok().unwrap_or_else(get_host)
+fn get_host() -> String {
+    rustc_version::VersionMeta::for_command(std::process::Command::new(miri_path()))
+        .expect("failed to parse rustc version info")
+        .host
+}
+
+fn get_target(host: &str) -> String {
+    env::var("MIRI_TEST_TARGET").ok().unwrap_or_else(|| host.to_owned())
 }
 
 fn main() -> Result<()> {
     ui_test::color_eyre::install()?;
 
-    let target = get_target();
+    let host = get_host();
+    let target = get_target(&host);
     let tmpdir = tempfile::Builder::new().prefix("miri-uitest-").tempdir()?;
 
     let mut args = std::env::args_os();
@@ -329,7 +333,7 @@ fn main() -> Result<()> {
     ui(Mode::Panic, "tests/panic", &target, WithDependencies, tmpdir.path())?;
     ui(Mode::Fail, "tests/fail", &target, WithoutDependencies, tmpdir.path())?;
     ui(Mode::Fail, "tests/fail-dep", &target, WithDependencies, tmpdir.path())?;
-    if cfg!(unix) {
+    if cfg!(unix) && target == host {
         ui(Mode::Pass, "tests/native-lib/pass", &target, WithoutDependencies, tmpdir.path())?;
         ui(Mode::Fail, "tests/native-lib/fail", &target, WithoutDependencies, tmpdir.path())?;
     }

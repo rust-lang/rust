@@ -59,15 +59,6 @@ impl<'tcx> EnvVars<'tcx> {
         interp_ok(())
     }
 
-    pub(crate) fn cleanup(ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>) -> InterpResult<'tcx> {
-        let this = ecx.eval_context_mut();
-        match this.machine.env_vars {
-            EnvVars::Unix(_) => UnixEnvVars::cleanup(this),
-            EnvVars::Windows(_) => interp_ok(()), // no cleanup needed
-            EnvVars::Uninit => interp_ok(()),
-        }
-    }
-
     pub(crate) fn unix(&self) -> &UnixEnvVars<'tcx> {
         match self {
             EnvVars::Unix(env) => env,
@@ -110,8 +101,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
+    /// Get the process identifier.
     fn get_pid(&self) -> u32 {
         let this = self.eval_context_ref();
         if this.machine.communicate() { std::process::id() } else { 1000 }
+    }
+
+    /// Get an "OS" thread ID for the current thread.
+    fn get_current_tid(&self) -> u32 {
+        let this = self.eval_context_ref();
+        self.get_tid(this.machine.threads.active_thread())
+    }
+
+    /// Get an "OS" thread ID for any thread.
+    fn get_tid(&self, thread: ThreadId) -> u32 {
+        let this = self.eval_context_ref();
+        let index = thread.to_u32();
+        let target_os = &this.tcx.sess.target.os;
+        if target_os == "linux" || target_os == "netbsd" {
+            // On Linux, the main thread has PID == TID so we uphold this. NetBSD also appears
+            // to exhibit the same behavior, though I can't find a citation.
+            this.get_pid().strict_add(index)
+        } else {
+            // Other platforms do not display any relationship between PID and TID.
+            index
+        }
     }
 }
