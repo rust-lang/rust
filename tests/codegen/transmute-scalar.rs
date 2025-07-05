@@ -111,8 +111,11 @@ pub fn fake_bool_unsigned_to_bool(b: FakeBoolUnsigned) -> bool {
 struct S([i64; 1]);
 
 // CHECK-LABEL: define{{.*}}i64 @single_element_simd_to_scalar(<1 x i64> %b)
-// CHECK: bitcast <1 x i64> %b to i64
-// CHECK: ret i64
+// CHECK-NEXT: start:
+// CHECK-NEXT: %[[RET:.+]] = alloca [8 x i8]
+// CHECK-NEXT: store <1 x i64> %b, ptr %[[RET]]
+// CHECK-NEXT: %[[TEMP:.+]] = load i64, ptr %[[RET]]
+// CHECK-NEXT: ret i64 %[[TEMP]]
 #[no_mangle]
 #[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "neon"))]
@@ -124,8 +127,11 @@ pub extern "C" fn single_element_simd_to_scalar(b: S) -> i64 {
 }
 
 // CHECK-LABEL: define{{.*}}<1 x i64> @scalar_to_single_element_simd(i64 %b)
-// CHECK: bitcast i64 %b to <1 x i64>
-// CHECK: ret <1 x i64>
+// CHECK-NEXT: start:
+// CHECK-NEXT: %[[RET:.+]] = alloca [8 x i8]
+// CHECK-NEXT: store i64 %b, ptr %[[RET]]
+// CHECK-NEXT: %[[TEMP:.+]] = load <1 x i64>, ptr %[[RET]]
+// CHECK-NEXT: ret <1 x i64> %[[TEMP]]
 #[no_mangle]
 #[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "neon"))]

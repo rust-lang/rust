@@ -13,7 +13,7 @@ use rustc_session::config::OptLevel;
 use tracing::{debug, instrument};
 
 use super::place::{PlaceRef, PlaceValue};
-use super::rvalue::transmute_immediate;
+use super::rvalue::transmute_scalar;
 use super::{FunctionCx, LocalRef};
 use crate::common::IntPredicate;
 use crate::traits::*;
@@ -346,14 +346,16 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
         let val = if field.is_zst() {
             OperandValue::ZeroSized
+        } else if let BackendRepr::SimdVector { .. } = self.layout.backend_repr {
+            // codegen_transmute_operand doesn't support SIMD, but since the previous
+            // check handled ZSTs, the only possible field access into something SIMD
+            // is to the `non_1zst_field` that's the same SIMD. (Other things, even
+            // just padding, would change the wrapper's representation type.)
+            assert_eq!(field.size, self.layout.size);
+            self.val
         } else if field.size == self.layout.size {
             assert_eq!(offset.bytes(), 0);
-            fx.codegen_transmute_operand(bx, *self, field).unwrap_or_else(|| {
-                bug!(
-                    "Expected `codegen_transmute_operand` to handle equal-size \
-                      field {i:?} projection from {self:?} to {field:?}"
-                )
-            })
+            fx.codegen_transmute_operand(bx, *self, field)
         } else {
             let (in_scalar, imm) = match (self.val, self.layout.backend_repr) {
                 // Extract a scalar component from a pair.
@@ -613,10 +615,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, Result<V, abi::Scalar>> {
         };
 
         let mut update = |tgt: &mut Result<V, abi::Scalar>, src, from_scalar| {
-            let from_bty = bx.cx().type_from_scalar(from_scalar);
             let to_scalar = tgt.unwrap_err();
-            let to_bty = bx.cx().type_from_scalar(to_scalar);
-            let imm = transmute_immediate(bx, src, from_scalar, from_bty, to_scalar, to_bty);
+            let imm = transmute_scalar(bx, src, from_scalar, to_scalar);
             *tgt = Ok(imm);
         };
 
