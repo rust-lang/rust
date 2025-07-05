@@ -27,7 +27,6 @@
 #![allow(clippy::needless_lifetimes, clippy::uninlined_format_args)]
 
 // Some "regular" crates we want to share with rustc
-extern crate object;
 extern crate smallvec;
 // FIXME(antoyo): clippy bug: remove the #[allow] when it's fixed.
 #[allow(unused_extern_crates)]
