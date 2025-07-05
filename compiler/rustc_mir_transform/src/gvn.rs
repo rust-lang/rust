@@ -94,7 +94,7 @@ use rustc_const_eval::interpret::{
     ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy, Projectable, Scalar,
     intern_const_alloc_for_constprop,
 };
-use rustc_data_structures::fx::{FxIndexSet, MutableValues};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet, MutableValues};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
@@ -229,8 +229,10 @@ struct VnState<'body, 'a, 'tcx> {
     /// Value stored in each local.
     locals: IndexVec<Local, VnIndex>,
     /// Locals that are assigned that value.
-    // This vector does not hold all the values of `VnIndex` that we create.
-    rev_locals: IndexVec<VnIndex, SmallVec<[(Local, Location); 1]>>,
+    // This vector holds the locals that are SSA.
+    rev_locals_ssa: IndexVec<VnIndex, SmallVec<[(Local, Location); 1]>>,
+    // This vector holds the locals that are not SSA.
+    rev_locals_non_ssa: FxHashMap<VnIndex, SmallVec<[(Local, Location); 1]>>,
     values: FxIndexSet<(Value<'a, 'tcx>, Ty<'tcx>)>,
     /// Values evaluated as constants if possible.
     evaluated: IndexVec<VnIndex, Option<OpTy<'tcx>>>,
@@ -267,7 +269,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             local_decls,
             is_coroutine: body.coroutine.is_some(),
             locals: IndexVec::with_capacity(body.local_decls.len()),
-            rev_locals: IndexVec::with_capacity(num_values),
+            rev_locals_ssa: IndexVec::with_capacity(num_values),
+            rev_locals_non_ssa: FxHashMap::default(),
             values: FxIndexSet::with_capacity_and_hasher(num_values, Default::default()),
             evaluated: IndexVec::with_capacity(num_values),
             next_opaque: 1,
@@ -281,7 +284,11 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         for decl in body.local_decls.iter() {
             let value = this.new_opaque(decl.ty);
             let local = this.locals.push(value);
-            this.rev_locals[value].push((local, init_loc));
+            if ssa.is_ssa(local) {
+                this.rev_locals_ssa[value].push((local, init_loc));
+            } else {
+                this.rev_locals_non_ssa.entry(value).or_default().push((local, init_loc));
+            }
         }
         this
     }
@@ -299,7 +306,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             let evaluated = self.eval_to_const(index);
             let _index = self.evaluated.push(evaluated);
             debug_assert_eq!(index, _index);
-            let _index = self.rev_locals.push(SmallVec::new());
+            let _index = self.rev_locals_ssa.push(Default::default());
             debug_assert_eq!(index, _index);
         }
         index
@@ -370,7 +377,11 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn assign(&mut self, local: Local, value: VnIndex, loc: Location) {
         self.locals[local] = value;
-        self.rev_locals[value].push((local, loc));
+        if self.ssa.is_ssa(local) {
+            self.rev_locals_ssa[value].push((local, loc));
+        } else {
+            self.rev_locals_non_ssa.entry(value).or_default().push((local, loc));
+        }
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -380,11 +391,11 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 return;
             }
             let value = this.locals[local];
-            this.rev_locals[value].retain(|(l, _)| *l != local);
+            this.rev_locals_non_ssa.entry(value).or_default().retain(|(l, _)| *l != local);
             this.locals[local] = this.new_opaque(this.ty(value));
             #[cfg(debug_assertions)]
-            for local_vec in this.rev_locals.iter() {
-                for (other, _) in local_vec {
+            for local_vec in this.rev_locals_non_ssa.iter() {
+                for (other, _) in local_vec.non_ssa {
                     debug_assert_ne!(*other, local);
                 }
             }
@@ -1769,9 +1780,10 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
     /// return it. If you used this local, add it to `reused_locals` to remove storage statements.
     #[instrument(level = "trace", skip(self), ret)]
     fn try_as_local(&mut self, index: VnIndex, loc: Location) -> Option<Local> {
-        let other = self.rev_locals.get(index)?;
-        other
-            .iter()
+        let ssa = self.rev_locals_ssa.get(index)?;
+        let non_ssa = self.rev_locals_non_ssa.entry(index).or_default();
+        ssa.iter()
+            .chain(non_ssa.iter())
             .find(|&&(other, assign_loc)| {
                 self.ssa.assignment_dominates(&self.dominators, other, loc)
                     || (assign_loc.block == loc.block
@@ -1787,15 +1799,16 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
     }
 
     fn visit_basic_block_data(&mut self, block: BasicBlock, bbdata: &mut BasicBlockData<'tcx>) {
-        for local_set in self.rev_locals.iter_mut() {
-            local_set.retain(|(local, _)| self.ssa.is_ssa(*local));
-        }
+        self.rev_locals_non_ssa.clear();
         for local in self.locals.indices() {
             if !self.ssa.is_ssa(local) {
                 let current = self.locals[local];
                 let new = self.new_opaque(self.ty(current));
                 self.locals[local] = new;
-                self.rev_locals[new].push((local, Location { block, statement_index: 0 }));
+                self.rev_locals_non_ssa
+                    .entry(new)
+                    .or_default()
+                    .push((local, Location { block, statement_index: 0 }));
             }
         }
         self.super_basic_block_data(block, bbdata);
