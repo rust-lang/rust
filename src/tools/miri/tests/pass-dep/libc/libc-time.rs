@@ -420,9 +420,9 @@ mod test_clock_nanosleep {
     /// Helper function used to create an instant in the future
     fn add_100_millis(mut ts: libc::timespec) -> libc::timespec {
         const SECOND: i64 = 1_000_000_000;
-        ts.tv_nsec += ts.tv_nsec + SECOND / 10;
-        ts.tv_nsec = ts.tv_nsec % SECOND;
+        ts.tv_nsec += SECOND / 10;
         ts.tv_sec = ts.tv_nsec / SECOND;
+        ts.tv_nsec %= SECOND;
         ts
     }
 }
