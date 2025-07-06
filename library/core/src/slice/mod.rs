@@ -967,7 +967,7 @@ impl<T> [T] {
     /// assert!(v == [3, 2, 1]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_reverse", issue = "135120")]
+    #[rustc_const_stable(feature = "const_slice_reverse", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn reverse(&mut self) {
         let half_len = self.len() / 2;
@@ -1000,6 +1000,7 @@ impl<T> [T] {
             // this check tells LLVM that the indexing below is
             // in-bounds. Then after inlining -- once the actual
             // lengths of the slices are known -- it's removed.
+            // FIXME(const_trait_impl) replace with let (a, b) = (&mut a[..n], &mut b[..n]);
             let (a, _) = a.split_at_mut(n);
             let (b, _) = b.split_at_mut(n);
 
