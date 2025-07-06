@@ -29,6 +29,10 @@
 #![windows_subsystem]
 //~^ ERROR malformed
 
+#![repr]
+//~^ ERROR malformed
+//~| ERROR `repr` attribute cannot be used at crate level
+
 #[unsafe(export_name)]
 //~^ ERROR malformed
 #[rustc_allow_const_fn_unstable]
@@ -47,6 +51,7 @@
 //~^ ERROR malformed
 #[repr]
 //~^ ERROR malformed
+//~| ERROR attribute should be applied to a struct, enum, or union
 #[rustc_as_ptr = 5]
 //~^ ERROR malformed
 #[inline = 5]

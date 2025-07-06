@@ -2052,12 +2052,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     if item.is_some() {
                         match target {
                             Target::Struct | Target::Union | Target::Enum => continue,
-                            Target::Fn | Target::Method(_) => {
-                                self.dcx().emit_err(errors::ReprAlignShouldBeAlign {
-                                    span: *repr_span,
-                                    item: target.name(),
-                                });
-                            }
                             _ => {
                                 self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
                                     hint_span: *repr_span,

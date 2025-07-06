@@ -32,13 +32,14 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
         cx: &'c mut AcceptContext<'_, '_, S>,
         args: &'c ArgParser<'_>,
     ) -> impl IntoIterator<Item = Self::Item> + 'c {
-        let mut reprs = Vec::new();
-
         let Some(list) = args.list() else {
             cx.expected_list(cx.attr_span);
-            return reprs;
+            // Recover this as `ReprEmpty` so that we have a span to point to.
+            // This span is used for, e.g., complaining about crate-level `#![repr]`.
+            return vec![(ReprAttr::ReprEmpty, cx.attr_span)];
         };
 
+        let mut reprs = Vec::new();
         if list.is_empty() {
             // this is so validation can emit a lint
             reprs.push((ReprAttr::ReprEmpty, cx.attr_span));
