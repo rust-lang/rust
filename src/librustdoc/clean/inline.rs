@@ -4,6 +4,7 @@ use std::iter::once;
 use std::sync::Arc;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir as hir;
 use rustc_hir::Mutability;
 use rustc_hir::def::{DefKind, MacroKinds, Res};
@@ -14,7 +15,6 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, sym};
-use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, trace};
 
 use super::{Item, extract_cfg_from_attrs};

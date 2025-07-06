@@ -325,6 +325,9 @@ lint_impl_trait_overcaptures = `{$self_ty}` will capture more lifetimes than pos
 lint_impl_trait_redundant_captures = all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
     .suggestion = remove the `use<...>` syntax
 
+lint_implicit_sysroot_crate_import = dangerous use of `extern crate {$name}` which is not guaranteed to exist exactly once in the sysroot
+    .help = try using a cargo dependency or using a re-export of the dependency provided by a rustc_* crate
+
 lint_implicit_unsafe_autorefs = implicit autoref creates a reference to the dereference of a raw pointer
     .note = creating a reference requires the pointer target to be valid and imposes aliasing requirements
     .raw_ptr = this raw pointer has type `{$raw_ptr_ty}`

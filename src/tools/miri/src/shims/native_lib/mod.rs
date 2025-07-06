@@ -6,6 +6,7 @@ use std::sync::atomic::AtomicBool;
 use libffi::low::CodePtr;
 use libffi::middle::Type as FfiType;
 use rustc_abi::{HasDataLayout, Size};
+use rustc_data_structures::either;
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, IntTy, Ty, UintTy};
 use rustc_span::Symbol;
