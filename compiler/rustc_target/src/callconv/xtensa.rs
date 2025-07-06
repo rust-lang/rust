@@ -54,7 +54,7 @@ where
     // Determine the number of GPRs needed to pass the current argument
     // according to the ABI. 2*XLen-aligned varargs are passed in "aligned"
     // register pairs, so may consume 3 registers.
-    let mut needed_arg_gprs = (size + 32 - 1) / 32;
+    let mut needed_arg_gprs = size.div_ceil(32);
     if needed_align == 64 {
         needed_arg_gprs += *arg_gprs_left % 2;
     }

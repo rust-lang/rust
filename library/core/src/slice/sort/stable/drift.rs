@@ -158,7 +158,7 @@ fn merge_tree_scale_factor(n: usize) -> u64 {
         panic!("Platform not supported");
     }
 
-    ((1 << 62) + n as u64 - 1) / n as u64
+    (1u64 << 62).div_ceil(n as u64)
 }
 
 // Note: merge_tree_depth output is < 64 when left < right as f*x and f*y must
@@ -182,7 +182,7 @@ fn sqrt_approx(n: usize) -> usize {
     // Finally we note that the exponentiation / division can be done directly
     // with shifts. We OR with 1 to avoid zero-checks in the integer log.
     let ilog = (n | 1).ilog2();
-    let shift = (1 + ilog) / 2;
+    let shift = ilog.div_ceil(2);
     ((1 << shift) + (n >> shift)) / 2
 }
 

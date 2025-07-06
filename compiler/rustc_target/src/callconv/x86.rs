@@ -171,7 +171,7 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
             continue;
         }
 
-        let size_in_regs = (arg.layout.size.bits() + 31) / 32;
+        let size_in_regs = arg.layout.size.bits().div_ceil(32);
 
         if size_in_regs == 0 {
             continue;

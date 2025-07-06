@@ -130,7 +130,7 @@ pub fn edit_distance_with_substrings(a: &str, b: &str, limit: usize) -> Option<u
         1 // Exact substring match, but not a total word match so return non-zero
     } else if !big_len_diff {
         // Not a big difference in length, discount cost of length difference
-        score + (len_diff + 1) / 2
+        score + len_diff.div_ceil(2)
     } else {
         // A big difference in length, add back the difference in length to the score
         score + len_diff

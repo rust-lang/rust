@@ -219,7 +219,7 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             // Ascii case, try to skip forward quickly.
             // When the pointer is aligned, read 2 words of data per iteration
             // until we find a word containing a non-ascii byte.
-            if align != usize::MAX && align.wrapping_sub(index) % USIZE_BYTES == 0 {
+            if align != usize::MAX && align.wrapping_sub(index).is_multiple_of(USIZE_BYTES) {
                 let ptr = v.as_ptr();
                 while index < blocks_end {
                     // SAFETY: since `align - index` and `ascii_block_size` are
