@@ -13,7 +13,5 @@ use a::*;
 use e as b;
 //~^ ERROR: unresolved import `e`
 use b::c::D as e;
-//~^ ERROR: cannot determine resolution for the import
-//~| ERROR: cannot determine resolution for the import
 
 fn main() { }
