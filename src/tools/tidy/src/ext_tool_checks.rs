@@ -65,6 +65,13 @@ fn check_impl(
         None => vec![],
     };
 
+    if lint_args.contains(&"spellcheck:fix") {
+        return Err(Error::Generic(
+            "`spellcheck:fix` is no longer valid, use `--extra=check=spellcheck --bless`"
+                .to_string(),
+        ));
+    }
+
     let python_all = lint_args.contains(&"py");
     let python_lint = lint_args.contains(&"py:lint") || python_all;
     let python_fmt = lint_args.contains(&"py:fmt") || python_all;
@@ -72,8 +79,7 @@ fn check_impl(
     let shell_lint = lint_args.contains(&"shell:lint") || shell_all;
     let cpp_all = lint_args.contains(&"cpp");
     let cpp_fmt = lint_args.contains(&"cpp:fmt") || cpp_all;
-    let spellcheck_all = lint_args.contains(&"spellcheck");
-    let spellcheck_fix = lint_args.contains(&"spellcheck:fix");
+    let spellcheck = lint_args.contains(&"spellcheck");
 
     let mut py_path = None;
 
@@ -226,7 +232,7 @@ fn check_impl(
         shellcheck_runner(&merge_args(&cfg_args, &file_args_shc))?;
     }
 
-    if spellcheck_all || spellcheck_fix {
+    if spellcheck {
         let config_path = root_path.join("typos.toml");
         // sync target files with .github/workflows/spellcheck.yml
         let mut args = vec![
@@ -238,11 +244,11 @@ fn check_impl(
             "./src/librustdoc",
         ];
 
-        if spellcheck_all {
-            eprintln!("spellcheck files");
-        } else if spellcheck_fix {
+        if bless {
             eprintln!("spellcheck files and fix");
             args.push("--write-changes");
+        } else {
+            eprintln!("spellcheck files");
         }
         spellcheck_runner(&args)?;
     }
