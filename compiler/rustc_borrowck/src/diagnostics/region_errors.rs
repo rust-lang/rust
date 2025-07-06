@@ -62,7 +62,7 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             | ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
             | ConstraintCategory::Internal
-            | ConstraintCategory::IllegalPlaceholder(..) => "",
+            | ConstraintCategory::OutlivesUnnameablePlaceholder(..) => "",
         }
     }
 }

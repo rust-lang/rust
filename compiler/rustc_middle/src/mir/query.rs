@@ -149,10 +149,11 @@ pub enum ConstraintCategory<'tcx> {
     /// A constraint that doesn't correspond to anything the user sees.
     Internal,
 
-    /// An internal constraint derived from an illegal placeholder relation
-    /// to this region. The arguments are a source -> drain of a path
-    /// that caused the problem, used when reporting errors.
-    IllegalPlaceholder(
+    /// An internal constraint added when a region outlives a placeholder
+    /// it cannot name and therefore has to outlive `'static`. The arguments
+    /// are a source -> drain of a path that caused the problem and always
+    /// leads to `'static`.
+    OutlivesUnnameablePlaceholder(
         #[type_foldable(identity)]
         #[type_visitable(ignore)]
         ty::RegionVid,

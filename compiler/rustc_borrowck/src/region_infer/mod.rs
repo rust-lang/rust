@@ -1730,38 +1730,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         None
     }
 
-    /// Find a path of outlives constraints from `from` to `to`,
-    /// taking placeholder blame constraints into account, e.g.
-    /// if there is a relationship where `r1` reaches `r2` and
-    /// r2 has a larger universe or if r1 and r2 both come from
-    /// placeholder regions.
-    ///
-    /// Returns the path. It panics if there is no such path.
-    fn path_to_modulo_placeholders(
-        &self,
-        from: RegionVid,
-        to: RegionVid,
-    ) -> Vec<OutlivesConstraint<'tcx>> {
-        let path = self.constraint_path_between_regions(from, to).unwrap();
-
-        // If we are looking for a path to 'static, and we are passing
-        // through a constraint synthesised from an illegal placeholder
-        // relation, redirect the search to the placeholder to blame.
-        // FIXME: the performance of this is Not Great, and the logic
-        // should be folded into the search itself if possible.
-        for constraint in path.iter() {
-            let ConstraintCategory::IllegalPlaceholder(cl_fr, culprit) = constraint.category else {
-                continue;
-            };
-
-            debug!("{culprit:?} is the reason {from:?}: 'static!");
-            return self.constraint_path_to(cl_fr, |r| r == culprit, false).unwrap().0;
-        }
-
-        // No funny business; just return the path!
-        path
-    }
-
     /// Finds some region R such that `fr1: R` and `R` is live at `location`.
     #[instrument(skip(self), level = "trace", ret)]
     pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, location: Location) -> RegionVid {
@@ -1823,8 +1791,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         to_region: RegionVid,
     ) -> (BlameConstraint<'tcx>, Vec<OutlivesConstraint<'tcx>>) {
         assert!(from_region != to_region, "Trying to blame a region for itself!");
-        // Find all paths
-        let path = self.path_to_modulo_placeholders(from_region, to_region);
+
+        let path = self.constraint_path_between_regions(from_region, to_region).unwrap();
+
+        // If we are passing through a constraint added because `'lt: 'unnameable`,
+        // where cannot name `'unnameable`, redirect search towards `'unnameable`.
+        let path = if let Some((lt, unnameable)) = path.iter().find_map(|c| {
+            if let ConstraintCategory::OutlivesUnnameablePlaceholder(lt, unnameable) = c.category {
+                Some((lt, unnameable))
+            } else {
+                None
+            }
+        }) {
+            // This the `false` argument is what prevents circular reasoning here!
+            self.constraint_path_to(lt, |r| r == unnameable, false).unwrap().0
+        } else {
+            path
+        };
+
         debug!(
             "path={:#?}",
             path.iter()
@@ -1965,7 +1949,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // specific, and are not used for relations that would make sense to blame.
                 ConstraintCategory::BoringNoLocation => 6,
                 // Do not blame internal constraints.
-                ConstraintCategory::IllegalPlaceholder(_, _) => 7,
+                ConstraintCategory::OutlivesUnnameablePlaceholder(_, _) => 7,
                 ConstraintCategory::Internal => 8,
             };
 
@@ -2003,7 +1987,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         };
 
         assert!(
-            !matches!(best_constraint.category, ConstraintCategory::IllegalPlaceholder(_, _)),
+            !matches!(
+                best_constraint.category,
+                ConstraintCategory::OutlivesUnnameablePlaceholder(_, _)
+            ),
             "Illegal placeholder constraint blamed; should have redirected to other region relation"
         );
 

@@ -12,7 +12,7 @@ use rustc_middle::ty::UniverseIndex;
 use super::*;
 
 fn render_outlives_constraint(constraint: &OutlivesConstraint<'_>) -> String {
-    if let ConstraintCategory::IllegalPlaceholder(from, to) = constraint.category {
+    if let ConstraintCategory::OutlivesUnnameablePlaceholder(from, to) = constraint.category {
         return format!("b/c {from:?}: {to:?}");
     }
     match constraint.locations {

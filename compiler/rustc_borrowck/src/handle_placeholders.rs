@@ -163,6 +163,9 @@ impl RegionTracker {
 
     /// Determine if the tracked universes of the two SCCs are compatible.
     pub(crate) fn universe_compatible_with(&self, other: Self) -> bool {
+        // HACK: We first check whether we can name the highest existential universe
+        // of `other`. This only exists to avoid errors in case that scc already
+        // depends on a placeholder it cannot name itself.
         self.max_nameable_universe().can_name(other.max_nameable_universe())
             || other.reachable_placeholders.can_be_named_by(self.max_nameable_universe())
     }
@@ -419,12 +422,12 @@ fn rewrite_placeholder_outlives<'tcx>(
             annotation.representative
         );
         // We only add one `r: 'static` constraint per SCC, where `r` is the SCC representative.
-        // That constraint is annotated with some outlives relation `tries: unnameable` where
-        // `unnameable` is unnameable from `tries` and there is a path in the constraint
-        // graph between them.
+        // That constraint is annotated with some outlives relation `lt: unnameable` where
+        // `unnameable` is unnameable from `lt` and there is a path in the constraint graph
+        // between them.
         //
-        // We prefer the representative as `tries` in all cases but one: where the problem
-        // is that the SCC has had its universe lowered to accomodate some other region and
+        // We prefer the representative, `r`, as `lt` in all cases but one: where the problem
+        // is that the SCC has had its universe lowered to accommodate some other region and
         // no longer can name its representative. In that case, we blame `r: low_u`, where `low_u`
         // cannot name `r` so that any explanation always starts with the SCC representative.
         let blame_to = if annotation.representative.rvid() == max_u_rvid {
@@ -455,7 +458,7 @@ fn rewrite_placeholder_outlives<'tcx>(
         outlives_constraints.push(OutlivesConstraint {
             sup: annotation.representative.rvid(),
             sub: fr_static,
-            category: ConstraintCategory::IllegalPlaceholder(
+            category: ConstraintCategory::OutlivesUnnameablePlaceholder(
                 annotation.representative.rvid(),
                 blame_to,
             ),
