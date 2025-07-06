@@ -635,6 +635,7 @@ pub trait Machine<'tcx>: Sized {
     /// supposedly be optimized out completely. To enable tracing, override this trait method and
     /// return `span.entered()`. Also see [crate::enter_trace_span].
     #[must_use]
+    #[inline(always)]
     fn enter_trace_span(_span: tracing::Span) -> impl EnteredTraceSpan {
         ()
     }
