@@ -125,6 +125,7 @@
 //!   `Option::<T>::None`
 //! - `transmute::<_, [u8; size_of::<T>()]>(Option::<T>::None)` is sound and produces
 //!   `[0u8; size_of::<T>()]`
+//!
 //! These cases are identified by the second column:
 //!
 //! | `T`                                                                 | Transmuting between `[0u8; size_of::<T>()]` and `Option::<T>::None` sound? |
