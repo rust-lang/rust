@@ -872,6 +872,13 @@ fn link_natively(
                 // is not a Microsoft LNK error then suggest a way to fix or
                 // install the Visual Studio build tools.
                 if let Some(code) = prog.status.code() {
+                    // 0xc0000409 (`STATUS_STACK_BUFFER_OVERRUN`) is also used by `abort()` via `__fastfail` on Windows. Not necessarily a buffer overrun.
+                    // See <https://devblogs.microsoft.com/oldnewthing/20190108-00/?p=100655>
+                    const STATUS_STACK_BUFFER_OVERRUN: i32 = 0xC0000409u32 as i32; // = -1073740791
+                    if code == STATUS_STACK_BUFFER_OVERRUN {
+                        sess.dcx().emit_note(errors::LinkExeFastFailAbort);
+                    }
+
                     // All Microsoft `link.exe` linking ror codes are
                     // four digit numbers in the range 1000 to 9999 inclusive
                     if is_msvc_link_exe && (code < 1000 || code > 9999) {
@@ -880,6 +887,7 @@ fn link_natively(
                             windows_registry::find_tool(&sess.target.arch, "link.exe").is_some();
 
                         sess.dcx().emit_note(errors::LinkExeUnexpectedError);
+
                         if is_vs_installed && has_linker {
                             // the linker is broken
                             sess.dcx().emit_note(errors::RepairVSBuildTools);
