@@ -9,6 +9,7 @@
 #![feature(downcast_unchecked)]
 #![feature(exact_size_is_empty)]
 #![feature(hashmap_internals)]
+#![feature(int_format_into)]
 #![feature(linked_list_cursors)]
 #![feature(map_try_insert)]
 #![feature(pattern)]
