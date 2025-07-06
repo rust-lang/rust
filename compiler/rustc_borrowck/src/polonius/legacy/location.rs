@@ -109,6 +109,6 @@ impl PoloniusLocationTable {
 impl LocationIndex {
     fn is_start(self) -> bool {
         // even indices are start points; odd indices are mid points
-        (self.index() % 2) == 0
+        self.index().is_multiple_of(2)
     }
 }
