@@ -7925,7 +7925,7 @@ pub fn vcvth_f16_u64(a: u64) -> f16 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 pub fn vcvth_n_f16_s16<const N: i32>(a: i16) -> f16 {
     static_assert!(N >= 1 && N <= 16);
-    vcvth_n_f16_s32::<N>(a as i32) as f16
+    vcvth_n_f16_s32::<N>(a as i32)
 }
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_f16_s32)"]
@@ -7972,7 +7972,7 @@ pub fn vcvth_n_f16_s64<const N: i32>(a: i64) -> f16 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 pub fn vcvth_n_f16_u16<const N: i32>(a: u16) -> f16 {
     static_assert!(N >= 1 && N <= 16);
-    vcvth_n_f16_u32::<N>(a as u32) as f16
+    vcvth_n_f16_u32::<N>(a as u32)
 }
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_f16_u32)"]
@@ -24082,7 +24082,6 @@ pub fn vrsqrtes_f32(a: f32) -> f32 {
 #[doc = "Reciprocal square-root estimate."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrteh_f16)"]
 #[inline]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(test, assert_instr(frsqrte))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]

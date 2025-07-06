@@ -1252,7 +1252,7 @@ intrinsics:
       - [i16, f16, 'h', 'i32', 'as i32']
     compose:
       - FnCall: [static_assert!, ['N >= 1 && N <= 16']]
-      - "vcvt{type[2]}_n_{type[1]}_{type[3]}::<N>(a {type[4]}) as {type[1]}"
+      - "vcvt{type[2]}_n_{type[1]}_{type[3]}::<N>(a {type[4]})"
 
 
   - name: "vcvt{type[2]}_n_{type[1]}_{type[0]}"
@@ -1270,7 +1270,7 @@ intrinsics:
       - [u16, f16, 'h', u32]
     compose:
       - FnCall: [static_assert!, ['N >= 1 && N <= 16']]
-      - "vcvt{type[2]}_n_{type[1]}_{type[3]}::<N>(a as {type[3]}) as {type[1]}"
+      - "vcvt{type[2]}_n_{type[1]}_{type[3]}::<N>(a as {type[3]})"
 
 
   - name: "vcvt{type[2]}"
@@ -11697,7 +11697,6 @@ intrinsics:
     arguments: ["a: {type[1]}"]
     return_type: "{type[1]}"
     attr:
-      - *neon-fp16
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frsqrte]]}]]
       - *neon-fp16
       - *neon-unstable-f16
@@ -12315,7 +12314,7 @@ intrinsics:
     compose:
       - FnCall:
           - simd_select
-          - - FnCall: 
+          - - FnCall:
                 - "simd_lt::<{type[4]}_t, int8x8_t>"
                 - - c
                   - FnCall: [transmute, ["{type[3]}"]]
