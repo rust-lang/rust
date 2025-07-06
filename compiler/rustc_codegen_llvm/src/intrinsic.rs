@@ -9,17 +9,19 @@ use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, GenericArgsRef, Ty};
+use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
-use rustc_symbol_mangling::mangle_internal_symbol;
+use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::spec::PanicStrategy;
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
+use crate::builder::autodiff::generate_enzyme_call;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Metadata};
 use crate::type_::Type;
@@ -174,9 +176,16 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         span: Span,
     ) -> Result<(), ty::Instance<'tcx>> {
         let tcx = self.tcx;
+        let callee_ty = instance.ty(tcx, self.typing_env());
 
-        let name = tcx.item_name(instance.def_id());
         let fn_args = instance.args;
+
+        let sig = callee_ty.fn_sig(tcx);
+        let sig = tcx.normalize_erasing_late_bound_regions(self.typing_env(), sig);
+        let ret_ty = sig.output();
+        let name = tcx.item_name(instance.def_id());
+
+        let llret_ty = self.layout_of(ret_ty).llvm_type(self);
 
         let simple = call_simple_intrinsic(self, name, args);
         let llval = match name {
@@ -188,6 +197,54 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     &[self.val_ty(ptr), self.type_isize()],
                     &[ptr, args[1].immediate()],
                 )
+            }
+            _ if tcx.has_attr(instance.def_id(), sym::rustc_autodiff) => {
+                // NOTE(Sa4dUs): This is a hacky way to get the autodiff items
+                // so we can focus on the lowering of the intrinsic call
+                let mut source_id = None;
+                let mut diff_attrs = None;
+                let items: Vec<_> = tcx.hir_body_owners().map(|i| i.to_def_id()).collect();
+
+                // Hacky way of getting primal-diff pair, only works for code with 1 autodiff call
+                for target_id in &items {
+                    let Some(target_attrs) = &tcx.codegen_fn_attrs(target_id).autodiff_item else {
+                        continue;
+                    };
+
+                    if target_attrs.is_source() {
+                        source_id = Some(*target_id);
+                    } else {
+                        diff_attrs = Some(target_attrs);
+                    }
+                }
+
+                if source_id.is_none() || diff_attrs.is_none() {
+                    bug!("could not find source_id={source_id:?} or diff_attrs={diff_attrs:?}");
+                }
+
+                let diff_attrs = diff_attrs.unwrap().clone();
+
+                // Get source fn
+                let source_id = source_id.unwrap();
+                let fn_source = Instance::mono(tcx, source_id);
+                let source_symbol =
+                    symbol_name_for_instance_in_crate(tcx, fn_source.clone(), LOCAL_CRATE);
+                let fn_to_diff: Option<&'ll llvm::Value> = self.cx.get_function(&source_symbol);
+                let Some(fn_to_diff) = fn_to_diff else { bug!("could not find source function") };
+
+                // Build body
+                generate_enzyme_call(
+                    self,
+                    self.cx,
+                    fn_to_diff,
+                    name.as_str(),
+                    llret_ty,
+                    args,
+                    diff_attrs.clone(),
+                    result,
+                );
+
+                return Ok(());
             }
             sym::is_val_statically_known => {
                 if let OperandValue::Immediate(imm) = args[0].val {

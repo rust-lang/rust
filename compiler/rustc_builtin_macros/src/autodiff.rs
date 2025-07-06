@@ -330,7 +330,9 @@ mod llvm_enzyme {
             .filter(|a| **a == DiffActivity::Active || **a == DiffActivity::ActiveOnly)
             .count() as u32;
         let (d_sig, new_args, idents, errored) = gen_enzyme_decl(ecx, &sig, &x, span);
-        let d_body = gen_enzyme_body(
+
+        // UNUSED
+        let _d_body = gen_enzyme_body(
             ecx, &x, n_active, &sig, &d_sig, primal, &new_args, span, sig_span, idents, errored,
             &generics,
         );
@@ -342,7 +344,7 @@ mod llvm_enzyme {
             ident: first_ident(&meta_item_vec[0]),
             generics,
             contract: None,
-            body: Some(d_body),
+            body: None, // This leads to an error when the ad function is inside a traits
             define_opaque: None,
         });
         let mut rustc_ad_attr =
@@ -429,12 +431,18 @@ mod llvm_enzyme {
             tokens: ts,
         });
 
+        let rustc_intrinsic_attr =
+            P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_intrinsic)));
+        let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
+        let intrinsic_attr = outer_normal_attr(&rustc_intrinsic_attr, new_id, span);
+
+        let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
         let d_attr = outer_normal_attr(&rustc_ad_attr, new_id, span);
         let d_annotatable = match &item {
             Annotatable::AssocItem(_, _) => {
                 let assoc_item: AssocItemKind = ast::AssocItemKind::Fn(asdf);
                 let d_fn = P(ast::AssocItem {
-                    attrs: thin_vec![d_attr, inline_never],
+                    attrs: thin_vec![d_attr, intrinsic_attr],
                     id: ast::DUMMY_NODE_ID,
                     span,
                     vis,
@@ -444,13 +452,15 @@ mod llvm_enzyme {
                 Annotatable::AssocItem(d_fn, Impl { of_trait: false })
             }
             Annotatable::Item(_) => {
-                let mut d_fn = ecx.item(span, thin_vec![d_attr, inline_never], ItemKind::Fn(asdf));
+                let mut d_fn =
+                    ecx.item(span, thin_vec![d_attr, intrinsic_attr], ItemKind::Fn(asdf));
                 d_fn.vis = vis;
 
                 Annotatable::Item(d_fn)
             }
             Annotatable::Stmt(_) => {
-                let mut d_fn = ecx.item(span, thin_vec![d_attr, inline_never], ItemKind::Fn(asdf));
+                let mut d_fn =
+                    ecx.item(span, thin_vec![d_attr, intrinsic_attr], ItemKind::Fn(asdf));
                 d_fn.vis = vis;
 
                 Annotatable::Stmt(P(ast::Stmt {
