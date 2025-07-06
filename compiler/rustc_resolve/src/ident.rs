@@ -841,7 +841,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 if ns == TypeNS {
                     if ident.name == kw::Crate || ident.name == kw::DollarCrate {
                         let module = self.resolve_crate_root(ident);
-                        return Ok(self.module_self_bindings[&module]);
+                        return Ok(module.self_binding.unwrap());
                     } else if ident.name == kw::Super || ident.name == kw::SelfLower {
                         // FIXME: Implement these with renaming requirements so that e.g.
                         // `use super;` doesn't work, but `use super as name;` does.
