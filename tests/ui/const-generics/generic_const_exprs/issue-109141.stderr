@@ -3,11 +3,6 @@ error[E0425]: cannot find value `HashesEntryLEN` in this scope
    |
 LL | struct EntriesBuffer(Box<[[u8; HashesEntryLEN]; 5]>);
    |                                ^^^^^^^^^^^^^^ not found in this scope
-   |
-help: you might be missing a const parameter
-   |
-LL | struct EntriesBuffer<const HashesEntryLEN: /* Type */>(Box<[[u8; HashesEntryLEN]; 5]>);
-   |                     ++++++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 
