@@ -1283,20 +1283,20 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_ty(mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
             },
-            TyKind::BareFn(bfn) => {
-                bfn.safety.hash(&mut self.s);
-                bfn.abi.hash(&mut self.s);
-                for arg in bfn.decl.inputs {
+            TyKind::FnPtr(fn_ptr) => {
+                fn_ptr.safety.hash(&mut self.s);
+                fn_ptr.abi.hash(&mut self.s);
+                for arg in fn_ptr.decl.inputs {
                     self.hash_ty(arg);
                 }
-                std::mem::discriminant(&bfn.decl.output).hash(&mut self.s);
-                match bfn.decl.output {
+                std::mem::discriminant(&fn_ptr.decl.output).hash(&mut self.s);
+                match fn_ptr.decl.output {
                     FnRetTy::DefaultReturn(_) => {},
                     FnRetTy::Return(ty) => {
                         self.hash_ty(ty);
                     },
                 }
-                bfn.decl.c_variadic.hash(&mut self.s);
+                fn_ptr.decl.c_variadic.hash(&mut self.s);
             },
             TyKind::Tup(ty_list) => {
                 for ty in *ty_list {
