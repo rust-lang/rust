@@ -374,6 +374,10 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetDataLayoutErrors<'_> {
             TargetDataLayoutErrors::InvalidBitsSize { err } => {
                 Diag::new(dcx, level, fluent::errors_target_invalid_bits_size).with_arg("err", err)
             }
+            TargetDataLayoutErrors::UnknownPointerSpecification { err } => {
+                Diag::new(dcx, level, fluent::errors_target_invalid_datalayout_pointer_spec)
+                    .with_arg("err", err)
+            }
         }
     }
 }

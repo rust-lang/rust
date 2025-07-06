@@ -159,13 +159,15 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
     return_if_di_node_created_in_meantime!(cx, unique_type_id);
 
     let data_layout = &cx.tcx.data_layout;
+    let pointer_size = data_layout.pointer_size();
+    let pointer_align = data_layout.pointer_align();
     let ptr_type_debuginfo_name = compute_debuginfo_type_name(cx.tcx, ptr_type, true);
 
     match wide_pointer_kind(cx, pointee_type) {
         None => {
             // This is a thin pointer. Create a regular pointer type and give it the correct name.
             assert_eq!(
-                (data_layout.pointer_size, data_layout.pointer_align.abi),
+                (pointer_size, pointer_align.abi),
                 cx.size_and_align_of(ptr_type),
                 "ptr_type={ptr_type}, pointee_type={pointee_type}",
             );
@@ -174,8 +176,8 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                 llvm::LLVMRustDIBuilderCreatePointerType(
                     DIB(cx),
                     pointee_type_di_node,
-                    data_layout.pointer_size.bits(),
-                    data_layout.pointer_align.abi.bits() as u32,
+                    pointer_size.bits(),
+                    pointer_align.abi.bits() as u32,
                     0, // Ignore DWARF address space.
                     ptr_type_debuginfo_name.as_c_char_ptr(),
                     ptr_type_debuginfo_name.len(),
@@ -319,7 +321,9 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     let name = compute_debuginfo_type_name(cx.tcx, fn_ty, false);
     let (size, align) = match fn_ty.kind() {
         ty::FnDef(..) => (Size::ZERO, Align::ONE),
-        ty::FnPtr(..) => (cx.tcx.data_layout.pointer_size, cx.tcx.data_layout.pointer_align.abi),
+        ty::FnPtr(..) => {
+            (cx.tcx.data_layout.pointer_size(), cx.tcx.data_layout.pointer_align().abi)
+        }
         _ => unreachable!(),
     };
     let di_node = unsafe {
@@ -504,7 +508,7 @@ fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll D
         create_basic_type(
             cx,
             "<recur_type>",
-            cx.tcx.data_layout.pointer_size,
+            cx.tcx.data_layout.pointer_size(),
             dwarf_const::DW_ATE_unsigned,
         )
     })
