@@ -1606,7 +1606,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn new_extern_module(
-        &mut self,
+        &self,
         parent: Option<Module<'ra>>,
         kind: ModuleKind,
         expn_id: ExpnId,
@@ -1997,7 +1997,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    fn resolve_crate_root(&mut self, ident: Ident) -> Module<'ra> {
+    fn resolve_crate_root(&self, ident: Ident) -> Module<'ra> {
         debug!("resolve_crate_root({:?})", ident);
         let mut ctxt = ident.span.ctxt();
         let mark = if ident.name == kw::DollarCrate {
@@ -2070,7 +2070,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         module
     }
 
-    fn resolve_self(&mut self, ctxt: &mut SyntaxContext, module: Module<'ra>) -> Module<'ra> {
+    fn resolve_self(&self, ctxt: &mut SyntaxContext, module: Module<'ra>) -> Module<'ra> {
         let mut module = self.expect_module(module.nearest_parent_mod());
         while module.span.ctxt().normalize_to_macros_2_0() != *ctxt {
             let parent = module.parent.unwrap_or_else(|| self.expn_def_scope(ctxt.remove_mark()));

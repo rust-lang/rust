@@ -172,7 +172,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         self.invocation_parents[&id].parent_def
     }
 
-    fn resolve_dollar_crates(&mut self) {
+    fn resolve_dollar_crates(&self) {
         hygiene::update_dollar_crate_names(|ctxt| {
             let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));
             match self.resolve_crate_root(ident).kind {
@@ -827,7 +827,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn finalize_macro_resolutions(&mut self, krate: &Crate) {
-        let check_consistency = |this: &mut Self,
+        let check_consistency = |this: &Self,
                                  path: &[Segment],
                                  span,
                                  kind: MacroKind,
@@ -1147,7 +1147,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ///
     /// Possibly replace its expander to a pre-defined one for built-in macros.
     pub(crate) fn compile_macro(
-        &mut self,
+        &self,
         macro_def: &ast::MacroDef,
         ident: Ident,
         attrs: &[rustc_hir::Attribute],

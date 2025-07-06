@@ -923,7 +923,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return Ok(binding);
         }
 
-        let check_usable = |this: &mut Self, binding: NameBinding<'ra>| {
+        let check_usable = |this: &Self, binding: NameBinding<'ra>| {
             let usable = this.is_accessible_from(binding.vis, parent_scope.module);
             if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
         };
