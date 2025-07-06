@@ -309,15 +309,6 @@ LL | #[link]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
-error: valid forms for the attribute are `#[ignore]` and `#[ignore = "reason"]`
-  --> $DIR/malformed-attrs.rs:93:1
-   |
-LL | #[ignore()]
-   | ^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-
 error: invalid argument
   --> $DIR/malformed-attrs.rs:187:1
    |
@@ -600,6 +591,24 @@ LL | #[inline = 5]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
+error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
+  --> $DIR/malformed-attrs.rs:93:1
+   |
+LL | #[ignore()]
+   | ^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+
+error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
+  --> $DIR/malformed-attrs.rs:222:1
+   |
+LL | #[ignore = 1]
+   | ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+
 error[E0308]: mismatched types
   --> $DIR/malformed-attrs.rs:110:23
    |
@@ -611,7 +620,7 @@ LL |     #[coroutine = 63] || {}
    = note: expected unit type `()`
               found coroutine `{coroutine@$DIR/malformed-attrs.rs:110:23: 110:25}`
 
-error: aborting due to 73 previous errors; 3 warnings emitted
+error: aborting due to 74 previous errors; 3 warnings emitted
 
 Some errors have detailed explanations: E0308, E0463, E0539, E0565, E0658, E0805.
 For more information about an error, try `rustc --explain E0308`.
