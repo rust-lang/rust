@@ -797,10 +797,6 @@ pub(crate) enum WorkItemResult<B: WriteBackendMethods> {
     /// The backend has finished compiling a CGU, nothing more required.
     Finished(CompiledModule),
 
-    /// The backend has finished compiling a CGU, which now needs linking
-    /// because `-Zcombine-cgu` was specified.
-    NeedsLink(ModuleCodegen<B::Module>),
-
     /// The backend has finished compiling a CGU, which now needs to go through
     /// fat LTO.
     NeedsFatLto(FatLtoInput<B>),
@@ -884,7 +880,10 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     };
 
     match lto_type {
-        ComputedLtoType::No => finish_intra_module_work(cgcx, module, module_config),
+        ComputedLtoType::No => {
+            let module = B::codegen(cgcx, module, module_config)?;
+            Ok(WorkItemResult::Finished(module))
+        }
         ComputedLtoType::Thin => {
             let (name, thin_buffer) = B::prepare_thin(module, false);
             if let Some(path) = bitcode {
@@ -1024,20 +1023,8 @@ fn execute_thin_lto_work_item<B: ExtraBackendMethods>(
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
     let module = B::optimize_thin(cgcx, module)?;
-    finish_intra_module_work(cgcx, module, module_config)
-}
-
-fn finish_intra_module_work<B: ExtraBackendMethods>(
-    cgcx: &CodegenContext<B>,
-    module: ModuleCodegen<B::Module>,
-    module_config: &ModuleConfig,
-) -> Result<WorkItemResult<B>, FatalError> {
-    if !cgcx.opts.unstable_opts.combine_cgu || module.kind == ModuleKind::Allocator {
-        let module = B::codegen(cgcx, module, module_config)?;
-        Ok(WorkItemResult::Finished(module))
-    } else {
-        Ok(WorkItemResult::NeedsLink(module))
-    }
+    let module = B::codegen(cgcx, module, module_config)?;
+    Ok(WorkItemResult::Finished(module))
 }
 
 /// Messages sent to the coordinator.
@@ -1343,7 +1330,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         // through codegen and LLVM.
         let mut compiled_modules = vec![];
         let mut compiled_allocator_module = None;
-        let mut needs_link = Vec::new();
         let mut needs_fat_lto = Vec::new();
         let mut needs_thin_lto = Vec::new();
         let mut lto_import_only_modules = Vec::new();
@@ -1625,7 +1611,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         Ok(WorkItemResult::Finished(compiled_module)) => {
                             match compiled_module.kind {
                                 ModuleKind::Regular => {
-                                    assert!(needs_link.is_empty());
                                     compiled_modules.push(compiled_module);
                                 }
                                 ModuleKind::Allocator => {
@@ -1633,10 +1618,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                                     compiled_allocator_module = Some(compiled_module);
                                 }
                             }
-                        }
-                        Ok(WorkItemResult::NeedsLink(module)) => {
-                            assert!(compiled_modules.is_empty());
-                            needs_link.push(module);
                         }
                         Ok(WorkItemResult::NeedsFatLto(fat_lto_input)) => {
                             assert!(!started_lto);
@@ -1672,17 +1653,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
         if codegen_state == Aborted {
             return Err(());
-        }
-
-        let needs_link = mem::take(&mut needs_link);
-        if !needs_link.is_empty() {
-            assert!(compiled_modules.is_empty());
-            let dcx = cgcx.create_dcx();
-            let dcx = dcx.handle();
-            let module = B::run_link(&cgcx, dcx, needs_link).map_err(|_| ())?;
-            let module =
-                B::codegen(&cgcx, module, cgcx.config(ModuleKind::Regular)).map_err(|_| ())?;
-            compiled_modules.push(module);
         }
 
         // Drop to print timings
