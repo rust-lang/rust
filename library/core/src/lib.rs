@@ -154,7 +154,6 @@
 #![feature(f128)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
-#![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
