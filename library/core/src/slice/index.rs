@@ -236,8 +236,9 @@ unsafe impl<T> SliceIndex<[T]> for usize {
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const T {
         assert_unsafe_precondition!(
             check_language_ub,
-            "slice::get_unchecked requires that the index is within the slice",
-            (this: usize = self, len: usize = slice.len()) => this < len
+            "slice::get_unchecked requires that the index is within the slice \
+            (index:{index}, len:{len})",
+            (index: usize = self, len: usize = slice.len()) => index < len
         );
         // SAFETY: the caller guarantees that `slice` is not dangling, so it
         // cannot be longer than `isize::MAX`. They also guarantee that
@@ -256,8 +257,9 @@ unsafe impl<T> SliceIndex<[T]> for usize {
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut T {
         assert_unsafe_precondition!(
             check_library_ub,
-            "slice::get_unchecked_mut requires that the index is within the slice",
-            (this: usize = self, len: usize = slice.len()) => this < len
+            "slice::get_unchecked_mut requires that the index is within the slice \
+            (index:{index}, len:{len})",
+            (index: usize = self, len: usize = slice.len()) => index < len
         );
         // SAFETY: see comments for `get_unchecked` above.
         unsafe { slice_get_unchecked(slice, self) }
@@ -306,7 +308,8 @@ unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
         assert_unsafe_precondition!(
             check_library_ub,
-            "slice::get_unchecked requires that the index is within the slice",
+            "slice::get_unchecked requires that the index is within the slice \
+            (end:{end}, len:{len})",
             (end: usize = self.end(), len: usize = slice.len()) => end <= len
         );
         // SAFETY: the caller guarantees that `slice` is not dangling, so it
@@ -321,7 +324,8 @@ unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
         assert_unsafe_precondition!(
             check_library_ub,
-            "slice::get_unchecked_mut requires that the index is within the slice",
+            "slice::get_unchecked_mut requires that the index is within the slice \
+            (end:{end}, len:{len})",
             (end: usize = self.end(), len: usize = slice.len()) => end <= len
         );
 
@@ -387,7 +391,8 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
         assert_unsafe_precondition!(
             check_library_ub,
-            "slice::get_unchecked requires that the range is within the slice",
+            "slice::get_unchecked requires that the range is within the slice \
+            (range:{start}..{end}, len:{len})",
             (
                 start: usize = self.start,
                 end: usize = self.end,
@@ -412,7 +417,8 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
         assert_unsafe_precondition!(
             check_library_ub,
-            "slice::get_unchecked_mut requires that the range is within the slice",
+            "slice::get_unchecked_mut requires that the range is within the slice \
+            (range:{start}..{end}, len:{len})",
             (
                 start: usize = self.start,
                 end: usize = self.end,
