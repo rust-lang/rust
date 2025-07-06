@@ -1,0 +1,26 @@
+error: associated functions cannot have a C variable argument list
+  --> $DIR/no-associated-function.rs:9:46
+   |
+LL |     unsafe extern "C" fn associated_function(mut ap: ...) -> i32 {
+   |                                              ^^^^^^^^^^^
+
+error: associated functions cannot have a C variable argument list
+  --> $DIR/no-associated-function.rs:14:40
+   |
+LL |     unsafe extern "C" fn method(&self, mut ap: ...) -> i32 {
+   |                                        ^^^^^^^^^^^
+
+error: associated functions cannot have a C variable argument list
+  --> $DIR/no-associated-function.rs:21:52
+   |
+LL |     unsafe extern "C" fn trait_associated_function(mut ap: ...) -> i32 {
+   |                                                    ^^^^^^^^^^^
+
+error: associated functions cannot have a C variable argument list
+  --> $DIR/no-associated-function.rs:26:46
+   |
+LL |     unsafe extern "C" fn trait_method(&self, mut ap: ...) -> i32 {
+   |                                              ^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
