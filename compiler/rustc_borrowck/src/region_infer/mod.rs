@@ -713,7 +713,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // If the member region lives in a higher universe, we currently choose
         // the most conservative option by leaving it unchanged.
-        if !self.max_nameable_universe(scc).is_root() {
+        if !self.max_placeholder_universe_reached(scc).is_root() {
             return;
         }
 
@@ -1374,6 +1374,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// The largest universe of any region nameable from this SCC.
     fn max_nameable_universe(&self, scc: ConstraintSccIndex) -> UniverseIndex {
         self.scc_annotations[scc].max_nameable_universe()
+    }
+
+    pub(crate) fn max_placeholder_universe_reached(
+        &self,
+        scc: ConstraintSccIndex,
+    ) -> UniverseIndex {
+        self.scc_annotations[scc].max_placeholder_universe_reached()
     }
 
     /// Checks the final value for the free region `fr` to see if it
