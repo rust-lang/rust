@@ -446,4 +446,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Added new option `build.tidy-extra-checks` to specify a default value for the --extra-checks cli flag.",
     },
+    ChangeInfo {
+        change_id: 143493,
+        severity: ChangeSeverity::Warning,
+        summary: "The `spellcheck:fix` tidy extra check argument has been removed, use `--bless` instead",
+    },
 ];
