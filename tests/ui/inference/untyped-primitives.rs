@@ -5,5 +5,7 @@
 
 fn main() {
     let x = f32::from(3.14);
+    //~^ WARN falling back to `f32`
+    //~| WARN this was previously accepted
     let y = f64::from(3.14);
 }
