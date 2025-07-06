@@ -160,9 +160,12 @@ pub enum FormatArgumentKind {
 
 // Only used in parse_args and report_invalid_references,
 // to indicate how a referred argument was used.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug)]
 enum PositionUsedAs {
-    Placeholder(Option<TextRange>),
+    Placeholder(
+        // FIXME(#143487): is it okay that the field is never read?
+        #[allow(dead_code)] Option<TextRange>,
+    ),
     Precision,
     Width,
 }
