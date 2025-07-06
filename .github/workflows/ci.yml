@@ -152,6 +152,9 @@ jobs:
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
 
+      - name: install rust
+        run: src/ci/scripts/install-rust.sh
+
       - name: install awscli
         run: src/ci/scripts/install-awscli.sh
 
