@@ -137,3 +137,48 @@ fn not_fire() {
 fn issue11579() {
     let Some(msg) = Some("hi") else { unreachable!("can't happen") };
 }
+
+#[derive(Clone, Copy)]
+struct Issue9939<T> {
+    avalanche: T,
+}
+
+fn issue9939() {
+    let issue = Some(Issue9939 { avalanche: 1 });
+    let Some(Issue9939 { avalanche: tornado }) = issue else { unreachable!("can't happen") };
+    let issue = Some(Issue9939 { avalanche: true });
+    let Some(Issue9939 { avalanche: acid_rain }) = issue else { unreachable!("can't happen") };
+    assert_eq!(tornado, 1);
+    assert!(acid_rain);
+
+    // without shadowing
+    let _x @ Some(Issue9939 { avalanche: _y }) = issue else { unreachable!("can't happen") };
+
+    // with shadowing
+    let Some(Issue9939 { avalanche: _x }) = issue else { unreachable!("can't happen") };
+}
+
+#[derive(Clone, Copy)]
+struct Issue9939b<T, U> {
+    earthquake: T,
+    hurricane: U,
+}
+
+fn issue9939b() {
+    let issue = Some(Issue9939b {
+        earthquake: true,
+        hurricane: 1,
+    });
+    let issue @ Some(Issue9939b { earthquake: flood, hurricane: drought }) = issue else { unreachable!("can't happen") };
+    assert_eq!(drought, 1);
+    assert!(flood);
+    assert!(issue.is_some());
+
+    // without shadowing
+    let _x @ Some(Issue9939b { earthquake: erosion, hurricane: _y }) = issue else { unreachable!("can't happen") };
+    assert!(erosion);
+
+    // with shadowing
+    let Some(Issue9939b { earthquake: erosion, hurricane: _x }) = issue else { unreachable!("can't happen") };
+    assert!(erosion);
+}
