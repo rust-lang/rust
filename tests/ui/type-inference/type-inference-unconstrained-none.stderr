@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/unconstrained-none.rs:4:5
+  --> $DIR/type-inference-unconstrained-none.rs:4:5
    |
 LL |     None;
    |     ^^^^ cannot infer type of the type parameter `T` declared on the enum `Option`

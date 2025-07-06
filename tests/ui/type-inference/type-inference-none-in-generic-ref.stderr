@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/unconstrained-ref.rs:6:5
+  --> $DIR/type-inference-none-in-generic-ref.rs:8:5
    |
 LL |     S { o: &None };
    |     ^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `S`
