@@ -22,7 +22,7 @@ mod placeholders;
 mod proc_macro_server;
 mod stats;
 
-pub use mbe::macro_rules::compile_declarative_macro;
+pub use mbe::macro_rules::{compile_declarative_macro, expand_token_stream};
 pub mod base;
 pub mod config;
 pub mod expand;

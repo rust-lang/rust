@@ -1,0 +1,25 @@
+error: expected `{`, found `1`
+  --> $DIR/cfg_select.rs:13:17
+   |
+LL |         true => 1
+   |                 ^ expected `{`
+
+warning: unreachable rule
+  --> $DIR/cfg_select.rs:20:5
+   |
+LL |     _ => {}
+   |     - always matches
+LL |     true => {}
+   |     ^^^^ this rules is never reached
+
+error: none of the rules in this `cfg_select` evaluated to true
+  --> $DIR/cfg_select.rs:24:1
+   |
+LL | / cfg_select! {
+LL | |
+LL | |     false => {}
+LL | | }
+   | |_^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

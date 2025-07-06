@@ -1,6 +1,7 @@
 pub mod asm;
 pub mod attr;
 mod attr_wrapper;
+pub mod cfg_select;
 mod diagnostics;
 mod expr;
 mod generics;
