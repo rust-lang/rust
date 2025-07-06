@@ -58,7 +58,7 @@ impl LazyKey {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn force(&'static self) -> Key {
         match self.key.load(Acquire) {
             0 => unsafe { self.init() },
@@ -67,7 +67,6 @@ impl LazyKey {
     }
 
     #[cold]
-    #[inline(never)]
     unsafe fn init(&'static self) -> Key {
         if self.dtor.is_some() {
             let mut pending = c::FALSE;

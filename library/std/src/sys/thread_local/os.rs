@@ -86,7 +86,6 @@ impl<T: 'static> Storage<T> {
     /// * `key` must be the result of calling `self.key.force()`
     /// * `ptr` must be the current value associated with `key`.
     #[cold]
-    #[inline(never)]
     unsafe fn try_initialize(
         key: Key,
         ptr: *mut Value<T>,

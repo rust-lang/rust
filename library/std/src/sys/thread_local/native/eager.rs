@@ -28,7 +28,7 @@ impl<T> Storage<T> {
     ///
     /// # Safety
     /// The `self` reference must remain valid until the TLS destructor is run.
-    #[inline(always)]
+    #[inline]
     pub unsafe fn get(&self) -> *const T {
         if let State::Alive = self.state.get() {
             self.val.get()
@@ -38,7 +38,6 @@ impl<T> Storage<T> {
     }
 
     #[cold]
-    #[inline(never)]
     unsafe fn get_or_init_slow(&self) -> *const T {
         match self.state.get() {
             State::Uninitialized => {}

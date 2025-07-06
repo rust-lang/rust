@@ -93,7 +93,6 @@ fn tls_table() -> &'static mut [*mut u8] {
 }
 
 #[cold]
-#[inline(never)]
 fn tls_table_slow() -> &'static mut [*mut u8] {
     // If the TP register is `0`, then this thread hasn't initialized
     // its TLS yet. Allocate a new page to store this memory.
