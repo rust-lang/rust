@@ -358,6 +358,8 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn run_and_optimize_fat_lto(
         cgcx: &CodegenContext<Self>,
+        // FIXME(bjorn3): Limit LTO exports to these symbols
+        _exported_symbols_for_lto: &[String],
         modules: Vec<FatLtoInput<Self>>,
         diff_fncs: Vec<AutoDiffItem>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
@@ -370,6 +372,8 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
+        // FIXME(bjorn3): Limit LTO exports to these symbols
+        _exported_symbols_for_lto: &[String],
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> Result<(Vec<ThinModule<Self>>, Vec<WorkProduct>), FatalError> {
