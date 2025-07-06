@@ -169,6 +169,10 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_span(&mut self, span: Span) {
+        if self.tcx.sess.is_split_rmeta_enabled() {
+            return;
+        }
+
         match self.span_shorthands.entry(span) {
             Entry::Occupied(o) => {
                 // If an offset is smaller than the absolute position, we encode with the offset.
@@ -437,7 +441,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 assert!(
                     last_pos <= position,
                     "make sure that the calls to `lazy*` \
-                     are in the same order as the metadata fields",
+                    are in the same order as the metadata fields",
                 );
                 position.get() - last_pos.get()
             }
@@ -604,6 +608,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         adapted.encode(&mut self.opaque)
     }
 
+    fn dont_encode_source_map(
+        &mut self,
+    ) -> LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>> {
+        let adapted = TableBuilder::default();
+        adapted.encode(&mut self.opaque)
+    }
+
     fn encode_crate_root(&mut self) -> LazyValue<CrateRoot> {
         let tcx = self.tcx;
         let mut stats: Vec<(&'static str, usize)> = Vec::with_capacity(32);
@@ -713,7 +724,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Encode source_map. This needs to be done last, because encoding `Span`s tells us which
         // `SourceFiles` we actually need to encode.
-        let source_map = stat!("source-map", || self.encode_source_map());
+        let source_map = if tcx.sess.is_split_rmeta_enabled() {
+            stat!("source-map", || self.dont_encode_source_map())
+        } else {
+            stat!("source-map", || self.encode_source_map())
+        };
         let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
 
         let root = stat!("final", || {
@@ -738,6 +753,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     attrs,
                     sym::default_lib_allocator,
                 ),
+                has_rmeta_extras: !tcx.sess.is_split_rmeta_enabled(),
                 proc_macro_data,
                 debugger_visualizers,
                 compiler_builtins: ast::attr::contains_name(attrs, sym::compiler_builtins),
@@ -1712,7 +1728,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             record_array!(self.tables.module_children_non_reexports[def_id] <-
                 module_children.iter().filter(|child| child.reexport_chain.is_empty())
-                    .map(|child| child.res.def_id().index));
+                .map(|child| child.res.def_id().index));
 
             record_defaulted_array!(self.tables.module_children_reexports[def_id] <-
                 module_children.iter().filter(|child| !child.reexport_chain.is_empty()));
@@ -1761,7 +1777,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if matches!(rpitit_info, ty::ImplTraitInTraitData::Trait { .. }) {
                 record_array!(
                     self.tables.assumed_wf_types_for_rpitit[def_id]
-                        <- self.tcx.assumed_wf_types_for_rpitit(def_id)
+                    <- self.tcx.assumed_wf_types_for_rpitit(def_id)
                 );
                 self.encode_precise_capturing_args(def_id);
             }
@@ -1844,7 +1860,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             for &local_def_id in tcx.mir_keys(()) {
                 if let DefKind::AssocFn | DefKind::Fn = tcx.def_kind(local_def_id) {
                     record_array!(self.tables.deduced_param_attrs[local_def_id.to_def_id()] <-
-                        self.tcx.deduced_param_attrs(local_def_id.to_def_id()));
+                                self.tcx.deduced_param_attrs(local_def_id.to_def_id()));
                 }
             }
         }
