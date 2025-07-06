@@ -328,27 +328,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         Some(imm)
     }
 
-    pub(crate) fn codegen_rvalue_unsized(
-        &mut self,
-        bx: &mut Bx,
-        indirect_dest: PlaceRef<'tcx, Bx::Value>,
-        rvalue: &mir::Rvalue<'tcx>,
-    ) {
-        debug!(
-            "codegen_rvalue_unsized(indirect_dest.llval={:?}, rvalue={:?})",
-            indirect_dest.val.llval, rvalue
-        );
-
-        match *rvalue {
-            mir::Rvalue::Use(ref operand) => {
-                let cg_operand = self.codegen_operand(bx, operand);
-                cg_operand.val.store_unsized(bx, indirect_dest);
-            }
-
-            _ => bug!("unsized assignment other than `Rvalue::Use`"),
-        }
-    }
-
     pub(crate) fn codegen_rvalue_operand(
         &mut self,
         bx: &mut Bx,

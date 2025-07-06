@@ -151,7 +151,7 @@ pub const fn forget<T>(t: T) {
 ///
 /// While Rust does not permit unsized locals since its removal in [#111942] it is
 /// still possible to call functions with unsized values from a function argument
-/// or in-place construction.
+/// or place expression.
 ///
 /// ```rust
 /// #![feature(unsized_fn_params, forget_unsized)]
