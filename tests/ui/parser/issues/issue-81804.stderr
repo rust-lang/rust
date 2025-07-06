@@ -10,8 +10,9 @@ error: this file contains an unclosed delimiter
   --> $DIR/issue-81804.rs:5:11
    |
 LL | fn p([=(}
-   |     --   ^
-   |     ||
+   |     -- - ^
+   |     || |
+   |     || unclosed delimiter
    |     |unclosed delimiter
    |     unclosed delimiter
 
