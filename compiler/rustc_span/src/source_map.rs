@@ -12,6 +12,7 @@
 use std::io::{self, BorrowedBuf, Read};
 use std::{fs, path};
 
+use rustc_data_structures::fx::StdEntry;
 use rustc_data_structures::sync::{IntoDynSyncSend, MappedReadGuard, ReadGuard, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_macros::{Decodable, Encodable};
@@ -282,20 +283,24 @@ impl SourceMap {
         mut file: SourceFile,
     ) -> Result<Arc<SourceFile>, OffsetOverflowError> {
         let mut files = self.files.borrow_mut();
+        let SourceMapFiles { source_files, stable_id_to_source_file } = &mut *files;
+        let file = match stable_id_to_source_file.entry(file_id) {
+            StdEntry::Occupied(o) => o.into_mut(),
+            StdEntry::Vacant(v) => {
+                file.start_pos = BytePos(if let Some(last_file) = source_files.last() {
+                    // Add one so there is some space between files. This lets us distinguish
+                    // positions in the `SourceMap`, even in the presence of zero-length files.
+                    last_file.end_position().0.checked_add(1).ok_or(OffsetOverflowError)?
+                } else {
+                    0
+                });
 
-        file.start_pos = BytePos(if let Some(last_file) = files.source_files.last() {
-            // Add one so there is some space between files. This lets us distinguish
-            // positions in the `SourceMap`, even in the presence of zero-length files.
-            last_file.end_position().0.checked_add(1).ok_or(OffsetOverflowError)?
-        } else {
-            0
-        });
-
-        let file = Arc::new(file);
-        files.source_files.push(Arc::clone(&file));
-        files.stable_id_to_source_file.insert(file_id, Arc::clone(&file));
-
-        Ok(file)
+                let file = Arc::new(file);
+                source_files.push(Arc::clone(&file));
+                v.insert(file)
+            }
+        };
+        Ok(Arc::clone(file))
     }
 
     /// Creates a new `SourceFile`.
