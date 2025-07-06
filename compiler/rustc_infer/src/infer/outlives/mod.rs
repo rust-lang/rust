@@ -60,7 +60,7 @@ impl<'tcx> InferCtxt<'tcx> {
             assert!(
                 self.tainted_by_errors().is_some() || inner.region_obligations.is_empty(),
                 "region_obligations not empty: {:#?}",
-                inner.region_obligations
+                inner.region_obligations,
             );
             assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
             inner.region_constraint_storage.take().expect("regions already resolved")
@@ -92,6 +92,11 @@ impl<'tcx> InferCtxt<'tcx> {
             self.inner.borrow().region_obligations.is_empty(),
             "region_obligations not empty: {:#?}",
             self.inner.borrow().region_obligations
+        );
+        assert!(
+            self.inner.borrow().region_assumptions.is_empty(),
+            "region_assumptions not empty: {:#?}",
+            self.inner.borrow().region_assumptions
         );
 
         self.inner.borrow_mut().unwrap_region_constraints().take_and_reset_data()

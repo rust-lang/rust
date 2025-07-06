@@ -2,7 +2,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::traits::{Obligation, ObligationCause};
-use rustc_middle::ty::{self, Ty, TyCtxt, fold_regions};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, fold_regions};
 use rustc_trait_selection::traits::{ObligationCtxt, with_replaced_escaping_bound_vars};
 
 /// Return the set of types that should be taken into account when checking
@@ -65,6 +65,7 @@ fn compute_assumptions<'tcx>(
         let _errors = ocx.select_all_or_error();
 
         let region_obligations = infcx.take_registered_region_obligations();
+        let region_assumptions = infcx.take_registered_region_assumptions();
         let region_constraints = infcx.take_and_reset_region_constraints();
         tcx.mk_outlives_from_iter(
             make_query_region_constraints(
@@ -73,10 +74,13 @@ fn compute_assumptions<'tcx>(
                     .iter()
                     .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())),
                 &region_constraints,
+                region_assumptions,
             )
             .outlives
             .into_iter()
-            .map(|(o, _)| o),
+            .map(|(o, _)| o)
+            // FIXME: Ew
+            .filter(|o| !o.has_infer()),
         )
     })
 }

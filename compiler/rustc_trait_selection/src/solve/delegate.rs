@@ -212,6 +212,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         // Cannot use `take_registered_region_obligations` as we may compute the response
         // inside of a `probe` whenever we have multiple choices inside of the solver.
         let region_obligations = self.0.inner.borrow().region_obligations().to_owned();
+        let region_assumptions = self.0.inner.borrow().region_assumptions().to_owned();
         let region_constraints = self.0.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
                 self.tcx,
@@ -219,6 +220,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     .iter()
                     .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())),
                 region_constraints,
+                region_assumptions,
             )
         });
 
