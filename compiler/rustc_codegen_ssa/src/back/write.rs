@@ -703,13 +703,6 @@ pub(crate) enum WorkItem<B: WriteBackendMethods> {
     /// Copy the post-LTO artifacts from the incremental cache to the output
     /// directory.
     CopyPostLtoArtifacts(CachedModuleCodegen),
-    /// Performs fat LTO on the given module.
-    FatLto {
-        exported_symbols_for_lto: Arc<Vec<String>>,
-        each_linked_rlib_for_lto: Vec<PathBuf>,
-        needs_fat_lto: Vec<FatLtoInput<B>>,
-        import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
-    },
     /// Performs thin-LTO on the given module.
     ThinLto(lto::ThinModule<B>),
 }
@@ -759,7 +752,6 @@ impl<B: WriteBackendMethods> WorkItem<B> {
         match self {
             WorkItem::Optimize(m) => desc("opt", "optimize module", &m.name),
             WorkItem::CopyPostLtoArtifacts(m) => desc("cpy", "copy LTO artifacts for", &m.name),
-            WorkItem::FatLto { .. } => desc("lto", "fat LTO module", "everything"),
             WorkItem::ThinLto(m) => desc("lto", "thin-LTO module", m.name()),
         }
     }
@@ -976,14 +968,16 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     })
 }
 
-fn execute_fat_lto_work_item<B: ExtraBackendMethods>(
+fn do_fat_lto<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
     mut needs_fat_lto: Vec<FatLtoInput<B>>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
-) -> WorkItemResult<B> {
+) -> CompiledModule {
     let _timer = cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", "everything");
+
+    check_lto_allowed(&cgcx);
 
     for (module, wp) in import_only_modules {
         needs_fat_lto.push(FatLtoInput::Serialized { name: wp.cgu_name, buffer: module })
@@ -995,8 +989,7 @@ fn execute_fat_lto_work_item<B: ExtraBackendMethods>(
         each_linked_rlib_for_lto,
         needs_fat_lto,
     );
-    let module = B::codegen(cgcx, module, &cgcx.module_config);
-    WorkItemResult::Finished(module)
+    B::codegen(cgcx, module, &cgcx.module_config)
 }
 
 fn execute_thin_lto_work_item<B: ExtraBackendMethods>(
@@ -1421,44 +1414,29 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     assert!(!started_lto);
                     started_lto = true;
 
-                    let needs_fat_lto = mem::take(&mut needs_fat_lto);
-                    let needs_thin_lto = mem::take(&mut needs_thin_lto);
-                    let import_only_modules = mem::take(&mut lto_import_only_modules);
-                    let each_linked_rlib_file_for_lto =
-                        mem::take(&mut each_linked_rlib_file_for_lto);
+                    if !needs_fat_lto.is_empty() {
+                        // We're doing fat LTO outside of the main loop.
+                        break;
+                    }
 
                     check_lto_allowed(&cgcx);
 
-                    if !needs_fat_lto.is_empty() {
-                        assert!(needs_thin_lto.is_empty());
+                    let needs_thin_lto = mem::take(&mut needs_thin_lto);
+                    let import_only_modules = mem::take(&mut lto_import_only_modules);
 
-                        work_items.push((
-                            WorkItem::FatLto {
-                                exported_symbols_for_lto: Arc::clone(&exported_symbols_for_lto),
-                                each_linked_rlib_for_lto: each_linked_rlib_file_for_lto,
-                                needs_fat_lto,
-                                import_only_modules,
-                            },
-                            0,
-                        ));
+                    for (work, cost) in generate_thin_lto_work(
+                        &cgcx,
+                        &exported_symbols_for_lto,
+                        &each_linked_rlib_file_for_lto,
+                        needs_thin_lto,
+                        import_only_modules,
+                    ) {
+                        let insertion_index = work_items
+                            .binary_search_by_key(&cost, |&(_, cost)| cost)
+                            .unwrap_or_else(|e| e);
+                        work_items.insert(insertion_index, (work, cost));
                         if cgcx.parallel {
                             helper.request_token();
-                        }
-                    } else {
-                        for (work, cost) in generate_thin_lto_work(
-                            &cgcx,
-                            &exported_symbols_for_lto,
-                            &each_linked_rlib_file_for_lto,
-                            needs_thin_lto,
-                            import_only_modules,
-                        ) {
-                            let insertion_index = work_items
-                                .binary_search_by_key(&cost, |&(_, cost)| cost)
-                                .unwrap_or_else(|e| e);
-                            work_items.insert(insertion_index, (work, cost));
-                            if cgcx.parallel {
-                                helper.request_token();
-                            }
                         }
                     }
                 }
@@ -1633,6 +1611,25 @@ fn start_executing_work<B: ExtraBackendMethods>(
             return Err(());
         }
 
+        drop(codegen_state);
+        drop(tokens);
+        drop(helper);
+
+        if !needs_fat_lto.is_empty() {
+            assert!(compiled_modules.is_empty());
+            assert!(needs_thin_lto.is_empty());
+
+            // This uses the implicit token
+            let module = do_fat_lto(
+                &cgcx,
+                &exported_symbols_for_lto,
+                &each_linked_rlib_file_for_lto,
+                needs_fat_lto,
+                lto_import_only_modules,
+            );
+            compiled_modules.push(module);
+        }
+
         // Drop to print timings
         drop(llvm_start_time);
 
@@ -1726,18 +1723,6 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
         let result = std::panic::catch_unwind(AssertUnwindSafe(|| match work {
             WorkItem::Optimize(m) => execute_optimize_work_item(&cgcx, m),
             WorkItem::CopyPostLtoArtifacts(m) => execute_copy_from_cache_work_item(&cgcx, m),
-            WorkItem::FatLto {
-                exported_symbols_for_lto,
-                each_linked_rlib_for_lto,
-                needs_fat_lto,
-                import_only_modules,
-            } => execute_fat_lto_work_item(
-                &cgcx,
-                &exported_symbols_for_lto,
-                &each_linked_rlib_for_lto,
-                needs_fat_lto,
-                import_only_modules,
-            ),
             WorkItem::ThinLto(m) => execute_thin_lto_work_item(&cgcx, m),
         }));
 
