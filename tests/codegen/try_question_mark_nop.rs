@@ -1,6 +1,7 @@
 //@ compile-flags: -Copt-level=3 -Z merge-functions=disabled
 //@ edition: 2021
-//@ only-x86_64
+//@ only-64bit
+//@ needs-deterministic-layouts (opposite scalar pair orders breaks it)
 //@ revisions: NINETEEN TWENTY
 //@[NINETEEN] exact-llvm-major-version: 19
 //@[TWENTY] min-llvm-version: 20
@@ -11,7 +12,7 @@
 use std::ops::ControlFlow::{self, Break, Continue};
 use std::ptr::NonNull;
 
-// CHECK-LABEL: @option_nop_match_32
+// CHECK-LABEL: @option_nop_match_32({{.+}} %0, {{.+}} %1)
 #[no_mangle]
 pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
@@ -32,7 +33,7 @@ pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
     }
 }
 
-// CHECK-LABEL: @option_nop_traits_32
+// CHECK-LABEL: @option_nop_traits_32({{.+}} %0, {{.+}} %1)
 #[no_mangle]
 pub fn option_nop_traits_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
@@ -90,7 +91,7 @@ pub fn control_flow_nop_traits_32(x: ControlFlow<i32, u32>) -> ControlFlow<i32, 
     try { x? }
 }
 
-// CHECK-LABEL: @option_nop_match_64
+// CHECK-LABEL: @option_nop_match_64({{.+}} %0, {{.+}} %1)
 #[no_mangle]
 pub fn option_nop_match_64(x: Option<u64>) -> Option<u64> {
     // CHECK: start:
@@ -111,7 +112,7 @@ pub fn option_nop_match_64(x: Option<u64>) -> Option<u64> {
     }
 }
 
-// CHECK-LABEL: @option_nop_traits_64
+// CHECK-LABEL: @option_nop_traits_64({{.+}} %0, {{.+}} %1)
 #[no_mangle]
 pub fn option_nop_traits_64(x: Option<u64>) -> Option<u64> {
     // CHECK: start:
@@ -219,13 +220,19 @@ pub fn control_flow_nop_traits_128(x: ControlFlow<i128, u128>) -> ControlFlow<i1
     try { x? }
 }
 
-// CHECK-LABEL: @result_nop_match_ptr
+// CHECK-LABEL: @result_nop_match_ptr({{.+}} %x.0, {{.+}} %x.1)
 #[no_mangle]
 pub fn result_nop_match_ptr(x: Result<usize, Box<()>>) -> Result<usize, Box<()>> {
+    // This also has an assume that if it's `Err` the pointer is non-null
+    // (since it *can* be null in the `Ok` case) but for the purpose of this
+    // test that's ok as the returned value is just the inputs paired up.
+
     // CHECK: start:
-    // CHECK-NEXT: insertvalue { i{{[0-9]+}}, ptr }
-    // CHECK-NEXT: insertvalue { i{{[0-9]+}}, ptr }
-    // CHECK-NEXT: ret
+    // CHECK-NOT: insertvalue
+    // CHECK-NOT: ret
+    // CHECK: %[[TEMP1:.+]] = insertvalue { i64, ptr } poison, i64 %x.0, 0
+    // CHECK-NEXT: %[[TEMP2:.+]] = insertvalue { i64, ptr } %[[TEMP1]], ptr %x.1, 1
+    // CHECK-NEXT: ret { i64, ptr } %[[TEMP2]]
     match x {
         Ok(x) => Ok(x),
         Err(x) => Err(x),
@@ -236,8 +243,8 @@ pub fn result_nop_match_ptr(x: Result<usize, Box<()>>) -> Result<usize, Box<()>>
 #[no_mangle]
 pub fn result_nop_traits_ptr(x: Result<u64, NonNull<()>>) -> Result<u64, NonNull<()>> {
     // CHECK: start:
-    // CHECK-NEXT: insertvalue { i{{[0-9]+}}, ptr }
-    // CHECK-NEXT: insertvalue { i{{[0-9]+}}, ptr }
+    // CHECK-NEXT: insertvalue { i64, ptr }
+    // CHECK-NEXT: insertvalue { i64, ptr }
     // CHECK-NEXT: ret
     try { x? }
 }
