@@ -62,6 +62,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
             let env = MoveDataTypingEnv { move_data, typing_env };
 
             let mut inits = MaybeInitializedPlaces::new(tcx, body, &env.move_data)
+                .exclude_inactive_in_otherwise()
                 .skipping_unreachable_unwind()
                 .iterate_to_fixpoint(tcx, body, Some("elaborate_drops"))
                 .into_results_cursor(body);

@@ -131,12 +131,26 @@ pub struct MaybeInitializedPlaces<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
+    exclude_inactive_in_otherwise: bool,
     skip_unreachable_unwind: bool,
 }
 
 impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, move_data: &'a MoveData<'tcx>) -> Self {
-        MaybeInitializedPlaces { tcx, body, move_data, skip_unreachable_unwind: false }
+        MaybeInitializedPlaces {
+            tcx,
+            body,
+            move_data,
+            exclude_inactive_in_otherwise: false,
+            skip_unreachable_unwind: false,
+        }
+    }
+
+    /// Ensures definitely inactive variants are excluded from the set of initialized places for
+    /// blocks reached through an `otherwise` edge.
+    pub fn exclude_inactive_in_otherwise(mut self) -> Self {
+        self.exclude_inactive_in_otherwise = true;
+        self
     }
 
     pub fn skipping_unreachable_unwind(mut self) -> Self {
@@ -208,6 +222,7 @@ pub struct MaybeUninitializedPlaces<'a, 'tcx> {
     move_data: &'a MoveData<'tcx>,
 
     mark_inactive_variants_as_uninit: bool,
+    include_inactive_in_otherwise: bool,
     skip_unreachable_unwind: DenseBitSet<mir::BasicBlock>,
 }
 
@@ -218,6 +233,7 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
             body,
             move_data,
             mark_inactive_variants_as_uninit: false,
+            include_inactive_in_otherwise: false,
             skip_unreachable_unwind: DenseBitSet::new_empty(body.basic_blocks.len()),
         }
     }
@@ -229,6 +245,13 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
     /// checker, where this information gets propagated along `FakeEdge`s.
     pub fn mark_inactive_variants_as_uninit(mut self) -> Self {
         self.mark_inactive_variants_as_uninit = true;
+        self
+    }
+
+    /// Ensures definitely inactive variants are included in the set of uninitialized places for
+    /// blocks reached through an `otherwise` edge.
+    pub fn include_inactive_in_otherwise(mut self) -> Self {
+        self.include_inactive_in_otherwise = true;
         self
     }
 
@@ -431,17 +454,63 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         data: &mut Self::SwitchIntData,
         state: &mut Self::Domain,
         value: SwitchTargetValue,
+        otherwise_state: Option<&mut Self::Domain>,
     ) {
-        if let SwitchTargetValue::Normal(value) = value {
-            // Kill all move paths that correspond to variants we know to be inactive along this
-            // particular outgoing edge of a `SwitchInt`.
-            drop_flag_effects::on_all_inactive_variants(
-                self.move_data,
-                data.enum_place,
-                data.next_discr(value),
-                |mpi| state.kill(mpi),
-            );
+        let SwitchTargetValue::Normal(value) = value else {
+            return;
+        };
+
+        let handle_inactive_variant = |mpi| state.kill(mpi);
+
+        // Kill all move paths that correspond to variants we know to be inactive along this
+        // particular outgoing edge of a `SwitchInt`.
+        match otherwise_state {
+            Some(otherwise_state) => {
+                drop_flag_effects::on_all_variants(
+                    self.move_data,
+                    data.enum_place,
+                    data.next_discr(value),
+                    handle_inactive_variant,
+                    |mpi| otherwise_state.kill(mpi),
+                );
+            }
+            None => {
+                drop_flag_effects::on_all_variants(
+                    self.move_data,
+                    data.enum_place,
+                    data.next_discr(value),
+                    handle_inactive_variant,
+                    |_mpi| {},
+                );
+            }
         }
+    }
+
+    fn apply_switch_int_edge_effect_for_targets(
+        &mut self,
+        targets: &mir::SwitchTargets,
+        mut data: Self::SwitchIntData,
+        state: &mut Self::Domain,
+        mut propagate: impl FnMut(mir::BasicBlock, &Self::Domain),
+    ) {
+        let analyze_otherwise = self.exclude_inactive_in_otherwise
+            && (1..data.discriminants.len()).contains(&targets.all_values().len());
+
+        let mut otherwise_state = if analyze_otherwise { Some(state.clone()) } else { None };
+        let mut target_state = MaybeReachable::Unreachable;
+
+        for (value, target) in targets.iter() {
+            target_state.clone_from(&state);
+            self.apply_switch_int_edge_effect(
+                &mut data,
+                &mut target_state,
+                SwitchTargetValue::Normal(value),
+                otherwise_state.as_mut(),
+            );
+            propagate(target, &target_state);
+        }
+
+        propagate(targets.otherwise(), otherwise_state.as_ref().unwrap_or(state));
     }
 }
 
@@ -544,17 +613,63 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         data: &mut Self::SwitchIntData,
         state: &mut Self::Domain,
         value: SwitchTargetValue,
+        otherwise_state: Option<&mut Self::Domain>,
     ) {
-        if let SwitchTargetValue::Normal(value) = value {
-            // Mark all move paths that correspond to variants other than this one as maybe
-            // uninitialized (in reality, they are *definitely* uninitialized).
-            drop_flag_effects::on_all_inactive_variants(
-                self.move_data,
-                data.enum_place,
-                data.next_discr(value),
-                |mpi| state.gen_(mpi),
-            );
+        let SwitchTargetValue::Normal(value) = value else {
+            return;
+        };
+
+        let handle_inactive_variant = |mpi| state.gen_(mpi);
+
+        // Mark all move paths that correspond to variants other than this one as maybe
+        // uninitialized (in reality, they are *definitely* uninitialized).
+        match otherwise_state {
+            Some(otherwise_state) => {
+                drop_flag_effects::on_all_variants(
+                    self.move_data,
+                    data.enum_place,
+                    data.next_discr(value),
+                    handle_inactive_variant,
+                    |mpi| otherwise_state.gen_(mpi),
+                );
+            }
+            None => {
+                drop_flag_effects::on_all_variants(
+                    self.move_data,
+                    data.enum_place,
+                    data.next_discr(value),
+                    handle_inactive_variant,
+                    |_mpi| {},
+                );
+            }
         }
+    }
+
+    fn apply_switch_int_edge_effect_for_targets(
+        &mut self,
+        targets: &mir::SwitchTargets,
+        mut data: Self::SwitchIntData,
+        state: &mut Self::Domain,
+        mut propagate: impl FnMut(mir::BasicBlock, &Self::Domain),
+    ) {
+        let analyze_otherwise = self.include_inactive_in_otherwise
+            && (1..data.discriminants.len()).contains(&targets.all_values().len());
+
+        let mut otherwise_state = if analyze_otherwise { Some(state.clone()) } else { None };
+        let mut target_state = MixedBitSet::new_empty(self.move_data().move_paths.len());
+
+        for (value, target) in targets.iter() {
+            target_state.clone_from(&state);
+            self.apply_switch_int_edge_effect(
+                &mut data,
+                &mut target_state,
+                SwitchTargetValue::Normal(value),
+                otherwise_state.as_mut(),
+            );
+            propagate(target, &target_state);
+        }
+
+        propagate(targets.otherwise(), otherwise_state.as_ref().unwrap_or(state));
     }
 }
 
