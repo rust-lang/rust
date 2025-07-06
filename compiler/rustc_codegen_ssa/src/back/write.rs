@@ -9,7 +9,7 @@ use std::{fs, io, mem, str, thread};
 use rustc_abi::Size;
 use rustc_ast::attr;
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::{self, Acquired};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
@@ -20,14 +20,13 @@ use rustc_errors::{
     Suggestions,
 };
 use rustc_fs_util::link_or_copy;
-use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc_hir::def_id::CrateNum;
 use rustc_incremental::{
     copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::middle::exported_symbols::SymbolExportInfo;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{
@@ -40,7 +39,7 @@ use tracing::debug;
 
 use super::link::{self, ensure_removed};
 use super::lto::{self, SerializedModule};
-use super::symbol_export::symbol_name_for_instance_in_crate;
+use crate::back::lto::check_lto_allowed;
 use crate::errors::{AutodiffWithoutLto, ErrorCreatingRemarkDir};
 use crate::traits::*;
 use crate::{
@@ -330,8 +329,6 @@ pub type TargetMachineFactoryFn<B> = Arc<
         + Sync,
 >;
 
-type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportInfo)>>>;
-
 /// Additional resources used by optimize_and_codegen (not module specific)
 #[derive(Clone)]
 pub struct CodegenContext<B: WriteBackendMethods> {
@@ -341,10 +338,10 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub save_temps: bool,
     pub fewer_names: bool,
     pub time_trace: bool,
-    pub exported_symbols: Option<Arc<ExportedSymbols>>,
     pub opts: Arc<config::Options>,
     pub crate_types: Vec<CrateType>,
     pub each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
+    pub exported_symbols_for_lto: Arc<Vec<String>>,
     pub output_filenames: Arc<OutputFilenames>,
     pub invocation_temp: Option<String>,
     pub regular_module_config: Arc<ModuleConfig>,
@@ -1126,34 +1123,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
     }));
 
     // Compute the set of symbols we need to retain when doing LTO (if we need to)
-    let exported_symbols = {
-        let mut exported_symbols = FxHashMap::default();
-
-        let copy_symbols = |cnum| {
-            let symbols = tcx
-                .exported_non_generic_symbols(cnum)
-                .iter()
-                .chain(tcx.exported_generic_symbols(cnum))
-                .map(|&(s, lvl)| (symbol_name_for_instance_in_crate(tcx, s, cnum), lvl))
-                .collect();
-            Arc::new(symbols)
-        };
-
-        match sess.lto() {
-            Lto::No => None,
-            Lto::ThinLocal => {
-                exported_symbols.insert(LOCAL_CRATE, copy_symbols(LOCAL_CRATE));
-                Some(Arc::new(exported_symbols))
-            }
-            Lto::Fat | Lto::Thin => {
-                exported_symbols.insert(LOCAL_CRATE, copy_symbols(LOCAL_CRATE));
-                for &(cnum, ref _path) in &each_linked_rlib_for_lto {
-                    exported_symbols.insert(cnum, copy_symbols(cnum));
-                }
-                Some(Arc::new(exported_symbols))
-            }
-        }
-    };
+    let exported_symbols_for_lto =
+        Arc::new(lto::exported_symbols_for_lto(tcx, &each_linked_rlib_for_lto));
 
     // First up, convert our jobserver into a helper thread so we can use normal
     // mpsc channels to manage our messages and such.
@@ -1189,13 +1160,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
     let cgcx = CodegenContext::<B> {
         crate_types: tcx.crate_types().to_vec(),
         each_linked_rlib_for_lto,
+        exported_symbols_for_lto,
         lto: sess.lto(),
         fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,
         time_trace: sess.opts.unstable_opts.llvm_time_trace,
         opts: Arc::new(sess.opts.clone()),
         prof: sess.prof.clone(),
-        exported_symbols,
         remark: sess.opts.cg.remark.clone(),
         remark_dir,
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
@@ -1462,6 +1433,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     let needs_fat_lto = mem::take(&mut needs_fat_lto);
                     let needs_thin_lto = mem::take(&mut needs_thin_lto);
                     let import_only_modules = mem::take(&mut lto_import_only_modules);
+
+                    check_lto_allowed(&cgcx);
 
                     if !needs_fat_lto.is_empty() {
                         assert!(needs_thin_lto.is_empty());

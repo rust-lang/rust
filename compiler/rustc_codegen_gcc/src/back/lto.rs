@@ -24,9 +24,7 @@ use std::sync::Arc;
 
 use gccjit::{Context, OutputKind};
 use object::read::archive::ArchiveFile;
-use rustc_codegen_ssa::back::lto::{
-    SerializedModule, ThinModule, ThinShared, exported_symbols_for_lto,
-};
+use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
@@ -54,7 +52,7 @@ fn prepare_lto(
     dcx: DiagCtxtHandle<'_>,
 ) -> Result<LtoData, FatalError> {
     // FIXME(bjorn3): Limit LTO exports to these symbols
-    let _symbols_below_threshold = exported_symbols_for_lto(cgcx, dcx)?;
+    let _symbols_below_threshold = &cgcx.exported_symbols_for_lto;
 
     let tmp_path = match tempdir() {
         Ok(tmp_path) => tmp_path,
