@@ -4,7 +4,7 @@ warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implement
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
+   = note: `#[warn(misplaced_diagnostic_attributes)]` on by default
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
   --> $DIR/incorrect-locations.rs:11:1
