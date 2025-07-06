@@ -1,3 +1,6 @@
+//! This test verifies that `std::mem::transmute` is allowed between two values
+//! of the exact same associated type (`F::Bar`).
+
 //@ check-pass
 
 trait Foo {
