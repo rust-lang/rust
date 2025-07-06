@@ -151,7 +151,7 @@ pub enum UsedBy {
 /// ## Attribute Processing
 /// While attributes are initially parsed by [`rustc_parse`] into [`ast::Attribute`], they still contain raw token streams
 /// because different attributes have different internal structures. This enum represents the final,
-/// fully parsed form of these attributes, where each variant contains contains all the information and
+/// fully parsed form of these attributes, where each variant contains all the information and
 /// structure relevant for the specific attribute.
 ///
 /// Some attributes can be applied multiple times to the same item, and they are "collapsed" into a single
