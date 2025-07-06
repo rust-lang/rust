@@ -1,10 +1,10 @@
-//! Test that we only evaluate free const items (their def site to be clear)
-//! whose generics don't require monomorphization.
-#![feature(generic_const_items)]
-#![expect(incomplete_features)]
-
+// Test that we don't evaluate the initializer of free const items if the latter
+// have non-region generic params (i.e., ones that "require monomorphization").
 //@ revisions: fail pass
 //@[pass] check-pass
+
+#![feature(generic_const_items)]
+#![expect(incomplete_features)]
 
 const _<_T>: () = panic!();
 const _<const _N: usize>: () = panic!();
