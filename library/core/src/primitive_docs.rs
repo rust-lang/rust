@@ -304,14 +304,12 @@ mod prim_bool {}
 /// This is what is known as "never type fallback".
 ///
 /// Historically, the fallback type was [`()`], causing confusing behavior where `!` spontaneously
-/// coerced to `()`, even when it would not infer `()` without the fallback. There are plans to
-/// change it in the [2024 edition] (and possibly in all editions on a later date); see
-/// [Tracking Issue for making `!` fall back to `!`][fallback-ti].
+/// coerced to `()`, even when it would not infer `()` without the fallback. The fallback was changed
+/// to `!` in the [2024 edition], and will be changed in all editions at a later date.
 ///
 /// [coercion site]: <https://doc.rust-lang.org/reference/type-coercions.html#coercion-sites>
 /// [`()`]: prim@unit
-/// [fallback-ti]: <https://github.com/rust-lang/rust/issues/123748>
-/// [2024 edition]: <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/index.html>
+/// [2024 edition]: <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
 ///
 #[unstable(feature = "never_type", issue = "35121")]
 mod prim_never {}
