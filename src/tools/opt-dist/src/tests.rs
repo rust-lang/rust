@@ -106,7 +106,10 @@ llvm-config = "{llvm_config}"
             "tests/incremental",
             "tests/mir-opt",
             "tests/pretty",
+            // Make sure that we don't use too new GLIBC symbols on x64
             "tests/run-make/glibc-symbols-x86_64-unknown-linux-gnu",
+            // Make sure that we use LLD by default on x64
+            "tests/run-make/rust-lld-x86_64-unknown-linux-gnu-dist",
             "tests/ui",
             "tests/crashes",
         ];
