@@ -340,7 +340,7 @@ fn launch_tests(tests: &mut [TestInfo], cfg: &Config) -> Duration {
     for test in tests.iter_mut() {
         test.progress = Some(ui::Progress::new(test, &mut all_progress_bars));
         ui::set_panic_hook(&all_progress_bars);
-        ((test.launch)(test, cfg));
+        (test.launch)(test, cfg);
     }
 
     start.elapsed()

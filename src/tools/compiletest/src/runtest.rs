@@ -1777,6 +1777,12 @@ impl<'test> TestCx<'test> {
         // Allow tests to use internal features.
         rustc.args(&["-A", "internal_features"]);
 
+        // Allow tests to have unused parens and braces.
+        // Add #![deny(unused_parens, unused_braces)] to the test file if you want to
+        // test that these lints are working.
+        rustc.args(&["-A", "unused_parens"]);
+        rustc.args(&["-A", "unused_braces"]);
+
         if self.props.force_host {
             self.maybe_add_external_args(&mut rustc, &self.config.host_rustcflags);
             if !is_rustdoc {
