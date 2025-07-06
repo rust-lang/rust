@@ -1,4 +1,5 @@
 //@ compile-flags: -C no-prepopulate-passes -Z mir-opt-level=0 -Clink-dead-code
+//@ edition: 2024
 
 #![crate_type = "lib"]
 #![feature(fn_align)]
@@ -116,3 +117,24 @@ pub fn align_specified_twice_2() {}
 #[align(32)]
 #[align(256)]
 pub fn align_specified_twice_3() {}
+
+const _: () = {
+    // CHECK-LABEL: align_unmangled
+    // CHECK-SAME: align 256
+    #[unsafe(no_mangle)]
+    #[align(32)]
+    #[align(256)]
+    extern "C" fn align_unmangled() {}
+};
+
+unsafe extern "C" {
+    #[align(256)]
+    fn align_unmangled();
+}
+
+// FIXME also check `gen` et al
+// CHECK-LABEL: async_align
+// CHECK-SAME: align 64
+#[unsafe(no_mangle)]
+#[align(64)]
+pub async fn async_align() {}

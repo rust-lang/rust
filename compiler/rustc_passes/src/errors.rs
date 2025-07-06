@@ -1838,3 +1838,12 @@ pub(crate) struct AlignShouldBeReprAlign {
     pub item: &'static str,
     pub align_bytes: u64,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes_align_attr_application)]
+pub(crate) struct AlignAttrApplication {
+    #[primary_span]
+    pub hint_span: Span,
+    #[label]
+    pub span: Span,
+}

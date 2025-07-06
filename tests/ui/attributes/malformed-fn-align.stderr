@@ -1,3 +1,17 @@
+error: expected unsuffixed literal, found `-`
+  --> $DIR/malformed-fn-align.rs:24:9
+   |
+LL | #[align(-1)]
+   |         ^
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/malformed-fn-align.rs:30:9
+   |
+LL | #[align(4usize)]
+   |         ^^^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
 error[E0539]: malformed `align` attribute input
   --> $DIR/malformed-fn-align.rs:5:5
    |
@@ -37,6 +51,24 @@ error[E0589]: invalid alignment value: not a power of two
 LL | #[align(0)]
    |         ^
 
+error[E0589]: invalid alignment value: not a power of two
+  --> $DIR/malformed-fn-align.rs:27:9
+   |
+LL | #[align(3)]
+   |         ^
+
+error[E0589]: invalid alignment value: not an unsuffixed integer
+  --> $DIR/malformed-fn-align.rs:30:9
+   |
+LL | #[align(4usize)]
+   |         ^^^^^^
+
+error[E0589]: invalid alignment value: not a power of two
+  --> $DIR/malformed-fn-align.rs:35:9
+   |
+LL | #[align(3)]
+   |         ^
+
 error: `#[repr(align(...))]` is not supported on function items
   --> $DIR/malformed-fn-align.rs:21:8
    |
@@ -50,7 +82,7 @@ LL | #[repr(align(16))]
    |        ^^^^^^^^^
 
 error: `#[align(...)]` is not supported on struct items
-  --> $DIR/malformed-fn-align.rs:24:1
+  --> $DIR/malformed-fn-align.rs:39:1
    |
 LL | #[align(16)]
    | ^^^^^^^^^^^^
@@ -61,7 +93,31 @@ LL - #[align(16)]
 LL + #[repr(align(16))]
    |
 
-error: aborting due to 7 previous errors
+error: `#[align(...)]` should be applied to a function item
+  --> $DIR/malformed-fn-align.rs:42:1
+   |
+LL | #[align(32)]
+   | ^^^^^^^^^^^^
+LL | const FOO: i32 = 42;
+   | -------------------- not a function item
+
+error: `#[align(...)]` should be applied to a function item
+  --> $DIR/malformed-fn-align.rs:45:1
+   |
+LL | #[align(32)]
+   | ^^^^^^^^^^^^
+LL | mod test {}
+   | ----------- not a function item
+
+error: `#[align(...)]` should be applied to a function item
+  --> $DIR/malformed-fn-align.rs:48:1
+   |
+LL | #[align(32)]
+   | ^^^^^^^^^^^^
+LL | use ::std::iter;
+   | ---------------- not a function item
+
+error: aborting due to 15 previous errors
 
 Some errors have detailed explanations: E0539, E0589, E0805.
 For more information about an error, try `rustc --explain E0539`.
