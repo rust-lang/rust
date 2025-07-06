@@ -15,11 +15,10 @@ pub enum Enum0 {
     B,
 }
 
-// CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match0(i8{{.+}}%0)
+// CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match0(i8{{.+}}%e)
 // CHECK-NEXT: start:
-// CHECK-NEXT: %[[IS_B:.+]] = icmp eq i8 %0, 2
-// CHECK-NEXT: %[[TRUNC:.+]] = and i8 %0, 1
-// CHECK-NEXT: %[[R:.+]] = select i1 %[[IS_B]], i8 13, i8 %[[TRUNC]]
+// CHECK-NEXT: %[[IS_B:.+]] = icmp eq i8 %e, 2
+// CHECK-NEXT: %[[R:.+]] = select i1 %[[IS_B]], i8 13, i8 %e
 // CHECK-NEXT: ret i8 %[[R]]
 #[no_mangle]
 pub fn match0(e: Enum0) -> u8 {
@@ -37,9 +36,9 @@ pub enum Enum1 {
     C,
 }
 
-// CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match1(i8{{.+}}%0)
+// CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match1(i8{{.+}}%e)
 // CHECK-NEXT: start:
-// CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
+// CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %e, -2
 // CHECK-NEXT: %[[REL_VAR_WIDE:.+]] = zext i8 %[[REL_VAR]] to i64
 // CHECK-NEXT: %[[IS_NICHE:.+]] = icmp ult i8 %[[REL_VAR]], 2
 // CHECK-NEXT: %[[NICHE_DISCR:.+]] = add nuw nsw i64 %[[REL_VAR_WIDE]], 1
@@ -98,9 +97,9 @@ pub enum Enum2 {
     E,
 }
 
-// CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, -?[0-9]+\))?}} i8 @match2(i8{{.+}}%0)
+// CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, -?[0-9]+\))?}} i8 @match2(i8{{.+}}%e)
 // CHECK-NEXT: start:
-// CHECK-NEXT: %[[REL_VAR:.+]] = add i8 %0, 2
+// CHECK-NEXT: %[[REL_VAR:.+]] = add i8 %e, 2
 // CHECK-NEXT: %[[REL_VAR_WIDE:.+]] = zext i8 %[[REL_VAR]] to i64
 // CHECK-NEXT: %[[IS_NICHE:.+]] = icmp ult i8 %[[REL_VAR]], 4
 // CHECK-NEXT: %[[NICHE_DISCR:.+]] = add nuw nsw i64 %[[REL_VAR_WIDE]], 1
@@ -121,9 +120,9 @@ pub fn match2(e: Enum2) -> u8 {
 // And make sure it works even if the niched scalar is a pointer.
 // (For example, that we don't try to `sub` on pointers.)
 
-// CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i16 -?[0-9]+, -?[0-9]+\))?}} i16 @match3(ptr{{.+}}%0)
+// CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i16 -?[0-9]+, -?[0-9]+\))?}} i16 @match3(ptr{{.+}}%e)
 // CHECK-NEXT: start:
-// CHECK-NEXT: %[[IS_NULL:.+]] = icmp eq ptr %0, null
+// CHECK-NEXT: %[[IS_NULL:.+]] = icmp eq ptr %e, null
 // CHECK-NEXT: br i1 %[[IS_NULL]]
 #[no_mangle]
 pub fn match3(e: Option<&u8>) -> i16 {
@@ -145,9 +144,9 @@ pub enum MiddleNiche {
     E,
 }
 
-// CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 -?[0-9]+, -?[0-9]+\))?}} i8 @match4(i8{{.+}}%0)
+// CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 -?[0-9]+, -?[0-9]+\))?}} i8 @match4(i8{{.+}}%e)
 // CHECK-NEXT: start:
-// CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
+// CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %e, -2
 // CHECK-NEXT: %[[IS_NICHE:.+]] = icmp ult i8 %[[REL_VAR]], 5
 // CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i8 %[[REL_VAR]], 2
 // CHECK-NEXT: call void @llvm.assume(i1 %[[NOT_IMPOSSIBLE]])
@@ -449,9 +448,9 @@ pub enum HugeVariantIndex {
     Possible259,
 }
 
-// CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match5(i8{{.+}}%0)
+// CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match5(i8{{.+}}%e)
 // CHECK-NEXT: start:
-// CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
+// CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %e, -2
 // CHECK-NEXT: %[[REL_VAR_WIDE:.+]] = zext i8 %[[REL_VAR]] to i64
 // CHECK-NEXT: %[[IS_NICHE:.+]] = icmp ult i8 %[[REL_VAR]], 3
 // CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i8 %[[REL_VAR]], 1
