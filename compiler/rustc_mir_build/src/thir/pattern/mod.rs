@@ -369,6 +369,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     ty: var_ty,
                     subpattern: self.lower_opt_pattern(sub),
                     is_primary: id == pat.hir_id,
+                    is_shorthand: false,
                 }
             }
 
@@ -386,9 +387,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
                 let subpatterns = fields
                     .iter()
-                    .map(|field| FieldPat {
-                        field: self.typeck_results.field_index(field.hir_id),
-                        pattern: *self.lower_pattern(field.pat),
+                    .map(|field| {
+                        let mut pattern = *self.lower_pattern(field.pat);
+                        if let PatKind::Binding { ref mut is_shorthand, .. } = pattern.kind {
+                            *is_shorthand = field.is_shorthand;
+                        }
+                        let field = self.typeck_results.field_index(field.hir_id);
+                        FieldPat { field, pattern }
                     })
                     .collect();
 

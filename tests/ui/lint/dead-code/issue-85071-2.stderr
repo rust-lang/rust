@@ -1,11 +1,10 @@
 warning: unreachable definition
-  --> $DIR/issue-85071-2.rs:20:9
+  --> $DIR/issue-85071-2.rs:18:9
    |
 LL |     let x = s.f();
-   |             ----- any code following this expression is unreachable
-LL |
-LL |     let _y = x;
-   |         ^^ unreachable definition
+   |         ^   ----- any code following this expression is unreachable
+   |         |
+   |         unreachable definition
    |
 note: this expression has type `Foo`, which is uninhabited
   --> $DIR/issue-85071-2.rs:18:13
