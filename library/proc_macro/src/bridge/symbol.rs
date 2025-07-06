@@ -33,7 +33,7 @@ impl Symbol {
     /// Validates and normalizes before converting it to a symbol.
     pub(crate) fn new_ident(string: &str, is_raw: bool) -> Self {
         // Fast-path: check if this is a valid ASCII identifier
-        if Self::is_valid_ascii_ident(string.as_bytes()) {
+        if Self::is_valid_ascii_ident(string.as_bytes()) || string == "$crate" {
             if is_raw && !Self::can_be_raw(string) {
                 panic!("`{}` cannot be a raw identifier", string);
             }
@@ -79,7 +79,7 @@ impl Symbol {
     // Mimics the behavior of `Symbol::can_be_raw` from `rustc_span`
     fn can_be_raw(string: &str) -> bool {
         match string {
-            "_" | "super" | "self" | "Self" | "crate" => false,
+            "_" | "super" | "self" | "Self" | "crate" | "$crate" => false,
             _ => true,
         }
     }
