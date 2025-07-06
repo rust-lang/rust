@@ -28,25 +28,25 @@ error: incorrect ordering of impl items (defined order: [Fn, Type, Const])
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:119:5
    |
 LL |     type SomeType = ();
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
    |
 note: should be placed before `A`
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:117:5
    |
 LL |     const A: bool = false;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
 
 error: incorrect ordering of impl items (defined order: [Fn, Type, Const])
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:122:5
    |
 LL |     fn a() {}
-   |     ^^^^^^^^^
+   |     ^^^^^^
    |
 note: should be placed before `SomeType`
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:119:5
    |
 LL |     type SomeType = ();
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
 
 error: incorrect ordering of items (must be alphabetically ordered)
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:149:8
@@ -76,13 +76,13 @@ error: incorrect ordering of trait items (defined order: [Fn, Type, Const])
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:163:5
    |
 LL |     type SomeType;
-   |     ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
    |
 note: should be placed before `A`
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:161:5
    |
 LL |     const A: bool;
-   |     ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
 
 error: incorrect ordering of trait items (defined order: [Fn, Type, Const])
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:166:5
@@ -94,7 +94,7 @@ note: should be placed before `SomeType`
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:163:5
    |
 LL |     type SomeType;
-   |     ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
 
 error: aborting due to 8 previous errors
 

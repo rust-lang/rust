@@ -393,11 +393,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         (trait_ref, lowered_ty)
                     });
 
-                let new_impl_items = self.arena.alloc_from_iter(
-                    impl_items
-                        .iter()
-                        .map(|item| self.lower_impl_item_ref(item, trait_ref.is_some())),
-                );
+                let new_impl_items = self
+                    .arena
+                    .alloc_from_iter(impl_items.iter().map(|item| self.lower_impl_item_ref(item)));
 
                 // `defaultness.has_value()` is never called for an `impl`, always `true` in order
                 // to not cause an assertion failure inside the `lower_defaultness` function.
@@ -706,14 +704,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(item)
     }
 
-    fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemRef {
-        hir::ForeignItemRef {
-            id: hir::ForeignItemId { owner_id: self.owner_id(i.id) },
-            // `unwrap` is safe because `ForeignItemKind::MacCall` is the only foreign item kind
-            // without an identifier and it cannot reach here.
-            ident: self.lower_ident(i.kind.ident().unwrap()),
-            span: self.lower_span(i.span),
-        }
+    fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemId {
+        hir::ForeignItemId { owner_id: self.owner_id(i.id) }
     }
 
     fn lower_variant(&mut self, item_kind: &ItemKind, v: &Variant) -> hir::Variant<'hir> {
@@ -972,32 +964,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(item)
     }
 
-    fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemRef {
-        let (ident, kind) = match &i.kind {
-            AssocItemKind::Const(box ConstItem { ident, .. }) => {
-                (*ident, hir::AssocItemKind::Const)
-            }
-            AssocItemKind::Type(box TyAlias { ident, .. }) => (*ident, hir::AssocItemKind::Type),
-            AssocItemKind::Fn(box Fn { ident, sig, .. }) => {
-                (*ident, hir::AssocItemKind::Fn { has_self: sig.decl.has_self() })
-            }
-            AssocItemKind::Delegation(box delegation) => (
-                delegation.ident,
-                hir::AssocItemKind::Fn {
-                    has_self: self.delegatee_is_method(i.id, delegation.id, i.span, false),
-                },
-            ),
-            AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
-                panic!("macros should have been expanded by now")
-            }
-        };
-        let id = hir::TraitItemId { owner_id: self.owner_id(i.id) };
-        hir::TraitItemRef {
-            id,
-            ident: self.lower_ident(ident),
-            span: self.lower_span(i.span),
-            kind,
-        }
+    fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemId {
+        hir::TraitItemId { owner_id: self.owner_id(i.id) }
     }
 
     /// Construct `ExprKind::Err` for the given `span`.
@@ -1128,41 +1096,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span: self.lower_span(i.span),
             defaultness,
             has_delayed_lints: !self.delayed_lints.is_empty(),
-        };
-        self.arena.alloc(item)
-    }
-
-    fn lower_impl_item_ref(&mut self, i: &AssocItem, is_in_trait_impl: bool) -> hir::ImplItemRef {
-        hir::ImplItemRef {
-            id: hir::ImplItemId { owner_id: self.owner_id(i.id) },
-            // `unwrap` is safe because `AssocItemKind::{MacCall,DelegationMac}` are the only
-            // assoc item kinds without an identifier and they cannot reach here.
-            ident: self.lower_ident(i.kind.ident().unwrap()),
-            span: self.lower_span(i.span),
-            kind: match &i.kind {
-                AssocItemKind::Const(..) => hir::AssocItemKind::Const,
-                AssocItemKind::Type(..) => hir::AssocItemKind::Type,
-                AssocItemKind::Fn(box Fn { sig, .. }) => {
-                    hir::AssocItemKind::Fn { has_self: sig.decl.has_self() }
-                }
-                AssocItemKind::Delegation(box delegation) => hir::AssocItemKind::Fn {
-                    has_self: self.delegatee_is_method(
-                        i.id,
-                        delegation.id,
-                        i.span,
-                        is_in_trait_impl,
-                    ),
-                },
-                AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
-                    panic!("macros should have been expanded by now")
-                }
-            },
             trait_item_def_id: self
                 .resolver
                 .get_partial_res(i.id)
                 .map(|r| r.expect_full_res().opt_def_id())
                 .unwrap_or(None),
-        }
+        };
+        self.arena.alloc(item)
+    }
+
+    fn lower_impl_item_ref(&mut self, i: &AssocItem) -> hir::ImplItemId {
+        hir::ImplItemId { owner_id: self.owner_id(i.id) }
     }
 
     fn lower_defaultness(
