@@ -6,7 +6,7 @@ LL |     fn f(u8) {}
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
-   = note: `#[warn(anonymous_parameters)]` on by default
+   = note: `#[warn(anonymous_parameters)]` (part of `#[warn(rust_2018_compatibility)]`) on by default
 
 error: ambiguous associated item
   --> $DIR/future-incompatible-lint-group.rs:18:17
