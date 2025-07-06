@@ -1,8 +1,19 @@
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+error: `...` is not supported for non-extern functions
   --> $DIR/issue-83499-input-output-iteration-ice.rs:7:16
    |
 LL | fn foo(_: Bar, ...) -> impl {}
    |                ^^^
+
+error: functions with a C variable argument list must be unsafe
+  --> $DIR/issue-83499-input-output-iteration-ice.rs:7:16
+   |
+LL | fn foo(_: Bar, ...) -> impl {}
+   |                ^^^
+   |
+help: add the `unsafe` keyword to this definition
+   |
+LL | unsafe fn foo(_: Bar, ...) -> impl {}
+   | ++++++
 
 error: at least one trait must be specified
   --> $DIR/issue-83499-input-output-iteration-ice.rs:7:24
@@ -16,6 +27,6 @@ error[E0412]: cannot find type `Bar` in this scope
 LL | fn foo(_: Bar, ...) -> impl {}
    |           ^^^ not found in this scope
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0412`.

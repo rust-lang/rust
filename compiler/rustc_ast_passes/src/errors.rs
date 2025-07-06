@@ -319,10 +319,42 @@ pub(crate) struct ExternItemAscii {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_bad_c_variadic)]
-pub(crate) struct BadCVariadic {
+#[diag(ast_passes_c_variadic_associated_function)]
+pub(crate) struct CVariadicAssociatedFunction {
     #[primary_span]
-    pub span: Vec<Span>,
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_c_variadic_bad_extern)]
+pub(crate) struct CVariadicBadExtern {
+    #[primary_span]
+    pub span: Span,
+    pub abi: Symbol,
+    #[label]
+    pub extern_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_c_variadic_no_extern)]
+pub(crate) struct CVariadicNoExtern {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_c_variadic_must_be_unsafe)]
+pub(crate) struct CVariadicMustBeUnsafe {
+    #[primary_span]
+    pub span: Span,
+
+    #[suggestion(
+        ast_passes_suggestion,
+        applicability = "maybe-incorrect",
+        code = "unsafe ",
+        style = "verbose"
+    )]
+    pub unsafe_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -652,11 +684,23 @@ pub(crate) struct ConstAndCoroutine {
 #[diag(ast_passes_const_and_c_variadic)]
 pub(crate) struct ConstAndCVariadic {
     #[primary_span]
-    pub spans: Vec<Span>,
+    pub span: Span,
     #[label(ast_passes_const)]
     pub const_span: Span,
     #[label(ast_passes_variadic)]
-    pub variadic_spans: Vec<Span>,
+    pub variadic_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_coroutine_and_c_variadic)]
+pub(crate) struct CoroutineAndCVariadic {
+    #[primary_span]
+    pub span: Span,
+    pub coroutine_kind: &'static str,
+    #[label(ast_passes_const)]
+    pub coroutine_span: Span,
+    #[label(ast_passes_variadic)]
+    pub variadic_span: Span,
 }
 
 #[derive(Diagnostic)]

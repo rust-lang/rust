@@ -5,6 +5,7 @@
 fn main() {}
 
 fn foo(_: Bar, ...) -> impl {}
-//~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+//~^ ERROR: `...` is not supported for non-extern functions
+//~| ERROR functions with a C variable argument list must be unsafe
 //~| ERROR cannot find type `Bar` in this scope
 //~| ERROR at least one trait must be specified

@@ -2309,6 +2309,35 @@ impl FnSig {
 
         self.span.shrink_to_lo()
     }
+
+    /// The span of the header's safety, or where to insert it if empty.
+    pub fn safety_span(&self) -> Span {
+        match self.header.safety {
+            Safety::Unsafe(span) | Safety::Safe(span) => span,
+            Safety::Default => {
+                // Insert after the `coroutine_kind` if available.
+                if let Some(coroutine_kind) = self.header.coroutine_kind {
+                    return coroutine_kind.span().shrink_to_hi();
+                }
+
+                // Insert after the `const` keyword if available.
+                if let Const::Yes(const_span) = self.header.constness {
+                    return const_span.shrink_to_hi();
+                }
+
+                // Insert right at the front of the signature.
+                self.span.shrink_to_lo()
+            }
+        }
+    }
+
+    /// The span of the header's extern, or where to insert it if empty.
+    pub fn extern_span(&self) -> Span {
+        match self.header.ext {
+            Extern::Implicit(span) | Extern::Explicit(_, span) => span,
+            Extern::None => self.safety_span().shrink_to_hi(),
+        }
+    }
 }
 
 /// A constraint on an associated item.

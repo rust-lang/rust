@@ -665,46 +665,73 @@ impl<'a> AstValidator<'a> {
     /// - Non-const
     /// - Either foreign, or free and `unsafe extern "C"` semantically
     fn check_c_variadic_type(&self, fk: FnKind<'a>) {
-        let variadic_spans: Vec<_> = fk
-            .decl()
-            .inputs
-            .iter()
-            .filter(|arg| matches!(arg.ty.kind, TyKind::CVarArgs))
-            .map(|arg| arg.span)
-            .collect();
+        let variadic_params: Vec<_> =
+            fk.decl().inputs.iter().filter(|arg| matches!(arg.ty.kind, TyKind::CVarArgs)).collect();
 
-        if variadic_spans.is_empty() {
+        // The parser already rejects `...` if it's not the final argument, but we still want to
+        // emit the errors below, so we only consider the final `...` here.
+        let Some(variadic_param) = variadic_params.last() else {
             return;
-        }
+        };
 
-        if let Some(header) = fk.header()
-            && let Const::Yes(const_span) = header.constness
-        {
-            let mut spans = variadic_spans.clone();
-            spans.push(const_span);
+        let FnKind::Fn(fn_ctxt, _, Fn { sig, .. }) = fk else {
+            // Unreachable because the parser already rejects `...` in closures.
+            unreachable!("C variable argument list cannot be used in closures")
+        };
+
+        // C-variadics are not yet implemented in const evaluation.
+        if let Const::Yes(const_span) = sig.header.constness {
             self.dcx().emit_err(errors::ConstAndCVariadic {
-                spans,
+                span: const_span.to(variadic_param.span),
                 const_span,
-                variadic_spans: variadic_spans.clone(),
+                variadic_span: variadic_param.span,
             });
         }
 
-        match (fk.ctxt(), fk.header()) {
-            (Some(FnCtxt::Foreign), _) => return,
-            (Some(FnCtxt::Free), Some(header)) => match header.ext {
-                Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }, _)
-                | Extern::Explicit(StrLit { symbol_unescaped: sym::C_dash_unwind, .. }, _)
-                | Extern::Implicit(_)
-                    if matches!(header.safety, Safety::Unsafe(_)) =>
-                {
-                    return;
-                }
-                _ => {}
-            },
-            _ => {}
-        };
+        if let Some(coroutine_kind) = sig.header.coroutine_kind {
+            self.dcx().emit_err(errors::CoroutineAndCVariadic {
+                span: coroutine_kind.span().to(variadic_param.span),
+                coroutine_kind: coroutine_kind.as_str(),
+                coroutine_span: coroutine_kind.span(),
+                variadic_span: variadic_param.span,
+            });
+        }
 
-        self.dcx().emit_err(errors::BadCVariadic { span: variadic_spans });
+        match fn_ctxt {
+            FnCtxt::Free => {
+                match sig.header.ext {
+                    Extern::Implicit(_) => { /* defaults to "C" */ }
+                    Extern::Explicit(StrLit { symbol_unescaped, .. }, _) => {
+                        if !matches!(symbol_unescaped, sym::C | sym::C_dash_unwind) {
+                            self.dcx().emit_err(errors::CVariadicBadExtern {
+                                span: variadic_param.span,
+                                abi: symbol_unescaped,
+                                extern_span: sig.extern_span(),
+                            });
+                        }
+                    }
+                    Extern::None => {
+                        self.dcx()
+                            .emit_err(errors::CVariadicNoExtern { span: variadic_param.span });
+                    }
+                };
+
+                if !matches!(sig.header.safety, Safety::Unsafe(_)) {
+                    self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
+                        span: variadic_param.span,
+                        unsafe_span: sig.safety_span(),
+                    });
+                }
+            }
+            FnCtxt::Assoc(_) => {
+                // For now, C variable argument lists are unsupported in associated functions.
+                self.dcx()
+                    .emit_err(errors::CVariadicAssociatedFunction { span: variadic_param.span });
+            }
+            FnCtxt::Foreign => {
+                // Whether the ABI supports C variable argument lists is checked later.
+            }
+        }
     }
 
     fn check_item_named(&self, ident: Ident, kind: &str) {
