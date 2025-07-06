@@ -219,7 +219,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn hygienic_lexical_parent(
-        &mut self,
+        &self,
         module: Module<'ra>,
         ctxt: &mut SyntaxContext,
         derive_fallback_lint_id: Option<NodeId>,
@@ -885,7 +885,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             );
         }
 
-        let check_usable = |this: &mut Self, binding: NameBinding<'ra>| {
+        let check_usable = |this: &Self, binding: NameBinding<'ra>| {
             let usable = this.is_accessible_from(binding.vis, parent_scope.module);
             if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
         };

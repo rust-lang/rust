@@ -38,11 +38,11 @@ pub(crate) struct EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
 }
 
 impl Resolver<'_, '_> {
-    fn nearest_normal_mod(&mut self, def_id: LocalDefId) -> LocalDefId {
+    fn nearest_normal_mod(&self, def_id: LocalDefId) -> LocalDefId {
         self.get_nearest_non_block_module(def_id.to_def_id()).nearest_parent_mod().expect_local()
     }
 
-    fn private_vis_import(&mut self, binding: NameBinding<'_>) -> Visibility {
+    fn private_vis_import(&self, binding: NameBinding<'_>) -> Visibility {
         let NameBindingKind::Import { import, .. } = binding.kind else { unreachable!() };
         Visibility::Restricted(
             import
@@ -52,7 +52,7 @@ impl Resolver<'_, '_> {
         )
     }
 
-    fn private_vis_def(&mut self, def_id: LocalDefId) -> Visibility {
+    fn private_vis_def(&self, def_id: LocalDefId) -> Visibility {
         // For mod items `nearest_normal_mod` returns its argument, but we actually need its parent.
         let normal_mod_id = self.nearest_normal_mod(def_id);
         if normal_mod_id == def_id {

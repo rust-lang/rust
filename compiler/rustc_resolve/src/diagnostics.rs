@@ -2150,7 +2150,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn find_similarly_named_module_or_crate(
-        &mut self,
+        &self,
         ident: Symbol,
         current_module: Module<'ra>,
     ) -> Option<Symbol> {
@@ -2444,7 +2444,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn undeclared_module_suggest_declare(
-        &mut self,
+        &self,
         ident: Ident,
         path: std::path::PathBuf,
     ) -> Option<(Vec<(Span, String)>, String, Applicability)> {
@@ -2459,7 +2459,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ))
     }
 
-    fn undeclared_module_exists(&mut self, ident: Ident) -> Option<std::path::PathBuf> {
+    fn undeclared_module_exists(&self, ident: Ident) -> Option<std::path::PathBuf> {
         let map = self.tcx.sess.source_map();
 
         let src = map.span_to_filename(ident.span).into_local_path()?;
@@ -2780,12 +2780,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Finds a cfg-ed out item inside `module` with the matching name.
-    pub(crate) fn find_cfg_stripped(
-        &mut self,
-        err: &mut Diag<'_>,
-        segment: &Symbol,
-        module: DefId,
-    ) {
+    pub(crate) fn find_cfg_stripped(&self, err: &mut Diag<'_>, segment: &Symbol, module: DefId) {
         let local_items;
         let symbols = if module.is_local() {
             local_items = self
@@ -2811,7 +2806,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             fn comes_from_same_module_for_glob(
-                r: &mut Resolver<'_, '_>,
+                r: &Resolver<'_, '_>,
                 parent_module: DefId,
                 module: DefId,
                 visited: &mut FxHashMap<DefId, bool>,

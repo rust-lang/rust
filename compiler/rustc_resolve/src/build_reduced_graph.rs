@@ -85,7 +85,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Reachable macros with block module parents exist due to `#[macro_export] macro_rules!`,
     /// but they cannot use def-site hygiene, so the assumption holds
     /// (<https://github.com/rust-lang/rust/pull/77984#issuecomment-712445508>).
-    pub(crate) fn get_nearest_non_block_module(&mut self, mut def_id: DefId) -> Module<'ra> {
+    pub(crate) fn get_nearest_non_block_module(&self, mut def_id: DefId) -> Module<'ra> {
         loop {
             match self.get_module(def_id) {
                 Some(module) => return module,
@@ -94,14 +94,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    pub(crate) fn expect_module(&mut self, def_id: DefId) -> Module<'ra> {
+    pub(crate) fn expect_module(&self, def_id: DefId) -> Module<'ra> {
         self.get_module(def_id).expect("argument `DefId` is not a module")
     }
 
     /// If `def_id` refers to a module (in resolver's sense, i.e. a module item, crate root, enum,
     /// or trait), then this function returns that module's resolver representation, otherwise it
     /// returns `None`.
-    pub(crate) fn get_module(&mut self, def_id: DefId) -> Option<Module<'ra>> {
+    pub(crate) fn get_module(&self, def_id: DefId) -> Option<Module<'ra>> {
         match def_id.as_local() {
             Some(local_def_id) => self.local_module_map.get(&local_def_id).copied(),
             None => {
@@ -134,7 +134,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    pub(crate) fn expn_def_scope(&mut self, expn_id: ExpnId) -> Module<'ra> {
+    pub(crate) fn expn_def_scope(&self, expn_id: ExpnId) -> Module<'ra> {
         match expn_id.expn_data().macro_def_id {
             Some(def_id) => self.macro_def_scope(def_id),
             None => expn_id
@@ -144,7 +144,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    pub(crate) fn macro_def_scope(&mut self, def_id: DefId) -> Module<'ra> {
+    pub(crate) fn macro_def_scope(&self, def_id: DefId) -> Module<'ra> {
         if let Some(id) = def_id.as_local() {
             self.local_macro_def_scopes[&id]
         } else {
@@ -406,7 +406,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         self.r.field_visibility_spans.insert(def_id, field_vis);
     }
 
-    fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
+    fn block_needs_anonymous_module(&self, block: &Block) -> bool {
         // If any statements are items, we need to create an anonymous module
         block
             .stmts
@@ -1121,7 +1121,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     }
 
     /// Returns `true` if this attribute list contains `macro_use`.
-    fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
+    fn contains_macro_use(&self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
             if attr.has_name(sym::macro_escape) {
                 let inner_attribute = matches!(attr.style, ast::AttrStyle::Inner);
