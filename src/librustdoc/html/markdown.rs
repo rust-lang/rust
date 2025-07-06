@@ -36,15 +36,15 @@ use std::str::{self, CharIndices};
 use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Weak};
 
-use pulldown_cmark::{
-    BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, html,
-};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Diag, DiagMessage};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
 use rustc_resolve::rustdoc::may_be_doc_link;
+use rustc_resolve::rustdoc::pulldown_cmark::{
+    self, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, html,
+};
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
 use tracing::{debug, trace};
