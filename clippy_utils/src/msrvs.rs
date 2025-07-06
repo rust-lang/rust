@@ -2,12 +2,12 @@ use crate::sym;
 use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
 use rustc_attr_parsing::parse_version;
+use rustc_data_structures::smallvec::SmallVec;
 use rustc_hir::RustcVersion;
 use rustc_lint::LateContext;
 use rustc_session::Session;
 use rustc_span::Symbol;
 use serde::Deserialize;
-use smallvec::SmallVec;
 use std::iter::once;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -192,12 +192,12 @@ fn parse_attrs(sess: &Session, attrs: &[impl AttributeExt]) -> Option<RustcVersi
 
     let msrv_attr = msrv_attrs.next()?;
 
-    if let Some(duplicate) = msrv_attrs.next_back() {
-        sess.dcx()
-            .struct_span_err(duplicate.span(), "`clippy::msrv` is defined multiple times")
-            .with_span_note(msrv_attr.span(), "first definition found here")
-            .emit();
-    }
+        if let Some(duplicate) = msrv_attrs.next_back() {
+            sess.dcx()
+                .struct_span_err(duplicate.span(), "`clippy::msrv` is defined multiple times")
+                .with_span_note(msrv_attr.span(), "first definition found here")
+                .emit();
+        }
 
     let Some(msrv) = msrv_attr.value_str() else {
         sess.dcx().span_err(msrv_attr.span(), "bad clippy attribute");
@@ -205,8 +205,8 @@ fn parse_attrs(sess: &Session, attrs: &[impl AttributeExt]) -> Option<RustcVersi
     };
 
     let Some(version) = parse_version(msrv) else {
-        sess.dcx()
-            .span_err(msrv_attr.span(), format!("`{msrv}` is not a valid Rust version"));
+            sess.dcx()
+                .span_err(msrv_attr.span(), format!("`{msrv}` is not a valid Rust version"));
         return None;
     };
 
