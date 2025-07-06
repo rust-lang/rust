@@ -49,6 +49,7 @@ struct LtoData {
 
 fn prepare_lto(
     cgcx: &CodegenContext<GccCodegenBackend>,
+    each_linked_rlib_for_lto: &[PathBuf],
     dcx: DiagCtxtHandle<'_>,
 ) -> Result<LtoData, FatalError> {
     let tmp_path = match tempdir() {
@@ -67,7 +68,7 @@ fn prepare_lto(
     // with either fat or thin LTO
     let mut upstream_modules = Vec::new();
     if cgcx.lto != Lto::ThinLocal {
-        for &(_cnum, ref path) in cgcx.each_linked_rlib_for_lto.iter() {
+        for path in each_linked_rlib_for_lto {
             let archive_data = unsafe {
                 Mmap::map(File::open(path).expect("couldn't open rlib")).expect("couldn't map rlib")
             };
@@ -111,11 +112,12 @@ fn save_as_file(obj: &[u8], path: &Path) -> Result<(), LtoBitcodeFromRlib> {
 /// for further optimization.
 pub(crate) fn run_fat(
     cgcx: &CodegenContext<GccCodegenBackend>,
+    each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
 ) -> Result<ModuleCodegen<GccContext>, FatalError> {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
-    let lto_data = prepare_lto(cgcx, dcx)?;
+    let lto_data = prepare_lto(cgcx, each_linked_rlib_for_lto, dcx)?;
     /*let symbols_below_threshold =
     lto_data.symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();*/
     fat_lto(
@@ -281,12 +283,13 @@ impl ModuleBufferMethods for ModuleBuffer {
 /// can simply be copied over from the incr. comp. cache.
 pub(crate) fn run_thin(
     cgcx: &CodegenContext<GccCodegenBackend>,
+    each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<(String, ThinBuffer)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<(Vec<ThinModule<GccCodegenBackend>>, Vec<WorkProduct>), FatalError> {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
-    let lto_data = prepare_lto(cgcx, dcx)?;
+    let lto_data = prepare_lto(cgcx, each_linked_rlib_for_lto, dcx)?;
     if cgcx.opts.cg.linker_plugin_lto.enabled() {
         unreachable!(
             "We should never reach this case if the LTO step \

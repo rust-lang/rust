@@ -1,5 +1,4 @@
 use std::ffi::CString;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use rustc_data_structures::memmap::Mmap;
@@ -76,7 +75,7 @@ fn crate_type_allows_lto(crate_type: CrateType) -> bool {
 
 pub(super) fn exported_symbols_for_lto(
     tcx: TyCtxt<'_>,
-    each_linked_rlib_for_lto: &[(CrateNum, PathBuf)],
+    each_linked_rlib_for_lto: &[CrateNum],
 ) -> Vec<String> {
     let export_threshold = match tcx.sess.lto() {
         // We're just doing LTO for our one crate
@@ -110,7 +109,7 @@ pub(super) fn exported_symbols_for_lto(
     // If we're performing LTO for the entire crate graph, then for each of our
     // upstream dependencies, include their exported symbols.
     if tcx.sess.lto() != Lto::ThinLocal {
-        for &(cnum, ref _path) in each_linked_rlib_for_lto {
+        for &cnum in each_linked_rlib_for_lto {
             let _timer = tcx.prof.generic_activity("lto_generate_symbols_below_threshold");
             symbols_below_threshold.extend(copy_symbols(cnum));
         }

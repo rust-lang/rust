@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::ptr::NonNull;
 use std::sync::Arc;
 use std::{io, iter, slice};
@@ -34,6 +34,7 @@ const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
 fn prepare_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     exported_symbols_for_lto: &[String],
+    each_linked_rlib_for_lto: &[PathBuf],
     dcx: DiagCtxtHandle<'_>,
 ) -> Result<(Vec<CString>, Vec<(SerializedModule<ModuleBuffer>, CString)>), FatalError> {
     let mut symbols_below_threshold = exported_symbols_for_lto
@@ -54,7 +55,7 @@ fn prepare_lto(
     // with either fat or thin LTO
     let mut upstream_modules = Vec::new();
     if cgcx.lto != Lto::ThinLocal {
-        for &(_cnum, ref path) in cgcx.each_linked_rlib_for_lto.iter() {
+        for path in each_linked_rlib_for_lto {
             let archive_data = unsafe {
                 Mmap::map(std::fs::File::open(&path).expect("couldn't open rlib"))
                     .expect("couldn't map rlib")
@@ -136,12 +137,13 @@ fn get_bitcode_slice_from_object_data<'a>(
 pub(crate) fn run_fat(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     exported_symbols_for_lto: &[String],
+    each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<FatLtoInput<LlvmCodegenBackend>>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
     let (symbols_below_threshold, upstream_modules) =
-        prepare_lto(cgcx, exported_symbols_for_lto, dcx)?;
+        prepare_lto(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, dcx)?;
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
     fat_lto(cgcx, dcx, modules, upstream_modules, &symbols_below_threshold)
@@ -153,13 +155,14 @@ pub(crate) fn run_fat(
 pub(crate) fn run_thin(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     exported_symbols_for_lto: &[String],
+    each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<(String, ThinBuffer)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<(Vec<ThinModule<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError> {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
     let (symbols_below_threshold, upstream_modules) =
-        prepare_lto(cgcx, exported_symbols_for_lto, dcx)?;
+        prepare_lto(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, dcx)?;
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
     if cgcx.opts.cg.linker_plugin_lto.enabled() {
