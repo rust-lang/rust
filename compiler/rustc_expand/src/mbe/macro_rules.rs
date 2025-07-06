@@ -401,13 +401,7 @@ pub fn compile_declarative_macro(
         if let Err(e) = p.expect(exp!(FatArrow)) {
             return dummy_syn_ext(e.emit());
         }
-        if p.token == token::Eof {
-            let err_sp = p.token.span.shrink_to_hi();
-            let guar = sess
-                .dcx()
-                .struct_span_err(err_sp, "macro definition ended unexpectedly")
-                .with_span_label(err_sp, "expected right-hand side of macro rule")
-                .emit();
+        if let Some(guar) = check_no_eof(sess, &p, "expected right-hand side of macro rule") {
             return dummy_syn_ext(guar);
         }
         let rhs_tt = p.parse_token_tree();
@@ -451,6 +445,19 @@ pub fn compile_declarative_macro(
     let expander =
         Arc::new(MacroRulesMacroExpander { name: ident, span, node_id, transparency, rules });
     (mk_syn_ext(expander), nrules)
+}
+
+fn check_no_eof(sess: &Session, p: &Parser<'_>, msg: &'static str) -> Option<ErrorGuaranteed> {
+    if p.token == token::Eof {
+        let err_sp = p.token.span.shrink_to_hi();
+        let guar = sess
+            .dcx()
+            .struct_span_err(err_sp, "macro definition ended unexpectedly")
+            .with_span_label(err_sp, msg)
+            .emit();
+        return Some(guar);
+    }
+    None
 }
 
 fn check_lhs(sess: &Session, node_id: NodeId, lhs: &mbe::TokenTree) -> Result<(), ErrorGuaranteed> {
