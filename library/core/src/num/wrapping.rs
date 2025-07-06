@@ -94,9 +94,9 @@ macro_rules! sh_impl_signed {
             #[inline]
             fn shl(self, other: $f) -> Wrapping<$t> {
                 if other < 0 {
-                    Wrapping(self.0.wrapping_shr((-other & self::shift_max::$t as $f) as u32))
+                    Wrapping(self.0.wrapping_shr(-other as u32))
                 } else {
-                    Wrapping(self.0.wrapping_shl((other & self::shift_max::$t as $f) as u32))
+                    Wrapping(self.0.wrapping_shl(other as u32))
                 }
             }
         }
@@ -119,9 +119,9 @@ macro_rules! sh_impl_signed {
             #[inline]
             fn shr(self, other: $f) -> Wrapping<$t> {
                 if other < 0 {
-                    Wrapping(self.0.wrapping_shl((-other & self::shift_max::$t as $f) as u32))
+                    Wrapping(self.0.wrapping_shl(-other as u32))
                 } else {
-                    Wrapping(self.0.wrapping_shr((other & self::shift_max::$t as $f) as u32))
+                    Wrapping(self.0.wrapping_shr(other as u32))
                 }
             }
         }
@@ -147,7 +147,7 @@ macro_rules! sh_impl_unsigned {
 
             #[inline]
             fn shl(self, other: $f) -> Wrapping<$t> {
-                Wrapping(self.0.wrapping_shl((other & self::shift_max::$t as $f) as u32))
+                Wrapping(self.0.wrapping_shl(other as u32))
             }
         }
         forward_ref_binop! { impl Shl, shl for Wrapping<$t>, $f,
@@ -168,7 +168,7 @@ macro_rules! sh_impl_unsigned {
 
             #[inline]
             fn shr(self, other: $f) -> Wrapping<$t> {
-                Wrapping(self.0.wrapping_shr((other & self::shift_max::$t as $f) as u32))
+                Wrapping(self.0.wrapping_shr(other as u32))
             }
         }
         forward_ref_binop! { impl Shr, shr for Wrapping<$t>, $f,
@@ -1052,39 +1052,3 @@ macro_rules! wrapping_int_impl_unsigned {
 }
 
 wrapping_int_impl_unsigned! { usize u8 u16 u32 u64 u128 }
-
-mod shift_max {
-    #![allow(non_upper_case_globals)]
-
-    #[cfg(target_pointer_width = "16")]
-    mod platform {
-        pub(crate) const usize: u32 = super::u16;
-        pub(crate) const isize: u32 = super::i16;
-    }
-
-    #[cfg(target_pointer_width = "32")]
-    mod platform {
-        pub(crate) const usize: u32 = super::u32;
-        pub(crate) const isize: u32 = super::i32;
-    }
-
-    #[cfg(target_pointer_width = "64")]
-    mod platform {
-        pub(crate) const usize: u32 = super::u64;
-        pub(crate) const isize: u32 = super::i64;
-    }
-
-    pub(super) const i8: u32 = (1 << 3) - 1;
-    pub(super) const i16: u32 = (1 << 4) - 1;
-    pub(super) const i32: u32 = (1 << 5) - 1;
-    pub(super) const i64: u32 = (1 << 6) - 1;
-    pub(super) const i128: u32 = (1 << 7) - 1;
-    pub(super) use self::platform::isize;
-
-    pub(super) const u8: u32 = i8;
-    pub(super) const u16: u32 = i16;
-    pub(super) const u32: u32 = i32;
-    pub(super) const u64: u32 = i64;
-    pub(super) const u128: u32 = i128;
-    pub(super) use self::platform::usize;
-}
