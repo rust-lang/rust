@@ -28,5 +28,11 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<HirId>, lint_emi
                 },
             );
         }
+        AttributeLintKind::EmptyAttribute { first_span } => lint_emitter.emit_node_span_lint(
+            rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
+            *id,
+            *first_span,
+            session_diagnostics::EmptyAttributeList { attr_span: *first_span },
+        ),
     }
 }

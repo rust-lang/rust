@@ -41,7 +41,7 @@ impl AttributeKind {
             Optimize(..) => No,
             PassByValue(..) => Yes,
             PubTransparent(..) => Yes,
-            Repr(..) => No,
+            Repr { .. } => No,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
             RustcObjectLifetimeDefault => No,
