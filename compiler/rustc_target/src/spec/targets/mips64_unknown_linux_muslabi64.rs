@@ -5,7 +5,7 @@ use crate::spec::{Target, TargetMetadata, TargetOptions, base};
 pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
     base.cpu = "mips64r2".into();
-    base.features = "+mips64r2".into();
+    base.features = "+mips64r2,+xgot".into();
     base.max_atomic_width = Some(64);
     Target {
         // LLVM doesn't recognize "muslabi64" yet.
