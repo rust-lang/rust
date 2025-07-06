@@ -9,7 +9,7 @@ use syntax::{AstNode, TextRange, ast::HasName};
 use crate::{
     NavigationTarget, RunnableKind,
     annotations::fn_references::find_all_methods,
-    goto_implementation::goto_implementation,
+    goto_implementation::{GotoImplementationConfig, goto_implementation},
     navigation_target,
     references::{FindAllRefsConfig, find_all_refs},
     runnables::{Runnable, runnables},
@@ -44,6 +44,7 @@ pub struct AnnotationConfig<'a> {
     pub annotate_method_references: bool,
     pub annotate_enum_variant_references: bool,
     pub location: AnnotationLocation,
+    pub filter_adjacent_derive_implementations: bool,
     pub minicore: MiniCore<'a>,
 }
 
@@ -204,7 +205,12 @@ pub(crate) fn resolve_annotation(
 ) -> Annotation {
     match annotation.kind {
         AnnotationKind::HasImpls { pos, ref mut data } => {
-            *data = goto_implementation(db, pos).map(|range| range.info);
+            let goto_implementation_config = GotoImplementationConfig {
+                filter_adjacent_derive_implementations: config
+                    .filter_adjacent_derive_implementations,
+            };
+            *data =
+                goto_implementation(db, &goto_implementation_config, pos).map(|range| range.info);
         }
         AnnotationKind::HasReferences { pos, ref mut data } => {
             *data = find_all_refs(
@@ -253,6 +259,7 @@ mod tests {
         annotate_enum_variant_references: true,
         location: AnnotationLocation::AboveName,
         minicore: MiniCore::default(),
+        filter_adjacent_derive_implementations: false,
     };
 
     fn check_with_config(

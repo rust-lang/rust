@@ -2105,6 +2105,22 @@ impl<'db> SemanticsImpl<'db> {
             parent = parent_;
         }
     }
+
+    pub fn impl_generated_from_derive(&self, impl_: Impl) -> Option<Adt> {
+        let source = hir_def::src::HasSource::ast_ptr(&impl_.id.loc(self.db), self.db);
+        let mut file_id = source.file_id;
+        let adt_ast_id = loop {
+            let macro_call = file_id.macro_file()?;
+            match macro_call.loc(self.db).kind {
+                hir_expand::MacroCallKind::Derive { ast_id, .. } => break ast_id,
+                hir_expand::MacroCallKind::FnLike { ast_id, .. } => file_id = ast_id.file_id,
+                hir_expand::MacroCallKind::Attr { ast_id, .. } => file_id = ast_id.file_id,
+            }
+        };
+        let adt_source = adt_ast_id.to_in_file_node(self.db);
+        self.cache(adt_source.value.syntax().ancestors().last().unwrap(), adt_source.file_id);
+        ToDef::to_def(self, adt_source.as_ref())
+    }
 }
 
 // FIXME This can't be the best way to do this

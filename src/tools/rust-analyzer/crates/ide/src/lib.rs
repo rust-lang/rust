@@ -86,6 +86,7 @@ pub use crate::{
     file_structure::{FileStructureConfig, StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
     goto_definition::GotoDefinitionConfig,
+    goto_implementation::GotoImplementationConfig,
     highlight_related::{HighlightRelatedConfig, HighlightedRange},
     hover::{
         HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult,
@@ -537,9 +538,10 @@ impl Analysis {
     /// Returns the impls from the symbol at `position`.
     pub fn goto_implementation(
         &self,
+        config: &GotoImplementationConfig,
         position: FilePosition,
     ) -> Cancellable<Option<RangeInfo<Vec<NavigationTarget>>>> {
-        self.with_db(|db| goto_implementation::goto_implementation(db, position))
+        self.with_db(|db| goto_implementation::goto_implementation(db, config, position))
     }
 
     /// Returns the type definitions for the symbol at `position`.
