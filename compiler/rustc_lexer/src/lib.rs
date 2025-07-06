@@ -371,6 +371,7 @@ pub fn is_ident(string: &str) -> bool {
 impl Cursor<'_> {
     /// Parses a token from the input string.
     pub fn advance_token(&mut self) -> Token {
+        let pre_char = self.prev();
         let Some(first_char) = self.bump() else {
             return Token::new(TokenKind::Eof, 0);
         };
@@ -454,7 +455,7 @@ impl Cursor<'_> {
             }
 
             // Guarded string literal prefix: `#"` or `##`
-            '#' if matches!(self.first(), '"' | '#') => {
+            '#' if matches!(self.first(), '"' | '#') && pre_char != '#' => {
                 self.bump();
                 TokenKind::GuardedStrPrefix
             }
