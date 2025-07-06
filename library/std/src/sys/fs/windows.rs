@@ -967,7 +967,8 @@ fn run_path_with_utf16<T, P: AsRef<Path>>(
 
 impl Dir {
     pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        let opts = OpenOptions::new();
+        let mut opts = OpenOptions::new();
+        opts.read(true);
         run_path_with_wcstr(path.as_ref(), &|path| Self::new_with_native(path, &opts))
     }
 
@@ -981,31 +982,36 @@ impl Dir {
 
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
         let mut opts = OpenOptions::new();
-        let path = path.as_ref().as_os_str().encode_wide().collect::<Vec<_>>();
         opts.read(true);
-        self.open_native(&path, &opts).map(|handle| File { handle })
+        let path = path.as_ref();
+        if path.is_absolute() {
+            return File::open(path, &opts);
+        }
+        let path = path.as_os_str().encode_wide().collect::<Vec<_>>();
+        self.open_native(&path, &opts, false).map(|handle| File { handle })
     }
 
     pub fn open_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<File> {
         let path = path.as_ref().as_os_str().encode_wide().collect::<Vec<_>>();
-        self.open_native(&path, &opts).map(|handle| File { handle })
+        self.open_native(&path, &opts, false).map(|handle| File { handle })
     }
 
     pub fn open_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<Self> {
         let mut opts = OpenOptions::new();
         let path = path.as_ref().as_os_str().encode_wide().collect::<Vec<_>>();
         opts.read(true);
-        self.open_native(&path, &opts).map(|handle| Self { handle })
+        self.open_native(&path, &opts, true).map(|handle| Self { handle })
     }
 
     pub fn open_dir_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<Self> {
         let path = path.as_ref().as_os_str().encode_wide().collect::<Vec<_>>();
-        self.open_native(&path, &opts).map(|handle| Self { handle })
+        self.open_native(&path, &opts, true).map(|handle| Self { handle })
     }
 
     pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         let mut opts = OpenOptions::new();
         opts.write(true);
+        opts.create_new(true);
         run_path_with_utf16(path, &|path| self.create_dir_native(path, &opts).map(|_| ()))
     }
 
@@ -1023,7 +1029,7 @@ impl Dir {
         to_dir: &Self,
         to: Q,
     ) -> io::Result<()> {
-        run_path_with_wcstr(to.as_ref(), &|to| self.rename_native(from.as_ref(), to_dir, to))
+        run_path_with_wcstr(to.as_ref(), &|to| self.rename_native(from.as_ref(), to_dir, to, false))
     }
 
     pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(&self, original: P, link: Q) -> io::Result<()> {
@@ -1057,16 +1063,16 @@ impl Dir {
         }
     }
 
-    fn open_native(&self, path: &[u16], opts: &OpenOptions) -> io::Result<Handle> {
+    fn open_native(&self, path: &[u16], opts: &OpenOptions, dir: bool) -> io::Result<Handle> {
         let name = c::UNICODE_STRING {
-            Length: path.len() as _,
-            MaximumLength: path.len() as _,
+            Length: (path.len() * 2) as _,
+            MaximumLength: (path.len() * 2) as _,
             Buffer: path.as_ptr() as *mut _,
         };
         let object_attributes = c::OBJECT_ATTRIBUTES {
             Length: size_of::<c::OBJECT_ATTRIBUTES>() as _,
             RootDirectory: self.handle.as_raw_handle(),
-            ObjectName: &name,
+            ObjectName: &raw const name,
             Attributes: 0,
             SecurityDescriptor: ptr::null(),
             SecurityQualityOfService: ptr::null(),
@@ -1078,7 +1084,7 @@ impl Dir {
                 opts.get_disposition()?,
                 &object_attributes,
                 share,
-                false,
+                dir,
             )
         }
         .io_result()
@@ -1086,8 +1092,8 @@ impl Dir {
 
     fn create_dir_native(&self, path: &[u16], opts: &OpenOptions) -> io::Result<Handle> {
         let name = c::UNICODE_STRING {
-            Length: path.len() as _,
-            MaximumLength: path.len() as _,
+            Length: (path.len() * 2) as _,
+            MaximumLength: (path.len() * 2) as _,
             Buffer: path.as_ptr() as *mut _,
         };
         let object_attributes = c::OBJECT_ATTRIBUTES {
@@ -1113,9 +1119,8 @@ impl Dir {
 
     fn remove_native(&self, path: &[u16], dir: bool) -> io::Result<()> {
         let mut opts = OpenOptions::new();
-        opts.access_mode(c::GENERIC_WRITE);
-        let handle =
-            if dir { self.create_dir_native(path, &opts) } else { self.open_native(path, &opts) }?;
+        opts.access_mode(c::DELETE);
+        let handle = self.open_native(path, &opts, dir)?;
         let info = c::FILE_DISPOSITION_INFO_EX { Flags: c::FILE_DISPOSITION_FLAG_DELETE };
         let result = unsafe {
             c::SetFileInformationByHandle(
@@ -1128,10 +1133,11 @@ impl Dir {
         if result == 0 { Err(api::get_last_error()).io_result() } else { Ok(()) }
     }
 
-    fn rename_native(&self, from: &Path, to_dir: &Self, to: &WCStr) -> io::Result<()> {
+    fn rename_native(&self, from: &Path, to_dir: &Self, to: &WCStr, dir: bool) -> io::Result<()> {
         let mut opts = OpenOptions::new();
-        opts.access_mode(c::GENERIC_WRITE);
-        let handle = run_path_with_utf16(from, &|u| self.open_native(u, &opts))?;
+        opts.access_mode(c::DELETE);
+        opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
+        let handle = run_path_with_utf16(from, &|u| self.open_native(u, &opts, dir))?;
         // Calculate the layout of the `FILE_RENAME_INFO` we pass to `SetFileInformation`
         // This is a dynamically sized struct so we need to get the position of the last field to calculate the actual size.
         const too_long_err: io::Error =
@@ -1143,9 +1149,9 @@ impl Dir {
             .ok_or(too_long_err)?;
         let layout = Layout::from_size_align(struct_size, align_of::<c::FILE_RENAME_INFO>())
             .map_err(|_| too_long_err)?;
+        let struct_size = u32::try_from(struct_size).map_err(|_| too_long_err)?;
         let to_byte_len_without_nul =
             u32::try_from((to.count_bytes() - 1) * 2).map_err(|_| too_long_err)?;
-        let struct_size = u32::try_from(struct_size).map_err(|_| too_long_err)?;
 
         let file_rename_info;
         // SAFETY: We allocate enough memory for a full FILE_RENAME_INFO struct and a filename.
@@ -1165,7 +1171,7 @@ impl Dir {
 
             to.as_ptr().copy_to_nonoverlapping(
                 (&raw mut (*file_rename_info).FileName).cast::<u16>(),
-                run_path_with_wcstr(from, &|s| Ok(s.count_bytes())).unwrap(),
+                to.count_bytes(),
             );
         }
 

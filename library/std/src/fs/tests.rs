@@ -2089,7 +2089,9 @@ fn test_rename_junction() {
 #[test]
 fn test_dir_smoke_test() {
     let tmpdir = tmpdir();
-    check!(Dir::new(tmpdir.path()));
+    let dir = Dir::new(tmpdir.path());
+    println!("{dir:?}");
+    check!(dir);
 }
 
 #[test]
