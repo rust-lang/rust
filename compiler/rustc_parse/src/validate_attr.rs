@@ -286,6 +286,9 @@ fn emit_malformed_attribute(
     if matches!(
         name,
         sym::inline
+            | sym::export_stable
+            | sym::ffi_const
+            | sym::ffi_pure
             | sym::may_dangle
             | sym::rustc_as_ptr
             | sym::rustc_pub_transparent

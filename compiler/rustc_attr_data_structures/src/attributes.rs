@@ -250,6 +250,15 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[export_stable]`.
+    ExportStable,
+
+    /// Represents `#[ffi_const]`.
+    FfiConst(Span),
+
+    /// Represents `#[ffi_pure]`.
+    FfiPure(Span),
+
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
 
@@ -317,6 +326,9 @@ pub enum AttributeKind {
         /// Span of the attribute.
         span: Span,
     },
+
+    /// Represents `#[rustc_std_internal_symbol]`.
+    StdInternalSymbol(Span),
 
     /// Represents `#[target_feature(enable = "...")]`
     TargetFeature(ThinVec<(Symbol, Span)>, Span),
