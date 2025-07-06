@@ -1,0 +1,49 @@
+error[E0308]: mismatched types
+  --> $DIR/suggest-clone-in-macro-issue-139253.rs:13:34
+   |
+LL |     let a: Struct = dbg!(expand!(field));
+   |                                  ^^^^^ expected `S`, found `&S`
+   |
+help: consider using clone here
+   |
+LL |     let a: Struct = dbg!(expand!(field: field.clone()));
+   |                                       +++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-clone-in-macro-issue-139253.rs:14:35
+   |
+LL |     let b: Struct = dbg!(Struct { field });
+   |                                   ^^^^^ expected `S`, found `&S`
+   |
+help: consider using clone here
+   |
+LL |     let b: Struct = dbg!(Struct { field: field.clone() });
+   |                                        +++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-clone-in-macro-issue-139253.rs:15:16
+   |
+LL |     let c: S = dbg!(field);
+   |                ^^^^^^^^^^^ expected `S`, found `&S`
+   |
+   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider using clone here
+   |
+LL |     let c: S = dbg!(field).clone();
+   |                           ++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-clone-in-macro-issue-139253.rs:16:16
+   |
+LL |     let c: S = dbg!(dbg!(field));
+   |                ^^^^^^^^^^^^^^^^^ expected `S`, found `&S`
+   |
+   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider using clone here
+   |
+LL |     let c: S = dbg!(dbg!(field)).clone();
+   |                                 ++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
