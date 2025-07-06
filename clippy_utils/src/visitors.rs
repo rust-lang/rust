@@ -353,7 +353,7 @@ pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> 
                 ExprKind::Binary(_, lhs, rhs)
                     if self.cx.typeck_results().expr_ty(lhs).peel_refs().is_primitive_ty()
                         && self.cx.typeck_results().expr_ty(rhs).peel_refs().is_primitive_ty() => {},
-                ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results().expr_ty(e).is_ref() => (),
+                ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results().expr_ty(e).is_raw_ptr() => (),
                 ExprKind::Unary(_, e) if self.cx.typeck_results().expr_ty(e).peel_refs().is_primitive_ty() => (),
                 ExprKind::Index(base, _, _)
                     if matches!(
@@ -388,7 +388,8 @@ pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> 
                 | ExprKind::Repeat(..)
                 | ExprKind::Struct(..)
                 | ExprKind::Tup(_)
-                | ExprKind::Type(..) => (),
+                | ExprKind::Type(..)
+                | ExprKind::UnsafeBinderCast(..) => (),
 
                 _ => {
                     return ControlFlow::Break(());
@@ -676,10 +677,7 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
                     helper(typeck, true, else_expr, f)?;
                 }
             },
-            ExprKind::Type(e, _) => {
-                helper(typeck, consume, e, f)?;
-            },
-            ExprKind::UnsafeBinderCast(_, e, _) => {
+            ExprKind::Type(e, _) | ExprKind::UnsafeBinderCast(_, e, _) => {
                 helper(typeck, consume, e, f)?;
             },
 
