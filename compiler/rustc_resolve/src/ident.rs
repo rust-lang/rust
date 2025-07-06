@@ -696,6 +696,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     None
                                 };
                                 if let Some(kind) = ambiguity_error_kind {
+                                    // Prevent infinite recursion when macro_rules! macros shadow builtin attributes.
+                                    // Only apply this fix for macro_rules! to avoid breaking legitimate proc-macro ambiguity detection.
+                                    if kind == AmbiguityKind::BuiltinAttr {
+                                        if is_builtin(innermost_res)
+                                            && flags.contains(Flags::MACRO_RULES)
+                                        {
+                                            return Some(Ok(innermost_binding));
+                                        } else if is_builtin(res)
+                                            && innermost_flags.contains(Flags::MACRO_RULES)
+                                        {
+                                            return Some(Ok(binding));
+                                        }
+                                    }
+
                                     let misc = |f: Flags| {
                                         if f.contains(Flags::MISC_SUGGEST_CRATE) {
                                             AmbiguityErrorMisc::SuggestCrate
