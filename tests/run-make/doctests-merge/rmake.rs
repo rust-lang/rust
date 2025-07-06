@@ -11,7 +11,7 @@ fn test_and_compare(input_file: &str, stdout_file: &str, edition: &str, dep: &Pa
         .input(input_file)
         .arg("--test")
         .edition(edition)
-        .arg("--test-args=--test-threads=1")
+        .arg("--test-arg=--test-threads=1")
         .extern_("foo", dep.display().to_string())
         .env("RUST_BACKTRACE", "short")
         .run();
