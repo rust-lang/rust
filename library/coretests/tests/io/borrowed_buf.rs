@@ -66,7 +66,7 @@ fn clear() {
 
 #[test]
 fn set_init() {
-    let buf: &mut [_] = &mut [MaybeUninit::uninit(); 16];
+    let buf: &mut [_] = &mut [MaybeUninit::zeroed(); 16];
     let mut rbuf: BorrowedBuf<'_> = buf.into();
 
     unsafe {
@@ -134,7 +134,7 @@ fn reborrow_written() {
 
 #[test]
 fn cursor_set_init() {
-    let buf: &mut [_] = &mut [MaybeUninit::uninit(); 16];
+    let buf: &mut [_] = &mut [MaybeUninit::zeroed(); 16];
     let mut rbuf: BorrowedBuf<'_> = buf.into();
 
     unsafe {
