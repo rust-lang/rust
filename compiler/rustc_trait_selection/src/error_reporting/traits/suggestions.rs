@@ -22,6 +22,7 @@ use rustc_hir::{
     expr_needs_parens, is_range_literal,
 };
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk};
+use rustc_middle::middle::privacy::Level;
 use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::{
@@ -2775,11 +2776,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         ty::ClauseKind::Trait(trait_pred) => {
                             let def_id = trait_pred.def_id();
                             let visible_item = if let Some(local) = def_id.as_local() {
-                                // Check for local traits being reachable.
-                                let vis = &tcx.resolutions(()).effective_visibilities;
-                                // Account for non-`pub` traits in the root of the local crate.
-                                let is_locally_reachable = tcx.parent(def_id).is_crate_root();
-                                vis.is_reachable(local) || is_locally_reachable
+                                let ty = trait_pred.self_ty();
+                                // when `TraitA: TraitB` and `S` only impl TraitA,
+                                // we check if `TraitB` can be reachable from `S`
+                                // to determine whether to note `TraitA` is sealed trait.
+                                if let ty::Adt(adt, _) = ty.kind() {
+                                    let visibilities = tcx.effective_visibilities(());
+                                    visibilities.effective_vis(local).is_none_or(|v| {
+                                        v.at_level(Level::Reexported)
+                                            .is_accessible_from(adt.did(), tcx)
+                                    })
+                                } else {
+                                    // FIXME(xizheyin): if the type is not ADT, we should not suggest it
+                                    true
+                                }
                             } else {
                                 // Check for foreign traits being reachable.
                                 tcx.visible_parent_map(()).get(&def_id).is_some()
