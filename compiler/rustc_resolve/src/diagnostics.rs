@@ -2771,7 +2771,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Finds a cfg-ed out item inside `module` with the matching name.
-    pub(crate) fn find_cfg_stripped(&self, err: &mut Diag<'_>, segment: &Symbol, module: DefId) {
+    pub(crate) fn find_cfg_stripped(
+        &mut self,
+        err: &mut Diag<'_>,
+        segment: &Symbol,
+        module: DefId,
+    ) {
         let local_items;
         let symbols = if module.is_local() {
             local_items = self
@@ -2797,7 +2802,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             fn comes_from_same_module_for_glob(
-                r: &Resolver<'_, '_>,
+                r: &mut Resolver<'_, '_>,
                 parent_module: DefId,
                 module: DefId,
                 visited: &mut FxHashMap<DefId, bool>,
@@ -2809,24 +2814,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     return cached;
                 }
                 visited.insert(parent_module, false);
-                let res = r.module_map.get(&parent_module).is_some_and(|m| {
-                    for importer in m.glob_importers.borrow().iter() {
-                        if let Some(next_parent_module) = importer.parent_scope.module.opt_def_id()
+                let m = r.expect_module(parent_module);
+                let mut res = false;
+                for importer in m.glob_importers.borrow().iter() {
+                    if let Some(next_parent_module) = importer.parent_scope.module.opt_def_id() {
+                        if next_parent_module == module
+                            || comes_from_same_module_for_glob(
+                                r,
+                                next_parent_module,
+                                module,
+                                visited,
+                            )
                         {
-                            if next_parent_module == module
-                                || comes_from_same_module_for_glob(
-                                    r,
-                                    next_parent_module,
-                                    module,
-                                    visited,
-                                )
-                            {
-                                return true;
-                            }
+                            res = true;
+                            break;
                         }
                     }
-                    false
-                });
+                }
                 visited.insert(parent_module, res);
                 res
             }

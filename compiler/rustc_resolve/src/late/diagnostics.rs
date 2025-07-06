@@ -926,7 +926,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     continue;
                 };
                 if let Res::Def(DefKind::Mod, module) = res.expect_full_res()
-                    && let Some(module) = self.r.get_module(module)
+                    && let module = self.r.expect_module(module)
                     && let item = path[idx + 1].ident
                     && let Some(did) = find_doc_alias_name(self.r, module, item.name)
                 {
@@ -2531,16 +2531,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     // FIXME: this is not totally accurate, but mostly works
                     suggestion.candidate != following_seg.ident.name
                 }
-                Res::Def(DefKind::Mod, def_id) => self.r.get_module(def_id).map_or_else(
-                    || false,
-                    |module| {
-                        self.r
-                            .resolutions(module)
-                            .borrow()
-                            .iter()
-                            .any(|(key, _)| key.ident.name == following_seg.ident.name)
-                    },
-                ),
+                Res::Def(DefKind::Mod, def_id) => {
+                    let module = self.r.expect_module(def_id);
+                    self.r
+                        .resolutions(module)
+                        .borrow()
+                        .iter()
+                        .any(|(key, _)| key.ident.name == following_seg.ident.name)
+                }
                 _ => true,
             });
         }
