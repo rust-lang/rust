@@ -311,7 +311,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         );
 
         self.with_parent(const_arg.hir_id, |this| {
-            intravisit::walk_ambig_const_arg(this, const_arg);
+            intravisit::walk_const_arg(this, const_arg);
         });
     }
 
