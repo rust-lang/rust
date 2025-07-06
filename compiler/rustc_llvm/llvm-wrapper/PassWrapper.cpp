@@ -1275,7 +1275,7 @@ extern "C" void LLVMRustSetModuleCodeModel(LLVMModuleRef M,
 //
 // Otherwise I'll apologize in advance, it probably requires a relatively
 // significant investment on your part to "truly understand" what's going on
-// here. Not saying I do myself, but it took me awhile staring at LLVM's source
+// here. Not saying I do myself, but it took me a while staring at LLVM's source
 // and various online resources about ThinLTO to make heads or tails of all
 // this.
 
