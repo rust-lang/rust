@@ -10,17 +10,17 @@ note: the lint level is defined here
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
-error: `#[path]` only has an effect on modules
-  --> $DIR/unused-attr-macro-rules.rs:8:1
-   |
-LL | #[path="foo"]
-   | ^^^^^^^^^^^^^
-
 error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/unused-attr-macro-rules.rs:9:1
    |
 LL | #[recursion_limit="1"]
    | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[path]` only has an effect on modules
+  --> $DIR/unused-attr-macro-rules.rs:8:1
+   |
+LL | #[path="foo"]
+   | ^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

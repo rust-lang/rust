@@ -298,6 +298,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_pass_by_value]` (used by the `rustc_pass_by_value` lint).
     PassByValue(Span),
 
+    /// Represents `#[path]`
+    Path(Symbol, Span),
+
     /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
     PubTransparent(Span),
 

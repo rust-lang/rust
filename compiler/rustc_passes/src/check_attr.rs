@@ -191,6 +191,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         target,
                         Target::Mod,
                     ),
+                Attribute::Parsed(AttributeKind::Path(_, attr_span)) => {
+                    self.check_generic_attr(hir_id, sym::path, *attr_span, target, Target::Mod)
+                }
                 Attribute::Parsed(AttributeKind::TrackCaller(attr_span)) => {
                     self.check_track_caller(hir_id, *attr_span, attrs, span, target)
                 }
@@ -2800,7 +2803,6 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
     // resolution for the attribute macro error.
     const ATTRS_TO_CHECK: &[Symbol] = &[
         sym::macro_export,
-        sym::path,
         sym::automatically_derived,
         sym::rustc_main,
         sym::derive,
@@ -2822,6 +2824,8 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
         }) = attr
         {
             (*first_attr_span, sym::repr)
+        } else if let Attribute::Parsed(AttributeKind::Path(.., span)) = attr {
+            (*span, sym::path)
         } else {
             continue;
         };
