@@ -330,18 +330,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(0)) // KERN_SUCCESS
     }
 
-    fn nanosleep(
-        &mut self,
-        req_op: &OpTy<'tcx>,
-        _rem: &OpTy<'tcx>, // Signal handlers are not supported, so rem will never be written to.
-    ) -> InterpResult<'tcx, Scalar> {
+    fn nanosleep(&mut self, duration: &OpTy<'tcx>, rem: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         this.assert_target_os_is_unix("nanosleep");
 
-        let req = this.deref_pointer_as(req_op, this.libc_ty_layout("timespec"))?;
+        let duration = this.deref_pointer_as(duration, this.libc_ty_layout("timespec"))?;
+        let _rem = this.read_pointer(rem)?; // Signal handlers are not supported, so rem will never be written to.
 
-        let duration = match this.read_timespec(&req)? {
+        let duration = match this.read_timespec(&duration)? {
             Some(duration) => duration,
             None => {
                 return this.set_last_error_and_return_i32(LibcError("EINVAL"));

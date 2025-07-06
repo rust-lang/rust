@@ -2394,6 +2394,7 @@ dependencies = [
  "regex",
  "rustc_version",
  "serde",
+ "serde_json",
  "smallvec",
  "tempfile",
  "tikv-jemalloc-sys",

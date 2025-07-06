@@ -963,8 +963,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_null(dest)?;
             }
             "nanosleep" => {
-                let [req, rem] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
-                let result = this.nanosleep(req, rem)?;
+                let [duration, rem] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let result = this.nanosleep(duration, rem)?;
                 this.write_scalar(result, dest)?;
             }
             "sched_getaffinity" => {

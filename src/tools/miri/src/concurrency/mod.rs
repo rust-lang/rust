@@ -9,18 +9,9 @@ mod vector_clock;
 pub mod weak_memory;
 
 // Import either the real genmc adapter or a dummy module.
-cfg_select! {
-    feature = "genmc" => {
-        mod genmc;
-        pub use self::genmc::{GenmcCtx, GenmcConfig};
-    }
-    _ => {
-        #[path = "genmc/dummy.rs"]
-        mod genmc_dummy;
-        use self::genmc_dummy as genmc;
-        pub use self::genmc::{GenmcCtx, GenmcConfig};
-    }
-}
+#[cfg_attr(not(feature = "genmc"), path = "genmc/dummy.rs")]
+mod genmc;
 
 pub use self::data_race_handler::{AllocDataRaceHandler, GlobalDataRaceHandler};
+pub use self::genmc::{GenmcConfig, GenmcCtx};
 pub use self::vector_clock::VClock;
