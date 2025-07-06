@@ -817,10 +817,12 @@ pub(crate) fn link(
 
 pub(crate) fn codegen(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    dcx: DiagCtxtHandle<'_>,
     module: ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
 ) -> Result<CompiledModule, FatalError> {
+    let dcx = cgcx.create_dcx();
+    let dcx = dcx.handle();
+
     let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_codegen", &*module.name);
     {
         let llmod = module.module_llvm.llmod();

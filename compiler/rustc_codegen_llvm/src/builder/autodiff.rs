@@ -2,7 +2,6 @@ use std::ptr;
 
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem, DiffActivity, DiffMode};
 use rustc_codegen_ssa::ModuleCodegen;
-use rustc_codegen_ssa::back::write::ModuleConfig;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods;
 use rustc_errors::FatalError;
@@ -461,7 +460,6 @@ pub(crate) fn differentiate<'ll>(
     module: &'ll ModuleCodegen<ModuleLlvm>,
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diff_items: Vec<AutoDiffItem>,
-    _config: &ModuleConfig,
 ) -> Result<(), FatalError> {
     for item in &diff_items {
         trace!("{}", item);
