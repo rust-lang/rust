@@ -481,14 +481,19 @@ impl Socket {
 
     // bionic libc makes no use of this flag
     #[cfg(target_os = "linux")]
-    pub fn set_deferaccept(&self, accept: u32) -> io::Result<()> {
-        setsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT, accept as c_int)
+    pub fn set_deferaccept(&self, accept: Duration) -> io::Result<()> {
+        setsockopt(
+            self,
+            libc::IPPROTO_TCP,
+            libc::TCP_DEFER_ACCEPT,
+            accept.as_secs_f64().round() as c_int,
+        )
     }
 
     #[cfg(target_os = "linux")]
-    pub fn deferaccept(&self) -> io::Result<u32> {
+    pub fn deferaccept(&self) -> io::Result<Duration> {
         let raw: c_int = getsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT)?;
-        Ok(raw as u32)
+        Ok(Duration::from_secs(raw.try_into().unwrap()))
     }
 
     #[cfg(any(target_os = "freebsd", target_os = "netbsd"))]
