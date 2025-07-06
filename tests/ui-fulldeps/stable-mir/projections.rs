@@ -11,10 +11,10 @@
 
 extern crate rustc_hir;
 extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_smir;
+
 extern crate rustc_driver;
 extern crate rustc_interface;
+#[macro_use]
 extern crate stable_mir;
 
 use stable_mir::ItemKind;
