@@ -1511,12 +1511,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         'outer: loop {
             while let hir::ExprKind::AddrOf(_, _, borrowed) = expr.kind {
                 count += 1;
-                let span = if expr.span.eq_ctxt(borrowed.span) {
-                    expr.span.until(borrowed.span)
-                } else {
-                    expr.span.with_hi(expr.span.lo() + BytePos(1))
-                };
+                let span =
+                    if let Some(borrowed_span) = borrowed.span.find_ancestor_inside(expr.span) {
+                        expr.span.until(borrowed_span)
+                    } else {
+                        break 'outer;
+                    };
 
+                // Double check that the span we extracted actually corresponds to a borrow,
+                // rather than some macro garbage.
                 match self.tcx.sess.source_map().span_to_snippet(span) {
                     Ok(snippet) if snippet.starts_with("&") => {}
                     _ => break 'outer,
