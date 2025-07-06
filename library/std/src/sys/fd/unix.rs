@@ -87,6 +87,19 @@ const fn max_iov() -> usize {
     16 // The minimum value required by POSIX.
 }
 
+crate::cfg_select! {
+    any(
+        all(target_os = "linux", not(target_env = "musl")),
+        target_os = "android",
+        target_os = "hurd",
+    ) => {
+        use libc::pread64;
+    }
+    _ => {
+        use libc::pread as pread64;
+    }
+}
+
 impl FileDesc {
     #[inline]
     pub fn try_clone(&self) -> io::Result<Self> {
@@ -146,42 +159,47 @@ impl FileDesc {
         (&mut me).read_to_end(buf)
     }
 
-    #[cfg_attr(target_os = "vxworks", allow(unused_unsafe))]
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
-        #[cfg(not(any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "android",
-            target_os = "hurd"
-        )))]
-        use libc::pread as pread64;
-        #[cfg(any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "android",
-            target_os = "hurd"
-        ))]
-        use libc::pread64;
-
-        unsafe {
-            cvt(pread64(
+        cvt(unsafe {
+            pread64(
                 self.as_raw_fd(),
                 buf.as_mut_ptr() as *mut libc::c_void,
                 cmp::min(buf.len(), READ_LIMIT),
                 offset as off64_t,
-            ))
-            .map(|n| n as usize)
-        }
+            )
+        })
+        .map(|n| n as usize)
     }
 
     pub fn read_buf(&self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        // SAFETY: `cursor.as_mut()` starts with `cursor.capacity()` writable bytes
         let ret = cvt(unsafe {
             libc::read(
                 self.as_raw_fd(),
-                cursor.as_mut().as_mut_ptr() as *mut libc::c_void,
+                cursor.as_mut().as_mut_ptr().cast::<libc::c_void>(),
                 cmp::min(cursor.capacity(), READ_LIMIT),
             )
         })?;
 
-        // Safety: `ret` bytes were written to the initialized portion of the buffer
+        // SAFETY: `ret` bytes were written to the initialized portion of the buffer
+        unsafe {
+            cursor.advance_unchecked(ret as usize);
+        }
+        Ok(())
+    }
+
+    pub fn read_buf_at(&self, mut cursor: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+        // SAFETY: `cursor.as_mut()` starts with `cursor.capacity()` writable bytes
+        let ret = cvt(unsafe {
+            pread64(
+                self.as_raw_fd(),
+                cursor.as_mut().as_mut_ptr().cast::<libc::c_void>(),
+                cmp::min(cursor.capacity(), READ_LIMIT),
+                offset as off64_t,
+            )
+        })?;
+
+        // SAFETY: `ret` bytes were written to the initialized portion of the buffer
         unsafe {
             cursor.advance_unchecked(ret as usize);
         }
@@ -369,7 +387,6 @@ impl FileDesc {
         )))
     }
 
-    #[cfg_attr(target_os = "vxworks", allow(unused_unsafe))]
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         #[cfg(not(any(
             all(target_os = "linux", not(target_env = "musl")),
