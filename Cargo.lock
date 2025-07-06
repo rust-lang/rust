@@ -3509,7 +3509,6 @@ dependencies = [
 name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
- "bitflags",
  "gimli 0.31.1",
  "itertools",
  "libc",
@@ -4089,8 +4088,14 @@ dependencies = [
 name = "rustc_llvm"
 version = "0.0.0"
 dependencies = [
+ "bitflags",
  "cc",
  "libc",
+ "rustc_codegen_ssa",
+ "rustc_macros",
+ "rustc_middle",
+ "rustc_session",
+ "rustc_target",
 ]
 
 [[package]]

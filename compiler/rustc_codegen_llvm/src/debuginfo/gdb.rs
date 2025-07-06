@@ -12,7 +12,7 @@ use rustc_span::sym;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::llvm;
-use crate::value::Value;
+use crate::llvm::Value;
 
 /// Inserts a side-effect free instruction sequence that makes sure that the
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.

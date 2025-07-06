@@ -12,8 +12,9 @@ use smallvec::SmallVec;
 use crate::context::CodegenCx;
 use crate::errors::SanitizerMemtagRequiresMte;
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects};
-use crate::value::Value;
+use crate::llvm::{
+    self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects, Value,
+};
 use crate::{attributes, llvm_util};
 
 pub(crate) fn apply_to_llfn(llfn: &Value, idx: AttributePlace, attrs: &[&Attribute]) {

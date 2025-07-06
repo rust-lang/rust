@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods as _, ConstCodegenMethods};
+use rustc_llvm::ffi;
 use rustc_middle::mir::coverage::{
     BasicCoverageBlock, CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping,
     MappingKind, Op,
@@ -19,8 +20,8 @@ use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
 use crate::common::CodegenCx;
+use crate::coverageinfo::llvm_cov;
 use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, spans};
-use crate::coverageinfo::{ffi, llvm_cov};
 use crate::llvm;
 
 /// Intermediate coverage metadata for a single function, used to help build
