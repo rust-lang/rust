@@ -1,6 +1,7 @@
 use rustc_pattern_analysis::constructor::{
     Constructor, ConstructorSet, IntRange, MaybeInfiniteInt, RangeEnd, VariantVisibility,
 };
+use rustc_pattern_analysis::pat::DeconstructedPat;
 use rustc_pattern_analysis::usefulness::{PlaceValidity, UsefulnessReport};
 use rustc_pattern_analysis::{MatchArm, PatCx, PrivateUninhabitedField};
 
@@ -183,6 +184,14 @@ impl PatCx for Cx {
     /// Abort when reaching the complexity limit. This is what we'll check in tests.
     fn complexity_exceeded(&self) -> Result<(), Self::Error> {
         Err(())
+    }
+
+    fn report_mixed_deref_pat_ctors(
+        &self,
+        _deref_pat: &DeconstructedPat<Self>,
+        _normal_pat: &DeconstructedPat<Self>,
+    ) -> Self::Error {
+        panic!("`rustc_pattern_analysis::tests` currently doesn't test deref pattern errors")
     }
 }
 
