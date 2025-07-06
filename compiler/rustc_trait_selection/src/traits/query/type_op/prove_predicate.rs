@@ -15,7 +15,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
         tcx: TyCtxt<'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
-        if sizedness_fast_path(tcx, key.value.predicate) {
+        if sizedness_fast_path(tcx, key.value.predicate, key.param_env) {
             return Some(());
         }
 
