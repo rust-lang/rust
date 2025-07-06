@@ -158,7 +158,7 @@ impl<T: ?Sized> const Deref for &T {
 
     #[rustc_diagnostic_item = "noop_method_deref"]
     fn deref(&self) -> &T {
-        *self
+        self
     }
 }
 
@@ -171,7 +171,7 @@ impl<T: ?Sized> const Deref for &mut T {
     type Target = T;
 
     fn deref(&self) -> &T {
-        *self
+        self
     }
 }
 
@@ -280,7 +280,7 @@ pub trait DerefMut: ~const Deref + PointeeSized {
 #[rustc_const_unstable(feature = "const_deref", issue = "88955")]
 impl<T: ?Sized> const DerefMut for &mut T {
     fn deref_mut(&mut self) -> &mut T {
-        *self
+        self
     }
 }
 
