@@ -3910,7 +3910,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         expr.span,
                         ObligationCauseCode::FieldSized {
                             adt_kind: AdtKind::Enum,
-                            span: self.tcx.def_span(field.did),
+                            field: field.did,
                             last: false,
                         },
                     );
