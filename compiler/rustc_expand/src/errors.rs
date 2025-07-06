@@ -496,6 +496,127 @@ pub(crate) use metavar_exprs::*;
 mod metavar_exprs {
     use super::*;
 
+    #[derive(Diagnostic, Default)]
+    #[diag(expand_mve_extra_tokens)]
+    pub(crate) struct MveExtraTokens {
+        #[primary_span]
+        #[suggestion(code = "", applicability = "machine-applicable")]
+        pub span: Span,
+        #[label]
+        pub ident_span: Span,
+        pub extra_count: usize,
+
+        // The rest is only used for specific diagnostics and can be default if neither
+        // `note` is `Some`.
+        #[note(expand_exact)]
+        pub exact_args_note: Option<()>,
+        #[note(expand_range)]
+        pub range_args_note: Option<()>,
+        pub min_or_exact_args: usize,
+        pub max_args: usize,
+        pub name: &'static str,
+    }
+
+    #[derive(Diagnostic)]
+    #[note]
+    #[diag(expand_mve_missing_paren)]
+    pub(crate) struct MveMissingParen {
+        #[primary_span]
+        #[label]
+        pub ident_span: Span,
+        #[label(expand_unexpected)]
+        pub unexpected_span: Option<Span>,
+        #[suggestion(code = "( /* ... */ )", applicability = "has-placeholders")]
+        pub insert_span: Option<Span>,
+    }
+
+    #[derive(Diagnostic)]
+    #[note]
+    #[diag(expand_mve_unrecognized_expr)]
+    pub(crate) struct MveUnrecognizedExpr {
+        #[primary_span]
+        #[label]
+        pub span: Span,
+        pub valid_expr_list: &'static str,
+    }
+
+    #[derive(Diagnostic)]
+    #[diag(expand_mve_concat_invalid_in)]
+    pub(crate) struct MveConcatInvalidTy {
+        #[primary_span]
+        // #[label]
+        pub span: Span,
+        #[label(expand_metavar_label)]
+        pub metavar_span: Option<Span>,
+        #[subdiagnostic]
+        pub reason: MveConcatInvalidTyReason,
+        pub valid: &'static str,
+    }
+
+    // TODO: can these be labels rather than notes?
+    #[derive(Subdiagnostic)]
+    pub(crate) enum MveConcatInvalidTyReason {
+        InvalidIdent,
+        #[note(expand_float_lit)]
+        #[note(expand_valid_types)]
+        FloatLit,
+        #[note(expand_c_str_lit)]
+        #[note(expand_valid_types)]
+        CStrLit,
+        #[note(expand_b_str_lit)]
+        #[note(expand_valid_types)]
+        ByteStrLit,
+        #[note(expand_expected_metavar)]
+        #[label(expand_expected_metavar_dollar)]
+        ExpectedMetavarIdent {
+            #[primary_span]
+            dollar: Span,
+        },
+        #[note(expand_raw_ident)]
+        RawIdentifier,
+        #[note(expand_unsupported)]
+        #[note(expand_valid_types)]
+        UnsupportedInput,
+        #[note(expand_invalid_metavar)]
+        #[note(expand_valid_metavars)]
+        InvalidMetavarTy,
+        /// Nothing to point out because an error was already emitted.
+        InvalidLiteral,
+    }
+
+    #[derive(Diagnostic)]
+    #[note]
+    #[diag(expand_mve_concat_invalid_out)]
+    pub(crate) struct MveConcatInvalidOut {
+        #[primary_span]
+        #[label]
+        pub span: Span,
+    }
+
+    #[derive(Diagnostic)]
+    #[diag(expand_mve_expected_ident)]
+    pub(crate) struct MveExpectedIdent {
+        #[primary_span]
+        pub span: Span,
+        #[label(expand_not_ident)]
+        pub not_ident_label: Option<Span>,
+        /// This error is reused a handful of places, the context here tells us how to customize
+        /// the message.
+        #[subdiagnostic]
+        pub context: MveExpectedIdentContext,
+    }
+
+    #[derive(Subdiagnostic)]
+    pub(crate) enum MveExpectedIdentContext {
+        #[note(expand_expr_name)]
+        #[note(expand_expr_name_note)]
+        ExprName { valid_expr_list: &'static str },
+        #[note(expand_ignore_expr_note)]
+        Ignore,
+        #[note(expand_count_expr_note)]
+        Count,
+    }
+
     #[derive(Diagnostic)]
     #[diag(expand_mve_unrecognized_var)]
     pub(crate) struct MveUnrecognizedVar {
