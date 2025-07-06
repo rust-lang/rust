@@ -24,4 +24,10 @@ impl Tcp {
             Self::V4(client) => client.write(buf),
         }
     }
+
+    pub(crate) fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        match self {
+            Self::V4(client) => client.read(buf),
+        }
+    }
 }

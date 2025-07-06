@@ -38,16 +38,17 @@ impl TcpStream {
         unsupported()
     }
 
-    pub fn read(&self, _: &mut [u8]) -> io::Result<usize> {
-        unsupported()
+    pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.read(buf)
     }
 
-    pub fn read_buf(&self, _buf: BorrowedCursor<'_>) -> io::Result<()> {
-        unsupported()
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        crate::io::default_read_buf(|buf| self.read(buf), cursor)
     }
 
-    pub fn read_vectored(&self, _: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        unsupported()
+    pub fn read_vectored(&self, buf: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        // FIXME: UEFI does support vectored read, so implement that.
+        crate::io::default_read_vectored(|b| self.read(b), buf)
     }
 
     pub fn is_read_vectored(&self) -> bool {
