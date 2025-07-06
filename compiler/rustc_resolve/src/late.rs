@@ -2902,7 +2902,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     }
                 }
 
-                if param.ident.name == kw::UnderscoreLifetime {
+                // To avoid emitting two similar errors, we need to check if the span is a raw underscore lifetime, see issue #143152
+                let is_raw_underscore = self
+                    .r
+                    .tcx
+                    .sess
+                    .psess
+                    .raw_identifier_spans
+                    .iter()
+                    .any(|span| span == param.span());
+                if param.ident.name == kw::UnderscoreLifetime && !is_raw_underscore {
                     self.r
                         .dcx()
                         .emit_err(errors::UnderscoreLifetimeIsReserved { span: param.ident.span });
