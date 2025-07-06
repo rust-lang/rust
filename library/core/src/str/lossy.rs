@@ -1,5 +1,5 @@
 use super::from_utf8_unchecked;
-use super::validations::utf8_char_width;
+use super::validations::run_utf8_validation;
 use crate::fmt;
 use crate::fmt::{Formatter, Write};
 use crate::iter::FusedIterator;
@@ -199,93 +199,29 @@ impl<'a> Iterator for Utf8Chunks<'a> {
             return None;
         }
 
-        const TAG_CONT_U8: u8 = 128;
-        fn safe_get(xs: &[u8], i: usize) -> u8 {
-            *xs.get(i).unwrap_or(&0)
-        }
-
-        let mut i = 0;
-        let mut valid_up_to = 0;
-        while i < self.source.len() {
-            // SAFETY: `i < self.source.len()` per previous line.
-            // For some reason the following are both significantly slower:
-            // while let Some(&byte) = self.source.get(i) {
-            // while let Some(byte) = self.source.get(i).copied() {
-            let byte = unsafe { *self.source.get_unchecked(i) };
-            i += 1;
-
-            if byte < 128 {
-                // This could be a `1 => ...` case in the match below, but for
-                // the common case of all-ASCII inputs, we bypass loading the
-                // sizeable UTF8_CHAR_WIDTH table into cache.
-            } else {
-                let w = utf8_char_width(byte);
-
-                match w {
-                    2 => {
-                        if safe_get(self.source, i) & 192 != TAG_CONT_U8 {
-                            break;
-                        }
-                        i += 1;
-                    }
-                    3 => {
-                        match (byte, safe_get(self.source, i)) {
-                            (0xE0, 0xA0..=0xBF) => (),
-                            (0xE1..=0xEC, 0x80..=0xBF) => (),
-                            (0xED, 0x80..=0x9F) => (),
-                            (0xEE..=0xEF, 0x80..=0xBF) => (),
-                            _ => break,
-                        }
-                        i += 1;
-                        if safe_get(self.source, i) & 192 != TAG_CONT_U8 {
-                            break;
-                        }
-                        i += 1;
-                    }
-                    4 => {
-                        match (byte, safe_get(self.source, i)) {
-                            (0xF0, 0x90..=0xBF) => (),
-                            (0xF1..=0xF3, 0x80..=0xBF) => (),
-                            (0xF4, 0x80..=0x8F) => (),
-                            _ => break,
-                        }
-                        i += 1;
-                        if safe_get(self.source, i) & 192 != TAG_CONT_U8 {
-                            break;
-                        }
-                        i += 1;
-                        if safe_get(self.source, i) & 192 != TAG_CONT_U8 {
-                            break;
-                        }
-                        i += 1;
-                    }
-                    _ => break,
-                }
+        match run_utf8_validation(self.source) {
+            Ok(()) => {
+                // SAFETY: The whole `source` is valid in UTF-8.
+                let valid = unsafe { from_utf8_unchecked(&self.source) };
+                // Truncate the slice, no need to touch the pointer.
+                self.source = &self.source[..0];
+                Some(Utf8Chunk { valid, invalid: &[] })
             }
-
-            valid_up_to = i;
+            Err(err) => {
+                let valid_up_to = err.valid_up_to();
+                let error_len = err.error_len().unwrap_or(self.source.len() - valid_up_to);
+                // SAFETY: `valid_up_to` is the valid UTF-8 string length, so is in bound.
+                let (valid, remaining) = unsafe { self.source.split_at_unchecked(valid_up_to) };
+                // SAFETY: `error_len` is the errornous byte sequence length, so is in bound.
+                let (invalid, after_invalid) = unsafe { remaining.split_at_unchecked(error_len) };
+                self.source = after_invalid;
+                Some(Utf8Chunk {
+                    // SAFETY: All bytes up to `valid_up_to` are valid UTF-8.
+                    valid: unsafe { from_utf8_unchecked(valid) },
+                    invalid,
+                })
+            }
         }
-
-        // SAFETY: `i <= self.source.len()` because it is only ever incremented
-        // via `i += 1` and in between every single one of those increments, `i`
-        // is compared against `self.source.len()`. That happens either
-        // literally by `i < self.source.len()` in the while-loop's condition,
-        // or indirectly by `safe_get(self.source, i) & 192 != TAG_CONT_U8`. The
-        // loop is terminated as soon as the latest `i += 1` has made `i` no
-        // longer less than `self.source.len()`, which means it'll be at most
-        // equal to `self.source.len()`.
-        let (inspected, remaining) = unsafe { self.source.split_at_unchecked(i) };
-        self.source = remaining;
-
-        // SAFETY: `valid_up_to <= i` because it is only ever assigned via
-        // `valid_up_to = i` and `i` only increases.
-        let (valid, invalid) = unsafe { inspected.split_at_unchecked(valid_up_to) };
-
-        Some(Utf8Chunk {
-            // SAFETY: All bytes up to `valid_up_to` are valid UTF-8.
-            valid: unsafe { from_utf8_unchecked(valid) },
-            invalid,
-        })
     }
 }
 
