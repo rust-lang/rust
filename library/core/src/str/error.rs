@@ -42,11 +42,24 @@ use crate::fmt;
 ///     }
 /// }
 /// ```
-#[derive(Copy, Eq, PartialEq, Clone, Debug)]
+#[derive(Copy, Eq, PartialEq, Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Utf8Error {
     pub(super) valid_up_to: usize,
-    pub(super) error_len: Option<u8>,
+    // Use a single value instead of tagged enum `Option<u8>` to make `Result<(), Utf8Error>` fits
+    // in two machine words, so `run_utf8_validation` does not need to returns values on stack on
+    // x86(_64). Register spill is very expensive on `run_utf8_validation` and can give up to 200%
+    // latency penalty on the error path.
+    pub(super) error_len: Utf8ErrorLen,
+}
+
+#[derive(Copy, Eq, PartialEq, Clone)]
+#[repr(u8)]
+pub(super) enum Utf8ErrorLen {
+    Eof = 0,
+    One,
+    Two,
+    Three,
 }
 
 impl Utf8Error {
@@ -100,18 +113,28 @@ impl Utf8Error {
     #[must_use]
     #[inline]
     pub const fn error_len(&self) -> Option<usize> {
-        // FIXME(const-hack): This should become `map` again, once it's `const`
         match self.error_len {
-            Some(len) => Some(len as usize),
-            None => None,
+            Utf8ErrorLen::Eof => None,
+            // FIXME(136972): Direct `match` gives suboptimal codegen involving two table lookups.
+            len => Some(len as usize),
         }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Debug for Utf8Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Utf8Error")
+            .field("valid_up_to", &self.valid_up_to)
+            .field("error_len", &self.error_len())
+            .finish()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Utf8Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(error_len) = self.error_len {
+        if let Some(error_len) = self.error_len() {
             write!(
                 f,
                 "invalid utf-8 sequence of {} bytes from index {}",
