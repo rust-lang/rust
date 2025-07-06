@@ -696,6 +696,10 @@ impl Config {
         self.target_cfg().endian == Endian::Big
     }
 
+    pub fn is_little_endian(&self) -> bool {
+        self.target_cfg().endian == Endian::Little
+    }
+
     pub fn get_pointer_width(&self) -> u32 {
         *&self.target_cfg().pointer_width
     }

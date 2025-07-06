@@ -1,5 +1,9 @@
-//@ run-pass
+//@ run-fail
 //@ compile-flags: -C debug-assertions
+// This test depends on the endianess and has a different behavior on
+// little endian.
+//@ ignore-endian-little
+//@ error-pattern: trying to construct an enum from an invalid value
 
 #[allow(dead_code)]
 #[repr(u32)]
@@ -15,6 +19,5 @@ struct Bar {
 }
 
 fn main() {
-    let _val: Foo = unsafe { std::mem::transmute::<_, Foo>(Bar { a: 0, b: 0 }) };
     let _val: Foo = unsafe { std::mem::transmute::<_, Foo>(Bar { a: 1, b: 0 }) };
 }

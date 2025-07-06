@@ -206,6 +206,11 @@ fn parse_cfg_name_directive<'a>(
         message: "on big-endian targets",
     }
     condition! {
+        name: "endian-little",
+        condition: config.is_little_endian(),
+        message: "on little-endian targets",
+    }
+    condition! {
         name: format!("stage{}", config.stage).as_str(),
         allowed_names: &["stage0", "stage1", "stage2"],
         message: "when the bootstrapping stage is {name}",
