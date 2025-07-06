@@ -40,7 +40,7 @@ ast_passes_auto_generic = auto traits cannot have generic parameters
 
 ast_passes_auto_items = auto traits cannot have associated items
     .label = {ast_passes_auto_items}
-    .suggestion = remove these associated items
+    .suggestion = remove the associated items
 
 ast_passes_auto_super_lifetime = auto traits cannot have super traits or lifetime bounds
     .label = {ast_passes_auto_super_lifetime}
