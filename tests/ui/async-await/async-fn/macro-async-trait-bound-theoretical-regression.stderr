@@ -1,5 +1,5 @@
 error: ty
-  --> $DIR/mbe-async-trait-bound-theoretical-regression.rs:8:19
+  --> $DIR/macro-async-trait-bound-theoretical-regression.rs:8:19
    |
 LL |     ($ty:ty) => { compile_error!("ty"); };
    |                   ^^^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | demo! { impl async Trait }
    = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: ty
-  --> $DIR/mbe-async-trait-bound-theoretical-regression.rs:8:19
+  --> $DIR/macro-async-trait-bound-theoretical-regression.rs:8:19
    |
 LL |     ($ty:ty) => { compile_error!("ty"); };
    |                   ^^^^^^^^^^^^^^^^^^^^
@@ -21,7 +21,7 @@ LL | demo! { dyn async Trait }
    = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: `async` trait bounds are unstable
-  --> $DIR/mbe-async-trait-bound-theoretical-regression.rs:15:14
+  --> $DIR/macro-async-trait-bound-theoretical-regression.rs:15:14
    |
 LL | demo! { impl async Trait }
    |              ^^^^^
@@ -32,7 +32,7 @@ LL | demo! { impl async Trait }
    = help: use the desugared name of the async trait, such as `AsyncFn`
 
 error[E0658]: `async` trait bounds are unstable
-  --> $DIR/mbe-async-trait-bound-theoretical-regression.rs:18:13
+  --> $DIR/macro-async-trait-bound-theoretical-regression.rs:18:13
    |
 LL | demo! { dyn async Trait }
    |             ^^^^^

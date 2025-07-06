@@ -47,6 +47,7 @@
 //~^ ERROR malformed
 #[repr]
 //~^ ERROR malformed
+//~| ERROR is not supported on function items
 #[rustc_as_ptr = 5]
 //~^ ERROR malformed
 #[inline = 5]

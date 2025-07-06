@@ -1,5 +1,5 @@
 error: ty
-  --> $DIR/mbe-const-trait-bound-theoretical-regression.rs:8:19
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:8:19
    |
 LL |     ($ty:ty) => { compile_error!("ty"); };
    |                   ^^^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | demo! { impl const Trait }
    = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: ty
-  --> $DIR/mbe-const-trait-bound-theoretical-regression.rs:8:19
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:8:19
    |
 LL |     ($ty:ty) => { compile_error!("ty"); };
    |                   ^^^^^^^^^^^^^^^^^^^^
@@ -21,7 +21,7 @@ LL | demo! { dyn const Trait }
    = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: const trait impls are experimental
-  --> $DIR/mbe-const-trait-bound-theoretical-regression.rs:15:14
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:15:14
    |
 LL | demo! { impl const Trait }
    |              ^^^^^
@@ -31,7 +31,7 @@ LL | demo! { impl const Trait }
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: const trait impls are experimental
-  --> $DIR/mbe-const-trait-bound-theoretical-regression.rs:18:13
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:18:13
    |
 LL | demo! { dyn const Trait }
    |             ^^^^^

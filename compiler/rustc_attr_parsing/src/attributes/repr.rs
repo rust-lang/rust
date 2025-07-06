@@ -23,7 +23,8 @@ pub(crate) struct ReprParser;
 impl<S: Stage> CombineAttributeParser<S> for ReprParser {
     type Item = (ReprAttr, Span);
     const PATH: &[Symbol] = &[sym::repr];
-    const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::Repr(items);
+    const CONVERT: ConvertFn<Self::Item> =
+        |items, first_span| AttributeKind::Repr { reprs: items, first_span };
     // FIXME(jdonszelmann): never used
     const TEMPLATE: AttributeTemplate =
         template!(List: "C | Rust | align(...) | packed(...) | <integer type> | transparent");
@@ -40,8 +41,8 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
         };
 
         if list.is_empty() {
-            // this is so validation can emit a lint
-            reprs.push((ReprAttr::ReprEmpty, cx.attr_span));
+            cx.warn_empty_attribute(cx.attr_span);
+            return reprs;
         }
 
         for param in list.mixed() {

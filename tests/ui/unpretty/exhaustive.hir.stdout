@@ -64,7 +64,7 @@ mod attributes {
     #[doc = "outer doc attribute"]
     #[doc = "macro"]
     #[allow()]
-    #[attr = Repr([ReprC])]
+    #[attr = Repr {reprs: [ReprC]}]
     struct Struct;
 }
 

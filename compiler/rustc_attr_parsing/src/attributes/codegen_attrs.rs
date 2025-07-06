@@ -298,6 +298,10 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
             cx.expected_list(cx.attr_span);
             return features;
         };
+        if list.is_empty() {
+            cx.warn_empty_attribute(cx.attr_span);
+            return features;
+        }
         for item in list.mixed() {
             let Some(name_value) = item.meta_item() else {
                 cx.expected_name_value(item.span(), Some(sym::enable));
