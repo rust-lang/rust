@@ -497,6 +497,12 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing, EncodeCrossCrate::No),
     ungated!(link_ordinal, Normal, template!(List: "ordinal"), ErrorPreceding, EncodeCrossCrate::Yes),
     ungated!(unsafe naked, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
+    // See `TyAndLayout::pass_indirectly_in_non_rustic_abis` for details.
+    rustc_attr!(
+        rustc_pass_indirectly_in_non_rustic_abis, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::No,
+        "types marked with `#[rustc_pass_indirectly_in_non_rustic_abis]` are always passed indirectly by non-Rustic abis."
+    ),
 
     // Limits:
     ungated!(
