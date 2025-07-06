@@ -3,9 +3,7 @@
 
 #![allow(dead_code)] // not used on all platforms
 
-use core::sync::atomic::Ordering;
-
-use core::sync::atomic::AtomicUsize;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// Sets the `bit` of `x`.
 #[inline]
@@ -40,20 +38,14 @@ impl Initializer {
     /// Tests the `bit` of the cache.
     #[inline]
     pub(crate) fn test(self, bit: u32) -> bool {
-        debug_assert!(
-            bit < CACHE_CAPACITY,
-            "too many features, time to increase the cache size!"
-        );
+        debug_assert!(bit < CACHE_CAPACITY, "too many features, time to increase the cache size!");
         test_bit(self.0, bit)
     }
 
     /// Sets the `bit` of the cache.
     #[inline]
     pub(crate) fn set(&mut self, bit: u32) {
-        debug_assert!(
-            bit < CACHE_CAPACITY,
-            "too many features, time to increase the cache size!"
-        );
+        debug_assert!(bit < CACHE_CAPACITY, "too many features, time to increase the cache size!");
         let v = self.0;
         self.0 = set_bit(v, bit);
     }
@@ -61,10 +53,7 @@ impl Initializer {
     /// Unsets the `bit` of the cache.
     #[inline]
     pub(crate) fn unset(&mut self, bit: u32) {
-        debug_assert!(
-            bit < CACHE_CAPACITY,
-            "too many features, time to increase the cache size!"
-        );
+        debug_assert!(bit < CACHE_CAPACITY, "too many features, time to increase the cache size!");
         let v = self.0;
         self.0 = unset_bit(v, bit);
     }
@@ -73,11 +62,7 @@ impl Initializer {
 /// This global variable is a cache of the features supported by the CPU.
 // Note: the third slot is only used in x86
 // Another Slot can be added if needed without any change to `Initializer`
-static CACHE: [Cache; 3] = [
-    Cache::uninitialized(),
-    Cache::uninitialized(),
-    Cache::uninitialized(),
-];
+static CACHE: [Cache; 3] = [Cache::uninitialized(), Cache::uninitialized(), Cache::uninitialized()];
 
 /// Feature cache with capacity for `size_of::<usize>() * 8 - 1` features.
 ///
@@ -104,19 +89,14 @@ impl Cache {
     #[inline]
     pub(crate) fn test(&self, bit: u32) -> Option<bool> {
         let cached = self.0.load(Ordering::Relaxed);
-        if cached == 0 {
-            None
-        } else {
-            Some(test_bit(cached as u128, bit))
-        }
+        if cached == 0 { None } else { Some(test_bit(cached as u128, bit)) }
     }
 
     /// Initializes the cache.
     #[inline]
     fn initialize(&self, value: usize) -> usize {
         debug_assert_eq!((value & !Cache::MASK), 0);
-        self.0
-            .store(value | Cache::INITIALIZED_BIT, Ordering::Relaxed);
+        self.0.store(value | Cache::INITIALIZED_BIT, Ordering::Relaxed);
         value
     }
 }
@@ -217,7 +197,5 @@ pub(crate) fn test(bit: u32) -> bool {
     } else {
         (bit - 2 * Cache::CAPACITY, 2)
     };
-    CACHE[idx]
-        .test(relative_bit)
-        .unwrap_or_else(|| detect_and_initialize().test(bit))
+    CACHE[idx].test(relative_bit).unwrap_or_else(|| detect_and_initialize().test(bit))
 }
