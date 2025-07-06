@@ -81,11 +81,12 @@ pub(super) fn failed_to_match_macro(
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
     if let Some((arg, comma_span)) = arg.add_comma() {
         for rule in rules {
+            let MacroRule::Func { lhs, .. } = rule else { continue };
             let parser = parser_from_cx(psess, arg.clone(), Recovery::Allowed);
             let mut tt_parser = TtParser::new(name);
 
             if let Success(_) =
-                tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &rule.lhs, &mut NoopTracker)
+                tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, &mut NoopTracker)
             {
                 if comma_span.is_dummy() {
                     err.note("you might be missing a comma");
