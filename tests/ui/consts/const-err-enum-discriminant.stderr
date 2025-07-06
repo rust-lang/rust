@@ -1,9 +1,0 @@
-error[E0080]: using uninitialized data, but this operation requires initialized memory
-  --> $DIR/const-err-enum-discriminant.rs:8:21
-   |
-LL |     Boo = [unsafe { Foo { b: () }.a }; 4][3],
-   |                     ^^^^^^^^^^^^^^^ evaluation of `Bar::Boo::{constant#0}` failed here
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0080`.
