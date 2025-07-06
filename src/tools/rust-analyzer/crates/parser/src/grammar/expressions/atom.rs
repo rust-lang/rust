@@ -411,11 +411,10 @@ fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
             dir_spec.abandon(p);
             op.abandon(p);
             op_n.abandon(p);
-            p.err_and_bump("expected asm operand");
 
-            // improves error recovery and handles err_and_bump recovering from `{` which gets
-            // the parser stuck here
+            // improves error recovery
             if p.at(T!['{']) {
+                p.error("expected asm operand");
                 // test_err bad_asm_expr
                 // fn foo() {
                 //     builtin#asm(
@@ -423,6 +422,8 @@ fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
                 //     );
                 // }
                 expr(p);
+            } else {
+                p.err_and_bump("expected asm operand");
             }
 
             if p.at(T!['}']) {
