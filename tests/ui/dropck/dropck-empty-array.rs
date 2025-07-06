@@ -1,6 +1,7 @@
 //@ run-pass
 
-#[allow(dead_code)]
+#![allow(dead_code, unused_variables, unused_assignments)]
+
 struct Struct<'s>(&'s str);
 
 impl<'s> Drop for Struct<'s> {

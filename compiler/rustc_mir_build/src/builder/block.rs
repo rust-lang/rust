@@ -204,6 +204,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 block,
                                 node,
                                 span,
+                                false,
                                 OutsideGuard,
                                 ScheduleDrops::Yes,
                             );
@@ -296,6 +297,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 block,
                                 node,
                                 span,
+                                false,
                                 OutsideGuard,
                                 ScheduleDrops::Yes,
                             );

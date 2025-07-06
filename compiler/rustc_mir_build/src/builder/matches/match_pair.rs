@@ -160,7 +160,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            PatKind::Binding { mode, var, ref subpattern, .. } => {
+            PatKind::Binding { mode, var, is_shorthand, ref subpattern, .. } => {
                 // In order to please the borrow checker, when lowering a pattern
                 // like `x @ subpat` we must establish any bindings in `subpat`
                 // before establishing the binding for `x`.
@@ -199,6 +199,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                         source,
                         var_id: var,
                         binding_mode: mode,
+                        is_shorthand,
                     });
                 }
 
