@@ -3897,12 +3897,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         // Move up the non-overlapping bindings to the or-pattern.
                         // Existing bindings just get "merged".
                         let collected = bindings.pop().unwrap().1;
+                        #[allow(rustc::potential_query_instability)] // FIXME
                         bindings.last_mut().unwrap().1.extend(collected);
                     }
                     // This or-pattern itself can itself be part of a product,
                     // e.g. `(V1(a) | V2(a), a)` or `(a, V1(a) | V2(a))`.
                     // Both cases bind `a` again in a product pattern and must be rejected.
                     let collected = bindings.pop().unwrap().1;
+                    #[allow(rustc::potential_query_instability)] // FIXME
                     bindings.last_mut().unwrap().1.extend(collected);
 
                     // Prevent visiting `ps` as we've already done so above.
