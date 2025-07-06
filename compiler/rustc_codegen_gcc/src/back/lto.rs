@@ -51,9 +51,6 @@ fn prepare_lto(
     cgcx: &CodegenContext<GccCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
 ) -> Result<LtoData, FatalError> {
-    // FIXME(bjorn3): Limit LTO exports to these symbols
-    let _symbols_below_threshold = &cgcx.exported_symbols_for_lto;
-
     let tmp_path = match tempdir() {
         Ok(tmp_path) => tmp_path,
         Err(error) => {
