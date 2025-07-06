@@ -405,7 +405,7 @@ impl<'a> State<'a> {
                 }
                 self.pclose();
             }
-            hir::TyKind::BareFn(f) => {
+            hir::TyKind::FnPtr(f) => {
                 self.print_ty_fn(f.abi, f.safety, f.decl, None, f.generic_params, f.param_idents);
             }
             hir::TyKind::UnsafeBinder(unsafe_binder) => {
