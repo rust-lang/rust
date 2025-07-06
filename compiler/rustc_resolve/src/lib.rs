@@ -1081,7 +1081,10 @@ pub struct Resolver<'ra, 'tcx> {
     /// some AST passes can generate identifiers that only resolve to local or
     /// lang items.
     empty_module: Module<'ra>,
-    module_map: FxIndexMap<DefId, Module<'ra>>,
+    /// Eagerly populated map of all local non-block modules.
+    local_module_map: FxIndexMap<LocalDefId, Module<'ra>>,
+    /// Lazily populated cache of modules loaded from external crates.
+    extern_module_map: RefCell<FxIndexMap<DefId, Module<'ra>>>,
     binding_parent_modules: FxHashMap<NameBinding<'ra>, Module<'ra>>,
 
     underscore_disambiguator: u32,
@@ -1112,8 +1115,9 @@ pub struct Resolver<'ra, 'tcx> {
     builtin_macros: FxHashMap<Symbol, SyntaxExtensionKind>,
     registered_tools: &'tcx RegisteredTools,
     macro_use_prelude: FxIndexMap<Symbol, NameBinding<'ra>>,
+    /// Eagerly populated map of all local macro definitions.
     local_macro_map: FxHashMap<LocalDefId, &'ra MacroData>,
-    /// Lazily populated cache of macros loaded from external crates.
+    /// Lazily populated cache of macro definitions loaded from external crates.
     extern_macro_map: RefCell<FxHashMap<DefId, &'ra MacroData>>,
     dummy_ext_bang: Arc<SyntaxExtension>,
     dummy_ext_derive: Arc<SyntaxExtension>,
@@ -1265,7 +1269,6 @@ impl<'ra> ResolverArenas<'ra> {
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
-        module_map: &mut FxIndexMap<DefId, Module<'ra>>,
     ) -> Module<'ra> {
         let (def_id, self_binding) = match kind {
             ModuleKind::Def(def_kind, def_id, _) => (
@@ -1284,9 +1287,6 @@ impl<'ra> ResolverArenas<'ra> {
         ))));
         if def_id.is_none_or(|def_id| def_id.is_local()) {
             self.local_modules.borrow_mut().push(module);
-        }
-        if let Some(def_id) = def_id {
-            module_map.insert(def_id, module);
         }
         module
     }
@@ -1428,22 +1428,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         arenas: &'ra ResolverArenas<'ra>,
     ) -> Resolver<'ra, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
-        let mut module_map = FxIndexMap::default();
+        let mut local_module_map = FxIndexMap::default();
         let graph_root = arenas.new_module(
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, None),
             ExpnId::root(),
             crate_span,
             attr::contains_name(attrs, sym::no_implicit_prelude),
-            &mut module_map,
         );
+        local_module_map.insert(CRATE_DEF_ID, graph_root);
         let empty_module = arenas.new_module(
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, None),
             ExpnId::root(),
             DUMMY_SP,
             true,
-            &mut Default::default(),
         );
 
         let mut node_id_to_def_id = NodeMap::default();
@@ -1504,7 +1503,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
             empty_module,
-            module_map,
+            local_module_map,
+            extern_module_map: Default::default(),
             block_map: Default::default(),
             binding_parent_modules: FxHashMap::default(),
             ast_transform_scopes: FxHashMap::default(),
@@ -1608,7 +1608,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         resolver
     }
 
-    fn new_module(
+    fn new_local_module(
         &mut self,
         parent: Option<Module<'ra>>,
         kind: ModuleKind,
@@ -1616,8 +1616,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         span: Span,
         no_implicit_prelude: bool,
     ) -> Module<'ra> {
-        let module_map = &mut self.module_map;
-        self.arenas.new_module(parent, kind, expn_id, span, no_implicit_prelude, module_map)
+        let module = self.arenas.new_module(parent, kind, expn_id, span, no_implicit_prelude);
+        if let Some(def_id) = module.opt_def_id() {
+            self.local_module_map.insert(def_id.expect_local(), module);
+        }
+        module
+    }
+
+    fn new_extern_module(
+        &mut self,
+        parent: Option<Module<'ra>>,
+        kind: ModuleKind,
+        expn_id: ExpnId,
+        span: Span,
+        no_implicit_prelude: bool,
+    ) -> Module<'ra> {
+        let module = self.arenas.new_module(parent, kind, expn_id, span, no_implicit_prelude);
+        self.extern_module_map.borrow_mut().insert(module.def_id(), module);
+        module
     }
 
     fn new_local_macro(&mut self, def_id: LocalDefId, macro_data: MacroData) -> &'ra MacroData {

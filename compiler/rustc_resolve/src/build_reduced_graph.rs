@@ -102,33 +102,36 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// or trait), then this function returns that module's resolver representation, otherwise it
     /// returns `None`.
     pub(crate) fn get_module(&mut self, def_id: DefId) -> Option<Module<'ra>> {
-        if let module @ Some(..) = self.module_map.get(&def_id) {
-            return module.copied();
-        }
+        match def_id.as_local() {
+            Some(local_def_id) => self.local_module_map.get(&local_def_id).copied(),
+            None => {
+                if let module @ Some(..) = self.extern_module_map.borrow().get(&def_id) {
+                    return module.copied();
+                }
 
-        if !def_id.is_local() {
-            // Query `def_kind` is not used because query system overhead is too expensive here.
-            let def_kind = self.cstore().def_kind_untracked(def_id);
-            if def_kind.is_module_like() {
-                let parent = self
-                    .tcx
-                    .opt_parent(def_id)
-                    .map(|parent_id| self.get_nearest_non_block_module(parent_id));
-                // Query `expn_that_defined` is not used because
-                // hashing spans in its result is expensive.
-                let expn_id = self.cstore().expn_that_defined_untracked(def_id, self.tcx.sess);
-                return Some(self.new_module(
-                    parent,
-                    ModuleKind::Def(def_kind, def_id, Some(self.tcx.item_name(def_id))),
-                    expn_id,
-                    self.def_span(def_id),
-                    // FIXME: Account for `#[no_implicit_prelude]` attributes.
-                    parent.is_some_and(|module| module.no_implicit_prelude),
-                ));
+                // Query `def_kind` is not used because query system overhead is too expensive here.
+                let def_kind = self.cstore().def_kind_untracked(def_id);
+                if def_kind.is_module_like() {
+                    let parent = self
+                        .tcx
+                        .opt_parent(def_id)
+                        .map(|parent_id| self.get_nearest_non_block_module(parent_id));
+                    // Query `expn_that_defined` is not used because
+                    // hashing spans in its result is expensive.
+                    let expn_id = self.cstore().expn_that_defined_untracked(def_id, self.tcx.sess);
+                    return Some(self.new_extern_module(
+                        parent,
+                        ModuleKind::Def(def_kind, def_id, Some(self.tcx.item_name(def_id))),
+                        expn_id,
+                        self.def_span(def_id),
+                        // FIXME: Account for `#[no_implicit_prelude]` attributes.
+                        parent.is_some_and(|module| module.no_implicit_prelude),
+                    ));
+                }
+
+                None
             }
         }
-
-        None
     }
 
     pub(crate) fn expn_def_scope(&mut self, expn_id: ExpnId) -> Module<'ra> {
@@ -758,7 +761,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 if let ast::ModKind::Loaded(_, _, _, Err(_)) = mod_kind {
                     self.r.mods_with_parse_errors.insert(def_id);
                 }
-                self.parent_scope.module = self.r.new_module(
+                self.parent_scope.module = self.r.new_local_module(
                     Some(parent),
                     ModuleKind::Def(def_kind, def_id, Some(ident.name)),
                     expansion.to_expn_id(),
@@ -790,7 +793,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             ItemKind::Enum(ident, _, _) | ItemKind::Trait(box ast::Trait { ident, .. }) => {
                 self.r.define(parent, ident, TypeNS, res, vis, sp, expansion);
 
-                self.parent_scope.module = self.r.new_module(
+                self.parent_scope.module = self.r.new_local_module(
                     Some(parent),
                     ModuleKind::Def(def_kind, def_id, Some(ident.name)),
                     expansion.to_expn_id(),
@@ -986,7 +989,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         let parent = self.parent_scope.module;
         let expansion = self.parent_scope.expansion;
         if self.block_needs_anonymous_module(block) {
-            let module = self.r.new_module(
+            let module = self.r.new_local_module(
                 Some(parent),
                 ModuleKind::Block,
                 expansion.to_expn_id(),

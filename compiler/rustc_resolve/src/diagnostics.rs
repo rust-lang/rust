@@ -2159,7 +2159,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .keys()
             .map(|ident| ident.name)
             .chain(
-                self.module_map
+                self.local_module_map
+                    .iter()
+                    .filter(|(_, module)| {
+                        current_module.is_ancestor_of(**module) && current_module != **module
+                    })
+                    .flat_map(|(_, module)| module.kind.name()),
+            )
+            .chain(
+                self.extern_module_map
+                    .borrow()
                     .iter()
                     .filter(|(_, module)| {
                         current_module.is_ancestor_of(**module) && current_module != **module
