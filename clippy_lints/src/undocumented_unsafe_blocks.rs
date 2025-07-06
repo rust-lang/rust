@@ -143,7 +143,8 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
         if let Some(tail) = block.expr
             && !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, tail.hir_id)
             && !tail.span.in_external_macro(cx.tcx.sess.source_map())
-            && let HasSafetyComment::Yes(pos) = stmt_has_safety_comment(cx, tail.span, tail.hir_id)
+            && let HasSafetyComment::Yes(pos) =
+                stmt_has_safety_comment(cx, tail.span, tail.hir_id, self.accept_comment_above_attributes)
             && let Some(help_span) = expr_has_unnecessary_safety_comment(cx, tail, pos)
         {
             span_lint_and_then(
@@ -167,7 +168,8 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
         };
         if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, stmt.hir_id)
             && !stmt.span.in_external_macro(cx.tcx.sess.source_map())
-            && let HasSafetyComment::Yes(pos) = stmt_has_safety_comment(cx, stmt.span, stmt.hir_id)
+            && let HasSafetyComment::Yes(pos) =
+                stmt_has_safety_comment(cx, stmt.span, stmt.hir_id, self.accept_comment_above_attributes)
             && let Some(help_span) = expr_has_unnecessary_safety_comment(cx, expr, pos)
         {
             span_lint_and_then(
@@ -534,7 +536,12 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
 
 /// Checks if the lines immediately preceding the item contain a safety comment.
 #[allow(clippy::collapsible_match)]
-fn stmt_has_safety_comment(cx: &LateContext<'_>, span: Span, hir_id: HirId) -> HasSafetyComment {
+fn stmt_has_safety_comment(
+    cx: &LateContext<'_>,
+    span: Span,
+    hir_id: HirId,
+    accept_comment_above_attributes: bool,
+) -> HasSafetyComment {
     match span_from_macro_expansion_has_safety_comment(cx, span) {
         HasSafetyComment::Maybe => (),
         has_safety_comment => return has_safety_comment,
@@ -548,6 +555,13 @@ fn stmt_has_safety_comment(cx: &LateContext<'_>, span: Span, hir_id: HirId) -> H
         Node::Block(block) => walk_span_to_context(block.span, SyntaxContext::root()).map(Span::lo),
         _ => return HasSafetyComment::Maybe,
     };
+
+    // if span_with_attrs_has_safety_comment(cx, span, hir_id, accept_comment_above_attrib
+    // }
+    let mut span = span;
+    if accept_comment_above_attributes {
+        span = include_attrs_in_span(cx, hir_id, span);
+    }
 
     let source_map = cx.sess().source_map();
     if let Some(comment_start) = comment_start
