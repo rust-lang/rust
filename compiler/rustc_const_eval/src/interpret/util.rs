@@ -60,6 +60,6 @@ impl EnteredTraceSpan for tracing::span::EnteredSpan {}
 #[macro_export]
 macro_rules! enter_trace_span {
     ($machine:ident, $($tt:tt)*) => {
-        $machine::enter_trace_span(tracing::info_span!($($tt)*))
+        $machine::enter_trace_span(|| tracing::info_span!($($tt)*))
     }
 }

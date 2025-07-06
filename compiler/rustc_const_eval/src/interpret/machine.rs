@@ -636,7 +636,7 @@ pub trait Machine<'tcx>: Sized {
     /// return `span.entered()`. Also see [crate::enter_trace_span].
     #[must_use]
     #[inline(always)]
-    fn enter_trace_span(_span: tracing::Span) -> impl EnteredTraceSpan {
+    fn enter_trace_span(_span: impl FnOnce() -> tracing::Span) -> impl EnteredTraceSpan {
         ()
     }
 }
