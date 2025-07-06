@@ -17,7 +17,6 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
-use rustc_span::sym;
 use rustc_type_ir::solve::AdtDestructorKind;
 use tracing::{debug, info, trace};
 
@@ -296,7 +295,7 @@ impl AdtDefData {
             flags |= AdtFlags::HAS_CTOR;
         }
 
-        if tcx.has_attr(did, sym::fundamental) {
+        if find_attr!(tcx.get_all_attrs(did), AttributeKind::Fundamental) {
             flags |= AdtFlags::IS_FUNDAMENTAL;
         }
         if tcx.is_lang_item(did, LangItem::PhantomData) {

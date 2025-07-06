@@ -122,24 +122,6 @@ error: malformed `cfi_encoding` attribute input
 LL | #[cfi_encoding]
    | ^^^^^^^^^^^^^^^ help: must be of the form: `#[cfi_encoding = "encoding"]`
 
-error: malformed `type_const` attribute input
-  --> $DIR/malformed-attrs.rs:142:5
-   |
-LL |     #[type_const = 1]
-   |     ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[type_const]`
-
-error: malformed `marker` attribute input
-  --> $DIR/malformed-attrs.rs:154:1
-   |
-LL | #[marker = 3]
-   | ^^^^^^^^^^^^^ help: must be of the form: `#[marker]`
-
-error: malformed `fundamental` attribute input
-  --> $DIR/malformed-attrs.rs:156:1
-   |
-LL | #[fundamental()]
-   | ^^^^^^^^^^^^^^^^ help: must be of the form: `#[fundamental]`
-
 error: malformed `ffi_pure` attribute input
   --> $DIR/malformed-attrs.rs:164:5
    |
@@ -546,6 +528,24 @@ LL | #[rustc_layout_scalar_valid_range_end]
    | expected this to be a list
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
 
+error[E0565]: malformed `marker` attribute input
+  --> $DIR/malformed-attrs.rs:154:1
+   |
+LL | #[marker = 3]
+   | ^^^^^^^^^---^
+   | |        |
+   | |        didn't expect any arguments here
+   | help: must be of the form: `#[marker]`
+
+error[E0565]: malformed `fundamental` attribute input
+  --> $DIR/malformed-attrs.rs:156:1
+   |
+LL | #[fundamental()]
+   | ^^^^^^^^^^^^^--^
+   | |            |
+   | |            didn't expect any arguments here
+   | help: must be of the form: `#[fundamental]`
+
 error[E0565]: malformed `non_exhaustive` attribute input
   --> $DIR/malformed-attrs.rs:196:1
    |
@@ -554,6 +554,15 @@ LL | #[non_exhaustive = 1]
    | |                |
    | |                didn't expect any arguments here
    | help: must be of the form: `#[non_exhaustive]`
+
+error[E0565]: malformed `type_const` attribute input
+  --> $DIR/malformed-attrs.rs:142:5
+   |
+LL |     #[type_const = 1]
+   |     ^^^^^^^^^^^^^---^
+   |     |            |
+   |     |            didn't expect any arguments here
+   |     help: must be of the form: `#[type_const]`
 
 error: attribute should be applied to `const fn`
   --> $DIR/malformed-attrs.rs:34:1
