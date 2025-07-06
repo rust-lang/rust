@@ -1126,6 +1126,11 @@ impl Step for UnstableBookGen {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
 
+        let stage = builder.top_stage;
+        let compiler = builder.compiler(stage, self.target);
+        let rustc_path =
+            builder.out.join(compiler.host).join(format!("stage{stage}")).join("bin").join("rustc");
+
         builder.info(&format!("Generating unstable book md files ({target})"));
         let out = builder.md_doc_out(target).join("unstable-book");
         builder.create_dir(&out);
@@ -1134,6 +1139,7 @@ impl Step for UnstableBookGen {
         cmd.arg(builder.src.join("library"));
         cmd.arg(builder.src.join("compiler"));
         cmd.arg(builder.src.join("src"));
+        cmd.arg(rustc_path);
         cmd.arg(out);
 
         cmd.run(builder);
