@@ -3,20 +3,6 @@
 use super::Utf8Error;
 use crate::intrinsics::const_eval_select;
 
-/// Returns the initial codepoint accumulator for the first byte.
-/// The first byte is special, only want bottom 5 bits for width 2, 4 bits
-/// for width 3, and 3 bits for width 4.
-#[inline]
-const fn utf8_first_byte(byte: u8, width: u32) -> u32 {
-    (byte & (0x7F >> width)) as u32
-}
-
-/// Returns the value of `ch` updated with continuation byte `byte`.
-#[inline]
-const fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 {
-    (ch << 6) | (byte & CONT_MASK) as u32
-}
-
 /// Checks whether the byte is a UTF-8 continuation byte (i.e., starts with the
 /// bits `10`).
 #[inline]
@@ -33,39 +19,46 @@ pub(super) const fn utf8_is_cont_byte(byte: u8) -> bool {
 #[unstable(feature = "str_internals", issue = "none")]
 #[inline]
 pub unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> Option<u32> {
-    // Decode UTF-8
-    let x = *bytes.next()?;
-    if x < 128 {
-        return Some(x as u32);
+    let b1 = *bytes.next()? as u32;
+    if b1 < 0x80 {
+        // 1 byte (ASCII) case:
+        // c = b1
+        return Some(b1);
     }
 
-    // Multibyte case follows
-    // Decode from a byte combination out of: [[[x y] z] w]
-    // NOTE: Performance is sensitive to the exact formulation here
-    let init = utf8_first_byte(x, 2);
-    // SAFETY: `bytes` produces an UTF-8-like string,
-    // so the iterator must produce a value here.
-    let y = unsafe { *bytes.next().unwrap_unchecked() };
-    let mut ch = utf8_acc_cont_byte(init, y);
-    if x >= 0xE0 {
-        // [[x y z] w] case
-        // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
-        // SAFETY: `bytes` produces an UTF-8-like string,
-        // so the iterator must produce a value here.
-        let z = unsafe { *bytes.next().unwrap_unchecked() };
-        let y_z = utf8_acc_cont_byte((y & CONT_MASK) as u32, z);
-        ch = init << 12 | y_z;
-        if x >= 0xF0 {
-            // [x y z w] case
-            // use only the lower 3 bits of `init`
-            // SAFETY: `bytes` produces an UTF-8-like string,
-            // so the iterator must produce a value here.
-            let w = unsafe { *bytes.next().unwrap_unchecked() };
-            ch = (init & 7) << 18 | utf8_acc_cont_byte(y_z, w);
-        }
+    // SAFETY: `bytes` produces a UTF-8-like string
+    let b2 = unsafe { *bytes.next().unwrap_unchecked() } as u32;
+    let c = (b1 & 0x1F) << 6 | (b2 & 0x3F);
+    if b1 < 0xE0 {
+        // 2 byte case:
+        // c = (b1 & 0x1F) << 6
+        //   | (b2 & 0x3F) << 0
+        return Some(c);
     }
 
-    Some(ch)
+    // SAFETY: `bytes` produces a UTF-8-like string
+    let b3 = unsafe { *bytes.next().unwrap_unchecked() } as u32;
+    let c = c << 6 | (b3 & 0x3F);
+    if b1 < 0xF0 {
+        // 3 byte case:
+        // c = (b1 & 0x1F) << 12
+        //   | (b2 & 0x3F) << 6
+        //   | (b3 & 0x3F) << 0
+        return Some(c);
+    }
+
+    // SAFETY: `bytes` produces a UTF-8-like string
+    let b4 = unsafe { *bytes.next().unwrap_unchecked() } as u32;
+    let c = c << 6 | (b4 & 0x3F);
+    // 4 byte case:
+    // c = ((b1 & 0x1F) << 18
+    //    | (b2 & 0x3F) << 12
+    //    | (b3 & 0x3F) << 6
+    //    | (b4 & 0x3F) << 0) & 0x3F_FF_FF
+    // Masking by 0x1F_FF_FF would be sufficient (since we only want the 21 lowest bits),
+    // but masking by 0x3F_FF_FF lets x86 use a movzx instead of an and,
+    // which has a shorter encoding.
+    Some(c & 0x3F_FF_FF)
 }
 
 /// Reads the last code point out of a byte iterator (assuming a
@@ -74,41 +67,49 @@ pub unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> 
 /// # Safety
 ///
 /// `bytes` must produce a valid UTF-8-like (UTF-8 or WTF-8) string
+#[unstable(feature = "str_internals", issue = "none")]
 #[inline]
-pub(super) unsafe fn next_code_point_reverse<'a, I>(bytes: &mut I) -> Option<u32>
+pub unsafe fn next_code_point_reverse<'a, I>(bytes: &mut I) -> Option<u32>
 where
     I: DoubleEndedIterator<Item = &'a u8>,
 {
-    // Decode UTF-8
-    let w = match *bytes.next_back()? {
-        next_byte if next_byte < 128 => return Some(next_byte as u32),
-        back_byte => back_byte,
-    };
-
-    // Multibyte case follows
-    // Decode from a byte combination out of: [x [y [z w]]]
-    let mut ch;
-    // SAFETY: `bytes` produces an UTF-8-like string,
-    // so the iterator must produce a value here.
-    let z = unsafe { *bytes.next_back().unwrap_unchecked() };
-    ch = utf8_first_byte(z, 2);
-    if utf8_is_cont_byte(z) {
-        // SAFETY: `bytes` produces an UTF-8-like string,
-        // so the iterator must produce a value here.
-        let y = unsafe { *bytes.next_back().unwrap_unchecked() };
-        ch = utf8_first_byte(y, 3);
-        if utf8_is_cont_byte(y) {
-            // SAFETY: `bytes` produces an UTF-8-like string,
-            // so the iterator must produce a value here.
-            let x = unsafe { *bytes.next_back().unwrap_unchecked() };
-            ch = utf8_first_byte(x, 4);
-            ch = utf8_acc_cont_byte(ch, y);
-        }
-        ch = utf8_acc_cont_byte(ch, z);
+    let b1 = *bytes.next_back()?;
+    if b1 < 0x80 {
+        // 1 byte (ASCII) case:
+        // c = b1
+        return Some(b1 as u32);
     }
-    ch = utf8_acc_cont_byte(ch, w);
 
-    Some(ch)
+    // SAFETY: `bytes` produces a UTF-8-like string
+    let b2 = unsafe { *bytes.next_back().unwrap_unchecked() };
+    let c = u32::from(b1 & 0x3F) | u32::from(b2 & 0x3F) << 6;
+    if !utf8_is_cont_byte(b2) {
+        // 2 byte case:
+        // c = (b2 & 0x3F) << 6
+        //   | (b1 & 0x3F) << 0
+        return Some(c);
+    }
+
+    // SAFETY: `bytes` produces a UTF-8-like string
+    let b3 = unsafe { *bytes.next_back().unwrap_unchecked() };
+    let c = c | u32::from(b3 & 0x3F) << 12;
+    if !utf8_is_cont_byte(b3) {
+        // 3 byte case:
+        // c = ((b3 & 0x3F) << 12
+        //    | (b2 & 0x3F) << 6
+        //    | (b1 & 0x3F) << 0) & 0xFF_FF
+        return Some(c & 0xFF_FF);
+    }
+
+    // SAFETY: `bytes` produces a UTF-8-like string
+    let b4 = unsafe { *bytes.next_back().unwrap_unchecked() };
+    let c = c | u32::from(b4 & 0x07) << 18;
+    // 4 byte case:
+    // c = (b4 & 0x07) << 18
+    //   | (b3 & 0x3F) << 12
+    //   | (b2 & 0x3F) << 6
+    //   | (b1 & 0x3F) << 0
+    Some(c)
 }
 
 const NONASCII_MASK: usize = usize::repeat_u8(0x80);
@@ -278,6 +279,3 @@ const UTF8_CHAR_WIDTH: &[u8; 256] = &[
 pub const fn utf8_char_width(b: u8) -> usize {
     UTF8_CHAR_WIDTH[b as usize] as usize
 }
-
-/// Mask of the value bits of a continuation byte.
-const CONT_MASK: u8 = 0b0011_1111;
