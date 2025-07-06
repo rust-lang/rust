@@ -295,6 +295,12 @@ impl DefKind {
         }
     }
 
+    /// This is a "module" in name resolution sense.
+    #[inline]
+    pub fn is_module_like(self) -> bool {
+        matches!(self, DefKind::Mod | DefKind::Enum | DefKind::Trait)
+    }
+
     #[inline]
     pub fn is_fn_like(self) -> bool {
         matches!(
@@ -716,6 +722,15 @@ impl<Id> Res<Id> {
     pub fn mod_def_id(&self) -> Option<DefId> {
         match *self {
             Res::Def(DefKind::Mod, id) => Some(id),
+            _ => None,
+        }
+    }
+
+    /// If this is a "module" in name resolution sense, return its `DefId`.
+    #[inline]
+    pub fn module_like_def_id(&self) -> Option<DefId> {
+        match self {
+            Res::Def(def_kind, def_id) if def_kind.is_module_like() => Some(*def_id),
             _ => None,
         }
     }
