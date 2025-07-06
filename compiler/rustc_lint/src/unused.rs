@@ -1453,7 +1453,33 @@ declare_lint! {
     "unnecessary braces around an expression"
 }
 
-declare_lint_pass!(UnusedBraces => [UNUSED_BRACES]);
+#[derive(Default)]
+pub(crate) struct UnusedBraces {
+    parent_followed_by_block: Vec<bool>,
+}
+
+impl_lint_pass!(UnusedBraces => [UNUSED_BRACES]);
+
+impl UnusedBraces {
+    #[inline]
+    fn should_mark_block(e: &ast::Expr) -> bool {
+        return match e.kind {
+            ExprKind::Block(..) => true,
+            _ => Self::is_followed_by_block(e),
+        };
+    }
+
+    #[inline]
+    fn is_followed_by_block(e: &ast::Expr) -> bool {
+        return match e.kind {
+            ExprKind::If(ref cond, ..) if !matches!(cond.kind, ExprKind::Let(..)) => true,
+            ExprKind::While(ref cond, ..) if !matches!(cond.kind, ExprKind::Let(..)) => true,
+            ExprKind::ForLoop { .. } => true,
+            ExprKind::Match(_, _, ast::MatchKind::Prefix) => true,
+            _ => false,
+        };
+    }
+}
 
 impl UnusedDelimLint for UnusedBraces {
     const DELIM_STR: &'static str = "braces";
@@ -1483,6 +1509,11 @@ impl UnusedDelimLint for UnusedBraces {
                 // - the block does not have a label
                 // - the block is not `unsafe`
                 // - the block contains exactly one expression (do not lint `{ expr; }`)
+                //   - however, this does not lint if block is immediately followed by parent
+                //     expression's block, e.g. `if` and `match`, which may cause false positive.
+                //      ```
+                //      if return { return } {} else {}
+                //      ```
                 // - `followed_by_block` is true and the internal expr may contain a `{`
                 // - the block is not multiline (do not lint multiline match arms)
                 //      ```
@@ -1505,6 +1536,11 @@ impl UnusedDelimLint for UnusedBraces {
                 if let [stmt] = inner.stmts.as_slice() {
                     if let ast::StmtKind::Expr(ref expr) = stmt.kind {
                         if !Self::is_expr_delims_necessary(expr, ctx, followed_by_block)
+                            && !Self::is_expr_delims_necessary(
+                                expr,
+                                ctx,
+                                self.parent_followed_by_block.last().copied().unwrap_or(false),
+                            )
                             && (ctx != UnusedDelimsCtx::AnonConst
                                 || (matches!(expr.kind, ast::ExprKind::Lit(_))
                                     && !expr.span.from_expansion()))
@@ -1543,6 +1579,10 @@ impl EarlyLintPass for UnusedBraces {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         <Self as UnusedDelimLint>::check_expr(self, cx, e);
 
+        if Self::should_mark_block(e) {
+            self.parent_followed_by_block.push(Self::is_followed_by_block(e));
+        }
+
         if let ExprKind::Repeat(_, ref anon_const) = e.kind {
             self.check_unused_delims_expr(
                 cx,
@@ -1552,6 +1592,20 @@ impl EarlyLintPass for UnusedBraces {
                 None,
                 None,
                 false,
+            );
+        }
+    }
+
+    fn check_expr_post(&mut self, _cx: &EarlyContext<'_>, e: &ast::Expr) {
+        if Self::should_mark_block(e) {
+            let followed_by_block = self
+                .parent_followed_by_block
+                .pop()
+                .expect("check_expr and check_expr_post must balance");
+            assert_eq!(
+                followed_by_block,
+                Self::is_followed_by_block(e),
+                "check_expr, check_ty, and check_expr_post are called, in that order, by the visitor"
             );
         }
     }
