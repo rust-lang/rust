@@ -20,7 +20,6 @@ use rustc_errors::{
     Suggestions,
 };
 use rustc_fs_util::link_or_copy;
-use rustc_hir::def_id::CrateNum;
 use rustc_incremental::{
     copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };
@@ -340,7 +339,6 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub time_trace: bool,
     pub opts: Arc<config::Options>,
     pub crate_types: Vec<CrateType>,
-    pub each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
     pub output_filenames: Arc<OutputFilenames>,
     pub invocation_temp: Option<String>,
     pub regular_module_config: Arc<ModuleConfig>,
@@ -396,14 +394,20 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
 fn generate_thin_lto_work<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     exported_symbols_for_lto: &[String],
+    each_linked_rlib_for_lto: &[PathBuf],
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
 ) -> Vec<(WorkItem<B>, u64)> {
     let _prof_timer = cgcx.prof.generic_activity("codegen_thin_generate_lto_work");
 
-    let (lto_modules, copy_jobs) =
-        B::run_thin_lto(cgcx, exported_symbols_for_lto, needs_thin_lto, import_only_modules)
-            .unwrap_or_else(|e| e.raise());
+    let (lto_modules, copy_jobs) = B::run_thin_lto(
+        cgcx,
+        exported_symbols_for_lto,
+        each_linked_rlib_for_lto,
+        needs_thin_lto,
+        import_only_modules,
+    )
+    .unwrap_or_else(|e| e.raise());
     lto_modules
         .into_iter()
         .map(|module| {
@@ -720,6 +724,7 @@ pub(crate) enum WorkItem<B: WriteBackendMethods> {
     /// Performs fat LTO on the given module.
     FatLto {
         exported_symbols_for_lto: Arc<Vec<String>>,
+        each_linked_rlib_for_lto: Vec<PathBuf>,
         needs_fat_lto: Vec<FatLtoInput<B>>,
         import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
         autodiff: Vec<AutoDiffItem>,
@@ -993,6 +998,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 fn execute_fat_lto_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     exported_symbols_for_lto: &[String],
+    each_linked_rlib_for_lto: &[PathBuf],
     mut needs_fat_lto: Vec<FatLtoInput<B>>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
     autodiff: Vec<AutoDiffItem>,
@@ -1002,8 +1008,13 @@ fn execute_fat_lto_work_item<B: ExtraBackendMethods>(
         needs_fat_lto.push(FatLtoInput::Serialized { name: wp.cgu_name, buffer: module })
     }
 
-    let module =
-        B::run_and_optimize_fat_lto(cgcx, exported_symbols_for_lto, needs_fat_lto, autodiff)?;
+    let module = B::run_and_optimize_fat_lto(
+        cgcx,
+        exported_symbols_for_lto,
+        each_linked_rlib_for_lto,
+        needs_fat_lto,
+        autodiff,
+    )?;
     let module = B::codegen(cgcx, module, module_config)?;
     Ok(WorkItemResult::Finished(module))
 }
@@ -1119,11 +1130,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
     let autodiff_items = autodiff_items.to_vec();
 
     let mut each_linked_rlib_for_lto = Vec::new();
+    let mut each_linked_rlib_file_for_lto = Vec::new();
     drop(link::each_linked_rlib(crate_info, None, &mut |cnum, path| {
         if link::ignored_for_lto(sess, crate_info, cnum) {
             return;
         }
-        each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
+        each_linked_rlib_for_lto.push(cnum);
+        each_linked_rlib_file_for_lto.push(path.to_path_buf());
     }));
 
     // Compute the set of symbols we need to retain when doing LTO (if we need to)
@@ -1163,7 +1176,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
     let cgcx = CodegenContext::<B> {
         crate_types: tcx.crate_types().to_vec(),
-        each_linked_rlib_for_lto,
         lto: sess.lto(),
         fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,
@@ -1436,6 +1448,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     let needs_fat_lto = mem::take(&mut needs_fat_lto);
                     let needs_thin_lto = mem::take(&mut needs_thin_lto);
                     let import_only_modules = mem::take(&mut lto_import_only_modules);
+                    let each_linked_rlib_file_for_lto =
+                        mem::take(&mut each_linked_rlib_file_for_lto);
 
                     check_lto_allowed(&cgcx);
 
@@ -1445,6 +1459,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         work_items.push((
                             WorkItem::FatLto {
                                 exported_symbols_for_lto: Arc::clone(&exported_symbols_for_lto),
+                                each_linked_rlib_for_lto: each_linked_rlib_file_for_lto,
                                 needs_fat_lto,
                                 import_only_modules,
                                 autodiff: autodiff_items.clone(),
@@ -1463,6 +1478,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         for (work, cost) in generate_thin_lto_work(
                             &cgcx,
                             &exported_symbols_for_lto,
+                            &each_linked_rlib_file_for_lto,
                             needs_thin_lto,
                             import_only_modules,
                         ) {
@@ -1806,6 +1822,7 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
                 }
                 WorkItem::FatLto {
                     exported_symbols_for_lto,
+                    each_linked_rlib_for_lto,
                     needs_fat_lto,
                     import_only_modules,
                     autodiff,
@@ -1816,6 +1833,7 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
                     execute_fat_lto_work_item(
                         &cgcx,
                         &exported_symbols_for_lto,
+                        &each_linked_rlib_for_lto,
                         needs_fat_lto,
                         import_only_modules,
                         autodiff,
