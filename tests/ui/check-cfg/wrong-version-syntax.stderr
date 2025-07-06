@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition name: `version`
-  --> $DIR/wrong-version-syntax.rs:10:11
+  --> $DIR/wrong-version-syntax.rs:8:11
    |
 LL | #[cfg(not(version = "1.48.0"))]
    |           ^^^^^^^^^^^^^^^^^^

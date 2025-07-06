@@ -109,6 +109,8 @@ declare_features! (
     (accepted, cfg_target_feature, "1.27.0", Some(29717)),
     /// Allows `cfg(target_vendor = "...")`.
     (accepted, cfg_target_vendor, "1.33.0", Some(29718)),
+    /// Allow conditional compilation depending on rust version
+    (accepted, cfg_version, "CURRENT_RUSTC_VERSION", Some(64796)),
     /// Allows implementing `Clone` for closures where possible (RFC 2132).
     (accepted, clone_closures, "1.26.0", Some(44490)),
     /// Allows coercing non capturing closures to function pointers.
