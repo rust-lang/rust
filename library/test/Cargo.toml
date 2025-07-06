@@ -6,9 +6,9 @@ version = "0.0.0"
 edition = "2024"
 
 [dependencies]
-getopts = { version = "0.2.21", features = ['rustc-dep-of-std'] }
+getopts = { version = "0.2.23", features = ['rustc-dep-of-std'] }
 std = { path = "../std", public = true }
 core = { path = "../core", public = true }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
-libc = { version = "0.2.150", default-features = false }
+libc = { version = "0.2.174", default-features = false }
