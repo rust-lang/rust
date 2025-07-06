@@ -99,7 +99,7 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     replacer.visit_body_preserves_cfg(body);
 
     if replacer.any_replacement {
-        crate::simplify::remove_unused_definitions(body);
+        crate::simplify::remove_unused_definitions(body, true);
     }
 
     replacer.any_replacement
@@ -409,7 +409,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
             StatementKind::StorageLive(l) | StatementKind::StorageDead(l)
                 if self.storage_to_remove.contains(l) =>
             {
-                stmt.make_nop();
+                stmt.make_nop(true);
             }
             // Do not remove assignments as they may still be useful for debuginfo.
             _ => self.super_statement(stmt, loc),
