@@ -1202,12 +1202,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     fn insert_unused_macro(&mut self, ident: Ident, def_id: LocalDefId, node_id: NodeId) {
         if !ident.as_str().starts_with('_') {
             self.r.unused_macros.insert(def_id, (node_id, ident));
-            for (rule_i, rule_span) in &self.r.macro_map[&def_id.to_def_id()].rule_spans {
-                self.r
-                    .unused_macro_rules
-                    .entry(node_id)
-                    .or_default()
-                    .insert(*rule_i, (ident, *rule_span));
+            for rule_i in 0..self.r.macro_map[&def_id.to_def_id()].nrules {
+                self.r.unused_macro_rules.entry(node_id).or_default().insert(rule_i);
             }
         }
     }
