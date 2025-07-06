@@ -630,14 +630,29 @@ impl CStore {
         }
     }
 
-    pub(crate) fn update_extern_crate(&mut self, cnum: CrateNum, extern_crate: ExternCrate) {
+    /// Track how an extern crate has been loaded
+    ///
+    /// * the `name` is for [`Self::set_resolved_extern_crate_name`]
+    /// * `extern_crate` is for diagnostics
+    pub(crate) fn update_extern_crate(
+        &mut self,
+        cnum: CrateNum,
+        name: Symbol,
+        extern_crate: ExternCrate,
+    ) {
+        debug_assert_eq!(extern_crate.dependency_of, LOCAL_CRATE);
+        self.set_resolved_extern_crate_name(name, cnum);
+        self.update_extern_crate_inner(cnum, extern_crate);
+    }
+
+    fn update_extern_crate_inner(&mut self, cnum: CrateNum, extern_crate: ExternCrate) {
         let cmeta = self.get_crate_data_mut(cnum);
         if cmeta.update_extern_crate(extern_crate) {
             // Propagate the extern crate info to dependencies if it was updated.
             let extern_crate = ExternCrate { dependency_of: cnum, ..extern_crate };
             let dependencies = mem::take(&mut cmeta.dependencies);
             for &dep_cnum in &dependencies {
-                self.update_extern_crate(dep_cnum, extern_crate);
+                self.update_extern_crate_inner(dep_cnum, extern_crate);
             }
             self.get_crate_data_mut(cnum).dependencies = dependencies;
         }
