@@ -2574,8 +2574,7 @@ impl<'b> Pattern for &'b String {
 macro_rules! impl_eq {
     ($lhs:ty, $rhs: ty) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[allow(unused_lifetimes)]
-        impl<'a, 'b> PartialEq<$rhs> for $lhs {
+        impl PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
                 PartialEq::eq(&self[..], &other[..])
@@ -2587,8 +2586,7 @@ macro_rules! impl_eq {
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[allow(unused_lifetimes)]
-        impl<'a, 'b> PartialEq<$lhs> for $rhs {
+        impl PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool {
                 PartialEq::eq(&self[..], &other[..])
@@ -2602,13 +2600,13 @@ macro_rules! impl_eq {
 }
 
 impl_eq! { String, str }
-impl_eq! { String, &'a str }
+impl_eq! { String, &str }
 #[cfg(not(no_global_oom_handling))]
-impl_eq! { Cow<'a, str>, str }
+impl_eq! { Cow<'_, str>, str }
 #[cfg(not(no_global_oom_handling))]
-impl_eq! { Cow<'a, str>, &'b str }
+impl_eq! { Cow<'_, str>, &'_ str }
 #[cfg(not(no_global_oom_handling))]
-impl_eq! { Cow<'a, str>, String }
+impl_eq! { Cow<'_, str>, String }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for String {
