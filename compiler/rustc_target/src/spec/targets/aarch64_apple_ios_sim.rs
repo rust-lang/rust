@@ -1,8 +1,8 @@
-use crate::spec::base::apple::{Arch, TargetAbi, base};
-use crate::spec::{SanitizerSet, Target, TargetMetadata, TargetOptions};
+use crate::spec::base::apple::{TargetAbi, base};
+use crate::spec::{Aarch64Ver, SanitizerSet, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("ios", Arch::Arm64, TargetAbi::Simulator);
+    let (opts, llvm_target, arch) = base("ios", Aarch64Ver::V8A.into(), TargetAbi::Simulator);
     Target {
         llvm_target,
         metadata: TargetMetadata {

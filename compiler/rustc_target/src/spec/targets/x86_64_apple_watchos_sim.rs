@@ -2,7 +2,7 @@ use crate::spec::base::apple::{Arch, TargetAbi, base};
 use crate::spec::{Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("watchos", Arch::X86_64, TargetAbi::Simulator);
+    let (opts, llvm_target, arch) = base("watchos", Arch::x86_64(), TargetAbi::Simulator);
     Target {
         llvm_target,
         metadata: TargetMetadata {
