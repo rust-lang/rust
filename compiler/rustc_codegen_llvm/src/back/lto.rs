@@ -33,10 +33,10 @@ const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
 
 fn prepare_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
+    exported_symbols_for_lto: &[String],
     dcx: DiagCtxtHandle<'_>,
 ) -> Result<(Vec<CString>, Vec<(SerializedModule<ModuleBuffer>, CString)>), FatalError> {
-    let mut symbols_below_threshold = cgcx
-        .exported_symbols_for_lto
+    let mut symbols_below_threshold = exported_symbols_for_lto
         .iter()
         .map(|symbol| CString::new(symbol.to_owned()).unwrap())
         .collect::<Vec<CString>>();
@@ -135,11 +135,13 @@ fn get_bitcode_slice_from_object_data<'a>(
 /// for further optimization.
 pub(crate) fn run_fat(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
+    exported_symbols_for_lto: &[String],
     modules: Vec<FatLtoInput<LlvmCodegenBackend>>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
-    let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, dcx)?;
+    let (symbols_below_threshold, upstream_modules) =
+        prepare_lto(cgcx, exported_symbols_for_lto, dcx)?;
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
     fat_lto(cgcx, dcx, modules, upstream_modules, &symbols_below_threshold)
@@ -150,12 +152,14 @@ pub(crate) fn run_fat(
 /// can simply be copied over from the incr. comp. cache.
 pub(crate) fn run_thin(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
+    exported_symbols_for_lto: &[String],
     modules: Vec<(String, ThinBuffer)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<(Vec<ThinModule<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError> {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
-    let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, dcx)?;
+    let (symbols_below_threshold, upstream_modules) =
+        prepare_lto(cgcx, exported_symbols_for_lto, dcx)?;
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
     if cgcx.opts.cg.linker_plugin_lto.enabled() {
