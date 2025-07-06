@@ -7,9 +7,7 @@ use std::sync::Arc;
 use std::{io, iter, slice};
 
 use object::read::archive::ArchiveFile;
-use rustc_codegen_ssa::back::lto::{
-    SerializedModule, ThinModule, ThinShared, exported_symbols_for_lto,
-};
+use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
@@ -37,9 +35,10 @@ fn prepare_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
 ) -> Result<(Vec<CString>, Vec<(SerializedModule<ModuleBuffer>, CString)>), FatalError> {
-    let mut symbols_below_threshold = exported_symbols_for_lto(cgcx, dcx)?
-        .into_iter()
-        .map(|symbol| CString::new(symbol).unwrap())
+    let mut symbols_below_threshold = cgcx
+        .exported_symbols_for_lto
+        .iter()
+        .map(|symbol| CString::new(symbol.to_owned()).unwrap())
         .collect::<Vec<CString>>();
 
     // __llvm_profile_counter_bias is pulled in at link time by an undefined reference to
