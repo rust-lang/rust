@@ -26,7 +26,7 @@ use crate::{
     WorkspaceBuildScripts,
     build_dependencies::BuildScriptOutput,
     cargo_config_file,
-    cargo_workspace::{CargoMetadataConfig, DepKind, PackageData, RustLibSource},
+    cargo_workspace::{CargoMetadataConfig, DepKind, FetchMetadata, PackageData, RustLibSource},
     env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
     project_json::{Crate, CrateArrayIdx},
     sysroot::RustLibSrcWorkspace,
@@ -282,10 +282,24 @@ impl ProjectWorkspace {
             .ok()
             .flatten();
 
+        let fetch_metadata = FetchMetadata::new(
+            cargo_toml,
+            workspace_dir,
+            &CargoMetadataConfig {
+                features: features.clone(),
+                targets: targets.clone(),
+                extra_args: extra_args.clone(),
+                extra_env: extra_env.clone(),
+                toolchain_version: toolchain.clone(),
+                kind: "workspace",
+            },
+            &sysroot,
+            *no_deps,
+        );
         let target_dir = config
             .target_dir
             .clone()
-            .or_else(|| cargo_target_dir(cargo_toml, extra_env, &sysroot))
+            .or_else(|| fetch_metadata.no_deps_metadata().map(|m| m.target_directory.clone()))
             .unwrap_or_else(|| workspace_dir.join("target").into());
 
         // We spawn a bunch of processes to query various information about the workspace's
@@ -319,7 +333,7 @@ impl ProjectWorkspace {
                 };
                 rustc_dir.and_then(|rustc_dir| {
                     info!(workspace = %cargo_toml, rustc_dir = %rustc_dir, "Using rustc source");
-                    match CargoWorkspace::fetch_metadata(
+                    match FetchMetadata::new(
                         &rustc_dir,
                         workspace_dir,
                         &CargoMetadataConfig {
@@ -327,15 +341,12 @@ impl ProjectWorkspace {
                             targets: targets.clone(),
                             extra_args: extra_args.clone(),
                             extra_env: extra_env.clone(),
-                            target_dir: target_dir.clone(),
                             toolchain_version: toolchain.clone(),
                             kind: "rustc-dev"
                         },
                         &sysroot,
                         *no_deps,
-                        true,
-                        progress,
-                    ) {
+                    ).exec(&target_dir, true, progress) {
                         Ok((meta, _error)) => {
                             let workspace = CargoWorkspace::new(
                                 meta,
@@ -364,35 +375,17 @@ impl ProjectWorkspace {
                 })
             });
 
-            let cargo_metadata = s.spawn(|| {
-                CargoWorkspace::fetch_metadata(
-                    cargo_toml,
-                    workspace_dir,
-                    &CargoMetadataConfig {
-                        features: features.clone(),
-                        targets: targets.clone(),
-                        extra_args: extra_args.clone(),
-                        extra_env: extra_env.clone(),
-                        target_dir: target_dir.clone(),
-                        toolchain_version: toolchain.clone(),
-                        kind: "workspace",
-                    },
-                    &sysroot,
-                    *no_deps,
-                    false,
-                    progress,
-                )
-            });
+            let cargo_metadata = s.spawn(|| fetch_metadata.exec(&target_dir, false, progress));
             let loaded_sysroot = s.spawn(|| {
                 sysroot.load_workspace(
                     &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
                         config,
                         &targets,
                         toolchain.clone(),
-                        target_dir.clone(),
                     )),
                     config.no_deps,
                     workspace_dir,
+                    &target_dir,
                     progress,
                 )
             });
@@ -500,6 +493,7 @@ impl ProjectWorkspace {
                         &RustSourceWorkspaceConfig::Json(*sysroot_project),
                         config.no_deps,
                         project_root,
+                        &target_dir,
                         progress,
                     )
                 } else {
@@ -508,10 +502,10 @@ impl ProjectWorkspace {
                             config,
                             &targets,
                             toolchain.clone(),
-                            target_dir,
                         )),
                         config.no_deps,
                         project_root,
+                        &target_dir,
                         progress,
                     )
                 }
@@ -570,17 +564,17 @@ impl ProjectWorkspace {
                 config,
                 &targets,
                 toolchain.clone(),
-                target_dir.clone(),
             )),
             config.no_deps,
             dir,
+            &target_dir,
             &|_| (),
         );
         if let Some(loaded_sysroot) = loaded_sysroot {
             sysroot.set_workspace(loaded_sysroot);
         }
 
-        let cargo_script = CargoWorkspace::fetch_metadata(
+        let fetch_metadata = FetchMetadata::new(
             detached_file,
             dir,
             &CargoMetadataConfig {
@@ -588,24 +582,26 @@ impl ProjectWorkspace {
                 targets,
                 extra_args: config.extra_args.clone(),
                 extra_env: config.extra_env.clone(),
-                target_dir,
                 toolchain_version: toolchain.clone(),
                 kind: "detached-file",
             },
             &sysroot,
             config.no_deps,
-            false,
-            &|_| (),
-        )
-        .ok()
-        .map(|(ws, error)| {
-            let cargo_config_extra_env = cargo_config_env(detached_file, &config_file);
-            (
-                CargoWorkspace::new(ws, detached_file.clone(), cargo_config_extra_env, false),
-                WorkspaceBuildScripts::default(),
-                error.map(Arc::new),
-            )
-        });
+        );
+        let target_dir = config
+            .target_dir
+            .clone()
+            .or_else(|| fetch_metadata.no_deps_metadata().map(|m| m.target_directory.clone()))
+            .unwrap_or_else(|| dir.join("target").into());
+        let cargo_script =
+            fetch_metadata.exec(&target_dir, false, &|_| ()).ok().map(|(ws, error)| {
+                let cargo_config_extra_env = cargo_config_env(detached_file, &config_file);
+                (
+                    CargoWorkspace::new(ws, detached_file.clone(), cargo_config_extra_env, false),
+                    WorkspaceBuildScripts::default(),
+                    error.map(Arc::new),
+                )
+            });
 
         Ok(ProjectWorkspace {
             kind: ProjectWorkspaceKind::DetachedFile {
@@ -1887,14 +1883,12 @@ fn sysroot_metadata_config(
     config: &CargoConfig,
     targets: &[String],
     toolchain_version: Option<Version>,
-    target_dir: Utf8PathBuf,
 ) -> CargoMetadataConfig {
     CargoMetadataConfig {
         features: Default::default(),
         targets: targets.to_vec(),
         extra_args: Default::default(),
         extra_env: config.extra_env.clone(),
-        target_dir,
         toolchain_version,
         kind: "sysroot",
     }
