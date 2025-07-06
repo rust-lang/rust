@@ -660,6 +660,14 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
         | PredicateFilter::SelfOnly
         | PredicateFilter::SelfTraitThatDefines(_)
         | PredicateFilter::SelfAndAssociatedTypeBounds => {
+            icx.lowerer().add_sizedness_bounds(
+                &mut bounds,
+                self_param_ty,
+                superbounds,
+                None,
+                Some(trait_def_id),
+                item.span,
+            );
             icx.lowerer().add_default_super_traits(
                 trait_def_id,
                 &mut bounds,

@@ -300,6 +300,8 @@ pub trait Interner:
 
     fn is_default_trait(self, def_id: Self::DefId) -> bool;
 
+    fn is_sizedness_trait(self, def_id: Self::DefId) -> bool;
+
     fn as_lang_item(self, def_id: Self::DefId) -> Option<TraitSolverLangItem>;
 
     fn associated_type_def_ids(self, def_id: Self::DefId) -> impl IntoIterator<Item = Self::DefId>;
