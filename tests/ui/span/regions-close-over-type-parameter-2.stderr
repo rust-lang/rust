@@ -6,7 +6,6 @@ LL |         let tmp0 = 3;
 LL |         let tmp1 = &tmp0;
    |                    ^^^^^ borrowed value does not live long enough
 LL |         repeater3(tmp1)
-   |         --------------- borrow later captured here by trait object
 LL |     };
    |     - `tmp0` dropped here while still borrowed
 
