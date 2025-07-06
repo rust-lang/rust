@@ -9,7 +9,7 @@ show-text: true
 define-function: (
     "check-colors",
     [theme, mod, macro, struct, enum, trait, fn, type, union, keyword,
-     sidebar, sidebar_current, sidebar_current_background],
+     attribute, sidebar, sidebar_current, sidebar_current_background],
     block {
         call-function: ("switch-theme", {"theme": |theme|})
         // Checking results colors.
@@ -22,6 +22,7 @@ define-function: (
         assert-css: (".item-table .type", {"color": |type|}, ALL)
         assert-css: (".item-table .union", {"color": |union|}, ALL)
         assert-css: (".item-table .keyword", {"color": |keyword|}, ALL)
+        assert-css: (".item-table .attribute", {"color": |attribute|}, ALL)
         // Checking sidebar elements.
         assert-css: (
             ".sidebar-elems li:not(.current) a",
@@ -58,6 +59,7 @@ call-function: (
         "type": "#ffa0a5",
         "union": "#ffa0a5",
         "keyword": "#39afd7",
+        "attribute": "#39afd7",
         "sidebar": "#53b1db",
         "sidebar_current": "#ffb44c",
         "sidebar_current_background": "transparent",
@@ -76,6 +78,7 @@ call-function: (
         "type": "#2dbfb8",
         "union": "#2dbfb8",
         "keyword": "#d2991d",
+        "attribute": "#d2991d",
         "sidebar": "#fdbf35",
         "sidebar_current": "#fdbf35",
         "sidebar_current_background": "#444",
@@ -94,6 +97,7 @@ call-function: (
         "type": "#ad378a",
         "union": "#ad378a",
         "keyword": "#3873ad",
+        "attribute": "#3873ad",
         "sidebar": "#356da4",
         "sidebar_current": "#356da4",
         "sidebar_current_background": "#fff",
