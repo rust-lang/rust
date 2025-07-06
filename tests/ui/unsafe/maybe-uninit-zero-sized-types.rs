@@ -1,6 +1,9 @@
-//@ build-pass
-// Test the uninit() construct returning various empty types.
+//! This test checks that ZSTs can be safely initialized from
+//! `MaybeUninit::uninit().assume_init()` and `std::mem::uninitialized()`
+//! (which is deprecated). This is safe because ZSTs inherently
+//! require no actual memory initialization, as they occupy no memory.
 
+//@ build-pass
 
 use std::mem::MaybeUninit;
 

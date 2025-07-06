@@ -1,3 +1,5 @@
+//! Checks complex `use` syntax and availability of types across nested modules.
+
 //@ run-pass
 
 mod a {
@@ -15,10 +17,13 @@ mod a {
 }
 
 // Test every possible part of the syntax
-use a::{B, d::{self, *, g::H}};
-
 // Test a more common use case
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use a::B;
+use a::d::g::H;
+use a::d::{self, *};
 
 fn main() {
     let _: B;
