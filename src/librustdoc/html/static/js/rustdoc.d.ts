@@ -264,6 +264,7 @@ declare namespace rustdoc {
         displayTypeSignature: Promise<rustdoc.DisplayTypeSignature> | null,
         item: Row,
         dontValidate?: boolean,
+        alias?: string,
     }
 
     /**
