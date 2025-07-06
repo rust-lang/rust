@@ -8,6 +8,8 @@
 
 //@ run-pass
 
+#![allow(dead_code)]
+
 struct Sum(u32, u32);
 
 impl PartialEq for Sum {

@@ -1,5 +1,6 @@
 //@ run-pass
 //@ aux-build:issue-39823.rs
+#![allow(dead_code)]
 
 extern crate issue_39823;
 use issue_39823::{RemoteC, RemoteG};

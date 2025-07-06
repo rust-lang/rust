@@ -6,6 +6,7 @@
 #![allow(unused_variables)]
 #![allow(unused_must_use)]
 #![allow(path_statements)]
+#![allow(dead_code)]
 
 // Test that the drop order for locals in a fn and async fn matches up.
 extern crate arc_wake;
