@@ -41,12 +41,8 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 base::codegen_global_asm(cx, item_id);
             }
             MonoItem::Fn(instance) => {
-                if cx
-                    .tcx()
-                    .codegen_fn_attrs(instance.def_id())
-                    .flags
-                    .contains(CodegenFnAttrFlags::NAKED)
-                {
+                let flags = cx.tcx().codegen_instance_attrs(instance.def).flags;
+                if flags.contains(CodegenFnAttrFlags::NAKED) {
                     naked_asm::codegen_naked_asm::<Bx::CodegenCx>(cx, instance, item_data);
                 } else {
                     base::codegen_instance::<Bx>(cx, instance);
@@ -75,7 +71,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 cx.predefine_static(def_id, linkage, visibility, symbol_name);
             }
             MonoItem::Fn(instance) => {
-                let attrs = cx.tcx().codegen_fn_attrs(instance.def_id());
+                let attrs = cx.tcx().codegen_instance_attrs(instance.def);
 
                 if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
                     // do not define this function; it will become a global assembly block

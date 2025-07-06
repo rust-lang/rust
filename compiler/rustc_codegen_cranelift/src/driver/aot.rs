@@ -530,8 +530,8 @@ fn codegen_cgu_content(
     for (mono_item, item_data) in mono_items {
         match mono_item {
             MonoItem::Fn(instance) => {
-                if tcx.codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED)
-                {
+                let flags = tcx.codegen_instance_attrs(instance.def).flags;
+                if flags.contains(CodegenFnAttrFlags::NAKED) {
                     rustc_codegen_ssa::mir::naked_asm::codegen_naked_asm(
                         &mut GlobalAsmContext { tcx, global_asm: &mut cx.global_asm },
                         instance,

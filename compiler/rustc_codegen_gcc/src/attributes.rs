@@ -87,7 +87,7 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
     #[cfg_attr(not(feature = "master"), allow(unused_variables))] func: Function<'gcc>,
     instance: ty::Instance<'tcx>,
 ) {
-    let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
+    let codegen_fn_attrs = cx.tcx.codegen_instance_attrs(instance.def);
 
     #[cfg(feature = "master")]
     {
