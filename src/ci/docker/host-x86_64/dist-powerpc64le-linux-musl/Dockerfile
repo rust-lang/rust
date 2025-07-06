@@ -15,12 +15,6 @@ COPY scripts/crosstool-ng-build.sh /scripts/
 COPY host-x86_64/dist-powerpc64le-linux-musl/powerpc64le-unknown-linux-musl.defconfig /tmp/crosstool.defconfig
 RUN /scripts/crosstool-ng-build.sh
 
-WORKDIR /build
-
-RUN apt-get install -y --no-install-recommends rpm2cpio cpio
-COPY scripts/shared.sh scripts/build-powerpc64le-toolchain.sh /build/
-RUN ./build-powerpc64le-toolchain.sh
-
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
