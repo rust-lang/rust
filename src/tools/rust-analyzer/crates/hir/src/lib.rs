@@ -1260,7 +1260,9 @@ impl TupleField {
     }
 
     pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> Type<'db> {
-        let ty = db.infer(self.owner).tuple_field_access_types[&self.tuple]
+        let ty = db
+            .infer(self.owner)
+            .tuple_field_access_type(self.tuple)
             .as_slice(Interner)
             .get(self.index as usize)
             .and_then(|arg| arg.ty(Interner))
@@ -1927,7 +1929,7 @@ impl DefWithBody {
         expr_store_diagnostics(db, acc, &source_map);
 
         let infer = db.infer(self.into());
-        for d in &infer.diagnostics {
+        for d in infer.diagnostics() {
             acc.extend(AnyDiagnostic::inference_diagnostic(
                 db,
                 self.into(),
