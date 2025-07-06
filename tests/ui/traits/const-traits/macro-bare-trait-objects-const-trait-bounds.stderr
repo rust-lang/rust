@@ -1,5 +1,5 @@
 error: expected identifier, found `]`
-  --> $DIR/mbe-bare-trait-objects-const-trait-bounds.rs:20:16
+  --> $DIR/macro-bare-trait-objects-const-trait-bounds.rs:20:16
    |
 LL |     ($Type:ty) => {
    |      -------- while parsing argument for this `ty` macro fragment
@@ -8,7 +8,7 @@ LL | check! { [const] Trait }
    |                ^ expected identifier
 
 error[E0658]: const trait impls are experimental
-  --> $DIR/mbe-bare-trait-objects-const-trait-bounds.rs:20:11
+  --> $DIR/macro-bare-trait-objects-const-trait-bounds.rs:20:11
    |
 LL | check! { [const] Trait }
    |           ^^^^^
