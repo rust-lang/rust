@@ -397,8 +397,7 @@ pub fn compile_declarative_macro(
         let lhs_tt = parse_one_tt(lhs_tt, RulePart::Pattern, sess, node_id, features, edition);
         // We don't handle errors here, the driver will abort after parsing/expansion. We can
         // report every error in every macro this way.
-        check_emission(check_lhs_nt_follows(sess, node_id, &lhs_tt));
-        check_emission(check_lhs_no_empty_seq(sess, slice::from_ref(&lhs_tt)));
+        check_emission(check_lhs(sess, node_id, &lhs_tt));
         if let Err(e) = p.expect(exp!(FatArrow)) {
             return dummy_syn_ext(e.emit());
         }
@@ -452,6 +451,12 @@ pub fn compile_declarative_macro(
     let expander =
         Arc::new(MacroRulesMacroExpander { name: ident, span, node_id, transparency, rules });
     (mk_syn_ext(expander), nrules)
+}
+
+fn check_lhs(sess: &Session, node_id: NodeId, lhs: &mbe::TokenTree) -> Result<(), ErrorGuaranteed> {
+    let e1 = check_lhs_nt_follows(sess, node_id, lhs);
+    let e2 = check_lhs_no_empty_seq(sess, slice::from_ref(lhs));
+    e1.and(e2)
 }
 
 fn check_lhs_nt_follows(
