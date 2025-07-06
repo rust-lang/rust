@@ -372,17 +372,17 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
         TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
         TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ty_search_pat(ty).1),
         TyKind::Ref(_, MutTy { ty, .. }) => (Pat::Str("&"), ty_search_pat(ty).1),
-        TyKind::BareFn(bare_fn) => (
-            if bare_fn.safety.is_unsafe() {
+        TyKind::FnPtr(fn_ptr) => (
+            if fn_ptr.safety.is_unsafe() {
                 Pat::Str("unsafe")
-            } else if bare_fn.abi != ExternAbi::Rust {
+            } else if fn_ptr.abi != ExternAbi::Rust {
                 Pat::Str("extern")
             } else {
                 Pat::MultiStr(&["fn", "extern"])
             },
-            match bare_fn.decl.output {
+            match fn_ptr.decl.output {
                 FnRetTy::DefaultReturn(_) => {
-                    if let [.., ty] = bare_fn.decl.inputs {
+                    if let [.., ty] = fn_ptr.decl.inputs {
                         ty_search_pat(ty).1
                     } else {
                         Pat::Str("(")
