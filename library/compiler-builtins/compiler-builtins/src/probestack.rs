@@ -52,36 +52,12 @@
 // Our goal here is to touch each page between %rsp+8 and %rsp+8-%rax,
 // ensuring that if any pages are unmapped we'll make a page fault.
 //
-// FIXME(abi_custom): This function is unsafe because it uses a custom ABI,
-// it does not actually match `extern "C"`.
-//
 // The ABI here is that the stack frame size is located in `%rax`. Upon
 // return we're not supposed to modify `%rsp` or `%rax`.
 #[cfg(target_arch = "x86_64")]
 #[unsafe(naked)]
 #[rustc_std_internal_symbol]
-pub unsafe extern "C" fn __rust_probestack() {
-    #[cfg(not(all(target_env = "sgx", target_vendor = "fortanix")))]
-    macro_rules! ret {
-        () => {
-            "ret"
-        };
-    }
-
-    #[cfg(all(target_env = "sgx", target_vendor = "fortanix"))]
-    macro_rules! ret {
-        // for this target, [manually patch for LVI].
-        //
-        // [manually patch for LVI]: https://software.intel.com/security-software-guidance/insights/deep-dive-load-value-injection#specialinstructions
-        () => {
-            "
-            pop %r11
-            lfence
-            jmp *%r11
-            "
-        };
-    }
-
+pub unsafe extern "custom" fn __rust_probestack() {
     core::arch::naked_asm!(
         "
             .cfi_startproc
@@ -131,8 +107,18 @@ pub unsafe extern "C" fn __rust_probestack() {
             .cfi_def_cfa_register %rsp
             .cfi_adjust_cfa_offset -8
     ",
-        ret!(),
-        "
+    #[cfg(not(all(target_env = "sgx", target_vendor = "fortanix")))]
+    "       ret",
+    #[cfg(all(target_env = "sgx", target_vendor = "fortanix"))]
+    "
+            // for this target, [manually patch for LVI].
+            //
+            // [manually patch for LVI]: https://software.intel.com/security-software-guidance/insights/deep-dive-load-value-injection#specialinstructions
+            pop %r11
+            lfence
+            jmp *%r11
+    ",
+    "
             .cfi_endproc
     ",
         options(att_syntax)
@@ -144,13 +130,10 @@ pub unsafe extern "C" fn __rust_probestack() {
 // that on Unix we're expected to restore everything as it was, this
 // function basically can't tamper with anything.
 //
-// FIXME(abi_custom): This function is unsafe because it uses a custom ABI,
-// it does not actually match `extern "C"`.
-//
 // The ABI here is the same as x86_64, except everything is 32-bits large.
 #[unsafe(naked)]
 #[rustc_std_internal_symbol]
-pub unsafe extern "C" fn __rust_probestack() {
+pub unsafe extern "custom" fn __rust_probestack() {
     core::arch::naked_asm!(
         "
             .cfi_startproc
@@ -192,9 +175,6 @@ pub unsafe extern "C" fn __rust_probestack() {
 // probestack function will also do things like _chkstk in MSVC.
 // So we need to sub %ax %sp in probestack when arch is x86.
 //
-// FIXME(abi_custom): This function is unsafe because it uses a custom ABI,
-// it does not actually match `extern "C"`.
-//
 // REF: Rust commit(74e80468347)
 // rust\src\llvm-project\llvm\lib\Target\X86\X86FrameLowering.cpp: 805
 // Comments in LLVM:
@@ -203,7 +183,7 @@ pub unsafe extern "C" fn __rust_probestack() {
 //   themselves.
 #[unsafe(naked)]
 #[rustc_std_internal_symbol]
-pub unsafe extern "C" fn __rust_probestack() {
+pub unsafe extern "custom" fn __rust_probestack() {
     core::arch::naked_asm!(
         "
             .cfi_startproc

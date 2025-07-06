@@ -1,7 +1,10 @@
+use std::borrow::Cow;
 use std::net::{SocketAddr, TcpStream};
 use std::process::{Command, Stdio, exit};
 use std::time::Duration;
 use std::{env, fs, process, thread};
+
+use regex_lite::Regex;
 
 const JOSH_PORT: u16 = 42042;
 const DEFAULT_PR_BRANCH: &str = "update-builtins";
@@ -77,6 +80,7 @@ impl GitSync {
             "--depth=1",
         ]);
         let new_summary = check_output(["git", "log", "-1", "--format=%h %s", &new_upstream_base]);
+        let new_summary = replace_references(&new_summary, &self.upstream_repo);
 
         // Update rust-version file. As a separate commit, since making it part of
         // the merge has confused the heck out of josh in the past.
@@ -297,6 +301,13 @@ fn check_output_cfg(prog: &str, f: impl FnOnce(&mut Command) -> &mut Command) ->
     String::from_utf8(out.stdout.trim_ascii().to_vec()).expect("non-UTF8 output")
 }
 
+/// Replace `#1234`-style issue/PR references with `repo#1234` to ensure links work across
+/// repositories.
+fn replace_references<'a>(s: &'a str, repo: &str) -> Cow<'a, str> {
+    let re = Regex::new(r"\B(?P<id>#\d+)\b").unwrap();
+    re.replace(s, &format!("{repo}$id"))
+}
+
 /// Create a wrapper that stops Josh on drop.
 pub struct Josh(process::Child);
 
@@ -367,5 +378,24 @@ impl Drop for Josh {
             break anything."
         );
         self.0.kill().expect("failed to SIGKILL josh-proxy");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_replace() {
+        assert_eq!(replace_references("#1234", "r-l/rust"), "r-l/rust#1234");
+        assert_eq!(replace_references("#1234x", "r-l/rust"), "#1234x");
+        assert_eq!(
+            replace_references("merge #1234", "r-l/rust"),
+            "merge r-l/rust#1234"
+        );
+        assert_eq!(
+            replace_references("foo/bar#1234", "r-l/rust"),
+            "foo/bar#1234"
+        );
     }
 }

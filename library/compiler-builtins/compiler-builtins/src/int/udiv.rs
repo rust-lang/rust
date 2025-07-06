@@ -44,7 +44,7 @@ intrinsics! {
     }
 
     #[unsafe(naked)]
-    pub unsafe extern "C" fn __udivmodqi4() {
+    pub unsafe extern "custom" fn __udivmodqi4() {
         // compute unsigned 8-bit `n / d` and `n % d`.
         //
         // Note: GCC implements a [non-standard calling convention](https://gcc.gnu.org/wiki/avr-gcc#Exceptions_to_the_Calling_Convention) for this function.

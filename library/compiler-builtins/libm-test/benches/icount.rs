@@ -120,6 +120,22 @@ fn icount_bench_u256_add(cases: Vec<(u256, u256)>) {
 }
 
 #[library_benchmark]
+#[bench::linspace(setup_u256_add())]
+fn icount_bench_u256_sub(cases: Vec<(u256, u256)>) {
+    for (x, y) in cases.iter().copied() {
+        black_box(black_box(x) - black_box(y));
+    }
+}
+
+#[library_benchmark]
+#[bench::linspace(setup_u256_shift())]
+fn icount_bench_u256_shl(cases: Vec<(u256, u32)>) {
+    for (x, y) in cases.iter().copied() {
+        black_box(black_box(x) << black_box(y));
+    }
+}
+
+#[library_benchmark]
 #[bench::linspace(setup_u256_shift())]
 fn icount_bench_u256_shr(cases: Vec<(u256, u32)>) {
     for (x, y) in cases.iter().copied() {
@@ -129,7 +145,7 @@ fn icount_bench_u256_shr(cases: Vec<(u256, u32)>) {
 
 library_benchmark_group!(
     name = icount_bench_u128_group;
-    benchmarks = icount_bench_u128_widen_mul, icount_bench_u256_add, icount_bench_u256_shr
+    benchmarks = icount_bench_u128_widen_mul, icount_bench_u256_add, icount_bench_u256_sub, icount_bench_u256_shl, icount_bench_u256_shr
 );
 
 #[library_benchmark]

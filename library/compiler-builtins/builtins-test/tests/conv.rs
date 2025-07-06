@@ -118,7 +118,7 @@ mod i_to_f {
         i128, __floattidf;
     }
 
-    #[cfg(not(feature = "no-f16-f128"))]
+    #[cfg(f128_enabled)]
     #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     i_to_f! { f128, Quad, not(feature = "no-sys-f128-int-convert"),
         u32, __floatunsitf;
@@ -129,7 +129,7 @@ mod i_to_f {
         i128, __floattitf;
     }
 
-    #[cfg(not(feature = "no-f16-f128"))]
+    #[cfg(f128_enabled)]
     #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
     i_to_f! { f128, Quad, not(feature = "no-sys-f128-int-convert"),
         u32, __floatunsikf;

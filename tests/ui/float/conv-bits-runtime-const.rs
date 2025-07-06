@@ -5,25 +5,24 @@
 
 #![feature(f16)]
 #![feature(f128)]
+#![feature(cfg_target_has_reliable_f16_f128)]
 #![allow(unused_macro_rules)]
+// expect the unexpected (`target_has_reliable_*` are not "known" configs since they are unstable)
+#![expect(unexpected_cfgs)]
 
 use std::hint::black_box;
 
 macro_rules! both_assert {
-    ($a:expr) => {
-        {
-            const _: () = assert!($a);
-            // `black_box` prevents promotion, and MIR opts are disabled above, so this is truly
-            // going through LLVM.
-            assert!(black_box($a));
-        }
-    };
-    ($a:expr, $b:expr) => {
-        {
-            const _: () = assert!($a == $b);
-            assert_eq!(black_box($a), black_box($b));
-        }
-    };
+    ($a:expr) => {{
+        const _: () = assert!($a);
+        // `black_box` prevents promotion, and MIR opts are disabled above, so this is truly
+        // going through LLVM.
+        assert!(black_box($a));
+    }};
+    ($a:expr, $b:expr) => {{
+        const _: () = assert!($a == $b);
+        assert_eq!(black_box($a), black_box($b));
+    }};
 }
 
 fn has_broken_floats() -> bool {
@@ -31,8 +30,8 @@ fn has_broken_floats() -> bool {
     cfg!(all(target_arch = "x86", not(target_feature = "sse2")))
 }
 
-#[cfg(target_arch = "x86_64")]
-fn f16(){
+#[cfg(target_has_reliable_f16)]
+fn f16() {
     both_assert!((1f16).to_bits(), 0x3c00);
     both_assert!(u16::from_be_bytes(1f16.to_be_bytes()), 0x3c00);
     both_assert!((12.5f16).to_bits(), 0x4a40);
@@ -122,7 +121,7 @@ fn f64() {
     }
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(target_has_reliable_f128)]
 fn f128() {
     both_assert!((1f128).to_bits(), 0x3fff0000000000000000000000000000);
     both_assert!(u128::from_be_bytes(1f128.to_be_bytes()), 0x3fff0000000000000000000000000000);
@@ -154,12 +153,10 @@ fn f128() {
 }
 
 fn main() {
+    #[cfg(target_has_reliable_f16)]
+    f16();
     f32();
     f64();
-
-    #[cfg(target_arch = "x86_64")]
-    {
-        f16();
-        f128();
-    }
+    #[cfg(target_has_reliable_f128)]
+    f128();
 }

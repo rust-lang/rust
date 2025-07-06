@@ -8,7 +8,9 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use object::read::archive::{ArchiveFile, ArchiveMember};
-use object::{Object, ObjectSymbol, Symbol, SymbolKind, SymbolScope, SymbolSection};
+use object::{
+    File as ObjFile, Object, ObjectSymbol, Symbol, SymbolKind, SymbolScope, SymbolSection,
+};
 use serde_json::Value;
 
 const CHECK_LIBRARIES: &[&str] = &["compiler_builtins", "builtins_test_intrinsics"];
@@ -16,10 +18,12 @@ const CHECK_EXTENSIONS: &[Option<&str>] = &[Some("rlib"), Some("a"), Some("exe")
 
 const USAGE: &str = "Usage:
 
-    symbol-check build-and-check CARGO_ARGS ...
+    symbol-check build-and-check [TARGET] -- CARGO_BUILD_ARGS ...
 
-Cargo will get invoked with `CARGO_ARGS` and all output
+Cargo will get invoked with `CARGO_ARGS` and the specified target. All output
 `compiler_builtins*.rlib` files will be checked.
+
+If TARGET is not specified, the host target is used.
 ";
 
 fn main() {
@@ -28,13 +32,13 @@ fn main() {
     let args_ref = args.iter().map(String::as_str).collect::<Vec<_>>();
 
     match &args_ref[1..] {
-        ["build-and-check", rest @ ..] if !rest.is_empty() => {
-            let paths = exec_cargo_with_args(rest);
-            for path in paths {
-                println!("Checking {}", path.display());
-                verify_no_duplicates(&path);
-                verify_core_symbols(&path);
-            }
+        ["build-and-check", target, "--", args @ ..] if !args.is_empty() => {
+            check_cargo_args(args);
+            run_build_and_check(target, args);
+        }
+        ["build-and-check", "--", args @ ..] if !args.is_empty() => {
+            check_cargo_args(args);
+            run_build_and_check(&host_target(), args);
         }
         _ => {
             println!("{USAGE}");
@@ -43,14 +47,54 @@ fn main() {
     }
 }
 
+/// Make sure `--target` isn't passed to avoid confusion (since it should be proivded only once,
+/// positionally).
+fn check_cargo_args(args: &[&str]) {
+    for arg in args {
+        assert!(
+            !arg.contains("--target"),
+            "target must be passed positionally. {USAGE}"
+        );
+    }
+}
+
+fn run_build_and_check(target: &str, args: &[&str]) {
+    let paths = exec_cargo_with_args(target, args);
+    for path in paths {
+        println!("Checking {}", path.display());
+        let archive = Archive::from_path(&path);
+
+        verify_no_duplicates(&archive);
+        verify_core_symbols(&archive);
+    }
+}
+
+fn host_target() -> String {
+    let out = Command::new("rustc")
+        .arg("--version")
+        .arg("--verbose")
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let out = String::from_utf8(out.stdout).unwrap();
+    out.lines()
+        .find_map(|s| s.strip_prefix("host: "))
+        .unwrap()
+        .to_owned()
+}
+
 /// Run `cargo build` with the provided additional arguments, collecting the list of created
 /// libraries.
-fn exec_cargo_with_args(args: &[&str]) -> Vec<PathBuf> {
+fn exec_cargo_with_args(target: &str, args: &[&str]) -> Vec<PathBuf> {
     let mut cmd = Command::new("cargo");
-    cmd.arg("build")
-        .arg("--message-format=json")
-        .args(args)
-        .stdout(Stdio::piped());
+    cmd.args([
+        "build",
+        "--target",
+        target,
+        "--message-format=json-diagnostic-rendered-ansi",
+    ])
+    .args(args)
+    .stdout(Stdio::piped());
 
     println!("running: {cmd:?}");
     let mut child = cmd.spawn().expect("failed to launch Cargo");
@@ -61,11 +105,21 @@ fn exec_cargo_with_args(args: &[&str]) -> Vec<PathBuf> {
 
     for line in reader.lines() {
         let line = line.expect("failed to read line");
-        println!("{line}"); // tee to stdout
-
-        // Select only steps that create files
         let j: Value = serde_json::from_str(&line).expect("failed to deserialize");
-        if j["reason"] != "compiler-artifact" {
+        let reason = &j["reason"];
+
+        // Forward output that is meant to be user-facing
+        if reason == "compiler-message" {
+            println!("{}", j["message"]["rendered"].as_str().unwrap());
+        } else if reason == "build-finished" {
+            println!("build finshed. success: {}", j["success"]);
+        } else if reason == "build-script-executed" {
+            let pretty = serde_json::to_string_pretty(&j).unwrap();
+            println!("build script output: {pretty}",);
+        }
+
+        // Only interested in the artifact list now
+        if reason != "compiler-artifact" {
             continue;
         }
 
@@ -133,12 +187,12 @@ impl SymInfo {
 /// Note that this will also locate cases where a symbol is weakly defined in more than one place.
 /// Technically there are no linker errors that will come from this, but it keeps our binary more
 /// straightforward and saves some distribution size.
-fn verify_no_duplicates(path: &Path) {
+fn verify_no_duplicates(archive: &Archive) {
     let mut syms = BTreeMap::<String, SymInfo>::new();
     let mut dups = Vec::new();
     let mut found_any = false;
 
-    for_each_symbol(path, |symbol, member| {
+    archive.for_each_symbol(|symbol, member| {
         // Only check defined globals
         if !symbol.is_global() || symbol.is_undefined() {
             return;
@@ -185,12 +239,12 @@ fn verify_no_duplicates(path: &Path) {
 }
 
 /// Ensure that there are no references to symbols from `core` that aren't also (somehow) defined.
-fn verify_core_symbols(path: &Path) {
+fn verify_core_symbols(archive: &Archive) {
     let mut defined = BTreeSet::new();
     let mut undefined = Vec::new();
     let mut has_symbols = false;
 
-    for_each_symbol(path, |symbol, member| {
+    archive.for_each_symbol(|symbol, member| {
         has_symbols = true;
 
         // Find only symbols from `core`
@@ -219,14 +273,40 @@ fn verify_core_symbols(path: &Path) {
     println!("    success: no undefined references to core found");
 }
 
-/// For a given archive path, do something with each symbol.
-fn for_each_symbol(path: &Path, mut f: impl FnMut(Symbol, &ArchiveMember)) {
-    let data = fs::read(path).expect("reading file failed");
-    let archive = ArchiveFile::parse(data.as_slice()).expect("archive parse failed");
-    for member in archive.members() {
-        let member = member.expect("failed to access member");
-        let obj_data = member.data(&*data).expect("failed to access object");
-        let obj = object::File::parse(obj_data).expect("failed to parse object");
-        obj.symbols().for_each(|sym| f(sym, &member));
+/// Thin wrapper for owning data used by `object`.
+struct Archive {
+    data: Vec<u8>,
+}
+
+impl Archive {
+    fn from_path(path: &Path) -> Self {
+        Self {
+            data: fs::read(path).expect("reading file failed"),
+        }
+    }
+
+    fn file(&self) -> ArchiveFile<'_> {
+        ArchiveFile::parse(self.data.as_slice()).expect("archive parse failed")
+    }
+
+    /// For a given archive, do something with each object file.
+    fn for_each_object(&self, mut f: impl FnMut(ObjFile, &ArchiveMember)) {
+        let archive = self.file();
+
+        for member in archive.members() {
+            let member = member.expect("failed to access member");
+            let obj_data = member
+                .data(self.data.as_slice())
+                .expect("failed to access object");
+            let obj = ObjFile::parse(obj_data).expect("failed to parse object");
+            f(obj, &member);
+        }
+    }
+
+    /// For a given archive, do something with each symbol.
+    fn for_each_symbol(&self, mut f: impl FnMut(Symbol, &ArchiveMember)) {
+        self.for_each_object(|obj, member| {
+            obj.symbols().for_each(|sym| f(sym, member));
+        });
     }
 }

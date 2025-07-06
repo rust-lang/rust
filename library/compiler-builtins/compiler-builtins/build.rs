@@ -2,7 +2,7 @@ mod configure;
 
 use std::env;
 
-use configure::{Target, configure_aliases, configure_f16_f128};
+use configure::{Target, configure_aliases};
 
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
@@ -12,7 +12,6 @@ fn main() {
     let cwd = env::current_dir().unwrap();
 
     configure_check_cfg();
-    configure_f16_f128(&target);
     configure_aliases(&target);
 
     configure_libm(&target);

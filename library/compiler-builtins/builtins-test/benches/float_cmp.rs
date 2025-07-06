@@ -177,6 +177,7 @@ float_bench! {
     ],
 }
 
+#[cfg(f128_enabled)]
 float_bench! {
     name: cmp_f128_gt,
     sig: (a: f128, b: f128) -> CmpResult,
@@ -189,6 +190,7 @@ float_bench! {
     asm: []
 }
 
+#[cfg(f128_enabled)]
 float_bench! {
     name: cmp_f128_unord,
     sig: (a: f128, b: f128) -> CmpResult,
