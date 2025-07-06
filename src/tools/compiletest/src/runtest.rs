@@ -1924,7 +1924,8 @@ impl<'test> TestCx<'test> {
 
     fn dump_output_file(&self, out: &str, extension: &str) {
         let outfile = self.make_out_name(extension);
-        fs::write(outfile.as_std_path(), out).unwrap();
+        fs::write(outfile.as_std_path(), out)
+            .unwrap_or_else(|err| panic!("failed to write {outfile}: {err:?}"));
     }
 
     /// Creates a filename for output with the given extension.

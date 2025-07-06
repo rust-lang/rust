@@ -351,13 +351,23 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         }
 
         for (&node_id, unused_arms) in self.unused_macro_rules.iter() {
-            for (&arm_i, &(ident, rule_span)) in unused_arms.to_sorted_stable_ord() {
-                self.lint_buffer.buffer_lint(
-                    UNUSED_MACRO_RULES,
-                    node_id,
-                    rule_span,
-                    BuiltinLintDiag::MacroRuleNeverUsed(arm_i, ident.name),
-                );
+            if unused_arms.is_empty() {
+                continue;
+            }
+            let def_id = self.local_def_id(node_id).to_def_id();
+            let m = &self.macro_map[&def_id];
+            let SyntaxExtensionKind::LegacyBang(ref ext) = m.ext.kind else {
+                continue;
+            };
+            for &arm_i in unused_arms.to_sorted_stable_ord() {
+                if let Some((ident, rule_span)) = ext.get_unused_rule(arm_i) {
+                    self.lint_buffer.buffer_lint(
+                        UNUSED_MACRO_RULES,
+                        node_id,
+                        rule_span,
+                        BuiltinLintDiag::MacroRuleNeverUsed(arm_i, ident.name),
+                    );
+                }
             }
         }
     }
@@ -1146,7 +1156,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         node_id: NodeId,
         edition: Edition,
     ) -> MacroData {
-        let (mut ext, mut rule_spans) = compile_declarative_macro(
+        let (mut ext, mut nrules) = compile_declarative_macro(
             self.tcx.sess,
             self.tcx.features(),
             macro_def,
@@ -1163,13 +1173,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // The macro is a built-in, replace its expander function
                 // while still taking everything else from the source code.
                 ext.kind = builtin_ext_kind.clone();
-                rule_spans = Vec::new();
+                nrules = 0;
             } else {
                 self.dcx().emit_err(errors::CannotFindBuiltinMacroWithName { span, ident });
             }
         }
 
-        MacroData { ext: Arc::new(ext), rule_spans, macro_rules: macro_def.macro_rules }
+        MacroData { ext: Arc::new(ext), nrules, macro_rules: macro_def.macro_rules }
     }
 
     fn path_accessible(
