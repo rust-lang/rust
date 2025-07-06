@@ -373,17 +373,10 @@ pub fn compile_declarative_macro(
     node_id: NodeId,
     edition: Edition,
 ) -> (SyntaxExtension, usize) {
+    let is_local = node_id != DUMMY_NODE_ID;
     let mk_syn_ext = |expander| {
-        SyntaxExtension::new(
-            sess,
-            SyntaxExtensionKind::LegacyBang(expander),
-            span,
-            Vec::new(),
-            edition,
-            ident.name,
-            attrs,
-            node_id != DUMMY_NODE_ID,
-        )
+        let kind = SyntaxExtensionKind::LegacyBang(expander);
+        SyntaxExtension::new(sess, kind, span, Vec::new(), edition, ident.name, attrs, is_local)
     };
     let dummy_syn_ext = |guar| (mk_syn_ext(Arc::new(DummyExpander(guar))), 0);
 
@@ -454,7 +447,7 @@ pub fn compile_declarative_macro(
     }
 
     // Return the number of rules for unused rule linting, if this is a local macro.
-    let nrules = if node_id != DUMMY_NODE_ID { rules.len() } else { 0 };
+    let nrules = if is_local { rules.len() } else { 0 };
 
     let expander =
         Arc::new(MacroRulesMacroExpander { name: ident, span, node_id, transparency, rules });
