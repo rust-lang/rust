@@ -54,7 +54,7 @@ where
     ///
     /// # Safety
     /// The `self` reference must remain valid until the TLS destructor is run.
-    #[inline(always)]
+    #[inline]
     pub unsafe fn get_or_init(&self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
         if let State::Alive = self.state.get() {
             self.value.get().cast()
@@ -66,7 +66,6 @@ where
     /// # Safety
     /// The `self` reference must remain valid until the TLS destructor is run.
     #[cold]
-    #[inline(never)]
     unsafe fn get_or_init_slow(
         &self,
         i: Option<&mut Option<T>>,

@@ -180,7 +180,6 @@ impl<T: 'static, const ALIGN: usize> Storage<T, ALIGN> {
     /// * `key` must be the result of calling `self.key.force()`
     /// * `ptr` must be the current value associated with `key`.
     #[cold]
-    #[inline(never)]
     unsafe fn try_initialize(
         key: Key,
         ptr: *mut Value<T>,
