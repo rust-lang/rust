@@ -574,7 +574,11 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
                     };
                     cx.emit_span_lint(PATH_STATEMENTS, s.span, PathStatementDrop { sub })
                 } else {
-                    cx.emit_span_lint(PATH_STATEMENTS, s.span, PathStatementNoEffect);
+                    cx.emit_span_lint(
+                        PATH_STATEMENTS,
+                        s.span,
+                        PathStatementNoEffect { suggestion: s.span },
+                    );
                 }
             }
         }
