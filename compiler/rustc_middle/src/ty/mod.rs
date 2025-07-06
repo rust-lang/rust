@@ -1525,7 +1525,8 @@ impl<'tcx> TyCtxt<'tcx> {
             field_shuffle_seed ^= user_seed;
         }
 
-        if let Some(reprs) = attr::find_attr!(self.get_all_attrs(did), AttributeKind::Repr(r) => r)
+        if let Some(reprs) =
+            attr::find_attr!(self.get_all_attrs(did), AttributeKind::Repr { reprs, .. } => reprs)
         {
             for (r, _) in reprs {
                 flags.insert(match *r {
@@ -1564,10 +1565,6 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     attr::ReprAlign(align) => {
                         max_align = max_align.max(Some(align));
-                        ReprFlags::empty()
-                    }
-                    attr::ReprEmpty => {
-                        /* skip these, they're just for diagnostics */
                         ReprFlags::empty()
                     }
                 });
