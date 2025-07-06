@@ -11,7 +11,9 @@ impl Drop for SomeUniqueName {
 }
 
 #[inline(never)]
-pub fn possibly_unwinding() {}
+pub fn possibly_unwinding() {
+    panic!();
+}
 
 // CHECK-LABEL: @droppy
 #[no_mangle]

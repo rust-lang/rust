@@ -11,7 +11,7 @@
       }
   
       bb1: {
-          _1 = noop() -> [return: bb2, unwind continue];
+          _1 = noop() -> [return: bb2, unwind unreachable];
       }
   
       bb2: {
