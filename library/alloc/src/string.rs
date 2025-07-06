@@ -787,12 +787,12 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
     pub fn from_utf16le(v: &[u8]) -> Result<String, FromUtf16Error> {
-        if v.len() % 2 != 0 {
+        let (chunks, []) = v.as_chunks::<2>() else {
             return Err(FromUtf16Error(()));
-        }
+        };
         match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16(v),
-            _ => char::decode_utf16(v.array_chunks::<2>().copied().map(u16::from_le_bytes))
+            _ => char::decode_utf16(chunks.iter().copied().map(u16::from_le_bytes))
                 .collect::<Result<_, _>>()
                 .map_err(|_| FromUtf16Error(())),
         }
@@ -830,11 +830,11 @@ impl String {
             (true, ([], v, [])) => Self::from_utf16_lossy(v),
             (true, ([], v, [_remainder])) => Self::from_utf16_lossy(v) + "\u{FFFD}",
             _ => {
-                let mut iter = v.array_chunks::<2>();
-                let string = char::decode_utf16(iter.by_ref().copied().map(u16::from_le_bytes))
+                let (chunks, remainder) = v.as_chunks::<2>();
+                let string = char::decode_utf16(chunks.iter().copied().map(u16::from_le_bytes))
                     .map(|r| r.unwrap_or(char::REPLACEMENT_CHARACTER))
                     .collect();
-                if iter.remainder().is_empty() { string } else { string + "\u{FFFD}" }
+                if remainder.is_empty() { string } else { string + "\u{FFFD}" }
             }
         }
     }
@@ -862,12 +862,12 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
     pub fn from_utf16be(v: &[u8]) -> Result<String, FromUtf16Error> {
-        if v.len() % 2 != 0 {
+        let (chunks, []) = v.as_chunks::<2>() else {
             return Err(FromUtf16Error(()));
-        }
+        };
         match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16(v),
-            _ => char::decode_utf16(v.array_chunks::<2>().copied().map(u16::from_be_bytes))
+            _ => char::decode_utf16(chunks.iter().copied().map(u16::from_be_bytes))
                 .collect::<Result<_, _>>()
                 .map_err(|_| FromUtf16Error(())),
         }
@@ -905,11 +905,11 @@ impl String {
             (true, ([], v, [])) => Self::from_utf16_lossy(v),
             (true, ([], v, [_remainder])) => Self::from_utf16_lossy(v) + "\u{FFFD}",
             _ => {
-                let mut iter = v.array_chunks::<2>();
-                let string = char::decode_utf16(iter.by_ref().copied().map(u16::from_be_bytes))
+                let (chunks, remainder) = v.as_chunks::<2>();
+                let string = char::decode_utf16(chunks.iter().copied().map(u16::from_be_bytes))
                     .map(|r| r.unwrap_or(char::REPLACEMENT_CHARACTER))
                     .collect();
-                if iter.remainder().is_empty() { string } else { string + "\u{FFFD}" }
+                if remainder.is_empty() { string } else { string + "\u{FFFD}" }
             }
         }
     }
