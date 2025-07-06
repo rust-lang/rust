@@ -2,7 +2,7 @@
 use std::ops::Range;
 
 use rustc_data_structures::fx::FxHashSet;
-use tracing::trace;
+use rustc_log::tracing::trace;
 
 use crate::borrow_tracker::stacked_borrows::{Item, Permission};
 use crate::borrow_tracker::{AccessKind, BorTag};

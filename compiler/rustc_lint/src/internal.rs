@@ -12,10 +12,10 @@ use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::lints::{
-    BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand,
-    NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked, SpanUseEqCtxtDiag,
-    SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind, TypeIrDirectUse,
-    TypeIrInherentUsage, TypeIrTraitUsage, UntranslatableDiag,
+    BadOptAccessDiag, DangerousExternCrateDiag, DefaultHashTypesDiag, DiagOutOfImpl,
+    LintPassByHand, NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked,
+    SpanUseEqCtxtDiag, SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind,
+    TypeIrDirectUse, TypeIrInherentUsage, TypeIrTraitUsage, UntranslatableDiag,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -700,6 +700,40 @@ impl<'tcx> LateLintPass<'tcx> for SymbolInternStringLiteral {
                 kind.span,
                 SymbolInternStringLiteralDiag,
             );
+        }
+    }
+}
+
+declare_tool_lint! {
+    /// The `dangerous_extern_crate` detects use of `extern crate` to import non-whitelisted crates
+    /// from the sysroot, which is dangerous because these crates are not guaranteed to exist
+    /// exactly once, and so may be missing entirely or appear multiple times resulting in ambiguity.
+    pub rustc::DANGEROUS_EXTERN_CRATE,
+    Allow,
+    "Forbid uses of non-whitelisted crates in `extern crate`",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(DangerousExternCrate => [DANGEROUS_EXTERN_CRATE]);
+
+impl EarlyLintPass for DangerousExternCrate {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
+        fn is_whitelisted(crate_name: &str) -> bool {
+            // Whitelist of allowed crates.
+            crate_name.starts_with("rustc_")
+                || matches!(crate_name, "test" | "self" | "core" | "alloc" | "std" | "proc_macro")
+        }
+
+        if let ast::ItemKind::ExternCrate(original_name, imported_name) = &item.kind {
+            let name = original_name.as_ref().unwrap_or(&imported_name.name).as_str();
+            let externs = &cx.builder.sess().opts.externs;
+            if externs.get(name).is_none() && !is_whitelisted(name) {
+                cx.emit_span_lint(
+                    DANGEROUS_EXTERN_CRATE,
+                    item.span,
+                    DangerousExternCrateDiag { name },
+                );
+            }
         }
     }
 }
