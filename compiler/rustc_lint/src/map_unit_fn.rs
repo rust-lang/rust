@@ -1,5 +1,4 @@
 use rustc_hir::{Expr, ExprKind, HirId, Stmt, StmtKind};
-use rustc_middle::query::Key;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint, declare_lint_pass};
 
@@ -69,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for MapUnitFn {
                                         .span_of_impl(*id)
                                         .unwrap_or(default_span),
                                     argument_label: args[0].span,
-                                    map_label: arg_ty.default_span(cx.tcx),
+                                    map_label: span,
                                     suggestion: path.ident.span,
                                     replace: "for_each".to_string(),
                                 },
@@ -88,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for MapUnitFn {
                                         .span_of_impl(*id)
                                         .unwrap_or(default_span),
                                     argument_label: args[0].span,
-                                    map_label: arg_ty.default_span(cx.tcx),
+                                    map_label: span,
                                     suggestion: path.ident.span,
                                     replace: "for_each".to_string(),
                                 },
