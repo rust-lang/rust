@@ -17,6 +17,10 @@ union U4<T: Copy> {
     a: T,
 }
 
+union U5 {
+    a: usize,
+}
+
 union URef {
     p: &'static mut i32,
 }
@@ -29,6 +33,11 @@ union URefCell {
 fn deref_union_field(mut u: URef) {
     // Not an assignment but an access to the union field!
     *(u.p) = 13; //~ ERROR access to union field is unsafe
+}
+
+fn raw_deref_union_field(mut u: URef) {
+    // This is unsafe because we first dereference u.p (reading uninitialized memory)
+    let _p = &raw const *(u.p); //~ ERROR access to union field is unsafe
 }
 
 fn assign_noncopy_union_field(mut u: URefCell) {
@@ -57,6 +66,20 @@ fn main() {
     let a = u1.a; //~ ERROR access to union field is unsafe
     u1.a = 11; // OK
 
+    let mut u2 = U1 { a: 10 };
+    let a = &raw mut u2.a; // OK
+    unsafe { *a = 3 };
+
+    let mut u3 = U1 { a: 10 };
+    let a = std::ptr::addr_of_mut!(u3.a); // OK
+    unsafe { *a = 14 };
+
+    let u4 = U5 { a: 2 };
+    let vec = vec![1, 2, 3];
+    // This is unsafe because we read u4.a (potentially uninitialized memory)
+    // to use as an array index
+    let _a = &raw const vec[u4.a]; //~ ERROR access to union field is unsafe
+
     let U1 { a } = u1; //~ ERROR access to union field is unsafe
     if let U1 { a: 12 } = u1 {} //~ ERROR access to union field is unsafe
     if let Some(U1 { a: 13 }) = Some(u1) {} //~ ERROR access to union field is unsafe
@@ -73,4 +96,38 @@ fn main() {
     let mut u3 = U3 { a: ManuallyDrop::new(String::from("old")) }; // OK
     u3.a = ManuallyDrop::new(String::from("new")); // OK (assignment does not drop)
     *u3.a = String::from("new"); //~ ERROR access to union field is unsafe
+
+    let mut unions = [U1 { a: 1 }, U1 { a: 2 }];
+
+    // Array indexing + union field raw borrow - should be OK
+    let ptr = &raw mut unions[0].a; // OK
+    let ptr2 = &raw const unions[1].a; // OK
+
+    // Test for union fields chain, this should be allowed
+    #[derive(Copy, Clone)]
+    union Inner {
+        a: u8,
+    }
+
+    union MoreInner {
+        moreinner: ManuallyDrop<Inner>,
+    }
+
+    union LessOuter {
+        lessouter: ManuallyDrop<MoreInner>,
+    }
+
+    union Outer {
+        outer: ManuallyDrop<LessOuter>,
+    }
+
+    let super_outer = Outer {
+        outer: ManuallyDrop::new(LessOuter {
+            lessouter: ManuallyDrop::new(MoreInner {
+                moreinner: ManuallyDrop::new(Inner { a: 42 }),
+            }),
+        }),
+    };
+
+    let ptr = &raw const super_outer.outer.lessouter.moreinner.a;
 }
