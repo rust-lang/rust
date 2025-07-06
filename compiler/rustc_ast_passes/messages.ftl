@@ -222,8 +222,10 @@ ast_passes_out_of_order_params = {$param_ord} parameters must be declared prior 
 
 ast_passes_pattern_in_bodiless = patterns aren't allowed in functions without bodies
     .label = pattern not allowed in function without body
+    .suggestion = give this argument a name or use an underscore to ignore it
 
 ast_passes_pattern_in_fn_pointer = patterns aren't allowed in function pointer types
+    .suggestion = give this argument a name or use an underscore to ignore it
 
 ast_passes_pattern_in_foreign = patterns aren't allowed in foreign function declarations
     .label = pattern not allowed in foreign function

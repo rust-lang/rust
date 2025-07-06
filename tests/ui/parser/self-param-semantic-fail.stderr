@@ -154,14 +154,8 @@ LL | type X2 = fn(mut self);
    |
    = note: associated functions are those in `impl` or `trait` definitions
 
-error[E0561]: patterns aren't allowed in function pointer types
-  --> $DIR/self-param-semantic-fail.rs:49:14
-   |
-LL | type X2 = fn(mut self);
-   |              ^^^^^^^^
-
 error: `self` parameter is only allowed in associated functions
-  --> $DIR/self-param-semantic-fail.rs:52:14
+  --> $DIR/self-param-semantic-fail.rs:51:14
    |
 LL | type X3 = fn(&self);
    |              ^^^^^ not semantically valid as function parameter
@@ -169,7 +163,7 @@ LL | type X3 = fn(&self);
    = note: associated functions are those in `impl` or `trait` definitions
 
 error: `self` parameter is only allowed in associated functions
-  --> $DIR/self-param-semantic-fail.rs:54:14
+  --> $DIR/self-param-semantic-fail.rs:53:14
    |
 LL | type X4 = fn(&mut self);
    |              ^^^^^^^^^ not semantically valid as function parameter
@@ -177,7 +171,7 @@ LL | type X4 = fn(&mut self);
    = note: associated functions are those in `impl` or `trait` definitions
 
 error: `self` parameter is only allowed in associated functions
-  --> $DIR/self-param-semantic-fail.rs:56:22
+  --> $DIR/self-param-semantic-fail.rs:55:22
    |
 LL | type X5 = for<'a> fn(&'a self);
    |                      ^^^^^^^^ not semantically valid as function parameter
@@ -185,7 +179,7 @@ LL | type X5 = for<'a> fn(&'a self);
    = note: associated functions are those in `impl` or `trait` definitions
 
 error: `self` parameter is only allowed in associated functions
-  --> $DIR/self-param-semantic-fail.rs:58:22
+  --> $DIR/self-param-semantic-fail.rs:57:22
    |
 LL | type X6 = for<'a> fn(&'a mut self);
    |                      ^^^^^^^^^^^^ not semantically valid as function parameter
@@ -193,7 +187,7 @@ LL | type X6 = for<'a> fn(&'a mut self);
    = note: associated functions are those in `impl` or `trait` definitions
 
 error: `self` parameter is only allowed in associated functions
-  --> $DIR/self-param-semantic-fail.rs:60:14
+  --> $DIR/self-param-semantic-fail.rs:59:14
    |
 LL | type X7 = fn(self: u8);
    |              ^^^^ not semantically valid as function parameter
@@ -201,20 +195,13 @@ LL | type X7 = fn(self: u8);
    = note: associated functions are those in `impl` or `trait` definitions
 
 error: `self` parameter is only allowed in associated functions
-  --> $DIR/self-param-semantic-fail.rs:62:14
+  --> $DIR/self-param-semantic-fail.rs:61:14
    |
 LL | type X8 = fn(mut self: u8);
    |              ^^^^^^^^ not semantically valid as function parameter
    |
    = note: associated functions are those in `impl` or `trait` definitions
 
-error[E0561]: patterns aren't allowed in function pointer types
-  --> $DIR/self-param-semantic-fail.rs:62:14
-   |
-LL | type X8 = fn(mut self: u8);
-   |              ^^^^^^^^
+error: aborting due to 26 previous errors
 
-error: aborting due to 28 previous errors
-
-Some errors have detailed explanations: E0130, E0561.
-For more information about an error, try `rustc --explain E0130`.
+For more information about this error, try `rustc --explain E0130`.
