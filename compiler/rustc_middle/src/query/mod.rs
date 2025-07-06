@@ -1452,6 +1452,13 @@ rustc_queries! {
         feedable
     }
 
+    /// Gets the span for the type of the definition.
+    /// Panics if it is not a definition that has a single type.
+    query ty_span(def_id: LocalDefId) -> Span {
+        desc { |tcx| "looking up span for `{}`'s type", tcx.def_path_str(def_id) }
+        cache_on_disk_if { true }
+    }
+
     query lookup_stability(def_id: DefId) -> Option<attr::Stability> {
         desc { |tcx| "looking up stability of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }

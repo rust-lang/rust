@@ -290,7 +290,6 @@ pub(super) fn check_item<'tcx>(
             res
         }
         hir::ItemKind::Fn { sig, .. } => check_item_fn(tcx, def_id, sig.decl),
-        hir::ItemKind::Const(_, _, ty, _) => check_const_item(tcx, def_id, ty.span),
         hir::ItemKind::Struct(..) => check_type_defn(tcx, item, false),
         hir::ItemKind::Union(..) => check_type_defn(tcx, item, true),
         hir::ItemKind::Enum(..) => check_type_defn(tcx, item, true),
@@ -1185,7 +1184,8 @@ pub(super) fn check_static_item(
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, item_id, |wfcx| {
         let ty = tcx.type_of(item_id).instantiate_identity();
-        let item_ty = wfcx.deeply_normalize(DUMMY_SP, Some(WellFormedLoc::Ty(item_id)), ty);
+        let span = tcx.ty_span(item_id);
+        let item_ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
 
         let is_foreign_item = tcx.is_foreign_item(item_id);
 
@@ -1194,7 +1194,7 @@ pub(super) fn check_static_item(
             !matches!(tail.kind(), ty::Foreign(_))
         };
 
-        wfcx.register_wf_obligation(DUMMY_SP, Some(WellFormedLoc::Ty(item_id)), item_ty.into());
+        wfcx.register_wf_obligation(span, Some(WellFormedLoc::Ty(item_id)), item_ty.into());
         if forbid_unsized {
             let span = tcx.def_span(item_id);
             wfcx.register_bound(
@@ -1216,7 +1216,6 @@ pub(super) fn check_static_item(
             && !tcx.is_thread_local_static(item_id.to_def_id());
 
         if should_check_for_sync {
-            let span = tcx.def_span(item_id);
             wfcx.register_bound(
                 traits::ObligationCause::new(
                     span,
@@ -1232,13 +1231,10 @@ pub(super) fn check_static_item(
     })
 }
 
-fn check_const_item(
-    tcx: TyCtxt<'_>,
-    def_id: LocalDefId,
-    ty_span: Span,
-) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn check_const_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
         let ty = tcx.type_of(def_id).instantiate_identity();
+        let ty_span = tcx.ty_span(def_id);
         let ty = wfcx.deeply_normalize(ty_span, Some(WellFormedLoc::Ty(def_id)), ty);
 
         wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(def_id)), ty.into());
@@ -1505,7 +1501,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
             let cause = traits::ObligationCause::new(
                 sp,
                 wfcx.body_def_id,
-                ObligationCauseCode::WhereClause(def_id.to_def_id(), DUMMY_SP),
+                ObligationCauseCode::WhereClause(def_id.to_def_id(), sp),
             );
             Obligation::new(tcx, cause, wfcx.param_env, pred)
         });
