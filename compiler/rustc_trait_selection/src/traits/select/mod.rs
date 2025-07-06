@@ -2330,9 +2330,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     fn constituent_types_for_ty(
         &self,
-        t: ty::Binder<'tcx, Ty<'tcx>>,
+        t: Ty<'tcx>,
     ) -> Result<ty::Binder<'tcx, Vec<Ty<'tcx>>>, SelectionError<'tcx>> {
-        Ok(match *t.skip_binder().kind() {
+        Ok(match *t.kind() {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
@@ -2349,8 +2349,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             // `assemble_candidates_from_auto_impls`.
             ty::Foreign(..) => ty::Binder::dummy(Vec::new()),
 
-            // FIXME(unsafe_binders): Squash the double binder for now, I guess.
-            ty::UnsafeBinder(_) => return Err(SelectionError::Unimplemented),
+            ty::UnsafeBinder(ty) => ty.map_bound(|ty| vec![ty]),
 
             // Treat this like `struct str([u8]);`
             ty::Str => ty::Binder::dummy(vec![Ty::new_slice(self.tcx(), self.tcx().types.u8)]),
@@ -2364,40 +2363,47 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 bug!("asked to assemble constituent types of unexpected type: {:?}", t);
             }
 
-            ty::RawPtr(element_ty, _) | ty::Ref(_, element_ty, _) => t.rebind(vec![element_ty]),
+            ty::RawPtr(element_ty, _) | ty::Ref(_, element_ty, _) => {
+                ty::Binder::dummy(vec![element_ty])
+            }
 
-            ty::Pat(ty, _) | ty::Array(ty, _) | ty::Slice(ty) => t.rebind(vec![ty]),
+            ty::Pat(ty, _) | ty::Array(ty, _) | ty::Slice(ty) => ty::Binder::dummy(vec![ty]),
 
             ty::Tuple(tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-                t.rebind(tys.iter().collect())
+                ty::Binder::dummy(tys.iter().collect())
             }
 
             ty::Closure(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_closure().tupled_upvars_ty());
-                t.rebind(vec![ty])
+                ty::Binder::dummy(vec![ty])
             }
 
             ty::CoroutineClosure(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine_closure().tupled_upvars_ty());
-                t.rebind(vec![ty])
+                ty::Binder::dummy(vec![ty])
             }
 
             ty::Coroutine(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
                 let witness = args.as_coroutine().witness();
-                t.rebind([ty].into_iter().chain(iter::once(witness)).collect())
+                ty::Binder::dummy([ty].into_iter().chain(iter::once(witness)).collect())
             }
 
-            ty::CoroutineWitness(def_id, args) => {
-                rebind_coroutine_witness_types(self.infcx.tcx, def_id, args, t.bound_vars())
-            }
+            ty::CoroutineWitness(def_id, args) => self
+                .infcx
+                .tcx
+                .coroutine_hidden_types(def_id)
+                .instantiate(self.infcx.tcx, args)
+                .map_bound(|witness| witness.types.to_vec()),
 
             // For `PhantomData<T>`, we pass `T`.
-            ty::Adt(def, args) if def.is_phantom_data() => t.rebind(args.types().collect()),
+            ty::Adt(def, args) if def.is_phantom_data() => {
+                ty::Binder::dummy(args.types().collect())
+            }
 
             ty::Adt(def, args) => {
-                t.rebind(def.all_fields().map(|f| f.ty(self.tcx(), args)).collect())
+                ty::Binder::dummy(def.all_fields().map(|f| f.ty(self.tcx(), args)).collect())
             }
 
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
@@ -2408,7 +2414,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // which enforces a DAG between the functions requiring
                     // the auto trait bounds in question.
                     match self.tcx().type_of_opaque(def_id) {
-                        Ok(ty) => t.rebind(vec![ty.instantiate(self.tcx(), args)]),
+                        Ok(ty) => ty::Binder::dummy(vec![ty.instantiate(self.tcx(), args)]),
                         Err(_) => {
                             return Err(SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id));
                         }

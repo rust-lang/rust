@@ -403,6 +403,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             let self_ty =
                 obligation.predicate.self_ty().map_bound(|ty| self.infcx.shallow_resolve(ty));
+            let self_ty = self.infcx.enter_forall_and_leak_universe(self_ty);
 
             let types = self.constituent_types_for_ty(self_ty)?;
             let types = self.infcx.enter_forall_and_leak_universe(types);
