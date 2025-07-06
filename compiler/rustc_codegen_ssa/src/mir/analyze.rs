@@ -279,10 +279,14 @@ impl CleanupKind {
 /// MSVC requires unwinding code to be split to a tree of *funclets*, where each funclet can only
 /// branch to itself or to its parent. Luckily, the code we generates matches this pattern.
 /// Recover that structure in an analyze pass.
-pub(crate) fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKind> {
+pub(crate) fn cleanup_kinds(
+    mir: &mir::Body<'_>,
+    nop_landing_pads: &DenseBitSet<mir::BasicBlock>,
+) -> IndexVec<mir::BasicBlock, CleanupKind> {
     fn discover_masters<'tcx>(
         result: &mut IndexSlice<mir::BasicBlock, CleanupKind>,
         mir: &mir::Body<'tcx>,
+        nop_landing_pads: &DenseBitSet<mir::BasicBlock>,
     ) {
         for (bb, data) in mir.basic_blocks.iter_enumerated() {
             match data.terminator().kind {
@@ -301,7 +305,9 @@ pub(crate) fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, Cl
                 | TerminatorKind::InlineAsm { unwind, .. }
                 | TerminatorKind::Assert { unwind, .. }
                 | TerminatorKind::Drop { unwind, .. } => {
-                    if let mir::UnwindAction::Cleanup(unwind) = unwind {
+                    if let mir::UnwindAction::Cleanup(unwind) = unwind
+                        && !nop_landing_pads.contains(unwind)
+                    {
                         debug!(
                             "cleanup_kinds: {:?}/{:?} registering {:?} as funclet",
                             bb, data, unwind
@@ -382,7 +388,7 @@ pub(crate) fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, Cl
 
     let mut result = IndexVec::from_elem(CleanupKind::NotCleanup, &mir.basic_blocks);
 
-    discover_masters(&mut result, mir);
+    discover_masters(&mut result, mir, &nop_landing_pads);
     propagate(&mut result, mir);
     debug!("cleanup_kinds: result={:?}", result);
     result
