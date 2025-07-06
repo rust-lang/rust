@@ -40,9 +40,20 @@ impl Instant {
 }
 
 impl SystemTime {
+    pub(crate) const ZERO: SystemTime = SystemTime(Duration::ZERO);
+
+    pub(crate) const fn new(t: r_efi::efi::Time) -> Self {
+        Self(system_time_internal::uefi_time_to_duration(t))
+    }
+
     pub fn now() -> SystemTime {
         system_time_internal::now()
             .unwrap_or_else(|| panic!("time not implemented on this platform"))
+    }
+
+    #[expect(dead_code)]
+    pub(crate) const fn to_uefi_time(&self, daylight: u8, timezone: i16) -> r_efi::efi::Time {
+        system_time_internal::uefi_time_from_duration(self.0, daylight, timezone)
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
@@ -79,7 +90,7 @@ pub(crate) mod system_time_internal {
 
         let t = unsafe { t.assume_init() };
 
-        Some(SystemTime(uefi_time_to_duration(t)))
+        Some(SystemTime::new(t))
     }
 
     // This algorithm is based on the one described in the post
@@ -111,6 +122,52 @@ pub(crate) mod system_time_internal {
         };
 
         Duration::new(utc_epoch, t.nanosecond)
+    }
+
+    /// This algorithm is taken from: http://howardhinnant.github.io/date_algorithms.html
+    pub(crate) const fn uefi_time_from_duration(
+        dur: crate::time::Duration,
+        daylight: u8,
+        timezone: i16,
+    ) -> r_efi::system::Time {
+        const SECS_IN_MINUTE: u64 = 60;
+        const SECS_IN_HOUR: u64 = SECS_IN_MINUTE * 60;
+        const SECS_IN_DAY: u64 = SECS_IN_HOUR * 24;
+
+        let secs = if timezone == r_efi::efi::UNSPECIFIED_TIMEZONE {
+            dur.as_secs()
+        } else {
+            dur.as_secs().checked_add_signed(-timezone as i64).unwrap()
+        };
+        let days = secs / SECS_IN_DAY;
+        let remaining_secs = secs % SECS_IN_DAY;
+        let z = days + 719468;
+        let era = z / 146097;
+        let doe = z - (era * 146097);
+        let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+        let mut y = yoe + era * 400;
+        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+        let mp = (5 * doy + 2) / 153;
+        let d = doy - (153 * mp + 2) / 5 + 1;
+        let m = if mp < 10 { mp + 3 } else { mp - 9 };
+
+        if m <= 2 {
+            y += 1;
+        }
+
+        r_efi::system::Time {
+            year: y as u16,
+            month: m as u8,
+            day: d as u8,
+            hour: (remaining_secs / SECS_IN_HOUR) as u8,
+            minute: ((remaining_secs % SECS_IN_HOUR) / SECS_IN_MINUTE) as u8,
+            second: ((remaining_secs % SECS_IN_HOUR) % SECS_IN_MINUTE) as u8,
+            pad1: 0,
+            nanosecond: dur.subsec_nanos(),
+            timezone,
+            daylight,
+            pad2: 0,
+        }
     }
 }
 
