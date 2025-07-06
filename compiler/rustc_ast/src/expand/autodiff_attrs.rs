@@ -29,6 +29,8 @@ pub enum DiffMode {
     Forward,
     /// The target function, to be created using reverse mode AD.
     Reverse,
+    /// The target function, to be created using batching.
+    Batch,
 }
 
 /// Dual and Duplicated (and their Only variants) are getting lowered to the same Enzyme Activity.
@@ -69,6 +71,12 @@ pub enum DiffActivity {
     /// length of a slice/vec. This is used for safety checks on slices.
     /// The integer (if given) specifies the size of the slice element in bytes.
     FakeActivitySize(Option<u32>),
+    /// Batching mode A
+    Vector,
+    /// Batching mode B, equivalent to *v modes above
+    Buffer,
+    /// "Batching" mode C, scalar. Not batched.
+    Scalar,
 }
 
 impl DiffActivity {
@@ -130,6 +138,7 @@ impl Display for DiffMode {
             DiffMode::Source => write!(f, "Source"),
             DiffMode::Forward => write!(f, "Forward"),
             DiffMode::Reverse => write!(f, "Reverse"),
+            DiffMode::Batch => write!(f, "Batch"),
         }
     }
 }
@@ -152,6 +161,14 @@ pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
             activity == DiffActivity::Const
                 || activity == DiffActivity::Active
                 || activity == DiffActivity::ActiveOnly
+        }
+        DiffMode::Batch => {
+            // Batching is a special case, since we don't compute derivatives wrt. the return value.
+            // We just compute derivatives wrt. the inputs, so we can ignore the return value.
+            activity == DiffActivity::Const
+                || activity == DiffActivity::Vector
+                || activity == DiffActivity::Buffer
+                || activity == DiffActivity::Scalar
         }
     }
 }
@@ -186,6 +203,11 @@ pub fn valid_input_activity(mode: DiffMode, activity: DiffActivity) -> bool {
         DiffMode::Reverse => {
             matches!(activity, Active | ActiveOnly | Duplicated | DuplicatedOnly | Const)
         }
+        DiffMode::Batch => {
+            // Batching is a special case, since we don't compute derivatives wrt. the return value.
+            // We just compute derivatives wrt. the inputs, so we can ignore the return value.
+            matches!(activity, Const | Vector | Buffer)
+        }
     };
 }
 
@@ -203,6 +225,9 @@ impl Display for DiffActivity {
             DiffActivity::Duplicated => write!(f, "Duplicated"),
             DiffActivity::DuplicatedOnly => write!(f, "DuplicatedOnly"),
             DiffActivity::FakeActivitySize(s) => write!(f, "FakeActivitySize({:?})", s),
+            DiffActivity::Vector => write!(f, "Vector"),
+            DiffActivity::Buffer => write!(f, "Buffer"),
+            DiffActivity::Scalar => write!(f, "Scalar"),
         }
     }
 }
@@ -216,6 +241,7 @@ impl FromStr for DiffMode {
             "Source" => Ok(DiffMode::Source),
             "Forward" => Ok(DiffMode::Forward),
             "Reverse" => Ok(DiffMode::Reverse),
+            "Batch" => Ok(DiffMode::Batch),
             _ => Err(()),
         }
     }
@@ -235,6 +261,9 @@ impl FromStr for DiffActivity {
             "DualvOnly" => Ok(DiffActivity::DualvOnly),
             "Duplicated" => Ok(DiffActivity::Duplicated),
             "DuplicatedOnly" => Ok(DiffActivity::DuplicatedOnly),
+            "Scalar" => Ok(DiffActivity::Scalar),
+            "Vector" => Ok(DiffActivity::Vector),
+            "Buffer" => Ok(DiffActivity::Buffer),
             _ => Err(()),
         }
     }

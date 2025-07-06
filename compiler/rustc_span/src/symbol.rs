@@ -187,6 +187,7 @@ symbols! {
         BTreeEntry,
         BTreeMap,
         BTreeSet,
+        Batching,
         BinaryHeap,
         Borrow,
         BorrowMut,
