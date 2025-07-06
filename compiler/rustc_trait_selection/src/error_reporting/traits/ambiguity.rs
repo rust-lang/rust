@@ -4,7 +4,7 @@ use rustc_errors::{Applicability, Diag, E0283, E0284, E0790, MultiSpan, struct_s
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor as _;
 use rustc_infer::infer::{BoundRegionConversionTime, InferCtxt};
 use rustc_infer::traits::util::elaborate;
@@ -128,19 +128,26 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
         },
     );
 
-    let predicates =
-        tcx.predicates_of(obligation.cause.body_id.to_def_id()).instantiate_identity(tcx);
-    for (pred, span) in elaborate(tcx, predicates.into_iter()) {
-        let kind = pred.kind();
-        if let ty::ClauseKind::Trait(trait_pred) = kind.skip_binder()
-            && param_env_candidate_may_apply(kind.rebind(trait_pred))
-        {
-            if kind.rebind(trait_pred.trait_ref)
-                == ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_pred.def_id()))
+    // If our `body_id` has been set (and isn't just from a dummy obligation cause),
+    // then try to look for a param-env clause that would apply. The way we compute
+    // this is somewhat manual, since we need the spans, so we elaborate this directly
+    // from `predicates_of` rather than actually looking at the param-env which
+    // otherwise would be more appropriate.
+    let body_id = obligation.cause.body_id;
+    if body_id != CRATE_DEF_ID {
+        let predicates = tcx.predicates_of(body_id.to_def_id()).instantiate_identity(tcx);
+        for (pred, span) in elaborate(tcx, predicates.into_iter()) {
+            let kind = pred.kind();
+            if let ty::ClauseKind::Trait(trait_pred) = kind.skip_binder()
+                && param_env_candidate_may_apply(kind.rebind(trait_pred))
             {
-                ambiguities.push(CandidateSource::ParamEnv(tcx.def_span(trait_pred.def_id())))
-            } else {
-                ambiguities.push(CandidateSource::ParamEnv(span))
+                if kind.rebind(trait_pred.trait_ref)
+                    == ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_pred.def_id()))
+                {
+                    ambiguities.push(CandidateSource::ParamEnv(tcx.def_span(trait_pred.def_id())))
+                } else {
+                    ambiguities.push(CandidateSource::ParamEnv(span))
+                }
             }
         }
     }
