@@ -1120,6 +1120,9 @@ impl<T> [T] {
     /// `chunk_size` elements, and [`rchunks`] for the same iterator but starting at the end of the
     /// slice.
     ///
+    /// If your `chunk_size` is a constant, consider using [`as_chunks`] instead, which will
+    /// give references to arrays of exactly that length, rather than slices.
+    ///
     /// # Panics
     ///
     /// Panics if `chunk_size` is zero.
@@ -1137,6 +1140,7 @@ impl<T> [T] {
     ///
     /// [`chunks_exact`]: slice::chunks_exact
     /// [`rchunks`]: slice::rchunks
+    /// [`as_chunks`]: slice::as_chunks
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
@@ -1155,6 +1159,9 @@ impl<T> [T] {
     /// See [`chunks_exact_mut`] for a variant of this iterator that returns chunks of always
     /// exactly `chunk_size` elements, and [`rchunks_mut`] for the same iterator but starting at
     /// the end of the slice.
+    ///
+    /// If your `chunk_size` is a constant, consider using [`as_chunks_mut`] instead, which will
+    /// give references to arrays of exactly that length, rather than slices.
     ///
     /// # Panics
     ///
@@ -1177,6 +1184,7 @@ impl<T> [T] {
     ///
     /// [`chunks_exact_mut`]: slice::chunks_exact_mut
     /// [`rchunks_mut`]: slice::rchunks_mut
+    /// [`as_chunks_mut`]: slice::as_chunks_mut
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
@@ -1199,6 +1207,9 @@ impl<T> [T] {
     /// See [`chunks`] for a variant of this iterator that also returns the remainder as a smaller
     /// chunk, and [`rchunks_exact`] for the same iterator but starting at the end of the slice.
     ///
+    /// If your `chunk_size` is a constant, consider using [`as_chunks`] instead, which will
+    /// give references to arrays of exactly that length, rather than slices.
+    ///
     /// # Panics
     ///
     /// Panics if `chunk_size` is zero.
@@ -1216,6 +1227,7 @@ impl<T> [T] {
     ///
     /// [`chunks`]: slice::chunks
     /// [`rchunks_exact`]: slice::rchunks_exact
+    /// [`as_chunks`]: slice::chunks
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
@@ -1239,6 +1251,9 @@ impl<T> [T] {
     /// smaller chunk, and [`rchunks_exact_mut`] for the same iterator but starting at the end of
     /// the slice.
     ///
+    /// If your `chunk_size` is a constant, consider using [`as_chunks_mut`] instead, which will
+    /// give references to arrays of exactly that length, rather than slices.
+    ///
     /// # Panics
     ///
     /// Panics if `chunk_size` is zero.
@@ -1260,6 +1275,7 @@ impl<T> [T] {
     ///
     /// [`chunks_mut`]: slice::chunks_mut
     /// [`rchunks_exact_mut`]: slice::rchunks_exact_mut
+    /// [`as_chunks_mut`]: slice::as_chunks_mut
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
@@ -1707,6 +1723,9 @@ impl<T> [T] {
     /// `chunk_size` elements, and [`chunks`] for the same iterator but starting at the beginning
     /// of the slice.
     ///
+    /// If your `chunk_size` is a constant, consider using [`as_rchunks`] instead, which will
+    /// give references to arrays of exactly that length, rather than slices.
+    ///
     /// # Panics
     ///
     /// Panics if `chunk_size` is zero.
@@ -1724,6 +1743,7 @@ impl<T> [T] {
     ///
     /// [`rchunks_exact`]: slice::rchunks_exact
     /// [`chunks`]: slice::chunks
+    /// [`as_rchunks`]: slice::as_rchunks
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
@@ -1742,6 +1762,9 @@ impl<T> [T] {
     /// See [`rchunks_exact_mut`] for a variant of this iterator that returns chunks of always
     /// exactly `chunk_size` elements, and [`chunks_mut`] for the same iterator but starting at the
     /// beginning of the slice.
+    ///
+    /// If your `chunk_size` is a constant, consider using [`as_rchunks_mut`] instead, which will
+    /// give references to arrays of exactly that length, rather than slices.
     ///
     /// # Panics
     ///
@@ -1764,6 +1787,7 @@ impl<T> [T] {
     ///
     /// [`rchunks_exact_mut`]: slice::rchunks_exact_mut
     /// [`chunks_mut`]: slice::chunks_mut
+    /// [`as_rchunks_mut`]: slice::as_rchunks_mut
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
@@ -1787,6 +1811,9 @@ impl<T> [T] {
     /// chunk, and [`chunks_exact`] for the same iterator but starting at the beginning of the
     /// slice.
     ///
+    /// If your `chunk_size` is a constant, consider using [`as_rchunks`] instead, which will
+    /// give references to arrays of exactly that length, rather than slices.
+    ///
     /// # Panics
     ///
     /// Panics if `chunk_size` is zero.
@@ -1805,6 +1832,7 @@ impl<T> [T] {
     /// [`chunks`]: slice::chunks
     /// [`rchunks`]: slice::rchunks
     /// [`chunks_exact`]: slice::chunks_exact
+    /// [`as_rchunks`]: slice::as_rchunks
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
@@ -1828,6 +1856,9 @@ impl<T> [T] {
     /// smaller chunk, and [`chunks_exact_mut`] for the same iterator but starting at the beginning
     /// of the slice.
     ///
+    /// If your `chunk_size` is a constant, consider using [`as_rchunks_mut`] instead, which will
+    /// give references to arrays of exactly that length, rather than slices.
+    ///
     /// # Panics
     ///
     /// Panics if `chunk_size` is zero.
@@ -1850,6 +1881,7 @@ impl<T> [T] {
     /// [`chunks_mut`]: slice::chunks_mut
     /// [`rchunks_mut`]: slice::rchunks_mut
     /// [`chunks_exact_mut`]: slice::chunks_exact_mut
+    /// [`as_rchunks_mut`]: slice::as_rchunks_mut
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
