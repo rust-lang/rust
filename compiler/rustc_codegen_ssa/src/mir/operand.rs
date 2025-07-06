@@ -238,8 +238,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 // Neither a scalar nor scalar pair. Load from a place
                 // FIXME: should we cache `const_data_from_alloc` to avoid repeating this for the
                 // same `ConstAllocation`?
-                let init = bx.const_data_from_alloc(alloc);
-                let base_addr = bx.static_addr_of(init, alloc_align, None);
+                let base_addr = bx.static_addr_of(alloc, None);
 
                 let llval = bx.const_ptr_byte_offset(base_addr, offset);
                 bx.load_operand(PlaceRef::new_sized(llval, layout))
