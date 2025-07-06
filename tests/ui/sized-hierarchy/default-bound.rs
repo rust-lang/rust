@@ -14,13 +14,13 @@ fn neg_sized<T: ?Sized>() {}
 fn metasized<T: MetaSized>() {}
 
 fn neg_metasized<T: ?MetaSized>() {}
-//~^ ERROR relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+//~^ ERROR bound modifier `?` can only be applied to `Sized`
 
 
 fn pointeesized<T: PointeeSized>() { }
 
 fn neg_pointeesized<T: ?PointeeSized>() { }
-//~^ ERROR relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+//~^ ERROR bound modifier `?` can only be applied to `Sized`
 
 
 fn main() {
