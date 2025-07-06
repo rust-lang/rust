@@ -13,9 +13,9 @@ use std::str;
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() >= 2 && args[1] == "force" {
-        println!("stack backtrace:\n{}", std::backtrace::Backtrace::force_capture());
+        println!("{}", std::backtrace::Backtrace::force_capture());
     } else if args.len() >= 2 {
-        println!("stack backtrace:\n{}", std::backtrace::Backtrace::capture());
+        println!("{}", std::backtrace::Backtrace::capture());
     } else {
         runtest(&args[0]);
         println!("test ok");
@@ -28,7 +28,9 @@ fn runtest(me: &str) {
 
     let p = Command::new(me).arg("a").env("RUST_BACKTRACE", "1").output().unwrap();
     assert!(p.status.success());
-    assert!(String::from_utf8_lossy(&p.stdout).contains("stack backtrace:\n"));
+    // Make sure there is no header. The header to use (if any) is up the user.
+    // See https://github.com/rust-lang/rust/pull/69042.
+    assert!(!String::from_utf8_lossy(&p.stdout).contains("stack backtrace:"));
     assert!(String::from_utf8_lossy(&p.stdout).contains("backtrace::main"));
 
     let p = Command::new(me).arg("a").env("RUST_BACKTRACE", "0").output().unwrap();
@@ -46,7 +48,7 @@ fn runtest(me: &str) {
         .output()
         .unwrap();
     assert!(p.status.success());
-    assert!(String::from_utf8_lossy(&p.stdout).contains("stack backtrace:\n"));
+    assert!(!String::from_utf8_lossy(&p.stdout).contains("stack backtrace:"));
 
     let p = Command::new(me)
         .arg("a")
@@ -64,9 +66,9 @@ fn runtest(me: &str) {
         .output()
         .unwrap();
     assert!(p.status.success());
-    assert!(String::from_utf8_lossy(&p.stdout).contains("stack backtrace:\n"));
+    assert!(!String::from_utf8_lossy(&p.stdout).contains("stack backtrace:"));
 
     let p = Command::new(me).arg("force").output().unwrap();
     assert!(p.status.success());
-    assert!(String::from_utf8_lossy(&p.stdout).contains("stack backtrace:\n"));
+    assert!(!String::from_utf8_lossy(&p.stdout).contains("stack backtrace:"));
 }
