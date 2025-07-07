@@ -240,6 +240,12 @@ error: use of `unwrap_or` to construct default value
 LL |     let _ = opt.unwrap_or({ i32::default() });
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
+error: function call inside of `unwrap_or`
+  --> tests/ui/or_fun_call.rs:409:21
+   |
+LL |     let _ = opt_foo.unwrap_or(Foo { val: String::default() });
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| Foo { val: String::default() })`
+
 error: function call inside of `map_or`
   --> tests/ui/or_fun_call.rs:424:19
    |
@@ -258,5 +264,5 @@ error: function call inside of `get_or_insert`
 LL |     let _ = x.get_or_insert(g());
    |               ^^^^^^^^^^^^^^^^^^ help: try: `get_or_insert_with(g)`
 
-error: aborting due to 40 previous errors
+error: aborting due to 41 previous errors
 
