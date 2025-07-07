@@ -665,7 +665,11 @@ impl Step for Std {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::doc("std", self.target).stage(self.stage))
+        Some(
+            StepMetadata::doc("std", self.target)
+                .stage(self.stage)
+                .with_metadata(format!("crates=[{}]", self.crates.join(","))),
+        )
     }
 }
 
