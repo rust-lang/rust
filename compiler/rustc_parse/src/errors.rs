@@ -3653,3 +3653,10 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
         }
     }
 }
+
+#[derive(LintDiagnostic)]
+#[diag(parse_varargs_without_pattern)]
+pub(crate) struct VarargsWithoutPattern {
+    #[suggestion(code = "_: ...", applicability = "machine-applicable")]
+    pub span: Span,
+}
