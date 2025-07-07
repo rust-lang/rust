@@ -4,9 +4,9 @@ use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
     self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, NodeId,
-    Safety,
+    Path, Safety,
 };
-use rustc_errors::{Applicability, FatalError, PResult};
+use rustc_errors::{Applicability, DiagCtxtHandle, FatalError, PResult};
 use rustc_feature::{AttributeSafety, AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
 use rustc_session::errors::report_lit_error;
 use rustc_session::lint::BuiltinLintDiag;
@@ -247,14 +247,12 @@ pub fn check_attribute_safety(
 
 // Called by `check_builtin_meta_item` and code that manually denies
 // `unsafe(...)` in `cfg`
-pub fn deny_builtin_meta_unsafety(psess: &ParseSess, meta: &MetaItem) {
+pub fn deny_builtin_meta_unsafety(diag: DiagCtxtHandle<'_>, unsafety: Safety, name: &Path) {
     // This only supports denying unsafety right now - making builtin attributes
     // support unsafety will requite us to thread the actual `Attribute` through
     // for the nice diagnostics.
-    if let Safety::Unsafe(unsafe_span) = meta.unsafety {
-        psess
-            .dcx()
-            .emit_err(errors::InvalidAttrUnsafe { span: unsafe_span, name: meta.path.clone() });
+    if let Safety::Unsafe(unsafe_span) = unsafety {
+        diag.emit_err(errors::InvalidAttrUnsafe { span: unsafe_span, name: name.clone() });
     }
 }
 
@@ -324,7 +322,7 @@ pub fn check_builtin_meta_item(
     }
 
     if deny_unsafety {
-        deny_builtin_meta_unsafety(psess, meta);
+        deny_builtin_meta_unsafety(psess.dcx(), meta.unsafety, &meta.path);
     }
 }
 
