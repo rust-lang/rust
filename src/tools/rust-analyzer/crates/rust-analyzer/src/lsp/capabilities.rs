@@ -42,7 +42,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
             resolve_provider: if config.client_is_neovim() {
-                config.completion_item_edit_resolve().then_some(true)
+                config.has_completion_item_resolve_additionalTextEdits().then_some(true)
             } else {
                 Some(config.caps().completions_resolve_provider())
             },
@@ -207,8 +207,8 @@ impl ClientCapabilities {
         serde_json::from_value(self.0.experimental.as_ref()?.get(index)?.clone()).ok()
     }
 
-    /// Parses client capabilities and returns all completion resolve capabilities rust-analyzer supports.
-    pub fn completion_item_edit_resolve(&self) -> bool {
+    #[allow(non_snake_case)]
+    pub fn has_completion_item_resolve_additionalTextEdits(&self) -> bool {
         (|| {
             Some(
                 self.0

@@ -4,7 +4,7 @@ use core::fmt;
 use std::any::Any;
 use std::{panic::RefUnwindSafe, sync};
 
-use base_db::{Crate, CrateBuilderId, CratesIdMap, Env};
+use base_db::{Crate, CrateBuilderId, CratesIdMap, Env, ProcMacroLoadingError};
 use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::Span;
@@ -53,8 +53,8 @@ pub enum ProcMacroExpansionError {
     System(String),
 }
 
-pub type ProcMacroLoadResult = Result<Vec<ProcMacro>, (String, bool)>;
-type StoredProcMacroLoadResult = Result<Box<[ProcMacro]>, (Box<str>, bool)>;
+pub type ProcMacroLoadResult = Result<Vec<ProcMacro>, ProcMacroLoadingError>;
+type StoredProcMacroLoadResult = Result<Box<[ProcMacro]>, ProcMacroLoadingError>;
 
 #[derive(Default, Debug)]
 pub struct ProcMacrosBuilder(FxHashMap<CrateBuilderId, Arc<CrateProcMacros>>);
@@ -77,9 +77,7 @@ impl ProcMacrosBuilder {
             proc_macros_crate,
             match proc_macro {
                 Ok(it) => Arc::new(CrateProcMacros(Ok(it.into_boxed_slice()))),
-                Err((e, hard_err)) => {
-                    Arc::new(CrateProcMacros(Err((e.into_boxed_str(), hard_err))))
-                }
+                Err(e) => Arc::new(CrateProcMacros(Err(e))),
             },
         );
     }
@@ -139,8 +137,8 @@ impl CrateProcMacros {
         )
     }
 
-    pub fn get_error(&self) -> Option<(&str, bool)> {
-        self.0.as_ref().err().map(|(e, hard_err)| (&**e, *hard_err))
+    pub fn get_error(&self) -> Option<&ProcMacroLoadingError> {
+        self.0.as_ref().err()
     }
 
     /// Fetch the [`CustomProcMacroExpander`]s and their corresponding names for the given crate.

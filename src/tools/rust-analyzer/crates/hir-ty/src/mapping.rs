@@ -13,7 +13,8 @@ use salsa::{
 
 use crate::{
     AssocTypeId, CallableDefId, ChalkTraitId, FnDefId, ForeignDefId, Interner, OpaqueTyId,
-    PlaceholderIndex, chalk_db, db::HirDatabase,
+    PlaceholderIndex, chalk_db,
+    db::{HirDatabase, InternedLifetimeParamId, InternedTypeOrConstParamId},
 };
 
 pub trait ToChalk {
@@ -125,30 +126,32 @@ pub fn from_assoc_type_id(id: AssocTypeId) -> TypeAliasId {
 pub fn from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> TypeOrConstParamId {
     assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
     // SAFETY: We cannot really encapsulate this unfortunately, so just hope this is sound.
-    let interned_id = FromId::from_id(unsafe { Id::from_u32(idx.idx.try_into().unwrap()) });
-    db.lookup_intern_type_or_const_param_id(interned_id)
+    let interned_id =
+        InternedTypeOrConstParamId::from_id(unsafe { Id::from_index(idx.idx.try_into().unwrap()) });
+    interned_id.loc(db)
 }
 
 pub fn to_placeholder_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> PlaceholderIndex {
-    let interned_id = db.intern_type_or_const_param_id(id);
+    let interned_id = InternedTypeOrConstParamId::new(db, id);
     PlaceholderIndex {
         ui: chalk_ir::UniverseIndex::ROOT,
-        idx: interned_id.as_id().as_u32() as usize,
+        idx: interned_id.as_id().index() as usize,
     }
 }
 
 pub fn lt_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> LifetimeParamId {
     assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
     // SAFETY: We cannot really encapsulate this unfortunately, so just hope this is sound.
-    let interned_id = FromId::from_id(unsafe { Id::from_u32(idx.idx.try_into().unwrap()) });
-    db.lookup_intern_lifetime_param_id(interned_id)
+    let interned_id =
+        InternedLifetimeParamId::from_id(unsafe { Id::from_index(idx.idx.try_into().unwrap()) });
+    interned_id.loc(db)
 }
 
 pub fn lt_to_placeholder_idx(db: &dyn HirDatabase, id: LifetimeParamId) -> PlaceholderIndex {
-    let interned_id = db.intern_lifetime_param_id(id);
+    let interned_id = InternedLifetimeParamId::new(db, id);
     PlaceholderIndex {
         ui: chalk_ir::UniverseIndex::ROOT,
-        idx: interned_id.as_id().as_u32() as usize,
+        idx: interned_id.as_id().index() as usize,
     }
 }
 

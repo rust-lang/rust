@@ -242,8 +242,8 @@ macro_rules! outer {
 
 fn f() {
     outer!();
-} //^^^^^^^^ error: leftover tokens
-  //^^^^^^^^ error: Syntax Error in Expansion: expected expression
+} //^^^^^^ error: leftover tokens
+  //^^^^^^ error: Syntax Error in Expansion: expected expression
 "#,
         )
     }
