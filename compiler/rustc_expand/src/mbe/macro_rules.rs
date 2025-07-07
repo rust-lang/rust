@@ -386,7 +386,8 @@ pub fn compile_declarative_macro(
     let body = macro_def.body.tokens.clone();
     let mut p = Parser::new(&sess.psess, body, rustc_parse::MACRO_ARGUMENTS);
 
-    // Don't abort iteration early, so that multiple errors can be reported.
+    // Don't abort iteration early, so that multiple errors can be reported. We only abort early on
+    // parse failures we can't recover from.
     let mut guar = None;
     let mut check_emission = |ret: Result<(), ErrorGuaranteed>| guar = guar.or(ret.err());
 
@@ -395,8 +396,6 @@ pub fn compile_declarative_macro(
     while p.token != token::Eof {
         let lhs_tt = p.parse_token_tree();
         let lhs_tt = parse_one_tt(lhs_tt, RulePart::Pattern, sess, node_id, features, edition);
-        // We don't handle errors here, the driver will abort after parsing/expansion. We can
-        // report every error in every macro this way.
         check_emission(check_lhs(sess, node_id, &lhs_tt));
         if let Err(e) = p.expect(exp!(FatArrow)) {
             return dummy_syn_ext(e.emit());
