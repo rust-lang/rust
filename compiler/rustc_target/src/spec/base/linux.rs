@@ -12,6 +12,9 @@ pub(crate) fn opts() -> TargetOptions {
         relro_level: RelroLevel::Full,
         has_thread_local: true,
         crt_static_respected: true,
+        // We want backtraces to work by default and they rely on unwind tables
+        // (regardless of `-C panic` strategy).
+        default_uwtable: true,
         supported_split_debuginfo: Cow::Borrowed(&[
             SplitDebuginfo::Packed,
             SplitDebuginfo::Unpacked,

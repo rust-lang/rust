@@ -784,7 +784,8 @@ impl Session {
         //     ELF x86-64 abi, but it can be disabled for some compilation units.
         //
         // Typically when we're compiling with `-C panic=abort` we don't need
-        // `uwtable` because we can't generate any exceptions!
+        // `uwtable` because we can't generate any exceptions! But note that
+        // some targets require unwind tables to generate backtraces.
         // Unwind tables are needed when compiling with `-C panic=unwind`, but
         // LLVM won't omit unwind tables unless the function is also marked as
         // `nounwind`, so users are allowed to disable `uwtable` emission.
