@@ -26,6 +26,7 @@ use super::{
     Misalignment, Pointer, PointerArithmetic, Provenance, Scalar, alloc_range, err_ub,
     err_ub_custom, interp_ok, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
 };
+use crate::const_eval::ConstEvalErrKind;
 use crate::fluent_generated as fluent;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -309,6 +310,49 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.deallocate_ptr(ptr, old_size_and_align, kind)?;
 
         interp_ok(new_ptr)
+    }
+
+    /// mark the `const_allocate`d pointer immutable so we can intern it.
+    pub fn make_const_heap_ptr_global(
+        &mut self,
+        ptr: Pointer<Option<M::Provenance>>,
+    ) -> InterpResult<'tcx>
+    where
+        M: Machine<'tcx, MemoryKind = crate::const_eval::MemoryKind>,
+    {
+        let (alloc_id, offset, _) = self.ptr_get_alloc_id(ptr, 0)?;
+        if offset.bytes() != 0 {
+            return Err(ConstEvalErrKind::ConstMakeGlobalWithOffset(format!("{ptr:?}"))).into();
+        }
+
+        let not_local_heap =
+            matches!(self.tcx.try_get_global_alloc(alloc_id), Some(GlobalAlloc::Memory(_)));
+
+        if not_local_heap {
+            return Err(ConstEvalErrKind::ConstMakeGlobalPtrIsNonHeap(format!("{ptr:?}"))).into();
+        }
+
+        let (kind, alloc) = self.memory.alloc_map.get_mut_or(alloc_id, || {
+            Err(ConstEvalErrKind::ConstMakeGlobalWithDanglingPtr(format!("{ptr:?}")))
+        })?;
+
+        alloc.mutability = Mutability::Not;
+
+        match kind {
+            MemoryKind::Stack | MemoryKind::CallerLocation => {
+                return Err(ConstEvalErrKind::ConstMakeGlobalPtrIsNonHeap(format!("{ptr:?}")))
+                    .into();
+            }
+            MemoryKind::Machine(crate::const_eval::MemoryKind::Heap { was_made_global }) => {
+                if *was_made_global {
+                    return Err(ConstEvalErrKind::ConstMakeGlobalPtrAlreadyMadeGlobal(alloc_id))
+                        .into();
+                }
+                *was_made_global = true;
+            }
+        }
+
+        interp_ok(())
     }
 
     #[instrument(skip(self), level = "debug")]

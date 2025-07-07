@@ -1,10 +1,11 @@
-//@ run-pass
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
 use std::intrinsics;
 
 const FOO: &i32 = foo();
+//~^ error: encountered `const_allocate` pointer in final value that was not made global
 const FOO_RAW: *const i32 = foo();
+//~^ error: encountered `const_allocate` pointer in final value that was not made global
 
 const fn foo() -> &'static i32 {
     let t = unsafe {
@@ -12,9 +13,7 @@ const fn foo() -> &'static i32 {
         *i = 20;
         i
     };
-    unsafe { &*(intrinsics::const_make_global(t as *mut u8) as *mut i32) }
+    unsafe { &*t }
 }
-fn main() {
-    assert_eq!(*FOO, 20);
-    assert_eq!(unsafe { *FOO_RAW }, 20);
-}
+
+fn main() {}

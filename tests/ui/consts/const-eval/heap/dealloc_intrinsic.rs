@@ -12,7 +12,7 @@ const _X: () = unsafe {
 const Y: &u32 = unsafe {
     let ptr = intrinsics::const_allocate(4, 4) as *mut u32;
     *ptr = 42;
-    &*ptr
+    &*(intrinsics::const_make_global(ptr as *mut u8) as *const u32)
 };
 
 const Z: &u32 = &42;

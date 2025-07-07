@@ -7,12 +7,13 @@ const FOO: &i32 = foo();
 const FOO_RAW: *const i32 = foo();
 
 const fn foo() -> &'static i32 {
-    let t = unsafe {
-        let i = intrinsics::const_allocate(4, 4) as *mut i32;
-        *i = 20;
-        i
-    };
-    unsafe { &*(intrinsics::const_make_global(t as *mut u8) as *mut i32) }
+    unsafe {
+        let ptr = intrinsics::const_allocate(4, 4);
+        let t = ptr as *mut i32;
+        *t = 20;
+        intrinsics::const_make_global(ptr);
+        &*t
+    }
 }
 fn main() {
     assert_eq!(*FOO, 20);

@@ -44,6 +44,14 @@ pub(crate) struct MutablePtrInFinal {
 }
 
 #[derive(Diagnostic)]
+#[diag(const_eval_const_heap_ptr_in_final)]
+#[note]
+pub(crate) struct ConstHeapPtrInFinal {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(const_eval_unstable_in_stable_exposed)]
 pub(crate) struct UnstableInStableExposed {
     pub gate: String,

@@ -715,6 +715,7 @@ symbols! {
         const_indexing,
         const_let,
         const_loop,
+        const_make_global,
         const_mut_refs,
         const_panic,
         const_panic_fmt,

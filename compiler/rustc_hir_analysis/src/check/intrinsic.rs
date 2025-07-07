@@ -422,6 +422,9 @@ pub(crate) fn check_intrinsic_type(
             vec![Ty::new_mut_ptr(tcx, tcx.types.u8), tcx.types.usize, tcx.types.usize],
             tcx.types.unit,
         ),
+        sym::const_make_global => {
+            (0, 0, vec![Ty::new_mut_ptr(tcx, tcx.types.u8)], Ty::new_imm_ptr(tcx, tcx.types.u8))
+        }
 
         sym::ptr_offset_from => (
             1,
