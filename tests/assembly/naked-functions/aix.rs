@@ -9,7 +9,7 @@
 //@[aix] needs-llvm-components: powerpc
 
 #![crate_type = "lib"]
-#![feature(no_core, asm_experimental_arch, f128, linkage, fn_align)]
+#![feature(no_core, asm_experimental_arch, f128, linkage)]
 #![no_core]
 
 // tests that naked functions work for the `powerpc64-ibm-aix` target.

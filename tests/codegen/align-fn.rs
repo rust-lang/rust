@@ -1,7 +1,6 @@
 //@ compile-flags: -C no-prepopulate-passes -Z mir-opt-level=0 -Clink-dead-code
 
 #![crate_type = "lib"]
-#![feature(fn_align)]
 
 // CHECK: align 16
 #[unsafe(no_mangle)]

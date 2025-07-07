@@ -1,5 +1,5 @@
 error[E0539]: malformed `align` attribute input
-  --> $DIR/malformed-fn-align.rs:5:5
+  --> $DIR/malformed-fn-align.rs:4:5
    |
 LL |     #[align]
    |     ^^^^^^^^
@@ -8,7 +8,7 @@ LL |     #[align]
    |     help: must be of the form: `#[align(<alignment in bytes>)]`
 
 error[E0805]: malformed `align` attribute input
-  --> $DIR/malformed-fn-align.rs:8:5
+  --> $DIR/malformed-fn-align.rs:7:5
    |
 LL |     #[align(1, 2)]
    |     ^^^^^^^------^
@@ -17,7 +17,7 @@ LL |     #[align(1, 2)]
    |     help: must be of the form: `#[align(<alignment in bytes>)]`
 
 error[E0539]: malformed `align` attribute input
-  --> $DIR/malformed-fn-align.rs:12:1
+  --> $DIR/malformed-fn-align.rs:11:1
    |
 LL | #[align = 16]
    | ^^^^^^^^^^^^^
@@ -26,31 +26,31 @@ LL | #[align = 16]
    | help: must be of the form: `#[align(<alignment in bytes>)]`
 
 error[E0589]: invalid alignment value: not an unsuffixed integer
-  --> $DIR/malformed-fn-align.rs:15:9
+  --> $DIR/malformed-fn-align.rs:14:9
    |
 LL | #[align("hello")]
    |         ^^^^^^^
 
 error[E0589]: invalid alignment value: not a power of two
-  --> $DIR/malformed-fn-align.rs:18:9
+  --> $DIR/malformed-fn-align.rs:17:9
    |
 LL | #[align(0)]
    |         ^
 
 error: `#[repr(align(...))]` is not supported on function items
-  --> $DIR/malformed-fn-align.rs:21:8
+  --> $DIR/malformed-fn-align.rs:20:8
    |
 LL | #[repr(align(16))]
    |        ^^^^^^^^^
    |
 help: use `#[align(...)]` instead
-  --> $DIR/malformed-fn-align.rs:21:8
+  --> $DIR/malformed-fn-align.rs:20:8
    |
 LL | #[repr(align(16))]
    |        ^^^^^^^^^
 
 error: `#[align(...)]` is not supported on struct items
-  --> $DIR/malformed-fn-align.rs:24:1
+  --> $DIR/malformed-fn-align.rs:23:1
    |
 LL | #[align(16)]
    | ^^^^^^^^^^^^

@@ -1,4 +1,3 @@
-#![feature(fn_align)]
 #![crate_type = "lib"]
 
 trait MyTrait {
