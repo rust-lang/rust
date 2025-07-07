@@ -451,11 +451,6 @@ fn copy_self_contained_objects(
 
 /// Resolves standard library crates for `Std::run_make` for any build kind (like check, build, clippy, etc.).
 pub fn std_crates_for_run_make(run: &RunConfig<'_>) -> Vec<String> {
-    // FIXME: Extend builder tests to cover the `crates` field of `Std` instances.
-    if cfg!(test) {
-        return vec![];
-    }
-
     let has_alias = run.paths.iter().any(|set| set.assert_single_path().path.ends_with("library"));
     let target_is_no_std = run.builder.no_std(run.target).unwrap_or(false);
 
