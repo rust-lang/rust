@@ -21,7 +21,7 @@ use thin_vec::thin_vec;
 use tracing::{debug, instrument};
 
 use super::SelectionCandidate::{self, *};
-use super::{BuiltinImplConditions, PredicateObligations, SelectionContext};
+use super::{PredicateObligations, SelectionContext};
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::util::{self, closure_trait_ref_and_return_type};
 use crate::traits::{
@@ -257,16 +257,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?obligation, "confirm_builtin_candidate");
         let tcx = self.tcx();
         let trait_def = obligation.predicate.def_id();
-        let conditions = match tcx.as_lang_item(trait_def) {
-            Some(LangItem::Sized) => self.sizedness_conditions(obligation, SizedTraitKind::Sized),
+        let self_ty = self.infcx.shallow_resolve(
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate.self_ty()),
+        );
+        let types = match tcx.as_lang_item(trait_def) {
+            Some(LangItem::Sized) => self.sizedness_conditions(self_ty, SizedTraitKind::Sized),
             Some(LangItem::MetaSized) => {
-                self.sizedness_conditions(obligation, SizedTraitKind::MetaSized)
+                self.sizedness_conditions(self_ty, SizedTraitKind::MetaSized)
             }
             Some(LangItem::PointeeSized) => {
                 bug!("`PointeeSized` is removing during lowering");
             }
-            Some(LangItem::Copy | LangItem::Clone) => self.copy_clone_conditions(obligation),
-            Some(LangItem::FusedIterator) => self.fused_iterator_conditions(obligation),
+            Some(LangItem::Copy | LangItem::Clone) => self.copy_clone_conditions(self_ty),
+            Some(LangItem::FusedIterator) => {
+                if self.coroutine_is_gen(self_ty) {
+                    ty::Binder::dummy(vec![])
+                } else {
+                    unreachable!("tried to assemble `FusedIterator` for non-gen coroutine");
+                }
+            }
             Some(
                 LangItem::Destruct
                 | LangItem::DiscriminantKind
@@ -274,11 +283,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | LangItem::PointeeTrait
                 | LangItem::Tuple
                 | LangItem::Unpin,
-            ) => BuiltinImplConditions::Where(ty::Binder::dummy(vec![])),
+            ) => ty::Binder::dummy(vec![]),
             other => bug!("unexpected builtin trait {trait_def:?} ({other:?})"),
-        };
-        let BuiltinImplConditions::Where(types) = conditions else {
-            bug!("obligation {:?} had matched a builtin impl but now doesn't", obligation);
         };
         let types = self.infcx.enter_forall_and_leak_universe(types);
 
