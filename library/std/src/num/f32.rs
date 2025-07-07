@@ -44,7 +44,7 @@ impl f32 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
+    #[rustc_const_stable(feature = "const_float_round_methods", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn floor(self) -> f32 {
         core::f32::math::floor(self)
@@ -67,7 +67,7 @@ impl f32 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
+    #[rustc_const_stable(feature = "const_float_round_methods", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn ceil(self) -> f32 {
         core::f32::math::ceil(self)
@@ -96,7 +96,7 @@ impl f32 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
+    #[rustc_const_stable(feature = "const_float_round_methods", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn round(self) -> f32 {
         core::f32::math::round(self)
@@ -123,7 +123,7 @@ impl f32 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "round_ties_even", since = "1.77.0")]
-    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
+    #[rustc_const_stable(feature = "const_float_round_methods", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn round_ties_even(self) -> f32 {
         core::f32::math::round_ties_even(self)
@@ -149,7 +149,7 @@ impl f32 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
+    #[rustc_const_stable(feature = "const_float_round_methods", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn trunc(self) -> f32 {
         core::f32::math::trunc(self)
@@ -173,7 +173,7 @@ impl f32 {
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_round_methods", issue = "141555")]
+    #[rustc_const_stable(feature = "const_float_round_methods", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn fract(self) -> f32 {
         core::f32::math::fract(self)
