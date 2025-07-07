@@ -2976,11 +2976,7 @@ intrinsics:
       - float64x1_t
       - float64x2_t
     compose:
-      - LLVMLink:
-          name: "llvm.rint.{neon_type}"
-          links:
-            - link: "llvm.rint.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_round_ties_even, [a]]
 
 
   - name: "vrndx{neon_type.no}"
@@ -2996,11 +2992,7 @@ intrinsics:
       - float16x4_t
       - float16x8_t
     compose:
-      - LLVMLink:
-          name: "llvm.rint.{neon_type}"
-          links:
-            - link: "llvm.rint.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_round_ties_even, [a]]
 
 
   - name: "vrndx{type[1]}{type[0]}"

@@ -23785,14 +23785,7 @@ pub fn vrndph_f16(a: f16) -> f16 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndx_f16(a: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.rint.v4f16"
-        )]
-        fn _vrndx_f16(a: float16x4_t) -> float16x4_t;
-    }
-    unsafe { _vrndx_f16(a) }
+    unsafe { simd_round_ties_even(a) }
 }
 #[doc = "Floating-point round to integral exact, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndxq_f16)"]
@@ -23801,14 +23794,7 @@ pub fn vrndx_f16(a: float16x4_t) -> float16x4_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndxq_f16(a: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.rint.v8f16"
-        )]
-        fn _vrndxq_f16(a: float16x8_t) -> float16x8_t;
-    }
-    unsafe { _vrndxq_f16(a) }
+    unsafe { simd_round_ties_even(a) }
 }
 #[doc = "Floating-point round to integral exact, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndx_f32)"]
@@ -23817,14 +23803,7 @@ pub fn vrndxq_f16(a: float16x8_t) -> float16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndx_f32(a: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.rint.v2f32"
-        )]
-        fn _vrndx_f32(a: float32x2_t) -> float32x2_t;
-    }
-    unsafe { _vrndx_f32(a) }
+    unsafe { simd_round_ties_even(a) }
 }
 #[doc = "Floating-point round to integral exact, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndxq_f32)"]
@@ -23833,14 +23812,7 @@ pub fn vrndx_f32(a: float32x2_t) -> float32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndxq_f32(a: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.rint.v4f32"
-        )]
-        fn _vrndxq_f32(a: float32x4_t) -> float32x4_t;
-    }
-    unsafe { _vrndxq_f32(a) }
+    unsafe { simd_round_ties_even(a) }
 }
 #[doc = "Floating-point round to integral exact, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndx_f64)"]
@@ -23849,14 +23821,7 @@ pub fn vrndxq_f32(a: float32x4_t) -> float32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndx_f64(a: float64x1_t) -> float64x1_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.rint.v1f64"
-        )]
-        fn _vrndx_f64(a: float64x1_t) -> float64x1_t;
-    }
-    unsafe { _vrndx_f64(a) }
+    unsafe { simd_round_ties_even(a) }
 }
 #[doc = "Floating-point round to integral exact, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndxq_f64)"]
@@ -23865,14 +23830,7 @@ pub fn vrndx_f64(a: float64x1_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndxq_f64(a: float64x2_t) -> float64x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.rint.v2f64"
-        )]
-        fn _vrndxq_f64(a: float64x2_t) -> float64x2_t;
-    }
-    unsafe { _vrndxq_f64(a) }
+    unsafe { simd_round_ties_even(a) }
 }
 #[doc = "Floating-point round to integral, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndxh_f16)"]
