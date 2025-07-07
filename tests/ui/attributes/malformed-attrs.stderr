@@ -59,12 +59,6 @@ error: malformed `no_sanitize` attribute input
 LL | #[no_sanitize]
    | ^^^^^^^^^^^^^^ help: must be of the form: `#[no_sanitize(address, kcfi, memory, thread)]`
 
-error: malformed `proc_macro` attribute input
-  --> $DIR/malformed-attrs.rs:99:1
-   |
-LL | #[proc_macro = 18]
-   | ^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro]`
-
 error: malformed `instruction_set` attribute input
   --> $DIR/malformed-attrs.rs:106:1
    |
@@ -82,18 +76,6 @@ error: malformed `coroutine` attribute input
    |
 LL |     #[coroutine = 63] || {}
    |     ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[coroutine]`
-
-error: malformed `proc_macro_attribute` attribute input
-  --> $DIR/malformed-attrs.rs:116:1
-   |
-LL | #[proc_macro_attribute = 19]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_attribute]`
-
-error: malformed `proc_macro_derive` attribute input
-  --> $DIR/malformed-attrs.rs:123:1
-   |
-LL | #[proc_macro_derive]
-   | ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
 
 error: malformed `must_not_suspend` attribute input
   --> $DIR/malformed-attrs.rs:132:1
@@ -493,6 +475,24 @@ LL | #[no_implicit_prelude = 23]
    | |                     didn't expect any arguments here
    | help: must be of the form: `#[no_implicit_prelude]`
 
+error[E0565]: malformed `proc_macro` attribute input
+  --> $DIR/malformed-attrs.rs:99:1
+   |
+LL | #[proc_macro = 18]
+   | ^^^^^^^^^^^^^----^
+   | |            |
+   | |            didn't expect any arguments here
+   | help: must be of the form: `#[proc_macro]`
+
+error[E0565]: malformed `proc_macro_attribute` attribute input
+  --> $DIR/malformed-attrs.rs:116:1
+   |
+LL | #[proc_macro_attribute = 19]
+   | ^^^^^^^^^^^^^^^^^^^^^^^----^
+   | |                      |
+   | |                      didn't expect any arguments here
+   | help: must be of the form: `#[proc_macro_attribute]`
+
 error[E0539]: malformed `must_use` attribute input
   --> $DIR/malformed-attrs.rs:119:1
    |
@@ -509,6 +509,15 @@ LL + #[must_use = "reason"]
 LL - #[must_use = 1]
 LL + #[must_use]
    |
+
+error[E0539]: malformed `proc_macro_derive` attribute input
+  --> $DIR/malformed-attrs.rs:123:1
+   |
+LL | #[proc_macro_derive]
+   | ^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
 
 error[E0539]: malformed `rustc_layout_scalar_valid_range_start` attribute input
   --> $DIR/malformed-attrs.rs:128:1
