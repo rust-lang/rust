@@ -1224,7 +1224,10 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                             &new_stack_entry,
                             |_, result| result,
                         );
-                        self.tree.set_rebase_kind(new_stack_entry.node_id, tree::RebaseEntriesKind::Normal);
+                        self.tree.set_rebase_kind(
+                            new_stack_entry.node_id,
+                            tree::RebaseEntriesKind::Normal,
+                        );
                         return EvaluationResult::finalize(
                             new_stack_entry,
                             encountered_overflow,
@@ -1300,6 +1303,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                             )
                         }
                         Some(tree::RebaseEntriesKind::Ambiguity) => {
+                            debug!(?reeval_entry.input, "rebase entries while truncating stack");
                             Self::rebase_provisional_cache_entries(
                                 stack,
                                 provisional_cache,
@@ -1308,6 +1312,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                             )
                         }
                         Some(tree::RebaseEntriesKind::Overflow) => {
+                            debug!(?reeval_entry.input, "rebase entries while truncating stack");
                             Self::rebase_provisional_cache_entries(
                                 stack,
                                 provisional_cache,
@@ -1315,11 +1320,38 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                                 |input, _| D::on_fixpoint_overflow(cx, input),
                             )
                         }
-                        None | _ => {
-                            Self::clear_dependent_provisional_results(stack, provisional_cache)
+                        None => Self::clear_dependent_provisional_results(stack, provisional_cache),
+                    }
+
+                    let entry = provisional_cache.entry(reeval_entry.input).or_default();
+                    for (head, path_to_nested) in heads.iter() {
+                        let path_from_head =
+                            Self::cycle_path_kind(&stack, reeval_entry.step_kind_from_parent, head);
+                        for path_kind in path_to_nested.extend_with(path_from_head).iter_paths() {
+                            let usage_kind = UsageKind::Single(path_kind);
+                            stack[head].has_been_used = Some(
+                                stack[head]
+                                    .has_been_used
+                                    .map_or(usage_kind, |prev| prev.merge(usage_kind)),
+                            );
                         }
                     }
+                    let path_from_head = Self::cycle_path_kind(
+                        &stack,
+                        reeval_entry.step_kind_from_parent,
+                        heads.highest_cycle_head(),
+                    );
+                    let provisional_cache_entry = ProvisionalCacheEntry {
+                        entry_node_id: reeval_entry.node_id,
+                        encountered_overflow,
+                        heads: heads.clone(),
+                        path_from_head,
+                        result,
+                    };
+                    debug!(?reeval_entry.input, ?provisional_cache_entry);
+                    entry.push(provisional_cache_entry);
                 } else {
+                    debug!(?reeval_entry.input, "rebase entries while truncating stack");
                     Self::clear_dependent_provisional_results(stack, provisional_cache);
                 }
 
@@ -1331,34 +1363,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                     reeval_entry.encountered_overflow,
                     UpdateParentGoalCtxt::Ordinary(&reeval_entry.nested_goals),
                 );
-                let entry = provisional_cache.entry(reeval_entry.input).or_default();
-
-                for (head, path_to_nested) in heads.iter() {
-                    let path_from_head =
-                        Self::cycle_path_kind(&stack, reeval_entry.step_kind_from_parent, head);
-                    for path_kind in path_to_nested.extend_with(path_from_head).iter_paths() {
-                        let usage_kind = UsageKind::Single(path_kind);
-                        stack[head].has_been_used = Some(
-                            stack[head]
-                                .has_been_used
-                                .map_or(usage_kind, |prev| prev.merge(usage_kind)),
-                        );
-                    }
-                }
-                let path_from_head = Self::cycle_path_kind(
-                    &stack,
-                    reeval_entry.step_kind_from_parent,
-                    heads.highest_cycle_head(),
-                );
-                let provisional_cache_entry = ProvisionalCacheEntry {
-                    entry_node_id: reeval_entry.node_id,
-                    encountered_overflow,
-                    heads: heads.clone(),
-                    path_from_head,
-                    result,
-                };
-                debug!(?provisional_cache_entry);
-                entry.push(provisional_cache_entry);
             }
         };
 
@@ -1385,12 +1389,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                     if entry_node_id < node_id {
                         continue;
                     }
-                    // This provisional cache entry was computed with the current goal on the
-                    // stack. Check whether it depends on it.
-                    if !self.tree.get_heads(entry_node_id).contains_stack_entry(current_depth) {
-                        continue;
-                    }
-
                     // We've evaluated the `entry_node_id` before evaluating this goal. In case
                     // that node and its parents has not changed, we can reinsert the cache entry
                     // before starting to reevaluate it.
