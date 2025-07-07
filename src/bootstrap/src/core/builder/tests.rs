@@ -1240,24 +1240,23 @@ mod snapshot {
             ctx.config("check")
                 .path("compiler")
                 .render_steps(), @r"
-        [check] std <host>
         [build] llvm <host>
-        [check] rustc <host>
-        [check] cranelift <host>
-        [check] gcc <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> cranelift 1 <host>
+        [check] rustc 0 <host> -> gcc 1 <host>
         ");
 
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("rustc")
                 .render_steps(), @r"
-        [check] std <host>
         [build] llvm <host>
-        [check] rustc <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
         ");
     }
 
     #[test]
+    #[should_panic]
     fn check_compiler_stage_0() {
         let ctx = TestCtx::new();
         ctx.config("check").path("compiler").stage(0).run();
@@ -1272,11 +1271,9 @@ mod snapshot {
                 .stage(1)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc <host>
-        [check] cranelift <host>
-        [check] gcc <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> cranelift 1 <host>
+        [check] rustc 0 <host> -> gcc 1 <host>
         ");
     }
 
@@ -1291,11 +1288,9 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [check] rustc <host>
-        [check] cranelift <host>
-        [check] gcc <host>
+        [check] rustc 1 <host> -> rustc 2 <host>
+        [check] rustc 1 <host> -> cranelift 2 <host>
+        [check] rustc 1 <host> -> gcc 2 <host>
         ");
     }
 
@@ -1304,30 +1299,24 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("check")
-                .stage(2)
                 .targets(&[TEST_TRIPLE_1])
                 .hosts(&[TEST_TRIPLE_1])
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 1 <host> -> std 1 <target1>
-        [build] rustc 2 <host> -> std 2 <target1>
-        [check] rustc <target1>
-        [check] Rustdoc <target1>
-        [check] cranelift <target1>
-        [check] gcc <target1>
-        [check] Clippy <target1>
-        [check] Miri <target1>
-        [check] CargoMiri <target1>
-        [check] MiroptTestTools <target1>
-        [check] Rustfmt <target1>
-        [check] rust-analyzer <target1>
-        [check] TestFloatParse <target1>
-        [check] FeaturesStatusDump <target1>
-        [check] std <target1>
+        [check] rustc 1 <host> -> rustc 2 <target1>
+        [check] rustc 1 <host> -> Rustdoc 2 <target1>
+        [check] rustc 1 <host> -> cranelift 2 <target1>
+        [check] rustc 1 <host> -> gcc 2 <target1>
+        [check] rustc 1 <host> -> Clippy 2 <target1>
+        [check] rustc 1 <host> -> Miri 2 <target1>
+        [check] rustc 1 <host> -> CargoMiri 2 <target1>
+        [check] rustc 1 <host> -> Rustfmt 2 <target1>
+        [check] rustc 1 <host> -> rust-analyzer 2 <target1>
+        [check] rustc 1 <host> -> TestFloatParse 2 <target1>
+        [check] rustc 1 <host> -> std 1 <target1>
         ");
     }
 
@@ -1340,11 +1329,12 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [check] std <host>
+        [check] rustc 1 <host> -> std 1 <host>
         ");
     }
 
     #[test]
+    #[should_panic]
     fn check_library_stage_0() {
         let ctx = TestCtx::new();
         ctx.config("check").path("library").stage(0).run();
@@ -1360,7 +1350,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [check] std <host>
+        [check] rustc 1 <host> -> std 1 <host>
         ");
     }
 
@@ -1376,7 +1366,7 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
-        [check] std <host>
+        [check] rustc 2 <host> -> std 2 <host>
         ");
     }
 
@@ -1390,8 +1380,8 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [check] std <target1>
-        [check] std <target2>
+        [check] rustc 1 <host> -> std 1 <target1>
+        [check] rustc 1 <host> -> std 1 <target2>
         ");
     }
 
@@ -1402,14 +1392,14 @@ mod snapshot {
             ctx.config("check")
                 .path("miri")
                 .render_steps(), @r"
-        [check] std <host>
         [build] llvm <host>
-        [check] rustc <host>
-        [check] Miri <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> Miri 1 <host>
         ");
     }
 
     #[test]
+    #[should_panic]
     fn check_miri_stage_0() {
         let ctx = TestCtx::new();
         ctx.config("check").path("miri").stage(0).run();
@@ -1424,10 +1414,8 @@ mod snapshot {
                 .stage(1)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc <host>
-        [check] Miri <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> Miri 1 <host>
         ");
     }
 
@@ -1442,10 +1430,8 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [check] rustc <host>
-        [check] Miri <host>
+        [check] rustc 1 <host> -> rustc 2 <host>
+        [check] rustc 1 <host> -> Miri 2 <host>
         ");
     }
 
@@ -1466,9 +1452,9 @@ mod snapshot {
                 .path("compiletest")
                 .args(&["--set", "build.compiletest-use-stage0-libtest=false"])
                 .render_steps(), @r"
-        [check] std <host>
         [build] llvm <host>
-        [check] rustc <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
         [check] compiletest <host>
         ");
     }
@@ -1480,11 +1466,10 @@ mod snapshot {
             ctx.config("check")
                 .path("rustc_codegen_cranelift")
                 .render_steps(), @r"
-        [check] std <host>
         [build] llvm <host>
-        [check] rustc <host>
-        [check] cranelift <host>
-        [check] gcc <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> cranelift 1 <host>
+        [check] rustc 0 <host> -> gcc 1 <host>
         ");
     }
 
@@ -1495,10 +1480,9 @@ mod snapshot {
             ctx.config("check")
                 .path("rust-analyzer")
                 .render_steps(), @r"
-        [check] std <host>
         [build] llvm <host>
-        [check] rustc <host>
-        [check] rust-analyzer <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> rust-analyzer 1 <host>
         ");
     }
 
@@ -1508,12 +1492,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("run-make-support")
-                .render_steps(), @r"
-        [check] std <host>
-        [build] llvm <host>
-        [check] rustc <host>
-        [check] RunMakeSupport <host>
-        ");
+                .render_steps(), @"[check] rustc 0 <host> -> RunMakeSupport 1 <host>");
     }
 
     #[test]
