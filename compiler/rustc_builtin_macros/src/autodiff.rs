@@ -331,20 +331,23 @@ mod llvm_enzyme {
             .count() as u32;
         let (d_sig, new_args, idents, errored) = gen_enzyme_decl(ecx, &sig, &x, span);
 
-        // UNUSED
+        // TODO(Sa4dUs): Remove this and all the related logic
         let _d_body = gen_enzyme_body(
             ecx, &x, n_active, &sig, &d_sig, primal, &new_args, span, sig_span, idents, errored,
             &generics,
         );
+
+        let d_body =
+            call_enzyme_autodiff(ecx, primal, first_ident(&meta_item_vec[0]), span, &d_sig);
 
         // The first element of it is the name of the function to be generated
         let asdf = Box::new(ast::Fn {
             defaultness: ast::Defaultness::Final,
             sig: d_sig,
             ident: first_ident(&meta_item_vec[0]),
-            generics,
+            generics: generics.clone(),
             contract: None,
-            body: None, // This leads to an error when the ad function is inside a traits
+            body: Some(d_body),
             define_opaque: None,
         });
         let mut rustc_ad_attr =
@@ -431,10 +434,7 @@ mod llvm_enzyme {
             tokens: ts,
         });
 
-        let rustc_intrinsic_attr =
-            P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_intrinsic)));
-        let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
-        let intrinsic_attr = outer_normal_attr(&rustc_intrinsic_attr, new_id, span);
+        let vis_clone = vis.clone();
 
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
         let d_attr = outer_normal_attr(&rustc_ad_attr, new_id, span);
@@ -442,7 +442,7 @@ mod llvm_enzyme {
             Annotatable::AssocItem(_, _) => {
                 let assoc_item: AssocItemKind = ast::AssocItemKind::Fn(asdf);
                 let d_fn = P(ast::AssocItem {
-                    attrs: thin_vec![d_attr, intrinsic_attr],
+                    attrs: thin_vec![d_attr],
                     id: ast::DUMMY_NODE_ID,
                     span,
                     vis,
@@ -452,15 +452,13 @@ mod llvm_enzyme {
                 Annotatable::AssocItem(d_fn, Impl { of_trait: false })
             }
             Annotatable::Item(_) => {
-                let mut d_fn =
-                    ecx.item(span, thin_vec![d_attr, intrinsic_attr], ItemKind::Fn(asdf));
+                let mut d_fn = ecx.item(span, thin_vec![d_attr], ItemKind::Fn(asdf));
                 d_fn.vis = vis;
 
                 Annotatable::Item(d_fn)
             }
             Annotatable::Stmt(_) => {
-                let mut d_fn =
-                    ecx.item(span, thin_vec![d_attr, intrinsic_attr], ItemKind::Fn(asdf));
+                let mut d_fn = ecx.item(span, thin_vec![d_attr], ItemKind::Fn(asdf));
                 d_fn.vis = vis;
 
                 Annotatable::Stmt(P(ast::Stmt {
@@ -474,7 +472,9 @@ mod llvm_enzyme {
             }
         };
 
-        return vec![orig_annotatable, d_annotatable];
+        let dummy_const_annotatable = gen_dummy_const(ecx, span, primal, sig, generics, vis_clone);
+
+        return vec![orig_annotatable, dummy_const_annotatable, d_annotatable];
     }
 
     // shadow arguments (the extra ones which were not in the original (primal) function), in reverse mode must be
@@ -493,6 +493,123 @@ mod llvm_enzyme {
             }
         }
         ty
+    }
+
+    // Generate `enzyme_autodiff` intrinsic call
+    // ```
+    // std::intrinsics::enzyme_autodiff(source, diff, (args))
+    // ```
+    fn call_enzyme_autodiff(
+        ecx: &ExtCtxt<'_>,
+        primal: Ident,
+        diff: Ident,
+        span: Span,
+        d_sig: &FnSig,
+    ) -> P<ast::Block> {
+        let primal_path_expr = ecx.expr_path(ecx.path_ident(span, primal));
+        let diff_path_expr = ecx.expr_path(ecx.path_ident(span, diff));
+
+        let tuple_expr = ecx.expr_tuple(
+            span,
+            d_sig
+                .decl
+                .inputs
+                .iter()
+                .map(|arg| match arg.pat.kind {
+                    PatKind::Ident(_, ident, _) => ecx.expr_path(ecx.path_ident(span, ident)),
+                    _ => todo!(),
+                })
+                .collect::<ThinVec<_>>()
+                .into(),
+        );
+
+        let enzyme_path = ecx.path(
+            span,
+            vec![
+                Ident::from_str("std"),
+                Ident::from_str("intrinsics"),
+                Ident::from_str("enzyme_autodiff"),
+            ],
+        );
+        let call_expr = ecx.expr_call(
+            span,
+            ecx.expr_path(enzyme_path),
+            vec![primal_path_expr, diff_path_expr, tuple_expr].into(),
+        );
+
+        let block = ecx.block_expr(call_expr);
+
+        block
+    }
+
+    // Generate dummy const to prevent primal function
+    // from being optimized away before applying enzyme
+    // ```
+    // const _: () =
+    // {
+    //     #[used]
+    //     pub static DUMMY_PTR: fn_type = primal_fn;
+    // };
+    // ```
+    fn gen_dummy_const(
+        ecx: &ExtCtxt<'_>,
+        span: Span,
+        primal: Ident,
+        sig: FnSig,
+        generics: Generics,
+        vis: Visibility,
+    ) -> Annotatable {
+        // #[used]
+        let used_attr = P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::used)));
+        let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
+        let used_attr = outer_normal_attr(&used_attr, new_id, span);
+
+        // static DUMMY_PTR: <fn_type> = <primal_ident>
+        let static_ident = Ident::from_str_and_span("DUMMY_PTR", span);
+        let fn_ptr_ty = ast::TyKind::BareFn(Box::new(ast::BareFnTy {
+            safety: sig.header.safety,
+            ext: sig.header.ext,
+            generic_params: generics.params,
+            decl: sig.decl,
+            decl_span: sig.span,
+        }));
+        let static_ty = ecx.ty(span, fn_ptr_ty);
+
+        let static_expr = ecx.expr_path(ecx.path(span, vec![primal]));
+        let static_item_kind = ast::ItemKind::Static(Box::new(ast::StaticItem {
+            ident: static_ident,
+            ty: static_ty,
+            safety: ast::Safety::Default,
+            mutability: ast::Mutability::Not,
+            expr: Some(static_expr),
+            define_opaque: None,
+        }));
+
+        let static_item = ast::Item {
+            attrs: thin_vec![used_attr],
+            id: ast::DUMMY_NODE_ID,
+            span,
+            vis,
+            kind: static_item_kind,
+            tokens: None,
+        };
+
+        let block_expr = ecx.expr_block(Box::new(ast::Block {
+            stmts: thin_vec![ecx.stmt_item(span, P(static_item))],
+            id: ast::DUMMY_NODE_ID,
+            rules: ast::BlockCheckMode::Default,
+            span,
+            tokens: None,
+        }));
+
+        let const_item = ecx.item_const(
+            span,
+            Ident::from_str_and_span("_", span),
+            ecx.ty(span, ast::TyKind::Tup(thin_vec![])),
+            block_expr,
+        );
+
+        Annotatable::Item(const_item)
     }
 
     // Will generate a body of the type:
