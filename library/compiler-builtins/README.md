@@ -24,4 +24,4 @@ More details are in [LICENSE.txt](LICENSE.txt) and
 [libm/LICENSE.txt](libm/LICENSE.txt).
 
 [MIT License]: https://opensource.org/license/mit
-[Apache License, Version 2.0]: htps://www.apache.org/licenses/LICENSE-2.0
+[Apache License, Version 2.0]: https://www.apache.org/licenses/LICENSE-2.0
