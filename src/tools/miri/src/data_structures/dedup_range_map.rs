@@ -17,18 +17,18 @@ struct Elem<T> {
     data: T,
 }
 #[derive(Clone, Debug)]
-pub struct RangeMap<T> {
+pub struct DedupRangeMap<T> {
     v: Vec<Elem<T>>,
 }
 
-impl<T> RangeMap<T> {
+impl<T> DedupRangeMap<T> {
     /// Creates a new `RangeMap` for the given size, and with the given initial value used for
     /// the entire range.
     #[inline(always)]
-    pub fn new(size: Size, init: T) -> RangeMap<T> {
+    pub fn new(size: Size, init: T) -> DedupRangeMap<T> {
         let size = size.bytes();
         let v = if size > 0 { vec![Elem { range: 0..size, data: init }] } else { Vec::new() };
-        RangeMap { v }
+        DedupRangeMap { v }
     }
 
     pub fn size(&self) -> Size {
@@ -246,7 +246,7 @@ mod tests {
     use super::*;
 
     /// Query the map at every offset in the range and collect the results.
-    fn to_vec<T: Copy>(map: &RangeMap<T>, offset: u64, len: u64) -> Vec<T> {
+    fn to_vec<T: Copy>(map: &DedupRangeMap<T>, offset: u64, len: u64) -> Vec<T> {
         (offset..offset + len)
             .map(|i| {
                 map.iter(Size::from_bytes(i), Size::from_bytes(1)).next().map(|(_, &t)| t).unwrap()
@@ -256,7 +256,7 @@ mod tests {
 
     #[test]
     fn basic_insert() {
-        let mut map = RangeMap::<i32>::new(Size::from_bytes(20), -1);
+        let mut map = DedupRangeMap::<i32>::new(Size::from_bytes(20), -1);
         // Insert.
         for (_, x) in map.iter_mut(Size::from_bytes(10), Size::from_bytes(1)) {
             *x = 42;
@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn gaps() {
-        let mut map = RangeMap::<i32>::new(Size::from_bytes(20), -1);
+        let mut map = DedupRangeMap::<i32>::new(Size::from_bytes(20), -1);
         for (_, x) in map.iter_mut(Size::from_bytes(11), Size::from_bytes(1)) {
             *x = 42;
         }
@@ -319,26 +319,26 @@ mod tests {
     #[test]
     #[should_panic]
     fn out_of_range_iter_mut() {
-        let mut map = RangeMap::<i32>::new(Size::from_bytes(20), -1);
+        let mut map = DedupRangeMap::<i32>::new(Size::from_bytes(20), -1);
         let _ = map.iter_mut(Size::from_bytes(11), Size::from_bytes(11));
     }
 
     #[test]
     #[should_panic]
     fn out_of_range_iter() {
-        let map = RangeMap::<i32>::new(Size::from_bytes(20), -1);
+        let map = DedupRangeMap::<i32>::new(Size::from_bytes(20), -1);
         let _ = map.iter(Size::from_bytes(11), Size::from_bytes(11));
     }
 
     #[test]
     fn empty_map_iter() {
-        let map = RangeMap::<i32>::new(Size::from_bytes(0), -1);
+        let map = DedupRangeMap::<i32>::new(Size::from_bytes(0), -1);
         let _ = map.iter(Size::from_bytes(0), Size::from_bytes(0));
     }
 
     #[test]
     fn empty_map_iter_mut() {
-        let mut map = RangeMap::<i32>::new(Size::from_bytes(0), -1);
+        let mut map = DedupRangeMap::<i32>::new(Size::from_bytes(0), -1);
         let _ = map.iter_mut(Size::from_bytes(0), Size::from_bytes(0));
     }
 }

@@ -2,7 +2,6 @@ pub mod cpu_affinity;
 pub mod data_race;
 mod data_race_handler;
 pub mod init_once;
-mod range_object_map;
 pub mod sync;
 pub mod thread;
 mod vector_clock;
