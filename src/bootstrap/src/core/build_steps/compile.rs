@@ -2282,15 +2282,13 @@ impl Step for Assemble {
         }
 
         // In addition to `rust-lld` also install `wasm-component-ld` when
-        // LLD is enabled. This is a relatively small binary that primarily
-        // delegates to the `rust-lld` binary for linking and then runs
-        // logic to create the final binary. This is used by the
-        // `wasm32-wasip2` target of Rust.
+        // is enabled. This is used by the `wasm32-wasip2` target of Rust.
         if builder.tool_enabled("wasm-component-ld") {
-            let wasm_component = builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
-                compiler: build_compiler,
-                target: target_compiler.host,
-            });
+            let wasm_component =
+                builder.ensure(crate::core::build_steps::tool::WasmComponentLd::for_target(
+                    builder,
+                    target_compiler.host,
+                ));
             builder.copy_link(
                 &wasm_component.tool_path,
                 &libdir_bin.join(wasm_component.tool_path.file_name().unwrap()),

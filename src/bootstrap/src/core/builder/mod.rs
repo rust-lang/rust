@@ -980,6 +980,7 @@ impl<'a> Builder<'a> {
                 tool::CoverageDump,
                 tool::LlvmBitcodeLinker,
                 tool::RustcPerf,
+                tool::WasmComponentLd
             ),
             Kind::Clippy => describe!(
                 clippy::Std,

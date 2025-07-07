@@ -1021,7 +1021,6 @@ mod snapshot {
         [build] rustc 0 <host> -> WasmComponentLd 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> WasmComponentLd 2 <host>
         [build] rustdoc 1 <host>
         [doc] std 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
@@ -1205,7 +1204,6 @@ mod snapshot {
         [build] rustc 0 <host> -> WasmComponentLd 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> WasmComponentLd 2 <host>
         [build] rustdoc 1 <host>
         [doc] std 2 <target1>
         [build] rustc 2 <host> -> std 2 <host>

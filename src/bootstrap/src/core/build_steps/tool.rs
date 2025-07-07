@@ -534,7 +534,6 @@ bootstrap_tool!(
     // rustdoc-gui-test has a crate dependency on compiletest, so it needs the same unstable features.
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = COMPILETEST_ALLOW_FEATURES;
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
-    WasmComponentLd, "src/tools/wasm-component-ld", "wasm-component-ld", is_unstable_tool = true, allow_features = "min_specialization";
     UnicodeTableGenerator, "src/tools/unicode-table-generator", "unicode-table-generator";
     FeaturesStatusDump, "src/tools/features-status-dump", "features-status-dump";
     OptimizedDist, "src/tools/opt-dist", "opt-dist", submodules = &["src/tools/rustc-perf"];
@@ -926,6 +925,63 @@ impl Step for LldWrapper {
         }
 
         tool_result
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct WasmComponentLd {
+    build_compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl WasmComponentLd {
+    pub fn for_target(builder: &Builder<'_>, target: TargetSelection) -> Self {
+        Self { build_compiler: get_tool_target_compiler(builder, target), target }
+    }
+}
+
+impl Step for WasmComponentLd {
+    type Output = ToolBuildResult;
+
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/wasm-component-ld")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(WasmComponentLd {
+            build_compiler: get_tool_target_compiler(run.builder, run.target),
+            target: run.target,
+        });
+    }
+
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "debug",
+            name = "WasmComponentLd::run",
+            skip_all,
+            fields(build_compiler = ?self.build_compiler),
+        ),
+    )]
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
+        builder.ensure(ToolBuild {
+            build_compiler: self.build_compiler,
+            target: self.target,
+            tool: "wasm-component-ld",
+            mode: Mode::ToolTarget,
+            path: "src/tools/wasm-component-ld",
+            source_type: SourceType::InTree,
+            extra_features: vec![],
+            allow_features: "min-specialization",
+            cargo_args: vec![],
+            artifact_kind: ToolArtifactKind::Binary,
+        })
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::build("WasmComponentLd", self.target).built_by(self.build_compiler))
     }
 }
 
