@@ -1834,7 +1834,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         // We prefer `Sized` candidates over everything.
         let mut sized_candidates =
-            candidates.iter().filter(|c| matches!(c.candidate, SizedCandidate { has_nested: _ }));
+            candidates.iter().filter(|c| matches!(c.candidate, SizedCandidate));
         if let Some(sized_candidate) = sized_candidates.next() {
             // There should only ever be a single sized candidate
             // as they would otherwise overlap.
@@ -1986,8 +1986,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             // Don't use impl candidates which overlap with other candidates.
             // This should pretty much only ever happen with malformed impls.
             if candidates.iter().all(|c| match c.candidate {
-                SizedCandidate { has_nested: _ }
-                | BuiltinCandidate { has_nested: _ }
+                SizedCandidate
+                | BuiltinCandidate
                 | TransmutabilityCandidate
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
