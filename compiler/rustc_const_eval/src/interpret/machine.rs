@@ -189,8 +189,8 @@ pub trait Machine<'tcx>: Sized {
     fn load_mir(
         ecx: &InterpCx<'tcx, Self>,
         instance: ty::InstanceKind<'tcx>,
-    ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
-        interp_ok(ecx.tcx.instance_mir(instance))
+    ) -> &'tcx mir::Body<'tcx> {
+        ecx.tcx.instance_mir(instance)
     }
 
     /// Entry point to all function calls.
