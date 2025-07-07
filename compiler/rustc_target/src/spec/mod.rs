@@ -2198,7 +2198,10 @@ pub struct TargetMetadata {
 
 impl Target {
     pub fn parse_data_layout(&self) -> Result<TargetDataLayout, TargetDataLayoutErrors<'_>> {
-        let mut dl = TargetDataLayout::parse_from_llvm_datalayout_string(&self.data_layout)?;
+        let mut dl = TargetDataLayout::parse_from_llvm_datalayout_string(
+            &self.data_layout,
+            self.options.default_address_space,
+        )?;
 
         // Perform consistency checks against the Target information.
         if dl.endian != self.endian {
@@ -2209,9 +2212,10 @@ impl Target {
         }
 
         let target_pointer_width: u64 = self.pointer_width.into();
-        if dl.pointer_size.bits() != target_pointer_width {
+        let dl_pointer_size: u64 = dl.pointer_size().bits();
+        if dl_pointer_size != target_pointer_width {
             return Err(TargetDataLayoutErrors::InconsistentTargetPointerWidth {
-                pointer_size: dl.pointer_size.bits(),
+                pointer_size: dl_pointer_size,
                 target: self.pointer_width,
             });
         }
@@ -2650,6 +2654,11 @@ pub struct TargetOptions {
     /// Whether the target supports XRay instrumentation.
     pub supports_xray: bool,
 
+    /// The default address space for this target. When using LLVM as a backend, most targets simply
+    /// use LLVM's default address space (0). Some other targets, such as CHERI targets, use a
+    /// custom default address space (in this specific case, `200`).
+    pub default_address_space: rustc_abi::AddressSpace,
+
     /// Whether the targets supports -Z small-data-threshold
     small_data_threshold_support: SmallDataThresholdSupport,
 }
@@ -2878,6 +2887,7 @@ impl Default for TargetOptions {
             entry_name: "main".into(),
             entry_abi: CanonAbi::C,
             supports_xray: false,
+            default_address_space: rustc_abi::AddressSpace::ZERO,
             small_data_threshold_support: SmallDataThresholdSupport::DefaultForArch,
         }
     }

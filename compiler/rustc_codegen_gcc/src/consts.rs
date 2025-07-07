@@ -294,7 +294,7 @@ pub(crate) fn const_alloc_to_gcc_uncached<'gcc>(
     let alloc = alloc.inner();
     let mut llvals = Vec::with_capacity(alloc.provenance().ptrs().len() + 1);
     let dl = cx.data_layout();
-    let pointer_size = dl.pointer_size.bytes() as usize;
+    let pointer_size = dl.pointer_size().bytes() as usize;
 
     let mut next_offset = 0;
     for &(offset, prov) in alloc.provenance().ptrs().iter() {
@@ -331,7 +331,7 @@ pub(crate) fn const_alloc_to_gcc_uncached<'gcc>(
             ),
             abi::Scalar::Initialized {
                 value: Primitive::Pointer(address_space),
-                valid_range: WrappingRange::full(dl.pointer_size),
+                valid_range: WrappingRange::full(dl.pointer_size()),
             },
             cx.type_i8p_ext(address_space),
         ));
