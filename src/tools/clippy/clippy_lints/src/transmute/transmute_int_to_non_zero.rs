@@ -2,10 +2,11 @@ use super::TRANSMUTE_INT_TO_NON_ZERO;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
-use rustc_hir::Expr;
+use rustc_hir::{Expr};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::sym;
+use rustc_hir::LangItem;
 
 /// Checks for `transmute_int_to_non_zero` lint.
 /// Returns `true` if it's triggered, otherwise returns `false`.
@@ -18,7 +19,7 @@ pub(super) fn check<'tcx>(
 ) -> bool {
     if let ty::Int(_) | ty::Uint(_) = from_ty.kind()
         && let ty::Adt(adt, substs) = to_ty.kind()
-        && cx.tcx.is_diagnostic_item(sym::NonZero, adt.did())
+        && cx.tcx.is_lang_item( adt.did(), LangItem::NonZero)
         && let int_ty = substs.type_at(0)
         && from_ty == int_ty
     {

@@ -3,7 +3,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::sym;
 use rustc_ast::ast::BinOpKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
@@ -81,7 +81,7 @@ fn check_non_zero_conversion(cx: &LateContext<'_>, expr: &Expr<'_>, applicabilit
         // Check if the receiver type is a NonZero type
         if let ty::Adt(adt_def, _) = receiver_ty.kind()
             && adt_def.is_struct()
-            && cx.tcx.get_diagnostic_name(adt_def.did()) == Some(sym::NonZero)
+            && cx.tcx.is_lang_item(adt_def.did(), LangItem::NonZero)
             && let Some(target_non_zero_type) = get_target_non_zero_type(target_ty)
         {
             let arg_snippet = get_arg_snippet(cx, arg, rcv_path);
