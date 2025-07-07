@@ -739,6 +739,10 @@ def configure_file(sections, top_level_keys, targets, config):
 
 
 def write_uncommented(target, f):
+    """Writes each block in 'target' that is not composed entirely of comments to 'f'.
+
+    A block is a sequence of non-empty lines separated by empty lines.
+    """
     block = []
     is_comment = True
 
