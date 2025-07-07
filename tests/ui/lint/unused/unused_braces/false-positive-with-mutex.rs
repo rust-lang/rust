@@ -1,6 +1,6 @@
 // We should not emit unused braces warning for `Mutex`
 // See issue #143562
-
+//@ build-pass
 #![warn(unused)]
 #![deny(warnings)]
 
@@ -29,7 +29,7 @@ pub fn main() {
     });
     // the program will hang if this pair of braces is removed
     let vec_vec = VecVec { v: Vec::new() }
-        .push({ test.lock().unwrap().a })  //~ ERROR unnecessary braces around method argument [unused_braces]
-        .push({ test.lock().unwrap().b }); //~ ERROR unnecessary braces around method argument [unused_braces]
+        .push({ test.lock().unwrap().a })
+        .push({ test.lock().unwrap().b });
     println!("len: {}", vec_vec.v.len());
 }

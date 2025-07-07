@@ -1532,6 +1532,16 @@ impl UnusedDelimLint for UnusedBraces {
             _ => {}
         }
     }
+
+    fn is_expr_delims_necessary(
+        inner: &ast::Expr,
+        ctx: UnusedDelimsCtx,
+        followed_by_block: bool,
+    ) -> bool {
+        // `UnusedParens` use the default trait implementation
+        <UnusedParens as UnusedDelimLint>::is_expr_delims_necessary(inner, ctx, followed_by_block)
+            || Self::has_side_effects(inner)
+    }
 }
 
 impl EarlyLintPass for UnusedBraces {
@@ -1616,6 +1626,76 @@ impl EarlyLintPass for UnusedBraces {
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         <Self as UnusedDelimLint>::check_item(self, cx, item)
+    }
+}
+
+impl UnusedBraces {
+    /// Check if an expression contains side effects that might require braces
+    /// for proper scoping (e.g., method calls that acquire locks)
+    fn has_side_effects(expr: &ast::Expr) -> bool {
+        match &expr.kind {
+            // Check for patterns like `test.lock().unwrap().field` that might cause deadlocks
+            ast::ExprKind::Field(base, _) => {
+                Self::matches_method_chain(base, vec!["lock", "unwrap"])
+            }
+            // Check for patterns like `test.lock().unwrap()` that might cause deadlocks
+            ast::ExprKind::MethodCall(_) => {
+                Self::matches_method_chain(expr, vec!["lock", "unwrap"])
+            }
+            _ => false,
+        }
+    }
+
+    /// Check if an expression matches a specific method call chain
+    /// For example, matches_method_chain(expr, &["lock", "unwrap"]) will match
+    /// expressions like `test.lock().unwrap()` or `test.lock().unwrap().field`
+    fn matches_method_chain(expr: &ast::Expr, mut method_names: Vec<&str>) -> bool {
+        if method_names.is_empty() {
+            return false;
+        }
+        method_names.reverse();
+        Self::matches_method_chain_recursive(expr, method_names, 0)
+    }
+
+    /// Recursive helper for matches_method_chain
+    fn matches_method_chain_recursive(
+        expr: &ast::Expr,
+        method_names: Vec<&str>,
+        current_index: usize,
+    ) -> bool {
+        match &expr.kind {
+            // Method call - check if it matches the current method name
+            ast::ExprKind::MethodCall(method_call) => {
+                let method_name = method_call.seg.ident.name.as_str();
+
+                if current_index < method_names.len() && method_name == method_names[current_index]
+                {
+                    // If this is the last method in the chain, we found a match
+                    if current_index == method_names.len() - 1 {
+                        return true;
+                    }
+                    // Otherwise, continue checking the receiver
+                    return Self::matches_method_chain_recursive(
+                        &method_call.receiver,
+                        method_names,
+                        current_index + 1,
+                    );
+                }
+
+                // If this method doesn't match, check if the receiver matches from the beginning
+                Self::matches_method_chain_recursive(&method_call.receiver, method_names, 0)
+            }
+            // Field access - check the base
+            ast::ExprKind::Field(base, _) => {
+                Self::matches_method_chain_recursive(base, method_names, current_index)
+            }
+            // Function call - check the callee
+            ast::ExprKind::Call(callee, _) => {
+                Self::matches_method_chain_recursive(callee, method_names, current_index)
+            }
+            // Other expressions - no match
+            _ => false,
+        }
     }
 }
 
