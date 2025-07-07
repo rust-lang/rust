@@ -1,4 +1,4 @@
-//@ compile-flags: -C no-prepopulate-passes -Copt-level=0 -Zmin-function-alignment=16
+//@ compile-flags: -C no-prepopulate-passes -Copt-level=0 -Cmin-function-alignment=16
 //@ needs-asm-support
 //@ ignore-arm no "ret" mnemonic
 
@@ -33,7 +33,7 @@ pub extern "C" fn naked_higher_align() {
 // cold functions follow the same rules as other functions
 //
 // in GCC, the `-falign-functions` does not apply to cold functions, but
-// `-Zmin-function-alignment` applies to all functions.
+// `-Cmin-function-alignment` applies to all functions.
 //
 // CHECK: .balign 16
 #[no_mangle]

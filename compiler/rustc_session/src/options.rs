@@ -811,7 +811,7 @@ mod desc {
     pub(crate) const parse_wasm_c_abi: &str = "`spec`";
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
-    pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
+    pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 8192";
 }
 
 pub mod parse {
@@ -1938,6 +1938,12 @@ pub mod parse {
             return false;
         }
 
+        // Limit the alignment to 8192 (i.e. 0x2000, or 1 << 13) bytes. It is the highest function
+        // alignment that works on all target platforms. COFF does not support higher alignments.
+        if bytes > 8192 {
+            return false;
+        }
+
         let Ok(align) = Align::from_bytes(bytes) else {
             return false;
         };
@@ -2027,6 +2033,8 @@ options! {
         "perform LLVM link-time optimizations"),
     metadata: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "metadata to mangle symbol names with"),
+    min_function_alignment: Option<Align> = (None, parse_align, [TRACKED],
+        "align all functions to at least this many bytes. Must be a power of 2"),
     no_prepopulate_passes: bool = (false, parse_no_value, [TRACKED],
         "give an empty list of passes to the pass manager"),
     no_redzone: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2340,8 +2348,6 @@ options! {
         "gather metadata statistics (default: no)"),
     metrics_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "the directory metrics emitted by rustc are dumped into (implicitly enables default set of metrics)"),
-    min_function_alignment: Option<Align> = (None, parse_align, [TRACKED],
-        "align all functions to at least this many bytes. Must be a power of 2"),
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
