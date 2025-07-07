@@ -492,7 +492,7 @@ impl<'a> AstValidator<'a> {
         }
 
         if !spans.is_empty() {
-            let header_span = sig.header.span().unwrap_or(sig.span.shrink_to_lo());
+            let header_span = sig.header_span();
             let suggestion_span = header_span.shrink_to_hi().to(sig.decl.output.span());
             let padding = if header_span.is_empty() { "" } else { " " };
 
