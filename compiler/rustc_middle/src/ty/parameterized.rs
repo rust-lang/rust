@@ -87,7 +87,7 @@ trivially_parameterized_over_tcx! {
     ty::IntrinsicDef,
     rustc_ast::Attribute,
     rustc_ast::DelimArgs,
-    rustc_ast::expand::StrippedCfgItem<rustc_hir::def_id::DefIndex>,
+    rustc_attr_data_structures::StrippedCfgItem<rustc_hir::def_id::DefIndex>,
     rustc_attr_data_structures::ConstStability,
     rustc_attr_data_structures::DefaultBodyStability,
     rustc_attr_data_structures::Deprecation,
