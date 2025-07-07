@@ -3177,7 +3177,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
                     let higher_ranked = matches!(
                         kind,
-                        LifetimeBinderKind::BareFnType
+                        LifetimeBinderKind::FnPtrType
                             | LifetimeBinderKind::PolyTrait
                             | LifetimeBinderKind::WhereBound
                     );

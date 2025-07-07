@@ -2402,7 +2402,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::TyKind::Tup(fields) => {
                 Ty::new_tup_from_iter(tcx, fields.iter().map(|t| self.lower_ty(t)))
             }
-            hir::TyKind::BareFn(bf) => {
+            hir::TyKind::FnPtr(bf) => {
                 require_c_abi_if_c_variadic(tcx, bf.decl, bf.abi, hir_ty.span);
 
                 Ty::new_fn_ptr(
@@ -2660,28 +2660,28 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?output_ty);
 
         let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, safety, abi);
-        let bare_fn_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
+        let fn_ptr_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
 
-        if let hir::Node::Ty(hir::Ty { kind: hir::TyKind::BareFn(bare_fn_ty), span, .. }) =
+        if let hir::Node::Ty(hir::Ty { kind: hir::TyKind::FnPtr(fn_ptr_ty), span, .. }) =
             tcx.hir_node(hir_id)
         {
-            check_abi(tcx, hir_id, *span, bare_fn_ty.abi);
+            check_abi(tcx, hir_id, *span, fn_ptr_ty.abi);
         }
 
         // reject function types that violate cmse ABI requirements
-        cmse::validate_cmse_abi(self.tcx(), self.dcx(), hir_id, abi, bare_fn_ty);
+        cmse::validate_cmse_abi(self.tcx(), self.dcx(), hir_id, abi, fn_ptr_ty);
 
-        if !bare_fn_ty.references_error() {
+        if !fn_ptr_ty.references_error() {
             // Find any late-bound regions declared in return type that do
             // not appear in the arguments. These are not well-formed.
             //
             // Example:
             //     for<'a> fn() -> &'a str <-- 'a is bad
             //     for<'a> fn(&'a String) -> &'a str <-- 'a is ok
-            let inputs = bare_fn_ty.inputs();
+            let inputs = fn_ptr_ty.inputs();
             let late_bound_in_args =
                 tcx.collect_constrained_late_bound_regions(inputs.map_bound(|i| i.to_owned()));
-            let output = bare_fn_ty.output();
+            let output = fn_ptr_ty.output();
             let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(output);
 
             self.validate_late_bound_regions(late_bound_in_args, late_bound_in_ret, |br_name| {
@@ -2695,7 +2695,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             });
         }
 
-        bare_fn_ty
+        fn_ptr_ty
     }
 
     /// Given a fn_hir_id for a impl function, suggest the type that is found on the

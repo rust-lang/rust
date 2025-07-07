@@ -203,7 +203,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let adjusted_ty =
             self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
 
-        // If the callee is a bare function or a closure, then we're all set.
+        // If the callee is a function pointer or a closure, then we're all set.
         match *adjusted_ty.kind() {
             ty::FnDef(..) | ty::FnPtr(..) => {
                 let adjustments = self.adjust_steps(autoderef);

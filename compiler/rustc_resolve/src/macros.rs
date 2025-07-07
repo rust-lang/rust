@@ -334,7 +334,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
 
     fn record_macro_rule_usage(&mut self, id: NodeId, rule_i: usize) {
         if let Some(rules) = self.unused_macro_rules.get_mut(&id) {
-            rules.remove(&rule_i);
+            rules.remove(rule_i);
         }
     }
 
@@ -359,7 +359,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             let SyntaxExtensionKind::LegacyBang(ref ext) = m.ext.kind else {
                 continue;
             };
-            for &arm_i in unused_arms.to_sorted_stable_ord() {
+            for arm_i in unused_arms.iter() {
                 if let Some((ident, rule_span)) = ext.get_unused_rule(arm_i) {
                     self.lint_buffer.buffer_lint(
                         UNUSED_MACRO_RULES,

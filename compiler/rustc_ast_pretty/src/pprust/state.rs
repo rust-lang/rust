@@ -1285,7 +1285,7 @@ impl<'a> State<'a> {
                 self.print_type(typ);
                 self.pclose();
             }
-            ast::TyKind::BareFn(f) => {
+            ast::TyKind::FnPtr(f) => {
                 self.print_ty_fn(f.ext, f.safety, &f.decl, None, &f.generic_params);
             }
             ast::TyKind::UnsafeBinder(f) => {

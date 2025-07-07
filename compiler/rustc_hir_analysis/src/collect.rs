@@ -198,7 +198,7 @@ fn placeholder_type_error_diag<'cx, 'tcx>(
         let mut is_const_or_static = false;
 
         if let Some(hir_ty) = hir_ty
-            && let hir::TyKind::BareFn(_) = hir_ty.kind
+            && let hir::TyKind::FnPtr(_) = hir_ty.kind
         {
             is_fn = true;
 
