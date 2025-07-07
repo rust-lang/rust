@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::is_entrypoint_fn;
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, OwnerNode};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
@@ -7,7 +6,8 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Detects calls to the `exit()` function which terminates the program.
+    /// Detects calls to the `exit()` function that are not in the `main` function. Calls to `exit()`
+    /// immediately terminate the program.
     ///
     /// ### Why restrict this?
     /// `exit()` immediately terminates the program with no information other than an exit code.
@@ -15,11 +15,24 @@ declare_clippy_lint! {
     ///
     /// Codebases may use this lint to require that all exits are performed either by panicking
     /// (which produces a message, a code location, and optionally a backtrace)
-    /// or by returning from `main()` (which is a single place to look).
+    /// or by calling `exit()` from `main()` (which is a single place to look).
     ///
-    /// ### Example
+    /// ### Good example
     /// ```no_run
-    /// std::process::exit(0)
+    /// fn main() {
+    ///     std::process::exit(0);
+    /// }
+    /// ```
+    ///
+    /// ### Bad example
+    /// ```no_run
+    /// fn main() {
+    ///     other_function();
+    /// }
+    ///
+    /// fn other_function() {
+    ///     std::process::exit(0);
+    /// }
     /// ```
     ///
     /// Use instead:
@@ -36,7 +49,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.41.0"]
     pub EXIT,
     restriction,
-    "detects `std::process::exit` calls"
+    "detects `std::process::exit` calls outside of `main`"
 }
 
 declare_lint_pass!(Exit => [EXIT]);
@@ -52,10 +65,14 @@ impl<'tcx> LateLintPass<'tcx> for Exit {
             && let Some(def_id) = cx.qpath_res(path, path_expr.hir_id).opt_def_id()
             && cx.tcx.is_diagnostic_item(sym::process_exit, def_id)
             && let parent = cx.tcx.hir_get_parent_item(e.hir_id)
-            && let OwnerNode::Item(Item{kind: ItemKind::Fn{ .. }, ..}) = cx.tcx.hir_owner_node(parent)
-            // If the next item up is a function we check if it is an entry point
+            && let OwnerNode::Item(Item{kind: ItemKind::Fn{ ident, .. }, ..}) = cx.tcx.hir_owner_node(parent)
+            // If the next item up is a function we check if it isn't named "main"
             // and only then emit a linter warning
-            && !is_entrypoint_fn(cx, parent.to_def_id())
+
+            // if you instead check for the parent of the `exit()` call being the entrypoint function, as this worked before,
+            // in compilation contexts like --all-targets (which include --tests), you get false positives
+            // because in a test context, main is not the entrypoint function
+            && ident.name.as_str() != "main"
         {
             span_lint(cx, EXIT, e.span, "usage of `process::exit`");
         }
