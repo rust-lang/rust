@@ -32,11 +32,29 @@ pub(crate) struct Module<'hir> {
     pub(crate) def_id: LocalDefId,
     pub(crate) renamed: Option<Symbol>,
     pub(crate) import_id: Option<LocalDefId>,
-    /// The key is the item `ItemId` and the value is: (item, renamed, import_id).
+    /// The key is the item `ItemId` and the value is: (item, renamed, Vec<import_id>).
     /// We use `FxIndexMap` to keep the insert order.
+    ///
+    /// `import_id` needs to be a `Vec` because we live in a dark world where you can have code
+    /// like:
+    ///
+    /// ```
+    /// mod raw {
+    ///     pub fn foo() {}
+    /// }
+    ///
+    /// /// Foobar
+    /// pub use raw::foo;
+    ///
+    /// pub use raw::*;
+    /// ```
+    ///
+    /// So in this case, we don't want to have two items but just one with attributes from all
+    /// non-glob imports to be merged. Glob imports attributes are always ignored, whether they're
+    /// shadowed or not.
     pub(crate) items: FxIndexMap<
         (LocalDefId, Option<Symbol>),
-        (&'hir hir::Item<'hir>, Option<Symbol>, Option<LocalDefId>),
+        (&'hir hir::Item<'hir>, Option<Symbol>, Vec<LocalDefId>),
     >,
 
     /// (def_id, renamed) -> (res, local_import_id)
@@ -154,7 +172,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             {
                 let item = self.cx.tcx.hir_expect_item(local_def_id);
                 let (ident, _, _) = item.expect_macro();
-                top_level_module.items.insert((local_def_id, Some(ident.name)), (item, None, None));
+                top_level_module
+                    .items
+                    .insert((local_def_id, Some(ident.name)), (item, None, Vec::new()));
             }
         }
 
@@ -236,7 +256,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     ) -> bool {
         debug!("maybe_inline_local (renamed: {renamed:?}) res: {res:?}");
 
-        let glob = renamed.is_none();
         if renamed == Some(kw::Underscore) {
             // We never inline `_` reexports.
             return false;
@@ -261,6 +280,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false;
         }
 
+        let is_glob = renamed.is_none();
         let is_hidden = !document_hidden && tcx.is_doc_hidden(ori_res_did);
         let Some(res_did) = ori_res_did.as_local() else {
             // For cross-crate impl inlining we need to know whether items are
@@ -268,7 +288,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // made reachable by cross-crate inlining which we're checking here.
             // (this is done here because we need to know this upfront).
             crate::visit_lib::lib_embargo_visit_item(self.cx, ori_res_did);
-            if is_hidden || glob {
+            if is_hidden || is_glob {
                 return false;
             }
             // We store inlined foreign items otherwise, it'd mean that the `use` item would be kept
@@ -316,10 +336,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // Bang macros are handled a bit on their because of how they are handled by the
             // compiler. If they have `#[doc(hidden)]` and the re-export doesn't have
             // `#[doc(inline)]`, then we don't inline it.
-            Node::Item(_) if is_bang_macro && !please_inline && renamed.is_some() && is_hidden => {
+            Node::Item(_) if is_bang_macro && !please_inline && !is_glob && is_hidden => {
                 return false;
             }
-            Node::Item(&hir::Item { kind: hir::ItemKind::Mod(_, m), .. }) if glob => {
+            Node::Item(&hir::Item { kind: hir::ItemKind::Mod(_, m), .. }) if is_glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for &i in m.item_ids {
                     let i = tcx.hir_item(i);
@@ -328,13 +348,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 self.inlining = prev;
                 true
             }
-            Node::Item(it) if !glob => {
+            Node::Item(it) if !is_glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 self.visit_item_inner(it, renamed, Some(def_id));
                 self.inlining = prev;
                 true
             }
-            Node::ForeignItem(it) if !glob => {
+            Node::ForeignItem(it) if !is_glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 self.visit_foreign_item_inner(it, renamed, Some(def_id));
                 self.inlining = prev;
@@ -378,8 +398,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     fn add_to_current_mod(
         &mut self,
         item: &'tcx hir::Item<'_>,
-        renamed: Option<Symbol>,
-        parent_id: Option<LocalDefId>,
+        mut renamed: Option<Symbol>,
+        import_id: Option<LocalDefId>,
     ) {
         if self.is_importable_from_parent
             // If we're inside an item, only impl blocks and `macro_rules!` with the `macro_export`
@@ -392,11 +412,21 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 _ => false,
             }
         {
-            self.modules
-                .last_mut()
-                .unwrap()
-                .items
-                .insert((item.owner_id.def_id, renamed), (item, renamed, parent_id));
+            if renamed == item.kind.ident().map(|ident| ident.name) {
+                renamed = None;
+            }
+            let key = (item.owner_id.def_id, renamed);
+            if let Some(import_id) = import_id {
+                self.modules
+                    .last_mut()
+                    .unwrap()
+                    .items
+                    .entry(key)
+                    .and_modify(|v| v.2.push(import_id))
+                    .or_insert_with(|| (item, renamed, vec![import_id]));
+            } else {
+                self.modules.last_mut().unwrap().items.insert(key, (item, renamed, Vec::new()));
+            }
         }
     }
 
@@ -468,7 +498,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                             _ => false,
                         });
                         let ident = match kind {
-                            hir::UseKind::Single(ident) => Some(renamed.unwrap_or(ident.name)),
+                            hir::UseKind::Single(ident) => Some(ident.name),
                             hir::UseKind::Glob => None,
                             hir::UseKind::ListStem => unreachable!(),
                         };
