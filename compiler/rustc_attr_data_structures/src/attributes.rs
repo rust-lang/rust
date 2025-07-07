@@ -240,6 +240,9 @@ pub enum AttributeKind {
     /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
 
+    /// Represents `#[rustc_dummy]`.
+    Dummy,
+
     /// Represents [`#[export_name]`](https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute).
     ExportName {
         /// The name to export this item with.
