@@ -1362,6 +1362,17 @@ impl AttributeExt for Attribute {
             _ => None,
         }
     }
+
+    fn is_proc_macro_attr(&self) -> bool {
+        matches!(
+            self,
+            Attribute::Parsed(
+                AttributeKind::ProcMacro(..)
+                    | AttributeKind::ProcMacroAttribute(..)
+                    | AttributeKind::ProcMacroDerive { .. }
+            )
+        )
+    }
 }
 
 // FIXME(fn_delegation): use function delegation instead of manually forwarding

@@ -306,6 +306,9 @@ pub fn check_builtin_meta_item(
                 | sym::non_exhaustive
                 | sym::omit_gdb_pretty_printer_section
                 | sym::path
+                | sym::proc_macro
+                | sym::proc_macro_attribute
+                | sym::proc_macro_derive
                 | sym::ignore
                 | sym::must_use
                 | sym::track_caller
