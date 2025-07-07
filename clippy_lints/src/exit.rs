@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_entrypoint_fn;
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, OwnerNode};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
@@ -43,6 +43,8 @@ declare_lint_pass!(Exit => [EXIT]);
 
 impl<'tcx> LateLintPass<'tcx> for Exit {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
+        if cx.sess().is_test_crate() { return; }
+
         if let ExprKind::Call(path_expr, [_]) = e.kind
             && let ExprKind::Path(ref path) = path_expr.kind
             && let Some(def_id) = cx.qpath_res(path, path_expr.hir_id).opt_def_id()
