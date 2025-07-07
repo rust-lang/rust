@@ -383,7 +383,7 @@ impl<'tcx> TypeckResults<'tcx> {
     }
 
     pub fn expr_ty_adjusted_opt(&self, expr: &hir::Expr<'_>) -> Option<Ty<'tcx>> {
-        self.expr_adjustments(expr).last().map(|adj| adj.target).or_else(|| self.expr_ty_opt(expr))
+        self.expr_adjustments(expr).last().map_or_else(|| self.expr_ty_opt(expr), |adj| adj.target)
     }
 
     pub fn is_method_call(&self, expr: &hir::Expr<'_>) -> bool {
