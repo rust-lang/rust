@@ -4,6 +4,6 @@
 
 fn main() {}
 
-unsafe extern "C" fn foo(_: Bar, ...) -> impl {}
+unsafe extern "C" fn foo(_: Bar, _: ...) -> impl {}
 //~^ ERROR cannot find type `Bar` in this scope
 //~| ERROR at least one trait must be specified
