@@ -169,13 +169,15 @@ pub type CompileTimeInterpCx<'tcx> = InterpCx<'tcx, CompileTimeMachine<'tcx>>;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MemoryKind {
-    Heap,
+    Heap { was_made_global: bool },
 }
 
 impl fmt::Display for MemoryKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemoryKind::Heap => write!(f, "heap allocation"),
+            MemoryKind::Heap { was_made_global } => {
+                write!(f, "heap allocation{}", if *was_made_global { " (made global)" } else { "" })
+            }
         }
     }
 }
@@ -184,7 +186,7 @@ impl interpret::MayLeak for MemoryKind {
     #[inline(always)]
     fn may_leak(self) -> bool {
         match self {
-            MemoryKind::Heap => false,
+            MemoryKind::Heap { was_made_global } => was_made_global,
         }
     }
 }
@@ -420,7 +422,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let ptr = ecx.allocate_ptr(
                     Size::from_bytes(size),
                     align,
-                    interpret::MemoryKind::Machine(MemoryKind::Heap),
+                    interpret::MemoryKind::Machine(MemoryKind::Heap { was_made_global: false }),
                     AllocInit::Uninit,
                 )?;
                 ecx.write_pointer(ptr, dest)?;
@@ -453,10 +455,17 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     ecx.deallocate_ptr(
                         ptr,
                         Some((size, align)),
-                        interpret::MemoryKind::Machine(MemoryKind::Heap),
+                        interpret::MemoryKind::Machine(MemoryKind::Heap { was_made_global: false }),
                     )?;
                 }
             }
+
+            sym::const_make_global => {
+                let ptr = ecx.read_pointer(&args[0])?;
+                ecx.make_const_heap_ptr_global(ptr)?;
+                ecx.write_pointer(ptr, dest)?;
+            }
+
             // The intrinsic represents whether the value is known to the optimizer (LLVM).
             // We're not doing any optimizations here, so there is no optimizer that could know the value.
             // (We know the value here in the machine of course, but this is the runtime of that code,
