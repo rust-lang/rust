@@ -2740,18 +2740,11 @@ struct InternerInner {
 }
 
 impl Interner {
-    // These arguments are `&str`, but because of the sharing, we are
+    // These initial symbols are `&str`, but because of the sharing, we are
     // effectively pre-interning all these strings for both `Symbol` and
     // `ByteSymbol`.
-    fn prefill(init: &[&'static str], extra: &[&'static str]) -> Self {
-        let byte_strs = FxIndexSet::from_iter(
-            init.iter().copied().chain(extra.iter().copied()).map(|str| str.as_bytes()),
-        );
-        assert_eq!(
-            byte_strs.len(),
-            init.len() + extra.len(),
-            "duplicate symbols in the rustc symbol list and the extra symbols added by the driver",
-        );
+    fn prefill(init: &[&'static str]) -> Self {
+        let byte_strs = FxIndexSet::from_iter(init.iter().map(|str| str.as_bytes()));
         Interner(Lock::new(InternerInner { arena: Default::default(), byte_strs }))
     }
 

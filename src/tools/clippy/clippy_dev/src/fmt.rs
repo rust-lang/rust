@@ -235,8 +235,8 @@ fn fmt_syms(update_mode: UpdateMode) {
         update_mode,
         "clippy_utils/src/sym.rs",
         &mut |_, text: &str, new_text: &mut String| {
-            let (pre, conf) = text.split_once("generate! {\n").expect("can't find generate! call");
-            let (conf, post) = conf.split_once("\n}\n").expect("can't find end of generate! call");
+            let (pre, conf) = text.split_once("Symbols {\n").expect("can't find Symbols { .. }");
+            let (conf, post) = conf.split_once("\n    }\n").expect("can't find end of Symbols { .. }");
             let mut lines = conf
                 .lines()
                 .map(|line| {

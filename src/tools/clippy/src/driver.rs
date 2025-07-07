@@ -167,7 +167,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
             #[cfg(feature = "internal")]
             clippy_lints_internal::register_lints(lint_store);
         }));
-        config.extra_symbols = sym::EXTRA_SYMBOLS.into();
+        config.preinterned_symbols = Some(sym::PREINTERNED_SYMBOLS);
 
         // FIXME: #4825; This is required, because Clippy lints that are based on MIR have to be
         // run on the unoptimized MIR. On the other hand this results in some false negatives. If

@@ -128,7 +128,7 @@ fn run_in_thread_with_globals<F: FnOnce(CurrentGcx, Arc<Proxy>) -> R + Send, R: 
     thread_stack_size: usize,
     edition: Edition,
     sm_inputs: SourceMapInputs,
-    extra_symbols: &[&'static str],
+    driver_symbols: Option<&[&'static str]>,
     f: F,
 ) -> R {
     // The "thread pool" is a single spawned thread in the non-parallel
@@ -148,7 +148,7 @@ fn run_in_thread_with_globals<F: FnOnce(CurrentGcx, Arc<Proxy>) -> R + Send, R: 
             .spawn_scoped(s, move || {
                 rustc_span::create_session_globals_then(
                     edition,
-                    extra_symbols,
+                    driver_symbols,
                     Some(sm_inputs),
                     || f(CurrentGcx::new(), Proxy::new()),
                 )
@@ -170,7 +170,7 @@ pub(crate) fn run_in_thread_pool_with_globals<
     thread_builder_diag: &EarlyDiagCtxt,
     edition: Edition,
     threads: usize,
-    extra_symbols: &[&'static str],
+    driver_symbols: Option<&[&'static str]>,
     sm_inputs: SourceMapInputs,
     f: F,
 ) -> R {
@@ -191,7 +191,7 @@ pub(crate) fn run_in_thread_pool_with_globals<
             thread_stack_size,
             edition,
             sm_inputs,
-            extra_symbols,
+            driver_symbols,
             |current_gcx, jobserver_proxy| {
                 // Register the thread for use with the `WorkerLocal` type.
                 registry.register();
@@ -259,7 +259,7 @@ pub(crate) fn run_in_thread_pool_with_globals<
     // pool. Upon creation, each worker thread created gets a copy of the
     // session globals in TLS. This is possible because `SessionGlobals` impls
     // `Send` in the parallel compiler.
-    rustc_span::create_session_globals_then(edition, extra_symbols, Some(sm_inputs), || {
+    rustc_span::create_session_globals_then(edition, driver_symbols, Some(sm_inputs), || {
         rustc_span::with_session_globals(|session_globals| {
             let session_globals = FromDyn::from(session_globals);
             builder
