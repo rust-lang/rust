@@ -4623,6 +4623,7 @@ dependencies = [
  "rand 0.9.1",
  "rand_xorshift",
  "scoped-tls",
+ "smallvec",
 ]
 
 [[package]]

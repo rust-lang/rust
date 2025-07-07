@@ -144,6 +144,7 @@ impl Sleep {
         idle_state: &mut IdleState,
         latch: &CoreLatch,
         thread: &WorkerThread,
+        steal: bool,
     ) {
         if idle_state.rounds < ROUNDS_UNTIL_SLEEPY {
             thread::yield_now();
@@ -157,7 +158,7 @@ impl Sleep {
             thread::yield_now();
         } else {
             debug_assert_eq!(idle_state.rounds, ROUNDS_UNTIL_SLEEPING);
-            self.sleep(idle_state, latch, thread);
+            self.sleep(idle_state, latch, thread, steal);
         }
     }
 
@@ -167,7 +168,13 @@ impl Sleep {
     }
 
     #[cold]
-    fn sleep(&self, idle_state: &mut IdleState, latch: &CoreLatch, thread: &WorkerThread) {
+    fn sleep(
+        &self,
+        idle_state: &mut IdleState,
+        latch: &CoreLatch,
+        thread: &WorkerThread,
+        steal: bool,
+    ) {
         let worker_index = idle_state.worker_index;
 
         if !latch.get_sleepy() {
@@ -215,7 +222,7 @@ impl Sleep {
         // - that job triggers the rollover over the JEC such that we don't see it
         // - we are the last active worker thread
         std::sync::atomic::fence(Ordering::SeqCst);
-        if thread.has_injected_job() {
+        if steal && thread.has_injected_job() {
             // If we see an externally injected job, then we have to 'wake
             // ourselves up'. (Ordinarily, `sub_sleeping_thread` is invoked by
             // the one that wakes us.)
