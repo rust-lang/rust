@@ -532,7 +532,7 @@ impl Builder<'_> {
             }
         }
 
-        let stage = if compiler.stage == 0 && self.local_rebuild {
+        let build_compiler_stage = if compiler.stage == 0 && self.local_rebuild {
             // Assume the local-rebuild rustc already has stage1 features.
             1
         } else {
@@ -540,15 +540,17 @@ impl Builder<'_> {
         };
 
         // We synthetically interpret a stage0 compiler used to build tools as a
-        // "raw" compiler in that it's the exact snapshot we download. Normally
-        // the stage0 build means it uses libraries build by the stage0
-        // compiler, but for tools we just use the precompiled libraries that
-        // we've downloaded
-        let use_snapshot = mode == Mode::ToolBootstrap;
-        assert!(!use_snapshot || stage == 0 || self.local_rebuild);
+        // "raw" compiler in that it's the exact snapshot we download. For things like
+        // ToolRustc, we would have to use the artificial stage0-sysroot compiler instead.
+        let use_snapshot =
+            mode == Mode::ToolBootstrap || (mode == Mode::ToolTarget && build_compiler_stage == 0);
+        assert!(!use_snapshot || build_compiler_stage == 0 || self.local_rebuild);
 
-        let maybe_sysroot = self.sysroot(compiler);
-        let sysroot = if use_snapshot { self.rustc_snapshot_sysroot() } else { &maybe_sysroot };
+        let sysroot = if use_snapshot {
+            self.rustc_snapshot_sysroot().to_path_buf()
+        } else {
+            self.sysroot(compiler)
+        };
         let libdir = self.rustc_libdir(compiler);
 
         let sysroot_str = sysroot.as_os_str().to_str().expect("sysroot should be UTF-8");
@@ -557,7 +559,7 @@ impl Builder<'_> {
         }
 
         let mut rustflags = Rustflags::new(target);
-        if stage != 0 {
+        if build_compiler_stage != 0 {
             if let Ok(s) = env::var("CARGOFLAGS_NOT_BOOTSTRAP") {
                 cargo.args(s.split_whitespace());
             }
@@ -652,7 +654,7 @@ impl Builder<'_> {
         // FIXME(rust-lang/cargo#5754) we shouldn't be using special command arguments
         // to the host invocation here, but rather Cargo should know what flags to pass rustc
         // itself.
-        if stage == 0 {
+        if build_compiler_stage == 0 {
             hostflags.arg("--cfg=bootstrap");
         }
 
@@ -661,7 +663,7 @@ impl Builder<'_> {
         // #71458.
         let mut rustdocflags = rustflags.clone();
         rustdocflags.propagate_cargo_env("RUSTDOCFLAGS");
-        if stage == 0 {
+        if build_compiler_stage == 0 {
             rustdocflags.env("RUSTDOCFLAGS_BOOTSTRAP");
         } else {
             rustdocflags.env("RUSTDOCFLAGS_NOT_BOOTSTRAP");
@@ -822,7 +824,7 @@ impl Builder<'_> {
         cargo
             .env("RUSTBUILD_NATIVE_DIR", self.native_dir(target))
             .env("RUSTC_REAL", self.rustc(compiler))
-            .env("RUSTC_STAGE", stage.to_string())
+            .env("RUSTC_STAGE", build_compiler_stage.to_string())
             .env("RUSTC_SYSROOT", sysroot)
             .env("RUSTC_LIBDIR", libdir)
             .env("RUSTDOC", self.bootstrap_out.join("rustdoc"))
@@ -1272,7 +1274,7 @@ impl Builder<'_> {
             };
 
             if let Some(limit) = limit
-                && (stage == 0
+                && (build_compiler_stage == 0
                     || self.config.default_codegen_backend(target).unwrap_or_default() == "llvm")
             {
                 rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={limit}"));
