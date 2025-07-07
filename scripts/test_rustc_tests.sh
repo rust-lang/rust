@@ -146,8 +146,7 @@ rm tests/ui/lint/non-snake-case/lint-non-snake-case-crate.rs # same
 rm tests/ui/async-await/async-drop/async-drop-initial.rs # same (rust-lang/rust#140493)
 rm -r tests/ui/codegen/equal-pointers-unequal # make incorrect assumptions about the location of stack variables
 
-rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
-rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # same
+rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # really slow with unoptimized libstd
 rm tests/ui/process/process-panic-after-fork.rs # same
 
 cp ../dist/bin/rustdoc-clif ../dist/bin/rustdoc # some tests expect bin/rustdoc to exist
