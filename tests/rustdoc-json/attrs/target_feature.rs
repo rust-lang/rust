@@ -1,5 +1,3 @@
-//@ only-x86_64
-
 //@ is "$.index[?(@.name=='test1')].attrs" '["#[target_feature(enable=\"avx\")]"]'
 #[target_feature(enable = "avx")]
 pub fn test1() {}
