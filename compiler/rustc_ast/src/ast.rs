@@ -2284,6 +2284,33 @@ pub struct FnSig {
     pub span: Span,
 }
 
+impl FnSig {
+    /// Return a span encompassing the header, or where to insert it if empty.
+    pub fn header_span(&self) -> Span {
+        match self.header.ext {
+            Extern::Implicit(span) | Extern::Explicit(_, span) => {
+                return self.span.with_hi(span.hi());
+            }
+            Extern::None => {}
+        }
+
+        match self.header.safety {
+            Safety::Unsafe(span) | Safety::Safe(span) => return self.span.with_hi(span.hi()),
+            Safety::Default => {}
+        };
+
+        if let Some(coroutine_kind) = self.header.coroutine_kind {
+            return self.span.with_hi(coroutine_kind.span().hi());
+        }
+
+        if let Const::Yes(span) = self.header.constness {
+            return self.span.with_hi(span.hi());
+        }
+
+        self.span.shrink_to_lo()
+    }
+}
+
 /// A constraint on an associated item.
 ///
 /// ### Examples
@@ -3534,12 +3561,12 @@ impl Extern {
 /// included in this struct (e.g., `async unsafe fn` or `const extern "C" fn`).
 #[derive(Clone, Copy, Encodable, Decodable, Debug, Walkable)]
 pub struct FnHeader {
-    /// Whether this is `unsafe`, or has a default safety.
-    pub safety: Safety,
-    /// Whether this is `async`, `gen`, or nothing.
-    pub coroutine_kind: Option<CoroutineKind>,
     /// The `const` keyword, if any
     pub constness: Const,
+    /// Whether this is `async`, `gen`, or nothing.
+    pub coroutine_kind: Option<CoroutineKind>,
+    /// Whether this is `unsafe`, or has a default safety.
+    pub safety: Safety,
     /// The `extern` keyword and corresponding ABI string, if any.
     pub ext: Extern,
 }
@@ -3552,38 +3579,6 @@ impl FnHeader {
             || coroutine_kind.is_some()
             || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
-    }
-
-    /// Return a span encompassing the header, or none if all options are default.
-    pub fn span(&self) -> Option<Span> {
-        fn append(a: &mut Option<Span>, b: Span) {
-            *a = match a {
-                None => Some(b),
-                Some(x) => Some(x.to(b)),
-            }
-        }
-
-        let mut full_span = None;
-
-        match self.safety {
-            Safety::Unsafe(span) | Safety::Safe(span) => append(&mut full_span, span),
-            Safety::Default => {}
-        };
-
-        if let Some(coroutine_kind) = self.coroutine_kind {
-            append(&mut full_span, coroutine_kind.span());
-        }
-
-        if let Const::Yes(span) = self.constness {
-            append(&mut full_span, span);
-        }
-
-        match self.ext {
-            Extern::Implicit(span) | Extern::Explicit(_, span) => append(&mut full_span, span),
-            Extern::None => {}
-        }
-
-        full_span
     }
 }
 
