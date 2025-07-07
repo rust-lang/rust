@@ -160,7 +160,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 Attribute::Parsed(AttributeKind::DocComment { .. }) => { /* `#[doc]` is actually a lot more than just doc comments, so is checked below*/
                 }
-                Attribute::Parsed(AttributeKind::Repr(_)) => { /* handled below this loop and elsewhere */
+                Attribute::Parsed(AttributeKind::Repr { .. }) => { /* handled below this loop and elsewhere */
                 }
                 Attribute::Parsed(AttributeKind::RustcObjectLifetimeDefault) => {
                     self.check_object_lifetime_default(hir_id);
@@ -214,6 +214,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 Attribute::Parsed(AttributeKind::MayDangle(attr_span)) => {
                     self.check_may_dangle(hir_id, *attr_span)
+                }
+                Attribute::Parsed(AttributeKind::Ignore { span, .. }) => {
+                    self.check_generic_attr(hir_id, sym::ignore, *span, target, Target::Fn)
                 }
                 Attribute::Parsed(AttributeKind::MustUse { span, .. }) => {
                     self.check_must_use(hir_id, *span, target)
@@ -303,7 +306,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::path, ..] => self.check_generic_attr_unparsed(hir_id, attr, target, Target::Mod),
                         [sym::macro_export, ..] => self.check_macro_export(hir_id, attr, target),
-                        [sym::ignore, ..] | [sym::should_panic, ..] => {
+                        [sym::should_panic, ..] => {
                             self.check_generic_attr_unparsed(hir_id, attr, target, Target::Fn)
                         }
                         [sym::automatically_derived, ..] => {
@@ -1945,7 +1948,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // #[repr(foo)]
         // #[repr(bar, align(8))]
         // ```
-        let reprs = find_attr!(attrs, AttributeKind::Repr(r) => r.as_slice()).unwrap_or(&[]);
+        let (reprs, first_attr_span) = find_attr!(attrs, AttributeKind::Repr { reprs, first_span } => (reprs.as_slice(), Some(*first_span))).unwrap_or((&[], None));
 
         let mut int_reprs = 0;
         let mut is_explicit_rust = false;
@@ -2042,31 +2045,30 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         continue;
                     }
                 }
-                // FIXME(jdonszelmann): move the diagnostic for unused repr attrs here, I think
-                // it's a better place for it.
-                ReprAttr::ReprEmpty => {
-                    // catch `repr()` with no arguments, applied to an item (i.e. not `#![repr()]`)
-                    if item.is_some() {
-                        match target {
-                            Target::Struct | Target::Union | Target::Enum => continue,
-                            Target::Fn | Target::Method(_) => {
-                                self.dcx().emit_err(errors::ReprAlignShouldBeAlign {
-                                    span: *repr_span,
-                                    item: target.name(),
-                                });
-                            }
-                            _ => {
-                                self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
-                                    hint_span: *repr_span,
-                                    span,
-                                });
-                            }
-                        }
-                    }
-
-                    return;
-                }
             };
+        }
+
+        // catch `repr()` with no arguments, applied to an item (i.e. not `#![repr()]`)
+        if let Some(first_attr_span) = first_attr_span
+            && reprs.is_empty()
+            && item.is_some()
+        {
+            match target {
+                Target::Struct | Target::Union | Target::Enum => {}
+                Target::Fn | Target::Method(_) => {
+                    self.dcx().emit_err(errors::ReprAlignShouldBeAlign {
+                        span: first_attr_span,
+                        item: target.name(),
+                    });
+                }
+                _ => {
+                    self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
+                        hint_span: first_attr_span,
+                        span,
+                    });
+                }
+            }
+            return;
         }
 
         // Just point at all repr hints if there are any incompatibilities.
@@ -2321,43 +2323,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_unused_attribute(&self, hir_id: HirId, attr: &Attribute, style: Option<AttrStyle>) {
-        // FIXME(jdonszelmann): deduplicate these checks after more attrs are parsed. This is very
-        // ugly now but can 100% be removed later.
-        if let Attribute::Parsed(p) = attr {
-            match p {
-                AttributeKind::Repr(reprs) => {
-                    for (r, span) in reprs {
-                        if let ReprAttr::ReprEmpty = r {
-                            self.tcx.emit_node_span_lint(
-                                UNUSED_ATTRIBUTES,
-                                hir_id,
-                                *span,
-                                errors::Unused {
-                                    attr_span: *span,
-                                    note: errors::UnusedNote::EmptyList { name: sym::repr },
-                                },
-                            );
-                        }
-                    }
-                    return;
-                }
-                AttributeKind::TargetFeature(features, span) if features.len() == 0 => {
-                    self.tcx.emit_node_span_lint(
-                        UNUSED_ATTRIBUTES,
-                        hir_id,
-                        *span,
-                        errors::Unused {
-                            attr_span: *span,
-                            note: errors::UnusedNote::EmptyList { name: sym::target_feature },
-                        },
-                    );
-                    return;
-                }
-                _ => {}
-            };
-        }
-
         // Warn on useless empty attributes.
+        // FIXME(jdonszelmann): this lint should be moved to attribute parsing, see `AcceptContext::warn_empty_attribute`
         let note = if attr.has_any_name(&[
             sym::macro_use,
             sym::allow,
@@ -2573,7 +2540,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_rustc_pub_transparent(&self, attr_span: Span, span: Span, attrs: &[Attribute]) {
-        if !find_attr!(attrs, AttributeKind::Repr(r) => r.iter().any(|(r, _)| r == &ReprAttr::ReprTransparent))
+        if !find_attr!(attrs, AttributeKind::Repr { reprs, .. } => reprs.iter().any(|(r, _)| r == &ReprAttr::ReprTransparent))
             .unwrap_or(false)
         {
             self.dcx().emit_err(errors::RustcPubTransparent { span, attr_span });
@@ -2849,8 +2816,12 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
             ATTRS_TO_CHECK.iter().find(|attr_to_check| attr.has_name(**attr_to_check))
         {
             (attr.span(), *a)
-        } else if let Attribute::Parsed(AttributeKind::Repr(r)) = attr {
-            (r.first().unwrap().1, sym::repr)
+        } else if let Attribute::Parsed(AttributeKind::Repr {
+            reprs: _,
+            first_span: first_attr_span,
+        }) = attr
+        {
+            (*first_attr_span, sym::repr)
         } else {
             continue;
         };

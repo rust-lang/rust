@@ -108,6 +108,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     }
 
     register_attr! {
+        // tidy-alphabetical-start
         alloc_error_handler: alloc_error_handler::expand,
         autodiff_forward: autodiff::expand_forward,
         autodiff_reverse: autodiff::expand_reverse,
@@ -120,6 +121,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         global_allocator: global_allocator::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,
+        // tidy-alphabetical-end
     }
 
     register_derive! {

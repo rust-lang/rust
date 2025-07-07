@@ -1202,9 +1202,10 @@ macro_rules! common_visitor_and_walkers {
             let TyPat { id, kind, span, tokens: _ } = tp;
             try_visit!(visit_id(vis, id));
             match kind {
-                TyPatKind::Range(start, end, _include_end) => {
+                TyPatKind::Range(start, end, Spanned { span, node: _include_end }) => {
                     visit_opt!(vis, visit_anon_const, start);
                     visit_opt!(vis, visit_anon_const, end);
+                    try_visit!(visit_span(vis, span));
                 }
                 TyPatKind::Or(variants) => walk_list!(vis, visit_ty_pat, variants),
                 TyPatKind::Err(_) => {}
@@ -1523,16 +1524,26 @@ macro_rules! common_visitor_and_walkers {
         }
 
         pub fn walk_inline_asm<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, asm: &$($lt)? $($mut)? InlineAsm) -> V::Result {
-            // FIXME: Visit spans inside all this currently ignored stuff.
             let InlineAsm {
                 asm_macro: _,
-                template: _,
-                template_strs: _,
+                template,
+                template_strs,
                 operands,
-                clobber_abis: _,
+                clobber_abis,
                 options: _,
-                line_spans: _,
+                line_spans,
             } = asm;
+            for piece in template {
+                match piece {
+                    InlineAsmTemplatePiece::String(_str) => {}
+                    InlineAsmTemplatePiece::Placeholder { operand_idx: _, modifier: _, span } => {
+                        try_visit!(visit_span(vis, span));
+                    }
+                }
+            }
+            for (_s1, _s2, span) in template_strs {
+                try_visit!(visit_span(vis, span));
+            }
             for (op, span) in operands {
                 match op {
                     InlineAsmOperand::In { expr, reg: _ }
@@ -1553,6 +1564,12 @@ macro_rules! common_visitor_and_walkers {
                 }
                 try_visit!(visit_span(vis, span));
             }
+            for (_s1, span) in clobber_abis {
+                try_visit!(visit_span(vis, span))
+            }
+            for span in line_spans {
+                try_visit!(visit_span(vis, span))
+            }
             V::Result::output()
         }
 
@@ -1565,9 +1582,9 @@ macro_rules! common_visitor_and_walkers {
             vis.visit_path(path)
         }
 
-        // FIXME: visit the template exhaustively.
         pub fn walk_format_args<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, fmt: &$($lt)? $($mut)? FormatArgs) -> V::Result {
-            let FormatArgs { span, template: _, arguments, uncooked_fmt_str: _, is_source_literal: _ } = fmt;
+            let FormatArgs { span, template, arguments, uncooked_fmt_str: _, is_source_literal: _ } = fmt;
+
             let args = $(${ignore($mut)} arguments.all_args_mut())? $(${ignore($lt)} arguments.all_args())? ;
             for FormatArgument { kind, expr } in args {
                 match kind {
@@ -1578,7 +1595,56 @@ macro_rules! common_visitor_and_walkers {
                 }
                 try_visit!(vis.visit_expr(expr));
             }
+            for piece in template {
+                match piece {
+                    FormatArgsPiece::Literal(_symbol) => {}
+                    FormatArgsPiece::Placeholder(placeholder) => try_visit!(walk_format_placeholder(vis, placeholder)),
+                }
+            }
             visit_span(vis, span)
+        }
+
+        fn walk_format_placeholder<$($lt,)? V: $Visitor$(<$lt>)?>(
+            vis: &mut V,
+            placeholder: &$($lt)? $($mut)? FormatPlaceholder,
+        ) -> V::Result {
+            let FormatPlaceholder { argument, span, format_options, format_trait: _ } = placeholder;
+            if let Some(span) = span {
+                try_visit!(visit_span(vis, span));
+            }
+            let FormatArgPosition { span, index: _, kind: _ } = argument;
+            if let Some(span) = span {
+                try_visit!(visit_span(vis, span));
+            }
+            let FormatOptions {
+                width,
+                precision,
+                alignment: _,
+                fill: _,
+                sign: _,
+                alternate: _,
+                zero_pad: _,
+                debug_hex: _,
+            } = format_options;
+            match width {
+                None => {}
+                Some(FormatCount::Literal(_)) => {}
+                Some(FormatCount::Argument(FormatArgPosition { span, index: _, kind: _ })) => {
+                    if let Some(span) = span {
+                        try_visit!(visit_span(vis, span));
+                    }
+                }
+            }
+            match precision {
+                None => {}
+                Some(FormatCount::Literal(_)) => {}
+                Some(FormatCount::Argument(FormatArgPosition { span, index: _, kind: _ })) => {
+                    if let Some(span) = span {
+                        try_visit!(visit_span(vis, span));
+                    }
+                }
+            }
+            V::Result::output()
         }
 
         pub fn walk_expr<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, expression: &$($lt)? $($mut)? Expr) -> V::Result {
@@ -1601,7 +1667,7 @@ macro_rules! common_visitor_and_walkers {
                     try_visit!(visit_expr_fields(vis, fields));
                     match rest {
                         StructRest::Base(expr) => try_visit!(vis.visit_expr(expr)),
-                        StructRest::Rest(_span) => {}
+                        StructRest::Rest(span) => try_visit!(visit_span(vis, span)),
                         StructRest::None => {}
                     }
                 }
@@ -1688,7 +1754,8 @@ macro_rules! common_visitor_and_walkers {
                     visit_opt!(vis, visit_label, opt_label);
                     try_visit!(vis.visit_block(block));
                 }
-                ExprKind::Gen(_capt, body, _kind, decl_span) => {
+                ExprKind::Gen(capture_clause, body, _kind, decl_span) => {
+                    try_visit!(vis.visit_capture_by(capture_clause));
                     try_visit!(vis.visit_block(body));
                     try_visit!(visit_span(vis, decl_span));
                 }
@@ -1705,9 +1772,10 @@ macro_rules! common_visitor_and_walkers {
                     try_visit!(vis.visit_expr(rhs));
                     try_visit!(visit_span(vis, span));
                 }
-                ExprKind::AssignOp(_op, left_expression, right_expression) => {
+                ExprKind::AssignOp(Spanned { span, node: _ }, left_expression, right_expression) => {
                     try_visit!(vis.visit_expr(left_expression));
                     try_visit!(vis.visit_expr(right_expression));
+                    try_visit!(visit_span(vis, span));
                 }
                 ExprKind::Field(subexpression, ident) => {
                     try_visit!(vis.visit_expr(subexpression));

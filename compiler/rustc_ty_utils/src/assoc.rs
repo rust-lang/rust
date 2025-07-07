@@ -195,12 +195,39 @@ fn associated_types_for_impl_traits_in_associated_fn(
     match tcx.def_kind(parent_def_id) {
         DefKind::Trait => {
             if let Some(output) = tcx.hir_get_fn_output(fn_def_id) {
-                let data = DefPathData::AnonAssocTy(tcx.item_name(fn_def_id.to_def_id()));
+                let def_path_id = |def_id: LocalDefId| tcx.item_name(def_id.to_def_id());
+                let def_path_data = def_path_id(fn_def_id);
+
+                let (.., trait_item_refs) = tcx.hir_expect_item(parent_def_id).expect_trait();
+                // The purpose of `disambiguator_idx` is to ensure there are
+                // no duplicate `def_id` in certain cases, such as:
+                // ```
+                // trait Foo {
+                //     fn bar() -> impl Trait;
+                //     fn bar() -> impl Trait;
+                //              // ~~~~~~~~~~ It will generate the same ID if we don’t disambiguate it.
+                // }
+                // ```
+                let disambiguator_idx = trait_item_refs
+                    .iter()
+                    .take_while(|item| item.id.owner_id.def_id != fn_def_id)
+                    .fold(0, |acc, item| {
+                        if !matches!(item.kind, hir::AssocItemKind::Fn { .. }) {
+                            acc
+                        } else if def_path_id(item.id.owner_id.def_id) == def_path_data {
+                            tcx.def_key(item.id.owner_id.def_id).disambiguated_data.disambiguator
+                                + 1
+                        } else {
+                            acc
+                        }
+                    });
+
+                let data = DefPathData::AnonAssocTy(def_path_data);
                 let mut visitor = RPITVisitor {
                     tcx,
                     synthetics: vec![],
                     data,
-                    disambiguator: DisambiguatorState::with(parent_def_id, data, 0),
+                    disambiguator: DisambiguatorState::with(parent_def_id, data, disambiguator_idx),
                 };
                 visitor.visit_fn_ret_ty(output);
                 tcx.arena.alloc_from_iter(

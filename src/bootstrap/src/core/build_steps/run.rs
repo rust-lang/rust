@@ -5,6 +5,8 @@
 
 use std::path::PathBuf;
 
+use clap_complete::{Generator, shells};
+
 use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::{self, SourceType, Tool};
@@ -285,36 +287,35 @@ impl Step for GenerateWindowsSys {
     }
 }
 
+/// Return tuples of (shell, file containing completions).
+pub fn get_completion_paths(builder: &Builder<'_>) -> Vec<(&'static dyn Generator, PathBuf)> {
+    vec![
+        (&shells::Bash as &'static dyn Generator, builder.src.join("src/etc/completions/x.py.sh")),
+        (&shells::Zsh, builder.src.join("src/etc/completions/x.py.zsh")),
+        (&shells::Fish, builder.src.join("src/etc/completions/x.py.fish")),
+        (&shells::PowerShell, builder.src.join("src/etc/completions/x.py.ps1")),
+        (&shells::Bash, builder.src.join("src/etc/completions/x.sh")),
+        (&shells::Zsh, builder.src.join("src/etc/completions/x.zsh")),
+        (&shells::Fish, builder.src.join("src/etc/completions/x.fish")),
+        (&shells::PowerShell, builder.src.join("src/etc/completions/x.ps1")),
+    ]
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenerateCompletions;
-
-macro_rules! generate_completions {
-    ( $( ( $shell:ident, $filename:expr ) ),* ) => {
-        $(
-            if let Some(comp) = get_completion($shell, &$filename) {
-                std::fs::write(&$filename, comp).expect(&format!("writing {} completion", stringify!($shell)));
-            }
-        )*
-    };
-}
 
 impl Step for GenerateCompletions {
     type Output = ();
 
     /// Uses `clap_complete` to generate shell completions.
     fn run(self, builder: &Builder<'_>) {
-        use clap_complete::shells::{Bash, Fish, PowerShell, Zsh};
-
-        generate_completions!(
-            (Bash, builder.src.join("src/etc/completions/x.py.sh")),
-            (Zsh, builder.src.join("src/etc/completions/x.py.zsh")),
-            (Fish, builder.src.join("src/etc/completions/x.py.fish")),
-            (PowerShell, builder.src.join("src/etc/completions/x.py.ps1")),
-            (Bash, builder.src.join("src/etc/completions/x.sh")),
-            (Zsh, builder.src.join("src/etc/completions/x.zsh")),
-            (Fish, builder.src.join("src/etc/completions/x.fish")),
-            (PowerShell, builder.src.join("src/etc/completions/x.ps1"))
-        );
+        for (shell, path) in get_completion_paths(builder) {
+            if let Some(comp) = get_completion(shell, &path) {
+                std::fs::write(&path, comp).unwrap_or_else(|e| {
+                    panic!("writing completion into {} failed: {e:?}", path.display())
+                });
+            }
+        }
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

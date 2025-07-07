@@ -9,7 +9,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use super::REPR_PACKED_WITHOUT_ABI;
 
 pub(super) fn check(cx: &LateContext<'_>, item_span: Span, attrs: &[Attribute], msrv: Msrv) {
-    if let Some(reprs) = find_attr!(attrs, AttributeKind::Repr(r) => r) {
+    if let Some(reprs) = find_attr!(attrs, AttributeKind::Repr { reprs, .. } => reprs) {
         let packed_span = reprs
             .iter()
             .find(|(r, _)| matches!(r, ReprAttr::ReprPacked(..)))
