@@ -1,6 +1,8 @@
+use std::ops::Neg;
+
 use rand::Rng as _;
 use rustc_apfloat::Float as _;
-use rustc_apfloat::ieee::IeeeFloat;
+use rustc_apfloat::ieee::{IeeeFloat, Semantics};
 use rustc_middle::ty::{self, FloatTy, ScalarInt};
 
 use crate::*;
@@ -103,6 +105,116 @@ pub(crate) fn apply_random_float_error_to_imm<'tcx>(
     };
 
     interp_ok(ImmTy::from_scalar_int(res, val.layout))
+}
+
+/// Given an floating-point operation and a floating-point value, clamps the result to the output
+/// range of the given operation.
+pub(crate) fn clamp_float_value<S: Semantics>(
+    intrinsic_name: &str,
+    val: IeeeFloat<S>,
+) -> IeeeFloat<S> {
+    match intrinsic_name {
+        // sin and cos: [-1, 1]
+        "sinf32" | "cosf32" | "sinf64" | "cosf64" =>
+            val.clamp(IeeeFloat::<S>::one().neg(), IeeeFloat::<S>::one()),
+        // exp: [0, +INF]
+        "expf32" | "exp2f32" | "expf64" | "exp2f64" =>
+            IeeeFloat::<S>::maximum(val, IeeeFloat::<S>::ZERO),
+        _ => val,
+    }
+}
+
+/// For the intrinsics:
+/// - sinf32, sinf64
+/// - cosf32, cosf64
+/// - expf32, expf64, exp2f32, exp2f64
+/// - logf32, logf64, log2f32, log2f64, log10f32, log10f64
+/// - powf32, powf64
+///
+/// # Return
+///
+/// Returns `Some(output)` if the `intrinsic` results in a defined fixed `output` specified in the C standard
+/// (specifically, C23 annex F.10)  when given `args` as arguments. Outputs that are unaffected by a relative error
+/// (such as INF and zero) are not handled here, they are assumed to be handled by the underlying
+/// implementation. Returns `None` if no specific value is guaranteed.
+///
+/// # Note
+///
+/// For `powf*` operations of the form:
+///
+/// - `(SNaN)^(±0)`
+/// - `1^(SNaN)`
+///
+/// The result is implementation-defined:
+/// - musl returns for both `1.0`
+/// - glibc returns for both `NaN`
+///
+/// This discrepancy exists because SNaN handling is not consistently defined across platforms,
+/// and the C standard leaves behavior for SNaNs unspecified.
+///
+/// Miri chooses to adhere to both implementations and returns either one of them non-deterministically.
+pub(crate) fn fixed_float_value<S: Semantics>(
+    ecx: &mut MiriInterpCx<'_>,
+    intrinsic_name: &str,
+    args: &[IeeeFloat<S>],
+) -> Option<IeeeFloat<S>> {
+    let this = ecx.eval_context_mut();
+    let one = IeeeFloat::<S>::one();
+    Some(match (intrinsic_name, args) {
+        // cos(+- 0) = 1
+        ("cosf32" | "cosf64", [input]) if input.is_zero() => one,
+
+        // e^0 = 1
+        ("expf32" | "expf64" | "exp2f32" | "exp2f64", [input]) if input.is_zero() => one,
+
+        // (-1)^(±INF) = 1
+        ("powf32" | "powf64", [base, exp]) if *base == -one && exp.is_infinite() => one,
+
+        // 1^y = 1 for any y, even a NaN
+        ("powf32" | "powf64", [base, exp]) if *base == one => {
+            let rng = this.machine.rng.get_mut();
+            // SNaN exponents get special treatment: they might return 1, or a NaN.
+            let return_nan = exp.is_signaling() && this.machine.float_nondet && rng.random();
+            // Handle both the musl and glibc cases non-deterministically.
+            if return_nan { this.generate_nan(args) } else { one }
+        }
+
+        // x^(±0) = 1 for any x, even a NaN
+        ("powf32" | "powf64", [base, exp]) if exp.is_zero() => {
+            let rng = this.machine.rng.get_mut();
+            // SNaN bases get special treatment: they might return 1, or a NaN.
+            let return_nan = base.is_signaling() && this.machine.float_nondet && rng.random();
+            // Handle both the musl and glibc cases non-deterministically.
+            if return_nan { this.generate_nan(args) } else { one }
+        }
+
+        // There are a lot of cases for fixed outputs according to the C Standard, but these are
+        // mainly INF or zero which are not affected by the applied error.
+        _ => return None,
+    })
+}
+
+/// Returns `Some(output)` if `powi` (called `pown` in C) results in a fixed value specified in the
+/// C standard (specifically, C23 annex F.10.4.6) when doing `base^exp`. Otherwise, returns `None`.
+pub(crate) fn fixed_powi_float_value<S: Semantics>(
+    ecx: &mut MiriInterpCx<'_>,
+    base: IeeeFloat<S>,
+    exp: i32,
+) -> Option<IeeeFloat<S>> {
+    let this = ecx.eval_context_mut();
+    Some(match exp {
+        0 => {
+            let one = IeeeFloat::<S>::one();
+            let rng = this.machine.rng.get_mut();
+            let return_nan = this.machine.float_nondet && rng.random() && base.is_signaling();
+            // For SNaN treatment, we are consistent with `powf`above.
+            // (We wouldn't have two, unlike powf all implementations seem to agree for powi,
+            // but for now we are maximally conservative.)
+            if return_nan { this.generate_nan(&[base]) } else { one }
+        }
+
+        _ => return None,
+    })
 }
 
 pub(crate) fn sqrt<S: rustc_apfloat::ieee::Semantics>(x: IeeeFloat<S>) -> IeeeFloat<S> {
