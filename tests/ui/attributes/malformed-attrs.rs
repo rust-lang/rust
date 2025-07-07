@@ -100,7 +100,7 @@
 //~^ ERROR malformed
 //~| ERROR the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
 #[cfg]
-//~^ ERROR is not followed by parentheses
+//~^ ERROR malformed
 #[cfg_attr]
 //~^ ERROR malformed
 #[instruction_set]
