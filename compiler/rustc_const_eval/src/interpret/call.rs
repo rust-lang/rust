@@ -15,7 +15,7 @@ use tracing::{info, instrument, trace};
 
 use super::{
     CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
-    Projectable, Provenance, ReturnAction, Scalar, StackPopCleanup, StackPopInfo, interp_ok,
+    Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo, interp_ok,
     throw_ub, throw_ub_custom, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
@@ -340,7 +340,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
         destination: &PlaceTy<'tcx, M::Provenance>,
-        mut stack_pop: StackPopCleanup,
+        mut cont: ReturnContinuation,
     ) -> InterpResult<'tcx> {
         // Compute callee information.
         // FIXME: for variadic support, do we have to somehow determine callee's extra_args?
@@ -365,15 +365,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         if !callee_fn_abi.can_unwind {
             // The callee cannot unwind, so force the `Unreachable` unwind handling.
-            match &mut stack_pop {
-                StackPopCleanup::Root { .. } => {}
-                StackPopCleanup::Goto { unwind, .. } => {
+            match &mut cont {
+                ReturnContinuation::Stop { .. } => {}
+                ReturnContinuation::Goto { unwind, .. } => {
                     *unwind = mir::UnwindAction::Unreachable;
                 }
             }
         }
 
-        self.push_stack_frame_raw(instance, body, destination, stack_pop)?;
+        self.push_stack_frame_raw(instance, body, destination, cont)?;
 
         // If an error is raised here, pop the frame again to get an accurate backtrace.
         // To this end, we wrap it all in a `try` block.
@@ -617,7 +617,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     &args,
                     with_caller_location,
                     destination,
-                    StackPopCleanup::Goto { ret: target, unwind },
+                    ReturnContinuation::Goto { ret: target, unwind },
                 )
             }
             // `InstanceKind::Virtual` does not have callable MIR. Calls to `Virtual` instances must be
@@ -755,8 +755,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Note that we are using `pop_stack_frame_raw` and not `return_from_current_stack_frame`,
         // as the latter "executes" the goto to the return block, but we don't want to,
         // only the tail called function should return to the current return block.
-        let StackPopInfo { return_action, return_to_block, return_place } = self
-            .pop_stack_frame_raw(false, |_this, _return_place| {
+        let StackPopInfo { return_action, return_cont, return_place } =
+            self.pop_stack_frame_raw(false, |_this, _return_place| {
                 // This function's return value is just discarded, the tail-callee will fill in the return place instead.
                 interp_ok(())
             })?;
@@ -764,7 +764,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         assert_eq!(return_action, ReturnAction::Normal);
 
         // Take the "stack pop cleanup" info, and use that to initiate the next call.
-        let StackPopCleanup::Goto { ret, unwind } = return_to_block else {
+        let ReturnContinuation::Goto { ret, unwind } = return_cont else {
             bug!("can't tailcall as root");
         };
 
@@ -896,23 +896,23 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Normal return, figure out where to jump.
         if unwinding {
             // Follow the unwind edge.
-            match stack_pop_info.return_to_block {
-                StackPopCleanup::Goto { unwind, .. } => {
+            match stack_pop_info.return_cont {
+                ReturnContinuation::Goto { unwind, .. } => {
                     // This must be the very last thing that happens, since it can in fact push a new stack frame.
                     self.unwind_to_block(unwind)
                 }
-                StackPopCleanup::Root { .. } => {
-                    panic!("encountered StackPopCleanup::Root when unwinding!")
+                ReturnContinuation::Stop { .. } => {
+                    panic!("encountered ReturnContinuation::Stop when unwinding!")
                 }
             }
         } else {
             // Follow the normal return edge.
-            match stack_pop_info.return_to_block {
-                StackPopCleanup::Goto { ret, .. } => self.return_to_block(ret),
-                StackPopCleanup::Root { .. } => {
+            match stack_pop_info.return_cont {
+                ReturnContinuation::Goto { ret, .. } => self.return_to_block(ret),
+                ReturnContinuation::Stop { .. } => {
                     assert!(
                         self.stack().is_empty(),
-                        "only the bottommost frame can have StackPopCleanup::Root"
+                        "only the bottommost frame can have ReturnContinuation::Stop"
                     );
                     interp_ok(())
                 }
