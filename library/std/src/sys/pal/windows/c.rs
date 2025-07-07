@@ -188,6 +188,8 @@ unsafe extern "system" {
 // These are loaded by `load_synch_functions`.
 #[cfg(target_vendor = "win7")]
 compat_fn_optional! {
+    pub static SYNCH_API: &CStr = c"api-ms-win-core-synch-l1-2-0";
+
     pub fn WaitOnAddress(
         address: *const c_void,
         compareaddress: *const c_void,
