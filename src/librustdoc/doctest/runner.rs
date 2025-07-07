@@ -136,13 +136,20 @@ mod __doctest_mod {{
     }}
 
     #[allow(unused)]
-    pub fn doctest_runner(bin: &std::path::Path, test_nb: usize) -> ExitCode {{
+    pub fn doctest_runner(bin: &std::path::Path, test_nb: usize, should_panic: bool) -> ExitCode {{
         let out = std::process::Command::new(bin)
             .env(self::RUN_OPTION, test_nb.to_string())
             .args(std::env::args().skip(1).collect::<Vec<_>>())
             .output()
             .expect(\"failed to run command\");
-        if !out.status.success() {{
+        if should_panic {{
+            if out.status.code() != Some(101) {{
+                eprintln!(\"Test didn't panic, but it's marked `should_panic`.\");
+                ExitCode::FAILURE
+            }} else {{
+                ExitCode::SUCCESS
+            }}
+        }} else if !out.status.success() {{
             if let Some(code) = out.status.code() {{
                 eprintln!(\"Test executable failed (exit status: {{code}}).\");
             }} else {{
@@ -265,7 +272,7 @@ fn main() {returns_result} {{
         "
 mod {test_id} {{
 pub const TEST: test::TestDescAndFn = test::TestDescAndFn::new_doctest(
-{test_name:?}, {ignore}, {file:?}, {line}, {no_run}, {should_panic},
+{test_name:?}, {ignore}, {file:?}, {line}, {no_run}, false,
 test::StaticTestFn(
     || {{{runner}}},
 ));
@@ -274,7 +281,6 @@ test::StaticTestFn(
         file = scraped_test.path(),
         line = scraped_test.line,
         no_run = scraped_test.no_run(opts),
-        should_panic = !scraped_test.langstr.no_run && scraped_test.langstr.should_panic,
         // Setting `no_run` to `true` in `TestDesc` still makes the test run, so we simply
         // don't give it the function to run.
         runner = if not_running {
@@ -283,11 +289,12 @@ test::StaticTestFn(
             format!(
                 "
 if let Some(bin_path) = crate::__doctest_mod::doctest_path() {{
-    test::assert_test_result(crate::__doctest_mod::doctest_runner(bin_path, {id}))
+    test::assert_test_result(crate::__doctest_mod::doctest_runner(bin_path, {id}, {should_panic}))
 }} else {{
     test::assert_test_result(doctest_bundle::{test_id}::__main_fn())
 }}
 ",
+                should_panic = scraped_test.langstr.should_panic,
             )
         },
     )
