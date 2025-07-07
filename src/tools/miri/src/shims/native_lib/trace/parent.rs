@@ -58,11 +58,11 @@ impl ArchIndependentRegs for libc::user_regs_struct {
 #[rustfmt::skip]
 impl ArchIndependentRegs for libc::user_regs_struct {
     #[inline]
-    fn ip(&self) -> usize { self.eip.try_into().unwrap() }
+    fn ip(&self) -> usize { self.eip.cast_unsigned().try_into().unwrap() }
     #[inline]
-    fn set_ip(&mut self, ip: usize) { self.eip = ip.try_into().unwrap() }
+    fn set_ip(&mut self, ip: usize) { self.eip = ip.cast_signed().try_into().unwrap() }
     #[inline]
-    fn set_sp(&mut self, sp: usize) { self.esp = sp.try_into().unwrap() }
+    fn set_sp(&mut self, sp: usize) { self.esp = sp.cast_signed().try_into().unwrap() }
 }
 
 /// A unified event representing something happening on the child process. Wraps
@@ -386,7 +386,17 @@ fn capstone_find_events(
                         acc_events.push(AccessEvent::Read(push.clone()));
                     }
                     if acc_ty.is_writable() {
-                        acc_events.push(AccessEvent::Write(push));
+                        // FIXME: This could be made certain; either determine all cases where
+                        // only reads happen, or have an intermediate mempr_* function to first
+                        // map the page(s) as readonly and check if a segfault occurred.
+
+                        // Per https://docs.rs/iced-x86/latest/iced_x86/enum.OpAccess.html,
+                        // we know that the possible access types are Read, CondRead, Write,
+                        // CondWrite, ReadWrite, and ReadCondWrite. Since we got a segfault
+                        // we know some kind of access happened so Cond{Read, Write}s are
+                        // certain reads and writes; the only uncertainty is with an RW op
+                        // as it might be a ReadCondWrite with the write condition unmet.
+                        acc_events.push(AccessEvent::Write(push, !acc_ty.is_readable()));
                     }
 
                     return true;
@@ -442,8 +452,7 @@ fn handle_segfault(
     // Get information on what caused the segfault. This contains the address
     // that triggered it.
     let siginfo = ptrace::getsiginfo(pid).unwrap();
-    // All x86, ARM, etc. instructions only have at most one memory operand
-    // (thankfully!)
+    // All x86 instructions only have at most one memory operand (thankfully!)
     // SAFETY: si_addr is safe to call.
     let addr = unsafe { siginfo.si_addr().addr() };
     let page_addr = addr.strict_sub(addr.strict_rem(page_size));
@@ -490,7 +499,7 @@ fn handle_segfault(
     ptrace::write(
         pid,
         (&raw const PAGE_ADDR).cast_mut().cast(),
-        libc::c_long::try_from(page_addr).unwrap(),
+        libc::c_long::try_from(page_addr.cast_signed()).unwrap(),
     )
     .unwrap();
 
