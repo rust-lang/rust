@@ -45,6 +45,11 @@ use crate::{
     traits::convert_to_def_in_trait,
 };
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RenameConfig {
+    pub show_conflicts: bool,
+}
+
 pub type Result<T, E = RenameError> = std::result::Result<T, E>;
 
 #[derive(Debug)]
@@ -81,6 +86,7 @@ impl Definition {
         sema: &Semantics<'_, RootDatabase>,
         new_name: &str,
         rename_definition: RenameDefinition,
+        config: &RenameConfig,
     ) -> Result<SourceChange> {
         // self.krate() returns None if
         // self is a built-in attr, built-in type or tool module.
@@ -109,10 +115,15 @@ impl Definition {
                 bail!("Cannot rename a builtin attr.")
             }
             Definition::SelfType(_) => bail!("Cannot rename `Self`"),
-            Definition::Macro(mac) => {
-                rename_reference(sema, Definition::Macro(mac), new_name, rename_definition, edition)
-            }
-            def => rename_reference(sema, def, new_name, rename_definition, edition),
+            Definition::Macro(mac) => rename_reference(
+                sema,
+                Definition::Macro(mac),
+                new_name,
+                rename_definition,
+                edition,
+                config,
+            ),
+            def => rename_reference(sema, def, new_name, rename_definition, edition, config),
         }
     }
 
@@ -338,6 +349,7 @@ fn rename_reference(
     new_name: &str,
     rename_definition: RenameDefinition,
     edition: Edition,
+    config: &RenameConfig,
 ) -> Result<SourceChange> {
     let (mut new_name, ident_kind) = IdentifierKind::classify(edition, new_name)?;
 
@@ -396,7 +408,8 @@ fn rename_reference(
     if rename_definition == RenameDefinition::Yes {
         // This needs to come after the references edits, because we change the annotation of existing edits
         // if a conflict is detected.
-        let (file_id, edit) = source_edit_from_def(sema, def, &new_name, &mut source_change)?;
+        let (file_id, edit) =
+            source_edit_from_def(sema, config, def, &new_name, &mut source_change)?;
         source_change.insert_source_edit(file_id, edit);
     }
     Ok(source_change)
@@ -554,6 +567,7 @@ fn source_edit_from_name_ref(
 
 fn source_edit_from_def(
     sema: &Semantics<'_, RootDatabase>,
+    config: &RenameConfig,
     def: Definition,
     new_name: &Name,
     source_change: &mut SourceChange,
@@ -562,21 +576,22 @@ fn source_edit_from_def(
     if let Definition::Local(local) = def {
         let mut file_id = None;
 
-        let conflict_annotation = if !sema.rename_conflicts(&local, new_name).is_empty() {
-            Some(
-                source_change.insert_annotation(ChangeAnnotation {
-                    label: "This rename will change the program's meaning".to_owned(),
-                    needs_confirmation: true,
-                    description: Some(
-                        "Some variable(s) will shadow the renamed variable \
+        let conflict_annotation =
+            if config.show_conflicts && !sema.rename_conflicts(&local, new_name).is_empty() {
+                Some(
+                    source_change.insert_annotation(ChangeAnnotation {
+                        label: "This rename will change the program's meaning".to_owned(),
+                        needs_confirmation: true,
+                        description: Some(
+                            "Some variable(s) will shadow the renamed variable \
                         or be shadowed by it if the rename is performed"
-                            .to_owned(),
-                    ),
-                }),
-            )
-        } else {
-            None
-        };
+                                .to_owned(),
+                        ),
+                    }),
+                )
+            } else {
+                None
+            };
 
         for source in local.sources(sema.db) {
             let source = match source.source.clone().original_ast_node_rooted(sema.db) {

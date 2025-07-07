@@ -1153,6 +1153,7 @@ impl flags::AnalysisStats {
                     style_lints: false,
                     term_search_fuel: 400,
                     term_search_borrowck: true,
+                    show_rename_conflicts: true,
                 },
                 ide::AssistResolveStrategy::All,
                 analysis.editioned_file_id_to_vfs(file_id),

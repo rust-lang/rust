@@ -363,6 +363,7 @@ fn integrated_diagnostics_benchmark() {
         prefer_absolute: false,
         term_search_fuel: 400,
         term_search_borrowck: true,
+        show_rename_conflicts: true,
     };
     host.analysis()
         .full_diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)
