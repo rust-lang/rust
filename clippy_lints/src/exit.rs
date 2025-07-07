@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for Exit {
             // if you instead check for the parent of the `exit()` call being the entrypoint function, as this worked before,
             // in compilation contexts like --all-targets (which include --tests), you get false positives
             // because in a test context, main is not the entrypoint function
-            && ident.name.as_str() != "main"
+            && ident.name != sym::main
         {
             span_lint(cx, EXIT, e.span, "usage of `process::exit`");
         }
