@@ -752,6 +752,10 @@ def write_uncommented(target, f):
             is_comment = True
             continue
         is_comment = is_comment and line.startswith("#")
+    # Write the last accumulated block
+    if len(block) > 0 and not is_comment:
+        for ln in block:
+            f.write(ln + "\n")
     return f
 
 
