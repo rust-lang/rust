@@ -1587,7 +1587,7 @@ impl ExecutedSteps {
 }
 
 fn fuzzy_metadata_eq(executed: &StepMetadata, to_match: &StepMetadata) -> bool {
-    let StepMetadata { name, kind, target, built_by: _, stage: _ } = executed;
+    let StepMetadata { name, kind, target, built_by: _, stage: _, metadata } = executed;
     *name == to_match.name && *kind == to_match.kind && *target == to_match.target
 }
 
@@ -1648,6 +1648,9 @@ fn render_metadata(metadata: &StepMetadata) -> String {
     }
     let stage = metadata.get_stage().map(|stage| format!("{stage} ")).unwrap_or_default();
     write!(record, "{} {stage}<{}>", metadata.name, normalize_target(metadata.target));
+    if let Some(metadata) = &metadata.metadata {
+        write!(record, " {metadata}");
+    }
     record
 }
 
