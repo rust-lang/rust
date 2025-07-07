@@ -5,7 +5,7 @@ test $DIR/failed-doctest-should-panic-2021.rs - Foo (line 10) ... FAILED
 failures:
 
 ---- $DIR/failed-doctest-should-panic-2021.rs - Foo (line 10) stdout ----
-Test executable succeeded, but it's marked `should_panic`.
+Test didn't panic, but it's marked `should_panic`.
 
 failures:
     $DIR/failed-doctest-should-panic-2021.rs - Foo (line 10)

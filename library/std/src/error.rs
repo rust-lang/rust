@@ -123,7 +123,7 @@ use crate::fmt::{self, Write};
 /// the `Debug` output means `Report` is an ideal starting place for formatting errors returned
 /// from `main`.
 ///
-/// ```should_panic
+/// ```
 /// #![feature(error_reporter)]
 /// use std::error::Report;
 /// # use std::error::Error;
@@ -154,9 +154,13 @@ use crate::fmt::{self, Write};
 /// #     Err(SuperError { source: SuperErrorSideKick })
 /// # }
 ///
-/// fn main() -> Result<(), Report<SuperError>> {
+/// fn run() -> Result<(), Report<SuperError>> {
 ///     get_super_error()?;
 ///     Ok(())
+/// }
+///
+/// fn main() {
+///     assert!(run().is_err());
 /// }
 /// ```
 ///
@@ -170,7 +174,7 @@ use crate::fmt::{self, Write};
 /// output format. If you want to make sure your `Report`s are pretty printed and include backtrace
 /// you will need to manually convert and enable those flags.
 ///
-/// ```should_panic
+/// ```
 /// #![feature(error_reporter)]
 /// use std::error::Report;
 /// # use std::error::Error;
@@ -201,11 +205,15 @@ use crate::fmt::{self, Write};
 /// #     Err(SuperError { source: SuperErrorSideKick })
 /// # }
 ///
-/// fn main() -> Result<(), Report<SuperError>> {
+/// fn run() -> Result<(), Report<SuperError>> {
 ///     get_super_error()
 ///         .map_err(Report::from)
 ///         .map_err(|r| r.pretty(true).show_backtrace(true))?;
 ///     Ok(())
+/// }
+///
+/// fn main() {
+///     assert!(run().is_err());
 /// }
 /// ```
 ///
