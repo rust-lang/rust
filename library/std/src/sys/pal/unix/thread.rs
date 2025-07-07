@@ -1,4 +1,6 @@
 use crate::ffi::CStr;
+#[cfg(any(target_os = "android", target_os = "linux"))]
+use crate::fs;
 use crate::mem::{self, ManuallyDrop};
 use crate::num::NonZero;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
@@ -405,6 +407,42 @@ fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_W
     result
 }
 
+#[cfg(any(target_os = "android", target_os = "linux"))]
+fn count_user_threads() -> Result<usize, io::Error> {
+    let current_uid = unsafe { libc::getuid() };
+    let mut thread_count = 0;
+
+    for entry in fs::read_dir("/proc")? {
+        let entry = entry?;
+        let pid = entry.file_name().to_string_lossy().to_string();
+
+        if let Ok(_pid_num) = pid.parse::<u32>() {
+            let status_path = format!("/proc/{}/status", pid);
+
+            if let Ok(status) = fs::read_to_string(status_path) {
+                let mut uid: Option<libc::uid_t> = None;
+                let mut threads: Option<usize> = None;
+
+                for line in status.lines() {
+                    if line.starts_with("Uid:") {
+                        uid = line.split_whitespace().nth(1).and_then(|s| s.parse().ok());
+                    } else if line.starts_with("Threads:") {
+                        threads = line.split_whitespace().nth(1).and_then(|s| s.parse().ok());
+                    }
+                }
+
+                if let (Some(uid), Some(t)) = (uid, threads) {
+                    if uid == current_uid {
+                        thread_count += t;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(thread_count)
+}
+
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     cfg_if::cfg_if! {
         if #[cfg(any(
@@ -420,6 +458,10 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             #[allow(unused_assignments)]
             #[allow(unused_mut)]
             let mut quota = usize::MAX;
+
+            #[allow(unused_assignments)]
+            #[allow(unused_mut)]
+            let mut ulimit = libc::rlim_t::MAX;
 
             #[cfg(any(target_os = "android", target_os = "linux"))]
             {
@@ -439,14 +481,30 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                         }
                     }
                 }
+
+                let mut r: libc::rlimit = unsafe { mem::zeroed() };
+                unsafe {
+                    if libc::getrlimit(libc::RLIMIT_NPROC, &mut r) == 0 {
+                        match r.rlim_cur {
+                          libc::RLIM_INFINITY => ulimit = libc::rlim_t::MAX,
+                          soft_limit => {
+                            ulimit = match count_user_threads() {
+                              Ok(t) => if soft_limit > t as libc::rlim_t {soft_limit - t as libc::rlim_t} else { 1 },
+                              _ => 1
+                          }
+                        }
+                      }
+                    }
+                }
             }
+
             match unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) } {
                 -1 => Err(io::Error::last_os_error()),
                 0 => Err(io::Error::UNKNOWN_THREAD_COUNT),
                 cpus => {
                     let count = cpus as usize;
                     // Cover the unusual situation where we were able to get the quota but not the affinity mask
-                    let count = count.min(quota);
+                    let count = count.min(quota.min(ulimit.try_into().unwrap_or(usize::MAX)));
                     Ok(unsafe { NonZero::new_unchecked(count) })
                 }
             }
