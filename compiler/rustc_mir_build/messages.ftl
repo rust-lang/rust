@@ -86,9 +86,15 @@ mir_build_confused = missing patterns are not covered because `{$variable}` is i
 
 mir_build_const_continue_bad_const = could not determine the target branch for this `#[const_continue]`
     .label = this value is too generic
-    .note = the value must be a literal or a monomorphic const
 
 mir_build_const_continue_missing_value = a `#[const_continue]` must break to a label with a value
+
+mir_build_const_continue_not_const = could not determine the target branch for this `#[const_continue]`
+    .help = try extracting the expression into a `const` item
+
+mir_build_const_continue_not_const_const_block = `const` blocks may use generics, and are not evaluated early enough
+mir_build_const_continue_not_const_const_other = this value must be a literal or a monomorphic const
+mir_build_const_continue_not_const_constant_parameter = constant parameters may use generics, and are not evaluated early enough
 
 mir_build_const_continue_unknown_jump_target = the target of this `#[const_continue]` is not statically known
     .label = this value must be a literal or a monomorphic const

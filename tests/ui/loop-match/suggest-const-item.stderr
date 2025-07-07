@@ -1,0 +1,34 @@
+error: could not determine the target branch for this `#[const_continue]`
+  --> $DIR/suggest-const-item.rs:18:32
+   |
+LL |                     break 'blk const_fn();
+   |                                ^^^^^^^^^^ this value must be a literal or a monomorphic const
+   |
+   = help: try extracting the expression into a `const` item
+
+error: could not determine the target branch for this `#[const_continue]`
+  --> $DIR/suggest-const-item.rs:23:32
+   |
+LL |                     break 'blk const { const_fn() };
+   |                                ^^^^^^^^^^^^^^^^^^^^ `const` blocks may use generics, and are not evaluated early enough
+   |
+   = help: try extracting the expression into a `const` item
+
+error: could not determine the target branch for this `#[const_continue]`
+  --> $DIR/suggest-const-item.rs:28:32
+   |
+LL |                     break 'blk N;
+   |                                ^ constant parameters may use generics, and are not evaluated early enough
+   |
+   = help: try extracting the expression into a `const` item
+
+error: could not determine the target branch for this `#[const_continue]`
+  --> $DIR/suggest-const-item.rs:33:32
+   |
+LL |                     break 'blk 1 + 1;
+   |                                ^^^^^ this value must be a literal or a monomorphic const
+   |
+   = help: try extracting the expression into a `const` item
+
+error: aborting due to 4 previous errors
+
