@@ -133,7 +133,7 @@ impl Step for ToolBuild {
                     builder.std(self.build_compiler, target);
                 }
             }
-            Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
+            Mode::ToolBootstrap | Mode::ToolTarget => {} // uses downloaded stage0 compiler libs
             _ => panic!("unexpected Mode for tool build"),
         }
 
@@ -196,7 +196,7 @@ impl Step for ToolBuild {
             Kind::Build,
             self.mode,
             self.tool,
-            self.build_compiler.stage,
+            self.build_compiler.stage + 1,
             &self.build_compiler.host,
             &self.target,
         );
@@ -367,12 +367,14 @@ pub(crate) fn get_tool_rustc_compiler(
 
 /// Returns a compiler that is able to compile a `ToolTarget` tool for the given `target`.
 pub(crate) fn get_tool_target_compiler(builder: &Builder<'_>, target: TargetSelection) -> Compiler {
-    if builder.host_target == target {
+    let compiler = if builder.host_target == target {
         builder.compiler(0, builder.host_target)
     } else {
         // FIXME: should this be builder.top_stage to avoid rebuilds?
-        builder.compiler(1, target)
-    }
+        builder.compiler(1, builder.host_target)
+    };
+    builder.std(compiler, target);
+    compiler
 }
 
 /// Links a built tool binary with the given `name` from the build directory to the
@@ -647,7 +649,7 @@ impl Step for ErrorIndex {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RemoteTestServer {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -660,17 +662,17 @@ impl Step for RemoteTestServer {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RemoteTestServer {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
+            build_compiler: get_tool_target_compiler(run.builder, run.target),
             target: run.target,
         });
     }
 
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         builder.ensure(ToolBuild {
-            build_compiler: self.compiler,
+            build_compiler: self.build_compiler,
             target: self.target,
             tool: "remote-test-server",
-            mode: Mode::ToolStd,
+            mode: Mode::ToolTarget,
             path: "src/tools/remote-test-server",
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
@@ -678,6 +680,10 @@ impl Step for RemoteTestServer {
             cargo_args: Vec::new(),
             artifact_kind: ToolArtifactKind::Binary,
         })
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::build("remote-test-server", self.target).built_by(self.build_compiler))
     }
 }
 
