@@ -10958,3 +10958,30 @@ fn bar$0() -> Foo {
         "#]],
     );
 }
+
+#[test]
+fn regression_20190() {
+    check(
+        r#"
+struct Foo;
+
+/// [`foo` bar](Foo).
+fn has_docs$0() {}
+    "#,
+        expect![[r#"
+            *has_docs*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn has_docs()
+            ```
+
+            ---
+
+            [`foo` bar](https://docs.rs/ra_test_fixture/*/ra_test_fixture/struct.Foo.html).
+        "#]],
+    );
+}
