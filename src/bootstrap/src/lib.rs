@@ -253,11 +253,25 @@ pub enum Mode {
     /// These tools are intended to be only executed on the host system that
     /// invokes bootstrap, and they thus cannot be cross-compiled.
     ///
-    /// They are always built using the stage0 compiler, and typically they
+    /// They are always built using the stage0 compiler, and they
     /// can be compiled with stable Rust.
     ///
     /// These tools also essentially do not participate in staging.
     ToolBootstrap,
+
+    /// Build a cross-compilable helper tool.
+    /// - If we compile it for the host, we use the stage0 compiler.
+    /// - If we compile it for another target, we use local compiler (because stage0 does not have
+    ///   stdlib for the tool available for other targets).
+    ///
+    /// This mode exists to avoid needless (re)builds of tools that can be compiled with
+    /// a stable/stage0 compiler. It essentially behaves as `ToolBootstrap` when not
+    /// cross-compiling, and as `ToolStd` when cross-compiling.
+    ///
+    /// It is used e.g. for linkers and linker tools invoked by rustc on its host target.
+    ///
+    /// These tools participate in staging only when required for cross-compilation.
+    ToolTarget,
 
     /// Build a tool which uses the locally built std, placing output in the
     /// "stageN-tools" directory. Its usage is quite rare, mainly used by
@@ -804,17 +818,39 @@ impl Build {
     /// stage when running with a particular host compiler.
     ///
     /// The mode indicates what the root directory is for.
-    fn stage_out(&self, compiler: Compiler, mode: Mode) -> PathBuf {
-        let suffix = match mode {
-            Mode::Std => "-std",
-            Mode::Rustc => "-rustc",
-            Mode::Codegen => "-codegen",
-            Mode::ToolBootstrap => {
-                return self.out.join(compiler.host).join("bootstrap-tools");
+    fn stage_out(&self, build_compiler: Compiler, mode: Mode) -> PathBuf {
+        use std::fmt::Write;
+
+        fn bootstrap_tool() -> (Option<u32>, &'static str) {
+            (None, "bootstrap-tools")
+        }
+        fn staged_tool(build_compiler: Compiler) -> (Option<u32>, &'static str) {
+            (Some(build_compiler.stage), "tools")
+        }
+
+        let (stage, suffix) = match mode {
+            Mode::Std => (Some(build_compiler.stage), "std"),
+            Mode::Rustc => (Some(build_compiler.stage), "rustc"),
+            Mode::Codegen => (Some(build_compiler.stage), "codegen"),
+            Mode::ToolBootstrap => bootstrap_tool(),
+            Mode::ToolStd | Mode::ToolRustc => (Some(build_compiler.stage), "tools"),
+            Mode::ToolTarget => {
+                // If we're not cross-compiling (the common case), share the target directory with
+                // bootstrap tools to reuse the build cache.
+                if build_compiler.stage == 0 {
+                    bootstrap_tool()
+                } else {
+                    staged_tool(build_compiler)
+                }
             }
-            Mode::ToolStd | Mode::ToolRustc => "-tools",
         };
-        self.out.join(compiler.host).join(format!("stage{}{}", compiler.stage, suffix))
+        let path = self.out.join(build_compiler.host);
+        let mut dir_name = String::new();
+        if let Some(stage) = stage {
+            write!(dir_name, "stage{stage}-").unwrap();
+        }
+        dir_name.push_str(suffix);
+        path.join(dir_name)
     }
 
     /// Returns the root output directory for all Cargo output in a given stage,

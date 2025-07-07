@@ -672,7 +672,7 @@ impl Builder<'_> {
         }
 
         match mode {
-            Mode::Std | Mode::ToolBootstrap | Mode::ToolStd => {}
+            Mode::Std | Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolTarget => {}
             Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {
                 // Build proc macros both for the host and the target unless proc-macros are not
                 // supported by the target.
@@ -714,7 +714,7 @@ impl Builder<'_> {
         // feature on the rustc side.
         cargo.arg("-Zbinary-dep-depinfo");
         let allow_features = match mode {
-            Mode::ToolBootstrap | Mode::ToolStd => {
+            Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolTarget => {
                 // Restrict the allowed features so we don't depend on nightly
                 // accidentally.
                 //
@@ -867,7 +867,7 @@ impl Builder<'_> {
         let debuginfo_level = match mode {
             Mode::Rustc | Mode::Codegen => self.config.rust_debuginfo_level_rustc,
             Mode::Std => self.config.rust_debuginfo_level_std,
-            Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustc => {
+            Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustc | Mode::ToolTarget => {
                 self.config.rust_debuginfo_level_tools
             }
         };
@@ -879,11 +879,10 @@ impl Builder<'_> {
             profile_var("DEBUG_ASSERTIONS"),
             match mode {
                 Mode::Std => self.config.std_debug_assertions,
-                Mode::Rustc => self.config.rustc_debug_assertions,
-                Mode::Codegen => self.config.rustc_debug_assertions,
-                Mode::ToolBootstrap => self.config.tools_debug_assertions,
-                Mode::ToolStd => self.config.tools_debug_assertions,
-                Mode::ToolRustc => self.config.tools_debug_assertions,
+                Mode::Rustc | Mode::Codegen => self.config.rustc_debug_assertions,
+                Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustc | Mode::ToolTarget => {
+                    self.config.tools_debug_assertions
+                }
             }
             .to_string(),
         );
@@ -954,7 +953,11 @@ impl Builder<'_> {
                     cargo.env("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR", map_to);
                 }
             }
-            Mode::Std | Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd => {
+            Mode::Std
+            | Mode::ToolBootstrap
+            | Mode::ToolRustc
+            | Mode::ToolStd
+            | Mode::ToolTarget => {
                 if let Some(ref map_to) =
                     self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
                 {
