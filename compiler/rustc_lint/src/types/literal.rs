@@ -11,8 +11,9 @@ use crate::LateContext;
 use crate::context::LintContext;
 use crate::lints::{
     OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign, OverflowingBinHexSignBitSub,
-    OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral, OverflowingUInt,
-    RangeEndpointOutOfRange, UseInclusiveRange,
+    OverflowingBinHexSub, OverflowingInt, OverflowingIntError, OverflowingIntHelp,
+    OverflowingLiteral, OverflowingUInt, OverflowingUIntError, RangeEndpointOutOfRange,
+    UseInclusiveRange,
 };
 use crate::types::{OVERFLOWING_LITERALS, TypeLimits};
 
@@ -250,6 +251,7 @@ fn lint_int_literal<'tcx>(
     lit: &hir::Lit,
     t: ty::IntTy,
     v: u128,
+    force_error: bool,
 ) {
     let int_type = t.normalize(cx.sess().target.pointer_width);
     let (min, max) = int_ty_range(int_type);
@@ -287,11 +289,22 @@ fn lint_int_literal<'tcx>(
         let help = get_type_suggestion(cx.typeck_results().node_type(hir_id), v, negative)
             .map(|suggestion_ty| OverflowingIntHelp { suggestion_ty });
 
-        cx.emit_span_lint(
-            OVERFLOWING_LITERALS,
-            span,
-            OverflowingInt { ty: t.name_str(), lit, min, max, help },
-        );
+        if force_error {
+            cx.tcx.dcx().emit_err(OverflowingIntError {
+                span,
+                ty: t.name_str(),
+                lit,
+                min,
+                max,
+                help,
+            });
+        } else {
+            cx.emit_span_lint(
+                OVERFLOWING_LITERALS,
+                span,
+                OverflowingInt { ty: t.name_str(), lit, min, max, help },
+            );
+        }
     }
 }
 
@@ -301,6 +314,7 @@ fn lint_uint_literal<'tcx>(
     span: Span,
     lit: &hir::Lit,
     t: ty::UintTy,
+    force_error: bool,
 ) {
     let uint_type = t.normalize(cx.sess().target.pointer_width);
     let (min, max) = uint_ty_range(uint_type);
@@ -344,10 +358,9 @@ fn lint_uint_literal<'tcx>(
             );
             return;
         }
-        cx.emit_span_lint(
-            OVERFLOWING_LITERALS,
-            span,
-            OverflowingUInt {
+        if force_error {
+            cx.tcx.dcx().emit_err(OverflowingUIntError {
+                span,
                 ty: t.name_str(),
                 lit: cx
                     .sess()
@@ -356,8 +369,23 @@ fn lint_uint_literal<'tcx>(
                     .unwrap_or_else(|_| lit_val.to_string()),
                 min,
                 max,
-            },
-        );
+            });
+        } else {
+            cx.emit_span_lint(
+                OVERFLOWING_LITERALS,
+                span,
+                OverflowingUInt {
+                    ty: t.name_str(),
+                    lit: cx
+                        .sess()
+                        .source_map()
+                        .span_to_snippet(lit.span)
+                        .unwrap_or_else(|_| lit_val.to_string()),
+                    min,
+                    max,
+                },
+            );
+        }
     }
 }
 
@@ -369,18 +397,39 @@ pub(crate) fn lint_literal<'tcx>(
     lit: &hir::Lit,
     negated: bool,
 ) {
-    match *cx.typeck_results().node_type(hir_id).kind() {
+    lint_literal_inner(
+        cx,
+        type_limits,
+        hir_id,
+        cx.typeck_results().node_type(hir_id),
+        span,
+        lit,
+        negated,
+        false,
+    )
+}
+pub(crate) fn lint_literal_inner<'tcx>(
+    cx: &LateContext<'tcx>,
+    type_limits: &TypeLimits,
+    hir_id: HirId,
+    ty: Ty<'tcx>,
+    span: Span,
+    lit: &hir::Lit,
+    negated: bool,
+    force_error: bool,
+) {
+    match *ty.kind() {
         ty::Int(t) => {
             match lit.node {
                 ast::LitKind::Int(v, ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed) => {
-                    lint_int_literal(cx, type_limits, hir_id, span, lit, t, v.get())
+                    lint_int_literal(cx, type_limits, hir_id, span, lit, t, v.get(), force_error)
                 }
                 _ => bug!(),
             };
         }
         ty::Uint(t) => {
             assert!(!negated);
-            lint_uint_literal(cx, hir_id, span, lit, t)
+            lint_uint_literal(cx, hir_id, span, lit, t, force_error)
         }
         ty::Float(t) => {
             let (is_infinite, sym) = match lit.node {
@@ -408,6 +457,12 @@ pub(crate) fn lint_literal<'tcx>(
                     },
                 );
             }
+        }
+        ty::Pat(base, ..) if base.is_integral() => {
+            lint_literal_inner(cx, type_limits, hir_id, base, span, lit, negated, true)
+        }
+        ty::Adt(adt, args) if cx.tcx.is_lang_item(adt.did(), hir::LangItem::NonZero) => {
+            lint_literal_inner(cx, type_limits, hir_id, args.type_at(0), span, lit, negated, true)
         }
         _ => {}
     }
