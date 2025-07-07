@@ -139,7 +139,9 @@ pub use crate::eval::{
     AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, MiriEntryFnType, RejectOpWith,
     ValidationMode, create_ecx, eval_entry,
 };
-pub use crate::helpers::{AccessKind, EvalContextExt as _, ToU64 as _, ToUsize as _};
+pub use crate::helpers::{
+    AccessKind, EvalContextExt as _, MaybeEnteredTraceSpan, ToU64 as _, ToUsize as _,
+};
 pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::machine::{
     AllocExtra, DynMachineCallback, FrameExtra, MachineCallback, MemoryKind, MiriInterpCx,
