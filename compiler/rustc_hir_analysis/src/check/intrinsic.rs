@@ -134,6 +134,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::round_ties_even_f32
         | sym::round_ties_even_f64
         | sym::round_ties_even_f128
+        | sym::enzyme_autodiff
         | sym::const_eval_select => hir::Safety::Safe,
         _ => hir::Safety::Unsafe,
     };
@@ -215,6 +216,7 @@ pub(crate) fn check_intrinsic_type(
 
             (n_tps, n_cts, inputs, output)
         }
+        sym::enzyme_autodiff => (4, 0, vec![param(0), param(1), param(2)], param(3)),
         sym::abort => (0, 0, vec![], tcx.types.never),
         sym::unreachable => (0, 0, vec![], tcx.types.never),
         sym::breakpoint => (0, 0, vec![], tcx.types.unit),

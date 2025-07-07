@@ -720,7 +720,7 @@ impl<'a> MixedExportNameAndNoMangleState<'a> {
 /// being differentiated). The other form is #[rustc_autodiff(Mode, ActivityList)] on top of the
 /// placeholder functions. We wrote the rustc_autodiff attributes ourself, so this should never
 /// panic, unless we introduced a bug when parsing the autodiff macro.
-fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
+pub fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     let attrs = tcx.get_attrs(id, sym::rustc_autodiff);
 
     let attrs = attrs.filter(|attr| attr.has_name(sym::rustc_autodiff)).collect::<Vec<_>>();

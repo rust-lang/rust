@@ -10,7 +10,7 @@ use rustc_middle::bug;
 use tracing::{debug, trace};
 
 use crate::back::write::llvm_err;
-use crate::builder::{Builder, OperandRef, PlaceRef, UNNAMED};
+use crate::builder::{Builder, PlaceRef, UNNAMED};
 use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
 use crate::errors::{AutoDiffWithoutEnable, LlvmError};
@@ -200,7 +200,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     fn_to_diff: &'ll Value,
     outer_name: &str,
     ret_ty: &'ll Type,
-    fn_args: &[OperandRef<'tcx, &'ll Value>],
+    fn_args: &[&'ll Value],
     attrs: AutoDiffAttrs,
     dest: PlaceRef<'tcx, &'ll Value>,
 ) {
@@ -282,15 +282,13 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
         args.push(cx.get_const_int(cx.type_i64(), attrs.width as u64));
     }
 
-    let outer_args: Vec<&llvm::Value> = fn_args.iter().map(|op| op.immediate()).collect();
-
     match_args_from_caller_to_enzyme(
         &cx,
         builder,
         attrs.width,
         &mut args,
         &attrs.input_activity,
-        &outer_args,
+        fn_args,
     );
 
     let call = builder.call(enzyme_ty, None, None, ad_fn, &args, None, None);

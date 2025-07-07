@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 
 use rustc_abi::{Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size};
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
+use rustc_codegen_ssa::codegen_attrs::autodiff_attrs;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -196,48 +197,60 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     &[ptr, args[1].immediate()],
                 )
             }
-            _ if tcx.has_attr(instance.def_id(), sym::rustc_autodiff) => {
-                // NOTE(Sa4dUs): This is a hacky way to get the autodiff items
-                // so we can focus on the lowering of the intrinsic call
-                let mut source_id = None;
-                let mut diff_attrs = None;
-                let items: Vec<_> = tcx.hir_body_owners().map(|i| i.to_def_id()).collect();
+            sym::enzyme_autodiff => {
+                let val_arr: Vec<&'ll Value> = match args[2].val {
+                    crate::intrinsic::OperandValue::Ref(ref place_value) => {
+                        let mut ret_arr = vec![];
+                        let tuple_place = PlaceRef { val: *place_value, layout: args[2].layout };
 
-                // Hacky way of getting primal-diff pair, only works for code with 1 autodiff call
-                for target_id in &items {
-                    let Some(target_attrs) = &tcx.codegen_fn_attrs(target_id).autodiff_item else {
-                        continue;
-                    };
+                        for i in 0..tuple_place.layout.layout.0.fields.count() {
+                            let field_place = tuple_place.project_field(self, i);
+                            let field_layout = tuple_place.layout.field(self, i);
+                            let llvm_ty = field_layout.llvm_type(self.cx);
 
-                    if target_attrs.is_source() {
-                        source_id = Some(*target_id);
-                    } else {
-                        diff_attrs = Some(target_attrs);
+                            let field_val =
+                                self.load(llvm_ty, field_place.val.llval, field_place.val.align);
+
+                            ret_arr.push(field_val)
+                        }
+
+                        ret_arr
                     }
-                }
+                    crate::intrinsic::OperandValue::Pair(v1, v2) => vec![v1, v2],
+                    OperandValue::Immediate(v) => vec![v],
+                    OperandValue::ZeroSized => bug!("unexpected `ZeroSized` arg"),
+                };
 
-                if source_id.is_none() || diff_attrs.is_none() {
-                    bug!("could not find source_id={source_id:?} or diff_attrs={diff_attrs:?}");
-                }
-
-                let diff_attrs = diff_attrs.unwrap().clone();
-
-                // Get source fn
-                let source_id = source_id.unwrap();
-                let fn_source = Instance::mono(tcx, source_id);
+                // Get source, diff, and attrs
+                let source_id = match fn_args.into_type_list(tcx)[0].kind() {
+                    ty::FnDef(def_id, _) => def_id,
+                    _ => bug!("invalid args"),
+                };
+                let fn_source = Instance::mono(tcx, *source_id);
                 let source_symbol =
                     symbol_name_for_instance_in_crate(tcx, fn_source.clone(), LOCAL_CRATE);
                 let fn_to_diff: Option<&'ll llvm::Value> = self.cx.get_function(&source_symbol);
                 let Some(fn_to_diff) = fn_to_diff else { bug!("could not find source function") };
+
+                let diff_id = match fn_args.into_type_list(tcx)[1].kind() {
+                    ty::FnDef(def_id, _) => def_id,
+                    _ => bug!("invalid args"),
+                };
+                let fn_diff = Instance::mono(tcx, *diff_id);
+                let diff_symbol =
+                    symbol_name_for_instance_in_crate(tcx, fn_diff.clone(), LOCAL_CRATE);
+
+                let diff_attrs = autodiff_attrs(tcx, *diff_id);
+                let Some(diff_attrs) = diff_attrs else { bug!("could not find autodiff attrs") };
 
                 // Build body
                 generate_enzyme_call(
                     self,
                     self.cx,
                     fn_to_diff,
-                    name.as_str(),
+                    &diff_symbol,
                     llret_ty,
-                    args,
+                    &val_arr,
                     diff_attrs.clone(),
                     result,
                 );
