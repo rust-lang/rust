@@ -12,7 +12,8 @@ lto = "off"
 #
 # If compiler-affecting directories are not modified, use precompiled rustc to speed up
 # library development by skipping compiler builds.
-download-rustc = "if-unchanged"
+# FIXME: download-rustc is currently broken: https://github.com/rust-lang/rust/issues/142505
+download-rustc = false
 
 [llvm]
 # Will download LLVM from CI if available on your platform.
