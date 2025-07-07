@@ -197,25 +197,8 @@ pub(crate) fn check_intrinsic_type(
         (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
     };
 
-    // FIXME(Sa4dUs): Get the actual safety level of the diff function
-    let safety = if has_autodiff {
-        hir::Safety::Safe
-    } else {
-        intrinsic_operation_unsafety(tcx, intrinsic_id)
-    };
     let n_lts = 0;
     let (n_tps, n_cts, inputs, output) = match intrinsic_name {
-        _ if has_autodiff => {
-            let sig = tcx.fn_sig(intrinsic_id.to_def_id());
-            let sig = sig.skip_binder();
-            let n_tps = generics.own_counts().types;
-            let n_cts = generics.own_counts().consts;
-
-            let inputs = sig.skip_binder().inputs().to_vec();
-            let output = sig.skip_binder().output();
-
-            (n_tps, n_cts, inputs, output)
-        }
         sym::enzyme_autodiff => (4, 0, vec![param(0), param(1), param(2)], param(3)),
         sym::abort => (0, 0, vec![], tcx.types.never),
         sym::unreachable => (0, 0, vec![], tcx.types.never),
