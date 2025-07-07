@@ -1357,10 +1357,21 @@ impl WherePredicate {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericParamDefKind {
-    Lifetime { outlives: ThinVec<Lifetime> },
-    Type { bounds: ThinVec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
+    Lifetime {
+        outlives: ThinVec<Lifetime>,
+    },
+    Type {
+        bounds: ThinVec<GenericBound>,
+        default: Option<Box<Type>>,
+        synthetic: bool,
+        allow_unsized: bool,
+    },
     // Option<Box<String>> makes this type smaller than `Option<String>` would.
-    Const { ty: Box<Type>, default: Option<Box<String>>, synthetic: bool },
+    Const {
+        ty: Box<Type>,
+        default: Option<Box<String>>,
+        synthetic: bool,
+    },
 }
 
 impl GenericParamDefKind {

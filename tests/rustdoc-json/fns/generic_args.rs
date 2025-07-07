@@ -27,7 +27,7 @@ pub fn impl_trait(f: impl Foo) {}
 
 //@ count "$.index[?(@.name=='where_clase')].inner.function.generics.params[*]" 3
 //@ is "$.index[?(@.name=='where_clase')].inner.function.generics.params[0].name" '"F"'
-//@ is "$.index[?(@.name=='where_clase')].inner.function.generics.params[0].kind" '{"type": {"bounds": [], "default": null, "is_synthetic": false}}'
+//@ is "$.index[?(@.name=='where_clase')].inner.function.generics.params[0].kind" '{"type": {"bounds": [], "default": null, "is_synthetic": false, "allow_unsized": false}}'
 //@ count "$.index[?(@.name=='where_clase')].inner.function.sig.inputs[*]" 3
 //@ is "$.index[?(@.name=='where_clase')].inner.function.sig.inputs[0][0]" '"f"'
 //@ is "$.index[?(@.name=='where_clase')].inner.function.sig.inputs[0][1].generic" '"F"'

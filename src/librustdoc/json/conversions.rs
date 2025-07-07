@@ -458,10 +458,11 @@ impl FromClean<clean::GenericParamDefKind> for GenericParamDefKind {
             Lifetime { outlives } => {
                 GenericParamDefKind::Lifetime { outlives: outlives.into_json(renderer) }
             }
-            Type { bounds, default, synthetic } => GenericParamDefKind::Type {
+            Type { bounds, default, synthetic, allow_unsized } => GenericParamDefKind::Type {
                 bounds: bounds.into_json(renderer),
                 default: default.into_json(renderer),
                 is_synthetic: *synthetic,
+                allow_unsized: *allow_unsized,
             },
             Const { ty, default, synthetic: _ } => GenericParamDefKind::Const {
                 type_: ty.into_json(renderer),
