@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `{integer}: A<_>` is not satisfied
-  --> $DIR/false-span-in-trait-bound-label.rs:9:13
+  --> $DIR/false-span-in-trait-bound-label.rs:9:10
    |
 LL |     A::f(1, "");
-   |     ----    ^^ the trait `A<_>` is not implemented for `{integer}`
+   |     ---- ^ the trait `A<_>` is not implemented for `{integer}`
    |     |
    |     required by a bound introduced by this call
    |

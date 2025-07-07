@@ -1,5 +1,5 @@
 // In this test, the span of the trait bound label should point to `1`, not `""`.
-// See issue #1433376
+// See issue #143336
 
 trait A<T> {
     fn f(self, x: T);
