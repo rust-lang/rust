@@ -599,7 +599,7 @@ impl Builder<'_> {
         // sysroot. Passing this cfg enables raw-dylib support instead, which makes the native
         // library unnecessary. This can be removed when windows-rs enables raw-dylib
         // unconditionally.
-        if let Mode::Rustc | Mode::ToolRustc | Mode::ToolBootstrap = mode {
+        if let Mode::Rustc | Mode::ToolRustc | Mode::ToolBootstrap | Mode::ToolTarget = mode {
             rustflags.arg("--cfg=windows_raw_dylib");
         }
 

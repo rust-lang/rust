@@ -287,11 +287,21 @@ pub enum Mode {
 
 impl Mode {
     pub fn is_tool(&self) -> bool {
-        matches!(self, Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd)
+        match self {
+            Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd | Mode::ToolTarget => true,
+            Mode::Std | Mode::Codegen | Mode::Rustc => false,
+        }
     }
 
     pub fn must_support_dlopen(&self) -> bool {
-        matches!(self, Mode::Std | Mode::Codegen)
+        match self {
+            Mode::Std | Mode::Codegen => true,
+            Mode::ToolBootstrap
+            | Mode::ToolRustc
+            | Mode::ToolStd
+            | Mode::ToolTarget
+            | Mode::Rustc => false,
+        }
     }
 }
 
