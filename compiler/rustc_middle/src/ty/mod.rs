@@ -28,7 +28,7 @@ use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, V
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
-use rustc_attr_data_structures::AttributeKind;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -2024,7 +2024,10 @@ impl<'tcx> TyCtxt<'tcx> {
             && let Some(def_id) = def_id.as_local()
             && let outer = self.def_span(def_id).ctxt().outer_expn_data()
             && matches!(outer.kind, ExpnKind::Macro(MacroKind::Derive, _))
-            && self.has_attr(outer.macro_def_id.unwrap(), sym::rustc_builtin_macro)
+            && find_attr!(
+                self.get_all_attrs(outer.macro_def_id.unwrap()),
+                AttributeKind::RustcBuiltinMacro { .. }
+            )
         {
             true
         } else {
