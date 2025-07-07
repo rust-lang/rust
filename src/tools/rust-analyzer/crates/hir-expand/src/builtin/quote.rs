@@ -129,7 +129,7 @@ macro_rules! quote {
         }
     }
 }
-pub(super) use quote;
+pub use quote;
 
 pub trait ToTokenTree {
     fn to_tokens(self, span: Span, builder: &mut TopSubtreeBuilder);
