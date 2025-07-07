@@ -154,9 +154,10 @@ pub use crate::shims::env::{EnvVars, EvalContextExt as _};
 pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
 pub use crate::shims::io_error::{EvalContextExt as _, IoError, LibcError};
 pub use crate::shims::os_str::EvalContextExt as _;
-pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
+pub use crate::shims::panic::EvalContextExt as _;
 pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::TlsData;
+pub use crate::shims::unwind::{CatchUnwindData, EvalContextExt as _};
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.
