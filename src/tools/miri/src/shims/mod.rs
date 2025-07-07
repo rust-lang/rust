@@ -19,6 +19,7 @@ pub mod os_str;
 pub mod panic;
 pub mod time;
 pub mod tls;
+pub mod unwind;
 
 pub use self::files::FdTable;
 //#[cfg(target_os = "linux")]
