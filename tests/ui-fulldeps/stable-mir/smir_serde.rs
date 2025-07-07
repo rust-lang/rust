@@ -9,13 +9,13 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 
-#[macro_use]
-extern crate rustc_smir;
+
 extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate rustc_middle;
 extern crate serde;
 extern crate serde_json;
+#[macro_use]
 extern crate stable_mir;
 
 use rustc_middle::ty::TyCtxt;
