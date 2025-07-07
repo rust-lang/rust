@@ -13,7 +13,6 @@ use rustc_span::{Symbol, sym};
 use self::atomic::EvalContextExt as _;
 use self::helpers::{ToHost, ToSoft};
 use self::simd::EvalContextExt as _;
-use crate::math::apply_random_float_error_ulp;
 use crate::*;
 
 /// Check that the number of args is what we expect.
@@ -362,13 +361,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f = this.read_scalar(f)?.to_f32()?;
                 let i = this.read_scalar(i)?.to_i32()?;
 
-                let res = math::fixed_powi_float_value(this, f, i).unwrap_or_else(|| {
+                let res = math::fixed_powi_value(this, f, i).unwrap_or_else(|| {
                     // Using host floats (but it's fine, this operation does not have guaranteed precision).
                     let res = f.to_host().powi(i).to_soft();
 
                     // Apply a relative error of 4ULP to introduce some non-determinism
                     // simulating imprecise implementations and optimizations.
-                    apply_random_float_error_ulp(this, res, 4)
+                    math::apply_random_float_error_ulp(this, res, 4)
                 });
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
@@ -378,7 +377,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f = this.read_scalar(f)?.to_f64()?;
                 let i = this.read_scalar(i)?.to_i32()?;
 
-                let res = math::fixed_powi_float_value(this, f, i).unwrap_or_else(|| {
+                let res = math::fixed_powi_value(this, f, i).unwrap_or_else(|| {
                     // Using host floats (but it's fine, this operation does not have guaranteed precision).
                     let res = f.to_host().powi(i).to_soft();
 
