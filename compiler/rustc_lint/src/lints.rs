@@ -11,7 +11,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
-use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
 use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
@@ -1704,6 +1704,19 @@ pub(crate) struct OverflowingInt<'a> {
     #[subdiagnostic]
     pub help: Option<OverflowingIntHelp<'a>>,
 }
+#[derive(Diagnostic)]
+#[diag(lint_overflowing_int)]
+#[note]
+pub(crate) struct OverflowingIntError<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: &'a str,
+    pub lit: String,
+    pub min: i128,
+    pub max: u128,
+    #[subdiagnostic]
+    pub help: Option<OverflowingIntHelp<'a>>,
+}
 
 #[derive(Subdiagnostic)]
 #[help(lint_help)]
@@ -1723,6 +1736,18 @@ pub(crate) struct OnlyCastu8ToChar {
 #[diag(lint_overflowing_uint)]
 #[note]
 pub(crate) struct OverflowingUInt<'a> {
+    pub ty: &'a str,
+    pub lit: String,
+    pub min: u128,
+    pub max: u128,
+}
+
+#[derive(Diagnostic)]
+#[diag(lint_overflowing_uint)]
+#[note]
+pub(crate) struct OverflowingUIntError<'a> {
+    #[primary_span]
+    pub span: Span,
     pub ty: &'a str,
     pub lit: String,
     pub min: u128,
