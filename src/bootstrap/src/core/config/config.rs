@@ -1041,13 +1041,21 @@ impl Config {
             Subcommand::Dist => flags_stage.or(dist_stage).unwrap_or(2),
             Subcommand::Install => flags_stage.or(install_stage).unwrap_or(2),
             Subcommand::Perf { .. } => flags_stage.unwrap_or(1),
+
+            // The suggest flow can try to recommend bootstrap invocations with no explicit stages,
+            // which notably can include `./x {check,build,test}` flows that must not be lower than
+            // one.
+            //
+            // FIXME: this is *very* questionable, the suggest flow should also respect the stage
+            // defaults here, and not try to bypass this handling!
+            Subcommand::Suggest { .. } => flags_stage.unwrap_or(1),
+
             // These are all bootstrap tools, which don't depend on the compiler.
             // The stage we pass shouldn't matter, but use 0 just in case.
             Subcommand::Clean { .. }
             | Subcommand::Run { .. }
             | Subcommand::Setup { .. }
             | Subcommand::Format { .. }
-            | Subcommand::Suggest { .. }
             | Subcommand::Vendor { .. } => flags_stage.unwrap_or(0),
         };
 
