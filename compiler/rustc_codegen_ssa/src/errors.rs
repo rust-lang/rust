@@ -495,7 +495,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
                         };
                         let mut arg = dir.into_os_string();
                         arg.push("/");
-                        let needs_braces = 2 <= rlibs.len();
+                        let needs_braces = rlibs.len() >= 2;
                         if needs_braces {
                             arg.push("{");
                         }
