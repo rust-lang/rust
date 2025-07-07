@@ -861,7 +861,7 @@ impl SyntaxExtension {
     /// | (unspecified) | no  | if-ext        | if-ext   | yes |
     /// | external      | no  | if-ext        | if-ext   | yes |
     /// | yes           | yes | yes           | yes      | yes |
-    fn get_collapse_debuginfo(sess: &Session, attrs: &[impl AttributeExt], ext: bool) -> bool {
+    fn get_collapse_debuginfo(sess: &Session, attrs: &[hir::Attribute], ext: bool) -> bool {
         let flag = sess.opts.cg.collapse_macro_debuginfo;
         let attr = ast::attr::find_by_name(attrs, sym::collapse_debuginfo)
             .and_then(|attr| {
@@ -872,7 +872,7 @@ impl SyntaxExtension {
                     .ok()
             })
             .unwrap_or_else(|| {
-                if ast::attr::contains_name(attrs, sym::rustc_builtin_macro) {
+                if find_attr!(attrs, AttributeKind::RustcBuiltinMacro { .. }) {
                     CollapseMacroDebuginfo::Yes
                 } else {
                     CollapseMacroDebuginfo::Unspecified
@@ -915,16 +915,18 @@ impl SyntaxExtension {
         let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, !is_local);
         tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
-        let (builtin_name, helper_attrs) = ast::attr::find_by_name(attrs, sym::rustc_builtin_macro)
-            .map(|attr| {
-                // Override `helper_attrs` passed above if it's a built-in macro,
-                // marking `proc_macro_derive` macros as built-in is not a realistic use case.
-                parse_macro_name_and_helper_attrs(sess.dcx(), attr, "built-in").map_or_else(
-                    || (Some(name), Vec::new()),
-                    |(name, helper_attrs)| (Some(name), helper_attrs),
-                )
-            })
-            .unwrap_or_else(|| (None, helper_attrs));
+        let (builtin_name, helper_attrs) = match find_attr!(attrs, AttributeKind::RustcBuiltinMacro { builtin_name, helper_attrs, .. } => (builtin_name, helper_attrs))
+        {
+            // Override `helper_attrs` passed above if it's a built-in macro,
+            // marking `proc_macro_derive` macros as built-in is not a realistic use case.
+            Some((Some(name), helper_attrs)) => {
+                (Some(*name), helper_attrs.iter().copied().collect())
+            }
+            Some((None, _)) => (Some(name), Vec::new()),
+
+            // Not a built-in macro
+            None => (None, helper_attrs),
+        };
 
         let stability = find_attr!(attrs, AttributeKind::Stability { stability, .. } => *stability);
 

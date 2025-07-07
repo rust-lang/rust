@@ -5,7 +5,7 @@ use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use rustc_attr_data_structures::EncodeCrossCrate;
+use rustc_attr_data_structures::{AttributeKind, EncodeCrossCrate, find_attr};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{join, par_for_each_in};
@@ -1965,18 +1965,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = tcx.hir_attrs(proc_macro);
-                let macro_kind = if ast::attr::contains_name(attrs, sym::proc_macro) {
+                let macro_kind = if find_attr!(attrs, AttributeKind::ProcMacro(..)) {
                     MacroKind::Bang
-                } else if ast::attr::contains_name(attrs, sym::proc_macro_attribute) {
+                } else if find_attr!(attrs, AttributeKind::ProcMacroAttribute(..)) {
                     MacroKind::Attr
-                } else if let Some(attr) = ast::attr::find_by_name(attrs, sym::proc_macro_derive) {
-                    // This unwrap chain should have been checked by the proc-macro harness.
-                    name = attr.meta_item_list().unwrap()[0]
-                        .meta_item()
-                        .unwrap()
-                        .ident()
-                        .unwrap()
-                        .name;
+                } else if let Some(trait_name) = find_attr!(attrs, AttributeKind::ProcMacroDerive { trait_name, ..} => trait_name)
+                {
+                    name = *trait_name;
                     MacroKind::Derive
                 } else {
                     bug!("Unknown proc-macro type for item {:?}", id);
