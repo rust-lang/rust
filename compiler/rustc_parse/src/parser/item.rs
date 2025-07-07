@@ -117,7 +117,7 @@ impl<'a> Parser<'a> {
 
 impl<'a> Parser<'a> {
     pub fn parse_item(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<P<Item>>> {
-        let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
+        let fn_parse_mode = FnParseMode { req_name: |_, _| true, req_body: true };
         self.parse_item_(fn_parse_mode, force_collect).map(|i| i.map(P))
     }
 
@@ -935,7 +935,7 @@ impl<'a> Parser<'a> {
         &mut self,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Option<P<AssocItem>>>> {
-        let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
+        let fn_parse_mode = FnParseMode { req_name: |_, _| true, req_body: true };
         self.parse_assoc_item(fn_parse_mode, force_collect)
     }
 
@@ -944,7 +944,7 @@ impl<'a> Parser<'a> {
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Option<P<AssocItem>>>> {
         let fn_parse_mode =
-            FnParseMode { req_name: |edition| edition >= Edition::Edition2018, req_body: false };
+            FnParseMode { req_name: |edition, _| edition >= Edition::Edition2018, req_body: false };
         self.parse_assoc_item(fn_parse_mode, force_collect)
     }
 
@@ -1221,7 +1221,10 @@ impl<'a> Parser<'a> {
         &mut self,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Option<P<ForeignItem>>>> {
-        let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: false };
+        let fn_parse_mode = FnParseMode {
+            req_name: |_, is_dot_dot_dot| is_dot_dot_dot == IsDotDotDot::No,
+            req_body: false,
+        };
         Ok(self.parse_item_(fn_parse_mode, force_collect)?.map(
             |Item { attrs, id, span, vis, kind, tokens }| {
                 let kind = match ForeignItemKind::try_from(kind) {
@@ -2093,7 +2096,7 @@ impl<'a> Parser<'a> {
                 let inherited_vis =
                     Visibility { span: DUMMY_SP, kind: VisibilityKind::Inherited, tokens: None };
                 // We use `parse_fn` to get a span for the function
-                let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
+                let fn_parse_mode = FnParseMode { req_name: |_, _| true, req_body: true };
                 match self.parse_fn(
                     &mut AttrVec::new(),
                     fn_parse_mode,
@@ -2326,8 +2329,16 @@ impl<'a> Parser<'a> {
 /// The function decides if, per-parameter `p`, `p` must have a pattern or just a type.
 ///
 /// This function pointer accepts an edition, because in edition 2015, trait declarations
-/// were allowed to omit parameter names. In 2018, they became required.
-type ReqName = fn(Edition) -> bool;
+/// were allowed to omit parameter names. In 2018, they became required. It also accepts an
+/// `IsDotDotDot` parameter, as `extern` function declarations and function pointer types are
+/// allowed to omit the name of the `...` but regular function items are not.
+type ReqName = fn(Edition, IsDotDotDot) -> bool;
+
+#[derive(PartialEq)]
+pub(crate) enum IsDotDotDot {
+    Yes,
+    No,
+}
 
 /// Parsing configuration for functions.
 ///
@@ -2360,6 +2371,8 @@ pub(crate) struct FnParseMode {
     ///     to true.
     ///   * The span is from Edition 2015. In particular, you can get a
     ///     2015 span inside a 2021 crate using macros.
+    ///
+    /// Or if `IsDotDotDot::Yes`, this function will also return `false` with an `extern` block.
     pub(super) req_name: ReqName,
     /// If this flag is set to `true`, then plain, semicolon-terminated function
     /// prototypes are not allowed here.
@@ -2991,10 +3004,15 @@ impl<'a> Parser<'a> {
                 return Ok((res?, Trailing::No, UsePreAttrPos::No));
             }
 
-            let is_name_required = match this.token.kind {
-                token::DotDotDot => false,
-                _ => req_name(this.token.span.with_neighbor(this.prev_token.span).edition()),
+            let is_dot_dot_dot = if this.token.kind == token::DotDotDot {
+                IsDotDotDot::Yes
+            } else {
+                IsDotDotDot::No
             };
+            let is_name_required = req_name(
+                this.token.span.with_neighbor(this.prev_token.span).edition(),
+                is_dot_dot_dot,
+            );
             let (pat, ty) = if is_name_required || this.is_named_param() {
                 debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
                 let (pat, colon) = this.parse_fn_param_pat_colon()?;

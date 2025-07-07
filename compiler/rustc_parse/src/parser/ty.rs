@@ -695,7 +695,7 @@ impl<'a> Parser<'a> {
         if self.may_recover() && self.token == TokenKind::Lt {
             self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
         }
-        let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
+        let decl = self.parse_fn_decl(|_, _| false, AllowPlus::No, recover_return_sign)?;
 
         let decl_span = span_start.to(self.prev_token.span);
         Ok(TyKind::FnPtr(P(FnPtrTy { ext, safety, generic_params: params, decl, decl_span })))
@@ -1234,7 +1234,7 @@ impl<'a> Parser<'a> {
         self.bump();
         let args_lo = self.token.span;
         let snapshot = self.create_snapshot_for_diagnostic();
-        match self.parse_fn_decl(|_| false, AllowPlus::No, RecoverReturnSign::OnlyFatArrow) {
+        match self.parse_fn_decl(|_, _| false, AllowPlus::No, RecoverReturnSign::OnlyFatArrow) {
             Ok(decl) => {
                 self.dcx().emit_err(ExpectedFnPathFoundFnKeyword { fn_token_span });
                 Some(ast::Path {
@@ -1319,7 +1319,7 @@ impl<'a> Parser<'a> {
         // Parse `(T, U) -> R`.
         let inputs_lo = self.token.span;
         let inputs: ThinVec<_> =
-            self.parse_fn_params(|_| false)?.into_iter().map(|input| input.ty).collect();
+            self.parse_fn_params(|_, _| false)?.into_iter().map(|input| input.ty).collect();
         let inputs_span = inputs_lo.to(self.prev_token.span);
         let output = self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)?;
         let args = ast::ParenthesizedArgs {

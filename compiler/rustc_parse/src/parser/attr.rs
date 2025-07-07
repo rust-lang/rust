@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
             AttrWrapper::empty(),
             true,
             false,
-            FnParseMode { req_name: |_| true, req_body: true },
+            FnParseMode { req_name: |_, _| true, req_body: true },
             ForceCollect::No,
         ) {
             Ok(Some(item)) => {
