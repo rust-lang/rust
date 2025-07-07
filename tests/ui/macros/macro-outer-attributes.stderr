@@ -10,16 +10,10 @@ note: found an item that was configured out
 LL |       pub fn bar() { });
    |              ^^^
 note: the item is gated here
-  --> $DIR/macro-outer-attributes.rs:5:45
+  --> $DIR/macro-outer-attributes.rs:8:13
    |
-LL |                        $i:item) => (mod $nm { #[$a] $i }); }
-   |                                               ^^^^^
-LL |
-LL | / test!(a,
-LL | |       #[cfg(false)],
-LL | |       pub fn bar() { });
-   | |_______________________- in this macro invocation
-   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       #[cfg(false)],
+   |             ^^^^^
 help: consider importing this function
    |
 LL + use b::bar;
