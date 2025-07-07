@@ -4,36 +4,34 @@
 
 The `wasm32-wasip1` target is a WebAssembly compilation target which
 assumes that the [WASIp1] (aka "WASI preview1") set of "syscalls" are available
-for use in the standard library. Historically this target in the Rust compiler
-was one of the first for WebAssembly where Rust and C code are explicitly
-intended to interoperate as well.
+for use in the standard library. This target explicitly supports interop with
+non-Rust code such as C and C++.
 
-There's a bit of history to the target and current development which is also
-worth explaining before going much further. Historically this target was
-originally called `wasm32-wasi` in both rustc and Clang. This was first added
-to Rust in 2019. In the intervening years leading up to 2024 the WASI standard
-continued to be developed and was eventually "rebased" on top of the [Component
-Model]. This was a large change to the WASI specification and was released as
-0.2.0 ("WASIp2" colloquially) in January 2024. The previous target's name in
-rustc, `wasm32-wasi`, was then renamed to `wasm32-wasip1`, to avoid
-confusion with this new target to be added to rustc as `wasm32-wasip2`.
-Some more context can be found in these MCPs:
+The [WASIp1] set of syscalls is standard insofar as it was written down once by
+a set of folks and has not changed since then. Additionally the [WASIp1]
+syscalls have been adapted and adopted into a number of runtimes and embeddings.
+It is not standard in the sense that there are no formal semantics for each
+syscall and APIs are no longer receiving any maintenance (e.g. no new APIs, no
+new documentation, etc). After [WASIp1] was originally developed in 2019 the
+WASI standard effort has since been "rebased" on top of the [Component Model].
+This was a large change to the WASI specification and was released as 0.2.0
+("WASIp2" colloquially) in January 2024. Current standardization efforts are
+focused on the Component Model-based definition of WASI. At this point the
+`wasm32-wasip1` Rust target is intended for historical compatibility with
+[WASIp1] set of syscalls.
 
-* [Rename wasm32-wasi target to wasm32-wasip1](https://github.com/rust-lang/compiler-team/issues/607)
-* [Smooth the renaming transition of wasm32-wasi](https://github.com/rust-lang/compiler-team/issues/695)
-
-At this point the `wasm32-wasip1` target is intended for historical
-compatibility with the first version of the WASI standard. As of now (January
-2024) the 0.2.0 target of WASI ("WASIp2") is relatively new. The state of
-WASI will likely change in few years after which point this documentation will
-probably receive another update.
-
-[WASI Preview1]: https://github.com/WebAssembly/WASI/tree/main/legacy/preview1
+[WASIp1]: https://github.com/WebAssembly/WASI/tree/main/legacy/preview1
 [Component Model]: https://github.com/webassembly/component-model
 
 Today the `wasm32-wasip1` target will generate core WebAssembly modules
 which will import functions from the `wasi_snapshot_preview1` module for
 OS-related functionality (e.g. printing).
+
+> **Note**: Prior to March 2024 this target was known as `wasm32-wasi` with some
+> historical context found in old MCPs:
+>
+> * [Rename wasm32-wasi target to wasm32-wasip1](https://github.com/rust-lang/compiler-team/issues/607)
+> * [Smooth the renaming transition of wasm32-wasi](https://github.com/rust-lang/compiler-team/issues/695)
 
 ## Target maintainers
 
