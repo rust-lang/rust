@@ -155,15 +155,8 @@ pub(crate) fn mir_callgraph_cyclic<'tcx>(
     let recursion_limit = tcx.recursion_limit() / 2;
     let mut involved = FxHashSet::default();
     let typing_env = ty::TypingEnv::post_analysis(tcx, root);
-    let Ok(Some(root_instance)) = ty::Instance::try_resolve(
-        tcx,
-        typing_env,
-        root.to_def_id(),
-        ty::GenericArgs::identity_for_item(tcx, root.to_def_id()),
-    ) else {
-        trace!("cannot resolve, skipping");
-        return involved.into();
-    };
+    let root_instance =
+        ty::Instance::new_raw(root.to_def_id(), ty::GenericArgs::identity_for_item(tcx, root));
     if !should_recurse(tcx, root_instance) {
         trace!("cannot walk, skipping");
         return involved.into();
