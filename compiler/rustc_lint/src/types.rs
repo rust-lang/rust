@@ -1577,7 +1577,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         impl<'tcx> hir::intravisit::Visitor<'_> for FnPtrFinder<'tcx> {
             fn visit_ty(&mut self, ty: &'_ hir::Ty<'_, AmbigArg>) {
                 debug!(?ty);
-                if let hir::TyKind::BareFn(hir::BareFnTy { abi, .. }) = ty.kind
+                if let hir::TyKind::FnPtr(hir::FnPtrTy { abi, .. }) = ty.kind
                     && !abi.is_rustic_abi()
                 {
                     self.spans.push(ty.span);

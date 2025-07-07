@@ -1677,7 +1677,7 @@ impl<'a> Parser<'a> {
                 let hi = self.prev_token.span.shrink_to_hi();
                 BadTypePlusSub::AddParen { suggestion: AddParen { lo, hi } }
             }
-            TyKind::Ptr(..) | TyKind::BareFn(..) => {
+            TyKind::Ptr(..) | TyKind::FnPtr(..) => {
                 BadTypePlusSub::ForgotParen { span: ty.span.to(self.prev_token.span) }
             }
             _ => BadTypePlusSub::ExpectPath { span: ty.span },

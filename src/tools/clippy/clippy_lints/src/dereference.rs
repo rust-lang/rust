@@ -824,7 +824,7 @@ impl TyCoercionStability {
                 TyKind::Slice(_)
                 | TyKind::Array(..)
                 | TyKind::Ptr(_)
-                | TyKind::BareFn(_)
+                | TyKind::FnPtr(_)
                 | TyKind::Pat(..)
                 | TyKind::Never
                 | TyKind::Tup(_)

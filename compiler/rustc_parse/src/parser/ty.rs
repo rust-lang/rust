@@ -2,7 +2,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, IdentIsRaw, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
-    self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnRetTy,
+    self as ast, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnPtrTy, FnRetTy,
     GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability,
     Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
     TyKind, UnsafeBinderTy,
@@ -283,14 +283,14 @@ impl<'a> Parser<'a> {
             TyKind::Infer
         } else if self.check_fn_front_matter(false, Case::Sensitive) {
             // Function pointer type
-            self.parse_ty_bare_fn(lo, ThinVec::new(), None, recover_return_sign)?
+            self.parse_ty_fn_ptr(lo, ThinVec::new(), None, recover_return_sign)?
         } else if self.check_keyword(exp!(For)) {
             // Function pointer type or bound list (trait object type) starting with a poly-trait.
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
             //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
             let (lifetime_defs, _) = self.parse_late_bound_lifetime_defs()?;
             if self.check_fn_front_matter(false, Case::Sensitive) {
-                self.parse_ty_bare_fn(
+                self.parse_ty_fn_ptr(
                     lo,
                     lifetime_defs,
                     Some(self.prev_token.span.shrink_to_lo()),
@@ -665,7 +665,7 @@ impl<'a> Parser<'a> {
         Ok(TyKind::Typeof(expr))
     }
 
-    /// Parses a function pointer type (`TyKind::BareFn`).
+    /// Parses a function pointer type (`TyKind::FnPtr`).
     /// ```ignore (illustrative)
     ///    [unsafe] [extern "ABI"] fn (S) -> T
     /// //  ^~~~~^          ^~~~^     ^~^    ^
@@ -674,7 +674,7 @@ impl<'a> Parser<'a> {
     /// // Function Style    ABI  Parameter types
     /// ```
     /// We actually parse `FnHeader FnDecl`, but we error on `const` and `async` qualifiers.
-    fn parse_ty_bare_fn(
+    fn parse_ty_fn_ptr(
         &mut self,
         lo: Span,
         mut params: ThinVec<GenericParam>,
@@ -698,7 +698,7 @@ impl<'a> Parser<'a> {
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
 
         let decl_span = span_start.to(self.prev_token.span);
-        Ok(TyKind::BareFn(P(BareFnTy { ext, safety, generic_params: params, decl, decl_span })))
+        Ok(TyKind::FnPtr(P(FnPtrTy { ext, safety, generic_params: params, decl, decl_span })))
     }
 
     /// Recover from function pointer types with a generic parameter list (e.g. `fn<'a>(&'a str)`).

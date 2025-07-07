@@ -2947,8 +2947,8 @@ fn check_duplicates(
 
 fn doc_fake_variadic_is_allowed_self_ty(self_ty: &hir::Ty<'_>) -> bool {
     matches!(&self_ty.kind, hir::TyKind::Tup([_]))
-        || if let hir::TyKind::BareFn(bare_fn_ty) = &self_ty.kind {
-            bare_fn_ty.decl.inputs.len() == 1
+        || if let hir::TyKind::FnPtr(fn_ptr_ty) = &self_ty.kind {
+            fn_ptr_ty.decl.inputs.len() == 1
         } else {
             false
         }

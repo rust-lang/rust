@@ -1001,7 +1001,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v, AmbigArg>) -
         TyKind::Tup(tuple_element_types) => {
             walk_list!(visitor, visit_ty_unambig, tuple_element_types);
         }
-        TyKind::BareFn(ref function_declaration) => {
+        TyKind::FnPtr(ref function_declaration) => {
             walk_list!(visitor, visit_generic_param, function_declaration.generic_params);
             try_visit!(visitor.visit_fn_decl(function_declaration.decl));
         }
