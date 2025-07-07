@@ -876,10 +876,10 @@ LL | type TestAbiNeSign = (fn(i32), fn(u32));
    | ^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/debug.rs:68:46
+  --> $DIR/debug.rs:68:47
    |
 LL | type TestAbiEqNonsense = (fn((str, str)), fn((str, str)));
-   |                                              ^^^^^^^^^^ doesn't have a size known at compile-time
+   |                                               ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
    = note: only the last element of a tuple may have a dynamically sized type

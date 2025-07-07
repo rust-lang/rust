@@ -269,6 +269,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             (err_msg, None)
                         };
 
+                        if tcx.is_lang_item(leaf_trait_predicate.def_id(), LangItem::Sized) {
+                            if let Some(refined_span) = self.report_sized_item(span, leaf_trait_predicate) {
+                                span = refined_span;
+                            }
+                        }
+
                         let mut err = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
                         *err.long_ty_path() = long_ty_file;
 
@@ -767,6 +773,48 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         applied_do_not_recommend
+    }
+
+    fn report_sized_item(
+        &self,
+        span: Span,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) -> Option<Span> {
+        let source_map = self.tcx.sess.source_map();
+        let snippet = source_map.span_to_snippet(span).ok()?;
+
+        // Skip macro
+        if snippet.contains('!') {
+            return None;
+        }
+
+        let self_ty = trait_pred.skip_binder().self_ty().to_string();
+
+        // Try to find the exact type in the source code
+        if let Some(pos) = snippet.find(&self_ty) {
+            let start = span.lo() + BytePos(pos as u32);
+            let end = start + BytePos(self_ty.len() as u32);
+            return Some(Span::new(start, end, span.ctxt(), span.parent()));
+        }
+
+        // Sanity check if exact match fails
+        let mut core_type = self_ty.as_str();
+        while core_type.starts_with('[') && core_type.ends_with(']') {
+            core_type = &core_type[1..core_type.len() - 1].trim();
+            if let Some(pos) = core_type.find(';') {
+                core_type = &core_type[..pos].trim();
+            }
+        }
+
+        // Try to find core type
+        if core_type != self_ty && !core_type.is_empty() {
+            if let Some(pos) = snippet.find(&core_type) {
+                let start = span.lo() + BytePos(pos as u32);
+                let end = start + BytePos(core_type.len() as u32);
+                return Some(Span::new(start, end, span.ctxt(), span.parent()));
+            }
+        }
+        None
     }
 
     fn report_host_effect_error(

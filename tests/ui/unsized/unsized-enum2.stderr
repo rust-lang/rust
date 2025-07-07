@@ -243,10 +243,10 @@ LL |     VP{u: isize, x: Box<dyn BarFoo>},
    |                     ++++          +
 
 error[E0277]: the size for values of type `[i8]` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:63:8
+  --> $DIR/unsized-enum2.rs:63:18
    |
 LL |     VQ(<&'static [i8] as Deref>::Target),
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                  ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[i8]`
    = note: no field of an enum variant may have a dynamically sized type
@@ -261,10 +261,10 @@ LL |     VQ(Box<<&'static [i8] as Deref>::Target>),
    |        ++++                                +
 
 error[E0277]: the size for values of type `[char]` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:65:11
+  --> $DIR/unsized-enum2.rs:65:21
    |
 LL |     VR{x: <&'static [char] as Deref>::Target},
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                     ^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[char]`
    = note: no field of an enum variant may have a dynamically sized type
@@ -279,10 +279,10 @@ LL |     VR{x: Box<<&'static [char] as Deref>::Target>},
    |           ++++                                  +
 
 error[E0277]: the size for values of type `[f64]` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:67:15
+  --> $DIR/unsized-enum2.rs:67:25
    |
 LL |     VS(isize, <&'static [f64] as Deref>::Target),
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                         ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[f64]`
    = note: no field of an enum variant may have a dynamically sized type
@@ -297,10 +297,10 @@ LL |     VS(isize, Box<<&'static [f64] as Deref>::Target>),
    |               ++++                                 +
 
 error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:69:21
+  --> $DIR/unsized-enum2.rs:69:31
    |
 LL |     VT{u: isize, x: <&'static [i32] as Deref>::Target},
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                               ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[i32]`
    = note: no field of an enum variant may have a dynamically sized type
