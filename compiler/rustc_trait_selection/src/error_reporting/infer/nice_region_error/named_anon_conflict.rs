@@ -2,8 +2,6 @@
 //! where one region is named and the other is anonymous.
 
 use rustc_errors::Diag;
-use rustc_middle::ty;
-use rustc_span::kw;
 use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
@@ -27,12 +25,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // only introduced anonymous regions in parameters) as well as a
         // version new_ty of its type where the anonymous region is replaced
         // with the named one.
-        let (named, anon, anon_param_info, region_info) = if sub.has_name()
+        let (named, anon, anon_param_info, region_info) = if sub.is_named(self.tcx())
             && let Some(region_info) = self.tcx().is_suitable_region(self.generic_param_scope, sup)
             && let Some(anon_param_info) = self.find_param_with_region(sup, sub)
         {
             (sub, sup, anon_param_info, region_info)
-        } else if sup.has_name()
+        } else if sup.is_named(self.tcx())
             && let Some(region_info) = self.tcx().is_suitable_region(self.generic_param_scope, sub)
             && let Some(anon_param_info) = self.find_param_with_region(sub, sup)
         {
@@ -58,14 +56,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let scope_def_id = region_info.scope;
         let is_impl_item = region_info.is_impl_item;
 
-        match anon_param_info.kind {
-            ty::LateParamRegionKind::Named(_, kw::UnderscoreLifetime)
-            | ty::LateParamRegionKind::Anon(_) => {}
-            _ => {
-                /* not an anonymous region */
-                debug!("try_report_named_anon_conflict: not an anonymous region");
-                return None;
-            }
+        if anon_param_info.kind.is_named(self.tcx()) {
+            /* not an anonymous region */
+            debug!("try_report_named_anon_conflict: not an anonymous region");
+            return None;
         }
 
         if is_impl_item {

@@ -7,7 +7,6 @@
 
 use rustc_middle::ty::{self as rustc_ty, Const as InternalConst, Ty as InternalTy};
 use rustc_smir::Tables;
-use rustc_span::Symbol;
 use stable_mir::abi::Layout;
 use stable_mir::compiler_interface::BridgeTys;
 use stable_mir::mir::alloc::AllocId;
@@ -446,17 +445,15 @@ impl RustcInternal for BoundVariableKind {
         match self {
             BoundVariableKind::Ty(kind) => rustc_ty::BoundVariableKind::Ty(match kind {
                 BoundTyKind::Anon => rustc_ty::BoundTyKind::Anon,
-                BoundTyKind::Param(def, symbol) => rustc_ty::BoundTyKind::Param(
-                    def.0.internal(tables, tcx),
-                    Symbol::intern(symbol),
-                ),
+                BoundTyKind::Param(def, _symbol) => {
+                    rustc_ty::BoundTyKind::Param(def.0.internal(tables, tcx))
+                }
             }),
             BoundVariableKind::Region(kind) => rustc_ty::BoundVariableKind::Region(match kind {
                 BoundRegionKind::BrAnon => rustc_ty::BoundRegionKind::Anon,
-                BoundRegionKind::BrNamed(def, symbol) => rustc_ty::BoundRegionKind::Named(
-                    def.0.internal(tables, tcx),
-                    Symbol::intern(symbol),
-                ),
+                BoundRegionKind::BrNamed(def, _symbol) => {
+                    rustc_ty::BoundRegionKind::Named(def.0.internal(tables, tcx))
+                }
                 BoundRegionKind::BrEnv => rustc_ty::BoundRegionKind::ClosureEnv,
             }),
             BoundVariableKind::Const => rustc_ty::BoundVariableKind::Const,

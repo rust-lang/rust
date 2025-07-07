@@ -102,7 +102,7 @@ impl<'a> Iterator for Chars<'a> {
         // `(len + 3)` can't overflow, because we know that the `slice::Iter`
         // belongs to a slice in memory which has a maximum length of
         // `isize::MAX` (that's well below `usize::MAX`).
-        ((len + 3) / 4, Some(len))
+        (len.div_ceil(4), Some(len))
     }
 
     #[inline]
@@ -1532,11 +1532,11 @@ impl<'a> Iterator for EncodeUtf16<'a> {
         // belongs to a slice in memory which has a maximum length of
         // `isize::MAX` (that's well below `usize::MAX`)
         if self.extra == 0 {
-            ((len + 2) / 3, Some(len))
+            (len.div_ceil(3), Some(len))
         } else {
             // We're in the middle of a surrogate pair, so add the remaining
             // surrogate to the bounds.
-            ((len + 2) / 3 + 1, Some(len + 1))
+            (len.div_ceil(3) + 1, Some(len + 1))
         }
     }
 }

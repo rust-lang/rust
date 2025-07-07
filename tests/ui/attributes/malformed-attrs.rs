@@ -47,6 +47,7 @@
 //~^ ERROR malformed
 #[repr]
 //~^ ERROR malformed
+//~| ERROR is not supported on function items
 #[rustc_as_ptr = 5]
 //~^ ERROR malformed
 #[inline = 5]
@@ -217,6 +218,13 @@ extern crate wloop;
 //~| ERROR allow_internal_unsafe side-steps the unsafe_code lint
 macro_rules! slump {
     () => {}
+}
+
+#[ignore = 1]
+//~^ ERROR valid forms for the attribute are
+//~| WARN this was previously accepted by the compiler
+fn thing() {
+
 }
 
 fn main() {}

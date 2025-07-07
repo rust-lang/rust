@@ -823,7 +823,7 @@ unsafe fn bidirectional_merge<T: FreezeMarker, F: FnMut(&T, &T) -> bool>(
         let right_end = right_rev.wrapping_add(1);
 
         // Odd length, so one element is left unconsumed in the input.
-        if len % 2 != 0 {
+        if !len.is_multiple_of(2) {
             let left_nonempty = left < left_end;
             let last_src = if left_nonempty { left } else { right };
             ptr::copy_nonoverlapping(last_src, dst, 1);

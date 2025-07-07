@@ -26,12 +26,9 @@
 #![deny(clippy::pattern_type_mismatch)]
 #![allow(clippy::needless_lifetimes, clippy::uninlined_format_args)]
 
-// Some "regular" crates we want to share with rustc
-extern crate object;
+// These crates are pulled from the sysroot because they are part of
+// rustc's public API, so we need to ensure version compatibility.
 extern crate smallvec;
-// FIXME(antoyo): clippy bug: remove the #[allow] when it's fixed.
-#[allow(unused_extern_crates)]
-extern crate tempfile;
 #[macro_use]
 extern crate tracing;
 

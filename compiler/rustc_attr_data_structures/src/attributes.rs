@@ -67,8 +67,6 @@ pub enum ReprAttr {
     ReprSimd,
     ReprTransparent,
     ReprAlign(Align),
-    // this one is just so we can emit a lint for it
-    ReprEmpty,
 }
 pub use ReprAttr::*;
 
@@ -250,6 +248,13 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[ignore]`
+    Ignore {
+        span: Span,
+        /// ignore can optionally have a reason: `#[ignore = "reason this is ignored"]`
+        reason: Option<Symbol>,
+    },
+
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
 
@@ -297,7 +302,7 @@ pub enum AttributeKind {
     PubTransparent(Span),
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
-    Repr(ThinVec<(ReprAttr, Span)>),
+    Repr { reprs: ThinVec<(ReprAttr, Span)>, first_span: Span },
 
     /// Represents `#[rustc_layout_scalar_valid_range_end]`.
     RustcLayoutScalarValidRangeEnd(Box<u128>, Span),

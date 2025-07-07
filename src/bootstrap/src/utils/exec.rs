@@ -13,7 +13,9 @@ use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
 use std::panic::Location;
 use std::path::Path;
-use std::process::{Child, Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
+use std::process::{
+    Child, ChildStderr, ChildStdout, Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio,
+};
 use std::sync::{Arc, Mutex};
 
 use build_helper::ci::CiEnv;
@@ -209,15 +211,14 @@ impl<'a> BootstrapCommand {
         exec_ctx.as_ref().start(self, OutputMode::Capture, OutputMode::Print)
     }
 
-    /// Provides access to the stdlib Command inside.
-    /// FIXME: This function should be eventually removed from bootstrap.
-    pub fn as_command_mut(&mut self) -> &mut Command {
-        // We proactively mark this command as executed since we can't be certain how the returned
-        // command will be handled. Caching must also be avoided here, as the inner command could be
-        // modified externally without us being aware.
-        self.mark_as_executed();
-        self.do_not_cache();
-        &mut self.command
+    /// Spawn the command in background, while capturing and returning stdout, and printing stderr.
+    /// Returns None in dry-mode
+    #[track_caller]
+    pub fn stream_capture_stdout(
+        &'a mut self,
+        exec_ctx: impl AsRef<ExecutionContext>,
+    ) -> Option<StreamingCommand> {
+        exec_ctx.as_ref().stream(self, OutputMode::Capture, OutputMode::Print)
     }
 
     /// Mark the command as being executed, disarming the drop bomb.
@@ -449,6 +450,12 @@ enum CommandState<'a> {
     },
 }
 
+pub struct StreamingCommand {
+    child: Child,
+    pub stdout: Option<ChildStdout>,
+    pub stderr: Option<ChildStderr>,
+}
+
 #[must_use]
 pub struct DeferredCommand<'a> {
     state: CommandState<'a>,
@@ -617,11 +624,44 @@ impl ExecutionContext {
         }
         exit!(1);
     }
+
+    /// Spawns the command with configured stdout and stderr handling.
+    ///
+    /// Returns None if in dry-run mode or Panics if the command fails to spawn.
+    pub fn stream(
+        &self,
+        command: &mut BootstrapCommand,
+        stdout: OutputMode,
+        stderr: OutputMode,
+    ) -> Option<StreamingCommand> {
+        command.mark_as_executed();
+        if !command.run_in_dry_run && self.dry_run() {
+            return None;
+        }
+        let cmd = &mut command.command;
+        cmd.stdout(stdout.stdio());
+        cmd.stderr(stderr.stdio());
+        let child = cmd.spawn();
+        let mut child = match child {
+            Ok(child) => child,
+            Err(e) => panic!("failed to execute command: {cmd:?}\nERROR: {e}"),
+        };
+
+        let stdout = child.stdout.take();
+        let stderr = child.stderr.take();
+        Some(StreamingCommand { child, stdout, stderr })
+    }
 }
 
 impl AsRef<ExecutionContext> for ExecutionContext {
     fn as_ref(&self) -> &ExecutionContext {
         self
+    }
+}
+
+impl StreamingCommand {
+    pub fn wait(mut self) -> Result<ExitStatus, std::io::Error> {
+        self.child.wait()
     }
 }
 

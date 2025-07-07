@@ -6,6 +6,7 @@
 use std::path::{Path, PathBuf};
 
 use clap::{CommandFactory, Parser, ValueEnum};
+use clap_complete::Generator;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
@@ -644,7 +645,7 @@ impl Subcommand {
 
 /// Returns the shell completion for a given shell, if the result differs from the current
 /// content of `path`. If `path` does not exist, always returns `Some`.
-pub fn get_completion<G: clap_complete::Generator>(shell: G, path: &Path) -> Option<String> {
+pub fn get_completion(shell: &dyn Generator, path: &Path) -> Option<String> {
     let mut cmd = Flags::command();
     let current = if !path.exists() {
         String::new()
@@ -662,7 +663,12 @@ pub fn get_completion<G: clap_complete::Generator>(shell: G, path: &Path) -> Opt
         .expect("file name should be UTF-8")
         .rsplit_once('.')
         .expect("file name should have an extension");
-    clap_complete::generate(shell, &mut cmd, bin_name, &mut buf);
+
+    // We sort of replicate `clap_complete::generate` here, because we want to call it with
+    // `&dyn Generator`, but that function requires `G: Generator` instead.
+    cmd.set_bin_name(bin_name);
+    cmd.build();
+    shell.generate(&cmd, &mut buf);
     if buf == current.as_bytes() {
         return None;
     }

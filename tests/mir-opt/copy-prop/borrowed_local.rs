@@ -50,10 +50,11 @@ fn compare_address() -> bool {
 fn borrowed<T: Copy + Freeze>(x: T) -> bool {
     // CHECK-LABEL: fn borrowed(
     // CHECK: bb0: {
+    // CHECK-NEXT: _2 = copy _1;
     // CHECK-NEXT: _3 = &_1;
     // CHECK-NEXT: _0 = opaque::<&T>(copy _3)
     // CHECK: bb1: {
-    // CHECK-NEXT: _0 = opaque::<T>(copy _1)
+    // CHECK-NEXT: _0 = opaque::<T>(copy _2)
     mir! {
         {
             let a = x;
@@ -94,11 +95,45 @@ fn non_freeze<T: Copy>(x: T) -> bool {
     }
 }
 
+/// We must not unify a borrowed local with another that may be written-to before the borrow is
+/// read again. As we have no aliasing model yet, this means forbidding unifying borrowed locals.
+fn borrow_in_loop() {
+    // CHECK-LABEL: fn borrow_in_loop(
+    // CHECK: debug c => [[c:_.*]];
+    // CHECK: debug p => [[p:_.*]];
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
+    // CHECK-NOT: &[[a]]
+    // CHECK-NOT: &[[b]]
+    // CHECK: [[a]] = Not({{.*}});
+    // CHECK-NOT: &[[a]]
+    // CHECK-NOT: &[[b]]
+    // CHECK: [[b]] = Not({{.*}});
+    // CHECK-NOT: &[[a]]
+    // CHECK-NOT: &[[b]]
+    // CHECK: &[[c]]
+    // CHECK-NOT: &[[a]]
+    // CHECK-NOT: &[[b]]
+    let mut c;
+    let mut p = &false;
+    loop {
+        let a = !*p;
+        let b = !*p;
+        c = a;
+        p = &c;
+        if a != b {
+            return;
+        }
+    }
+}
+
 fn main() {
     assert!(!compare_address());
     non_freeze(5);
+    borrow_in_loop();
 }
 
 // EMIT_MIR borrowed_local.compare_address.CopyProp.diff
 // EMIT_MIR borrowed_local.borrowed.CopyProp.diff
 // EMIT_MIR borrowed_local.non_freeze.CopyProp.diff
+// EMIT_MIR borrowed_local.borrow_in_loop.CopyProp.diff
