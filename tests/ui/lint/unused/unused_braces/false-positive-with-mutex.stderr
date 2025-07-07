@@ -1,0 +1,32 @@
+error: unnecessary braces around method argument
+  --> $DIR/false-positive-with-mutex.rs:33:15
+   |
+LL |         .push({ test.lock().unwrap().b });
+   |               ^^                      ^^
+   |
+note: the lint level is defined here
+  --> $DIR/false-positive-with-mutex.rs:5:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(unused_braces)]` implied by `#[deny(warnings)]`
+help: remove these braces
+   |
+LL -         .push({ test.lock().unwrap().b });
+LL +         .push(test.lock().unwrap().b);
+   |
+
+error: unnecessary braces around method argument
+  --> $DIR/false-positive-with-mutex.rs:32:15
+   |
+LL |         .push({ test.lock().unwrap().a })
+   |               ^^                      ^^
+   |
+help: remove these braces
+   |
+LL -         .push({ test.lock().unwrap().a })
+LL +         .push(test.lock().unwrap().a)
+   |
+
+error: aborting due to 2 previous errors
+
