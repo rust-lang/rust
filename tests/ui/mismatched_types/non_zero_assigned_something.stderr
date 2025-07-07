@@ -1,6 +1,36 @@
 error[E0308]: mismatched types
   --> $DIR/non_zero_assigned_something.rs:2:37
    |
+LL |     let _: std::num::NonZero<u64> = 0;
+   |            ----------------------   ^ expected `NonZero<u64>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `NonZero<u64>`
+                found type `{integer}`
+help: consider calling `NonZero::new`
+   |
+LL |     let _: std::num::NonZero<u64> = NonZero::new(0).unwrap();
+   |                                     +++++++++++++ ++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/non_zero_assigned_something.rs:6:45
+   |
+LL |     let _: Option<std::num::NonZero<u64>> = 0;
+   |            ------------------------------   ^ expected `Option<NonZero<u64>>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected enum `Option<NonZero<u64>>`
+              found type `{integer}`
+help: consider calling `NonZero::new`
+   |
+LL |     let _: Option<std::num::NonZero<u64>> = NonZero::new(0);
+   |                                             +++++++++++++ +
+
+error[E0308]: mismatched types
+  --> $DIR/non_zero_assigned_something.rs:10:37
+   |
 LL |     let _: std::num::NonZero<u64> = 1;
    |            ----------------------   ^ expected `NonZero<u64>`, found integer
    |            |
@@ -14,7 +44,153 @@ LL |     let _: std::num::NonZero<u64> = NonZero::new(1).unwrap();
    |                                     +++++++++++++ ++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/non_zero_assigned_something.rs:6:45
+  --> $DIR/non_zero_assigned_something.rs:13:37
+   |
+LL |     let _: std::num::NonZero<u64> = 1u8;
+   |            ----------------------   ^^^ expected `NonZero<u64>`, found `u8`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `NonZero<u64>`
+                found type `u8`
+
+error[E0308]: mismatched types
+  --> $DIR/non_zero_assigned_something.rs:15:37
+   |
+LL |     let _: std::num::NonZero<u64> = 1u64;
+   |            ----------------------   ^^^^ expected `NonZero<u64>`, found `u64`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `NonZero<u64>`
+                found type `u64`
+help: consider calling `NonZero::new`
+   |
+LL |     let _: std::num::NonZero<u64> = NonZero::new(1u64).unwrap();
+   |                                     +++++++++++++    ++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/non_zero_assigned_something.rs:19:36
+   |
+LL |     let _: std::num::NonZero<u8> = 255;
+   |            ---------------------   ^^^ expected `NonZero<u8>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `NonZero<u8>`
+                found type `{integer}`
+help: consider calling `NonZero::new`
+   |
+LL |     let _: std::num::NonZero<u8> = NonZero::new(255).unwrap();
+   |                                    +++++++++++++   ++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/non_zero_assigned_something.rs:22:36
+   |
+LL |     let _: std::num::NonZero<u8> = 256;
+   |            ---------------------   ^^^ expected `NonZero<u8>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `NonZero<u8>`
+                found type `{integer}`
+help: consider calling `NonZero::new`
+   |
+LL |     let _: std::num::NonZero<u8> = NonZero::new(256).unwrap();
+   |                                    +++++++++++++   ++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/non_zero_assigned_something.rs:26:36
+   |
+LL |     let _: std::num::NonZero<u8> = -10;
+   |            ---------------------   ^^^ expected `NonZero<u8>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `NonZero<u8>`
+                found type `{integer}`
+help: consider calling `NonZero::new`
+   |
+LL |     let _: std::num::NonZero<u8> = NonZero::new(-10).unwrap();
+   |                                    +++++++++++++   ++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/non_zero_assigned_something.rs:30:36
+   |
+LL |     let _: std::num::NonZero<i8> = -128;
+   |            ---------------------   ^^^^ expected `NonZero<i8>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `NonZero<i8>`
+                found type `{integer}`
+help: consider calling `NonZero::new`
+   |
+LL |     let _: std::num::NonZero<i8> = NonZero::new(-128).unwrap();
+   |                                    +++++++++++++    ++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/non_zero_assigned_something.rs:33:36
+   |
+LL |     let _: std::num::NonZero<i8> = -129;
+   |            ---------------------   ^^^^ expected `NonZero<i8>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `NonZero<i8>`
+                found type `{integer}`
+help: consider calling `NonZero::new`
+   |
+LL |     let _: std::num::NonZero<i8> = NonZero::new(-129).unwrap();
+   |                                    +++++++++++++    ++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/non_zero_assigned_something.rs:36:36
+   |
+LL |     let _: std::num::NonZero<i8> = -1;
+   |            ---------------------   ^^ expected `NonZero<i8>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `NonZero<i8>`
+                found type `{integer}`
+help: consider calling `NonZero::new`
+   |
+LL |     let _: std::num::NonZero<i8> = NonZero::new(-1).unwrap();
+   |                                    +++++++++++++  ++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/non_zero_assigned_something.rs:39:36
+   |
+LL |     let _: std::num::NonZero<i8> = 0;
+   |            ---------------------   ^ expected `NonZero<i8>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `NonZero<i8>`
+                found type `{integer}`
+help: consider calling `NonZero::new`
+   |
+LL |     let _: std::num::NonZero<i8> = NonZero::new(0).unwrap();
+   |                                    +++++++++++++ ++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/non_zero_assigned_something.rs:42:36
+   |
+LL |     let _: std::num::NonZero<i8> = 1;
+   |            ---------------------   ^ expected `NonZero<i8>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `NonZero<i8>`
+                found type `{integer}`
+help: consider calling `NonZero::new`
+   |
+LL |     let _: std::num::NonZero<i8> = NonZero::new(1).unwrap();
+   |                                    +++++++++++++ ++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/non_zero_assigned_something.rs:46:45
    |
 LL |     let _: Option<std::num::NonZero<u64>> = 1;
    |            ------------------------------   ^ expected `Option<NonZero<u64>>`, found integer
@@ -28,6 +204,6 @@ help: consider calling `NonZero::new`
 LL |     let _: Option<std::num::NonZero<u64>> = NonZero::new(1);
    |                                             +++++++++++++ +
 
-error: aborting due to 2 previous errors
+error: aborting due to 14 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
