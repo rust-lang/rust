@@ -40,12 +40,6 @@ error: malformed `crate_name` attribute input
 LL | #[crate_name]
    | ^^^^^^^^^^^^^ help: must be of the form: `#[crate_name = "name"]`
 
-error: malformed `export_stable` attribute input
-  --> $DIR/malformed-attrs.rs:81:1
-   |
-LL | #[export_stable = 1]
-   | ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[export_stable]`
-
 error: malformed `coverage` attribute input
   --> $DIR/malformed-attrs.rs:90:1
    |
@@ -140,23 +134,11 @@ error: malformed `fundamental` attribute input
 LL | #[fundamental()]
    | ^^^^^^^^^^^^^^^^ help: must be of the form: `#[fundamental]`
 
-error: malformed `ffi_pure` attribute input
-  --> $DIR/malformed-attrs.rs:165:5
-   |
-LL |     #[unsafe(ffi_pure = 1)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[ffi_pure]`
-
 error: malformed `link_ordinal` attribute input
   --> $DIR/malformed-attrs.rs:167:5
    |
 LL |     #[link_ordinal]
    |     ^^^^^^^^^^^^^^^ help: must be of the form: `#[link_ordinal(ordinal)]`
-
-error: malformed `ffi_const` attribute input
-  --> $DIR/malformed-attrs.rs:171:5
-   |
-LL |     #[unsafe(ffi_const = 1)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[ffi_const]`
 
 error: malformed `linkage` attribute input
   --> $DIR/malformed-attrs.rs:173:5
@@ -481,6 +463,15 @@ LL | #[target_feature]
    | expected this to be a list
    | help: must be of the form: `#[target_feature(enable = "feat1, feat2")]`
 
+error[E0565]: malformed `export_stable` attribute input
+  --> $DIR/malformed-attrs.rs:81:1
+   |
+LL | #[export_stable = 1]
+   | ^^^^^^^^^^^^^^^^---^
+   | |               |
+   | |               didn't expect any arguments here
+   | help: must be of the form: `#[export_stable]`
+
 error[E0539]: malformed `link_name` attribute input
   --> $DIR/malformed-attrs.rs:86:1
    |
@@ -536,6 +527,24 @@ LL | #[rustc_layout_scalar_valid_range_end]
    | |
    | expected this to be a list
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
+
+error[E0565]: malformed `ffi_pure` attribute input
+  --> $DIR/malformed-attrs.rs:165:5
+   |
+LL |     #[unsafe(ffi_pure = 1)]
+   |     ^^^^^^^^^^^^^^^^^^---^^
+   |     |                 |
+   |     |                 didn't expect any arguments here
+   |     help: must be of the form: `#[ffi_pure]`
+
+error[E0565]: malformed `ffi_const` attribute input
+  --> $DIR/malformed-attrs.rs:171:5
+   |
+LL |     #[unsafe(ffi_const = 1)]
+   |     ^^^^^^^^^^^^^^^^^^^---^^
+   |     |                  |
+   |     |                  didn't expect any arguments here
+   |     help: must be of the form: `#[ffi_const]`
 
 error[E0565]: malformed `non_exhaustive` attribute input
   --> $DIR/malformed-attrs.rs:197:1

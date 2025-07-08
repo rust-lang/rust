@@ -22,7 +22,10 @@ use crate::attributes::codegen_attrs::{
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
-use crate::attributes::link_attrs::{LinkNameParser, LinkSectionParser};
+use crate::attributes::link_attrs::{
+    ExportStableParser, FfiConstParser, FfiPureParser, LinkNameParser, LinkSectionParser,
+    StdInternalSymbolParser,
+};
 use crate::attributes::lint_helpers::{AsPtrParser, PassByValueParser, PubTransparentParser};
 use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
 use crate::attributes::must_use::MustUseParser;
@@ -145,6 +148,9 @@ attribute_parsers!(
         Single<WithoutArgs<ColdParser>>,
         Single<WithoutArgs<ConstContinueParser>>,
         Single<WithoutArgs<ConstStabilityIndirectParser>>,
+        Single<WithoutArgs<ExportStableParser>>,
+        Single<WithoutArgs<FfiConstParser>>,
+        Single<WithoutArgs<FfiPureParser>>,
         Single<WithoutArgs<LoopMatchParser>>,
         Single<WithoutArgs<MayDangleParser>>,
         Single<WithoutArgs<NoImplicitPreludeParser>>,
@@ -152,6 +158,7 @@ attribute_parsers!(
         Single<WithoutArgs<NonExhaustiveParser>>,
         Single<WithoutArgs<PassByValueParser>>,
         Single<WithoutArgs<PubTransparentParser>>,
+        Single<WithoutArgs<StdInternalSymbolParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
         // tidy-alphabetical-end
     ];
