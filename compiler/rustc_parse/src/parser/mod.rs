@@ -1293,8 +1293,10 @@ impl<'a> Parser<'a> {
         let kind = if pat {
             let guar = self
                 .dcx()
-                .struct_span_err(blk_span, "`inline_const_pat` has been removed")
-                .with_help("use a named `const`-item or an `if`-guard instead")
+                .struct_span_err(blk_span, "const blocks cannot be used as patterns")
+                .with_help(
+                    "use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead",
+                )
                 .emit();
             ExprKind::Err(guar)
         } else {
