@@ -317,7 +317,7 @@ pub enum AttributeKind {
     RustcObjectLifetimeDefault,
 
     /// Represents `#[rustc_skip_during_method_dispatch]`.
-    SkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },
+    SkipDuringMethodDispatch { array: bool, boxed_slice: bool },
 
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
     Stability {

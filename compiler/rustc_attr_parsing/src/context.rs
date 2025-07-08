@@ -14,6 +14,7 @@ use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, HirI
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
+use crate::AttrTarget;
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
 use crate::attributes::codegen_attrs::{
     ColdParser, ExportNameParser, NakedParser, NoMangleParser, OptimizeParser, TargetFeatureParser,
@@ -222,6 +223,9 @@ pub(crate) struct AcceptContext<'f, 'sess, S: Stage> {
 
     /// The name of the attribute we're currently accepting.
     pub(crate) attr_path: AttrPath,
+
+    /// The thing the attribute is on.
+    pub(crate) target: AttrTarget<'f>,
 }
 
 impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
@@ -538,6 +542,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         sym: Symbol,
         target_span: Span,
         target_node_id: NodeId,
+        target: AttrTarget<'_>,
     ) -> Option<Attribute> {
         let mut p = Self {
             features: None,
@@ -550,6 +555,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             attrs,
             target_span,
             target_node_id,
+            target,
             OmitDoc::Skip,
             std::convert::identity,
             |_lint| {
@@ -588,8 +594,8 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         attrs: &[ast::Attribute],
         target_span: Span,
         target_id: S::Id,
+        target: AttrTarget<'_>,
         omit_doc: OmitDoc,
-
         lower_span: impl Copy + Fn(Span) -> Span,
         mut emit_lint: impl FnMut(AttributeLint<S::Id>),
     ) -> Vec<Attribute> {
@@ -657,6 +663,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                                 attr_span: lower_span(attr.span),
                                 template,
                                 attr_path: path.get_attribute_path(),
+                                target,
                             };
 
                             accept(&mut cx, args)
