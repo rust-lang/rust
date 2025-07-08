@@ -746,7 +746,7 @@ def write_uncommented(target, f):
     block = []
 
     def flush(last):
-        # If the block is entiry made of comments, ignore it
+        # If the block is entirely made of comments, ignore it
         entire_block_comments = all(ln.startswith("#") or ln == "" for ln in block)
         if not entire_block_comments and len(block) > 0:
             for line in block:
