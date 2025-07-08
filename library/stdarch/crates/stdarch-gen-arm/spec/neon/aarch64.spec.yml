@@ -12279,17 +12279,15 @@ intrinsics:
       - [poly8x8_t, "poly8x16_t", uint8x8_t, "vqtbx1", "_p8"]
       - [uint8x16_t, "uint8x16_t", uint8x16_t, "vqtbx1q", "q_u8"]
       - [poly8x16_t, "poly8x16_t", uint8x16_t, "vqtbx1q", "q_p8"]
+    big_endian_inverse: false
     compose:
-      - Let:
-        - x
-        - FnCall:
-            - transmute
-            - - FnCall:
-                  - "{type[3]}"
-                  - - FnCall: [transmute, [a]]
-                    - FnCall: [transmute, [b]]
-                    - c
-      - Identifier: [x, Symbol]
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - "{type[3]}"
+                - - FnCall: [transmute, [a]]
+                  - FnCall: [transmute, [b]]
+                  - c
 
   - name: "vtbx1{neon_type[0].no}"
     doc: "Extended table look-up"
@@ -12461,16 +12459,14 @@ intrinsics:
       - ['poly8x16_t', uint8x8_t, 'vqtbl1', 'poly8x8_t']
       - ['uint8x16_t', uint8x16_t, 'vqtbl1q', 'uint8x16_t']
       - ['poly8x16_t', uint8x16_t, 'vqtbl1q', 'poly8x16_t']
+    big_endian_inverse: false
     compose:
-      - Let:
-          - x
-          - FnCall:
-              - transmute
-              - - FnCall:
-                    - '{type[2]}'
-                    - - FnCall: [transmute, ['a']]
-                      - b
-      - Identifier: [x, Symbol]
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - '{type[2]}'
+                - - FnCall: [transmute, ['a']]
+                  - b
 
   - name: "vqtbl2{neon_type[3].no}"
     doc: "Table look-up"
