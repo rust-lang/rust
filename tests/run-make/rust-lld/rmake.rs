@@ -1,5 +1,5 @@
-// Test linking using `cc` with `rust-lld`, using the unstable CLI described in MCP 510
-// see https://github.com/rust-lang/compiler-team/issues/510 for more info
+// Test linking using `cc` with `rust-lld`, using the `-Clinker-features` and
+// `-Clink-self-contained` CLI flags.
 
 //@ needs-rust-lld
 //@ ignore-s390x lld does not yet support s390x as target
@@ -14,12 +14,14 @@ fn main() {
         rustc()
             .arg("-Clinker-features=+lld")
             .arg("-Clink-self-contained=+linker")
-            .arg("-Zunstable-options")
+            .arg("-Zunstable-options") // the opt-ins are unstable
             .input("main.rs"),
     );
 
     // It should not be used when we explicitly opt out of lld.
-    assert_rustc_doesnt_use_lld(rustc().arg("-Clinker-features=-lld").input("main.rs"));
+    assert_rustc_doesnt_use_lld(
+        rustc().arg("-Clinker-features=-lld").arg("-Zunstable-options").input("main.rs"),
+    );
 
     // While we're here, also check that the last linker feature flag "wins" when passed multiple
     // times to rustc.
