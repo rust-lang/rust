@@ -1,6 +1,5 @@
 //@ run-fail
-//@ error-pattern:panicked
-//@ error-pattern:test-assert-owned
+//@ check-run-results
 //@ needs-subprocess
 
 #![allow(non_fmt_panics)]

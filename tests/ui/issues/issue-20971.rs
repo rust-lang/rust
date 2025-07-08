@@ -1,7 +1,7 @@
 // Regression test for Issue #20971.
 
 //@ run-fail
-//@ error-pattern:Hello, world!
+//@ check-run-results
 //@ needs-subprocess
 
 pub trait Parser {

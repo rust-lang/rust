@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:explicit panic
+//@ check-run-results
 //@ needs-subprocess
 
 fn build() -> Vec<isize> {

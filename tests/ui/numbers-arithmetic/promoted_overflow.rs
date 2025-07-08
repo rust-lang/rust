@@ -1,7 +1,7 @@
 #![allow(arithmetic_overflow)]
 
 //@ run-fail
-//@ error-pattern: overflow
+//@ check-run-results
 //@ compile-flags: -C overflow-checks=yes
 // for some reason, fails to match error string on
 // wasm32-unknown-unknown with stripped debuginfo and symbols,

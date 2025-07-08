@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:squirrelcupcake
+//@ check-run-results
 //@ needs-subprocess
 
 fn cmp() -> isize {

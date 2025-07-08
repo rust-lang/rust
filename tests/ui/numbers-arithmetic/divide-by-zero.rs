@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:attempt to divide by zero
+//@ check-run-results
 //@ needs-subprocess
 
 #[allow(unconditional_panic)]

@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:called `Result::unwrap()` on an `Err` value
+//@ check-run-results
 //@ needs-subprocess
 
 use std::result::Result::Err;

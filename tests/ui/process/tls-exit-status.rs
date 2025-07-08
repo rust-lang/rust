@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:nonzero
+//@ check-run-results
 //@ exec-env:RUST_NEWRT=1
 //@ needs-subprocess
 

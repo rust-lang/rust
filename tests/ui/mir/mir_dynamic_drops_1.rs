@@ -1,6 +1,5 @@
 //@ run-fail
-//@ error-pattern:drop 1
-//@ error-pattern:drop 2
+//@ check-run-results
 //@ needs-subprocess
 
 /// Structure which will not allow to be dropped twice.

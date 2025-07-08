@@ -1,6 +1,5 @@
 //@ run-fail
-//@ error-pattern:thread 'main' panicked
-//@ error-pattern:attempt to add with overflow
+//@ check-run-results
 //@ compile-flags: -C debug-assertions
 //@ needs-subprocess
 

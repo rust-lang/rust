@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:index out of bounds: the len is 5 but the index is 10
+//@ check-run-results
 //@ needs-subprocess
 
 const C: &'static [u8; 5] = b"hello";

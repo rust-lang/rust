@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:custom message
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() {

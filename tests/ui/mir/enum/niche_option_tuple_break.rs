@@ -1,6 +1,6 @@
 //@ run-fail
 //@ compile-flags: -C debug-assertions
-//@ error-pattern: trying to construct an enum from an invalid value 0x3
+//@ check-run-results
 
 #[allow(dead_code)]
 enum Foo {

@@ -8,7 +8,7 @@
 //@ compile-flags: -Z sanitizer=hwaddress -O -g -C codegen-units=16
 //
 //@ run-fail
-//@ error-pattern: HWAddressSanitizer: tag-mismatch
+//@ check-run-results
 
 use std::hint::black_box;
 

@@ -2,7 +2,7 @@
 // destroyed values lying around for other destructors to observe.
 
 //@ run-fail
-//@ error-pattern:panicking destructors ftw!
+//@ check-run-results
 //@ needs-subprocess
 
 struct Observer<'a>(&'a mut FilledOnDrop);

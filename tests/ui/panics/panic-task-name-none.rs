@@ -1,6 +1,5 @@
 //@ run-fail
-//@ error-pattern:thread '<unnamed>' panicked
-//@ error-pattern:test
+//@ check-run-results
 //@ needs-threads
 
 use std::thread;

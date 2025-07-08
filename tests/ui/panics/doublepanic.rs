@@ -1,7 +1,7 @@
 #![allow(unreachable_code)]
 
 //@ run-fail
-//@ error-pattern:One
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() {

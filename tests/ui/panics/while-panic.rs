@@ -1,7 +1,7 @@
 #![allow(while_true)]
 
 //@ run-fail
-//@ error-pattern:giraffe
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() {

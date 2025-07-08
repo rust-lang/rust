@@ -1,6 +1,5 @@
 //@ run-fail
-//@ error-pattern:thread 'main' panicked
-//@ error-pattern:explicit panic
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() {

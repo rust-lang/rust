@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:panic evaluated
+//@ check-run-results
 //@ needs-subprocess
 
 #[allow(unused_variables)]

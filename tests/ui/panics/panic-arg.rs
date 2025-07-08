@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:woe
+//@ check-run-results
 //@ needs-subprocess
 
 fn f(a: isize) {

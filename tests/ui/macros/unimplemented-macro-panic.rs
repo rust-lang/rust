@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:not implemented
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() {

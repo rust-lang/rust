@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:index out of bounds
+//@ check-run-results
 //@ needs-subprocess
 
 use std::mem::size_of;

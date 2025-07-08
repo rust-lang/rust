@@ -1,6 +1,6 @@
 //@ run-fail
 //@ compile-flags: -C debug-assertions
-//@ error-pattern: null pointer dereference occurred
+//@ check-run-results
 
 fn main() {
     let ptr = std::ptr::null();

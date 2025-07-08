@@ -1,6 +1,5 @@
 //@ run-fail
-//@ error-pattern:panicked
-//@ error-pattern:test-fail-fmt 42 rust
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() {

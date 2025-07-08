@@ -1,6 +1,6 @@
 //@ run-fail
 //@ compile-flags: -Copt-level=3 -Cdebug-assertions=no -Zub-checks=yes
-//@ error-pattern: index out of bounds: the len is 2 but the index is 2
+//@ check-run-results
 //@ revisions: oob_a oob_b
 
 fn main() {

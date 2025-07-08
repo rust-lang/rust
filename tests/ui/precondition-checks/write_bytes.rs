@@ -1,6 +1,6 @@
 //@ run-fail
 //@ compile-flags: -Copt-level=3 -Cdebug-assertions=no -Zub-checks=yes
-//@ error-pattern: unsafe precondition(s) violated: ptr::write requires
+//@ check-run-results
 //@ revisions: null misaligned
 //@ ignore-test (unimplemented)
 

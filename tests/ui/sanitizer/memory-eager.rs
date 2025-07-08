@@ -7,7 +7,7 @@
 //@ [unoptimized]compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins
 //
 //@ run-fail
-//@ error-pattern: MemorySanitizer: use-of-uninitialized-value
+//@ check-run-results
 //@ [optimized]error-pattern: Uninitialized value was created by an allocation
 //@ [optimized]error-pattern: in the stack frame
 //

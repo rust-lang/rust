@@ -1,5 +1,5 @@
 //@ aux-build: borrowck-error-in-macro.rs
-//@ error-pattern: a call in this macro requires a mutable binding due to mutable borrow of `d`
+//@ check-run-results
 //FIXME: remove error-pattern (see #141896)
 
 extern crate borrowck_error_in_macro as a;

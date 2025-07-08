@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:returned Box<Error> from main()
+//@ check-run-results
 //@ failure-status: 1
 //@ needs-subprocess
 

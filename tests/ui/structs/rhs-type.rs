@@ -2,7 +2,7 @@
 // as a _|_-typed thing, not a str-typed thing
 
 //@ run-fail
-//@ error-pattern:bye
+//@ check-run-results
 //@ needs-subprocess
 
 #![allow(unreachable_code)]

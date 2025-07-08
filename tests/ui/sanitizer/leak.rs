@@ -4,7 +4,7 @@
 //@ compile-flags: -Z sanitizer=leak -O
 //
 //@ run-fail
-//@ error-pattern: LeakSanitizer: detected memory leaks
+//@ check-run-results
 
 use std::hint::black_box;
 use std::mem;
