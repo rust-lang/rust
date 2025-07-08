@@ -333,7 +333,7 @@ target | std | host | notes
 `mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc
 [`mips64-openwrt-linux-musl`](platform-support/mips64-openwrt-linux-musl.md) | ? |  | MIPS64 for OpenWrt Linux musl 1.2.3
 `mips64-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 Linux, N64 ABI (kernel 4.4, glibc 2.23)
-`mips64-unknown-linux-muslabi64` | ✓ |  | MIPS64 Linux, N64 ABI, musl 1.2.3
+[`mips64-unknown-linux-muslabi64`](platform-support/mips64-unknown-linux-muslabi64.md) | ✓ | ✓ | MIPS64 Linux, N64 ABI, musl 1.2.3
 `mips64el-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 (little endian) Linux, N64 ABI (kernel 4.4, glibc 2.23)
 `mips64el-unknown-linux-muslabi64` | ✓ |  | MIPS64 (little endian) Linux, N64 ABI, musl 1.2.3
 `mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP)
