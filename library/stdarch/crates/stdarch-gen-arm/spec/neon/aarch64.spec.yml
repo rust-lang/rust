@@ -7312,7 +7312,7 @@ intrinsics:
       - ["i64", "i32", "i32", "i64"]
     compose:
       - Let: [x, i64, {FnCall: [vqaddd_s64, [a, {FnCall: [vqdmulls_s32, [b, c]]}]]}]
-      - Identifier: ['x as i64', Symbol]
+      - Identifier: ['x', Symbol]
 
   - name: "vqdmlal{type[4]}"
     doc: "Signed saturating doubling multiply-add long"
@@ -7426,7 +7426,7 @@ intrinsics:
       - ["i64", "i32", "i32", "i64"]
     compose:
       - Let: [x, i64, {FnCall: [vqsubd_s64, [a, {FnCall: [vqdmulls_s32, [b, c]]}]]}]
-      - Identifier: ['x as i64', Symbol]
+      - Identifier: ['x', Symbol]
 
   - name: "vqdmlsl{type[4]}"
     doc: "Signed saturating doubling multiply-subtract long"

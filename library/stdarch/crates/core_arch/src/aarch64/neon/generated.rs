@@ -17158,7 +17158,7 @@ pub fn vqdmlalh_s16(a: i32, b: i16, c: i16) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmlals_s32(a: i64, b: i32, c: i32) -> i64 {
     let x: i64 = vqaddd_s64(a, vqdmulls_s32(b, c));
-    x as i64
+    x
 }
 #[doc = "Signed saturating doubling multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsl_high_lane_s16)"]
@@ -17324,7 +17324,7 @@ pub fn vqdmlslh_s16(a: i32, b: i16, c: i16) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmlsls_s32(a: i64, b: i32, c: i32) -> i64 {
     let x: i64 = vqsubd_s64(a, vqdmulls_s32(b, c));
-    x as i64
+    x
 }
 #[doc = "Vector saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_lane_s16)"]
