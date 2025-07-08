@@ -16,8 +16,9 @@ mod llvm_enzyme {
     use rustc_ast::tokenstream::*;
     use rustc_ast::visit::AssocCtxt::*;
     use rustc_ast::{
-        self as ast, AssocItemKind, BindingMode, ExprKind, FnRetTy, FnSig, Generics, ItemKind,
-        MetaItemInner, PatKind, QSelf, TyKind, Visibility,
+        self as ast, AngleBracketedArg, AngleBracketedArgs, AssocItemKind, BindingMode, ExprKind,
+        FnRetTy, FnSig, GenericArg, GenericArgs, Generics, ItemKind, MetaItemInner, PatKind, Path,
+        PathSegment, QSelf, TyKind, Visibility,
     };
     use rustc_expand::base::{Annotatable, ExtCtxt};
     use rustc_span::{Ident, Span, Symbol, kw, sym};
@@ -337,8 +338,14 @@ mod llvm_enzyme {
             &generics,
         );
 
-        let d_body =
-            call_enzyme_autodiff(ecx, primal, first_ident(&meta_item_vec[0]), span, &d_sig);
+        let d_body = call_enzyme_autodiff(
+            ecx,
+            primal,
+            first_ident(&meta_item_vec[0]),
+            span,
+            &d_sig,
+            &generics,
+        );
 
         // The first element of it is the name of the function to be generated
         let asdf = Box::new(ast::Fn {
@@ -505,9 +512,10 @@ mod llvm_enzyme {
         diff: Ident,
         span: Span,
         d_sig: &FnSig,
+        generics: &Generics,
     ) -> P<ast::Block> {
-        let primal_path_expr = ecx.expr_path(ecx.path_ident(span, primal));
-        let diff_path_expr = ecx.expr_path(ecx.path_ident(span, diff));
+        let primal_path_expr = gen_turbofish_expr(ecx, primal, generics, span);
+        let diff_path_expr = gen_turbofish_expr(ecx, diff, generics, span);
 
         let tuple_expr = ecx.expr_tuple(
             span,
@@ -540,6 +548,37 @@ mod llvm_enzyme {
         let block = ecx.block_expr(call_expr);
 
         block
+    }
+
+    // Generate turbofish expression from fn name and generics
+    // Given `foo` and `<A, B, C>`, gen `foo::<A, B, C>`
+    fn gen_turbofish_expr(
+        ecx: &ExtCtxt<'_>,
+        ident: Ident,
+        generics: &Generics,
+        span: Span,
+    ) -> P<ast::Expr> {
+        let generic_args = generics
+            .params
+            .iter()
+            .map(|p| {
+                let path = ast::Path::from_ident(p.ident);
+                let ty = ecx.ty_path(path);
+                AngleBracketedArg::Arg(GenericArg::Type(ty))
+            })
+            .collect::<ThinVec<_>>();
+
+        let args = AngleBracketedArgs { span, args: generic_args };
+
+        let segment = PathSegment {
+            ident,
+            id: ast::DUMMY_NODE_ID,
+            args: Some(P(GenericArgs::AngleBracketed(args))),
+        };
+
+        let path = Path { span, segments: thin_vec![segment], tokens: None };
+
+        ecx.expr_path(path)
     }
 
     // Generate dummy const to prevent primal function
