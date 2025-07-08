@@ -1472,7 +1472,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             dest_alloc
                 .write_uninit(&tcx, dest_range)
                 .map_err(|e| e.to_interp_error(dest_alloc_id))?;
-            // We can forget about the provenance, this is all not initialized anyway.
+            // `write_uninit` also resets the provenance, so we are done.
             return interp_ok(());
         }
 
