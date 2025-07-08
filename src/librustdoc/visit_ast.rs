@@ -38,9 +38,18 @@ pub(crate) struct Module<'hir> {
         (LocalDefId, Option<Symbol>),
         (&'hir hir::Item<'hir>, Option<Symbol>, Option<LocalDefId>),
     >,
-    /// Same as for `items`.
+
+    /// (def_id, renamed) -> (res, local_import_id)
+    ///
+    /// `inlined_foreigns` only contains `extern` items
+    /// that are cross-crate inlined.
+    ///
+    /// Locally inlined `extern` items are
+    /// stored in `foreigns` with the `import_id` set,
+    /// analogous to how `items` is.
     pub(crate) inlined_foreigns: FxIndexMap<(DefId, Option<Symbol>), (Res, LocalDefId)>,
-    pub(crate) foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>)>,
+    /// (item, renamed, import_id)
+    pub(crate) foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>, Option<LocalDefId>)>,
 }
 
 impl Module<'_> {
@@ -327,7 +336,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
             Node::ForeignItem(it) if !glob => {
                 let prev = mem::replace(&mut self.inlining, true);
-                self.visit_foreign_item_inner(it, renamed);
+                self.visit_foreign_item_inner(it, renamed, Some(def_id));
                 self.inlining = prev;
                 true
             }
@@ -432,7 +441,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemKind::ForeignMod { items, .. } => {
                 for item in items {
                     let item = tcx.hir_foreign_item(item.id);
-                    self.visit_foreign_item_inner(item, None);
+                    self.visit_foreign_item_inner(item, None, None);
                 }
             }
             // If we're inlining, skip private items.
@@ -527,10 +536,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         &mut self,
         item: &'tcx hir::ForeignItem<'_>,
         renamed: Option<Symbol>,
+        import_id: Option<LocalDefId>,
     ) {
         // If inlining we only want to include public functions.
         if !self.inlining || self.cx.tcx.visibility(item.owner_id).is_public() {
-            self.modules.last_mut().unwrap().foreigns.push((item, renamed));
+            self.modules.last_mut().unwrap().foreigns.push((item, renamed, import_id));
         }
     }
 

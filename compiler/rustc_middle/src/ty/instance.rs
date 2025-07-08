@@ -71,7 +71,7 @@ pub enum InstanceKind<'tcx> {
     /// - coroutines
     Item(DefId),
 
-    /// An intrinsic `fn` item (with`#[rustc_instrinsic]`).
+    /// An intrinsic `fn` item (with`#[rustc_intrinsic]`).
     ///
     /// Alongside `Virtual`, this is the only `InstanceKind` that does not have its own callable MIR.
     /// Instead, codegen and const eval "magically" evaluate calls to intrinsics purely in the
@@ -445,10 +445,10 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
     }
 }
 
-// async_drop_in_place<T>::coroutine.poll, when T is a standart coroutine,
+// async_drop_in_place<T>::coroutine.poll, when T is a standard coroutine,
 // should be resolved to this coroutine's future_drop_poll (through FutureDropPollShim proxy).
 // async_drop_in_place<async_drop_in_place<T>::coroutine>::coroutine.poll,
-// when T is a standart coroutine, should be resolved to this coroutine's future_drop_poll.
+// when T is a standard coroutine, should be resolved to this coroutine's future_drop_poll.
 // async_drop_in_place<async_drop_in_place<T>::coroutine>::coroutine.poll,
 // when T is not a coroutine, should be resolved to the innermost
 // async_drop_in_place<T>::coroutine's poll function (through FutureDropPollShim proxy)

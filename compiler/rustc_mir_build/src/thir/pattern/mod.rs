@@ -319,9 +319,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 }
                 PatKind::Deref { subpattern }
             }
-            hir::PatKind::Box(subpattern) => {
-                PatKind::Deref { subpattern: self.lower_pattern(subpattern) }
-            }
+            hir::PatKind::Box(subpattern) => PatKind::DerefPattern {
+                subpattern: self.lower_pattern(subpattern),
+                borrow: hir::ByRef::No,
+            },
 
             hir::PatKind::Slice(prefix, slice, suffix) => {
                 self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix)
@@ -680,7 +681,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     Some(pat_ty) => pat_ty,
                     None => self.typeck_results.node_type(expr.hir_id),
                 };
-                let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg: *negated };
+                let lit_input = LitToConstInput { lit: lit.node, ty: ct_ty, neg: *negated };
                 let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
                 self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
             }

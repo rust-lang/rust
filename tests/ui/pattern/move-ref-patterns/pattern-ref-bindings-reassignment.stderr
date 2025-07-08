@@ -1,0 +1,21 @@
+error[E0384]: cannot assign twice to immutable variable `a`
+  --> $DIR/pattern-ref-bindings-reassignment.rs:18:5
+   |
+LL |     let &mut (ref a, ref mut b) = &mut one_two;
+   |               ----- first assignment to `a`
+...
+LL |     a = &three_four.0;
+   |     ^^^^^^^^^^^^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `b`
+  --> $DIR/pattern-ref-bindings-reassignment.rs:22:5
+   |
+LL |     let &mut (ref a, ref mut b) = &mut one_two;
+   |                      --------- first assignment to `b`
+...
+LL |     b = &mut three_four.1;
+   |     ^^^^^^^^^^^^^^^^^^^^^ cannot assign twice to immutable variable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0384`.

@@ -400,7 +400,7 @@ impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundTy {
 #[derive(HashStable)]
 pub enum BoundTyKind {
     Anon,
-    Param(DefId, Symbol),
+    Param(DefId),
 }
 
 impl From<BoundVar> for BoundTy {
@@ -1322,11 +1322,6 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn is_dyn_star(self) -> bool {
-        matches!(self.kind(), Dynamic(_, _, ty::DynStar))
-    }
-
-    #[inline]
     pub fn is_enum(self) -> bool {
         matches!(self.kind(), Adt(adt_def, _) if adt_def.is_enum())
     }
@@ -1629,8 +1624,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_)
             // Extern types have metadata = ().
             | ty::Foreign(..)
-            // `dyn*` has metadata = ().
-            | ty::Dynamic(_, _, ty::DynStar)
             // If returned by `struct_tail_raw` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
@@ -1683,7 +1676,7 @@ impl<'tcx> Ty<'tcx> {
     /// This is particularly useful for getting the type of the result of
     /// [`UnOp::PtrMetadata`](crate::mir::UnOp::PtrMetadata).
     ///
-    /// Panics if `self` is not dereferencable.
+    /// Panics if `self` is not dereferenceable.
     #[track_caller]
     pub fn pointee_metadata_ty_or_projection(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         let Some(pointee_ty) = self.builtin_deref(true) else {
@@ -1820,8 +1813,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
-            | ty::Error(_)
-            | ty::Dynamic(_, _, ty::DynStar) => true,
+            | ty::Error(_) => true,
 
             ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::Dyn) => match sizedness {
                 SizedTraitKind::Sized => false,
@@ -2040,7 +2032,7 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(ty::RegionKind<'_>, 24);
+    static_assert_size!(ty::RegionKind<'_>, 20);
     static_assert_size!(ty::TyKind<'_>, 24);
     // tidy-alphabetical-end
 }

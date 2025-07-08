@@ -411,7 +411,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         AlignFromBytesError::TooLarge(_) => Align::MAX,
                     }
                 });
-                let (_, addr) = ptr.into_parts(); // we know the offset is absolute
+                let addr = ptr.addr();
                 // Cannot panic since `align` is a power of 2 and hence non-zero.
                 if addr.bytes().strict_rem(align.bytes()) != 0 {
                     throw_unsup_format!(
@@ -614,6 +614,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             name if name == this.mangle_internal_symbol("__rust_no_alloc_shim_is_unstable_v2") => {
                 // This is a no-op shim that only exists to prevent making the allocator shims instantly stable.
                 let [] = this.check_shim(abi, CanonAbi::Rust, link_name, args)?;
+            }
+            name if name
+                == this.mangle_internal_symbol("__rust_alloc_error_handler_should_panic_v2") =>
+            {
+                // Gets the value of the `oom` option.
+                let [] = this.check_shim(abi, CanonAbi::Rust, link_name, args)?;
+                let val = this.tcx.sess.opts.unstable_opts.oom.should_panic();
+                this.write_int(val, dest)?;
             }
 
             // C memory handling functions

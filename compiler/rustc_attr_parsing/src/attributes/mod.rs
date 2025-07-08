@@ -17,7 +17,7 @@
 use std::marker::PhantomData;
 
 use rustc_attr_data_structures::AttributeKind;
-use rustc_feature::AttributeTemplate;
+use rustc_feature::{AttributeTemplate, template};
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
@@ -31,12 +31,18 @@ pub(crate) mod codegen_attrs;
 pub(crate) mod confusables;
 pub(crate) mod deprecation;
 pub(crate) mod inline;
+pub(crate) mod link_attrs;
 pub(crate) mod lint_helpers;
 pub(crate) mod loop_match;
 pub(crate) mod must_use;
+pub(crate) mod no_implicit_prelude;
+pub(crate) mod non_exhaustive;
+pub(crate) mod path;
 pub(crate) mod repr;
+pub(crate) mod rustc_internal;
 pub(crate) mod semantics;
 pub(crate) mod stability;
+pub(crate) mod test_attrs;
 pub(crate) mod traits;
 pub(crate) mod transparency;
 pub(crate) mod util;
@@ -227,7 +233,42 @@ pub(crate) enum AttributeOrder {
     KeepLast,
 }
 
-type ConvertFn<E> = fn(ThinVec<E>) -> AttributeKind;
+/// An even simpler version of [`SingleAttributeParser`]:
+/// now automatically check that there are no arguments provided to the attribute.
+///
+/// [`WithoutArgs<T> where T: NoArgsAttributeParser`](WithoutArgs) implements [`SingleAttributeParser`].
+//
+pub(crate) trait NoArgsAttributeParser<S: Stage>: 'static {
+    const PATH: &[Symbol];
+    const ON_DUPLICATE: OnDuplicate<S>;
+
+    /// Create the [`AttributeKind`] given attribute's [`Span`].
+    const CREATE: fn(Span) -> AttributeKind;
+}
+
+pub(crate) struct WithoutArgs<T: NoArgsAttributeParser<S>, S: Stage>(PhantomData<(S, T)>);
+
+impl<T: NoArgsAttributeParser<S>, S: Stage> Default for WithoutArgs<T, S> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for WithoutArgs<T, S> {
+    const PATH: &[Symbol] = T::PATH;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
+    const ON_DUPLICATE: OnDuplicate<S> = T::ON_DUPLICATE;
+    const TEMPLATE: AttributeTemplate = template!(Word);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        if let Err(span) = args.no_args() {
+            cx.expected_no_args(span);
+        }
+        Some(T::CREATE(cx.attr_span))
+    }
+}
+
+type ConvertFn<E> = fn(ThinVec<E>, Span) -> AttributeKind;
 
 /// Alternative to [`AttributeParser`] that automatically handles state management.
 /// If multiple attributes appear on an element, combines the values of each into a
@@ -258,14 +299,21 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
 
 /// Use in combination with [`CombineAttributeParser`].
 /// `Combine<T: CombineAttributeParser>` implements [`AttributeParser`].
-pub(crate) struct Combine<T: CombineAttributeParser<S>, S: Stage>(
-    PhantomData<(S, T)>,
-    ThinVec<<T as CombineAttributeParser<S>>::Item>,
-);
+pub(crate) struct Combine<T: CombineAttributeParser<S>, S: Stage> {
+    phantom: PhantomData<(S, T)>,
+    /// A list of all items produced by parsing attributes so far. One attribute can produce any amount of items.
+    items: ThinVec<<T as CombineAttributeParser<S>>::Item>,
+    /// The full span of the first attribute that was encountered.
+    first_span: Option<Span>,
+}
 
 impl<T: CombineAttributeParser<S>, S: Stage> Default for Combine<T, S> {
     fn default() -> Self {
-        Self(Default::default(), Default::default())
+        Self {
+            phantom: Default::default(),
+            items: Default::default(),
+            first_span: Default::default(),
+        }
     }
 }
 
@@ -273,10 +321,18 @@ impl<T: CombineAttributeParser<S>, S: Stage> AttributeParser<S> for Combine<T, S
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         T::PATH,
         <T as CombineAttributeParser<S>>::TEMPLATE,
-        |group: &mut Combine<T, S>, cx, args| group.1.extend(T::extend(cx, args)),
+        |group: &mut Combine<T, S>, cx, args| {
+            // Keep track of the span of the first attribute, for diagnostics
+            group.first_span.get_or_insert(cx.attr_span);
+            group.items.extend(T::extend(cx, args))
+        },
     )];
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
-        if self.1.is_empty() { None } else { Some(T::CONVERT(self.1)) }
+        if let Some(first_span) = self.first_span {
+            Some(T::CONVERT(self.items, first_span))
+        } else {
+            None
+        }
     }
 }

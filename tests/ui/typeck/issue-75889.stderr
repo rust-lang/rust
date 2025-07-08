@@ -1,10 +1,10 @@
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for constant items
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/issue-75889.rs:3:24
    |
 LL | const FOO: dyn Fn() -> _ = "";
    |                        ^ not allowed in type signatures
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for static items
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for statics
   --> $DIR/issue-75889.rs:4:25
    |
 LL | static BOO: dyn Fn() -> _ = "";

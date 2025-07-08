@@ -1,6 +1,6 @@
 ast_passes_abi_cannot_be_coroutine =
     functions with the {$abi} ABI cannot be `{$coroutine_kind_str}`
-    .suggestion = remove the `{$coroutine_kind_str}` keyword from this definiton
+    .suggestion = remove the `{$coroutine_kind_str}` keyword from this definition
 
 ast_passes_abi_custom_safe_foreign_function =
     foreign functions with the "custom" ABI cannot be safe
@@ -47,9 +47,6 @@ ast_passes_auto_super_lifetime = auto traits cannot have super traits or lifetim
     .suggestion = remove the super traits or lifetime bounds
 
 ast_passes_bad_c_variadic = only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
-
-ast_passes_bare_fn_invalid_safety = function pointers cannot be declared with `safe` safety qualifier
-    .suggestion = remove safe from this item
 
 ast_passes_body_in_extern = incorrect `{$kind}` inside `extern` block
     .cannot_have = cannot have a body
@@ -134,6 +131,9 @@ ast_passes_fn_param_forbidden_self =
 
 ast_passes_fn_param_too_many =
     function can not have more than {$max_num_args} arguments
+
+ast_passes_fn_ptr_invalid_safety = function pointers cannot be declared with `safe` safety qualifier
+    .suggestion = remove safe from this item
 
 ast_passes_fn_without_body =
     free function without a body

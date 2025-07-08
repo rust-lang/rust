@@ -1,6 +1,7 @@
 use base_db::SourceDatabase;
 use expect_test::Expect;
 use hir_def::{DefWithBodyId, ModuleDefId};
+use salsa::EventKind;
 use test_fixture::WithFixture;
 
 use crate::{db::HirDatabase, test_db::TestDB};
@@ -567,11 +568,11 @@ fn main() {
                 "ast_id_map_shim",
                 "parse_shim",
                 "real_span_map_shim",
-                "trait_items_with_diagnostics_shim",
+                "TraitItems::query_with_diagnostics_",
                 "body_shim",
                 "body_with_source_map_shim",
                 "attrs_shim",
-                "of_",
+                "ImplItems::of_",
                 "infer_shim",
                 "trait_signature_shim",
                 "trait_signature_with_source_map_shim",
@@ -596,8 +597,8 @@ fn main() {
                 "struct_signature_with_source_map_shim",
                 "generic_predicates_shim",
                 "value_ty_shim",
-                "variant_fields_shim",
-                "variant_fields_with_source_map_shim",
+                "VariantFields::firewall_",
+                "VariantFields::query_",
                 "lang_item",
                 "inherent_impls_in_crate_shim",
                 "impl_signature_shim",
@@ -674,11 +675,11 @@ fn main() {
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "crate_local_def_map",
-                "trait_items_with_diagnostics_shim",
+                "TraitItems::query_with_diagnostics_",
                 "body_with_source_map_shim",
                 "attrs_shim",
                 "body_shim",
-                "of_",
+                "ImplItems::of_",
                 "infer_shim",
                 "attrs_shim",
                 "trait_signature_with_source_map_shim",
@@ -695,11 +696,9 @@ fn main() {
                 "return_type_impl_traits_shim",
                 "infer_shim",
                 "function_signature_with_source_map_shim",
-                "trait_environment_shim",
                 "expr_scopes_shim",
                 "struct_signature_with_source_map_shim",
-                "generic_predicates_shim",
-                "variant_fields_with_source_map_shim",
+                "VariantFields::query_",
                 "inherent_impls_in_crate_shim",
                 "impl_signature_with_source_map_shim",
                 "impl_signature_shim",
@@ -708,7 +707,6 @@ fn main() {
                 "trait_impls_in_crate_shim",
                 "impl_trait_with_diagnostics_shim",
                 "impl_self_ty_with_diagnostics_shim",
-                "generic_predicates_shim",
                 "generic_predicates_shim",
             ]
         "#]],
@@ -721,10 +719,23 @@ fn execute_assert_events(
     required: &[(&str, usize)],
     expect: Expect,
 ) {
-    let events = db.log_executed(f);
-    for (event, count) in required {
-        let n = events.iter().filter(|it| it.contains(event)).count();
-        assert_eq!(n, *count, "Expected {event} to be executed {count} times, but only got {n}");
-    }
-    expect.assert_debug_eq(&events);
+    let (executed, events) = db.log_executed(f);
+    salsa::attach(db, || {
+        for (event, count) in required {
+            let n = executed.iter().filter(|it| it.contains(event)).count();
+            assert_eq!(
+                n,
+                *count,
+                "Expected {event} to be executed {count} times, but only got {n}:\n \
+             Executed: {executed:#?}\n \
+             Event log: {events:#?}",
+                events = events
+                    .iter()
+                    .filter(|event| !matches!(event.kind, EventKind::WillCheckCancellation))
+                    .map(|event| { format!("{:?}", event.kind) })
+                    .collect::<Vec<_>>(),
+            );
+        }
+        expect.assert_debug_eq(&executed);
+    });
 }

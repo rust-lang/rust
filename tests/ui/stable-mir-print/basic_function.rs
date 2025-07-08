@@ -1,4 +1,4 @@
-//@ compile-flags: -Z unpretty=stable-mir -Z mir-opt-level=3
+//@ compile-flags: -Z unpretty=stable-mir -Zmir-opt-level=0
 //@ check-pass
 //@ only-x86_64
 //@ needs-unwind unwind edges are different with panic=abort

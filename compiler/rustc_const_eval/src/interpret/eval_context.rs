@@ -272,7 +272,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let def = instance.def_id();
             &self.tcx.promoted_mir(def)[promoted]
         } else {
-            M::load_mir(self, instance)?
+            M::load_mir(self, instance)
         };
         // do not continue if typeck errors occurred (can only occur in local crate)
         if let Some(err) = body.tainted_by_errors {

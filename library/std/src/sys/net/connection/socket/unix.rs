@@ -522,6 +522,21 @@ impl Socket {
         Ok(name)
     }
 
+    #[cfg(any(target_os = "solaris", target_os = "illumos"))]
+    pub fn set_exclbind(&self, excl: bool) -> io::Result<()> {
+        // not yet on libc crate
+        const SO_EXCLBIND: i32 = 0x1015;
+        setsockopt(self, libc::SOL_SOCKET, SO_EXCLBIND, excl)
+    }
+
+    #[cfg(any(target_os = "solaris", target_os = "illumos"))]
+    pub fn exclbind(&self) -> io::Result<bool> {
+        // not yet on libc crate
+        const SO_EXCLBIND: i32 = 0x1015;
+        let raw: c_int = getsockopt(self, libc::SOL_SOCKET, SO_EXCLBIND)?;
+        Ok(raw != 0)
+    }
+
     #[cfg(any(target_os = "android", target_os = "linux",))]
     pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
         setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, passcred as libc::c_int)

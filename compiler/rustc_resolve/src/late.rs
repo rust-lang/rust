@@ -370,7 +370,7 @@ enum LifetimeRibKind {
 
 #[derive(Copy, Clone, Debug)]
 enum LifetimeBinderKind {
-    BareFnType,
+    FnPtrType,
     PolyTrait,
     WhereBound,
     Item,
@@ -384,7 +384,7 @@ impl LifetimeBinderKind {
     fn descr(self) -> &'static str {
         use LifetimeBinderKind::*;
         match self {
-            BareFnType => "type",
+            FnPtrType => "type",
             PolyTrait => "bound",
             WhereBound => "bound",
             Item | ConstItem => "item",
@@ -900,16 +900,16 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                 self.diag_metadata.current_trait_object = Some(&bounds[..]);
                 visit::walk_ty(self, ty)
             }
-            TyKind::BareFn(bare_fn) => {
-                let span = ty.span.shrink_to_lo().to(bare_fn.decl_span.shrink_to_lo());
+            TyKind::FnPtr(fn_ptr) => {
+                let span = ty.span.shrink_to_lo().to(fn_ptr.decl_span.shrink_to_lo());
                 self.with_generic_param_rib(
-                    &bare_fn.generic_params,
+                    &fn_ptr.generic_params,
                     RibKind::Normal,
                     ty.id,
-                    LifetimeBinderKind::BareFnType,
+                    LifetimeBinderKind::FnPtrType,
                     span,
                     |this| {
-                        this.visit_generic_params(&bare_fn.generic_params, false);
+                        this.visit_generic_params(&fn_ptr.generic_params, false);
                         this.with_lifetime_rib(
                             LifetimeRibKind::AnonymousCreateParameter {
                                 binder: ty.id,
@@ -921,12 +921,8 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                                     false,
                                     // We don't need to deal with patterns in parameters, because
                                     // they are not possible for foreign or bodiless functions.
-                                    bare_fn
-                                        .decl
-                                        .inputs
-                                        .iter()
-                                        .map(|Param { ty, .. }| (None, &**ty)),
-                                    &bare_fn.decl.output,
+                                    fn_ptr.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
+                                    &fn_ptr.decl.output,
                                 )
                             },
                         );
@@ -939,7 +935,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                     &unsafe_binder.generic_params,
                     RibKind::Normal,
                     ty.id,
-                    LifetimeBinderKind::BareFnType,
+                    LifetimeBinderKind::FnPtrType,
                     span,
                     |this| {
                         this.visit_generic_params(&unsafe_binder.generic_params, false);
@@ -1656,7 +1652,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         forward_ty_ban_rib.bindings.swap_remove(i);
                         forward_ty_ban_rib_const_param_ty.bindings.swap_remove(i);
                     }
-                    GenericParamKind::Const { ref ty, kw_span: _, ref default } => {
+                    GenericParamKind::Const { ref ty, span: _, ref default } => {
                         // Const parameters can't have param bounds.
                         assert!(param.bounds.is_empty());
 
@@ -1892,7 +1888,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                 ..
                             } = rib.kind
                             {
-                                Some(errors::ElidedAnonymousLivetimeReportErrorSuggestion {
+                                Some(errors::ElidedAnonymousLifetimeReportErrorSuggestion {
                                     lo: span.shrink_to_lo(),
                                     hi: lifetime.ident.span.shrink_to_hi(),
                                 })
@@ -1918,18 +1914,18 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     ty: ty.span,
                                 });
                             } else {
-                                self.r.dcx().emit_err(errors::AnonymousLivetimeNonGatReportError {
+                                self.r.dcx().emit_err(errors::AnonymousLifetimeNonGatReportError {
                                     lifetime: lifetime.ident.span,
                                 });
                             }
                         } else {
-                            self.r.dcx().emit_err(errors::ElidedAnonymousLivetimeReportError {
+                            self.r.dcx().emit_err(errors::ElidedAnonymousLifetimeReportError {
                                 span: lifetime.ident.span,
                                 suggestion,
                             });
                         }
                     } else {
-                        self.r.dcx().emit_err(errors::ExplicitAnonymousLivetimeReportError {
+                        self.r.dcx().emit_err(errors::ExplicitAnonymousLifetimeReportError {
                             span: lifetime.ident.span,
                         });
                     };
@@ -2976,7 +2972,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
         }
 
-        if let LifetimeBinderKind::BareFnType
+        if let LifetimeBinderKind::FnPtrType
         | LifetimeBinderKind::WhereBound
         | LifetimeBinderKind::Function
         | LifetimeBinderKind::ImplBlock = generics_kind

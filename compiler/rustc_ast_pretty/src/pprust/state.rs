@@ -1285,7 +1285,7 @@ impl<'a> State<'a> {
                 self.print_type(typ);
                 self.pclose();
             }
-            ast::TyKind::BareFn(f) => {
+            ast::TyKind::FnPtr(f) => {
                 self.print_ty_fn(f.ext, f.safety, &f.decl, None, &f.generic_params);
             }
             ast::TyKind::UnsafeBinder(f) => {
@@ -1303,7 +1303,6 @@ impl<'a> State<'a> {
             ast::TyKind::TraitObject(bounds, syntax) => {
                 match syntax {
                     ast::TraitObjectSyntax::Dyn => self.word_nbsp("dyn"),
-                    ast::TraitObjectSyntax::DynStar => self.word_nbsp("dyn*"),
                     ast::TraitObjectSyntax::None => {}
                 }
                 self.print_type_bounds(bounds);

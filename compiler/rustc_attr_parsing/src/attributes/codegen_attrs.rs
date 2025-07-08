@@ -3,7 +3,10 @@ use rustc_feature::{AttributeTemplate, template};
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
 
-use super::{AcceptMapping, AttributeOrder, AttributeParser, OnDuplicate, SingleAttributeParser};
+use super::{
+    AcceptMapping, AttributeOrder, AttributeParser, CombineAttributeParser, ConvertFn,
+    NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
+};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::{NakedFunctionIncompatibleAttribute, NullOnExport};
@@ -43,20 +46,10 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
 
 pub(crate) struct ColdParser;
 
-impl<S: Stage> SingleAttributeParser<S> for ColdParser {
+impl<S: Stage> NoArgsAttributeParser<S> for ColdParser {
     const PATH: &[Symbol] = &[sym::cold];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const TEMPLATE: AttributeTemplate = template!(Word);
-
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
-        if let Err(span) = args.no_args() {
-            cx.expected_no_args(span);
-            return None;
-        }
-
-        Some(AttributeKind::Cold(cx.attr_span))
-    }
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::Cold;
 }
 
 pub(crate) struct ExportNameParser;
@@ -194,39 +187,17 @@ impl<S: Stage> AttributeParser<S> for NakedParser {
 }
 
 pub(crate) struct TrackCallerParser;
-
-impl<S: Stage> SingleAttributeParser<S> for TrackCallerParser {
+impl<S: Stage> NoArgsAttributeParser<S> for TrackCallerParser {
     const PATH: &[Symbol] = &[sym::track_caller];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const TEMPLATE: AttributeTemplate = template!(Word);
-
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
-        if let Err(span) = args.no_args() {
-            cx.expected_no_args(span);
-            return None;
-        }
-
-        Some(AttributeKind::TrackCaller(cx.attr_span))
-    }
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::TrackCaller;
 }
 
 pub(crate) struct NoMangleParser;
-
-impl<S: Stage> SingleAttributeParser<S> for NoMangleParser {
-    const PATH: &[rustc_span::Symbol] = &[sym::no_mangle];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
+impl<S: Stage> NoArgsAttributeParser<S> for NoMangleParser {
+    const PATH: &[Symbol] = &[sym::no_mangle];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const TEMPLATE: AttributeTemplate = template!(Word);
-
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
-        if let Err(span) = args.no_args() {
-            cx.expected_no_args(span);
-            return None;
-        }
-
-        Some(AttributeKind::NoMangle(cx.attr_span))
-    }
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoMangle;
 }
 
 #[derive(Default)]
@@ -307,5 +278,59 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
             (Some(span), _) => AttributeKind::Used { used_by: UsedBy::Compiler, span },
             (None, None) => return None,
         })
+    }
+}
+
+pub(crate) struct TargetFeatureParser;
+
+impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
+    type Item = (Symbol, Span);
+    const PATH: &[Symbol] = &[sym::target_feature];
+    const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature(items, span);
+    const TEMPLATE: AttributeTemplate = template!(List: "enable = \"feat1, feat2\"");
+
+    fn extend<'c>(
+        cx: &'c mut AcceptContext<'_, '_, S>,
+        args: &'c ArgParser<'_>,
+    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+        let mut features = Vec::new();
+        let ArgParser::List(list) = args else {
+            cx.expected_list(cx.attr_span);
+            return features;
+        };
+        if list.is_empty() {
+            cx.warn_empty_attribute(cx.attr_span);
+            return features;
+        }
+        for item in list.mixed() {
+            let Some(name_value) = item.meta_item() else {
+                cx.expected_name_value(item.span(), Some(sym::enable));
+                return features;
+            };
+
+            // Validate name
+            let Some(name) = name_value.path().word_sym() else {
+                cx.expected_name_value(name_value.path().span(), Some(sym::enable));
+                return features;
+            };
+            if name != sym::enable {
+                cx.expected_name_value(name_value.path().span(), Some(sym::enable));
+                return features;
+            }
+
+            // Use value
+            let Some(name_value) = name_value.args().name_value() else {
+                cx.expected_name_value(item.span(), Some(sym::enable));
+                return features;
+            };
+            let Some(value_str) = name_value.value_as_str() else {
+                cx.expected_string_literal(name_value.value_span, Some(name_value.value_as_lit()));
+                return features;
+            };
+            for feature in value_str.as_str().split(",") {
+                features.push((Symbol::intern(feature), item.span()));
+            }
+        }
+        features
     }
 }

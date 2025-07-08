@@ -1244,7 +1244,7 @@ impl PathBuf {
     ///
     /// The caller has free choice over the returned lifetime, including 'static.
     /// Indeed, this function is ideally used for data that lives for the remainder of
-    /// the program’s life, as dropping the returned reference will cause a memory leak.
+    /// the program's life, as dropping the returned reference will cause a memory leak.
     ///
     /// It does not reallocate or shrink the `PathBuf`, so the leaked allocation may include
     /// unused capacity that is not part of the returned slice. If you want to discard excess
@@ -1252,7 +1252,7 @@ impl PathBuf {
     /// However, keep in mind that trimming the capacity may result in a reallocation and copy.
     ///
     /// [`into_boxed_path`]: Self::into_boxed_path
-    #[stable(feature = "os_string_pathbuf_leak", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "os_string_pathbuf_leak", since = "1.89.0")]
     #[inline]
     pub fn leak<'a>(self) -> &'a mut Path {
         Path::from_inner_mut(self.inner.leak())
@@ -3028,7 +3028,7 @@ impl Path {
     ///
     /// This function always resolves `..` to the "lexical" parent.
     /// That is "a/b/../c" will always resolve to `a/c` which can change the meaning of the path.
-    /// In particular, `a/c` and `a/b/../c` are distinct on many systems because `b` may be a symbolic link, so its parent isn’t `a`.
+    /// In particular, `a/c` and `a/b/../c` are distinct on many systems because `b` may be a symbolic link, so its parent isn't `a`.
     ///
     /// </div>
     ///
@@ -3127,7 +3127,7 @@ impl Path {
     /// Returns `true` if the path points at an existing entity.
     ///
     /// Warning: this method may be error-prone, consider using [`try_exists()`] instead!
-    /// It also has a risk of introducing time-of-check to time-of-use (TOCTOU) bugs.
+    /// It also has a risk of introducing time-of-check to time-of-use ([TOCTOU]) bugs.
     ///
     /// This function will traverse symbolic links to query information about the
     /// destination file.
@@ -3148,6 +3148,7 @@ impl Path {
     /// check errors, call [`Path::try_exists`].
     ///
     /// [`try_exists()`]: Self::try_exists
+    /// [TOCTOU]: fs#time-of-check-to-time-of-use-toctou
     #[stable(feature = "path_ext", since = "1.5.0")]
     #[must_use]
     #[inline]
@@ -3167,7 +3168,7 @@ impl Path {
     /// permission is denied on one of the parent directories.
     ///
     /// Note that while this avoids some pitfalls of the `exists()` method, it still can not
-    /// prevent time-of-check to time-of-use (TOCTOU) bugs. You should only use it in scenarios
+    /// prevent time-of-check to time-of-use ([TOCTOU]) bugs. You should only use it in scenarios
     /// where those bugs are not an issue.
     ///
     /// This is an alias for [`std::fs::exists`](crate::fs::exists).
@@ -3180,6 +3181,7 @@ impl Path {
     /// assert!(Path::new("/root/secret_file.txt").try_exists().is_err());
     /// ```
     ///
+    /// [TOCTOU]: fs#time-of-check-to-time-of-use-toctou
     /// [`exists()`]: Self::exists
     #[stable(feature = "path_try_exists", since = "1.63.0")]
     #[inline]

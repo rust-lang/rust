@@ -4117,7 +4117,7 @@ impl MutVisitor for CondChecker<'_> {
                         LetChainsPolicy::AlwaysAllowed => (),
                         LetChainsPolicy::EditionDependent { current_edition } => {
                             if !current_edition.at_least_rust_2024() || !span.at_least_rust_2024() {
-                                self.parser.psess.gated_spans.gate(sym::let_chains, span);
+                                self.parser.dcx().emit_err(errors::LetChainPre2024 { span });
                             }
                         }
                     }

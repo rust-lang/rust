@@ -118,7 +118,7 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
     pub fn fake_alloc_zst(layout: TyAndLayout<'tcx>) -> Self {
         assert!(layout.is_zst());
         let align = layout.align.abi;
-        let ptr = Pointer::from_addr_invalid(align.bytes()); // no provenance, absolute address
+        let ptr = Pointer::without_provenance(align.bytes()); // no provenance, absolute address
         MPlaceTy { mplace: MemPlace { ptr, meta: MemPlaceMeta::None, misaligned: None }, layout }
     }
 
@@ -572,7 +572,7 @@ where
             Right((local, offset, locals_addr, layout)) => {
                 if offset.is_some() {
                     // This has been projected to a part of this local, or had the type changed.
-                    // FIMXE: there are cases where we could still avoid allocating an mplace.
+                    // FIXME: there are cases where we could still avoid allocating an mplace.
                     Left(place.force_mplace(self)?)
                 } else {
                     debug_assert_eq!(locals_addr, self.frame().locals_addr());

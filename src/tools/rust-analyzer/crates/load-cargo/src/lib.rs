@@ -11,7 +11,7 @@ use hir_expand::proc_macro::{
 };
 use ide_db::{
     ChangeWithProcMacros, FxHashMap, RootDatabase,
-    base_db::{CrateGraphBuilder, Env, SourceRoot, SourceRootId},
+    base_db::{CrateGraphBuilder, Env, ProcMacroLoadingError, SourceRoot, SourceRootId},
     prime_caches,
 };
 use itertools::Itertools;
@@ -69,6 +69,23 @@ pub fn load_workspace(
     extra_env: &FxHashMap<String, Option<String>>,
     load_config: &LoadCargoConfig,
 ) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroClient>)> {
+    let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<u16>().ok());
+    let mut db = RootDatabase::new(lru_cap);
+
+    let (vfs, proc_macro_server) = load_workspace_into_db(ws, extra_env, load_config, &mut db)?;
+
+    Ok((db, vfs, proc_macro_server))
+}
+
+// This variant of `load_workspace` allows deferring the loading of rust-analyzer
+// into an existing database, which is useful in certain third-party scenarios,
+// now that `salsa` supports extending foreign databases (e.g. `RootDatabase`).
+pub fn load_workspace_into_db(
+    ws: ProjectWorkspace,
+    extra_env: &FxHashMap<String, Option<String>>,
+    load_config: &LoadCargoConfig,
+    db: &mut RootDatabase,
+) -> anyhow::Result<(vfs::Vfs, Option<ProcMacroClient>)> {
     let (sender, receiver) = unbounded();
     let mut vfs = vfs::Vfs::default();
     let mut loader = {
@@ -78,23 +95,27 @@ pub fn load_workspace(
 
     tracing::debug!(?load_config, "LoadCargoConfig");
     let proc_macro_server = match &load_config.with_proc_macro_server {
-        ProcMacroServerChoice::Sysroot => ws
-            .find_sysroot_proc_macro_srv()
-            .and_then(|it| ProcMacroClient::spawn(&it, extra_env).map_err(Into::into))
-            .map_err(|e| (e, true)),
+        ProcMacroServerChoice::Sysroot => ws.find_sysroot_proc_macro_srv().map(|it| {
+            it.and_then(|it| ProcMacroClient::spawn(&it, extra_env).map_err(Into::into)).map_err(
+                |e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str()),
+            )
+        }),
         ProcMacroServerChoice::Explicit(path) => {
-            ProcMacroClient::spawn(path, extra_env).map_err(Into::into).map_err(|e| (e, true))
+            Some(ProcMacroClient::spawn(path, extra_env).map_err(|e| {
+                ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())
+            }))
         }
-        ProcMacroServerChoice::None => {
-            Err((anyhow::format_err!("proc macro server disabled"), false))
-        }
+        ProcMacroServerChoice::None => Some(Err(ProcMacroLoadingError::Disabled)),
     };
     match &proc_macro_server {
-        Ok(server) => {
-            tracing::info!(path=%server.server_path(), "Proc-macro server started")
+        Some(Ok(server)) => {
+            tracing::info!(manifest=%ws.manifest_or_root(), path=%server.server_path(), "Proc-macro server started")
         }
-        Err((e, _)) => {
-            tracing::info!(%e, "Failed to start proc-macro server")
+        Some(Err(e)) => {
+            tracing::info!(manifest=%ws.manifest_or_root(), %e, "Failed to start proc-macro server")
+        }
+        None => {
+            tracing::info!(manifest=%ws.manifest_or_root(), "No proc-macro server started")
         }
     }
 
@@ -111,22 +132,24 @@ pub fn load_workspace(
     );
     let proc_macros = {
         let proc_macro_server = match &proc_macro_server {
-            Ok(it) => Ok(it),
-            Err((e, hard_err)) => Err((e.to_string(), *hard_err)),
+            Some(Ok(it)) => Ok(it),
+            Some(Err(e)) => {
+                Err(ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str()))
+            }
+            None => Err(ProcMacroLoadingError::ProcMacroSrvError(
+                "proc-macro-srv is not running, workspace is missing a sysroot".into(),
+            )),
         };
         proc_macros
             .into_iter()
             .map(|(crate_id, path)| {
                 (
                     crate_id,
-                    path.map_or_else(
-                        |e| Err((e, true)),
-                        |(_, path)| {
-                            proc_macro_server.as_ref().map_err(Clone::clone).and_then(
-                                |proc_macro_server| load_proc_macro(proc_macro_server, &path, &[]),
-                            )
-                        },
-                    ),
+                    path.map_or_else(Err, |(_, path)| {
+                        proc_macro_server.as_ref().map_err(Clone::clone).and_then(
+                            |proc_macro_server| load_proc_macro(proc_macro_server, &path, &[]),
+                        )
+                    }),
                 )
             })
             .collect()
@@ -139,18 +162,20 @@ pub fn load_workspace(
         version: 0,
     });
 
-    let db = load_crate_graph(
+    load_crate_graph_into_db(
         crate_graph,
         proc_macros,
         project_folders.source_root_config,
         &mut vfs,
         &receiver,
+        db,
     );
 
     if load_config.prefill_caches {
-        prime_caches::parallel_prime_caches(&db, 1, &|_| ());
+        prime_caches::parallel_prime_caches(db, 1, &|_| ());
     }
-    Ok((db, vfs, proc_macro_server.ok()))
+
+    Ok((vfs, proc_macro_server.and_then(Result::ok)))
 }
 
 #[derive(Default)]
@@ -391,11 +416,13 @@ pub fn load_proc_macro(
     path: &AbsPath,
     ignored_macros: &[Box<str>],
 ) -> ProcMacroLoadResult {
-    let res: Result<Vec<_>, String> = (|| {
+    let res: Result<Vec<_>, _> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf());
-        let vec = server.load_dylib(dylib).map_err(|e| format!("{e}"))?;
+        let vec = server.load_dylib(dylib).map_err(|e| {
+            ProcMacroLoadingError::ProcMacroSrvError(format!("{e}").into_boxed_str())
+        })?;
         if vec.is_empty() {
-            return Err("proc macro library returned no proc macros".to_owned());
+            return Err(ProcMacroLoadingError::NoProcMacros);
         }
         Ok(vec
             .into_iter()
@@ -412,20 +439,19 @@ pub fn load_proc_macro(
         }
         Err(e) => {
             tracing::warn!("proc-macro loading for {path} failed: {e}");
-            Err((e, true))
+            Err(e)
         }
     }
 }
 
-fn load_crate_graph(
+fn load_crate_graph_into_db(
     crate_graph: CrateGraphBuilder,
     proc_macros: ProcMacrosBuilder,
     source_root_config: SourceRootConfig,
     vfs: &mut vfs::Vfs,
     receiver: &Receiver<vfs::loader::Message>,
-) -> RootDatabase {
-    let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<u16>().ok());
-    let mut db = RootDatabase::new(lru_cap);
+    db: &mut RootDatabase,
+) {
     let mut analysis_change = ChangeWithProcMacros::default();
 
     db.enable_proc_attr_macros();
@@ -462,7 +488,6 @@ fn load_crate_graph(
     analysis_change.set_proc_macros(proc_macros);
 
     db.apply_change(analysis_change);
-    db
 }
 
 fn expander_to_proc_macro(

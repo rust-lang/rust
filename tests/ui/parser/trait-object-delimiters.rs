@@ -8,7 +8,7 @@ fn foo2(_: &dyn (Drop + AsRef<str>)) {} //~ ERROR incorrect parentheses around t
 fn foo2_no_space(_: &dyn(Drop + AsRef<str>)) {} //~ ERROR incorrect parentheses around trait bounds
 
 fn foo3(_: &dyn {Drop + AsRef<str>}) {} //~ ERROR expected parameter name, found `{`
-//~^ ERROR expected one of `!`, `(`, `)`, `*`, `,`, `?`, `[`, `async`, `const`, `for`, `use`, `~`, lifetime, or path, found `{`
+//~^ ERROR expected one of `!`, `(`, `)`, `,`, `?`, `[`, `async`, `const`, `for`, `use`, `~`, lifetime, or path, found `{`
 //~| ERROR at least one trait is required for an object type
 
 fn foo4(_: &dyn <Drop + AsRef<str>>) {} //~ ERROR expected identifier, found `<`

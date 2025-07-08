@@ -133,7 +133,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                 }
             }
             Scalar::Ptr(ptr, _size) => {
-                let (prov, offset) = ptr.into_parts(); // we know the `offset` is relative
+                let (prov, offset) = ptr.prov_and_relative_offset();
                 let alloc_id = prov.alloc_id();
                 let base_addr = match fx.tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => {
@@ -443,7 +443,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             let addend = {
                 let endianness = tcx.data_layout.endian;
                 let offset = offset.bytes() as usize;
-                let ptr_size = tcx.data_layout.pointer_size;
+                let ptr_size = tcx.data_layout.pointer_size();
                 let bytes = &alloc.inspect_with_uninit_and_ptr_outside_interpreter(
                     offset..offset + ptr_size.bytes() as usize,
                 );

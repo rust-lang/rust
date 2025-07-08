@@ -1,8 +1,8 @@
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/super-traits-fail-2.rs:11:10
+  --> $DIR/super-traits-fail-2.rs:11:12
    |
 LL | trait Bar: [const] Foo {}
-   |          ^^^^^^^^^ can't be applied to `Foo`
+   |            ^^^^^^^ can't be applied to `Foo`
    |
 help: mark `Foo` as `#[const_trait]` to allow it to have `const` implementations
    |
@@ -10,10 +10,10 @@ LL | #[const_trait] trait Foo {
    | ++++++++++++++
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/super-traits-fail-2.rs:11:10
+  --> $DIR/super-traits-fail-2.rs:11:12
    |
 LL | trait Bar: [const] Foo {}
-   |          ^^^^^^^^^ can't be applied to `Foo`
+   |            ^^^^^^^ can't be applied to `Foo`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: mark `Foo` as `#[const_trait]` to allow it to have `const` implementations
@@ -22,10 +22,10 @@ LL | #[const_trait] trait Foo {
    | ++++++++++++++
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/super-traits-fail-2.rs:11:10
+  --> $DIR/super-traits-fail-2.rs:11:12
    |
 LL | trait Bar: [const] Foo {}
-   |          ^^^^^^^^^ can't be applied to `Foo`
+   |            ^^^^^^^ can't be applied to `Foo`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: mark `Foo` as `#[const_trait]` to allow it to have `const` implementations
@@ -34,10 +34,10 @@ LL | #[const_trait] trait Foo {
    | ++++++++++++++
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/super-traits-fail-2.rs:11:10
+  --> $DIR/super-traits-fail-2.rs:11:12
    |
 LL | trait Bar: [const] Foo {}
-   |          ^^^^^^^^^ can't be applied to `Foo`
+   |            ^^^^^^^ can't be applied to `Foo`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: mark `Foo` as `#[const_trait]` to allow it to have `const` implementations
@@ -46,10 +46,10 @@ LL | #[const_trait] trait Foo {
    | ++++++++++++++
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/super-traits-fail-2.rs:11:10
+  --> $DIR/super-traits-fail-2.rs:11:12
    |
 LL | trait Bar: [const] Foo {}
-   |          ^^^^^^^^^ can't be applied to `Foo`
+   |            ^^^^^^^ can't be applied to `Foo`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: mark `Foo` as `#[const_trait]` to allow it to have `const` implementations

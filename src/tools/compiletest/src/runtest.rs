@@ -23,11 +23,11 @@ use crate::common::{
     output_base_dir, output_base_name, output_testname_unique,
 };
 use crate::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
+use crate::directives::TestProps;
 use crate::errors::{Error, ErrorKind, load_errors};
-use crate::header::TestProps;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::util::{Utf8PathBufExt, add_dylib_path, logv, static_regex};
-use crate::{ColorConfig, json, stamp_file_path};
+use crate::{ColorConfig, help, json, stamp_file_path, warning};
 
 mod debugger;
 
@@ -121,6 +121,8 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
         }
 
         _ => {
+            // FIXME: this logic seems strange as well.
+
             // android has its own gdb handling
             if config.debugger == Some(Debugger::Gdb) && config.gdb.is_none() {
                 panic!("gdb not available but debuginfo gdb debuginfo test requested");
@@ -485,12 +487,15 @@ impl<'test> TestCx<'test> {
                 .windows(2)
                 .any(|args| args == cfg_arg || args[0] == arg || args[1] == arg)
             {
-                panic!(
-                    "error: redundant cfg argument `{normalized_revision}` is already created by the revision"
+                error!(
+                    "redundant cfg argument `{normalized_revision}` is already created by the \
+                    revision"
                 );
+                panic!("redundant cfg argument");
             }
             if self.config.builtin_cfg_names().contains(&normalized_revision) {
-                panic!("error: revision `{normalized_revision}` collides with a builtin cfg");
+                error!("revision `{normalized_revision}` collides with a built-in cfg");
+                panic!("revision collides with built-in cfg");
             }
             cmd.args(cfg_arg);
         }
@@ -1052,18 +1057,20 @@ impl<'test> TestCx<'test> {
         let proc_res = match &*self.config.target {
             // This is pretty similar to below, we're transforming:
             //
-            //      program arg1 arg2
+            // ```text
+            // program arg1 arg2
+            // ```
             //
             // into
             //
-            //      remote-test-client run program 2 support-lib.so support-lib2.so arg1 arg2
+            // ```text
+            // remote-test-client run program 2 support-lib.so support-lib2.so arg1 arg2
+            // ```
             //
-            // The test-client program will upload `program` to the emulator
-            // along with all other support libraries listed (in this case
-            // `support-lib.so` and `support-lib2.so`. It will then execute
-            // the program on the emulator with the arguments specified
-            // (in the environment we give the process) and then report back
-            // the same result.
+            // The test-client program will upload `program` to the emulator along with all other
+            // support libraries listed (in this case `support-lib.so` and `support-lib2.so`. It
+            // will then execute the program on the emulator with the arguments specified (in the
+            // environment we give the process) and then report back the same result.
             _ if self.config.remote_test_client.is_some() => {
                 let aux_dir = self.aux_output_dir_name();
                 let ProcArgs { prog, args } = self.make_run_args();
@@ -1529,6 +1536,8 @@ impl<'test> TestCx<'test> {
         ));
 
         // Optionally prevent default --sysroot if specified in test compile-flags.
+        //
+        // FIXME: I feel like this logic is fairly sus.
         if !self.props.compile_flags.iter().any(|flag| flag.starts_with("--sysroot"))
             && !self.config.host_rustcflags.iter().any(|flag| flag == "--sysroot")
         {
@@ -1915,7 +1924,8 @@ impl<'test> TestCx<'test> {
 
     fn dump_output_file(&self, out: &str, extension: &str) {
         let outfile = self.make_out_name(extension);
-        fs::write(outfile.as_std_path(), out).unwrap();
+        fs::write(outfile.as_std_path(), out)
+            .unwrap_or_else(|err| panic!("failed to write {outfile}: {err:?}"));
     }
 
     /// Creates a filename for output with the given extension.
@@ -2036,7 +2046,7 @@ impl<'test> TestCx<'test> {
         // Provide more context on failures.
         filecheck.args(&["--dump-input-context", "100"]);
 
-        // Add custom flags supplied by the `filecheck-flags:` test header.
+        // Add custom flags supplied by the `filecheck-flags:` test directive.
         filecheck.args(&self.props.filecheck_flags);
 
         // FIXME(jieyouxu): don't pass an empty Path
@@ -2167,9 +2177,10 @@ impl<'test> TestCx<'test> {
             println!("{}", String::from_utf8_lossy(&output.stdout));
             eprintln!("{}", String::from_utf8_lossy(&output.stderr));
         } else {
-            eprintln!("warning: no pager configured, falling back to unified diff");
-            eprintln!(
-                "help: try configuring a git pager (e.g. `delta`) with `git config --global core.pager delta`"
+            warning!("no pager configured, falling back to unified diff");
+            help!(
+                "try configuring a git pager (e.g. `delta`) with \
+                `git config --global core.pager delta`"
             );
             let mut out = io::stdout();
             let mut diff = BufReader::new(File::open(&diff_filename).unwrap());

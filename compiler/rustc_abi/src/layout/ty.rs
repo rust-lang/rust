@@ -6,7 +6,7 @@ use rustc_macros::HashStable_Generic;
 
 use crate::{
     AbiAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
-    PointeeInfo, Primitive, Scalar, Size, TargetDataLayout, Variants,
+    PointeeInfo, Primitive, Size, Variants,
 };
 
 // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
@@ -114,16 +114,6 @@ impl<'a> Layout<'a> {
 
     pub fn unadjusted_abi_align(self) -> Align {
         self.0.0.unadjusted_abi_align
-    }
-
-    /// Whether the layout is from a type that implements [`std::marker::PointerLike`].
-    ///
-    /// Currently, that means that the type is pointer-sized, pointer-aligned,
-    /// and has a initialized (non-union), scalar ABI.
-    pub fn is_pointer_like(self, data_layout: &TargetDataLayout) -> bool {
-        self.size() == data_layout.pointer_size
-            && self.align().abi == data_layout.pointer_align.abi
-            && matches!(self.backend_repr(), BackendRepr::Scalar(Scalar::Initialized { .. }))
     }
 }
 

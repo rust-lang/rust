@@ -786,12 +786,12 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(mixed_integer_ops_unsigned_sub)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_sub_signed(2), None);")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_sub_signed(-2), Some(3));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_sub_signed(-4), None);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops_unsigned_sub", issue = "126043")]
+        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1933,12 +1933,12 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(mixed_integer_ops_unsigned_sub)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".saturating_sub_signed(2), 0);")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".saturating_sub_signed(-2), 3);")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).saturating_sub_signed(-4), ", stringify!($SelfT), "::MAX);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops_unsigned_sub", issue = "126043")]
+        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2081,12 +2081,12 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(mixed_integer_ops_unsigned_sub)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".wrapping_sub_signed(2), ", stringify!($SelfT), "::MAX);")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".wrapping_sub_signed(-2), 3);")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).wrapping_sub_signed(-4), 1);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops_unsigned_sub", issue = "126043")]
+        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2540,12 +2540,12 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(mixed_integer_ops_unsigned_sub)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_sub_signed(2), (", stringify!($SelfT), "::MAX, true));")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_sub_signed(-2), (3, false));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).overflowing_sub_signed(-4), (1, true));")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops_unsigned_sub", issue = "126043")]
+        #[stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "mixed_integer_ops_unsigned_sub", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2572,7 +2572,7 @@ macro_rules! uint_impl {
             if size_of::<Self>() == 1 {
                 // Trick LLVM into generating the psadbw instruction when SSE2
                 // is available and this function is autovectorized for u8's.
-                (self as i32).wrapping_sub(other as i32).abs() as Self
+                (self as i32).wrapping_sub(other as i32).unsigned_abs() as Self
             } else {
                 if self < other {
                     other - self

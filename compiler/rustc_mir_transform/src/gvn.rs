@@ -29,7 +29,7 @@
 //! _b = some other value // also has VnIndex i
 //! ```
 //!
-//! We consider it to be replacable by:
+//! We consider it to be replaceable by:
 //! ```ignore (MIR)
 //! _a = some value // has VnIndex i
 //! // some MIR
@@ -1636,7 +1636,7 @@ fn op_to_prop_const<'tcx>(
         }
 
         let pointer = mplace.ptr().into_pointer_or_addr().ok()?;
-        let (prov, offset) = pointer.into_parts();
+        let (prov, offset) = pointer.prov_and_relative_offset();
         let alloc_id = prov.alloc_id();
         intern_const_alloc_for_constprop(ecx, alloc_id).discard_err()?;
 

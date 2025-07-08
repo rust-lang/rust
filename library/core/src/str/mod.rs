@@ -446,7 +446,7 @@ impl str {
     #[unstable(feature = "round_char_boundary", issue = "93743")]
     #[inline]
     pub fn ceil_char_boundary(&self, index: usize) -> usize {
-        if index > self.len() {
+        if index >= self.len() {
             self.len()
         } else {
             let upper_bound = Ord::min(index + 4, self.len());
@@ -2754,7 +2754,7 @@ impl str {
     /// assert!(!"Ferrös".eq_ignore_ascii_case("FERRÖS"));
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_eq_ignore_ascii_case", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_eq_ignore_ascii_case", since = "1.89.0")]
     #[must_use]
     #[inline]
     pub const fn eq_ignore_ascii_case(&self, other: &str) -> bool {

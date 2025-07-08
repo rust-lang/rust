@@ -91,8 +91,6 @@ pub(super) fn hints(
         match_ast! {
             match parent {
                 ast::Fn(it) => {
-                    // FIXME: this could include parameters, but `HirDisplay` prints too much info
-                    // and doesn't respect the max length either, so the hints end up way too long
                     (format!("fn {}", it.name()?), it.name().map(name))
                 },
                 ast::Static(it) => (format!("static {}", it.name()?), it.name().map(name)),
@@ -193,7 +191,7 @@ impl Tr for () {
 //^ impl Tr for ()
 impl dyn Tr {
   }
-//^ impl dyn Tr + 'static
+//^ impl dyn Tr
 
 static S0: () = 0;
 static S1: () = {};

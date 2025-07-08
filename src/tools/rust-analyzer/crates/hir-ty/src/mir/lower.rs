@@ -503,7 +503,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         Ok(Some(current))
                     }
                     ValueNs::EnumVariantId(variant_id) => {
-                        let variant_fields = &self.db.variant_fields(variant_id.into());
+                        let variant_fields = variant_id.fields(self.db);
                         if variant_fields.shape == FieldsShape::Unit {
                             let ty = self.infer.type_of_expr[expr_id].clone();
                             current = self.lower_enum_variant(
@@ -856,7 +856,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     TyKind::Adt(_, s) => s.clone(),
                     _ => not_supported!("Non ADT record literal"),
                 };
-                let variant_fields = self.db.variant_fields(variant_id);
+                let variant_fields = variant_id.fields(self.db);
                 match variant_id {
                     VariantId::EnumVariantId(_) | VariantId::StructId(_) => {
                         let mut operands = vec![None; variant_fields.fields().len()];
@@ -1176,8 +1176,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     place,
                     Rvalue::Aggregate(
                         AggregateKind::Adt(st.into(), subst.clone()),
-                        self.db
-                            .variant_fields(st.into())
+                        st.fields(self.db)
                             .fields()
                             .iter()
                             .map(|it| {

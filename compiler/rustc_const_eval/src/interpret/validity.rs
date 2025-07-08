@@ -358,9 +358,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             // arrays/slices
             ty::Array(..) | ty::Slice(..) => PathElem::ArrayElem(field),
 
-            // dyn* vtables
-            ty::Dynamic(_, _, ty::DynKind::DynStar) if field == 1 => PathElem::Vtable,
-
             // dyn traits
             ty::Dynamic(..) => {
                 assert_eq!(field, 0);
@@ -518,7 +515,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             Ub(DanglingIntPointer { addr: i, .. }) => DanglingPtrNoProvenance {
                 ptr_kind,
                 // FIXME this says "null pointer" when null but we need translate
-                pointer: format!("{}", Pointer::<Option<AllocId>>::from_addr_invalid(i))
+                pointer: format!("{}", Pointer::<Option<AllocId>>::without_provenance(i))
             },
             Ub(PointerOutOfBounds { .. }) => DanglingPtrOutOfBounds {
                 ptr_kind
@@ -868,7 +865,9 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     fn add_data_range(&mut self, ptr: Pointer<Option<M::Provenance>>, size: Size) {
         if let Some(data_bytes) = self.data_bytes.as_mut() {
             // We only have to store the offset, the rest is the same for all pointers here.
-            let (_prov, offset) = ptr.into_parts();
+            // The logic is agnostic to whether the offset is relative or absolute as long as
+            // it is consistent.
+            let (_prov, offset) = ptr.into_raw_parts();
             // Add this.
             data_bytes.add_range(offset, size);
         };
@@ -894,7 +893,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             .as_mplace_or_imm()
             .expect_left("place must be in memory")
             .ptr();
-        let (_prov, offset) = ptr.into_parts();
+        let (_prov, offset) = ptr.into_raw_parts();
         offset
     }
 
@@ -903,7 +902,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         // Our value must be in memory, otherwise we would not have set up `data_bytes`.
         let mplace = self.ecx.force_allocation(place)?;
         // Determine starting offset and size.
-        let (_prov, start_offset) = mplace.ptr().into_parts();
+        let (_prov, start_offset) = mplace.ptr().into_raw_parts();
         let (size, _align) = self
             .ecx
             .size_and_align_of_val(&mplace)?

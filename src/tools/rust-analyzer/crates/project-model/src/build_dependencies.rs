@@ -20,9 +20,7 @@ use toolchain::Tool;
 
 use crate::{
     CargoConfig, CargoFeatures, CargoWorkspace, InvocationStrategy, ManifestPath, Package, Sysroot,
-    TargetKind,
-    toolchain_info::{QueryConfig, version},
-    utf8_stdout,
+    TargetKind, utf8_stdout,
 };
 
 /// Output of the build script and proc-macro building steps for a workspace.
@@ -64,6 +62,7 @@ impl WorkspaceBuildScripts {
         workspace: &CargoWorkspace,
         progress: &dyn Fn(String),
         sysroot: &Sysroot,
+        toolchain: Option<&semver::Version>,
     ) -> io::Result<WorkspaceBuildScripts> {
         let current_dir = workspace.workspace_root();
 
@@ -74,6 +73,7 @@ impl WorkspaceBuildScripts {
             workspace.manifest_path(),
             current_dir,
             sysroot,
+            toolchain,
         )?;
         Self::run_per_ws(cmd, workspace, progress)
     }
@@ -95,6 +95,7 @@ impl WorkspaceBuildScripts {
             &ManifestPath::try_from(working_directory.clone()).unwrap(),
             working_directory,
             &Sysroot::empty(),
+            None,
         )?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and
         // `cargo check`. We shouldn't assume that package ids we see here are
@@ -311,7 +312,9 @@ impl WorkspaceBuildScripts {
                 match message {
                     Message::BuildScriptExecuted(mut message) => {
                         with_output_for(&message.package_id.repr, &mut |name, data| {
-                            progress(format!("running build-script: {name}"));
+                            progress(format!(
+                                "building compile-time-deps: build script {name} run"
+                            ));
                             let cfgs = {
                                 let mut acc = Vec::new();
                                 for cfg in &message.cfgs {
@@ -342,7 +345,9 @@ impl WorkspaceBuildScripts {
                     }
                     Message::CompilerArtifact(message) => {
                         with_output_for(&message.package_id.repr, &mut |name, data| {
-                            progress(format!("building proc-macros: {name}"));
+                            progress(format!(
+                                "building compile-time-deps: proc-macro {name} built"
+                            ));
                             if message.target.kind.contains(&cargo_metadata::TargetKind::ProcMacro)
                             {
                                 // Skip rmeta file
@@ -356,7 +361,7 @@ impl WorkspaceBuildScripts {
                         });
                     }
                     Message::CompilerMessage(message) => {
-                        progress(message.target.name);
+                        progress(format!("received compiler message for: {}", message.target.name));
 
                         if let Some(diag) = message.message.rendered.as_deref() {
                             push_err(diag);
@@ -387,12 +392,13 @@ impl WorkspaceBuildScripts {
         manifest_path: &ManifestPath,
         current_dir: &AbsPath,
         sysroot: &Sysroot,
+        toolchain: Option<&semver::Version>,
     ) -> io::Result<Command> {
-        let mut cmd = match config.run_build_script_command.as_deref() {
+        match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
                 let mut cmd = toolchain::command(program, current_dir, &config.extra_env);
                 cmd.args(args);
-                cmd
+                Ok(cmd)
             }
             _ => {
                 let mut cmd = sysroot.tool(Tool::Cargo, current_dir, &config.extra_env);
@@ -405,13 +411,6 @@ impl WorkspaceBuildScripts {
 
                 if let Some(target_dir) = &config.target_dir {
                     cmd.arg("--target-dir").arg(target_dir);
-                }
-
-                // --all-targets includes tests, benches and examples in addition to the
-                // default lib and bins. This is an independent concept from the --target
-                // flag below.
-                if config.all_targets {
-                    cmd.arg("--all-targets");
                 }
 
                 if let Some(target) = &config.target {
@@ -444,40 +443,47 @@ impl WorkspaceBuildScripts {
 
                 cmd.arg("--keep-going");
 
-                cmd
+                // If [`--compile-time-deps` flag](https://github.com/rust-lang/cargo/issues/14434) is
+                // available in current toolchain's cargo, use it to build compile time deps only.
+                const COMP_TIME_DEPS_MIN_TOOLCHAIN_VERSION: semver::Version = semver::Version {
+                    major: 1,
+                    minor: 89,
+                    patch: 0,
+                    pre: semver::Prerelease::EMPTY,
+                    build: semver::BuildMetadata::EMPTY,
+                };
+
+                let cargo_comp_time_deps_available =
+                    toolchain.is_some_and(|v| *v >= COMP_TIME_DEPS_MIN_TOOLCHAIN_VERSION);
+
+                if cargo_comp_time_deps_available {
+                    cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
+                    cmd.arg("-Zunstable-options");
+                    cmd.arg("--compile-time-deps");
+                    // we can pass this unconditionally, because we won't actually build the
+                    // binaries, and as such, this will succeed even on targets without libtest
+                    cmd.arg("--all-targets");
+                } else {
+                    // --all-targets includes tests, benches and examples in addition to the
+                    // default lib and bins. This is an independent concept from the --target
+                    // flag below.
+                    if config.all_targets {
+                        cmd.arg("--all-targets");
+                    }
+
+                    if config.wrap_rustc_in_build_scripts {
+                        // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
+                        // that to compile only proc macros and build scripts during the initial
+                        // `cargo check`.
+                        // We don't need this if we are using `--compile-time-deps` flag.
+                        let myself = std::env::current_exe()?;
+                        cmd.env("RUSTC_WRAPPER", myself);
+                        cmd.env("RA_RUSTC_WRAPPER", "1");
+                    }
+                }
+                Ok(cmd)
             }
-        };
-
-        // If [`--compile-time-deps` flag](https://github.com/rust-lang/cargo/issues/14434) is
-        // available in current toolchain's cargo, use it to build compile time deps only.
-        const COMP_TIME_DEPS_MIN_TOOLCHAIN_VERSION: semver::Version = semver::Version {
-            major: 1,
-            minor: 90,
-            patch: 0,
-            pre: semver::Prerelease::EMPTY,
-            build: semver::BuildMetadata::EMPTY,
-        };
-
-        let query_config = QueryConfig::Cargo(sysroot, manifest_path);
-        let toolchain = version::get(query_config, &config.extra_env).ok().flatten();
-        let cargo_comp_time_deps_available =
-            toolchain.is_some_and(|v| v >= COMP_TIME_DEPS_MIN_TOOLCHAIN_VERSION);
-
-        if cargo_comp_time_deps_available {
-            cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
-            cmd.arg("-Zunstable-options");
-            cmd.arg("--compile-time-deps");
-        } else if config.wrap_rustc_in_build_scripts {
-            // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
-            // that to compile only proc macros and build scripts during the initial
-            // `cargo check`.
-            // We don't need this if we are using `--compile-time-deps` flag.
-            let myself = std::env::current_exe()?;
-            cmd.env("RUSTC_WRAPPER", myself);
-            cmd.env("RA_RUSTC_WRAPPER", "1");
         }
-
-        Ok(cmd)
     }
 }
 

@@ -9,8 +9,10 @@ use triomphe::Arc;
 
 use crate::{
     AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, ModuleDefId,
-    StaticId, StructId, TraitId, TypeAliasId, UnionId, db::DefDatabase, expr_store::path::Path,
-    nameres::crate_def_map,
+    StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    db::DefDatabase,
+    expr_store::path::Path,
+    nameres::{assoc::TraitItems, crate_def_map},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -113,14 +115,16 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
             match def {
                 ModuleDefId::TraitId(trait_) => {
                     lang_items.collect_lang_item(db, trait_, LangItemTarget::Trait);
-                    db.trait_items(trait_).items.iter().for_each(|&(_, assoc_id)| match assoc_id {
-                        AssocItemId::FunctionId(f) => {
-                            lang_items.collect_lang_item(db, f, LangItemTarget::Function);
+                    TraitItems::query(db, trait_).items.iter().for_each(|&(_, assoc_id)| {
+                        match assoc_id {
+                            AssocItemId::FunctionId(f) => {
+                                lang_items.collect_lang_item(db, f, LangItemTarget::Function);
+                            }
+                            AssocItemId::TypeAliasId(alias) => {
+                                lang_items.collect_lang_item(db, alias, LangItemTarget::TypeAlias)
+                            }
+                            AssocItemId::ConstId(_) => {}
                         }
-                        AssocItemId::TypeAliasId(alias) => {
-                            lang_items.collect_lang_item(db, alias, LangItemTarget::TypeAlias)
-                        }
-                        AssocItemId::ConstId(_) => {}
                     });
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
@@ -304,6 +308,8 @@ impl LangItem {
 language_item_table! {
 //  Variant name,            Name,                     Getter method name,         Target                  Generic requirements;
     Sized,                   sym::sized,               sized_trait,                Target::Trait,          GenericRequirement::Exact(0);
+    MetaSized,               sym::meta_sized,          sized_trait,                Target::Trait,          GenericRequirement::Exact(0);
+    PointeeSized,            sym::pointee_sized,       sized_trait,                Target::Trait,          GenericRequirement::Exact(0);
     Unsize,                  sym::unsize,              unsize_trait,               Target::Trait,          GenericRequirement::Minimum(1);
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
     StructuralPeq,           sym::structural_peq,      structural_peq_trait,       Target::Trait,          GenericRequirement::None;

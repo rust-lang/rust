@@ -1209,6 +1209,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         modifiers: TraitBoundModifiers::NONE,
                         trait_ref: TraitRef { path: path.clone(), ref_id: t.id },
                         span: t.span,
+                        parens: ast::Parens::No,
                     },
                     itctx,
                 );
@@ -1268,9 +1269,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let path = self.make_lang_item_qpath(LangItem::Pin, span, Some(args));
                 hir::TyKind::Path(path)
             }
-            TyKind::BareFn(f) => {
+            TyKind::FnPtr(f) => {
                 let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
-                hir::TyKind::BareFn(self.arena.alloc(hir::BareFnTy {
+                hir::TyKind::FnPtr(self.arena.alloc(hir::FnPtrTy {
                     generic_params,
                     safety: self.lower_safety(f.safety, hir::Safety::Safe),
                     abi: self.lower_extern(f.ext),
@@ -1959,7 +1960,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 (hir::ParamName::Plain(self.lower_ident(param.ident)), kind)
             }
-            GenericParamKind::Const { ty, kw_span: _, default } => {
+            GenericParamKind::Const { ty, span: _, default } => {
                 let ty = self
                     .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault));
 

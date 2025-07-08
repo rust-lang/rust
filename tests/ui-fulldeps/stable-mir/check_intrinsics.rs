@@ -14,10 +14,10 @@
 
 extern crate rustc_middle;
 extern crate rustc_hir;
-#[macro_use]
-extern crate rustc_smir;
+
 extern crate rustc_driver;
 extern crate rustc_interface;
+#[macro_use]
 extern crate stable_mir;
 
 use stable_mir::mir::mono::{Instance, InstanceKind};

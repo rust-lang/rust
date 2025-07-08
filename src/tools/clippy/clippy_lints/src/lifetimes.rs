@@ -13,7 +13,7 @@ use rustc_hir::intravisit::{
     walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty, walk_where_predicate,
 };
 use rustc_hir::{
-    AmbigArg, BareFnTy, BodyId, FnDecl, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind,
+    AmbigArg, BodyId, FnDecl, FnPtrTy, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind,
     Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeKind, LifetimeParamKind, Node,
     PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereBoundPredicate, WherePredicate,
     WherePredicateKind, lang_items,
@@ -480,7 +480,7 @@ impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
 
     fn visit_ty(&mut self, ty: &'tcx Ty<'_, AmbigArg>) {
         match ty.kind {
-            TyKind::BareFn(&BareFnTy { decl, .. }) => {
+            TyKind::FnPtr(&FnPtrTy { decl, .. }) => {
                 let mut sub_visitor = RefVisitor::new(self.cx);
                 sub_visitor.visit_fn_decl(decl);
                 self.nested_elision_site_lts.append(&mut sub_visitor.all_lts());

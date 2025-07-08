@@ -393,6 +393,27 @@ pub fn check_incompatible_options_for_ci_rustc(
     Ok(())
 }
 
+pub(crate) const VALID_CODEGEN_BACKENDS: &[&str] = &["llvm", "cranelift", "gcc"];
+
+pub(crate) fn validate_codegen_backends(backends: Vec<String>, section: &str) -> Vec<String> {
+    for backend in &backends {
+        if let Some(stripped) = backend.strip_prefix(CODEGEN_BACKEND_PREFIX) {
+            panic!(
+                "Invalid value '{backend}' for '{section}.codegen-backends'. \
+                Codegen backends are defined without the '{CODEGEN_BACKEND_PREFIX}' prefix. \
+                Please, use '{stripped}' instead."
+            )
+        }
+        if !VALID_CODEGEN_BACKENDS.contains(&backend.as_str()) {
+            println!(
+                "HELP: '{backend}' for '{section}.codegen-backends' might fail. \
+                List of known good values: {VALID_CODEGEN_BACKENDS:?}"
+            );
+        }
+    }
+    backends
+}
+
 impl Config {
     pub fn apply_rust_config(
         &mut self,
@@ -571,24 +592,10 @@ impl Config {
             set(&mut self.ehcont_guard, ehcont_guard);
             self.llvm_libunwind_default =
                 llvm_libunwind.map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
-
-            if let Some(ref backends) = codegen_backends {
-                let available_backends = ["llvm", "cranelift", "gcc"];
-
-                self.rust_codegen_backends = backends.iter().map(|s| {
-                    if let Some(backend) = s.strip_prefix(CODEGEN_BACKEND_PREFIX) {
-                        if available_backends.contains(&backend) {
-                            panic!("Invalid value '{s}' for 'rust.codegen-backends'. Instead, please use '{backend}'.");
-                        } else {
-                            println!("HELP: '{s}' for 'rust.codegen-backends' might fail. \
-                                Codegen backends are mostly defined without the '{CODEGEN_BACKEND_PREFIX}' prefix. \
-                                In this case, it would be referred to as '{backend}'.");
-                        }
-                    }
-
-                    s.clone()
-                }).collect();
-            }
+            set(
+                &mut self.rust_codegen_backends,
+                codegen_backends.map(|backends| validate_codegen_backends(backends, "rust")),
+            );
 
             self.rust_codegen_units = codegen_units.map(threads_from_config);
             self.rust_codegen_units_std = codegen_units_std.map(threads_from_config);

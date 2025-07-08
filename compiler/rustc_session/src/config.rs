@@ -190,7 +190,7 @@ pub struct CoverageOptions {
     /// to keep supporting this flag, remove it.
     pub no_mir_spans: bool,
 
-    /// `-Zcoverage-options=discard-all-spans-in-codegen`: During codgen,
+    /// `-Zcoverage-options=discard-all-spans-in-codegen`: During codegen,
     /// discard all coverage spans as though they were invalid. Needed by
     /// regression tests for #133606, because we don't have an easy way to
     /// reproduce it from actual source code.
@@ -3340,7 +3340,7 @@ pub enum OomStrategy {
 }
 
 impl OomStrategy {
-    pub const SYMBOL: &'static str = "__rust_alloc_error_handler_should_panic";
+    pub const SYMBOL: &'static str = "__rust_alloc_error_handler_should_panic_v2";
 
     pub fn should_panic(self) -> u8 {
         match self {

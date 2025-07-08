@@ -348,6 +348,10 @@ pub trait TTMacroExpander {
         span: Span,
         input: TokenStream,
     ) -> MacroExpanderResult<'cx>;
+
+    fn get_unused_rule(&self, _rule_i: usize) -> Option<(&Ident, Span)> {
+        None
+    }
 }
 
 pub type MacroExpanderResult<'cx> = ExpandResult<Box<dyn MacResult + 'cx>, ()>;
@@ -880,7 +884,7 @@ impl SyntaxExtension {
         is_local: bool,
     ) -> SyntaxExtension {
         let allow_internal_unstable =
-            find_attr!(attrs, AttributeKind::AllowInternalUnstable(i) => i)
+            find_attr!(attrs, AttributeKind::AllowInternalUnstable(i, _) => i)
                 .map(|i| i.as_slice())
                 .unwrap_or_default();
         // FIXME(jdonszelman): allow_internal_unsafe isn't yet new-style

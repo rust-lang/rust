@@ -14,7 +14,7 @@ use crate::{fluent_generated, parse_version};
 
 /// Emitter of a builtin lint from `cfg_matches`.
 ///
-/// Used to support emiting a lint (currently on check-cfg), either:
+/// Used to support emitting a lint (currently on check-cfg), either:
 ///  - as an early buffered lint (in `rustc`)
 ///  - or has a "normal" lint from HIR (in `rustdoc`)
 pub trait CfgMatchesLintEmitter {

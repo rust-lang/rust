@@ -15,7 +15,7 @@ use tracing::{info, instrument, trace};
 
 use super::{
     CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
-    Projectable, Provenance, ReturnAction, Scalar, StackPopCleanup, StackPopInfo, interp_ok,
+    Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo, interp_ok,
     throw_ub, throw_ub_custom, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
@@ -340,7 +340,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
         destination: &PlaceTy<'tcx, M::Provenance>,
-        mut stack_pop: StackPopCleanup,
+        mut cont: ReturnContinuation,
     ) -> InterpResult<'tcx> {
         // Compute callee information.
         // FIXME: for variadic support, do we have to somehow determine callee's extra_args?
@@ -365,15 +365,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         if !callee_fn_abi.can_unwind {
             // The callee cannot unwind, so force the `Unreachable` unwind handling.
-            match &mut stack_pop {
-                StackPopCleanup::Root { .. } => {}
-                StackPopCleanup::Goto { unwind, .. } => {
+            match &mut cont {
+                ReturnContinuation::Stop { .. } => {}
+                ReturnContinuation::Goto { unwind, .. } => {
                     *unwind = mir::UnwindAction::Unreachable;
                 }
             }
         }
 
-        self.push_stack_frame_raw(instance, body, destination, stack_pop)?;
+        self.push_stack_frame_raw(instance, body, destination, cont)?;
 
         // If an error is raised here, pop the frame again to get an accurate backtrace.
         // To this end, we wrap it all in a `try` block.
@@ -617,7 +617,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     &args,
                     with_caller_location,
                     destination,
-                    StackPopCleanup::Goto { ret: target, unwind },
+                    ReturnContinuation::Goto { ret: target, unwind },
                 )
             }
             // `InstanceKind::Virtual` does not have callable MIR. Calls to `Virtual` instances must be
@@ -643,13 +643,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             break self.ref_to_mplace(&val)?;
                         }
                         ty::Dynamic(.., ty::Dyn) => break receiver.assert_mem_place(), // no immediate unsized values
-                        ty::Dynamic(.., ty::DynStar) => {
-                            // Not clear how to handle this, so far we assume the receiver is always a pointer.
-                            span_bug!(
-                                self.cur_span(),
-                                "by-value calls on a `dyn*`... are those a thing?"
-                            );
-                        }
                         _ => {
                             // Not there yet, search for the only non-ZST field.
                             // (The rules for `DispatchFromDyn` ensure there's exactly one such field.)
@@ -662,39 +655,23 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
 
                 // Obtain the underlying trait we are working on, and the adjusted receiver argument.
-                let (trait_, dyn_ty, adjusted_recv) = if let ty::Dynamic(data, _, ty::DynStar) =
-                    receiver_place.layout.ty.kind()
-                {
-                    let recv = self.unpack_dyn_star(&receiver_place, data)?;
-
-                    (data.principal(), recv.layout.ty, recv.ptr())
-                } else {
-                    // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
-                    // (For that reason we also cannot use `unpack_dyn_trait`.)
-                    let receiver_tail =
-                        self.tcx.struct_tail_for_codegen(receiver_place.layout.ty, self.typing_env);
-                    let ty::Dynamic(receiver_trait, _, ty::Dyn) = receiver_tail.kind() else {
-                        span_bug!(
-                            self.cur_span(),
-                            "dynamic call on non-`dyn` type {}",
-                            receiver_tail
-                        )
-                    };
-                    assert!(receiver_place.layout.is_unsized());
-
-                    // Get the required information from the vtable.
-                    let vptr = receiver_place.meta().unwrap_meta().to_pointer(self)?;
-                    let dyn_ty = self.get_ptr_vtable_ty(vptr, Some(receiver_trait))?;
-
-                    // It might be surprising that we use a pointer as the receiver even if this
-                    // is a by-val case; this works because by-val passing of an unsized `dyn
-                    // Trait` to a function is actually desugared to a pointer.
-                    (receiver_trait.principal(), dyn_ty, receiver_place.ptr())
+                // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
+                // (For that reason we also cannot use `unpack_dyn_trait`.)
+                let receiver_tail =
+                    self.tcx.struct_tail_for_codegen(receiver_place.layout.ty, self.typing_env);
+                let ty::Dynamic(receiver_trait, _, ty::Dyn) = receiver_tail.kind() else {
+                    span_bug!(self.cur_span(), "dynamic call on non-`dyn` type {}", receiver_tail)
                 };
+                assert!(receiver_place.layout.is_unsized());
+
+                // Get the required information from the vtable.
+                let vptr = receiver_place.meta().unwrap_meta().to_pointer(self)?;
+                let dyn_ty = self.get_ptr_vtable_ty(vptr, Some(receiver_trait))?;
+                let adjusted_recv = receiver_place.ptr();
 
                 // Now determine the actual method to call. Usually we use the easy way of just
                 // looking up the method at index `idx`.
-                let vtable_entries = self.vtable_entries(trait_, dyn_ty);
+                let vtable_entries = self.vtable_entries(receiver_trait.principal(), dyn_ty);
                 let Some(ty::VtblEntry::Method(fn_inst)) = vtable_entries.get(idx).copied() else {
                     // FIXME(fee1-dead) these could be variants of the UB info enum instead of this
                     throw_ub_custom!(fluent::const_eval_dyn_call_not_a_method);
@@ -778,8 +755,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Note that we are using `pop_stack_frame_raw` and not `return_from_current_stack_frame`,
         // as the latter "executes" the goto to the return block, but we don't want to,
         // only the tail called function should return to the current return block.
-        let StackPopInfo { return_action, return_to_block, return_place } = self
-            .pop_stack_frame_raw(false, |_this, _return_place| {
+        let StackPopInfo { return_action, return_cont, return_place } =
+            self.pop_stack_frame_raw(false, |_this, _return_place| {
                 // This function's return value is just discarded, the tail-callee will fill in the return place instead.
                 interp_ok(())
             })?;
@@ -787,7 +764,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         assert_eq!(return_action, ReturnAction::Normal);
 
         // Take the "stack pop cleanup" info, and use that to initiate the next call.
-        let StackPopCleanup::Goto { ret, unwind } = return_to_block else {
+        let ReturnContinuation::Goto { ret, unwind } = return_cont else {
             bug!("can't tailcall as root");
         };
 
@@ -829,10 +806,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             ty::Dynamic(data, _, ty::Dyn) => {
                 // Dropping a trait object. Need to find actual drop fn.
                 self.unpack_dyn_trait(&place, data)?
-            }
-            ty::Dynamic(data, _, ty::DynStar) => {
-                // Dropping a `dyn*`. Need to find actual drop fn.
-                self.unpack_dyn_star(&place, data)?
             }
             _ => {
                 debug_assert_eq!(
@@ -923,23 +896,23 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Normal return, figure out where to jump.
         if unwinding {
             // Follow the unwind edge.
-            match stack_pop_info.return_to_block {
-                StackPopCleanup::Goto { unwind, .. } => {
+            match stack_pop_info.return_cont {
+                ReturnContinuation::Goto { unwind, .. } => {
                     // This must be the very last thing that happens, since it can in fact push a new stack frame.
                     self.unwind_to_block(unwind)
                 }
-                StackPopCleanup::Root { .. } => {
-                    panic!("encountered StackPopCleanup::Root when unwinding!")
+                ReturnContinuation::Stop { .. } => {
+                    panic!("encountered ReturnContinuation::Stop when unwinding!")
                 }
             }
         } else {
             // Follow the normal return edge.
-            match stack_pop_info.return_to_block {
-                StackPopCleanup::Goto { ret, .. } => self.return_to_block(ret),
-                StackPopCleanup::Root { .. } => {
+            match stack_pop_info.return_cont {
+                ReturnContinuation::Goto { ret, .. } => self.return_to_block(ret),
+                ReturnContinuation::Stop { .. } => {
                     assert!(
                         self.stack().is_empty(),
-                        "only the bottommost frame can have StackPopCleanup::Root"
+                        "only the bottommost frame can have ReturnContinuation::Stop"
                     );
                     interp_ok(())
                 }

@@ -164,7 +164,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 sub_region @ Region(Interned(RePlaceholder(_), _)),
                 sup_region,
             )) => self.try_report_trait_placeholder_mismatch(
-                (!sup_region.has_name()).then_some(*sup_region),
+                (!sup_region.is_named(self.tcx())).then_some(*sup_region),
                 cause,
                 Some(*sub_region),
                 None,
@@ -176,7 +176,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 sub_region,
                 sup_region @ Region(Interned(RePlaceholder(_), _)),
             )) => self.try_report_trait_placeholder_mismatch(
-                (!sub_region.has_name()).then_some(*sub_region),
+                (!sub_region.is_named(self.tcx())).then_some(*sub_region),
                 cause,
                 None,
                 Some(*sup_region),

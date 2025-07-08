@@ -2,8 +2,6 @@
 //! the `clean` types but with some fields removed or stringified to simplify the output and not
 //! expose unstable compiler internals.
 
-#![allow(rustc::default_hash_types)]
-
 use rustc_abi::ExternAbi;
 use rustc_ast::ast;
 use rustc_attr_data_structures::{self as attrs, DeprecatedSince};

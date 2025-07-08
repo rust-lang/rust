@@ -77,7 +77,7 @@ impl Builder<'_> {
                 *target,
             ),
             // doesn't depend on compiler, same as host compiler
-            _ => self.msg(Kind::Build, build_stage, format_args!("tool {tool}"), *host, *target),
+            _ => self.msg(kind, build_stage, format_args!("tool {tool}"), *host, *target),
         }
     }
 }
@@ -120,14 +120,14 @@ impl Step for ToolBuild {
 
         match self.mode {
             Mode::ToolRustc => {
-                // If compiler was forced, its artifacts should be prepared earlier.
+                // If compiler was forced, its artifacts should have been prepared earlier.
                 if !self.compiler.is_forced_compiler() {
                     builder.std(self.compiler, self.compiler.host);
                     builder.ensure(compile::Rustc::new(self.compiler, target));
                 }
             }
             Mode::ToolStd => {
-                // If compiler was forced, its artifacts should be prepared earlier.
+                // If compiler was forced, its artifacts should have been prepared earlier.
                 if !self.compiler.is_forced_compiler() {
                     builder.std(self.compiler, target)
                 }
@@ -1195,7 +1195,6 @@ macro_rules! tool_extended {
                 Some(
                     StepMetadata::build($tool_name, self.target)
                         .built_by(self.compiler.with_stage(self.compiler.stage.saturating_sub(1)))
-                        .stage(self.compiler.stage)
                 )
             }
         }

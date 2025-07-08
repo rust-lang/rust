@@ -272,5 +272,5 @@ fn crate_name(db: &RootDatabase, krate: Crate) -> Symbol {
         .display_name
         .as_deref()
         .cloned()
-        .unwrap_or_else(|| Symbol::integer(salsa::plumbing::AsId::as_id(&krate).as_u32() as usize))
+        .unwrap_or_else(|| Symbol::integer(salsa::plumbing::AsId::as_id(&krate).index() as usize))
 }

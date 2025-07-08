@@ -31,7 +31,7 @@ LL - const TEST3: _ = Some(42);
 LL + const TEST3: Option<i32> = Some(42);
    |
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for constant items
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/typeck_type_placeholder_item_help.rs:13:22
    |
 LL | const TEST4: fn() -> _ = 42;

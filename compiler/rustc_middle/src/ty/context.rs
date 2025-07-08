@@ -10,13 +10,14 @@ use std::cmp::Ordering;
 use std::env::VarError;
 use std::ffi::OsStr;
 use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
+use std::marker::{PhantomData, PointeeSized};
 use std::ops::{Bound, Deref};
 use std::sync::{Arc, OnceLock};
 use std::{fmt, iter, mem};
 
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::defer;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -43,7 +44,6 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::cache::WithDepNode;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_serialize::PointeeSized;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
@@ -1648,32 +1648,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// `rustc_layout_scalar_valid_range` attribute.
     // FIXME(eddyb) this is an awkward spot for this method, maybe move it?
     pub fn layout_scalar_valid_range(self, def_id: DefId) -> (Bound<u128>, Bound<u128>) {
-        let get = |name| {
-            let Some(attr) = self.get_attr(def_id, name) else {
-                return Bound::Unbounded;
-            };
-            debug!("layout_scalar_valid_range: attr={:?}", attr);
-            if let Some(
-                &[
-                    ast::MetaItemInner::Lit(ast::MetaItemLit {
-                        kind: ast::LitKind::Int(a, _), ..
-                    }),
-                ],
-            ) = attr.meta_item_list().as_deref()
-            {
-                Bound::Included(a.get())
-            } else {
-                self.dcx().span_delayed_bug(
-                    attr.span(),
-                    "invalid rustc_layout_scalar_valid_range attribute",
-                );
-                Bound::Unbounded
-            }
-        };
-        (
-            get(sym::rustc_layout_scalar_valid_range_start),
-            get(sym::rustc_layout_scalar_valid_range_end),
-        )
+        let start = find_attr!(self.get_all_attrs(def_id), AttributeKind::RustcLayoutScalarValidRangeStart(n, _) => Bound::Included(**n)).unwrap_or(Bound::Unbounded);
+        let end = find_attr!(self.get_all_attrs(def_id), AttributeKind::RustcLayoutScalarValidRangeEnd(n, _) => Bound::Included(**n)).unwrap_or(Bound::Unbounded);
+        (start, end)
     }
 
     pub fn lift<T: Lift<TyCtxt<'tcx>>>(self, value: T) -> Option<T::Lifted> {
@@ -2081,9 +2058,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> {
-        // Create a dependency to the red node to be sure we re-execute this when the amount of
-        // definitions change.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        // Depend on the `analysis` query to ensure compilation if finished.
+        self.ensure_ok().analysis(());
 
         let definitions = &self.untracked.definitions;
         gen {
@@ -2103,9 +2079,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn def_path_table(self) -> &'tcx rustc_hir::definitions::DefPathTable {
-        // Create a dependency to the crate to be sure we re-execute this when the amount of
-        // definitions change.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        // Depend on the `analysis` query to ensure compilation if finished.
+        self.ensure_ok().analysis(());
 
         // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
@@ -2310,7 +2285,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// All traits in the crate graph, including those not visible to the user.
-    pub fn all_traits(self) -> impl Iterator<Item = DefId> {
+    pub fn all_traits_including_private(self) -> impl Iterator<Item = DefId> {
         iter::once(LOCAL_CRATE)
             .chain(self.crates(()).iter().copied())
             .flat_map(move |cnum| self.traits(cnum).iter().copied())
@@ -3304,10 +3279,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     return ty::Region::new_late_param(
                         self,
                         new_parent.to_def_id(),
-                        ty::LateParamRegionKind::Named(
-                            lbv.to_def_id(),
-                            self.item_name(lbv.to_def_id()),
-                        ),
+                        ty::LateParamRegionKind::Named(lbv.to_def_id()),
                     );
                 }
                 resolve_bound_vars::ResolvedArg::Error(guar) => {
@@ -3389,6 +3361,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolver_for_lowering_raw(()).0
     }
 
+    pub fn metadata_dep_node(self) -> crate::dep_graph::DepNode {
+        crate::dep_graph::make_metadata(self)
+    }
+
     /// Given an `impl_id`, return the trait it implements.
     /// Return `None` if this is an inherent impl.
     pub fn impl_trait_ref(
@@ -3438,10 +3414,6 @@ pub struct DeducedParamAttrs {
 pub fn provide(providers: &mut Providers) {
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
-    providers.names_imported_by_glob_use = |tcx, id| {
-        tcx.arena.alloc(tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default())
-    };
-
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
     providers.is_panic_runtime =

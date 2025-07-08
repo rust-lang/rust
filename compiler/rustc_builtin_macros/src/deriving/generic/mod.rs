@@ -414,12 +414,12 @@ fn find_type_parameters(
     impl<'a, 'b> visit::Visitor<'a> for Visitor<'a, 'b> {
         fn visit_ty(&mut self, ty: &'a ast::Ty) {
             let stack_len = self.bound_generic_params_stack.len();
-            if let ast::TyKind::BareFn(bare_fn) = &ty.kind
-                && !bare_fn.generic_params.is_empty()
+            if let ast::TyKind::FnPtr(fn_ptr) = &ty.kind
+                && !fn_ptr.generic_params.is_empty()
             {
                 // Given a field `x: for<'a> fn(T::SomeType<'a>)`, we wan't to account for `'a` so
                 // that we generate `where for<'a> T::SomeType<'a>: ::core::clone::Clone`. #122622
-                self.bound_generic_params_stack.extend(bare_fn.generic_params.iter().cloned());
+                self.bound_generic_params_stack.extend(fn_ptr.generic_params.iter().cloned());
             }
 
             if let ast::TyKind::Path(_, path) = &ty.kind
@@ -485,7 +485,7 @@ impl<'a> TraitDef<'a> {
             Annotatable::Item(item) => {
                 let is_packed = matches!(
                     AttributeParser::parse_limited(cx.sess, &item.attrs, sym::repr, item.span, item.id),
-                    Some(Attribute::Parsed(AttributeKind::Repr(r))) if r.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
+                    Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
                 );
 
                 let newitem = match &item.kind {
@@ -664,10 +664,10 @@ impl<'a> TraitDef<'a> {
 
                     cx.typaram(param.ident.span.with_ctxt(ctxt), param.ident, bounds, None)
                 }
-                GenericParamKind::Const { ty, kw_span, .. } => {
+                GenericParamKind::Const { ty, span, .. } => {
                     let const_nodefault_kind = GenericParamKind::Const {
                         ty: ty.clone(),
-                        kw_span: kw_span.with_ctxt(ctxt),
+                        span: span.with_ctxt(ctxt),
 
                         // We can't have default values inside impl block
                         default: None,

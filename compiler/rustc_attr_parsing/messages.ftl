@@ -6,6 +6,10 @@ attr_parsing_deprecated_item_suggestion =
     .help = add `#![feature(deprecated_suggestion)]` to the crate root
     .note = see #94785 for more details
 
+attr_parsing_empty_attribute =
+    unused attribute
+    .suggestion = remove this attribute
+
 attr_parsing_empty_confusables =
     expected at least one confusable name
 attr_parsing_expected_one_cfg_pattern =
@@ -98,6 +102,8 @@ attr_parsing_non_ident_feature =
     'feature' is not an identifier
 
 attr_parsing_null_on_export = `export_name` may not contain null characters
+
+attr_parsing_null_on_link_section = `link_section` may not contain null characters
 
 attr_parsing_repr_ident =
     meta item in `repr` must be an identifier

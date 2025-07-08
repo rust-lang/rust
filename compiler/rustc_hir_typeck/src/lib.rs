@@ -536,7 +536,12 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
     diag.emit()
 }
 
+/// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
 pub fn provide(providers: &mut Providers) {
-    method::provide(providers);
-    *providers = Providers { typeck, used_trait_imports, ..*providers };
+    *providers = Providers {
+        method_autoderef_steps: method::probe::method_autoderef_steps,
+        typeck,
+        used_trait_imports,
+        ..*providers
+    };
 }

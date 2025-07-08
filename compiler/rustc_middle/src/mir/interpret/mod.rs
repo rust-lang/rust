@@ -77,7 +77,7 @@ impl<'tcx> GlobalId<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, HashStable)]
 pub struct LitToConstInput<'tcx> {
     /// The absolute value of the resultant constant.
-    pub lit: &'tcx LitKind,
+    pub lit: LitKind,
     /// The type of the constant.
     pub ty: Ty<'tcx>,
     /// If the constant is negative.
@@ -297,7 +297,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
         match self {
             GlobalAlloc::Function { .. } => cx.data_layout().instruction_address_space,
             GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) | GlobalAlloc::VTable(..) => {
-                AddressSpace::DATA
+                AddressSpace::ZERO
             }
         }
     }
@@ -380,7 +380,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
             GlobalAlloc::Function { .. } => (Size::ZERO, Align::ONE),
             GlobalAlloc::VTable(..) => {
                 // No data to be accessed here. But vtables are pointer-aligned.
-                return (Size::ZERO, tcx.data_layout.pointer_align.abi);
+                return (Size::ZERO, tcx.data_layout.pointer_align().abi);
             }
         }
     }

@@ -4,12 +4,12 @@ version = "0.2.0"
 edition = "2021"
 
 [dependencies]
-bstr = "1.6.0"
-object = "0.36.2"
-similar = "2.5.0"
+bstr = "1.12"
+object = "0.37"
+similar = "2.7"
 wasmparser = { version = "0.219", default-features = false, features = ["std"] }
-regex = "1.8" # 1.8 to avoid memchr 2.6.0, as 2.5.0 is pinned in the workspace
-gimli = "0.31.0"
+regex = "1.11"
+gimli = "0.32"
 build_helper = { path = "../../build_helper" }
 serde_json = "1.0"
 libc = "0.2"
