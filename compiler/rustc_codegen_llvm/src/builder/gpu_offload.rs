@@ -15,10 +15,9 @@ pub(crate) fn handle_gpu_code<'ll>(
     _cgcx: &CodegenContext<LlvmCodegenBackend>,
     cx: &'ll SimpleCx<'_>,
 ) {
-    let (offload_entry_ty, at_one, begin, update, end, tgt_bin_desc, fn_ty) = gen_globals(&cx);
-
     let mut o_types = vec![];
     let mut kernels = vec![];
+    let offload_entry_ty = add_tgt_offload_entry(&cx);
     for num in 0..9 {
         let kernel = cx.get_function(&format!("kernel_{num}"));
         if let Some(kernel) = kernel {
@@ -26,45 +25,14 @@ pub(crate) fn handle_gpu_code<'ll>(
             kernels.push(kernel);
         }
     }
-    gen_call_handling(&cx, &kernels, at_one, begin, update, end, tgt_bin_desc, fn_ty, &o_types);
+
+    gen_call_handling(&cx, &kernels, &o_types);
 }
 
-// The meaning of the __tgt_offload_entry (as per llvm docs) is
-// Type,  Identifier, Description
-// void*,   addr,     Address of global symbol within device image (function or global)
-// char*,   name,     Name of the symbol
-// size_t,  size,     Size of the entry info (0 if it is a function)
-// int32_t, flags,    Flags associated with the entry (see Target Region Entry Flags)
-// int32_t, reserved, Reserved, to be used by the runtime library.
-pub(crate) fn add_tgt_offload_entry<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Type {
-    let offload_entry_ty = cx.type_named_struct("struct.__tgt_offload_entry");
-    let tptr = cx.type_ptr();
-    let ti64 = cx.type_i64();
-    let ti32 = cx.type_i32();
-    let ti16 = cx.type_i16();
-    let entry_elements = vec![ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr];
-    cx.set_struct_body(offload_entry_ty, &entry_elements, false);
-    offload_entry_ty
-}
-
-fn gen_globals<'ll>(
-    cx: &'ll SimpleCx<'_>,
-) -> (
-    &'ll llvm::Type,
-    &'ll llvm::Value,
-    &'ll llvm::Value,
-    &'ll llvm::Value,
-    &'ll llvm::Value,
-    &'ll llvm::Type,
-    &'ll llvm::Type,
-) {
-    let offload_entry_ty = add_tgt_offload_entry(&cx);
-    let kernel_arguments_ty = cx.type_named_struct("struct.__tgt_kernel_arguments");
-    let tptr = cx.type_ptr();
-    let ti64 = cx.type_i64();
-    let ti32 = cx.type_i32();
-    let tarr = cx.type_array(ti32, 3);
-
+// What is our @1 here? A magic global, used in our data_{begin/update/end}_mapper:
+// @0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
+// @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
+fn generate_at_one<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Value {
     // @0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
     let unknown_txt = ";unknown;unknown;0;0;;";
     let c_entry_name = CString::new(unknown_txt).unwrap();
@@ -87,11 +55,33 @@ fn gen_globals<'ll>(
     cx.set_struct_body(struct_ident_ty, &struct_elems_ty, false);
     let at_one = add_unnamed_global(&cx, &"", initializer, PrivateLinkage);
     llvm::set_alignment(at_one, Align::EIGHT);
+    at_one
+}
 
-    // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
-    let tgt_bin_desc_ty = vec![ti32, tptr, tptr, tptr];
-    let tgt_bin_desc_name = cx.type_named_struct("struct.__tgt_bin_desc");
-    cx.set_struct_body(tgt_bin_desc_name, &tgt_bin_desc_ty, false);
+// The meaning of the __tgt_offload_entry (as per llvm docs) is
+// Type,  Identifier, Description
+// void*,   addr,     Address of global symbol within device image (function or global)
+// char*,   name,     Name of the symbol
+// size_t,  size,     Size of the entry info (0 if it is a function)
+// int32_t, flags,    Flags associated with the entry (see Target Region Entry Flags)
+// int32_t, reserved, Reserved, to be used by the runtime library.
+pub(crate) fn add_tgt_offload_entry<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Type {
+    let offload_entry_ty = cx.type_named_struct("struct.__tgt_offload_entry");
+    let tptr = cx.type_ptr();
+    let ti64 = cx.type_i64();
+    let ti32 = cx.type_i32();
+    let ti16 = cx.type_i16();
+    let entry_elements = vec![ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr];
+    cx.set_struct_body(offload_entry_ty, &entry_elements, false);
+    offload_entry_ty
+}
+
+fn gen_tgt_kernel_global<'ll>(cx: &'ll SimpleCx<'_>) {
+    let kernel_arguments_ty = cx.type_named_struct("struct.__tgt_kernel_arguments");
+    let tptr = cx.type_ptr();
+    let ti64 = cx.type_i64();
+    let ti32 = cx.type_i32();
+    let tarr = cx.type_array(ti32, 3);
 
     // For each kernel to run on the gpu, we will later generate one entry of this type.
     // coppied from LLVM
@@ -111,47 +101,32 @@ fn gen_globals<'ll>(
 
     cx.set_struct_body(kernel_arguments_ty, &kernel_elements, false);
     // For now we don't handle kernels, so for now we just add a global dummy
-    // to make sure that the __tgt_offload_entrr is defined and handled correctly.
+    // to make sure that the __tgt_offload_entry is defined and handled correctly.
     cx.declare_global("my_struct_global2", kernel_arguments_ty);
+}
 
-    // Move data to the gpu
-    let mapper_begin = "__tgt_target_data_begin_mapper";
-    // Update data on the gpu, currently not used.
-    let mapper_update = String::from("__tgt_target_data_update_mapper");
-    // Move data from the GPU
-    let mapper_end = String::from("__tgt_target_data_end_mapper");
+fn gen_tgt_data_mappers<'ll>(
+    cx: &'ll SimpleCx<'_>,
+) -> (&'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Type) {
+    let tptr = cx.type_ptr();
+    let ti64 = cx.type_i64();
+    let ti32 = cx.type_i32();
+
     let args = vec![tptr, ti64, ti32, tptr, tptr, tptr, tptr, tptr, tptr];
     let mapper_fn_ty = cx.type_func(&args, cx.type_void());
-    let foo = crate::declare::declare_simple_fn(
-        &cx,
-        &mapper_begin,
-        llvm::CallConv::CCallConv,
-        llvm::UnnamedAddr::No,
-        llvm::Visibility::Default,
-        mapper_fn_ty,
-    );
-    let bar = crate::declare::declare_simple_fn(
-        &cx,
-        &mapper_update,
-        llvm::CallConv::CCallConv,
-        llvm::UnnamedAddr::No,
-        llvm::Visibility::Default,
-        mapper_fn_ty,
-    );
-    let baz = crate::declare::declare_simple_fn(
-        &cx,
-        &mapper_end,
-        llvm::CallConv::CCallConv,
-        llvm::UnnamedAddr::No,
-        llvm::Visibility::Default,
-        mapper_fn_ty,
-    );
-    let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
-    attributes::apply_to_llfn(foo, Function, &[nounwind]);
-    attributes::apply_to_llfn(bar, Function, &[nounwind]);
-    attributes::apply_to_llfn(baz, Function, &[nounwind]);
+    let mapper_begin = "__tgt_target_data_begin_mapper";
+    let mapper_update = "__tgt_target_data_update_mapper";
+    let mapper_end = "__tgt_target_data_end_mapper";
+    let begin_mapper_decl = declare_offload_fn(&cx, mapper_begin, mapper_fn_ty);
+    let update_mapper_decl = declare_offload_fn(&cx, mapper_update, mapper_fn_ty);
+    let end_mapper_decl = declare_offload_fn(&cx, mapper_end, mapper_fn_ty);
 
-    (offload_entry_ty, at_one, foo, bar, baz, tgt_bin_desc_name, mapper_fn_ty)
+    let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
+    attributes::apply_to_llfn(begin_mapper_decl, Function, &[nounwind]);
+    attributes::apply_to_llfn(update_mapper_decl, Function, &[nounwind]);
+    attributes::apply_to_llfn(end_mapper_decl, Function, &[nounwind]);
+
+    (begin_mapper_decl, update_mapper_decl, end_mapper_decl, mapper_fn_ty)
 }
 
 fn add_priv_unnamed_arr<'ll>(cx: &SimpleCx<'ll>, name: &str, vals: &[u64]) -> &'ll llvm::Value {
@@ -223,10 +198,10 @@ fn gen_define_handling<'ll>(
 
     let c_entry_name = CString::new(format!("kernel_{num}")).unwrap();
     let c_val = c_entry_name.as_bytes_with_nul();
-    let foo = format!(".offloading.entry_name.{num}");
+    let offload_entry_name = format!(".offloading.entry_name.{num}");
 
     let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
-    let llglobal = add_unnamed_global(&cx, &foo, initializer, InternalLinkage);
+    let llglobal = add_unnamed_global(&cx, &offload_entry_name, initializer, InternalLinkage);
     llvm::set_alignment(llglobal, Align::ONE);
     let c_section_name = CString::new(".llvm.rodata.offloading").unwrap();
     llvm::set_section(llglobal, &c_section_name);
@@ -259,6 +234,21 @@ fn gen_define_handling<'ll>(
     o_types
 }
 
+fn declare_offload_fn<'ll>(
+    cx: &'ll SimpleCx<'_>,
+    name: &str,
+    ty: &'ll llvm::Type,
+) -> &'ll llvm::Value {
+    crate::declare::declare_simple_fn(
+        cx,
+        name,
+        llvm::CallConv::CCallConv,
+        llvm::UnnamedAddr::No,
+        llvm::Visibility::Default,
+        ty,
+    )
+}
+
 // For each kernel *call*, we now use some of our previous declared globals to move data to and from
 // the gpu. We don't have a proper frontend yet, so we assume that every call to a kernel function
 // from main is intended to run on the GPU. For now, we only handle the data transfer part of it.
@@ -282,14 +272,18 @@ fn gen_define_handling<'ll>(
 fn gen_call_handling<'ll>(
     cx: &'ll SimpleCx<'_>,
     _kernels: &[&'ll llvm::Value],
-    s_ident_t: &'ll llvm::Value,
-    begin: &'ll llvm::Value,
-    _update: &'ll llvm::Value,
-    end: &'ll llvm::Value,
-    tgt_bin_desc: &'ll llvm::Type,
-    fn_ty: &'ll llvm::Type,
     o_types: &[&'ll llvm::Value],
 ) {
+    // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
+    let tptr = cx.type_ptr();
+    let ti32 = cx.type_i32();
+    let tgt_bin_desc_ty = vec![ti32, tptr, tptr, tptr];
+    let tgt_bin_desc = cx.type_named_struct("struct.__tgt_bin_desc");
+    cx.set_struct_body(tgt_bin_desc, &tgt_bin_desc_ty, false);
+
+    gen_tgt_kernel_global(&cx);
+    let (begin_mapper_decl, _, end_mapper_decl, fn_ty) = gen_tgt_data_mappers(&cx);
+
     let main_fn = cx.get_function("main");
     if let Some(main_fn) = main_fn {
         let kernel_name = "kernel_1";
@@ -351,39 +345,17 @@ fn gen_call_handling<'ll>(
             Align::from_bytes(8).unwrap(),
         );
 
-        let tptr = cx.type_ptr();
-        let mapper_fn_ty = cx.type_func(&[tptr], cx.type_void());
-        let foo = crate::declare::declare_simple_fn(
-            &cx,
-            &"__tgt_register_lib",
-            llvm::CallConv::CCallConv,
-            llvm::UnnamedAddr::No,
-            llvm::Visibility::Default,
-            mapper_fn_ty,
-        );
-        let bar = crate::declare::declare_simple_fn(
-            &cx,
-            &"__tgt_unregister_lib",
-            llvm::CallConv::CCallConv,
-            llvm::UnnamedAddr::No,
-            llvm::Visibility::Default,
-            mapper_fn_ty,
-        );
+        let mapper_fn_ty = cx.type_func(&[cx.type_ptr()], cx.type_void());
+        let register_lib_decl = declare_offload_fn(&cx, "__tgt_register_lib", mapper_fn_ty);
+        let unregister_lib_decl = declare_offload_fn(&cx, "__tgt_unregister_lib", mapper_fn_ty);
         let init_ty = cx.type_func(&[], cx.type_void());
-        let baz = crate::declare::declare_simple_fn(
-            &cx,
-            &"__tgt_init_all_rtls",
-            llvm::CallConv::CCallConv,
-            llvm::UnnamedAddr::No,
-            llvm::Visibility::Default,
-            init_ty,
-        );
-
-        builder.call(mapper_fn_ty, foo, &[tgt_bin_desc_alloca], None);
-        builder.call(init_ty, baz, &[], None);
+        let init_rtls_decl = declare_offload_fn(cx, "__tgt_init_all_rtls", init_ty);
 
         // call void @__tgt_register_lib(ptr noundef %6)
+        builder.call(mapper_fn_ty, register_lib_decl, &[tgt_bin_desc_alloca], None);
         // call void @__tgt_init_all_rtls()
+        builder.call(init_ty, init_rtls_decl, &[], None);
+
         for i in 0..num_args {
             let idx = cx.get_const_i32(i);
             let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, idx]);
@@ -401,6 +373,7 @@ fn gen_call_handling<'ll>(
 
         let nullptr = cx.const_null(cx.type_ptr());
         let o_type = o_types[0];
+        let s_ident_t = generate_at_one(&cx);
         let args = vec![
             s_ident_t,
             cx.get_const_i64(u64::MAX),
@@ -412,7 +385,7 @@ fn gen_call_handling<'ll>(
             nullptr,
             nullptr,
         ];
-        builder.call(fn_ty, begin, &args, None);
+        builder.call(fn_ty, begin_mapper_decl, &args, None);
 
         // Step 4)
         unsafe { llvm::LLVMRustPositionAfter(builder.llbuilder, kernel_call) };
@@ -434,14 +407,13 @@ fn gen_call_handling<'ll>(
             nullptr,
             nullptr,
         ];
-        builder.call(fn_ty, end, &args, None);
-        builder.call(mapper_fn_ty, bar, &[tgt_bin_desc_alloca], None);
+        builder.call(fn_ty, end_mapper_decl, &args, None);
+        builder.call(mapper_fn_ty, unregister_lib_decl, &[tgt_bin_desc_alloca], None);
 
+        // With this we generated the following begin and end mappers. We could easily generate the
+        // update mapper in an update.
         // call void @__tgt_target_data_begin_mapper(ptr @1, i64 -1, i32 3, ptr %27, ptr %28, ptr %29, ptr @.offload_maptypes, ptr null, ptr null)
         // call void @__tgt_target_data_update_mapper(ptr @1, i64 -1, i32 2, ptr %46, ptr %47, ptr %48, ptr @.offload_maptypes.1, ptr null, ptr null)
         // call void @__tgt_target_data_end_mapper(ptr @1, i64 -1, i32 3, ptr %49, ptr %50, ptr %51, ptr @.offload_maptypes, ptr null, ptr null)
-        // What is @1? Random but fixed:
-        // @0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
-        // @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
     }
 }
