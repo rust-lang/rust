@@ -307,16 +307,16 @@ fn gen_call_handling<'ll>(
         // %6 = alloca %struct.__tgt_bin_desc, align 8
         unsafe { llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, main_fn) };
 
-        let tgt_bin_desc_alloca = builder.my_alloca2(tgt_bin_desc, Align::EIGHT, "EmptyDesc");
+        let tgt_bin_desc_alloca = builder.direct_alloca(tgt_bin_desc, Align::EIGHT, "EmptyDesc");
 
         let ty = cx.type_array(cx.type_ptr(), num_args);
         // Baseptr are just the input pointer to the kernel, stored in a local alloca
-        let a1 = builder.my_alloca2(ty, Align::EIGHT, ".offload_baseptrs");
+        let a1 = builder.direct_alloca(ty, Align::EIGHT, ".offload_baseptrs");
         // Ptrs are the result of a gep into the baseptr, at least for our trivial types.
-        let a2 = builder.my_alloca2(ty, Align::EIGHT, ".offload_ptrs");
+        let a2 = builder.direct_alloca(ty, Align::EIGHT, ".offload_ptrs");
         // These represent the sizes in bytes, e.g. the entry for `&[f64; 16]` will be 8*16.
         let ty2 = cx.type_array(cx.type_i64(), num_args);
-        let a4 = builder.my_alloca2(ty2, Align::EIGHT, ".offload_sizes");
+        let a4 = builder.direct_alloca(ty2, Align::EIGHT, ".offload_sizes");
         // Now we allocate once per function param, a copy to be passed to one of our maps.
         let mut vals = vec![];
         let mut geps = vec![];

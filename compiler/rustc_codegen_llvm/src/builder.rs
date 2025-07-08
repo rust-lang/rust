@@ -119,7 +119,11 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         bx
     }
 
-    pub(crate) fn my_alloca2(&mut self, ty: &'ll Type, align: Align, name: &str) -> &'ll Value {
+    // The generic builder has less functionality and thus (unlike the other alloca) we can not
+    // easily jump to the beginning of the function to place our allocas there. We trust the user
+    // to manually do that. FIXME(offload): improve the genericCx and add more llvm wrappers to
+    // handle this.
+    pub(crate) fn direct_alloca(&mut self, ty: &'ll Type, align: Align, name: &str) -> &'ll Value {
         let val = unsafe {
             let alloca = llvm::LLVMBuildAlloca(self.llbuilder, ty, UNNAMED);
             llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
