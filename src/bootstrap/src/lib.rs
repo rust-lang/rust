@@ -271,6 +271,12 @@ pub enum Mode {
     /// It is used e.g. for linkers and linker tools invoked by rustc on its host target.
     ///
     /// These tools participate in staging only when required for cross-compilation.
+    ///
+    /// Note: since these tools are built with a different compiler when compiling for the host
+    /// vs when cross-compiling, such a situation will not produce the exactly identical binary.
+    /// The same will happen when using the `local_rebuild` feature (where stage0 is actually
+    /// an in-tree compiler). We considered this (<https://github.com/rust-lang/rust/pull/143581>)
+    /// and determined that it should not be an issue in practice.
     ToolTarget,
 
     /// Build a tool which uses the locally built std, placing output in the
