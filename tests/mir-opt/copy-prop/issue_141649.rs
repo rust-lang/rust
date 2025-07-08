@@ -47,8 +47,11 @@ fn f_head_borrowed() {
         let _5: &S;
         {
             // CHECK: StorageLive(_1);
-            // CHECK-NOT: StorageLive(_2);
-            // CHECK: _3 = opaque::<S>(copy _1) -> [return: bb1, unwind unreachable];
+            // FIXME: Currently, copy propagation will not unify borrowed locals.
+            // If it does, the storage statements for `_2` should be remove
+            // so these checks will need to be updated.
+            // CHECK: StorageLive(_2);
+            // CHECK: _3 = opaque::<S>(move _1) -> [return: bb1, unwind unreachable];
             StorageLive(_1);
             _1 = S(1, 2);
             StorageLive(_2);
@@ -57,7 +60,7 @@ fn f_head_borrowed() {
             Call(_3 = opaque(Move(_1)), ReturnTo(bb1), UnwindUnreachable())
         }
         bb1 = {
-            // CHECK-NOT: StorageDead(_2);
+            // CHECK: StorageDead(_2);
             // CHECK: StorageDead(_1);
             StorageDead(_2);
             StorageDead(_1);

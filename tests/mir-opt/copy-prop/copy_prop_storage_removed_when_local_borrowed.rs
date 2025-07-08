@@ -18,9 +18,12 @@ pub fn f<T: Copy + Freeze>(_1: (T, T)) -> T {
         let _4: &T;
         // CHECK: bb0: {
         {
-            // CHECK-NOT: StorageLive(_2);
-            // CHECK: _4 = &_2;
-            // CHECK-NOT: StorageDead(_2);
+            // FIXME: Currently, copy propagation will not unify borrowed locals.
+            // If it does, the storage statements for `_2` should be remove
+            // so these checks will need to be updated.
+            // CHECK: StorageLive(_2);
+            // CHECK: _4 = &_3;
+            // CHECK: StorageDead(_2);
             StorageLive(_2);
             _2 = _1.0;
             _3 = _2;
