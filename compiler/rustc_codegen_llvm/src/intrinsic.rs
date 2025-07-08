@@ -222,21 +222,21 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 };
 
                 // Get source, diff, and attrs
-                let source_id = match fn_args.into_type_list(tcx)[0].kind() {
-                    ty::FnDef(def_id, _) => def_id,
+                let (source_id, source_args) = match fn_args.into_type_list(tcx)[0].kind() {
+                    ty::FnDef(def_id, source_params) => (def_id, source_params),
                     _ => bug!("invalid args"),
                 };
-                let fn_source = Instance::mono(tcx, *source_id);
+                let fn_source = Instance::new_raw(*source_id, source_args);
                 let source_symbol =
                     symbol_name_for_instance_in_crate(tcx, fn_source.clone(), LOCAL_CRATE);
                 let fn_to_diff: Option<&'ll llvm::Value> = self.cx.get_function(&source_symbol);
                 let Some(fn_to_diff) = fn_to_diff else { bug!("could not find source function") };
 
-                let diff_id = match fn_args.into_type_list(tcx)[1].kind() {
-                    ty::FnDef(def_id, _) => def_id,
+                let (diff_id, diff_args) = match fn_args.into_type_list(tcx)[1].kind() {
+                    ty::FnDef(def_id, diff_args) => (def_id, diff_args),
                     _ => bug!("invalid args"),
                 };
-                let fn_diff = Instance::mono(tcx, *diff_id);
+                let fn_diff = Instance::new_raw(*diff_id, diff_args);
                 let diff_symbol =
                     symbol_name_for_instance_in_crate(tcx, fn_diff.clone(), LOCAL_CRATE);
 
