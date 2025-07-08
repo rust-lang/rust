@@ -1035,7 +1035,7 @@ impl Dir {
         to_dir: &Self,
         to: Q,
     ) -> io::Result<()> {
-        run_path_with_wcstr(to.as_ref(), &|to| self.rename_native(from.as_ref(), to_dir, to, false))
+        run_path_with_utf16(to.as_ref(), &|to| self.rename_native(from.as_ref(), to_dir, to, false))
     }
 
     pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(&self, original: P, link: Q) -> io::Result<()> {
@@ -1139,58 +1139,64 @@ impl Dir {
         if result == 0 { Err(api::get_last_error()).io_result() } else { Ok(()) }
     }
 
-    fn rename_native(&self, from: &Path, to_dir: &Self, to: &WCStr, dir: bool) -> io::Result<()> {
+    fn rename_native(&self, from: &Path, to_dir: &Self, to: &[u16], dir: bool) -> io::Result<()> {
         let mut opts = OpenOptions::new();
         opts.access_mode(c::DELETE);
         opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
         let handle = run_path_with_utf16(from, &|u| self.open_native(u, &opts, dir))?;
-        // Calculate the layout of the `FILE_RENAME_INFO` we pass to `SetFileInformation`
+        // Calculate the layout of the `FILE_RENAME_INFORMATION` we pass to `NtSetInformationFile`
         // This is a dynamically sized struct so we need to get the position of the last field to calculate the actual size.
         const too_long_err: io::Error =
             io::const_error!(io::ErrorKind::InvalidFilename, "Filename too long");
         let struct_size = to
-            .count_bytes()
+            .len()
             .checked_mul(2)
-            .and_then(|x| x.checked_add(offset_of!(c::FILE_RENAME_INFO, FileName)))
+            .and_then(|x| x.checked_add(offset_of!(c::FILE_RENAME_INFORMATION, FileName)))
             .ok_or(too_long_err)?;
-        let layout = Layout::from_size_align(struct_size, align_of::<c::FILE_RENAME_INFO>())
+        let layout = Layout::from_size_align(struct_size, align_of::<c::FILE_RENAME_INFORMATION>())
             .map_err(|_| too_long_err)?;
         let struct_size = u32::try_from(struct_size).map_err(|_| too_long_err)?;
-        let to_byte_len_without_nul =
-            u32::try_from((to.count_bytes() - 1) * 2).map_err(|_| too_long_err)?;
+        let to_byte_len = u32::try_from(to.len() * 2).map_err(|_| too_long_err)?;
 
         let file_rename_info;
-        // SAFETY: We allocate enough memory for a full FILE_RENAME_INFO struct and a filename.
+        // SAFETY: We allocate enough memory for a full FILE_RENAME_INFORMATION struct and the filename.
         unsafe {
-            file_rename_info = alloc(layout).cast::<c::FILE_RENAME_INFO>();
+            file_rename_info = alloc(layout).cast::<c::FILE_RENAME_INFORMATION>();
             if file_rename_info.is_null() {
                 return Err(io::ErrorKind::OutOfMemory.into());
             }
 
-            (&raw mut (*file_rename_info).Anonymous).write(c::FILE_RENAME_INFO_0 {
+            (&raw mut (*file_rename_info).Anonymous).write(c::FILE_RENAME_INFORMATION_0 {
                 Flags: c::FILE_RENAME_FLAG_REPLACE_IF_EXISTS | c::FILE_RENAME_FLAG_POSIX_SEMANTICS,
             });
 
             (&raw mut (*file_rename_info).RootDirectory).write(to_dir.handle.as_raw_handle());
             // Don't include the NULL in the size
-            (&raw mut (*file_rename_info).FileNameLength).write(to_byte_len_without_nul);
+            (&raw mut (*file_rename_info).FileNameLength).write(to_byte_len);
 
             to.as_ptr().copy_to_nonoverlapping(
                 (&raw mut (*file_rename_info).FileName).cast::<u16>(),
-                to.count_bytes(),
+                to.len(),
             );
         }
 
-        let result = unsafe {
-            c::SetFileInformationByHandle(
+        let status = unsafe {
+            c::NtSetInformationFile(
                 handle.as_raw_handle(),
-                c::FileRenameInfoEx,
+                &mut c::IO_STATUS_BLOCK::default(),
                 file_rename_info.cast::<c_void>(),
                 struct_size,
+                c::FileRenameInformation,
             )
         };
         unsafe { dealloc(file_rename_info.cast::<u8>(), layout) };
-        if result == 0 { Err(api::get_last_error()).io_result() } else { Ok(()) }
+        if c::nt_success(status) {
+            // SAFETY: nt_success guarantees that handle is no longer null
+            Ok(())
+        } else {
+            Err(WinError::new(unsafe { c::RtlNtStatusToDosError(status) }))
+        }
+        .io_result()
     }
 
     fn symlink_native(&self, original: &[u16], link: &Path, relative: bool) -> io::Result<()> {
