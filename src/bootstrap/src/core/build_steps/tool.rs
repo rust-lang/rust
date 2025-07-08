@@ -365,6 +365,17 @@ pub(crate) fn get_tool_rustc_compiler(
     builder.compiler(target_compiler.stage.saturating_sub(1), builder.config.host_target)
 }
 
+/// Returns a compiler that is able to compile a `ToolTarget` tool for the given `target`.
+pub(crate) fn get_tool_target_compiler(builder: &Builder<'_>, target: TargetSelection) -> Compiler {
+    todo!("FIX");
+    if builder.host_target == target {
+        builder.compiler(0, builder.host_target)
+    } else {
+        // FIXME: should this be builder.top_stage to avoid rebuilds?
+        builder.compiler(1, target)
+    }
+}
+
 /// Links a built tool binary with the given `name` from the build directory to the
 /// tools directory.
 fn copy_link_tool_bin(

@@ -959,6 +959,7 @@ impl<'a> Builder<'a> {
                 tool::RemoteTestServer,
                 tool::RemoteTestClient,
                 tool::RustInstaller,
+                tool::FeaturesStatusDump,
                 tool::Cargo,
                 tool::RustAnalyzer,
                 tool::RustAnalyzerProcMacroSrv,
