@@ -758,6 +758,27 @@ mod snapshot {
     }
 
     #[test]
+    fn build_compiler_tools() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx
+                .config("build")
+                .stage(2)
+                .args(&["--set", "rust.llvm-bitcode-linker=true"])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> LlvmBitcodeLinker 3 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustdoc 1 <host>
+        "
+        );
+    }
+
+    #[test]
     fn build_library_no_explicit_stage() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
@@ -1040,6 +1061,7 @@ mod snapshot {
         [build] rustc 0 <host> -> cargo-clippy 1 <host>
         [build] rustc 0 <host> -> miri 1 <host>
         [build] rustc 0 <host> -> cargo-miri 1 <host>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
         ");
     }
 
@@ -1230,6 +1252,7 @@ mod snapshot {
         [build] rustc 0 <host> -> cargo-clippy 1 <target1>
         [build] rustc 0 <host> -> miri 1 <target1>
         [build] rustc 0 <host> -> cargo-miri 1 <target1>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
         ");
     }
 

@@ -2374,7 +2374,8 @@ impl Step for LlvmBitcodeLinker {
 
         builder.ensure(compile::Rustc::new(compiler, target));
 
-        let llbc_linker = builder.ensure(tool::LlvmBitcodeLinker { compiler, target });
+        let llbc_linker =
+            builder.ensure(tool::LlvmBitcodeLinker { build_compiler: compiler, target });
 
         let self_contained_bin_dir = format!("lib/rustlib/{}/bin/self-contained", target.triple);
 

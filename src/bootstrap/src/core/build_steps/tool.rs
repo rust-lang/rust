@@ -1014,7 +1014,7 @@ impl Step for RustAnalyzerProcMacroSrv {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LlvmBitcodeLinker {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -1031,7 +1031,9 @@ impl Step for LlvmBitcodeLinker {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LlvmBitcodeLinker {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
+            build_compiler: run
+                .builder
+                .compiler(run.builder.top_stage, run.builder.config.host_target),
             target: run.target,
         });
     }
@@ -1042,7 +1044,7 @@ impl Step for LlvmBitcodeLinker {
     )]
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         builder.ensure(ToolBuild {
-            compiler: self.compiler,
+            compiler: self.build_compiler,
             target: self.target,
             tool: "llvm-bitcode-linker",
             mode: Mode::ToolRustc,
@@ -1053,6 +1055,10 @@ impl Step for LlvmBitcodeLinker {
             cargo_args: Vec::new(),
             artifact_kind: ToolArtifactKind::Binary,
         })
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::build("LlvmBitcodeLinker", self.target).built_by(self.build_compiler))
     }
 }
 
