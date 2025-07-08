@@ -5,6 +5,10 @@ name = "sysroot"
 version = "0.0.0"
 edition = "2024"
 
+[lib]
+# make sure this crate isn't included in public standard library docs
+doc = false
+
 # this is a dummy crate to ensure that all required crates appear in the sysroot
 [dependencies]
 proc_macro = { path = "../proc_macro", public = true }
