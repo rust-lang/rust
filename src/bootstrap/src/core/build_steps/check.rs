@@ -5,7 +5,8 @@ use crate::core::build_steps::compile::{
 };
 use crate::core::build_steps::tool;
 use crate::core::build_steps::tool::{
-    COMPILETEST_ALLOW_FEATURES, SourceType, get_compiler_for_target, prepare_tool_cargo,
+    COMPILETEST_ALLOW_FEATURES, SourceType, ToolTargetBuildMode, get_tool_target_compiler,
+    prepare_tool_cargo,
 };
 use crate::core::builder::{
     self, Alias, Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
@@ -252,7 +253,7 @@ fn prepare_compiler_for_check(
 
     match mode {
         Mode::ToolBootstrap => builder.compiler(0, host),
-        Mode::ToolTarget => get_compiler_for_target(builder, target),
+        Mode::ToolTarget => get_tool_target_compiler(builder, ToolTargetBuildMode::Build(target)),
         Mode::ToolStd => {
             // These tools require the local standard library to be checked
             let build_compiler = builder.compiler(builder.top_stage, host);

@@ -365,12 +365,36 @@ pub(crate) fn get_tool_rustc_compiler(
     builder.compiler(target_compiler.stage.saturating_sub(1), builder.config.host_target)
 }
 
-/// Returns the smallest stage compiler that is able to compile code for the given `target`.
-pub(crate) fn get_compiler_for_target(builder: &Builder<'_>, target: TargetSelection) -> Compiler {
+/// Determines how to build a `ToolTarget`, i.e. which compiler should be used to compile it.
+/// The compiler stage is automatically auto-bumped if we need to cross-compile a stage 1 tool.
+pub enum ToolTargetBuildMode {
+    /// Build the tool using rustc that corresponds to the selected CLI stage.
+    Build(TargetSelection),
+    /// Build the tool so that it can be attached to the sysroot of the passed compiler.
+    /// Since we always dist stage 2+, the compiler that builds the tool in this case has to be
+    /// stage 1+.
+    Dist(Compiler),
+}
+
+/// Returns compiler that is able to compile a `ToolTarget` tool with the given `mode`.
+pub(crate) fn get_tool_target_compiler(
+    builder: &Builder<'_>,
+    mode: ToolTargetBuildMode,
+) -> Compiler {
+    let (target, min_build_compiler_stage) = match mode {
+        ToolTargetBuildMode::Build(target) => {
+            assert!(builder.top_stage > 0);
+            (target, builder.top_stage - 1)
+        }
+        ToolTargetBuildMode::Dist(target_compiler) => {
+            assert!(target_compiler.stage > 0);
+            (target_compiler.host, target_compiler.stage - 1)
+        }
+    };
     let compiler = if builder.host_target == target {
-        builder.compiler(0, builder.host_target)
+        builder.compiler(min_build_compiler_stage, builder.host_target)
     } else {
-        builder.compiler(1, builder.host_target)
+        builder.compiler(min_build_compiler_stage.max(1), builder.host_target)
     };
     builder.std(compiler, target);
     compiler
@@ -533,7 +557,6 @@ bootstrap_tool!(
     // rustdoc-gui-test has a crate dependency on compiletest, so it needs the same unstable features.
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = COMPILETEST_ALLOW_FEATURES;
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
-    WasmComponentLd, "src/tools/wasm-component-ld", "wasm-component-ld", is_unstable_tool = true, allow_features = "min_specialization";
     UnicodeTableGenerator, "src/tools/unicode-table-generator", "unicode-table-generator";
     FeaturesStatusDump, "src/tools/features-status-dump", "features-status-dump";
     OptimizedDist, "src/tools/opt-dist", "opt-dist", submodules = &["src/tools/rustc-perf"];
@@ -661,7 +684,10 @@ impl Step for RemoteTestServer {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RemoteTestServer {
-            build_compiler: get_compiler_for_target(run.builder, run.target),
+            build_compiler: get_tool_target_compiler(
+                run.builder,
+                ToolTargetBuildMode::Build(run.target),
+            ),
             target: run.target,
         });
     }
@@ -932,6 +958,75 @@ impl Step for LldWrapper {
             StepMetadata::build("LldWrapper", self.target_compiler.host)
                 .built_by(self.build_compiler),
         )
+    }
+}
+
+/// Builds the `wasm-component-ld` linker wrapper, which is shipped with rustc to be executed on the
+/// host platform where rustc runs.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct WasmComponentLd {
+    build_compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl WasmComponentLd {
+    /// Returns `WasmComponentLd` that should be **used** by the passed compiler.
+    pub fn for_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
+        Self {
+            build_compiler: get_tool_target_compiler(
+                builder,
+                ToolTargetBuildMode::Dist(target_compiler),
+            ),
+            target: target_compiler.host,
+        }
+    }
+}
+
+impl Step for WasmComponentLd {
+    type Output = ToolBuildResult;
+
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/wasm-component-ld")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(WasmComponentLd {
+            build_compiler: get_tool_target_compiler(
+                run.builder,
+                ToolTargetBuildMode::Build(run.target),
+            ),
+            target: run.target,
+        });
+    }
+
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "debug",
+            name = "WasmComponentLd::run",
+            skip_all,
+            fields(build_compiler = ?self.build_compiler),
+        ),
+    )]
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
+        builder.ensure(ToolBuild {
+            build_compiler: self.build_compiler,
+            target: self.target,
+            tool: "wasm-component-ld",
+            mode: Mode::ToolTarget,
+            path: "src/tools/wasm-component-ld",
+            source_type: SourceType::InTree,
+            extra_features: vec![],
+            allow_features: "min-specialization",
+            cargo_args: vec![],
+            artifact_kind: ToolArtifactKind::Binary,
+        })
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::build("WasmComponentLd", self.target).built_by(self.build_compiler))
     }
 }
 
