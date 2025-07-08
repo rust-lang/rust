@@ -59,7 +59,8 @@ use crate::attributes::prototype::CustomMirParser;
 use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
 use crate::attributes::rustc_internal::{
     RustcLayoutScalarValidRangeEndParser, RustcLayoutScalarValidRangeStartParser, RustcMainParser,
-    RustcObjectLifetimeDefaultParser, RustcSimdMonomorphizeLaneLimitParser,
+    RustcObjectLifetimeDefaultParser, RustcScalableVectorParser,
+    RustcSimdMonomorphizeLaneLimitParser,
 };
 use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
@@ -207,6 +208,7 @@ attribute_parsers!(
         Single<RustcLayoutScalarValidRangeEndParser>,
         Single<RustcLayoutScalarValidRangeStartParser>,
         Single<RustcObjectLifetimeDefaultParser>,
+        Single<RustcScalableVectorParser>,
         Single<RustcSimdMonomorphizeLaneLimitParser>,
         Single<SanitizeParser>,
         Single<ShouldPanicParser>,

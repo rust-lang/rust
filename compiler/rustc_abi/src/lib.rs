@@ -96,9 +96,11 @@ bitflags! {
         /// If true, the type is always passed indirectly by non-Rustic ABIs.
         /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
         const PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS = 1 << 5;
-        /// Any of these flags being set prevent field reordering optimisation.
-        const FIELD_ORDER_UNOPTIMIZABLE   = ReprFlags::IS_C.bits()
+        const IS_SCALABLE        = 1 << 6;
+         // Any of these flags being set prevent field reordering optimisation.
+        const FIELD_ORDER_UNOPTIMIZABLE = ReprFlags::IS_C.bits()
                                  | ReprFlags::IS_SIMD.bits()
+                                 | ReprFlags::IS_SCALABLE.bits()
                                  | ReprFlags::IS_LINEAR.bits();
         const ABI_UNOPTIMIZABLE = ReprFlags::IS_C.bits() | ReprFlags::IS_SIMD.bits();
     }
@@ -135,6 +137,19 @@ impl IntegerType {
     }
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_Generic)
+)]
+pub enum ScalableElt {
+    /// `N` in `rustc_scalable_vector(N)` - the element count of the scalable vector
+    ElementCount(u16),
+    /// `rustc_scalable_vector` w/out `N`, used for tuple types of scalable vectors that only
+    /// contain other scalable vectors
+    Container,
+}
+
 /// Represents the repr options provided by the user.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 #[cfg_attr(
@@ -146,6 +161,8 @@ pub struct ReprOptions {
     pub align: Option<Align>,
     pub pack: Option<Align>,
     pub flags: ReprFlags,
+    /// `#[rustc_scalable_vector]`
+    pub scalable: Option<ScalableElt>,
     /// The seed to be used for randomizing a type's layout
     ///
     /// Note: This could technically be a `u128` which would
@@ -160,6 +177,11 @@ impl ReprOptions {
     #[inline]
     pub fn simd(&self) -> bool {
         self.flags.contains(ReprFlags::IS_SIMD)
+    }
+
+    #[inline]
+    pub fn scalable(&self) -> bool {
+        self.flags.contains(ReprFlags::IS_SCALABLE)
     }
 
     #[inline]
