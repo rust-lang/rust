@@ -2052,19 +2052,20 @@ impl Step for Assemble {
             }
         }
 
-        let maybe_install_llvm_bitcode_linker = |compiler| {
+        let maybe_install_llvm_bitcode_linker = || {
             if builder.config.llvm_bitcode_linker_enabled {
                 trace!("llvm-bitcode-linker enabled, installing");
-                let llvm_bitcode_linker =
-                    builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
-                        build_compiler: compiler,
-                        target: target_compiler.host,
-                    });
+                let llvm_bitcode_linker = builder.ensure(
+                    crate::core::build_steps::tool::LlvmBitcodeLinker::for_compiler(
+                        builder,
+                        target_compiler,
+                    ),
+                );
 
                 // Copy the llvm-bitcode-linker to the self-contained binary directory
                 let bindir_self_contained = builder
-                    .sysroot(compiler)
-                    .join(format!("lib/rustlib/{}/bin/self-contained", compiler.host));
+                    .sysroot(target_compiler)
+                    .join(format!("lib/rustlib/{}/bin/self-contained", target_compiler.host));
                 let tool_exe = exe("llvm-bitcode-linker", target_compiler.host);
 
                 t!(fs::create_dir_all(&bindir_self_contained));
@@ -2091,9 +2092,9 @@ impl Step for Assemble {
                 builder.info(&format!("Creating a sysroot for stage{stage} compiler (use `rustup toolchain link 'name' build/host/stage{stage}`)", stage = target_compiler.stage));
             }
 
-            let mut precompiled_compiler = target_compiler;
-            precompiled_compiler.forced_compiler(true);
-            maybe_install_llvm_bitcode_linker(precompiled_compiler);
+            // FIXME: this is incomplete, we do not copy a bunch of other stuff to the downloaded
+            // sysroot...
+            maybe_install_llvm_bitcode_linker();
 
             return target_compiler;
         }
@@ -2300,7 +2301,7 @@ impl Step for Assemble {
             );
         }
 
-        maybe_install_llvm_bitcode_linker(target_compiler);
+        maybe_install_llvm_bitcode_linker();
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
         // so that it can be found when the newly built `rustc` is run.

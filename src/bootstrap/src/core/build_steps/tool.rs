@@ -1159,8 +1159,21 @@ impl Step for RustAnalyzerProcMacroSrv {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LlvmBitcodeLinker {
-    pub build_compiler: Compiler,
-    pub target: TargetSelection,
+    build_compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl LlvmBitcodeLinker {
+    /// Returns `LlvmBitcodeLinker` that should be **used** by the passed compiler.
+    pub fn for_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
+        Self {
+            build_compiler: get_tool_target_compiler(
+                builder,
+                ToolTargetBuildMode::Dist(target_compiler),
+            ),
+            target: target_compiler.host,
+        }
+    }
 }
 
 impl Step for LlvmBitcodeLinker {
@@ -1176,9 +1189,10 @@ impl Step for LlvmBitcodeLinker {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LlvmBitcodeLinker {
-            build_compiler: run
-                .builder
-                .compiler(run.builder.top_stage, run.builder.config.host_target),
+            build_compiler: get_tool_target_compiler(
+                run.builder,
+                ToolTargetBuildMode::Build(run.target),
+            ),
             target: run.target,
         });
     }
@@ -1192,7 +1206,7 @@ impl Step for LlvmBitcodeLinker {
             build_compiler: self.build_compiler,
             target: self.target,
             tool: "llvm-bitcode-linker",
-            mode: Mode::ToolRustc,
+            mode: Mode::ToolTarget,
             path: "src/tools/llvm-bitcode-linker",
             source_type: SourceType::InTree,
             extra_features: vec![],

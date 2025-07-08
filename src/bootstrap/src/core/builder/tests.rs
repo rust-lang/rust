@@ -769,11 +769,11 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> LldWrapper 1 <host>
-        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
+        [build] rustc 0 <host> -> LlvmBitcodeLinker 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> LldWrapper 2 <host>
-        [build] rustc 2 <host> -> LlvmBitcodeLinker 3 <host>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustdoc 1 <host>
         "
@@ -793,17 +793,17 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> LldWrapper 1 <host>
-        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
+        [build] rustc 0 <host> -> LlvmBitcodeLinker 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> LldWrapper 2 <host>
-        [build] rustc 2 <host> -> LlvmBitcodeLinker 3 <host>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
         [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 2 <host> -> std 2 <target1>
         [build] llvm <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustc 1 <host> -> LldWrapper 2 <target1>
-        [build] rustc 2 <target1> -> LlvmBitcodeLinker 3 <target1>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
         [build] rustdoc 1 <target1>
         "
         );
@@ -1078,12 +1078,12 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> LldWrapper 1 <host>
         [build] rustc 0 <host> -> WasmComponentLd 1 <host>
-        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
+        [build] rustc 0 <host> -> LlvmBitcodeLinker 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> LldWrapper 2 <host>
         [build] rustc 1 <host> -> WasmComponentLd 2 <host>
-        [build] rustc 2 <host> -> LlvmBitcodeLinker 3 <host>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
         [build] rustdoc 1 <host>
         [doc] std 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
@@ -1293,6 +1293,7 @@ mod snapshot {
         [build] rustc 0 <host> -> miri 1 <target1>
         [build] rustc 0 <host> -> cargo-miri 1 <target1>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
+        [build] rustc 0 <host> -> LlvmBitcodeLinker 1 <host>
         ");
     }
 
