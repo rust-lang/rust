@@ -93,7 +93,7 @@ hir-stats - Binding                  216 (NN.N%)             3
 hir-stats Block                    288 (NN.N%)             6            48
 hir-stats GenericBound             256 (NN.N%)             4            64
 hir-stats - Trait                    256 (NN.N%)             4
-hir-stats Attribute                200 (NN.N%)             5            40
+hir-stats Attribute                240 (NN.N%)             5            48
 hir-stats Variant                  144 (NN.N%)             2            72
 hir-stats GenericArgs              144 (NN.N%)             3            48
 hir-stats FieldDef                 128 (NN.N%)             2            64
@@ -119,5 +119,5 @@ hir-stats TraitItemId                8 (NN.N%)             2             4
 hir-stats ImplItemId                 8 (NN.N%)             2             4
 hir-stats ForeignItemId              4 (NN.N%)             1             4
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_584                   173
+hir-stats Total                  8_624                   173
 hir-stats ================================================================

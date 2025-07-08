@@ -271,6 +271,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     AttributeKind::RustcLayoutScalarValidRangeStart(_num, attr_span)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(_num, attr_span),
                 ) => self.check_rustc_layout_scalar_valid_range(*attr_span, span, target),
+                Attribute::Parsed(AttributeKind::RustcScalableVector {
+                    span: attr_span, ..
+                }) => self.check_rustc_scalable_vector(*attr_span, span, target),
                 Attribute::Parsed(AttributeKind::ExportStable) => {
                     // handled in `check_export`
                 }
@@ -1772,6 +1775,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_rustc_layout_scalar_valid_range(&self, attr_span: Span, span: Span, target: Target) {
         if target != Target::Struct {
             self.dcx().emit_err(errors::RustcLayoutScalarValidRangeNotStruct { attr_span, span });
+            return;
+        }
+    }
+
+    fn check_rustc_scalable_vector(&self, attr_span: Span, span: Span, target: Target) {
+        if target != Target::Struct {
+            self.dcx().emit_err(errors::RustcScalableVector { attr_span, span });
             return;
         }
     }

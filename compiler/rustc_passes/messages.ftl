@@ -631,6 +631,10 @@ passes_rustc_layout_scalar_valid_range_not_struct =
     attribute should be applied to a struct
     .label = not a struct
 
+passes_rustc_scalable_vector =
+    attribute should be applied to a struct
+    .label = not a struct
+
 passes_rustc_legacy_const_generics_index =
     #[rustc_legacy_const_generics] must have one index for each generic parameter
     .label = generic parameters

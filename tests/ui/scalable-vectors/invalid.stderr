@@ -1,0 +1,375 @@
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/invalid.rs:109:11
+   |
+LL | fn barqux(#[rustc_scalable_vector(4)] _x: u32) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0539]: malformed `rustc_scalable_vector` attribute input
+  --> $DIR/invalid.rs:142:1
+   |
+LL | #[rustc_scalable_vector("4")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^---^^
+   |                         |
+   |                         expected an integer literal here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[rustc_scalable_vector("4")]
+LL + #[rustc_scalable_vector(count)]
+   |
+LL - #[rustc_scalable_vector("4")]
+LL + #[rustc_scalable_vector]
+   |
+
+error[E0805]: malformed `rustc_scalable_vector` attribute input
+  --> $DIR/invalid.rs:146:1
+   |
+LL | #[rustc_scalable_vector(4, 2)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^------^
+   |                        |
+   |                        expected a single argument here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[rustc_scalable_vector(4, 2)]
+LL + #[rustc_scalable_vector(count)]
+   |
+LL - #[rustc_scalable_vector(4, 2)]
+LL + #[rustc_scalable_vector]
+   |
+
+error[E0539]: malformed `rustc_scalable_vector` attribute input
+  --> $DIR/invalid.rs:150:1
+   |
+LL | #[rustc_scalable_vector(count = "4")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^-----------^^
+   |                         |
+   |                         expected an integer literal here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[rustc_scalable_vector(count = "4")]
+LL + #[rustc_scalable_vector(count)]
+   |
+LL - #[rustc_scalable_vector(count = "4")]
+LL + #[rustc_scalable_vector]
+   |
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:9:1
+   |
+LL | #[rustc_scalable_vector(4)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | extern crate std as other_std;
+   | ------------------------------ not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:13:1
+   |
+LL | #[rustc_scalable_vector(4)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | use std::vec::Vec;
+   | ------------------ not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:17:1
+   |
+LL | #[rustc_scalable_vector(4)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | static _X: u32 = 0;
+   | ------------------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:21:1
+   |
+LL | #[rustc_scalable_vector(4)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | const _Y: u32 = 0;
+   | ------------------ not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:25:1
+   |
+LL |   #[rustc_scalable_vector(4)]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / mod bar {
+LL | | }
+   | |_- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:30:1
+   |
+LL |   #[rustc_scalable_vector(4)]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / unsafe extern "C" {
+LL | |     #[rustc_scalable_vector(4)]
+LL | |
+LL | |     static X: &'static u32;
+...  |
+LL | |     fn foo();
+LL | | }
+   | |_- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:44:1
+   |
+LL | #[rustc_scalable_vector(4)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | type Foo = u32;
+   | --------------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:48:1
+   |
+LL |   #[rustc_scalable_vector(4)]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / enum Bar<#[rustc_scalable_vector(4)] T> {
+LL | |
+LL | |     #[rustc_scalable_vector(4)]
+...  |
+LL | | }
+   | |_- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:50:10
+   |
+LL | enum Bar<#[rustc_scalable_vector(4)] T> {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ - not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:52:5
+   |
+LL |     #[rustc_scalable_vector(4)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     Baz(std::marker::PhantomData<T>),
+   |     -------------------------------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:58:5
+   |
+LL |     #[rustc_scalable_vector(4)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     field: u32,
+   |     ---------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:63:1
+   |
+LL |   #[rustc_scalable_vector(4)]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / union FooBar {
+LL | |     x: u32,
+LL | |     y: u32,
+LL | | }
+   | |_- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:70:1
+   |
+LL |   #[rustc_scalable_vector(4)]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / trait FooBaz {
+LL | |     #[rustc_scalable_vector(4)]
+LL | |
+LL | |     type Foo;
+...  |
+LL | |     fn foo() {}
+LL | | }
+   | |_- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:84:1
+   |
+LL | #[rustc_scalable_vector(4)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | trait FooQux = FooBaz;
+   | ---------------------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:88:1
+   |
+LL |   #[rustc_scalable_vector(4)]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / impl<T> Bar<T> {
+LL | |     #[rustc_scalable_vector(4)]
+LL | |
+LL | |     fn foo() {}
+LL | | }
+   | |_- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:96:1
+   |
+LL |   #[rustc_scalable_vector(4)]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / impl<T> FooBaz for Bar<T> {
+LL | |     type Foo = u32;
+LL | |     const Bar: i32 = 3;
+LL | | }
+   | |_- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:103:1
+   |
+LL | #[rustc_scalable_vector(4)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | macro_rules! barqux { ($foo:tt) => { $foo }; }
+   | ---------------------------------------------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:107:1
+   |
+LL | #[rustc_scalable_vector(4)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn barqux(#[rustc_scalable_vector(4)] _x: u32) {}
+   | ------------------------------------------------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:109:11
+   |
+LL | fn barqux(#[rustc_scalable_vector(4)] _x: u32) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^--------
+   |           |
+   |           not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:113:1
+   |
+LL | #[rustc_scalable_vector(4)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | async fn async_foo() {}
+   | ----------------------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:117:1
+   |
+LL | #[rustc_scalable_vector(4)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | gen fn gen_foo() {}
+   | ------------------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:121:1
+   |
+LL | #[rustc_scalable_vector(4)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | async gen fn async_gen_foo() {}
+   | ------------------------------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:126:14
+   |
+LL |     let _x = #[rustc_scalable_vector(4)] || { };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ ------ not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:128:14
+   |
+LL |     let _y = #[rustc_scalable_vector(4)] 3 + 4;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ - not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:130:5
+   |
+LL |     #[rustc_scalable_vector(4)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     let _z = 3;
+   |     ----------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:135:9
+   |
+LL |         #[rustc_scalable_vector(4)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         1 => (),
+   |         ------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:73:5
+   |
+LL |     #[rustc_scalable_vector(4)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     type Foo;
+   |     --------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:76:5
+   |
+LL |     #[rustc_scalable_vector(4)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     const Bar: i32;
+   |     --------------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:79:5
+   |
+LL |     #[rustc_scalable_vector(4)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn foo() {}
+   |     ----------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:91:5
+   |
+LL |     #[rustc_scalable_vector(4)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn foo() {}
+   |     ----------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:33:5
+   |
+LL |     #[rustc_scalable_vector(4)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     static X: &'static u32;
+   |     ----------------------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:36:5
+   |
+LL |     #[rustc_scalable_vector(4)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     type Y;
+   |     ------- not a struct
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid.rs:39:5
+   |
+LL |     #[rustc_scalable_vector(4)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn foo();
+   |     --------- not a struct
+
+error: aborting due to 37 previous errors
+
+Some errors have detailed explanations: E0539, E0805.
+For more information about an error, try `rustc --explain E0539`.

@@ -436,6 +436,14 @@ pub enum AttributeKind {
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
 
+    /// Represents `#[rustc_scalable_vector(N)]`
+    RustcScalableVector {
+        /// The base multiple of lanes that are in a scalable vector, if provided. `element_count`
+        /// is not provided for representing tuple types.
+        element_count: Option<u128>,
+        span: Span,
+    },
+
     /// Represents `#[should_panic]`
     ShouldPanic { reason: Option<Symbol>, span: Span },
 

@@ -536,6 +536,15 @@ pub(crate) struct RustcLayoutScalarValidRangeNotStruct {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_rustc_scalable_vector)]
+pub(crate) struct RustcScalableVector {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_rustc_legacy_const_generics_only)]
 pub(crate) struct RustcLegacyConstGenericsOnly {
     #[primary_span]
