@@ -1,0 +1,84 @@
+error[E0308]: mismatched types
+  --> $DIR/non_zero_coerce_fail2.rs:13:14
+   |
+LL |     5_u8.foo(&x);
+   |          --- ^^ expected `&u8`, found `&NonZero<u8>`
+   |          |
+   |          arguments to this method are incorrect
+   |
+   = note: expected reference `&u8`
+              found reference `&NonZero<u8>`
+note: method defined here
+  --> $DIR/non_zero_coerce_fail2.rs:4:8
+   |
+LL |     fn foo(&self, other: &T) {}
+   |        ^^^        ---------
+
+error[E0277]: the trait bound `{integer}: Foo<NonZero<u8>>` is not satisfied
+  --> $DIR/non_zero_coerce_fail2.rs:16:11
+   |
+LL |     5.foo(&x);
+   |       --- ^^ the trait `Foo<NonZero<u8>>` is not implemented for `{integer}`
+   |       |
+   |       required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `Foo<T>`:
+             `u16` implements `Foo<u16>`
+             `u8` implements `Foo<u8>`
+
+error[E0277]: the trait bound `{integer}: Foo<NonZero<u8>>` is not satisfied
+  --> $DIR/non_zero_coerce_fail2.rs:18:11
+   |
+LL |     5.bar(x);
+   |       --- ^ the trait `Foo<NonZero<u8>>` is not implemented for `{integer}`
+   |       |
+   |       required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `Foo<T>`:
+             `u16` implements `Foo<u16>`
+             `u8` implements `Foo<u8>`
+
+error[E0308]: mismatched types
+  --> $DIR/non_zero_coerce_fail2.rs:22:14
+   |
+LL |     5_u8.foo(&a);
+   |          --- ^^ expected `&u8`, found `&NonZero<{integer}>`
+   |          |
+   |          arguments to this method are incorrect
+   |
+   = note: expected reference `&u8`
+              found reference `&NonZero<{integer}>`
+note: method defined here
+  --> $DIR/non_zero_coerce_fail2.rs:4:8
+   |
+LL |     fn foo(&self, other: &T) {}
+   |        ^^^        ---------
+
+error[E0277]: the trait bound `{integer}: Foo<NonZero<u8>>` is not satisfied
+  --> $DIR/non_zero_coerce_fail2.rs:25:11
+   |
+LL |     5.foo(&a);
+   |       --- ^^ the trait `Foo<NonZero<u8>>` is not implemented for `{integer}`
+   |       |
+   |       required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `Foo<T>`:
+             `u16` implements `Foo<u16>`
+             `u8` implements `Foo<u8>`
+
+error[E0277]: the trait bound `{integer}: Foo<NonZero<u8>>` is not satisfied
+  --> $DIR/non_zero_coerce_fail2.rs:27:11
+   |
+LL |     5.bar(a);
+   |       --- ^ the trait `Foo<NonZero<u8>>` is not implemented for `{integer}`
+   |       |
+   |       required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `Foo<T>`:
+             `u16` implements `Foo<u16>`
+             `u8` implements `Foo<u8>`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
