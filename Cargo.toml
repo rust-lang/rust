@@ -39,7 +39,6 @@ members = [
   "src/tools/rustdoc-gui-test",
   "src/tools/rustdoc-themes",
   "src/tools/rustfmt",
-  "src/tools/suggest-tests",
   "src/tools/test-float-parse",
   "src/tools/tidy",
   "src/tools/tier-check",
