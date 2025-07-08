@@ -878,6 +878,14 @@ pub enum AttributeKind {
     /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
     RustcPassIndirectlyInNonRusticAbis(Span),
 
+    /// Represents `#[rustc_scalable_vector(N)]`
+    RustcScalableVector {
+        /// The base multiple of lanes that are in a scalable vector, if provided. `element_count`
+        /// is not provided for representing tuple types.
+        element_count: Option<u16>,
+        span: Span,
+    },
+
     /// Represents `#[rustc_should_not_be_called_on_const_items]`
     RustcShouldNotBeCalledOnConstItems(Span),
 

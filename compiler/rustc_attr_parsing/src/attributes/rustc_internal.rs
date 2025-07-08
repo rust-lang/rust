@@ -1,5 +1,6 @@
 use super::prelude::*;
 use super::util::parse_single_integer;
+use crate::session_diagnostics::RustcScalableVectorCountOutOfRange;
 
 pub(crate) struct RustcMainParser;
 
@@ -74,5 +75,31 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSimdMonomorphizeLaneLimitParser
             return None;
         };
         Some(AttributeKind::RustcSimdMonomorphizeLaneLimit(cx.parse_limit_int(nv)?))
+    }
+}
+
+pub(crate) struct RustcScalableVectorParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcScalableVectorParser {
+    const PATH: &[rustc_span::Symbol] = &[sym::rustc_scalable_vector];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const TEMPLATE: AttributeTemplate = template!(Word, List: &["count"]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        if args.no_args().is_ok() {
+            return Some(AttributeKind::RustcScalableVector {
+                element_count: None,
+                span: cx.attr_span,
+            });
+        }
+
+        let n = parse_single_integer(cx, args)?;
+        let Ok(n) = n.try_into() else {
+            cx.emit_err(RustcScalableVectorCountOutOfRange { span: cx.attr_span, n });
+            return None;
+        };
+        Some(AttributeKind::RustcScalableVector { element_count: Some(n), span: cx.attr_span })
     }
 }
