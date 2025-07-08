@@ -1923,6 +1923,7 @@ symbols! {
         saturating_add,
         saturating_div,
         saturating_sub,
+        scalable,
         sdylib,
         search_unbox,
         select_unpredictable,

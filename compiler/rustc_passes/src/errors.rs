@@ -612,6 +612,13 @@ pub(crate) struct ReprConflicting {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_repr_scalable_without_simd)]
+pub(crate) struct ReprScalableWithoutSimd {
+    #[primary_span]
+    pub hint_spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_repr_align_greater_than_target_max, code = E0589)]
 #[note]
 pub(crate) struct InvalidReprAlignForTarget {

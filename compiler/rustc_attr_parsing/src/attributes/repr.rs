@@ -1,6 +1,6 @@
 use rustc_abi::Align;
 use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
-use rustc_attr_data_structures::{AttributeKind, IntType, ReprAttr};
+use rustc_attr_data_structures::{AttributeKind, IntType, ReprAttr, ScalableElt};
 use rustc_feature::{AttributeTemplate, template};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
@@ -144,6 +144,11 @@ fn parse_repr<S: Stage>(
         (Some(sym::Rust), ArgParser::NoArgs) => Some(ReprRust),
         (Some(sym::C), ArgParser::NoArgs) => Some(ReprC),
         (Some(sym::simd), ArgParser::NoArgs) => Some(ReprSimd),
+        (Some(sym::scalable), ArgParser::List(l)) => parse_repr_scalable(cx, l, param.span()),
+        (Some(sym::scalable), ArgParser::NoArgs) => {
+            cx.emit_err(session_diagnostics::ScalableAttrMissingN { span: param.span() });
+            None
+        }
         (Some(sym::transparent), ArgParser::NoArgs) => Some(ReprTransparent),
         (Some(name @ int_pat!()), ArgParser::NoArgs) => {
             // int_pat!() should make sure it always parses
@@ -321,4 +326,19 @@ impl<S: Stage> AttributeParser<S> for AlignParser {
         let (align, span) = self.0?;
         Some(AttributeKind::Align { align, span })
     }
+}
+
+fn parse_repr_scalable<S: Stage>(
+    cx: &AcceptContext<'_, '_, S>,
+    list: &MetaItemListParser<'_>,
+    span: Span,
+) -> Option<ReprAttr> {
+    let Some(LitKind::Int(literal, LitIntType::Unsuffixed)) =
+        list.single().and_then(|elt| elt.lit()).map(|lit| lit.kind)
+    else {
+        cx.emit_err(session_diagnostics::ScalableAttrMissingN { span });
+        return None;
+    };
+
+    literal.get().try_into().ok().map(|elt| ReprAttr::ReprScalable(ScalableElt { elt }))
 }
