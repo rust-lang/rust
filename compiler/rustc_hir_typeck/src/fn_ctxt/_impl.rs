@@ -284,7 +284,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // FIXME(const_trait_impl): We could enforce these; they correspond to
                     // `&mut T: DerefMut` tho, so it's kinda moot.
                 }
-                Adjust::Borrow(_) => {
+                Adjust::NonZeroIntoInner | Adjust::Borrow(_) => {
                     // No effects to enforce here.
                 }
             }
