@@ -2875,7 +2875,8 @@ macro_rules! impl_to_string {
                     out = String::with_capacity(SIZE);
                 }
 
-                out.push_str(self.unsigned_abs()._fmt(&mut buf));
+                // SAFETY: `buf` is always big enough to contain all the digits.
+                unsafe { out.push_str(self.unsigned_abs()._fmt(&mut buf)); }
                 out
             }
         }
@@ -2887,7 +2888,8 @@ macro_rules! impl_to_string {
                 const SIZE: usize = $unsigned::MAX.ilog10() as usize + 1;
                 let mut buf = [core::mem::MaybeUninit::<u8>::uninit(); SIZE];
 
-                self._fmt(&mut buf).to_string()
+                // SAFETY: `buf` is always big enough to contain all the digits.
+                unsafe { self._fmt(&mut buf).to_string() }
             }
         }
         )*
