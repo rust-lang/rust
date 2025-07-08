@@ -19,7 +19,7 @@ use serde_derive::Deserialize;
 use tracing::{instrument, span};
 
 use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
-use crate::core::build_steps::tool::SourceType;
+use crate::core::build_steps::tool::{SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
 use crate::core::builder::{
@@ -2258,10 +2258,10 @@ impl Step for Assemble {
         copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
 
         if builder.config.lld_enabled {
-            builder.ensure(crate::core::build_steps::tool::LldWrapper {
-                build_compiler,
-                target_compiler,
-            });
+            let lld_wrapper = builder.ensure(
+                crate::core::build_steps::tool::LldWrapper::for_compiler(builder, target_compiler),
+            );
+            copy_lld_artifacts(builder, lld_wrapper, target_compiler);
         }
 
         if builder.config.llvm_enabled(target_compiler.host) && builder.config.llvm_tools_enabled {

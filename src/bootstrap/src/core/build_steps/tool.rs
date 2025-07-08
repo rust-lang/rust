@@ -881,17 +881,50 @@ impl Step for Cargo {
     }
 }
 
+/// Represents a built LldWrapper, the `lld-wrapper` tool itself, and a directory
+/// containing a build of LLD.
+#[derive(Clone)]
+pub struct BuiltLldWrapper {
+    tool: ToolBuildResult,
+    lld_dir: PathBuf,
+}
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LldWrapper {
     pub build_compiler: Compiler,
-    pub target_compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl LldWrapper {
+    /// Returns `LldWrapper` that should be **used** by the passed compiler.
+    pub fn for_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
+        Self {
+            build_compiler: get_tool_target_compiler(
+                builder,
+                ToolTargetBuildMode::Dist(target_compiler),
+            ),
+            target: target_compiler.host,
+        }
+    }
 }
 
 impl Step for LldWrapper {
-    type Output = ToolBuildResult;
+    type Output = BuiltLldWrapper;
+
+    const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
+        run.path("src/tools/lld-wrapper")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(LldWrapper {
+            build_compiler: get_tool_target_compiler(
+                run.builder,
+                ToolTargetBuildMode::Build(run.target),
+            ),
+            target: run.target,
+        });
     }
 
     #[cfg_attr(
@@ -900,25 +933,16 @@ impl Step for LldWrapper {
             level = "debug",
             name = "LldWrapper::run",
             skip_all,
-            fields(build_compiler = ?self.build_compiler, target_compiler = ?self.target_compiler),
+            fields(build_compiler = ?self.build_compiler),
         ),
     )]
-    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
-        if builder.config.dry_run() {
-            return ToolBuildResult {
-                tool_path: Default::default(),
-                build_compiler: self.build_compiler,
-                target_compiler: self.target_compiler,
-            };
-        }
-
-        let target = self.target_compiler.host;
-
-        let tool_result = builder.ensure(ToolBuild {
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let lld_dir = builder.ensure(llvm::Lld { target: self.target });
+        let tool = builder.ensure(ToolBuild {
             build_compiler: self.build_compiler,
-            target,
+            target: self.target,
             tool: "lld-wrapper",
-            mode: Mode::ToolStd,
+            mode: Mode::ToolTarget,
             path: "src/tools/lld-wrapper",
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
@@ -926,38 +950,41 @@ impl Step for LldWrapper {
             cargo_args: Vec::new(),
             artifact_kind: ToolArtifactKind::Binary,
         });
-
-        let libdir_bin = builder.sysroot_target_bindir(self.target_compiler, target);
-        t!(fs::create_dir_all(&libdir_bin));
-
-        let lld_install = builder.ensure(llvm::Lld { target });
-        let src_exe = exe("lld", target);
-        let dst_exe = exe("rust-lld", target);
-
-        builder.copy_link(
-            &lld_install.join("bin").join(src_exe),
-            &libdir_bin.join(dst_exe),
-            FileType::Executable,
-        );
-        let self_contained_lld_dir = libdir_bin.join("gcc-ld");
-        t!(fs::create_dir_all(&self_contained_lld_dir));
-
-        for name in crate::LLD_FILE_NAMES {
-            builder.copy_link(
-                &tool_result.tool_path,
-                &self_contained_lld_dir.join(exe(name, target)),
-                FileType::Executable,
-            );
-        }
-
-        tool_result
+        BuiltLldWrapper { tool, lld_dir }
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(
-            StepMetadata::build("LldWrapper", self.target_compiler.host)
-                .built_by(self.build_compiler),
-        )
+        Some(StepMetadata::build("LldWrapper", self.target).built_by(self.build_compiler))
+    }
+}
+
+pub(crate) fn copy_lld_artifacts(
+    builder: &Builder<'_>,
+    lld_wrapper: BuiltLldWrapper,
+    target_compiler: Compiler,
+) {
+    let target = target_compiler.host;
+
+    let libdir_bin = builder.sysroot_target_bindir(target_compiler, target);
+    t!(fs::create_dir_all(&libdir_bin));
+
+    let src_exe = exe("lld", target);
+    let dst_exe = exe("rust-lld", target);
+
+    builder.copy_link(
+        &lld_wrapper.lld_dir.join("bin").join(src_exe),
+        &libdir_bin.join(dst_exe),
+        FileType::Executable,
+    );
+    let self_contained_lld_dir = libdir_bin.join("gcc-ld");
+    t!(fs::create_dir_all(&self_contained_lld_dir));
+
+    for name in crate::LLD_FILE_NAMES {
+        builder.copy_link(
+            &lld_wrapper.tool.tool_path,
+            &self_contained_lld_dir.join(exe(name, target)),
+            FileType::Executable,
+        );
     }
 }
 
