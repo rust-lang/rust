@@ -1379,7 +1379,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
         }
     }
 
-    let features = sess.opts.unstable_opts.linker_features;
+    let features = sess.opts.cg.linker_features;
 
     // linker and linker flavor specified via command line have precedence over what the target
     // specification specifies

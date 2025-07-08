@@ -12,14 +12,14 @@ fn main() {
     // asking the linker to display its version number with a link-arg.
     assert_rustc_uses_lld(
         rustc()
-            .arg("-Zlinker-features=+lld")
+            .arg("-Clinker-features=+lld")
             .arg("-Clink-self-contained=+linker")
             .arg("-Zunstable-options")
             .input("main.rs"),
     );
 
     // It should not be used when we explicitly opt out of lld.
-    assert_rustc_doesnt_use_lld(rustc().arg("-Zlinker-features=-lld").input("main.rs"));
+    assert_rustc_doesnt_use_lld(rustc().arg("-Clinker-features=-lld").input("main.rs"));
 
     // While we're here, also check that the last linker feature flag "wins" when passed multiple
     // times to rustc.
@@ -27,9 +27,9 @@ fn main() {
         rustc()
             .arg("-Clink-self-contained=+linker")
             .arg("-Zunstable-options")
-            .arg("-Zlinker-features=-lld")
-            .arg("-Zlinker-features=+lld")
-            .arg("-Zlinker-features=-lld,+lld")
+            .arg("-Clinker-features=-lld")
+            .arg("-Clinker-features=+lld")
+            .arg("-Clinker-features=-lld,+lld")
             .input("main.rs"),
     );
 }

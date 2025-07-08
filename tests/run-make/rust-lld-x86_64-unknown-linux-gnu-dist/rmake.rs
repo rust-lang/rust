@@ -12,5 +12,5 @@ fn main() {
     assert_rustc_uses_lld(rustc().input("main.rs"));
 
     // But it can still be disabled by turning the linker feature off.
-    assert_rustc_doesnt_use_lld(rustc().arg("-Zlinker-features=-lld").input("main.rs"));
+    assert_rustc_doesnt_use_lld(rustc().arg("-Clinker-features=-lld").input("main.rs"));
 }
