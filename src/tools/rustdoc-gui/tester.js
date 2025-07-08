@@ -196,7 +196,7 @@ async function main(argv) {
         // This is more convenient that setting fields one by one.
         const args = [
             "--variable", "DOC_PATH", opts["doc_folder"].split("\\").join("/"),
-            "--enable-fail-on-js-error", "--allow-file-access-from-files",
+            "--allow-file-access-from-files",
         ];
         if (opts["debug"]) {
             debug = true;

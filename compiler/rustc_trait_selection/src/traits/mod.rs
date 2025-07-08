@@ -481,7 +481,7 @@ pub enum EvaluateConstErr {
     /// some unevaluated constant with either generic parameters or inference variables in its
     /// generic arguments.
     HasGenericsOrInfers,
-    /// The type this constant evalauted to is not valid for use in const generics. This should
+    /// The type this constant evaluated to is not valid for use in const generics. This should
     /// always result in an error when checking the constant is correctly typed for the parameter
     /// it is an argument to, so a bug is delayed when encountering this.
     InvalidConstParamTy(ErrorGuaranteed),

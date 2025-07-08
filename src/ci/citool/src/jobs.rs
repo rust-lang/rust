@@ -13,7 +13,7 @@ use crate::utils::load_env_var;
 #[derive(serde::Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct Job {
-    /// Name of the job, e.g. mingw-check-1
+    /// Name of the job, e.g. pr-check-1
     pub name: String,
     /// GitHub runner on which the job should be executed
     pub os: String,
@@ -66,6 +66,8 @@ pub struct JobDatabase {
     pub try_jobs: Vec<Job>,
     #[serde(rename = "auto")]
     pub auto_jobs: Vec<Job>,
+    #[serde(rename = "optional")]
+    pub optional_jobs: Vec<Job>,
 
     /// Shared environments for the individual run types.
     envs: JobEnvironments,
@@ -75,9 +77,10 @@ impl JobDatabase {
     /// Find `auto` jobs that correspond to the passed `pattern`.
     /// Patterns are matched using the glob syntax.
     /// For example `dist-*` matches all jobs starting with `dist-`.
-    fn find_auto_jobs_by_pattern(&self, pattern: &str) -> Vec<Job> {
+    fn find_auto_or_optional_jobs_by_pattern(&self, pattern: &str) -> Vec<Job> {
         self.auto_jobs
             .iter()
+            .chain(self.optional_jobs.iter())
             .filter(|j| glob_match::glob_match(pattern, &j.name))
             .cloned()
             .collect()
@@ -181,7 +184,7 @@ fn calculate_jobs(
                 let mut jobs: Vec<Job> = vec![];
                 let mut unknown_patterns = vec![];
                 for pattern in patterns {
-                    let matched_jobs = db.find_auto_jobs_by_pattern(pattern);
+                    let matched_jobs = db.find_auto_or_optional_jobs_by_pattern(pattern);
                     if matched_jobs.is_empty() {
                         unknown_patterns.push(pattern.clone());
                     } else {

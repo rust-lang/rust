@@ -36,6 +36,7 @@ path = [
     "rustfmt.toml",
     "rust-bors.toml",
     "triagebot.toml",
+    "typos.toml",
     "x",
     "x.ps1",
     "x.py",

@@ -537,7 +537,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         #[inline]
         fn is_offset_misaligned(offset: u64, align: Align) -> Option<Misalignment> {
-            if offset % align.bytes() == 0 {
+            if offset.is_multiple_of(align.bytes()) {
                 None
             } else {
                 // The biggest power of two through which `offset` is divisible.
@@ -655,7 +655,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// The caller is responsible for calling the access hooks!
     ///
     /// You almost certainly want to use `get_ptr_alloc`/`get_ptr_alloc_mut` instead.
-    fn get_alloc_raw(
+    pub fn get_alloc_raw(
         &self,
         id: AllocId,
     ) -> InterpResult<'tcx, &Allocation<M::Provenance, M::AllocExtra, M::Bytes>> {
@@ -757,7 +757,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ///
     /// Also returns a ptr to `self.extra` so that the caller can use it in parallel with the
     /// allocation.
-    fn get_alloc_raw_mut(
+    ///
+    /// You almost certainly want to use `get_ptr_alloc`/`get_ptr_alloc_mut` instead.
+    pub fn get_alloc_raw_mut(
         &mut self,
         id: AllocId,
     ) -> InterpResult<'tcx, (&mut Allocation<M::Provenance, M::AllocExtra, M::Bytes>, &mut M)> {
@@ -976,15 +978,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(())
     }
 
-    /// Handle the effect an FFI call might have on the state of allocations.
-    /// This overapproximates the modifications which external code might make to memory:
-    /// We set all reachable allocations as initialized, mark all reachable provenances as exposed
-    /// and overwrite them with `Provenance::WILDCARD`.
-    ///
-    /// The allocations in `ids` are assumed to be already exposed.
-    pub fn prepare_for_native_call(&mut self, ids: Vec<AllocId>) -> InterpResult<'tcx> {
+    /// Visit all allocations reachable from the given start set, by recursively traversing the
+    /// provenance information of those allocations.
+    pub fn visit_reachable_allocs(
+        &mut self,
+        start: Vec<AllocId>,
+        mut visit: impl FnMut(&mut Self, AllocId, &AllocInfo) -> InterpResult<'tcx>,
+    ) -> InterpResult<'tcx> {
         let mut done = FxHashSet::default();
-        let mut todo = ids;
+        let mut todo = start;
         while let Some(id) = todo.pop() {
             if !done.insert(id) {
                 // We already saw this allocation before, don't process it again.
@@ -992,31 +994,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             let info = self.get_alloc_info(id);
 
-            // If there is no data behind this pointer, skip this.
-            if !matches!(info.kind, AllocKind::LiveData) {
-                continue;
-            }
-
-            // Expose all provenances in this allocation, and add them to `todo`.
-            let alloc = self.get_alloc_raw(id)?;
-            for prov in alloc.provenance().provenances() {
-                M::expose_provenance(self, prov)?;
-                if let Some(id) = prov.get_alloc_id() {
-                    todo.push(id);
+            // Recurse, if there is data here.
+            // Do this *before* invoking the callback, as the callback might mutate the
+            // allocation and e.g. replace all provenance by wildcards!
+            if matches!(info.kind, AllocKind::LiveData) {
+                let alloc = self.get_alloc_raw(id)?;
+                for prov in alloc.provenance().provenances() {
+                    if let Some(id) = prov.get_alloc_id() {
+                        todo.push(id);
+                    }
                 }
             }
-            // Also expose the provenance of the interpreter-level allocation, so it can
-            // be read by FFI. The `black_box` is defensive programming as LLVM likes
-            // to (incorrectly) optimize away ptr2int casts whose result is unused.
-            std::hint::black_box(alloc.get_bytes_unchecked_raw().expose_provenance());
 
-            // Prepare for possible write from native code if mutable.
-            if info.mutbl.is_mut() {
-                self.get_alloc_raw_mut(id)?
-                    .0
-                    .prepare_for_native_write()
-                    .map_err(|e| e.to_interp_error(id))?;
-            }
+            // Call the callback.
+            visit(self, id, &info)?;
         }
         interp_ok(())
     }
@@ -1073,7 +1064,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             todo.extend(static_roots(self));
             while let Some(id) = todo.pop() {
                 if reachable.insert(id) {
-                    // This is a new allocation, add the allocation it points to `todo`.
+                    // This is a new allocation, add the allocations it points to `todo`.
+                    // We only need to care about `alloc_map` memory here, as entirely unchanged
+                    // global memory cannot point to memory relevant for the leak check.
                     if let Some((_, alloc)) = self.memory.alloc_map.get(id) {
                         todo.extend(
                             alloc.provenance().provenances().filter_map(|prov| prov.get_alloc_id()),
@@ -1240,7 +1233,7 @@ impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>
 
     /// `offset` is relative to this allocation reference, not the base of the allocation.
     pub fn write_ptr_sized(&mut self, offset: Size, val: Scalar<Prov>) -> InterpResult<'tcx> {
-        self.write_scalar(alloc_range(offset, self.tcx.data_layout().pointer_size), val)
+        self.write_scalar(alloc_range(offset, self.tcx.data_layout().pointer_size()), val)
     }
 
     /// Mark the given sub-range (relative to this allocation reference) as uninitialized.
@@ -1292,7 +1285,7 @@ impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes> AllocRef<'a, 'tcx, Pr
     /// `offset` is relative to this allocation reference, not the base of the allocation.
     pub fn read_pointer(&self, offset: Size) -> InterpResult<'tcx, Scalar<Prov>> {
         self.read_scalar(
-            alloc_range(offset, self.tcx.data_layout().pointer_size),
+            alloc_range(offset, self.tcx.data_layout().pointer_size()),
             /*read_provenance*/ true,
         )
     }
@@ -1561,7 +1554,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         // If the allocation is N-aligned, and the offset is not divisible by N,
                         // then `base + offset` has a non-zero remainder after division by `N`,
                         // which means `base + offset` cannot be null.
-                        if offset.bytes() % info.align.bytes() != 0 {
+                        if !offset.bytes().is_multiple_of(info.align.bytes()) {
                             return interp_ok(false);
                         }
                         // We don't know enough, this might be null.
@@ -1596,7 +1589,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 Some((alloc_id, offset, extra)) => Ok((alloc_id, offset, extra)),
                 None => {
                     assert!(M::Provenance::OFFSET_IS_ADDR);
-                    let (_, addr) = ptr.into_parts();
+                    // Offset is absolute, as we just asserted.
+                    let (_, addr) = ptr.into_raw_parts();
                     Err(addr.bytes())
                 }
             },

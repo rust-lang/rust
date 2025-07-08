@@ -494,7 +494,7 @@ impl FilterMapNextChecker {
                 Some(next_function_id),
                 match next_function_id.lookup(db).container {
                     ItemContainerId::TraitId(iterator_trait_id) => {
-                        let iterator_trait_items = &db.trait_items(iterator_trait_id).items;
+                        let iterator_trait_items = &iterator_trait_id.trait_items(db).items;
                         iterator_trait_items.iter().find_map(|(name, it)| match it {
                             &AssocItemId::FunctionId(id) if *name == sym::filter_map => Some(id),
                             _ => None,
@@ -558,7 +558,7 @@ pub fn record_literal_missing_fields(
         return None;
     }
 
-    let variant_data = variant_def.variant_data(db);
+    let variant_data = variant_def.fields(db);
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
     let missed_fields: Vec<LocalFieldId> = variant_data
@@ -588,7 +588,7 @@ pub fn record_pattern_missing_fields(
         return None;
     }
 
-    let variant_data = variant_def.variant_data(db);
+    let variant_data = variant_def.fields(db);
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
     let missed_fields: Vec<LocalFieldId> = variant_data

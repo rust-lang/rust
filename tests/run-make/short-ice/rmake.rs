@@ -5,9 +5,12 @@
 // See https://github.com/rust-lang/rust/issues/107910
 
 //@ needs-target-std
-//@ ignore-i686-pc-windows-msvc
-// Reason: the assert_eq! on line 37 fails, almost seems like it missing debug info?
-// Haven't been able to reproduce locally, but it happens on CI.
+//@ ignore-windows-msvc
+//
+// - FIXME(#143198): On `i686-pc-windows-msvc`: the assert_eq! on line 37 fails, almost seems like
+//   it missing debug info? Haven't been able to reproduce locally, but it happens on CI.
+// - FIXME(#143198): On `x86_64-pc-windows-msvc`: full backtrace sometimes do not contain matching
+//   count of short backtrace markers (e.g. 5x end marker, but 3x start marker).
 
 use run_make_support::rustc;
 

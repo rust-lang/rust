@@ -19,8 +19,8 @@ use super::{CanAccessMutGlobal, CompileTimeInterpCx, CompileTimeMachine};
 use crate::const_eval::CheckAlignment;
 use crate::interpret::{
     CtfeValidationMode, GlobalId, Immediate, InternKind, InternResult, InterpCx, InterpErrorKind,
-    InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, StackPopCleanup, create_static_alloc,
-    eval_nullary_intrinsic, intern_const_alloc_recursive, interp_ok, throw_exhaust,
+    InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, ReturnContinuation, create_static_alloc,
+    intern_const_alloc_recursive, interp_ok, throw_exhaust,
 };
 use crate::{CTRL_C_RECEIVED, errors};
 
@@ -76,7 +76,7 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
         cid.instance,
         body,
         &ret.clone().into(),
-        StackPopCleanup::Root { cleanup: false },
+        ReturnContinuation::Stop { cleanup: false },
     )?;
     ecx.storage_live_for_always_live_locals()?;
 
@@ -209,9 +209,9 @@ pub(super) fn op_to_const<'tcx>(
 
     match immediate {
         Left(ref mplace) => {
-            // We know `offset` is relative to the allocation, so we can use `into_parts`.
-            let (prov, offset) = mplace.ptr().into_parts();
-            let alloc_id = prov.expect("cannot have `fake` place for non-ZST type").alloc_id();
+            let (prov, offset) =
+                mplace.ptr().into_pointer_or_addr().unwrap().prov_and_relative_offset();
+            let alloc_id = prov.alloc_id();
             ConstValue::Indirect { alloc_id, offset }
         }
         // see comment on `let force_as_immediate` above
@@ -232,9 +232,10 @@ pub(super) fn op_to_const<'tcx>(
                     imm.layout.ty,
                 );
                 let msg = "`op_to_const` on an immediate scalar pair must only be used on slice references to the beginning of an actual allocation";
-                // We know `offset` is relative to the allocation, so we can use `into_parts`.
-                let (prov, offset) = a.to_pointer(ecx).expect(msg).into_parts();
-                let alloc_id = prov.expect(msg).alloc_id();
+                let ptr = a.to_pointer(ecx).expect(msg);
+                let (prov, offset) =
+                    ptr.into_pointer_or_addr().expect(msg).prov_and_relative_offset();
+                let alloc_id = prov.alloc_id();
                 let data = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
                 assert!(offset == abi::Size::ZERO, "{}", msg);
                 let meta = b.to_target_usize(ecx).expect(msg);
@@ -280,34 +281,6 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
-    // We call `const_eval` for zero arg intrinsics, too, in order to cache their value.
-    // Catch such calls and evaluate them instead of trying to load a constant's MIR.
-    if let ty::InstanceKind::Intrinsic(def_id) = key.value.instance.def {
-        let ty = key.value.instance.ty(tcx, key.typing_env);
-        let ty::FnDef(_, args) = ty.kind() else {
-            bug!("intrinsic with type {:?}", ty);
-        };
-        return eval_nullary_intrinsic(tcx, key.typing_env, def_id, args).report_err().map_err(
-            |error| {
-                let span = tcx.def_span(def_id);
-
-                // FIXME(oli-obk): why don't we have any tests for this code path?
-                super::report(
-                    tcx,
-                    error.into_kind(),
-                    span,
-                    || (span, vec![]),
-                    |diag, span, _| {
-                        diag.span_label(
-                            span,
-                            crate::fluent_generated::const_eval_nullary_intrinsic_fail,
-                        );
-                    },
-                )
-            },
-        );
-    }
-
     tcx.eval_to_allocation_raw(key).map(|val| turn_into_const_value(tcx, val, key))
 }
 

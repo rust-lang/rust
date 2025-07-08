@@ -11,7 +11,7 @@ use rustc_symbol_mangling::mangle_internal_symbol;
 
 use crate::builder::SBuilder;
 use crate::declare::declare_simple_fn;
-use crate::llvm::{self, False, True, Type};
+use crate::llvm::{self, False, True, Type, Value};
 use crate::{SimpleCx, attributes, debuginfo};
 
 pub(crate) unsafe fn codegen(
@@ -73,13 +73,14 @@ pub(crate) unsafe fn codegen(
     );
 
     unsafe {
-        // __rust_alloc_error_handler_should_panic
-        let name = mangle_internal_symbol(tcx, OomStrategy::SYMBOL);
-        let ll_g = cx.declare_global(&name, i8);
-        llvm::set_visibility(ll_g, llvm::Visibility::from_generic(tcx.sess.default_visibility()));
-        let val = tcx.sess.opts.unstable_opts.oom.should_panic();
-        let llval = llvm::LLVMConstInt(i8, val as u64, False);
-        llvm::set_initializer(ll_g, llval);
+        // __rust_alloc_error_handler_should_panic_v2
+        create_const_value_function(
+            tcx,
+            &cx,
+            &mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
+            &i8,
+            &llvm::LLVMConstInt(i8, tcx.sess.opts.unstable_opts.oom.should_panic() as u64, False),
+        );
 
         // __rust_no_alloc_shim_is_unstable_v2
         create_wrapper_function(
@@ -98,6 +99,34 @@ pub(crate) unsafe fn codegen(
         debuginfo::metadata::build_compile_unit_di_node(tcx, module_name, &dbg_cx);
         dbg_cx.finalize(tcx.sess);
     }
+}
+
+fn create_const_value_function(
+    tcx: TyCtxt<'_>,
+    cx: &SimpleCx<'_>,
+    name: &str,
+    output: &Type,
+    value: &Value,
+) {
+    let ty = cx.type_func(&[], output);
+    let llfn = declare_simple_fn(
+        &cx,
+        name,
+        llvm::CallConv::CCallConv,
+        llvm::UnnamedAddr::Global,
+        llvm::Visibility::from_generic(tcx.sess.default_visibility()),
+        ty,
+    );
+
+    attributes::apply_to_llfn(
+        llfn,
+        llvm::AttributePlace::Function,
+        &[llvm::AttributeKind::AlwaysInline.create_attr(cx.llcx)],
+    );
+
+    let llbb = unsafe { llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, c"entry".as_ptr()) };
+    let mut bx = SBuilder::build(&cx, llbb);
+    bx.ret(value);
 }
 
 fn create_wrapper_function(

@@ -574,7 +574,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 if addr != 0 {
                     diag.arg(
                         "pointer",
-                        Pointer::<Option<CtfeProvenance>>::from_addr_invalid(addr).to_string(),
+                        Pointer::<Option<CtfeProvenance>>::without_provenance(addr).to_string(),
                     );
                 }
 

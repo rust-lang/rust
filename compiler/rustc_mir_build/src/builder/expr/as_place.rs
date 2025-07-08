@@ -489,16 +489,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let place = place_builder.to_place(this);
                     this.cfg.push(
                         block,
-                        Statement {
-                            source_info: ty_source_info,
-                            kind: StatementKind::AscribeUserType(
+                        Statement::new(
+                            ty_source_info,
+                            StatementKind::AscribeUserType(
                                 Box::new((
                                     place,
                                     UserTypeProjection { base: annotation_index, projs: vec![] },
                                 )),
                                 Variance::Invariant,
                             ),
-                        },
+                        ),
                     );
                 }
                 block.and(place_builder)
@@ -518,16 +518,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         });
                     this.cfg.push(
                         block,
-                        Statement {
-                            source_info: ty_source_info,
-                            kind: StatementKind::AscribeUserType(
+                        Statement::new(
+                            ty_source_info,
+                            StatementKind::AscribeUserType(
                                 Box::new((
                                     Place::from(temp),
                                     UserTypeProjection { base: annotation_index, projs: vec![] },
                                 )),
                                 Variance::Invariant,
                             ),
-                        },
+                        ),
                     );
                 }
                 block.and(PlaceBuilder::from(temp))

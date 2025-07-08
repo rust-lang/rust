@@ -51,7 +51,7 @@ To combine installers.
 
 * Make install.sh not have to be customized, pull it's data from a
   config file.
-* Be more resiliant to installation failures, particularly if the disk
+* Be more resilient to installation failures, particularly if the disk
   is full.
 * Pre-install and post-uninstall scripts.
 * Allow components to depend on or contradict other components.

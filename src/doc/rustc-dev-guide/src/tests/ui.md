@@ -453,9 +453,9 @@ even run the resulting program. Just add one of the following
   - `//@ check-fail` — compilation should fail (the codegen phase is skipped).
     This is the default for UI tests.
   - `//@ build-fail` — compilation should fail during the codegen phase.
-    This will run `rustc` twice, once to verify that it compiles successfully
-    without the codegen phase, then a second time the full compile should
-    fail.
+    This will run `rustc` twice:
+    - First time is to ensure that the compile succeeds without the codegen phase
+    - Second time is to ensure that the full compile fails
   - `//@ run-fail` — compilation should succeed, but running the resulting
     binary should fail.
 
@@ -499,7 +499,7 @@ This directive takes comma-separated issue numbers as arguments, or `"unknown"`:
 - `//@ known-bug: rust-lang/chalk#123456`
   (allows arbitrary text before the `#`, which is useful when the issue is on another repo)
 - `//@ known-bug: unknown`
-  (when there is no known issue yet; preferrably open one if it does not already exist)
+  (when there is no known issue yet; preferably open one if it does not already exist)
 
 Do not include [error annotations](#error-annotations) in a test with
 `known-bug`. The test should still include other normal directives and

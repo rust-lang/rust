@@ -1,8 +1,8 @@
+// tidy-alphabetical-start
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/"
 )]
-#![feature(rustc_private)]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
 #![feature(assert_matches)]
@@ -11,18 +11,12 @@
 #![feature(file_buffered)]
 #![feature(format_args_nl)]
 #![feature(if_let_guard)]
-#![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
-#![feature(never_type)]
 #![feature(round_char_boundary)]
+#![feature(rustc_private)]
 #![feature(test)]
-#![feature(type_alias_impl_trait)]
-#![feature(type_ascription)]
-#![recursion_limit = "256"]
 #![warn(rustc::internal)]
-#![allow(clippy::collapsible_if, clippy::collapsible_else_if)]
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
+// tidy-alphabetical-end
 
 extern crate thin_vec;
 

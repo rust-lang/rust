@@ -8,6 +8,8 @@
 	3. Copy the filenames with updated suffixes from the directory.
 */
 
+/* ignore-tidy-filelength */
+
 :root {
 	--nav-sub-mobile-padding: 8px;
 	--search-typename-width: 6.75rem;
@@ -915,32 +917,30 @@ ul.block, .block li, .block ul {
 	overflow: auto;
 }
 
-.example-wrap.digits-1:not(.hide-lines) [data-nosnippet] {
-	width: calc(1ch + var(--line-number-padding) * 2);
+.example-wrap code {
+	position: relative;
 }
-.example-wrap.digits-2:not(.hide-lines) [data-nosnippet] {
-	width: calc(2ch + var(--line-number-padding) * 2);
+.example-wrap pre code span {
+	display: inline;
 }
-.example-wrap.digits-3:not(.hide-lines) [data-nosnippet] {
-	width: calc(3ch + var(--line-number-padding) * 2);
+
+.example-wrap.digits-1 { --example-wrap-digits-count: 1ch; }
+.example-wrap.digits-2 { --example-wrap-digits-count: 2ch; }
+.example-wrap.digits-3 { --example-wrap-digits-count: 3ch; }
+.example-wrap.digits-4 { --example-wrap-digits-count: 4ch; }
+.example-wrap.digits-5 { --example-wrap-digits-count: 5ch; }
+.example-wrap.digits-6 { --example-wrap-digits-count: 6ch; }
+.example-wrap.digits-7 { --example-wrap-digits-count: 7ch; }
+.example-wrap.digits-8 { --example-wrap-digits-count: 8ch; }
+.example-wrap.digits-9 { --example-wrap-digits-count: 9ch; }
+
+.example-wrap [data-nosnippet] {
+	width: calc(var(--example-wrap-digits-count) + var(--line-number-padding) * 2);
 }
-.example-wrap.digits-4:not(.hide-lines) [data-nosnippet] {
-	width: calc(4ch + var(--line-number-padding) * 2);
-}
-.example-wrap.digits-5:not(.hide-lines) [data-nosnippet] {
-	width: calc(5ch + var(--line-number-padding) * 2);
-}
-.example-wrap.digits-6:not(.hide-lines) [data-nosnippet] {
-	width: calc(6ch + var(--line-number-padding) * 2);
-}
-.example-wrap.digits-7:not(.hide-lines) [data-nosnippet] {
-	width: calc(7ch + var(--line-number-padding) * 2);
-}
-.example-wrap.digits-8:not(.hide-lines) [data-nosnippet] {
-	width: calc(8ch + var(--line-number-padding) * 2);
-}
-.example-wrap.digits-9:not(.hide-lines) [data-nosnippet] {
-	width: calc(9ch + var(--line-number-padding) * 2);
+.example-wrap pre > code {
+	padding-left: calc(
+		var(--example-wrap-digits-count) + var(--line-number-padding) * 2
+		+ var(--line-number-right-margin));
 }
 
 .example-wrap [data-nosnippet] {
@@ -953,63 +953,25 @@ ul.block, .block li, .block ul {
 	-ms-user-select: none;
 	user-select: none;
 	padding: 0 var(--line-number-padding);
-}
-.example-wrap [data-nosnippet]:target {
-	border-right: none;
+	position: absolute;
+	left: 0;
 }
 .example-wrap .line-highlighted[data-nosnippet] {
 	background-color: var(--src-line-number-highlighted-background-color);
 }
-:root.word-wrap-source-code .example-wrap [data-nosnippet] {
-	position: absolute;
-	left: 0;
-}
-.word-wrap-source-code .example-wrap pre > code {
+.example-wrap pre > code {
 	position: relative;
-	word-break: break-all;
+	display: block;
 }
 :root.word-wrap-source-code .example-wrap pre > code {
-	display: block;
+	word-break: break-all;
 	white-space: pre-wrap;
 }
 :root.word-wrap-source-code .example-wrap pre > code * {
 	word-break: break-all;
 }
-:root.word-wrap-source-code .example-wrap.digits-1 pre > code {
-	padding-left: calc(
-		1ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
-}
-:root.word-wrap-source-code .example-wrap.digits-2 pre > code {
-	padding-left: calc(
-		2ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
-}
-:root.word-wrap-source-code .example-wrap.digits-3 pre > code {
-	padding-left: calc(
-		3ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
-}
-:root.word-wrap-source-code .example-wrap.digits-4 pre > code {
-	padding-left: calc(
-		4ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
-}
-:root.word-wrap-source-code .example-wrap.digits-5 pre > code {
-	padding-left: calc(
-		5ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
-}
-:root.word-wrap-source-code .example-wrap.digits-6 pre > code {
-	padding-left: calc(
-		6ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
-}
-:root.word-wrap-source-code .example-wrap.digits-7 pre > code {
-	padding-left: calc(
-		7ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
-}
-:root.word-wrap-source-code .example-wrap.digits-8 pre > code {
-	padding-left: calc(
-		8ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
-}
-:root.word-wrap-source-code .example-wrap.digits-9 pre > code {
-	padding-left: calc(
-		9ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
+.example-wrap [data-nosnippet]:target {
+	border-right: none;
 }
 .example-wrap.hide-lines [data-nosnippet] {
 	display: none;

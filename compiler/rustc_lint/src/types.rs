@@ -547,18 +547,12 @@ fn lint_fn_pointer<'tcx>(
 }
 
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
-    fn check_lit(
-        &mut self,
-        cx: &LateContext<'tcx>,
-        hir_id: HirId,
-        lit: &'tcx hir::Lit,
-        negated: bool,
-    ) {
+    fn check_lit(&mut self, cx: &LateContext<'tcx>, hir_id: HirId, lit: hir::Lit, negated: bool) {
         if negated {
             self.negated_expr_id = Some(hir_id);
             self.negated_expr_span = Some(lit.span);
         }
-        lint_literal(cx, self, hir_id, lit.span, lit, negated);
+        lint_literal(cx, self, hir_id, lit.span, &lit, negated);
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
@@ -1583,7 +1577,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         impl<'tcx> hir::intravisit::Visitor<'_> for FnPtrFinder<'tcx> {
             fn visit_ty(&mut self, ty: &'_ hir::Ty<'_, AmbigArg>) {
                 debug!(?ty);
-                if let hir::TyKind::BareFn(hir::BareFnTy { abi, .. }) = ty.kind
+                if let hir::TyKind::FnPtr(hir::FnPtrTy { abi, .. }) = ty.kind
                     && !abi.is_rustic_abi()
                 {
                     self.spans.push(ty.span);

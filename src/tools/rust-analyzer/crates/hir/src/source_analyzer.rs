@@ -156,14 +156,14 @@ impl<'db> SourceAnalyzer<'db> {
         InFile { file_id, .. }: InFile<&SyntaxNode>,
         _offset: Option<TextSize>,
     ) -> SourceAnalyzer<'db> {
-        let (fields, source_map) = db.variant_fields_with_source_map(def);
+        let (fields, source_map) = def.fields_with_source_map(db);
         let resolver = def.resolver(db);
         SourceAnalyzer {
             resolver,
             body_or_sig: Some(BodyOrSig::VariantFields {
                 def,
                 store: fields.store.clone(),
-                source_map,
+                source_map: source_map.clone(),
             }),
             file_id,
         }
@@ -254,7 +254,7 @@ impl<'db> SourceAnalyzer<'db> {
         // expressions nor patterns).
         let expr_id = self.expr_id(expr.clone())?.as_expr()?;
         let infer = self.infer()?;
-        infer.expr_adjustments.get(&expr_id).map(|v| &**v)
+        infer.expr_adjustment(expr_id)
     }
 
     pub(crate) fn type_of_type(
@@ -286,7 +286,7 @@ impl<'db> SourceAnalyzer<'db> {
         let infer = self.infer()?;
         let coerced = expr_id
             .as_expr()
-            .and_then(|expr_id| infer.expr_adjustments.get(&expr_id))
+            .and_then(|expr_id| infer.expr_adjustment(expr_id))
             .and_then(|adjusts| adjusts.last().map(|adjust| adjust.target.clone()));
         let ty = infer[expr_id].clone();
         let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
@@ -302,12 +302,11 @@ impl<'db> SourceAnalyzer<'db> {
         let infer = self.infer()?;
         let coerced = match expr_or_pat_id {
             ExprOrPatId::ExprId(idx) => infer
-                .expr_adjustments
-                .get(&idx)
+                .expr_adjustment(idx)
                 .and_then(|adjusts| adjusts.last().cloned())
                 .map(|adjust| adjust.target),
             ExprOrPatId::PatId(idx) => {
-                infer.pat_adjustments.get(&idx).and_then(|adjusts| adjusts.last().cloned())
+                infer.pat_adjustment(idx).and_then(|adjusts| adjusts.last().cloned())
             }
         };
 
@@ -345,7 +344,7 @@ impl<'db> SourceAnalyzer<'db> {
     ) -> Option<BindingMode> {
         let id = self.pat_id(&pat.clone().into())?;
         let infer = self.infer()?;
-        infer.binding_modes.get(id.as_pat()?).map(|bm| match bm {
+        infer.binding_mode(id.as_pat()?).map(|bm| match bm {
             hir_ty::BindingMode::Move => BindingMode::Move,
             hir_ty::BindingMode::Ref(hir_ty::Mutability::Mut) => BindingMode::Ref(Mutability::Mut),
             hir_ty::BindingMode::Ref(hir_ty::Mutability::Not) => {
@@ -362,8 +361,7 @@ impl<'db> SourceAnalyzer<'db> {
         let infer = self.infer()?;
         Some(
             infer
-                .pat_adjustments
-                .get(&pat_id.as_pat()?)?
+                .pat_adjustment(pat_id.as_pat()?)?
                 .iter()
                 .map(|ty| Type::new_with_resolver(db, &self.resolver, ty.clone()))
                 .collect(),
@@ -713,7 +711,7 @@ impl<'db> SourceAnalyzer<'db> {
         };
         let (adt, subst) = self.infer()?.type_of_expr_or_pat(expr_id)?.as_adt()?;
         let variant = self.infer()?.variant_resolution_for_expr_or_pat(expr_id)?;
-        let variant_data = variant.variant_data(db);
+        let variant_data = variant.fields(db);
         let field = FieldId { parent: variant, local_id: variant_data.field(&local_name)? };
         let field_ty =
             db.field_types(variant).get(field.local_id)?.clone().substitute(Interner, subst);
@@ -734,9 +732,9 @@ impl<'db> SourceAnalyzer<'db> {
         let record_pat = ast::RecordPat::cast(field.syntax().parent().and_then(|p| p.parent())?)?;
         let pat_id = self.pat_id(&record_pat.into())?;
         let variant = self.infer()?.variant_resolution_for_pat(pat_id.as_pat()?)?;
-        let variant_data = variant.variant_data(db);
+        let variant_data = variant.fields(db);
         let field = FieldId { parent: variant, local_id: variant_data.field(&field_name)? };
-        let (adt, subst) = self.infer()?.type_of_pat.get(pat_id.as_pat()?)?.as_adt()?;
+        let (adt, subst) = self.infer()?[pat_id.as_pat()?].as_adt()?;
         let field_ty =
             db.field_types(variant).get(field.local_id)?.clone().substitute(Interner, subst);
         Some((
@@ -765,7 +763,8 @@ impl<'db> SourceAnalyzer<'db> {
             },
         };
 
-        let res = resolve_hir_path(db, &self.resolver, path, HygieneId::ROOT, Some(store))?;
+        let body_owner = self.resolver.body_owner();
+        let res = resolve_hir_value_path(db, &self.resolver, body_owner, path, HygieneId::ROOT)?;
         match res {
             PathResolution::Def(def) => Some(def),
             _ => None,
@@ -803,8 +802,8 @@ impl<'db> SourceAnalyzer<'db> {
                 };
                 container = Either::Right(db.normalize_projection(projection, trait_env.clone()));
             }
-            let handle_variants = |variant, subst: &Substitution, container: &mut _| {
-                let fields = db.variant_fields(variant);
+            let handle_variants = |variant: VariantId, subst: &Substitution, container: &mut _| {
+                let fields = variant.fields(db);
                 let field = fields.field(&field_name.as_name())?;
                 let field_types = db.field_types(variant);
                 *container = Either::Right(field_types[field].clone().substitute(Interner, subst));
@@ -1249,7 +1248,7 @@ impl<'db> SourceAnalyzer<'db> {
         let infer = self.infer()?;
 
         let pat_id = self.pat_id(&pattern.clone().into())?.as_pat()?;
-        let substs = infer.type_of_pat[pat_id].as_adt()?.1;
+        let substs = infer[pat_id].as_adt()?.1;
 
         let (variant, missing_fields, _exhaustive) =
             record_pattern_missing_fields(db, infer, pat_id, &body[pat_id])?;
@@ -1423,7 +1422,7 @@ impl<'db> SourceAnalyzer<'db> {
         method_name: &Name,
     ) -> Option<(TraitId, FunctionId)> {
         let trait_id = lang_trait.resolve_trait(db, self.resolver.krate())?;
-        let fn_id = db.trait_items(trait_id).method_by_name(method_name)?;
+        let fn_id = trait_id.trait_items(db).method_by_name(method_name)?;
         Some((trait_id, fn_id))
     }
 
@@ -1580,7 +1579,7 @@ fn resolve_hir_path_(
         // within the trait's associated types.
         if let (Some(unresolved), &TypeNs::TraitId(trait_id)) = (&unresolved, &ty) {
             if let Some(type_alias_id) =
-                db.trait_items(trait_id).associated_type_by_name(unresolved.name)
+                trait_id.trait_items(db).associated_type_by_name(unresolved.name)
             {
                 return Some(PathResolution::Def(ModuleDefId::from(type_alias_id).into()));
             }
@@ -1731,7 +1730,7 @@ fn resolve_hir_path_qualifier(
         // within the trait's associated types.
         if let (Some(unresolved), &TypeNs::TraitId(trait_id)) = (&unresolved, &ty) {
             if let Some(type_alias_id) =
-                db.trait_items(trait_id).associated_type_by_name(unresolved.name)
+                trait_id.trait_items(db).associated_type_by_name(unresolved.name)
             {
                 return Some(PathResolution::Def(ModuleDefId::from(type_alias_id).into()));
             }
@@ -1785,8 +1784,8 @@ pub(crate) fn name_hygiene(db: &dyn HirDatabase, name: InFile<&SyntaxNode>) -> H
 }
 
 fn type_of_expr_including_adjust(infer: &InferenceResult, id: ExprId) -> Option<&Ty> {
-    match infer.expr_adjustments.get(&id).and_then(|adjustments| adjustments.last()) {
+    match infer.expr_adjustment(id).and_then(|adjustments| adjustments.last()) {
         Some(adjustment) => Some(&adjustment.target),
-        None => infer.type_of_expr.get(id),
+        None => Some(&infer[id]),
     }
 }

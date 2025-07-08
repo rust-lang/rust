@@ -1,6 +1,3 @@
-// Only works on Unix targets
-//@ignore-target: windows wasm
-//@only-on-host
 //@compile-flags: -Zmiri-permissive-provenance
 
 #![feature(box_as_ptr)]

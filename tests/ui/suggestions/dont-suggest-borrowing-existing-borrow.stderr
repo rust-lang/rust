@@ -1,0 +1,58 @@
+error[E0277]: the trait bound `str: From<_>` is not satisfied
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:10:14
+   |
+LL |     let _ = &str::from("value");
+   |              ^^^ the trait `From<_>` is not implemented for `str`
+   |
+   = help: the following other types implement trait `From<T>`:
+             `String` implements `From<&String>`
+             `String` implements `From<&mut str>`
+             `String` implements `From<&str>`
+             `String` implements `From<Box<str>>`
+             `String` implements `From<Cow<'_, str>>`
+             `String` implements `From<char>`
+help: you likely meant to call the associated function `from` for type `&str`, but the code as written calls associated function `from` on type `str`
+   |
+LL |     let _ = <&str>::from("value");
+   |             +    +
+
+error[E0277]: the trait bound `S: Trait` is not satisfied
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:13:18
+   |
+LL |     let _ = &mut S::foo();
+   |                  ^ the trait `Trait` is not implemented for `S`
+   |
+   = help: the following other types implement trait `Trait`:
+             &S
+             &mut S
+help: you likely meant to call the associated function `foo` for type `&mut S`, but the code as written calls associated function `foo` on type `S`
+   |
+LL |     let _ = <&mut S>::foo();
+   |             +      +
+
+error[E0277]: the trait bound `S: Trait` is not satisfied
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:15:14
+   |
+LL |     let _ = &S::foo();
+   |              ^ the trait `Trait` is not implemented for `S`
+   |
+   = help: the following other types implement trait `Trait`:
+             &S
+             &mut S
+help: you likely meant to call the associated function `foo` for type `&S`, but the code as written calls associated function `foo` on type `S`
+   |
+LL |     let _ = <&S>::foo();
+   |             +  +
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:10:14
+   |
+LL |     let _ = &str::from("value");
+   |              ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

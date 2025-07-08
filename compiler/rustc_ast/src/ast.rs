@@ -19,7 +19,6 @@
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
 use std::borrow::Cow;
-use std::sync::Arc;
 use std::{cmp, fmt};
 
 pub use GenericArgs::*;
@@ -32,7 +31,7 @@ use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 pub use rustc_span::AttrId;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use rustc_span::{ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 pub use crate::format::*;
@@ -386,8 +385,8 @@ pub enum GenericParamKind {
     },
     Const {
         ty: P<Ty>,
-        /// Span of the `const` keyword.
-        kw_span: Span,
+        /// Span of the whole parameter definition, including default.
+        span: Span,
         /// Optional default value for the const generic param.
         default: Option<AnonConst>,
     },
@@ -411,10 +410,7 @@ impl GenericParam {
                 self.ident.span
             }
             GenericParamKind::Type { default: Some(ty) } => self.ident.span.to(ty.span),
-            GenericParamKind::Const { kw_span, default: Some(default), .. } => {
-                kw_span.to(default.value.span)
-            }
-            GenericParamKind::Const { kw_span, default: None, ty } => kw_span.to(ty.span),
+            GenericParamKind::Const { span, .. } => *span,
         }
     }
 }
@@ -1345,7 +1341,7 @@ impl Expr {
         }
     }
 
-    /// Returns an expression with (when possible) *one* outter brace removed
+    /// Returns an expression with (when possible) *one* outer brace removed
     pub fn maybe_unwrap_block(&self) -> &Expr {
         if let ExprKind::Block(block, None) = &self.kind
             && let [stmt] = block.stmts.as_slice()
@@ -1391,6 +1387,7 @@ impl Expr {
                 path.clone(),
                 TraitBoundModifiers::NONE,
                 self.span,
+                Parens::No,
             ))),
             _ => None,
         }
@@ -1805,10 +1802,17 @@ pub enum ExprKind {
     Become(P<Expr>),
 
     /// Bytes included via `include_bytes!`
+    ///
     /// Added for optimization purposes to avoid the need to escape
     /// large binary blobs - should always behave like [`ExprKind::Lit`]
     /// with a `ByteStr` literal.
-    IncludedBytes(Arc<[u8]>),
+    ///
+    /// The value is stored as a `ByteSymbol`. It's unfortunate that we need to
+    /// intern (hash) the bytes because they're likely to be large and unique.
+    /// But it's necessary because this will eventually be lowered to
+    /// `LitKind::ByteStr`, which needs a `ByteSymbol` to impl `Copy` and avoid
+    /// arena allocation.
+    IncludedBytes(ByteSymbol),
 
     /// A `format_args!()` expression.
     FormatArgs(P<FormatArgs>),
@@ -2066,7 +2070,7 @@ impl YieldKind {
 }
 
 /// A literal in a meta item.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct MetaItemLit {
     /// The original literal as written in the source code.
     pub symbol: Symbol,
@@ -2129,16 +2133,18 @@ pub enum LitFloatType {
 /// deciding the `LitKind`. This means that float literals like `1f32` are
 /// classified by this type as `Float`. This is different to `token::LitKind`
 /// which does *not* consider the suffix.
-#[derive(Clone, Encodable, Decodable, Debug, Hash, Eq, PartialEq, HashStable_Generic)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, Hash, Eq, PartialEq, HashStable_Generic)]
 pub enum LitKind {
     /// A string literal (`"foo"`). The symbol is unescaped, and so may differ
     /// from the original token's symbol.
     Str(Symbol, StrStyle),
-    /// A byte string (`b"foo"`). Not stored as a symbol because it might be
-    /// non-utf8, and symbols only allow utf8 strings.
-    ByteStr(Arc<[u8]>, StrStyle),
-    /// A C String (`c"foo"`). Guaranteed to only have `\0` at the end.
-    CStr(Arc<[u8]>, StrStyle),
+    /// A byte string (`b"foo"`). The symbol is unescaped, and so may differ
+    /// from the original token's symbol.
+    ByteStr(ByteSymbol, StrStyle),
+    /// A C String (`c"foo"`). Guaranteed to only have `\0` at the end. The
+    /// symbol is unescaped, and so may differ from the original token's
+    /// symbol.
+    CStr(ByteSymbol, StrStyle),
     /// A byte char (`b'f'`).
     Byte(u8),
     /// A character literal (`'a'`).
@@ -2416,7 +2422,7 @@ impl Ty {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct BareFnTy {
+pub struct FnPtrTy {
     pub safety: Safety,
     pub ext: Extern,
     pub generic_params: ThinVec<GenericParam>,
@@ -2449,8 +2455,8 @@ pub enum TyKind {
     ///
     /// Desugars into `Pin<&'a T>` or `Pin<&'a mut T>`.
     PinnedRef(Option<Lifetime>, MutTy),
-    /// A bare function (e.g., `fn(usize) -> bool`).
-    BareFn(P<BareFnTy>),
+    /// A function pointer type (e.g., `fn(usize) -> bool`).
+    FnPtr(P<FnPtrTy>),
     /// An unsafe existential lifetime binder (e.g., `unsafe<'a> &'a ()`).
     UnsafeBinder(P<UnsafeBinderTy>),
     /// The never type (`!`).
@@ -2577,8 +2583,7 @@ pub enum TyPatKind {
 pub enum TraitObjectSyntax {
     // SAFETY: When adding new variants make sure to update the `Tag` impl.
     Dyn = 0,
-    DynStar = 1,
-    None = 2,
+    None = 1,
 }
 
 /// SAFETY: `TraitObjectSyntax` only has 3 data-less variants which means
@@ -2594,8 +2599,7 @@ unsafe impl Tag for TraitObjectSyntax {
     unsafe fn from_usize(tag: usize) -> Self {
         match tag {
             0 => TraitObjectSyntax::Dyn,
-            1 => TraitObjectSyntax::DynStar,
-            2 => TraitObjectSyntax::None,
+            1 => TraitObjectSyntax::None,
             _ => unreachable!(),
         }
     }
@@ -3360,6 +3364,13 @@ pub struct TraitRef {
     pub ref_id: NodeId,
 }
 
+/// Whether enclosing parentheses are present or not.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum Parens {
+    Yes,
+    No,
+}
+
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct PolyTraitRef {
     /// The `'a` in `for<'a> Foo<&'a T>`.
@@ -3372,6 +3383,10 @@ pub struct PolyTraitRef {
     pub trait_ref: TraitRef,
 
     pub span: Span,
+
+    /// When `Yes`, the first and last character of `span` are an opening
+    /// and a closing paren respectively.
+    pub parens: Parens,
 }
 
 impl PolyTraitRef {
@@ -3380,12 +3395,14 @@ impl PolyTraitRef {
         path: Path,
         modifiers: TraitBoundModifiers,
         span: Span,
+        parens: Parens,
     ) -> Self {
         PolyTraitRef {
             bound_generic_params: generic_params,
             modifiers,
             trait_ref: TraitRef { path, ref_id: DUMMY_NODE_ID },
             span,
+            parens,
         }
     }
 }

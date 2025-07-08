@@ -95,7 +95,7 @@ where
         Ok(())
     }
 
-    let n = ((arg.layout.size.bytes() + 7) / 8) as usize;
+    let n = arg.layout.size.bytes().div_ceil(8) as usize;
     if n > MAX_EIGHTBYTES {
         return Err(Memory);
     }

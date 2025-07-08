@@ -49,6 +49,8 @@ debug = 2
 # ungrammar = { path = "../ungrammar" }
 
 # salsa = { path = "../salsa" }
+# salsa-macros = { path = "../salsa/components/salsa-macros" }
+# salsa-macro-rules = { path = "../salsa/components/salsa-macro-rules" }
 
 [workspace.dependencies]
 # local crates
@@ -136,14 +138,14 @@ rayon = "1.10.0"
 rowan = "=0.15.15"
 # Ideally we'd not enable the macros feature but unfortunately the `tracked` attribute does not work
 # on impls without it
-salsa = { version = "0.22.0", default-features = true, features = ["rayon","salsa_unstable", "macros"] }
-salsa-macros = "0.22.0"
+salsa = { version = "0.23.0", default-features = true, features = ["rayon","salsa_unstable", "macros"] }
+salsa-macros = "0.23.0"
 semver = "1.0.26"
 serde = { version = "1.0.219" }
 serde_derive = { version = "1.0.219" }
 serde_json = "1.0.140"
 rustc-hash = "2.1.1"
-rustc-literal-escaper = "0.0.3"
+rustc-literal-escaper = "0.0.4"
 smallvec = { version = "1.15.1", features = [
   "const_new",
   "union",

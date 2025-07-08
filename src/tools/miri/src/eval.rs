@@ -150,6 +150,8 @@ pub struct MiriConfig {
     pub retag_fields: RetagFields,
     /// The location of the shared object files to load when calling external functions
     pub native_lib: Vec<PathBuf>,
+    /// Whether to enable the new native lib tracing system.
+    pub native_lib_enable_tracing: bool,
     /// Run a garbage collector for BorTags every N basic blocks.
     pub gc_interval: u32,
     /// The number of CPUs to be reported by miri.
@@ -199,6 +201,7 @@ impl Default for MiriConfig {
             report_progress: None,
             retag_fields: RetagFields::Yes,
             native_lib: vec![],
+            native_lib_enable_tracing: false,
             gc_interval: 10_000,
             num_cpus: 1,
             page_size: None,
@@ -279,16 +282,6 @@ impl<'tcx> MainThreadState<'tcx> {
                 // Deal with our thread-local memory. We do *not* want to actually free it, instead we consider TLS
                 // to be like a global `static`, so that all memory reached by it is considered to "not leak".
                 this.terminate_active_thread(TlsAllocAction::Leak)?;
-
-                // Machine cleanup. Only do this if all threads have terminated; threads that are still running
-                // might cause Stacked Borrows errors (https://github.com/rust-lang/miri/issues/2396).
-                if this.have_all_terminated() {
-                    // Even if all threads have terminated, we have to beware of data races since some threads
-                    // might not have joined the main thread (https://github.com/rust-lang/miri/issues/2020,
-                    // https://github.com/rust-lang/miri/issues/2508).
-                    this.allow_data_races_all_threads_done();
-                    EnvVars::cleanup(this).expect("error during env var cleanup");
-                }
 
                 // Stop interpreter loop.
                 throw_machine_stop!(TerminationInfo::Exit { code: exit_code, leak_check: true });
@@ -443,7 +436,7 @@ pub fn create_ecx<'tcx>(
                     ImmTy::from_uint(sigpipe, ecx.machine.layouts.u8),
                 ],
                 Some(&ret_place),
-                StackPopCleanup::Root { cleanup: true },
+                ReturnContinuation::Stop { cleanup: true },
             )?;
         }
         MiriEntryFnType::MiriStart => {
@@ -452,7 +445,7 @@ pub fn create_ecx<'tcx>(
                 ExternAbi::Rust,
                 &[argc, argv],
                 Some(&ret_place),
-                StackPopCleanup::Root { cleanup: true },
+                ReturnContinuation::Stop { cleanup: true },
             )?;
         }
     }

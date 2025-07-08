@@ -120,8 +120,7 @@ fn assoc_func_fix(
 
         let call = ast::MethodCallExpr::cast(expr.syntax().clone())?;
         let range = InFile::new(expr_ptr.file_id, call.syntax().text_range())
-            .original_node_file_range_rooted(db)
-            .range;
+            .original_node_file_range_rooted_opt(db)?;
 
         let receiver = call.receiver()?;
         let receiver_type = &ctx.sema.type_of_expr(&receiver)?.original;
@@ -174,18 +173,16 @@ fn assoc_func_fix(
 
         let assoc_func_call_expr_string = make::expr_call(assoc_func_path, args).to_string();
 
-        let file_id = ctx.sema.original_range_opt(call.receiver()?.syntax())?.file_id;
-
         Some(Assist {
             id: AssistId::quick_fix("method_call_to_assoc_func_call_fix"),
             label: Label::new(format!(
                 "Use associated func call instead: `{assoc_func_call_expr_string}`"
             )),
             group: None,
-            target: range,
+            target: range.range,
             source_change: Some(SourceChange::from_text_edit(
-                file_id.file_id(ctx.sema.db),
-                TextEdit::replace(range, assoc_func_call_expr_string),
+                range.file_id.file_id(ctx.sema.db),
+                TextEdit::replace(range.range, assoc_func_call_expr_string),
             )),
             command: None,
         })
@@ -300,7 +297,7 @@ macro_rules! m {
 }
 fn main() {
     m!(());
- // ^^^^^^ error: no method `foo` on type `()`
+ // ^^ error: no method `foo` on type `()`
 }
 "#,
         );

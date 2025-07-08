@@ -260,6 +260,7 @@ fn test_f32() {
 
     // Intrinsics
     let nan = F32::nan(Neg, Quiet, 0).as_f32();
+    let snan = F32::nan(Neg, Signaling, 1).as_f32();
     check_all_outcomes(
         HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
         || F32::from(f32::min(nan, nan)),
@@ -312,6 +313,18 @@ fn test_f32() {
     check_all_outcomes(
         HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
         || F32::from(nan.ln_gamma().0),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([
+            F32::from(1.0),
+            F32::nan(Pos, Quiet, 0),
+            F32::nan(Neg, Quiet, 0),
+            F32::nan(Pos, Quiet, 1),
+            F32::nan(Neg, Quiet, 1),
+            F32::nan(Pos, Signaling, 1),
+            F32::nan(Neg, Signaling, 1),
+        ]),
+        || F32::from(snan.powf(0.0)),
     );
 }
 
@@ -376,6 +389,7 @@ fn test_f64() {
 
     // Intrinsics
     let nan = F64::nan(Neg, Quiet, 0).as_f64();
+    let snan = F64::nan(Neg, Signaling, 1).as_f64();
     check_all_outcomes(
         HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
         || F64::from(f64::min(nan, nan)),
@@ -432,6 +446,18 @@ fn test_f64() {
     check_all_outcomes(
         HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
         || F64::from(nan.ln_gamma().0),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([
+            F64::from(1.0),
+            F64::nan(Pos, Quiet, 0),
+            F64::nan(Neg, Quiet, 0),
+            F64::nan(Pos, Quiet, 1),
+            F64::nan(Neg, Quiet, 1),
+            F64::nan(Pos, Signaling, 1),
+            F64::nan(Neg, Signaling, 1),
+        ]),
+        || F64::from(snan.powf(0.0)),
     );
 }
 

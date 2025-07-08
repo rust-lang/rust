@@ -86,7 +86,7 @@ trait P<F> where F: Fn() -> _ {
 
 trait Q {
     fn foo<F>(_: F) where F: Fn() -> _ {}
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated functions
 }
 
 fn main() {}

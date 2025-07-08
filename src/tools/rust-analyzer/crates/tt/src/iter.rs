@@ -211,6 +211,7 @@ impl<'a, S: Copy> TtIter<'a, S> {
     }
 }
 
+#[derive(Clone)]
 pub enum TtElement<'a, S> {
     Leaf(&'a Leaf<S>),
     Subtree(&'a Subtree<S>, TtIter<'a, S>),

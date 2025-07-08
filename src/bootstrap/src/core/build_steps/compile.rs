@@ -12,7 +12,6 @@ use std::ffi::OsStr;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
 use std::{env, fs, str};
 
 use serde_derive::Deserialize;
@@ -306,11 +305,7 @@ impl Step for Std {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(
-            StepMetadata::build("std", self.target)
-                .built_by(self.compiler)
-                .stage(self.compiler.stage),
-        )
+        Some(StepMetadata::build("std", self.target).built_by(self.compiler))
     }
 }
 
@@ -1186,11 +1181,7 @@ impl Step for Rustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(
-            StepMetadata::build("rustc", self.target)
-                .built_by(self.build_compiler)
-                .stage(self.build_compiler.stage + 1),
-        )
+        Some(StepMetadata::build("rustc", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -1750,17 +1741,19 @@ fn copy_codegen_backends_to_sysroot(
         }
 
         let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, backend);
-        let dylib = t!(fs::read_to_string(stamp.path()));
-        let file = Path::new(&dylib);
-        let filename = file.file_name().unwrap().to_str().unwrap();
-        // change `librustc_codegen_cranelift-xxxxxx.so` to
-        // `librustc_codegen_cranelift-release.so`
-        let target_filename = {
-            let dash = filename.find('-').unwrap();
-            let dot = filename.find('.').unwrap();
-            format!("{}-{}{}", &filename[..dash], builder.rust_release(), &filename[dot..])
-        };
-        builder.copy_link(file, &dst.join(target_filename), FileType::NativeLibrary);
+        if stamp.path().exists() {
+            let dylib = t!(fs::read_to_string(stamp.path()));
+            let file = Path::new(&dylib);
+            let filename = file.file_name().unwrap().to_str().unwrap();
+            // change `librustc_codegen_cranelift-xxxxxx.so` to
+            // `librustc_codegen_cranelift-release.so`
+            let target_filename = {
+                let dash = filename.find('-').unwrap();
+                let dot = filename.find('.').unwrap();
+                format!("{}-{}{}", &filename[..dash], builder.rust_release(), &filename[dot..])
+            };
+            builder.copy_link(file, &dst.join(target_filename), FileType::NativeLibrary);
+        }
     }
 }
 
@@ -2171,6 +2164,25 @@ impl Step for Assemble {
                 continue; // Already built as part of rustc
             }
 
+            // FIXME: this is a horrible hack used to make `x check` work when other codegen
+            // backends are enabled.
+            // `x check` will check stage 1 rustc, which copies its rmetas to the stage0 sysroot.
+            // Then it checks codegen backends, which correctly use these rmetas.
+            // Then it needs to check std, but for that it needs to build stage 1 rustc.
+            // This copies the build rmetas into the stage0 sysroot, effectively poisoning it,
+            // because we then have both check and build rmetas in the same sysroot.
+            // That would be fine on its own. However, when another codegen backend is enabled,
+            // then building stage 1 rustc implies also building stage 1 codegen backend (even if
+            // it isn't used for anything). And since that tries to use the poisoned
+            // rmetas, it fails to build.
+            // We don't actually need to build rustc-private codegen backends for checking std,
+            // so instead we skip that.
+            // Note: this would be also an issue for other rustc-private tools, but that is "solved"
+            // by check::Std being last in the list of checked things (see
+            // `Builder::get_step_descriptions`).
+            if builder.kind == Kind::Check && builder.top_stage == 1 {
+                continue;
+            }
             builder.ensure(CodegenBackend {
                 compiler: build_compiler,
                 target: target_compiler.host,
@@ -2241,7 +2253,7 @@ impl Step for Assemble {
         debug!("copying codegen backends to sysroot");
         copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
 
-        if builder.config.lld_enabled && !builder.config.is_system_llvm(target_compiler.host) {
+        if builder.config.lld_enabled {
             builder.ensure(crate::core::build_steps::tool::LldWrapper {
                 build_compiler,
                 target_compiler,
@@ -2515,7 +2527,6 @@ pub fn stream_cargo(
     #[cfg(feature = "tracing")]
     let _run_span = crate::trace_cmd!(cmd);
 
-    let cargo = cmd.as_command_mut();
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
     let mut message_format = if builder.config.json_output {
@@ -2527,27 +2538,24 @@ pub fn stream_cargo(
         message_format.push_str(",json-diagnostic-");
         message_format.push_str(s);
     }
-    cargo.arg("--message-format").arg(message_format).stdout(Stdio::piped());
+    cmd.arg("--message-format").arg(message_format);
 
     for arg in tail_args {
-        cargo.arg(arg);
+        cmd.arg(arg);
     }
 
-    builder.verbose(|| println!("running: {cargo:?}"));
+    builder.verbose(|| println!("running: {cmd:?}"));
 
-    if builder.config.dry_run() {
+    let streaming_command = cmd.stream_capture_stdout(&builder.config.exec_ctx);
+
+    let Some(mut streaming_command) = streaming_command else {
         return true;
-    }
-
-    let mut child = match cargo.spawn() {
-        Ok(child) => child,
-        Err(e) => panic!("failed to execute command: {cargo:?}\nERROR: {e}"),
     };
 
     // Spawn Cargo slurping up its JSON output. We'll start building up the
     // `deps` array of all files it generated along with a `toplevel` array of
     // files we need to probe for later.
-    let stdout = BufReader::new(child.stdout.take().unwrap());
+    let stdout = BufReader::new(streaming_command.stdout.take().unwrap());
     for line in stdout.lines() {
         let line = t!(line);
         match serde_json::from_str::<CargoMessage<'_>>(&line) {
@@ -2564,13 +2572,14 @@ pub fn stream_cargo(
     }
 
     // Make sure Cargo actually succeeded after we read all of its stdout.
-    let status = t!(child.wait());
+    let status = t!(streaming_command.wait());
     if builder.is_verbose() && !status.success() {
         eprintln!(
-            "command did not execute successfully: {cargo:?}\n\
+            "command did not execute successfully: {cmd:?}\n\
                   expected success, got: {status}"
         );
     }
+
     status.success()
 }
 

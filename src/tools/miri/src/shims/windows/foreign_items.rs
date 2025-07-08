@@ -573,8 +573,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "WaitForSingleObject" => {
                 let [handle, timeout] = this.check_shim(abi, sys_conv, link_name, args)?;
 
-                let ret = this.WaitForSingleObject(handle, timeout)?;
-                this.write_scalar(ret, dest)?;
+                this.WaitForSingleObject(handle, timeout, dest)?;
             }
             "GetCurrentProcess" => {
                 let [] = this.check_shim(abi, sys_conv, link_name, args)?;
@@ -629,6 +628,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 this.write_scalar(name, &name_ptr)?;
                 this.write_scalar(res, dest)?;
+            }
+            "GetThreadId" => {
+                let [handle] = this.check_shim(abi, sys_conv, link_name, args)?;
+                let handle = this.read_handle(handle, "GetThreadId")?;
+                let thread = match handle {
+                    Handle::Thread(thread) => thread,
+                    Handle::Pseudo(PseudoHandle::CurrentThread) => this.active_thread(),
+                    _ => this.invalid_handle("GetThreadDescription")?,
+                };
+                let tid = this.get_tid(thread);
+                this.write_scalar(Scalar::from_u32(tid), dest)?;
+            }
+            "GetCurrentThreadId" => {
+                let [] = this.check_shim(abi, sys_conv, link_name, args)?;
+                let thread = this.active_thread();
+                let tid = this.get_tid(thread);
+                this.write_scalar(Scalar::from_u32(tid), dest)?;
             }
 
             // Miscellaneous

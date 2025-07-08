@@ -891,8 +891,8 @@ pub fn callable_sig_from_fn_trait(
 ) -> Option<(FnTrait, CallableSig)> {
     let krate = trait_env.krate;
     let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
-    let output_assoc_type = db
-        .trait_items(fn_once_trait)
+    let output_assoc_type = fn_once_trait
+        .trait_items(db)
         .associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
 
     let mut table = InferenceTable::new(db, trait_env.clone());

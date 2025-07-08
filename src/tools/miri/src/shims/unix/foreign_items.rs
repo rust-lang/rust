@@ -945,8 +945,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "pthread_join" => {
                 let [thread, retval] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
-                let res = this.pthread_join(thread, retval)?;
-                this.write_scalar(res, dest)?;
+                this.pthread_join(thread, retval, dest)?;
             }
             "pthread_detach" => {
                 let [thread] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
@@ -964,8 +963,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_null(dest)?;
             }
             "nanosleep" => {
-                let [req, rem] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
-                let result = this.nanosleep(req, rem)?;
+                let [duration, rem] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let result = this.nanosleep(duration, rem)?;
+                this.write_scalar(result, dest)?;
+            }
+            "clock_nanosleep" => {
+                // Currently this function does not exist on all Unixes, e.g. on macOS.
+                this.check_target_os(
+                    &["freebsd", "linux", "android", "solaris", "illumos"],
+                    link_name,
+                )?;
+                let [clock_id, flags, req, rem] =
+                    this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let result = this.clock_nanosleep(clock_id, flags, req, rem)?;
                 this.write_scalar(result, dest)?;
             }
             "sched_getaffinity" => {

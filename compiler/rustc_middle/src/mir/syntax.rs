@@ -284,15 +284,15 @@ pub enum FakeBorrowKind {
     ///
     /// This is used when lowering deref patterns, where shallow borrows wouldn't prevent something
     /// like:
-    // ```compile_fail
-    // let mut b = Box::new(false);
-    // match b {
-    //     deref!(true) => {} // not reached because `*b == false`
-    //     _ if { *b = true; false } => {} // not reached because the guard is `false`
-    //     deref!(false) => {} // not reached because the guard changed it
-    //     // UB because we reached the unreachable.
-    // }
-    // ```
+    /// ```compile_fail
+    /// let mut b = Box::new(false);
+    /// match b {
+    ///     deref!(true) => {} // not reached because `*b == false`
+    ///     _ if { *b = true; false } => {} // not reached because the guard is `false`
+    ///     deref!(false) => {} // not reached because the guard changed it
+    ///     // UB because we reached the unreachable.
+    /// }
+    /// ```
     Deep,
 }
 
@@ -381,7 +381,7 @@ pub enum StatementKind<'tcx> {
     /// computing these locals.
     ///
     /// If the local is already allocated, calling `StorageLive` again will implicitly free the
-    /// local and then allocate fresh uninitilized memory. If a local is already deallocated,
+    /// local and then allocate fresh uninitialized memory. If a local is already deallocated,
     /// calling `StorageDead` again is a NOP.
     StorageLive(Local),
 
@@ -1075,6 +1075,7 @@ pub enum AssertKind<O> {
     ResumedAfterDrop(CoroutineKind),
     MisalignedPointerDereference { required: O, found: O },
     NullPointerDereference,
+    InvalidEnumConstruction(O),
 }
 
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]

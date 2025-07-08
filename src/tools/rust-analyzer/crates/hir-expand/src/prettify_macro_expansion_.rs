@@ -46,7 +46,7 @@ pub fn prettify_macro_expansion(
                     } else if let Some(crate_name) = &macro_def_crate.extra_data(db).display_name {
                         make::tokens::ident(crate_name.crate_name().as_str())
                     } else {
-                        return dollar_crate.clone();
+                        dollar_crate.clone()
                     }
                 });
             if replacement.text() == "$crate" {

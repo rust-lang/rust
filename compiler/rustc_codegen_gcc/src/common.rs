@@ -117,15 +117,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
 
     fn const_undef(&self, typ: Type<'gcc>) -> RValue<'gcc> {
         let local = self.current_func.borrow().expect("func").new_local(None, typ, "undefined");
-        if typ.is_struct().is_some() {
-            // NOTE: hack to workaround a limitation of the rustc API: see comment on
-            // CodegenCx.structs_as_pointer
-            let pointer = local.get_address(None);
-            self.structs_as_pointer.borrow_mut().insert(pointer);
-            pointer
-        } else {
-            local.to_rvalue()
-        }
+        local.to_rvalue()
     }
 
     fn const_poison(&self, typ: Type<'gcc>) -> RValue<'gcc> {
@@ -170,7 +162,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
     }
 
     fn const_usize(&self, i: u64) -> RValue<'gcc> {
-        let bit_size = self.data_layout().pointer_size.bits();
+        let bit_size = self.data_layout().pointer_size().bits();
         if bit_size < 64 {
             // make sure it doesn't overflow
             assert!(i < (1 << bit_size));
@@ -234,19 +226,6 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
         match cv {
             Scalar::Int(int) => {
                 let data = int.to_bits(layout.size(self));
-
-                // FIXME(antoyo): there's some issues with using the u128 code that follows, so hard-code
-                // the paths for floating-point values.
-                // TODO: Remove this code?
-                /*if ty == self.float_type {
-                    return self
-                        .context
-                        .new_rvalue_from_double(ty, f32::from_bits(data as u32) as f64);
-                }
-                if ty == self.double_type {
-                    return self.context.new_rvalue_from_double(ty, f64::from_bits(data as u64));
-                }*/
-
                 let value = self.const_uint_big(self.type_ix(bitsize), data);
                 let bytesize = layout.size(self).bytes();
                 if bitsize > 1 && ty.is_integral() && bytesize as u32 == ty.get_size() {
@@ -261,7 +240,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                 }
             }
             Scalar::Ptr(ptr, _size) => {
-                let (prov, offset) = ptr.into_parts(); // we know the `offset` is relative
+                let (prov, offset) = ptr.prov_and_relative_offset();
                 let alloc_id = prov.alloc_id();
                 let base_addr = match self.tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => {

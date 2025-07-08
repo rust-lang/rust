@@ -1,17 +1,17 @@
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/non-const-op-in-closure-in-const.rs:10:42
+  --> $DIR/non-const-op-in-closure-in-const.rs:10:44
    |
 LL | impl<A, B> const Convert<B> for A where B: [const] From<A> {
-   |                                          ^^^^^^^^^ can't be applied to `From`
+   |                                            ^^^^^^^ can't be applied to `From`
    |
 note: `From` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/non-const-op-in-closure-in-const.rs:10:42
+  --> $DIR/non-const-op-in-closure-in-const.rs:10:44
    |
 LL | impl<A, B> const Convert<B> for A where B: [const] From<A> {
-   |                                          ^^^^^^^^^ can't be applied to `From`
+   |                                            ^^^^^^^ can't be applied to `From`
    |
 note: `From` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/convert/mod.rs:LL:COL

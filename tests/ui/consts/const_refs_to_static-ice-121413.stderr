@@ -24,10 +24,10 @@ LL |     static FOO: dyn Sync = AtomicUsize::new(0);
    |                 +++
 
 error[E0277]: the size for values of type `(dyn Sync + 'static)` cannot be known at compilation time
-  --> $DIR/const_refs_to_static-ice-121413.rs:8:17
+  --> $DIR/const_refs_to_static-ice-121413.rs:8:5
    |
 LL |     static FOO: Sync = AtomicUsize::new(0);
-   |                 ^^^^ doesn't have a size known at compile-time
+   |     ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Sync + 'static)`
    = note: statics and constants must have a statically known size

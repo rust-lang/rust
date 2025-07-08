@@ -56,7 +56,7 @@ Finally, we check whether the item bounds of the opaque hold for the expected ty
 [source][item-bounds-ck].
 
 [norm]: https://github.com/rust-lang/rust/blob/384d26fc7e3bdd7687cc17b2662b091f6017ec2a/compiler/rustc_trait_selection/src/solve/normalizes_to/opaque_types.rs#L13
-[coherence-example]: https://github.com/rust-lang/rust/blob/master/tests/ui/type-alias-impl-trait/coherence_different_hidden_ty.rs
+[coherence-example]: https://github.com/rust-lang/rust/blob/master/tests/ui/type-alias-impl-trait/coherence/coherence_different_hidden_ty.rs
 [placeholder-ck]: https://github.com/rust-lang/rust/blob/384d26fc7e3bdd7687cc17b2662b091f6017ec2a/compiler/rustc_trait_selection/src/solve/normalizes_to/opaque_types.rs#L33
 [check-storage]: https://github.com/rust-lang/rust/blob/384d26fc7e3bdd7687cc17b2662b091f6017ec2a/compiler/rustc_trait_selection/src/solve/normalizes_to/opaque_types.rs#L51-L52
 [eq-prev]: https://github.com/rust-lang/rust/blob/384d26fc7e3bdd7687cc17b2662b091f6017ec2a/compiler/rustc_trait_selection/src/solve/normalizes_to/opaque_types.rs#L51-L59

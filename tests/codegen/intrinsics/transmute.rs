@@ -29,28 +29,28 @@ pub struct Aggregate8(u8);
 // CHECK-LABEL: @check_bigger_size(
 #[no_mangle]
 pub unsafe fn check_bigger_size(x: u16) -> u32 {
-    // CHECK: call void @llvm.trap
+    // CHECK: call void @llvm.assume(i1 false)
     transmute_unchecked(x)
 }
 
 // CHECK-LABEL: @check_smaller_size(
 #[no_mangle]
 pub unsafe fn check_smaller_size(x: u32) -> u16 {
-    // CHECK: call void @llvm.trap
+    // CHECK: call void @llvm.assume(i1 false)
     transmute_unchecked(x)
 }
 
 // CHECK-LABEL: @check_smaller_array(
 #[no_mangle]
 pub unsafe fn check_smaller_array(x: [u32; 7]) -> [u32; 3] {
-    // CHECK: call void @llvm.trap
+    // CHECK: call void @llvm.assume(i1 false)
     transmute_unchecked(x)
 }
 
 // CHECK-LABEL: @check_bigger_array(
 #[no_mangle]
 pub unsafe fn check_bigger_array(x: [u32; 3]) -> [u32; 7] {
-    // CHECK: call void @llvm.trap
+    // CHECK: call void @llvm.assume(i1 false)
     transmute_unchecked(x)
 }
 
@@ -73,9 +73,9 @@ pub unsafe fn check_to_empty_array(x: [u32; 5]) -> [u32; 0] {
 #[no_mangle]
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub unsafe fn check_from_empty_array(x: [u32; 0]) -> [u32; 5] {
-    // CHECK-NOT: trap
-    // CHECK: call void @llvm.trap
-    // CHECK-NOT: trap
+    // CHECK-NOT: call
+    // CHECK: call void @llvm.assume(i1 false)
+    // CHECK-NOT: call
     mir! {
         {
             RET = CastTransmute(x);

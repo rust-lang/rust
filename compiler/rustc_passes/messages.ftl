@@ -13,6 +13,10 @@ passes_abi_ne =
 passes_abi_of =
     fn_abi_of({$fn_name}) = {$fn_abi}
 
+passes_align_attr_application =
+    `#[align(...)]` should be applied to a function item
+    .label = not a function item
+
 passes_align_should_be_repr_align =
     `#[align(...)]` is not supported on {$item} items
     .suggestion = use `#[repr(align(...))]` instead
@@ -537,7 +541,7 @@ passes_no_sanitize =
     `#[no_sanitize({$attr_str})]` should be applied to {$accepted_kind}
     .label = not {$accepted_kind}
 
-passes_non_exaustive_with_default_field_values =
+passes_non_exhaustive_with_default_field_values =
     `#[non_exhaustive]` can't be used to annotate items with default field values
     .label = this struct has default field values
 
@@ -617,9 +621,6 @@ passes_rustc_force_inline =
 passes_rustc_force_inline_coro =
     attribute cannot be applied to a `async`, `gen` or `async gen` function
     .label = `async`, `gen` or `async gen` function
-
-passes_rustc_layout_scalar_valid_range_arg =
-    expected exactly one integer literal argument
 
 passes_rustc_layout_scalar_valid_range_not_struct =
     attribute should be applied to a struct

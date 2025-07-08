@@ -561,7 +561,7 @@ trait Foo {}
 fn test(f: impl Foo, g: &(impl Foo + ?Sized)) {
     let _: &dyn Foo = &f;
     let _: &dyn Foo = g;
-                    //^ expected &'? (dyn Foo + 'static), got &'? impl Foo + ?Sized
+                    //^ expected &'? (dyn Foo + '?), got &'? impl Foo + ?Sized
 }
         "#,
     );

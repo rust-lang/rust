@@ -92,7 +92,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             &[data.clone()],
             None,
             // Directly return to caller.
-            StackPopCleanup::Goto { ret, unwind: mir::UnwindAction::Continue },
+            ReturnContinuation::Goto { ret, unwind: mir::UnwindAction::Continue },
         )?;
 
         // We ourselves will return `0`, eventually (will be overwritten if we catch a panic).
@@ -143,7 +143,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 &[catch_unwind.data, payload],
                 None,
                 // Directly return to caller of `catch_unwind`.
-                StackPopCleanup::Goto {
+                ReturnContinuation::Goto {
                     ret: catch_unwind.ret,
                     // `catch_fn` must not unwind.
                     unwind: mir::UnwindAction::Unreachable,
@@ -172,7 +172,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ExternAbi::Rust,
             &[this.mplace_to_ref(&msg)?],
             None,
-            StackPopCleanup::Goto { ret: None, unwind },
+            ReturnContinuation::Goto { ret: None, unwind },
         )
     }
 
@@ -191,7 +191,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ExternAbi::Rust,
             &[this.mplace_to_ref(&msg)?],
             None,
-            StackPopCleanup::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
+            ReturnContinuation::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
         )
     }
 
@@ -220,7 +220,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ExternAbi::Rust,
                     &[index, len],
                     None,
-                    StackPopCleanup::Goto { ret: None, unwind },
+                    ReturnContinuation::Goto { ret: None, unwind },
                 )?;
             }
             MisalignedPointerDereference { required, found } => {
@@ -241,7 +241,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ExternAbi::Rust,
                     &[required, found],
                     None,
-                    StackPopCleanup::Goto { ret: None, unwind },
+                    ReturnContinuation::Goto { ret: None, unwind },
                 )?;
             }
 
@@ -254,7 +254,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ExternAbi::Rust,
                     &[],
                     None,
-                    StackPopCleanup::Goto { ret: None, unwind },
+                    ReturnContinuation::Goto { ret: None, unwind },
                 )?;
             }
         }

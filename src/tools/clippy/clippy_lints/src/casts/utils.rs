@@ -5,7 +5,7 @@ use rustc_middle::ty::{self, AdtDef, IntTy, Ty, TyCtxt, UintTy, VariantDiscr};
 /// integral type.
 pub(super) fn int_ty_to_nbits(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<u64> {
     match ty.kind() {
-        ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize) => Some(tcx.data_layout.pointer_size.bits()),
+        ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize) => Some(tcx.data_layout.pointer_size().bits()),
         ty::Int(i) => i.bit_width(),
         ty::Uint(i) => i.bit_width(),
         _ => None,

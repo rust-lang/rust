@@ -60,7 +60,7 @@ pub(crate) fn rewrite_links(
     let doc = Parser::new_with_broken_link_callback(markdown, MARKDOWN_OPTIONS, Some(&mut cb))
         .into_offset_iter();
 
-    let doc = map_links(doc, |target, title, range| {
+    let doc = map_links(doc, |target, title, range, link_type| {
         // This check is imperfect, there's some overlap between valid intra-doc links
         // and valid URLs so we choose to be too eager to try to resolve what might be
         // a URL.
@@ -78,7 +78,7 @@ pub(crate) fn rewrite_links(
                 .map(|(_, attr_id)| attr_id.is_inner_attr())
                 .unwrap_or(false);
             if let Some((target, title)) =
-                rewrite_intra_doc_link(db, definition, target, title, is_inner_doc)
+                rewrite_intra_doc_link(db, definition, target, title, is_inner_doc, link_type)
             {
                 (None, target, title)
             } else if let Some(target) = rewrite_url_link(db, definition, target) {
@@ -417,6 +417,7 @@ fn rewrite_intra_doc_link(
     target: &str,
     title: &str,
     is_inner_doc: bool,
+    link_type: LinkType,
 ) -> Option<(String, String)> {
     let (link, ns) = parse_intra_doc_link(target);
 
@@ -438,7 +439,21 @@ fn rewrite_intra_doc_link(
     url = url.join(&file).ok()?;
     url.set_fragment(frag);
 
-    Some((url.into(), strip_prefixes_suffixes(title).to_owned()))
+    // We want to strip the keyword prefix from the title, but only if the target is implicitly the same
+    // as the title.
+    let title = match link_type {
+        LinkType::Email
+        | LinkType::Autolink
+        | LinkType::Shortcut
+        | LinkType::Collapsed
+        | LinkType::Reference
+        | LinkType::Inline => title.to_owned(),
+        LinkType::ShortcutUnknown | LinkType::CollapsedUnknown | LinkType::ReferenceUnknown => {
+            strip_prefixes_suffixes(title).to_owned()
+        }
+    };
+
+    Some((url.into(), title))
 }
 
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
@@ -470,7 +485,7 @@ fn mod_path_of_def(db: &RootDatabase, def: Definition) -> Option<String> {
 /// Rewrites a markdown document, applying 'callback' to each link.
 fn map_links<'e>(
     events: impl Iterator<Item = (Event<'e>, Range<usize>)>,
-    callback: impl Fn(&str, &str, Range<usize>) -> (Option<LinkType>, String, String),
+    callback: impl Fn(&str, &str, Range<usize>, LinkType) -> (Option<LinkType>, String, String),
 ) -> impl Iterator<Item = Event<'e>> {
     let mut in_link = false;
     // holds the origin link target on start event and the rewritten one on end event
@@ -497,7 +512,7 @@ fn map_links<'e>(
         }
         Event::Text(s) if in_link => {
             let (link_type, link_target_s, link_name) =
-                callback(&end_link_target.take().unwrap(), &s, range);
+                callback(&end_link_target.take().unwrap(), &s, range, end_link_type.unwrap());
             end_link_target = Some(CowStr::Boxed(link_target_s.into()));
             if !matches!(end_link_type, Some(LinkType::Autolink)) {
                 end_link_type = link_type;
@@ -506,7 +521,7 @@ fn map_links<'e>(
         }
         Event::Code(s) if in_link => {
             let (link_type, link_target_s, link_name) =
-                callback(&end_link_target.take().unwrap(), &s, range);
+                callback(&end_link_target.take().unwrap(), &s, range, end_link_type.unwrap());
             end_link_target = Some(CowStr::Boxed(link_target_s.into()));
             if !matches!(end_link_type, Some(LinkType::Autolink)) {
                 end_link_type = link_type;

@@ -222,6 +222,7 @@ enum BinderScopeType {
 
 type ScopeRef<'a> = &'a Scope<'a>;
 
+/// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         resolve_bound_vars,
@@ -278,19 +279,13 @@ fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBou
     rbv
 }
 
-fn late_arg_as_bound_arg<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param: &GenericParam<'tcx>,
-) -> ty::BoundVariableKind {
+fn late_arg_as_bound_arg<'tcx>(param: &GenericParam<'tcx>) -> ty::BoundVariableKind {
     let def_id = param.def_id.to_def_id();
-    let name = tcx.item_name(def_id);
     match param.kind {
         GenericParamKind::Lifetime { .. } => {
-            ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id, name))
+            ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id))
         }
-        GenericParamKind::Type { .. } => {
-            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, name))
-        }
+        GenericParamKind::Type { .. } => ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id)),
         GenericParamKind::Const { .. } => ty::BoundVariableKind::Const,
     }
 }
@@ -301,10 +296,10 @@ fn late_arg_as_bound_arg<'tcx>(
 fn generic_param_def_as_bound_arg(param: &ty::GenericParamDef) -> ty::BoundVariableKind {
     match param.kind {
         ty::GenericParamDefKind::Lifetime => {
-            ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(param.def_id, param.name))
+            ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(param.def_id))
         }
         ty::GenericParamDefKind::Type { .. } => {
-            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(param.def_id, param.name))
+            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(param.def_id))
         }
         ty::GenericParamDefKind::Const { .. } => ty::BoundVariableKind::Const,
     }
@@ -385,7 +380,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             trait_ref.bound_generic_params.iter().enumerate().map(|(late_bound_idx, param)| {
                 let arg = ResolvedArg::late(initial_bound_vars + late_bound_idx as u32, param);
                 bound_vars.insert(param.def_id, arg);
-                late_arg_as_bound_arg(self.tcx, param)
+                late_arg_as_bound_arg(param)
             });
         binders.extend(binders_iter);
 
@@ -484,7 +479,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     .map(|(late_bound_idx, param)| {
                         (
                             (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
-                            late_arg_as_bound_arg(self.tcx, param),
+                            late_arg_as_bound_arg(param),
                         )
                     })
                     .unzip();
@@ -709,7 +704,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match ty.kind {
-            hir::TyKind::BareFn(c) => {
+            hir::TyKind::FnPtr(c) => {
                 let (mut bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) = c
                     .generic_params
                     .iter()
@@ -717,7 +712,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     .map(|(late_bound_idx, param)| {
                         (
                             (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
-                            late_arg_as_bound_arg(self.tcx, param),
+                            late_arg_as_bound_arg(param),
                         )
                     })
                     .unzip();
@@ -733,8 +728,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     where_bound_origin: None,
                 };
                 self.with(scope, |this| {
-                    // a bare fn has no bounds, so everything
-                    // contained within is scoped within its binder.
+                    // a FnPtr has no bounds, so everything within is scoped within its binder
                     intravisit::walk_ty(this, ty);
                 });
             }
@@ -747,7 +741,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         .map(|(late_bound_idx, param)| {
                             (
                                 (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
-                                late_arg_as_bound_arg(self.tcx, param),
+                                late_arg_as_bound_arg(param),
                             )
                         })
                         .unzip();
@@ -763,8 +757,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     where_bound_origin: None,
                 };
                 self.with(scope, |this| {
-                    // a bare fn has no bounds, so everything
-                    // contained within is scoped within its binder.
+                    // everything within is scoped within its binder
                     intravisit::walk_ty(this, ty);
                 });
             }
@@ -956,7 +949,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         .map(|(late_bound_idx, param)| {
                             (
                                 (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
-                                late_arg_as_bound_arg(self.tcx, param),
+                                late_arg_as_bound_arg(param),
                             )
                         })
                         .unzip();
@@ -1170,7 +1163,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 matches!(param.kind, GenericParamKind::Lifetime { .. })
                     && self.tcx.is_late_bound(param.hir_id)
             })
-            .map(|param| late_arg_as_bound_arg(self.tcx, param))
+            .map(|param| late_arg_as_bound_arg(param))
             .collect();
         self.record_late_bound_vars(hir_id, binders);
         let scope = Scope::Binder {
@@ -1424,7 +1417,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             hir::Node::OpaqueTy(_) => "higher-ranked lifetime from outer `impl Trait`",
             // Other items are fine.
             hir::Node::Item(_) | hir::Node::TraitItem(_) | hir::Node::ImplItem(_) => return Ok(()),
-            hir::Node::Ty(hir::Ty { kind: hir::TyKind::BareFn(_), .. }) => {
+            hir::Node::Ty(hir::Ty { kind: hir::TyKind::FnPtr(_), .. }) => {
                 "higher-ranked lifetime from function pointer"
             }
             hir::Node::Ty(hir::Ty { kind: hir::TyKind::TraitObject(..), .. }) => {

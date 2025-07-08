@@ -878,6 +878,7 @@ mod derive {
             expect![[r#"
                 de Clone              macro Clone
                 de Clone, Copy
+                de Debug              macro Debug
                 de Default          macro Default
                 de PartialEq      macro PartialEq
                 de PartialEq, Eq
@@ -900,6 +901,7 @@ mod derive {
             expect![[r#"
                 de Clone     macro Clone
                 de Clone, Copy
+                de Debug     macro Debug
                 de Default macro Default
                 de Eq
                 de Eq, PartialOrd, Ord
@@ -921,6 +923,7 @@ mod derive {
             expect![[r#"
                 de Clone     macro Clone
                 de Clone, Copy
+                de Debug     macro Debug
                 de Default macro Default
                 de Eq
                 de Eq, PartialOrd, Ord
@@ -942,6 +945,7 @@ mod derive {
             expect![[r#"
                 de Clone     macro Clone
                 de Clone, Copy
+                de Debug     macro Debug
                 de Default macro Default
                 de PartialOrd
                 de PartialOrd, Ord

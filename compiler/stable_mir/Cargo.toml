@@ -4,7 +4,18 @@ version = "0.1.0-preview"
 edition = "2024"
 
 [dependencies]
+# tidy-alphabetical-start
+rustc_abi = { path = "../rustc_abi" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_session = { path = "../rustc_session" }
 rustc_smir = { path = "../rustc_smir" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+scoped-tls = "1.0"
+serde = { version = "1.0.125", features = [ "derive" ] }
+tracing = "0.1"
+# tidy-alphabetical-end
 
 [features]
 # Provides access to APIs that expose internals of the rust compiler.

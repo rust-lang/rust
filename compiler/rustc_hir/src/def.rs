@@ -831,7 +831,7 @@ pub enum LifetimeRes {
         /// Id of the introducing place. That can be:
         /// - an item's id, for the item's generic parameters;
         /// - a TraitRef's ref_id, identifying the `for<...>` binder;
-        /// - a BareFn type's id.
+        /// - a FnPtr type's id.
         ///
         /// This information is used for impl-trait lifetime captures, to know when to or not to
         /// capture any given lifetime.

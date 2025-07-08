@@ -67,8 +67,6 @@ pub enum ReprAttr {
     ReprSimd,
     ReprTransparent,
     ReprAlign(Align),
-    // this one is just so we can emit a lint for it
-    ReprEmpty,
 }
 pub use ReprAttr::*;
 
@@ -151,7 +149,7 @@ pub enum UsedBy {
 /// ## Attribute Processing
 /// While attributes are initially parsed by [`rustc_parse`] into [`ast::Attribute`], they still contain raw token streams
 /// because different attributes have different internal structures. This enum represents the final,
-/// fully parsed form of these attributes, where each variant contains contains all the information and
+/// fully parsed form of these attributes, where each variant contains all the information and
 /// structure relevant for the specific attribute.
 ///
 /// Some attributes can be applied multiple times to the same item, and they are "collapsed" into a single
@@ -198,10 +196,10 @@ pub enum AttributeKind {
     Align { align: Align, span: Span },
 
     /// Represents `#[rustc_allow_const_fn_unstable]`.
-    AllowConstFnUnstable(ThinVec<Symbol>),
+    AllowConstFnUnstable(ThinVec<Symbol>, Span),
 
     /// Represents `#[allow_internal_unstable]`.
-    AllowInternalUnstable(ThinVec<(Symbol, Span)>),
+    AllowInternalUnstable(ThinVec<(Symbol, Span)>, Span),
 
     /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
     AsPtr(Span),
@@ -250,8 +248,21 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[ignore]`
+    Ignore {
+        span: Span,
+        /// ignore can optionally have a reason: `#[ignore = "reason this is ignored"]`
+        reason: Option<Symbol>,
+    },
+
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
+
+    /// Represents `#[link_name]`.
+    LinkName { name: Symbol, span: Span },
+
+    /// Represents [`#[link_section]`](https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute)
+    LinkSection { name: Symbol, span: Span },
 
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
@@ -272,17 +283,38 @@ pub enum AttributeKind {
     /// Represents `#[naked]`
     Naked(Span),
 
+    /// Represents `#[no_implicit_prelude]`
+    NoImplicitPrelude(Span),
+
     /// Represents `#[no_mangle]`
     NoMangle(Span),
 
+    /// Represents `#[non_exhaustive]`
+    NonExhaustive(Span),
+
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
+
+    /// Represents `#[rustc_pass_by_value]` (used by the `rustc_pass_by_value` lint).
+    PassByValue(Span),
+
+    /// Represents `#[path]`
+    Path(Symbol, Span),
 
     /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
     PubTransparent(Span),
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
-    Repr(ThinVec<(ReprAttr, Span)>),
+    Repr { reprs: ThinVec<(ReprAttr, Span)>, first_span: Span },
+
+    /// Represents `#[rustc_layout_scalar_valid_range_end]`.
+    RustcLayoutScalarValidRangeEnd(Box<u128>, Span),
+
+    /// Represents `#[rustc_layout_scalar_valid_range_start]`.
+    RustcLayoutScalarValidRangeStart(Box<u128>, Span),
+
+    /// Represents `#[rustc_object_lifetime_default]`.
+    RustcObjectLifetimeDefault,
 
     /// Represents `#[rustc_skip_during_method_dispatch]`.
     SkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },
@@ -293,6 +325,9 @@ pub enum AttributeKind {
         /// Span of the attribute.
         span: Span,
     },
+
+    /// Represents `#[target_feature(enable = "...")]`
+    TargetFeature(ThinVec<(Symbol, Span)>, Span),
 
     /// Represents `#[track_caller]`
     TrackCaller(Span),

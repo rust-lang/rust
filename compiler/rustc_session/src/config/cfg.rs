@@ -278,7 +278,7 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
             };
             insert_atomic(sym::integer(i), align);
             if sess.target.pointer_width as u64 == i {
-                insert_atomic(sym::ptr, layout.pointer_align.abi);
+                insert_atomic(sym::ptr, layout.pointer_align().abi);
             }
         }
     }

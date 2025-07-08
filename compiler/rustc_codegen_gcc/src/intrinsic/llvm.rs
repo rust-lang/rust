@@ -648,6 +648,11 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 new_args.push(handle);
                 args = new_args.into();
             }
+            "__builtin_ia32_rdtscp" => {
+                let result = builder.current_func().new_local(None, builder.u32_type, "result");
+                let new_args = vec![result.get_address(None).to_rvalue()];
+                args = new_args.into();
+            }
             _ => (),
         }
     } else {
@@ -762,6 +767,14 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 // The first two arguments are inverted, so swap them.
                 let mut new_args = args.to_vec();
                 new_args.swap(0, 1);
+                args = new_args.into();
+            }
+            "__builtin_ia32_dpps256" => {
+                let mut new_args = args.to_vec();
+                // NOTE: without this cast to u8 (and it needs to be a u8 to fix the issue), we
+                // would get the following error:
+                // the last argument must be an 8-bit immediate
+                new_args[2] = builder.context.new_cast(None, new_args[2], builder.cx.type_u8());
                 args = new_args.into();
             }
             _ => (),
@@ -934,6 +947,19 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(
                 ptr.dereference(None),
             );
             return_value = result.to_rvalue();
+        }
+        "__builtin_ia32_rdtscp" => {
+            let field1 = builder.context.new_field(None, return_value.get_type(), "rdtscpField1");
+            let return2 = args[0].dereference(None).to_rvalue();
+            let field2 = builder.context.new_field(None, return2.get_type(), "rdtscpField2");
+            let struct_type =
+                builder.context.new_struct_type(None, "rdtscpResult", &[field1, field2]);
+            return_value = builder.context.new_struct_constructor(
+                None,
+                struct_type.as_type(),
+                None,
+                &[return_value, return2],
+            );
         }
         _ => (),
     }
@@ -1529,6 +1555,17 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.aesdecwide128kl" => "__builtin_ia32_aesdecwide128kl_u8",
         "llvm.x86.aesencwide256kl" => "__builtin_ia32_aesencwide256kl_u8",
         "llvm.x86.aesdecwide256kl" => "__builtin_ia32_aesdecwide256kl_u8",
+        "llvm.x86.avx512.uitofp.round.v8f16.v8i16" => "__builtin_ia32_vcvtuw2ph128_mask",
+        "llvm.x86.avx512.uitofp.round.v16f16.v16i16" => "__builtin_ia32_vcvtuw2ph256_mask",
+        "llvm.x86.avx512.uitofp.round.v32f16.v32i16" => "__builtin_ia32_vcvtuw2ph512_mask_round",
+        "llvm.x86.avx512.uitofp.round.v8f16.v8i32" => "__builtin_ia32_vcvtudq2ph256_mask",
+        "llvm.x86.avx512.uitofp.round.v16f16.v16i32" => "__builtin_ia32_vcvtudq2ph512_mask_round",
+        "llvm.x86.avx512.uitofp.round.v8f16.v8i64" => "__builtin_ia32_vcvtuqq2ph512_mask_round",
+        "llvm.x86.avx512.uitofp.round.v8f64.v8i64" => "__builtin_ia32_cvtuqq2pd512_mask",
+        "llvm.x86.avx512.uitofp.round.v2f64.v2i64" => "__builtin_ia32_cvtuqq2pd128_mask",
+        "llvm.x86.avx512.uitofp.round.v4f64.v4i64" => "__builtin_ia32_cvtuqq2pd256_mask",
+        "llvm.x86.avx512.uitofp.round.v8f32.v8i64" => "__builtin_ia32_cvtuqq2ps512_mask",
+        "llvm.x86.avx512.uitofp.round.v4f32.v4i64" => "__builtin_ia32_cvtuqq2ps256_mask",
 
         // TODO: support the tile builtins:
         "llvm.x86.ldtilecfg" => "__builtin_trap",

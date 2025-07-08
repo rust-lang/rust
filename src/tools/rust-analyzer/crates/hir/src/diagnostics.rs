@@ -36,16 +36,16 @@ pub use hir_ty::{
 };
 
 macro_rules! diagnostics {
-    ($($diag:ident $(<$lt:lifetime>)?,)*) => {
+    ($AnyDiagnostic:ident <$db:lifetime> -> $($diag:ident $(<$lt:lifetime>)?,)*) => {
         #[derive(Debug)]
-        pub enum AnyDiagnostic<'db> {$(
+        pub enum $AnyDiagnostic<$db> {$(
             $diag(Box<$diag $(<$lt>)?>),
         )*}
 
         $(
-            impl<'db> From<$diag $(<$lt>)?> for AnyDiagnostic<'db> {
-                fn from(d: $diag $(<$lt>)?) -> AnyDiagnostic<'db> {
-                    AnyDiagnostic::$diag(Box::new(d))
+            impl<$db> From<$diag $(<$lt>)?> for $AnyDiagnostic<$db> {
+                fn from(d: $diag $(<$lt>)?) -> $AnyDiagnostic<$db> {
+                    $AnyDiagnostic::$diag(Box::new(d))
                 }
             }
         )*
@@ -66,7 +66,7 @@ macro_rules! diagnostics {
 // }, ...
 // ]
 
-diagnostics![
+diagnostics![AnyDiagnostic<'db> ->
     AwaitOutsideOfAsync,
     BreakOutsideOfLoop,
     CastToUnsized<'db>,
@@ -490,7 +490,7 @@ impl<'db> AnyDiagnostic<'db> {
     ) -> Option<AnyDiagnostic<'db>> {
         match diagnostic {
             BodyValidationDiagnostic::RecordMissingFields { record, variant, missed_fields } => {
-                let variant_data = variant.variant_data(db);
+                let variant_data = variant.fields(db);
                 let missed_fields = missed_fields
                     .into_iter()
                     .map(|idx| variant_data.fields()[idx].name.clone())

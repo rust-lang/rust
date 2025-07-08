@@ -7,6 +7,7 @@ use tempfile::TempDir;
 
 use crate::core::builder::Builder;
 use crate::core::config::DryRun;
+use crate::utils::helpers::get_host_target;
 use crate::{Build, Config, Flags, t};
 
 pub mod git;
@@ -90,6 +91,13 @@ impl ConfigBuilder {
         // Ignore submodules
         self.args.push("--set".to_string());
         self.args.push("build.submodules=false".to_string());
+
+        // Override any external LLVM set and inhibit CI LLVM; pretend that we're always building
+        // in-tree LLVM from sources.
+        self.args.push("--set".to_string());
+        self.args.push("llvm.download-ci-llvm=false".to_string());
+        self.args.push("--set".to_string());
+        self.args.push(format!("target.'{}'.llvm-config=false", get_host_target()));
 
         // Do not mess with the local rustc checkout build directory
         self.args.push("--build-dir".to_string());

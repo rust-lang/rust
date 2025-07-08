@@ -123,6 +123,9 @@ declare_features! (
     /// [^1]: Formerly known as "object safe".
     (removed, dyn_compatible_for_dispatch, "1.87.0", Some(43561),
      Some("removed, not used heavily and represented additional complexity in dyn compatibility"), 136522),
+    /// Allows `dyn* Trait` objects.
+    (removed, dyn_star, "1.65.0", Some(102425),
+     Some("removed as it was no longer necessary for AFIDT (async fn in dyn trait) support")),
     /// Uses generic effect parameters for [const] bounds
     (removed, effects, "1.84.0", Some(102090),
      Some("removed, redundant with `#![feature(const_trait_impl)]`"), 132479),
@@ -222,7 +225,7 @@ declare_features! (
     /// Allows exhaustive integer pattern matching with `usize::MAX`/`isize::MIN`/`isize::MAX`.
     (removed, precise_pointer_size_matching, "1.76.0", Some(56354),
      Some("removed in favor of half-open ranges"), 118598),
-    (removed, pref_align_of, "CURRENT_RUSTC_VERSION", Some(91971),
+    (removed, pref_align_of, "1.89.0", Some(91971),
      Some("removed due to marginal use and inducing compiler complications")),
     (removed, proc_macro_expr, "1.27.0", Some(54727),
      Some("subsumed by `#![feature(proc_macro_hygiene)]`"), 52121),
@@ -265,7 +268,7 @@ declare_features! (
     (removed, unnamed_fields, "1.83.0", Some(49804), Some("feature needs redesign"), 131045),
     (removed, unsafe_no_drop_flag, "1.0.0", None, None),
     /// Allows unsized rvalues at arguments and parameters.
-    (removed, unsized_locals, "CURRENT_RUSTC_VERSION", Some(48055), Some("removed due to implementation concerns; see https://github.com/rust-lang/rust/issues/111942")),
+    (removed, unsized_locals, "1.89.0", Some(48055), Some("removed due to implementation concerns; see https://github.com/rust-lang/rust/issues/111942")),
     (removed, unsized_tuple_coercion, "1.87.0", Some(42877),
      Some("The feature restricts possible layouts for tuples, and this restriction is not worth it."), 137728),
     /// Allows `union` fields that don't implement `Copy` as long as they don't have any drop glue.

@@ -33,7 +33,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
@@ -176,11 +176,11 @@ pub struct ResolverOutputs {
     pub ast_lowering: ResolverAstLowering,
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub struct ResolverGlobalCtxt {
     pub visibilities_for_hashing: Vec<(LocalDefId, Visibility)>,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
-    pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
+    pub expn_that_defined: UnordMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
     pub extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
@@ -196,8 +196,8 @@ pub struct ResolverGlobalCtxt {
     pub confused_type_with_std_module: FxIndexMap<Span, Span>,
     pub doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     pub doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
-    pub all_macro_rules: FxHashSet<Symbol>,
-    pub stripped_cfg_items: Steal<Vec<StrippedCfgItem>>,
+    pub all_macro_rules: UnordSet<Symbol>,
+    pub stripped_cfg_items: Vec<StrippedCfgItem>,
 }
 
 /// Resolutions that should only be used for lowering.
@@ -243,7 +243,7 @@ pub struct DelegationFnSig {
     pub target_feature: bool,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, HashStable)]
 pub struct MainDefinition {
     pub res: Res<ast::NodeId>,
     pub is_import: bool,
@@ -474,7 +474,7 @@ impl<'tcx> rustc_type_ir::Flags for Ty<'tcx> {
 impl EarlyParamRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
-    pub fn has_name(&self) -> bool {
+    pub fn is_named(&self) -> bool {
         self.name != kw::UnderscoreLifetime
     }
 }
@@ -1149,12 +1149,16 @@ impl<'tcx> TypingEnv<'tcx> {
     {
         // FIXME(#132279): We should assert that the value does not contain any placeholders
         // as these placeholders are also local to the current inference context. However, we
-        // currently use pseudo-canonical queries in the trait solver which replaces params with
-        // placeholders. We should also simply not use pseudo-canonical queries in the trait
-        // solver, at which point we can readd this assert. As of writing this comment, this is
-        // only used by `fn layout_is_pointer_like` when calling `layout_of`.
+        // currently use pseudo-canonical queries in the trait solver, which replaces params
+        // with placeholders during canonicalization. We should also simply not use pseudo-
+        // canonical queries in the trait solver, at which point we can readd this assert.
         //
-        // debug_assert!(!value.has_placeholders());
+        // As of writing this comment, this is only used when normalizing consts that mention
+        // params.
+        /* debug_assert!(
+            !value.has_placeholders(),
+            "{value:?} which has placeholder shouldn't be pseudo-canonicalized"
+        ); */
         PseudoCanonicalInput { typing_env: self, value }
     }
 }
@@ -1521,7 +1525,8 @@ impl<'tcx> TyCtxt<'tcx> {
             field_shuffle_seed ^= user_seed;
         }
 
-        if let Some(reprs) = attr::find_attr!(self.get_all_attrs(did), AttributeKind::Repr(r) => r)
+        if let Some(reprs) =
+            attr::find_attr!(self.get_all_attrs(did), AttributeKind::Repr { reprs, .. } => reprs)
         {
             for (r, _) in reprs {
                 flags.insert(match *r {
@@ -1560,10 +1565,6 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     attr::ReprAlign(align) => {
                         max_align = max_align.max(Some(align));
-                        ReprFlags::empty()
-                    }
-                    attr::ReprEmpty => {
-                        /* skip these, they're just for diagnostics */
                         ReprFlags::empty()
                     }
                 });

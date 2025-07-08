@@ -267,6 +267,42 @@ pub fn check_builtin_meta_item(
     deny_unsafety: bool,
 ) {
     if !is_attr_template_compatible(&template, &meta.kind) {
+        // attrs with new parsers are locally validated so excluded here
+        if matches!(
+            name,
+            sym::inline
+                | sym::may_dangle
+                | sym::rustc_as_ptr
+                | sym::rustc_pub_transparent
+                | sym::rustc_const_stable_indirect
+                | sym::rustc_force_inline
+                | sym::rustc_confusables
+                | sym::rustc_skip_during_method_dispatch
+                | sym::rustc_pass_by_value
+                | sym::repr
+                | sym::align
+                | sym::deprecated
+                | sym::optimize
+                | sym::cold
+                | sym::target_feature
+                | sym::rustc_allow_const_fn_unstable
+                | sym::naked
+                | sym::no_mangle
+                | sym::non_exhaustive
+                | sym::path
+                | sym::ignore
+                | sym::must_use
+                | sym::track_caller
+                | sym::link_name
+                | sym::export_name
+                | sym::rustc_macro_transparency
+                | sym::link_section
+                | sym::rustc_layout_scalar_valid_range_start
+                | sym::rustc_layout_scalar_valid_range_end
+                | sym::no_implicit_prelude
+        ) {
+            return;
+        }
         emit_malformed_attribute(psess, style, meta.span, name, template);
     }
 
@@ -282,34 +318,9 @@ fn emit_malformed_attribute(
     name: Symbol,
     template: AttributeTemplate,
 ) {
-    // attrs with new parsers are locally validated so excluded here
-    if matches!(
-        name,
-        sym::inline
-            | sym::may_dangle
-            | sym::rustc_as_ptr
-            | sym::rustc_pub_transparent
-            | sym::rustc_const_stable_indirect
-            | sym::rustc_force_inline
-            | sym::rustc_confusables
-            | sym::rustc_skip_during_method_dispatch
-            | sym::repr
-            | sym::align
-            | sym::deprecated
-            | sym::optimize
-            | sym::cold
-            | sym::naked
-            | sym::no_mangle
-            | sym::must_use
-            | sym::track_caller
-    ) {
-        return;
-    }
-
     // Some of previously accepted forms were used in practice,
     // report them as warnings for now.
-    let should_warn =
-        |name| matches!(name, sym::doc | sym::ignore | sym::link | sym::test | sym::bench);
+    let should_warn = |name| matches!(name, sym::doc | sym::link | sym::test | sym::bench);
 
     let error_msg = format!("malformed `{name}` attribute input");
     let mut suggestions = vec![];

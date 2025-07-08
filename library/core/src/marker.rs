@@ -19,6 +19,9 @@ use crate::fmt::Debug;
 use crate::hash::{Hash, Hasher};
 use crate::pin::UnsafePinned;
 
+// NOTE: for consistent error messages between `core` and `minicore`, all `diagnostic` attributes
+// should be replicated exactly in `minicore` (if `minicore` defines the item).
+
 /// Implements a given marker trait for multiple types at the same time.
 ///
 /// The basic syntax looks like this:
@@ -1062,37 +1065,6 @@ pub trait Destruct {}
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
 pub trait Tuple {}
-
-/// A marker for pointer-like types.
-///
-/// This trait can only be implemented for types that are certain to have
-/// the same size and alignment as a [`usize`] or [`*const ()`](pointer).
-/// To ensure this, there are special requirements on implementations
-/// of `PointerLike` (other than the already-provided implementations
-/// for built-in types):
-///
-/// * The type must have `#[repr(transparent)]`.
-/// * The type’s sole non-zero-sized field must itself implement `PointerLike`.
-#[unstable(feature = "pointer_like_trait", issue = "none")]
-#[lang = "pointer_like"]
-#[diagnostic::on_unimplemented(
-    message = "`{Self}` needs to have the same ABI as a pointer",
-    label = "`{Self}` needs to be a pointer-like type"
-)]
-#[rustc_do_not_implement_via_object]
-pub trait PointerLike {}
-
-marker_impls! {
-    #[unstable(feature = "pointer_like_trait", issue = "none")]
-    PointerLike for
-        isize,
-        usize,
-        {T} &T,
-        {T} &mut T,
-        {T} *const T,
-        {T} *mut T,
-        {T: PointerLike} crate::pin::Pin<T>,
-}
 
 /// A marker for types which can be used as types of `const` generic parameters.
 ///

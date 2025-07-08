@@ -11,6 +11,7 @@ use serde::de::{Deserialize, Deserializer, Error as _};
 
 pub use self::Mode::*;
 use crate::executor::{ColorConfig, OutputFormat};
+use crate::fatal;
 use crate::util::{Utf8PathBufExt, add_dylib_path};
 
 macro_rules! string_enum {
@@ -171,207 +172,422 @@ pub enum Sanitizer {
     Hwaddress,
 }
 
-/// Configuration for compiletest
+/// Configuration for `compiletest` *per invocation*.
+///
+/// In terms of `bootstrap`, this means that `./x test tests/ui tests/run-make` actually correspond
+/// to *two* separate invocations of `compiletest`.
+///
+/// FIXME: this `Config` struct should be broken up into smaller logically contained sub-config
+/// structs, it's too much of a "soup" of everything at the moment.
+///
+/// # Configuration sources
+///
+/// Configuration values for `compiletest` comes from several sources:
+///
+/// - CLI args passed from `bootstrap` while running the `compiletest` binary.
+/// - Env vars.
+/// - Discovery (e.g. trying to identify a suitable debugger based on filesystem discovery).
+/// - Cached output of running the `rustc` under test (e.g. output of `rustc` print requests).
+///
+/// FIXME: make sure we *clearly* account for sources of *all* config options.
+///
+/// FIXME: audit these options to make sure we are not hashing less than necessary for build stamp
+/// (for changed test detection).
 #[derive(Debug, Default, Clone)]
 pub struct Config {
-    /// `true` to overwrite stderr/stdout files instead of complaining about changes in output.
+    /// Some test [`Mode`]s support [snapshot testing], where a *reference snapshot* of outputs (of
+    /// `stdout`, `stderr`, or other form of artifacts) can be compared to the *actual output*.
+    ///
+    /// This option can be set to `true` to update the *reference snapshots* in-place, otherwise
+    /// `compiletest` will only try to compare.
+    ///
+    /// [snapshot testing]: https://jestjs.io/docs/snapshot-testing
     pub bless: bool,
 
-    /// Stop as soon as possible after any test fails.
-    /// May run a few more tests before stopping, due to threading.
+    /// Attempt to stop as soon as possible after any test fails. We may still run a few more tests
+    /// before stopping when multiple test threads are used.
     pub fail_fast: bool,
 
-    /// The library paths required for running the compiler.
+    /// Path to libraries needed to run the *staged* `rustc`-under-test on the **host** platform.
+    ///
+    /// FIXME: maybe rename this to reflect (1) which target platform (host, not target), and (2)
+    /// which `rustc` (the `rustc`-under-test, not the stage 0 `rustc` unless forced).
     pub compile_lib_path: Utf8PathBuf,
 
-    /// The library paths required for running compiled programs.
+    /// Path to libraries needed to run the compiled executable for the **target** platform. This
+    /// corresponds to the **target** sysroot libraries, including the **target** standard library.
+    ///
+    /// FIXME: maybe rename this to reflect (1) which target platform (target, not host), and (2)
+    /// what "run libraries" are against.
+    ///
+    /// FIXME: this is very under-documented in conjunction with the `remote-test-client` scheme and
+    /// `RUNNER` scheme to actually run the target executable under the target platform environment,
+    /// cf. [`Self::remote_test_client`] and [`Self::runner`].
     pub run_lib_path: Utf8PathBuf,
 
-    /// The rustc executable.
+    /// Path to the *staged*  `rustc`-under-test. Unless forced, this `rustc` is *staged*, and must
+    /// not be confused with [`Self::stage0_rustc_path`].
+    ///
+    /// FIXME: maybe rename this to reflect that this is the `rustc`-under-test.
     pub rustc_path: Utf8PathBuf,
 
-    /// The cargo executable.
+    /// Path to a *staged* **host** platform cargo executable (unless stage 0 is forced). This
+    /// staged `cargo` is only used within `run-make` test recipes during recipe run time (and is
+    /// *not* used to compile the test recipes), and so must be staged as there may be differences
+    /// between e.g. beta `cargo` vs in-tree `cargo`.
+    ///
+    /// FIXME: maybe rename this to reflect that this is a *staged* host cargo.
+    ///
+    /// FIXME(#134109): split `run-make` into two test suites, a test suite *with* staged cargo, and
+    /// another test suite *without*.
     pub cargo_path: Option<Utf8PathBuf>,
 
-    /// Rustc executable used to compile run-make recipes.
+    /// Path to the stage 0 `rustc` used to build `run-make` recipes. This must not be confused with
+    /// [`Self::rustc_path`].
     pub stage0_rustc_path: Option<Utf8PathBuf>,
 
-    /// The rustdoc executable.
+    /// Path to the `rustdoc`-under-test. Like [`Self::rustc_path`], this `rustdoc` is *staged*.
     pub rustdoc_path: Option<Utf8PathBuf>,
 
-    /// The coverage-dump executable.
+    /// Path to the `src/tools/coverage-dump/` bootstrap tool executable.
     pub coverage_dump_path: Option<Utf8PathBuf>,
 
-    /// The Python executable to use for LLDB and htmldocck.
+    /// Path to the Python 3 executable to use for LLDB and htmldocck.
+    ///
+    /// FIXME: the `lldb` setup currently requires I believe Python 3.10 **exactly**, it can't even
+    /// be Python 3.11 or 3.9...
     pub python: String,
 
-    /// The jsondocck executable.
+    /// Path to the `src/tools/jsondocck/` bootstrap tool executable.
     pub jsondocck_path: Option<String>,
 
-    /// The jsondoclint executable.
+    /// Path to the `src/tools/jsondoclint/` bootstrap tool executable.
     pub jsondoclint_path: Option<String>,
 
-    /// The LLVM `FileCheck` binary path.
+    /// Path to a host LLVM `FileCheck` executable.
     pub llvm_filecheck: Option<Utf8PathBuf>,
 
-    /// Path to LLVM's bin directory.
+    /// Path to a host LLVM bintools directory.
     pub llvm_bin_dir: Option<Utf8PathBuf>,
 
-    /// The path to the Clang executable to run Clang-based tests with. If
-    /// `None` then these tests will be ignored.
+    /// The path to the **target** `clang` executable to run `clang`-based tests with. If `None`,
+    /// then these tests will be ignored.
     pub run_clang_based_tests_with: Option<String>,
 
-    /// The directory containing the sources.
+    /// Path to the directory containing the sources. This corresponds to the root folder of a
+    /// `rust-lang/rust` checkout.
+    ///
+    /// FIXME: this name is confusing, because this is actually `$checkout_root`, **not** the
+    /// `$checkout_root/src/` folder.
     pub src_root: Utf8PathBuf,
-    /// The directory containing the test suite sources. Must be a subdirectory of `src_root`.
+
+    /// Path to the directory containing the test suites sources. This corresponds to the
+    /// `$src_root/tests/` folder.
+    ///
+    /// Must be an immediate subdirectory of [`Self::src_root`].
+    ///
+    /// FIXME: this name is also confusing, maybe just call it `tests_root`.
     pub src_test_suite_root: Utf8PathBuf,
 
-    /// Root build directory (e.g. `build/`).
+    /// Path to the build directory (e.g. `build/`).
     pub build_root: Utf8PathBuf,
-    /// Test suite specific build directory (e.g. `build/host/test/ui/`).
+
+    /// Path to the test suite specific build directory (e.g. `build/host/test/ui/`).
+    ///
+    /// Must be a subdirectory of [`Self::build_root`].
     pub build_test_suite_root: Utf8PathBuf,
 
-    /// The directory containing the compiler sysroot
+    /// Path to the directory containing the sysroot of the `rustc`-under-test.
+    ///
+    /// When stage 0 is forced, this will correspond to the sysroot *of* that specified stage 0
+    /// `rustc`.
+    ///
+    /// FIXME: this name is confusing, because it doesn't specify *which* compiler this sysroot
+    /// corresponds to. It's actually the `rustc`-under-test, and not the bootstrap `rustc`, unless
+    /// stage 0 is forced and no custom stage 0 `rustc` was otherwise specified (so that it
+    /// *happens* to run against the bootstrap `rustc`, but this non-custom bootstrap `rustc` case
+    /// is not really supported).
     pub sysroot_base: Utf8PathBuf,
 
     /// The number of the stage under test.
     pub stage: u32,
+
     /// The id of the stage under test (stage1-xxx, etc).
+    ///
+    /// FIXME: reconsider this string; this is hashed for test build stamp.
     pub stage_id: String,
 
-    /// The test mode, e.g. ui or debuginfo.
+    /// The test [`Mode`]. E.g. [`Mode::Ui`]. Each test mode can correspond to one or more test
+    /// suites.
+    ///
+    /// FIXME: stop using stringly-typed test suites!
     pub mode: Mode,
 
-    /// The test suite (essentially which directory is running, but without the
-    /// directory prefix such as tests)
+    /// The test suite.
+    ///
+    /// Example: `tests/ui/` is the "UI" test *suite*, which happens to also be of the [`Mode::Ui`]
+    /// test *mode*.
+    ///
+    /// Note that the same test directory (e.g. `tests/coverage/`) may correspond to multiple test
+    /// modes, e.g. `tests/coverage/` can be run under both [`Mode::CoverageRun`] and
+    /// [`Mode::CoverageMap`].
+    ///
+    /// FIXME: stop using stringly-typed test suites!
     pub suite: String,
 
-    /// The debugger to use in debuginfo mode. Unset otherwise.
+    /// When specified, **only** the specified [`Debugger`] will be used to run against the
+    /// `tests/debuginfo` test suite. When unspecified, `compiletest` will attempt to find all three
+    /// of {`lldb`, `cdb`, `gdb`} implicitly, and then try to run the `debuginfo` test suite against
+    /// all three debuggers.
+    ///
+    /// FIXME: this implicit behavior is really nasty, in that it makes it hard for the user to
+    /// control *which* debugger(s) are available and used to run the debuginfo test suite. We
+    /// should have `bootstrap` allow the user to *explicitly* configure the debuggers, and *not*
+    /// try to implicitly discover some random debugger from the user environment. This makes the
+    /// debuginfo test suite particularly hard to work with.
     pub debugger: Option<Debugger>,
 
-    /// Run ignored tests
+    /// Run ignored tests *unconditionally*, overriding their ignore reason.
+    ///
+    /// FIXME: this is wired up through the test execution logic, but **not** accessible from
+    /// `bootstrap` directly; `compiletest` exposes this as `--ignored`. I.e. you'd have to use `./x
+    /// test $test_suite -- --ignored=true`.
     pub run_ignored: bool,
 
-    /// Whether rustc was built with debug assertions.
+    /// Whether *staged* `rustc`-under-test was built with debug assertions.
+    ///
+    /// FIXME: make it clearer that this refers to the staged `rustc`-under-test, not stage 0
+    /// `rustc`.
     pub with_rustc_debug_assertions: bool,
 
-    /// Whether std was built with debug assertions.
+    /// Whether *staged* `std` was built with debug assertions.
+    ///
+    /// FIXME: make it clearer that this refers to the staged `std`, not stage 0 `std`.
     pub with_std_debug_assertions: bool,
 
-    /// Only run tests that match these filters
+    /// Only run tests that match these filters (using `libtest` "test name contains" filter logic).
+    ///
+    /// FIXME(#139660): the current hand-rolled test executor intentionally mimics the `libtest`
+    /// "test name contains" filter matching logic to preserve previous `libtest` executor behavior,
+    /// but this is often not intuitive. We should consider changing that behavior with an MCP to do
+    /// test path *prefix* matching which better corresponds to how `compiletest` `tests/` are
+    /// organized, and how users would intuitively expect the filtering logic to work like.
     pub filters: Vec<String>,
 
-    /// Skip tests matching these substrings. Corresponds to
-    /// `test::TestOpts::skip`. `filter_exact` does not apply to these flags.
+    /// Skip tests matching these substrings. The matching logic exactly corresponds to
+    /// [`Self::filters`] but inverted.
+    ///
+    /// FIXME(#139660): ditto on test matching behavior.
     pub skip: Vec<String>,
 
-    /// Exactly match the filter, rather than a substring
+    /// Exactly match the filter, rather than a substring.
+    ///
+    /// FIXME(#139660): ditto on test matching behavior.
     pub filter_exact: bool,
 
-    /// Force the pass mode of a check/build/run-pass test to this mode.
+    /// Force the pass mode of a check/build/run test to instead use this mode instead.
+    ///
+    /// FIXME: make it even more obvious (especially in PR CI where `--pass=check` is used) when a
+    /// pass mode is forced when the test fails, because it can be very non-obvious when e.g. an
+    /// error is emitted only when `//@ build-pass` but not `//@ check-pass`.
     pub force_pass_mode: Option<PassMode>,
 
-    /// Explicitly enable or disable running.
+    /// Explicitly enable or disable running of the target test binary.
+    ///
+    /// FIXME: this scheme is a bit confusing, and at times questionable. Re-evaluate this run
+    /// scheme.
+    ///
+    /// FIXME: Currently `--run` is a tri-state, it can be `--run={auto,always,never}`, and when
+    /// `--run=auto` is specified, it's run if the platform doesn't end with `-fuchsia`. See
+    /// [`Config::run_enabled`].
     pub run: Option<bool>,
 
-    /// A command line to prefix program execution with,
-    /// for running under valgrind for example.
+    /// A command line to prefix target program execution with, for running under valgrind for
+    /// example, i.e. `$runner target.exe [args..]`. Similar to `CARGO_*_RUNNER` configuration.
     ///
-    /// Similar to `CARGO_*_RUNNER` configuration.
+    /// Note: this is not to be confused with [`Self::remote_test_client`], which is a different
+    /// scheme.
+    ///
+    /// FIXME: the runner scheme is very under-documented.
     pub runner: Option<String>,
 
-    /// Flags to pass to the compiler when building for the host
+    /// Compiler flags to pass to the *staged* `rustc`-under-test when building for the **host**
+    /// platform.
     pub host_rustcflags: Vec<String>,
 
-    /// Flags to pass to the compiler when building for the target
+    /// Compiler flags to pass to the *staged* `rustc`-under-test when building for the **target**
+    /// platform.
     pub target_rustcflags: Vec<String>,
 
-    /// Whether the compiler and stdlib has been built with randomized struct layouts
+    /// Whether the *staged* `rustc`-under-test and the associated *staged* `std` has been built
+    /// with randomized struct layouts.
     pub rust_randomized_layout: bool,
 
-    /// Whether tests should be optimized by default. Individual test-suites and test files may
-    /// override this setting.
+    /// Whether tests should be optimized by default (`-O`). Individual test suites and test files
+    /// may override this setting.
+    ///
+    /// FIXME: this flag / config option is somewhat misleading. For instance, in ui tests, it's
+    /// *only* applied to the [`PassMode::Run`] test crate and not its auxiliaries.
     pub optimize_tests: bool,
 
-    /// Target system to be tested
+    /// Target platform tuple.
     pub target: String,
 
-    /// Host triple for the compiler being invoked
+    /// Host platform tuple.
     pub host: String,
 
-    /// Path to / name of the Microsoft Console Debugger (CDB) executable
+    /// Path to / name of the Microsoft Console Debugger (CDB) executable.
+    ///
+    /// FIXME: this is an *opt-in* "override" option. When this isn't provided, we try to conjure a
+    /// cdb by looking at the user's program files on Windows... See `debuggers::find_cdb`.
     pub cdb: Option<Utf8PathBuf>,
 
-    /// Version of CDB
+    /// Version of CDB.
+    ///
+    /// FIXME: `cdb_version` is *derived* from cdb, but it's *not* technically a config!
+    ///
+    /// FIXME: audit cdb version gating.
     pub cdb_version: Option<[u16; 4]>,
 
-    /// Path to / name of the GDB executable
+    /// Path to / name of the GDB executable.
+    ///
+    /// FIXME: the fallback path when `gdb` isn't provided tries to find *a* `gdb` or `gdb.exe` from
+    /// `PATH`, which is... arguably questionable.
+    ///
+    /// FIXME: we are propagating a python from `PYTHONPATH`, not from an explicit config for gdb
+    /// debugger script.
     pub gdb: Option<String>,
 
     /// Version of GDB, encoded as ((major * 1000) + minor) * 1000 + patch
+    ///
+    /// FIXME: this gdb version gating scheme is possibly questionable -- gdb does not use semver,
+    /// only its major version is likely materially meaningful, cf.
+    /// <https://sourceware.org/gdb/wiki/Internals%20Versions>. Even the major version I'm not sure
+    /// is super meaningful. Maybe min gdb `major.minor` version gating is sufficient for the
+    /// purposes of debuginfo tests?
+    ///
+    /// FIXME: `gdb_version` is *derived* from gdb, but it's *not* technically a config!
     pub gdb_version: Option<u32>,
 
-    /// Version of LLDB
+    /// Version of LLDB.
+    ///
+    /// FIXME: `lldb_version` is *derived* from lldb, but it's *not* technically a config!
     pub lldb_version: Option<u32>,
 
-    /// Version of LLVM
+    /// Version of LLVM.
+    ///
+    /// FIXME: Audit the fallback derivation of
+    /// [`crate::directives::extract_llvm_version_from_binary`], that seems very questionable?
     pub llvm_version: Option<Version>,
 
-    /// Is LLVM a system LLVM
+    /// Is LLVM a system LLVM.
     pub system_llvm: bool,
 
-    /// Path to the android tools
+    /// Path to the android tools.
+    ///
+    /// Note: this is only used for android gdb debugger script in the debuginfo test suite.
+    ///
+    /// FIXME: take a look at this; this is piggy-backing off of gdb code paths but only for
+    /// `arm-linux-androideabi` target.
     pub android_cross_path: Utf8PathBuf,
 
-    /// Extra parameter to run adb on arm-linux-androideabi
+    /// Extra parameter to run adb on `arm-linux-androideabi`.
+    ///
+    /// FIXME: is this *only* `arm-linux-androideabi`, or is it also for other Tier 2/3 android
+    /// targets?
+    ///
+    /// FIXME: take a look at this; this is piggy-backing off of gdb code paths but only for
+    /// `arm-linux-androideabi` target.
     pub adb_path: String,
 
-    /// Extra parameter to run test suite on arm-linux-androideabi
+    /// Extra parameter to run test suite on `arm-linux-androideabi`.
+    ///
+    /// FIXME: is this *only* `arm-linux-androideabi`, or is it also for other Tier 2/3 android
+    /// targets?
+    ///
+    /// FIXME: take a look at this; this is piggy-backing off of gdb code paths but only for
+    /// `arm-linux-androideabi` target.
     pub adb_test_dir: String,
 
-    /// status whether android device available or not
+    /// Status whether android device available or not. When unavailable, this will cause tests to
+    /// panic when the test binary is attempted to be run.
+    ///
+    /// FIXME: take a look at this; this also influences adb in gdb code paths in a strange way.
     pub adb_device_status: bool,
 
-    /// the path containing LLDB's Python module
+    /// Path containing LLDB's Python module.
+    ///
+    /// FIXME: `PYTHONPATH` takes precedence over this flag...? See `runtest::run_lldb`.
     pub lldb_python_dir: Option<String>,
 
-    /// Explain what's going on
+    /// Verbose dump a lot of info.
+    ///
+    /// FIXME: this is *way* too coarse; the user can't select *which* info to verbosely dump.
     pub verbose: bool,
 
-    /// Print one character per test instead of one line
+    /// (Useless) Adjust libtest output format.
+    ///
+    /// FIXME: the hand-rolled executor does not support non-JSON output, because `compiletest` need
+    /// to package test outcome as `libtest`-esque JSON that `bootstrap` can intercept *anyway*.
+    /// However, now that we don't use the `libtest` executor, this is useless.
     pub format: OutputFormat,
 
-    /// Whether to use colors in test.
+    /// Whether to use colors in test output.
+    ///
+    /// Note: the exact control mechanism is delegated to [`colored`].
     pub color: ColorConfig,
 
-    /// where to find the remote test client process, if we're using it
+    /// Where to find the remote test client process, if we're using it.
+    ///
+    /// Note: this is *only* used for target platform executables created by `run-make` test
+    /// recipes.
+    ///
+    /// Note: this is not to be confused with [`Self::runner`], which is a different scheme.
+    ///
+    /// FIXME: the `remote_test_client` scheme is very under-documented.
     pub remote_test_client: Option<Utf8PathBuf>,
 
-    /// mode describing what file the actual ui output will be compared to
+    /// [`CompareMode`] describing what file the actual ui output will be compared to.
+    ///
+    /// FIXME: currently, [`CompareMode`] is a mishmash of lot of things (different borrow-checker
+    /// model, different trait solver, different debugger, etc.).
     pub compare_mode: Option<CompareMode>,
 
     /// If true, this will generate a coverage file with UI test files that run `MachineApplicable`
     /// diagnostics but are missing `run-rustfix` annotations. The generated coverage file is
-    /// created in `<test_suite_build_root>/rustfix_missing_coverage.txt`
+    /// created in `$test_suite_build_root/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
 
-    /// whether to run `tidy` (html-tidy) when a rustdoc test fails
+    /// Whether to run `tidy` (html-tidy) when a rustdoc test fails.
     pub has_html_tidy: bool,
 
-    /// whether to run `enzyme` autodiff tests
+    /// Whether to run `enzyme` autodiff tests.
     pub has_enzyme: bool,
 
-    /// The current Rust channel
+    /// The current Rust channel info.
+    ///
+    /// FIXME: treat this more carefully; "stable", "beta" and "nightly" are definitely valid, but
+    /// channel might also be "dev" or such, which should be treated as "nightly".
     pub channel: String,
 
-    /// Whether adding git commit information such as the commit hash has been enabled for building
+    /// Whether adding git commit information such as the commit hash has been enabled for building.
+    ///
+    /// FIXME: `compiletest` cannot trust `bootstrap` for this information, because `bootstrap` can
+    /// have bugs and had bugs on that logic. We need to figure out how to obtain this e.g. directly
+    /// from CI or via git locally.
     pub git_hash: bool,
 
-    /// The default Rust edition
+    /// The default Rust edition.
+    ///
+    /// FIXME: perform stronger validation for this. There are editions that *definitely* exists,
+    /// but there might also be "future" edition.
     pub edition: Option<String>,
 
-    // Configuration for various run-make tests frobbing things like C compilers
-    // or querying about various LLVM component information.
+    // Configuration for various run-make tests frobbing things like C compilers or querying about
+    // various LLVM component information.
+    //
+    // FIXME: this really should be better packaged together.
+    // FIXME: these need better docs, e.g. for *host*, or for *target*?
     pub cc: String,
     pub cxx: String,
     pub cflags: String,
@@ -381,41 +597,63 @@ pub struct Config {
     pub host_linker: Option<String>,
     pub llvm_components: String,
 
-    /// Path to a NodeJS executable. Used for JS doctests, emscripten and WASM tests
+    /// Path to a NodeJS executable. Used for JS doctests, emscripten and WASM tests.
     pub nodejs: Option<String>,
-    /// Path to a npm executable. Used for rustdoc GUI tests
+    /// Path to a npm executable. Used for rustdoc GUI tests.
     pub npm: Option<String>,
 
     /// Whether to rerun tests even if the inputs are unchanged.
     pub force_rerun: bool,
 
-    /// Only rerun the tests that result has been modified according to Git status
+    /// Only rerun the tests that result has been modified according to `git status`.
+    ///
+    /// FIXME: this is undocumented.
+    ///
+    /// FIXME: how does this interact with [`Self::force_rerun`]?
     pub only_modified: bool,
 
+    // FIXME: these are really not "config"s, but rather are information derived from
+    // `rustc`-under-test. This poses an interesting conundrum: if we're testing the
+    // `rustc`-under-test, can we trust its print request outputs and target cfgs? In theory, this
+    // itself can break or be unreliable -- ideally, we'd be sharing these kind of information not
+    // through `rustc`-under-test's execution output. In practice, however, print requests are very
+    // unlikely to completely break (we also have snapshot ui tests for them). Furthermore, even if
+    // we share them via some kind of static config, that static config can still be wrong! Who
+    // tests the tester? Therefore, we make a pragmatic compromise here, and use information derived
+    // from print requests produced by the `rustc`-under-test.
+    //
+    // FIXME: move them out from `Config`, because they are *not* configs.
     pub target_cfgs: OnceLock<TargetCfgs>,
     pub builtin_cfg_names: OnceLock<HashSet<String>>,
     pub supported_crate_types: OnceLock<HashSet<String>>,
 
+    /// FIXME: this is why we still need to depend on *staged* `std`, it's because we currently rely
+    /// on `#![feature(internal_output_capture)]` for [`std::io::set_output_capture`] to implement
+    /// `libtest`-esque `--no-capture`.
+    ///
+    /// FIXME: rename this to the more canonical `no_capture`, or better, invert this to `capture`
+    /// to avoid `!nocapture` double-negatives.
     pub nocapture: bool,
 
-    // Needed both to construct build_helper::git::GitConfig
+    /// Needed both to construct [`build_helper::git::GitConfig`].
     pub nightly_branch: String,
     pub git_merge_commit_email: String,
 
-    /// True if the profiler runtime is enabled for this target.
-    /// Used by the "needs-profiler-runtime" directive in test files.
+    /// True if the profiler runtime is enabled for this target. Used by the
+    /// `needs-profiler-runtime` directive in test files.
     pub profiler_runtime: bool,
 
     /// Command for visual diff display, e.g. `diff-tool --color=always`.
     pub diff_command: Option<String>,
 
-    /// Path to minicore aux library, used for `no_core` tests that need `core` stubs in
-    /// cross-compilation scenarios that do not otherwise want/need to `-Zbuild-std`. Used in e.g.
-    /// ABI tests.
+    /// Path to minicore aux library (`tests/auxiliary/minicore.rs`), used for `no_core` tests that
+    /// need `core` stubs in cross-compilation scenarios that do not otherwise want/need to
+    /// `-Zbuild-std`. Used in e.g. ABI tests.
     pub minicore_path: Utf8PathBuf,
 }
 
 impl Config {
+    /// FIXME: this run scheme is... confusing.
     pub fn run_enabled(&self) -> bool {
         self.run.unwrap_or_else(|| {
             // Auto-detect whether to run based on the platform.
@@ -783,11 +1021,13 @@ fn rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -
 
     let output = match command.output() {
         Ok(output) => output,
-        Err(e) => panic!("error: failed to run {command:?}: {e}"),
+        Err(e) => {
+            fatal!("failed to run {command:?}: {e}");
+        }
     };
     if !output.status.success() {
-        panic!(
-            "error: failed to run {command:?}\n--- stdout\n{}\n--- stderr\n{}",
+        fatal!(
+            "failed to run {command:?}\n--- stdout\n{}\n--- stderr\n{}",
             String::from_utf8(output.stdout).unwrap(),
             String::from_utf8(output.stderr).unwrap(),
         );

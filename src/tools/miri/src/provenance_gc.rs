@@ -68,15 +68,13 @@ impl VisitProvenance for Provenance {
 
 impl VisitProvenance for StrictPointer {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let (prov, _offset) = self.into_parts();
-        prov.visit_provenance(visit);
+        self.provenance.visit_provenance(visit);
     }
 }
 
 impl VisitProvenance for Pointer {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let (prov, _offset) = self.into_parts();
-        prov.visit_provenance(visit);
+        self.provenance.visit_provenance(visit);
     }
 }
 
