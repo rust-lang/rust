@@ -128,6 +128,7 @@ declare_clippy_lint! {
     /// # let width = 1;
     /// # let prec = 2;
     /// format!("{}", var);
+    /// format!("{:?}", var);
     /// format!("{v:?}", v = var);
     /// format!("{0} {0}", var);
     /// format!("{0:1$}", var, width);
@@ -139,6 +140,7 @@ declare_clippy_lint! {
     /// # let width = 1;
     /// # let prec = 2;
     /// format!("{var}");
+    /// format!("{var:?}");
     /// format!("{var:?}");
     /// format!("{var} {var}");
     /// format!("{var:width$}");
