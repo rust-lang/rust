@@ -34,10 +34,10 @@ LL |     <dyn CompareToInts>::same_as(c, 22)
              `i64` implements `CompareTo<u64>`
 
 error[E0277]: the trait bound `C: CompareTo<i32>` is not satisfied
-  --> $DIR/repeated-supertrait-ambig.rs:38:27
+  --> $DIR/repeated-supertrait-ambig.rs:38:24
    |
 LL |     CompareTo::same_as(c, 22)
-   |     ------------------    ^^ the trait `CompareTo<i32>` is not implemented for `C`
+   |     ------------------ ^ the trait `CompareTo<i32>` is not implemented for `C`
    |     |
    |     required by a bound introduced by this call
    |

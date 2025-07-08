@@ -77,7 +77,7 @@ impl Builder<'_> {
                 *target,
             ),
             // doesn't depend on compiler, same as host compiler
-            _ => self.msg(Kind::Build, build_stage, format_args!("tool {tool}"), *host, *target),
+            _ => self.msg(kind, build_stage, format_args!("tool {tool}"), *host, *target),
         }
     }
 }

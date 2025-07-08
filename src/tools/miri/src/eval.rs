@@ -436,7 +436,7 @@ pub fn create_ecx<'tcx>(
                     ImmTy::from_uint(sigpipe, ecx.machine.layouts.u8),
                 ],
                 Some(&ret_place),
-                StackPopCleanup::Root { cleanup: true },
+                ReturnContinuation::Stop { cleanup: true },
             )?;
         }
         MiriEntryFnType::MiriStart => {
@@ -445,7 +445,7 @@ pub fn create_ecx<'tcx>(
                 ExternAbi::Rust,
                 &[argc, argv],
                 Some(&ret_place),
-                StackPopCleanup::Root { cleanup: true },
+                ReturnContinuation::Stop { cleanup: true },
             )?;
         }
     }

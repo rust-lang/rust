@@ -297,7 +297,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
         match self {
             GlobalAlloc::Function { .. } => cx.data_layout().instruction_address_space,
             GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) | GlobalAlloc::VTable(..) => {
-                AddressSpace::DATA
+                AddressSpace::ZERO
             }
         }
     }
@@ -380,7 +380,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
             GlobalAlloc::Function { .. } => (Size::ZERO, Align::ONE),
             GlobalAlloc::VTable(..) => {
                 // No data to be accessed here. But vtables are pointer-aligned.
-                return (Size::ZERO, tcx.data_layout.pointer_align.abi);
+                return (Size::ZERO, tcx.data_layout.pointer_align().abi);
             }
         }
     }

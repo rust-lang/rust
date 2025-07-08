@@ -331,10 +331,10 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     fn load_mir(
         ecx: &InterpCx<'tcx, Self>,
         instance: ty::InstanceKind<'tcx>,
-    ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
+    ) -> &'tcx mir::Body<'tcx> {
         match instance {
-            ty::InstanceKind::Item(def) => interp_ok(ecx.tcx.mir_for_ctfe(def)),
-            _ => interp_ok(ecx.tcx.instance_mir(instance)),
+            ty::InstanceKind::Item(def) => ecx.tcx.mir_for_ctfe(def),
+            _ => ecx.tcx.instance_mir(instance),
         }
     }
 

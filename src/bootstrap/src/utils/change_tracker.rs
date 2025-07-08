@@ -451,4 +451,14 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "The `spellcheck:fix` tidy extra check argument has been removed, use `--bless` instead",
     },
+    ChangeInfo {
+        change_id: 143048,
+        severity: ChangeSeverity::Warning,
+        summary: "The default check stage has been changed to 1. It is no longer possible to `x check` with stage 0. All check commands have to be on stage 1+. Bootstrap tools can now also only be checked for the host target.",
+    },
+    ChangeInfo {
+        change_id: 143577,
+        severity: ChangeSeverity::Warning,
+        summary: "`download-rustc` has been temporarily disabled for the library profile due to implementation bugs (see #142505).",
+    },
 ];

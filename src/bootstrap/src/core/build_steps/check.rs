@@ -3,16 +3,19 @@
 use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
 };
+use crate::core::build_steps::tool;
 use crate::core::build_steps::tool::{COMPILETEST_ALLOW_FEATURES, SourceType, prepare_tool_cargo};
 use crate::core::builder::{
     self, Alias, Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
 };
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
-use crate::{Mode, Subcommand};
+use crate::{Compiler, Mode, Subcommand};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
+    /// Compiler that will check this std.
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
     /// Whether to build only a subset of crates.
     ///
@@ -20,16 +23,13 @@ pub struct Std {
     ///
     /// [`compile::Rustc`]: crate::core::build_steps::compile::Rustc
     crates: Vec<String>,
-    /// Never use this from outside calls. It is intended for internal use only within `check::Std::make_run`
-    /// and `check::Std::run`.
-    custom_stage: Option<u32>,
 }
 
 impl Std {
     const CRATE_OR_DEPS: &[&str] = &["sysroot", "coretests", "alloctests"];
 
-    pub fn new(target: TargetSelection) -> Self {
-        Self { target, crates: vec![], custom_stage: None }
+    pub fn new(build_compiler: Compiler, target: TargetSelection) -> Self {
+        Self { build_compiler, target, crates: vec![] }
     }
 }
 
@@ -48,14 +48,11 @@ impl Step for Std {
 
     fn make_run(run: RunConfig<'_>) {
         let crates = std_crates_for_run_make(&run);
-
-        let stage = if run.builder.config.is_explicit_stage() || run.builder.top_stage >= 1 {
-            run.builder.top_stage
-        } else {
-            1
-        };
-
-        run.builder.ensure(Std { target: run.target, crates, custom_stage: Some(stage) });
+        run.builder.ensure(Std {
+            build_compiler: prepare_compiler_for_check(run.builder, run.target, Mode::Std),
+            target: run.target,
+            crates,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -66,40 +63,20 @@ impl Step for Std {
             return;
         }
 
-        let stage = self.custom_stage.unwrap_or(builder.top_stage);
-
+        let build_compiler = self.build_compiler;
+        let stage = build_compiler.stage;
         let target = self.target;
-        let compiler = builder.compiler(stage, builder.config.host_target);
-
-        if stage == 0 {
-            let mut is_explicitly_called =
-                builder.paths.iter().any(|p| p.starts_with("library") || p.starts_with("std"));
-
-            if !is_explicitly_called {
-                for c in Std::CRATE_OR_DEPS {
-                    is_explicitly_called = builder.paths.iter().any(|p| p.starts_with(c));
-                }
-            }
-
-            if is_explicitly_called {
-                eprintln!("WARNING: stage 0 std is precompiled and does nothing during `x check`.");
-            }
-
-            // Reuse the stage0 libstd
-            builder.std(compiler, target);
-            return;
-        }
 
         let mut cargo = builder::Cargo::new(
             builder,
-            compiler,
+            build_compiler,
             Mode::Std,
             SourceType::InTree,
             target,
             Kind::Check,
         );
 
-        std_cargo(builder, target, compiler.stage, &mut cargo);
+        std_cargo(builder, target, stage, &mut cargo);
         if matches!(builder.config.cmd, Subcommand::Fix) {
             // By default, cargo tries to fix all targets. Tell it not to fix tests until we've added `test` to the sysroot.
             cargo.arg("--lib");
@@ -115,16 +92,9 @@ impl Step for Std {
             Some(stage),
         );
 
-        let stamp = build_stamp::libstd_stamp(builder, compiler, target).with_prefix("check");
+        let stamp = build_stamp::libstd_stamp(builder, build_compiler, target).with_prefix("check");
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
 
-        // We skip populating the sysroot in non-zero stage because that'll lead
-        // to rlib/rmeta conflicts if std gets built during this session.
-        if compiler.stage == 0 {
-            let libdir = builder.sysroot_target_libdir(compiler, target);
-            let hostdir = builder.sysroot_target_libdir(compiler, compiler.host);
-            add_to_sysroot(builder, &libdir, &hostdir, &stamp);
-        }
         drop(_guard);
 
         // don't check test dependencies if we haven't built libtest
@@ -140,21 +110,14 @@ impl Step for Std {
         // Currently only the "libtest" tree of crates does this.
         let mut cargo = builder::Cargo::new(
             builder,
-            compiler,
+            build_compiler,
             Mode::Std,
             SourceType::InTree,
             target,
             Kind::Check,
         );
 
-        // If we're not in stage 0, tests and examples will fail to compile
-        // from `core` definitions being loaded from two different `libcore`
-        // .rmeta and .rlib files.
-        if compiler.stage == 0 {
-            cargo.arg("--all-targets");
-        }
-
-        std_cargo(builder, target, compiler.stage, &mut cargo);
+        std_cargo(builder, target, build_compiler.stage, &mut cargo);
 
         // Explicitly pass -p for all dependencies krates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather
@@ -163,18 +126,23 @@ impl Step for Std {
             cargo.arg("-p").arg(krate);
         }
 
-        let stamp = build_stamp::libstd_stamp(builder, compiler, target).with_prefix("check-test");
+        let stamp =
+            build_stamp::libstd_stamp(builder, build_compiler, target).with_prefix("check-test");
         let _guard = builder.msg_check("library test/bench/example targets", target, Some(stage));
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::check("std", self.target))
+        Some(StepMetadata::check("std", self.target).built_by(self.build_compiler))
     }
 }
 
+/// Checks rustc using `build_compiler` and copies the built
+/// .rmeta files into the sysroot of `build_compiler`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
+    /// Compiler that will check this rustc.
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
     /// Whether to build only a subset of crates.
     ///
@@ -185,13 +153,13 @@ pub struct Rustc {
 }
 
 impl Rustc {
-    pub fn new(target: TargetSelection, builder: &Builder<'_>) -> Self {
+    pub fn new(builder: &Builder<'_>, build_compiler: Compiler, target: TargetSelection) -> Self {
         let crates = builder
             .in_tree_crates("rustc-main", Some(target))
             .into_iter()
             .map(|krate| krate.name.to_string())
             .collect();
-        Self { target, crates }
+        Self { build_compiler, target, crates }
     }
 }
 
@@ -206,40 +174,43 @@ impl Step for Rustc {
 
     fn make_run(run: RunConfig<'_>) {
         let crates = run.make_run_crates(Alias::Compiler);
-        run.builder.ensure(Rustc { target: run.target, crates });
+        run.builder.ensure(Rustc {
+            target: run.target,
+            build_compiler: prepare_compiler_for_check(run.builder, run.target, Mode::Rustc),
+            crates,
+        });
     }
 
-    /// Builds the compiler.
+    /// Check the compiler.
     ///
-    /// This will build the compiler for a particular stage of the build using
+    /// This will check the compiler for a particular stage of the build using
     /// the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
+    ///
+    /// If we check a stage 2 compiler, we will have to first build a stage 1 compiler to check it.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+        let build_compiler = self.build_compiler;
         let target = self.target;
 
-        if compiler.stage != 0 {
-            // If we're not in stage 0, then we won't have a std from the beta
-            // compiler around. That means we need to make sure there's one in
-            // the sysroot for the compiler to find. Otherwise, we're going to
-            // fail when building crates that need to generate code (e.g., build
-            // scripts and their dependencies).
-            builder.std(compiler, compiler.host);
-            builder.std(compiler, target);
-        } else {
-            builder.ensure(Std::new(target));
-        }
+        // Build host std for compiling build scripts
+        builder.std(build_compiler, build_compiler.host);
+
+        // Build target std so that the checked rustc can link to it during the check
+        // FIXME: maybe we can a way to only do a check of std here?
+        // But for that we would have to copy the stdlib rmetas to the sysroot of the build
+        // compiler, which conflicts with std rlibs, if we also build std.
+        builder.std(build_compiler, target);
 
         let mut cargo = builder::Cargo::new(
             builder,
-            compiler,
+            build_compiler,
             Mode::Rustc,
             SourceType::InTree,
             target,
             Kind::Check,
         );
 
-        rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
+        rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
 
         // Explicitly pass -p for all compiler crates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather
@@ -254,22 +225,75 @@ impl Step for Rustc {
             None,
         );
 
-        let stamp = build_stamp::librustc_stamp(builder, compiler, target).with_prefix("check");
+        let stamp =
+            build_stamp::librustc_stamp(builder, build_compiler, target).with_prefix("check");
 
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
 
-        let libdir = builder.sysroot_target_libdir(compiler, target);
-        let hostdir = builder.sysroot_target_libdir(compiler, compiler.host);
+        let libdir = builder.sysroot_target_libdir(build_compiler, target);
+        let hostdir = builder.sysroot_target_libdir(build_compiler, build_compiler.host);
         add_to_sysroot(builder, &libdir, &hostdir, &stamp);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::check("rustc", self.target))
+        Some(StepMetadata::check("rustc", self.target).built_by(self.build_compiler))
     }
 }
 
+/// Prepares a compiler that will check something with the given `mode`.
+fn prepare_compiler_for_check(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    mode: Mode,
+) -> Compiler {
+    let host = builder.host_target;
+    match mode {
+        Mode::ToolBootstrap => builder.compiler(0, host),
+        Mode::ToolStd => {
+            // These tools require the local standard library to be checked
+            let build_compiler = builder.compiler(builder.top_stage, host);
+
+            // We need to build the host stdlib to check the tool itself.
+            // We need to build the target stdlib so that the tool can link to it.
+            builder.std(build_compiler, host);
+            // We could only check this library in theory, but `check::Std` doesn't copy rmetas
+            // into `build_compiler`'s sysroot to avoid clashes with `.rlibs`, so we build it
+            // instead.
+            builder.std(build_compiler, target);
+            build_compiler
+        }
+        Mode::ToolRustc | Mode::Codegen => {
+            // FIXME: this is a hack, see description of Mode::Rustc below
+            let stage = if host == target { builder.top_stage - 1 } else { builder.top_stage };
+            // When checking tool stage N, we check it with compiler stage N-1
+            let build_compiler = builder.compiler(stage, host);
+            builder.ensure(Rustc::new(builder, build_compiler, target));
+            build_compiler
+        }
+        Mode::Rustc => {
+            // This is a horrible hack, because we actually change the compiler stage numbering
+            // here. If you do `x check --stage 1 --host FOO`, we build stage 1 host rustc,
+            // and use that to check stage 1 FOO rustc (which actually makes that stage 2 FOO
+            // rustc).
+            //
+            // FIXME: remove this and either fix cross-compilation check on stage 2 (which has a
+            // myriad of other problems) or disable cross-checking on stage 1.
+            let stage = if host == target { builder.top_stage - 1 } else { builder.top_stage };
+            builder.compiler(stage, host)
+        }
+        Mode::Std => {
+            // When checking std stage N, we want to do it with the stage N compiler
+            // Note: we don't need to build the host stdlib here, because when compiling std, the
+            // stage 0 stdlib is used to compile build scripts and proc macros.
+            builder.compiler(builder.top_stage, host)
+        }
+    }
+}
+
+/// Checks a single codegen backend.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CodegenBackend {
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
     pub backend: &'static str,
 }
@@ -284,8 +308,10 @@ impl Step for CodegenBackend {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        // FIXME: only check the backend(s) that were actually selected in run.paths
+        let build_compiler = prepare_compiler_for_check(run.builder, run.target, Mode::Codegen);
         for &backend in &["cranelift", "gcc"] {
-            run.builder.ensure(CodegenBackend { target: run.target, backend });
+            run.builder.ensure(CodegenBackend { build_compiler, target: run.target, backend });
         }
     }
 
@@ -296,15 +322,13 @@ impl Step for CodegenBackend {
             return;
         }
 
-        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+        let build_compiler = self.build_compiler;
         let target = self.target;
         let backend = self.backend;
 
-        builder.ensure(Rustc::new(target, builder));
-
         let mut cargo = builder::Cargo::new(
             builder,
-            compiler,
+            build_compiler,
             Mode::Codegen,
             SourceType::InTree,
             target,
@@ -314,23 +338,25 @@ impl Step for CodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
-        rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
+        rustc_cargo_env(builder, &mut cargo, target, build_compiler.stage);
 
-        let _guard = builder.msg_check(backend, target, None);
+        let _guard = builder.msg_check(format!("rustc_codegen_{backend}"), target, None);
 
-        let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, backend)
+        let stamp = build_stamp::codegen_backend_stamp(builder, build_compiler, target, backend)
             .with_prefix("check");
 
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::check(self.backend, self.target))
+        Some(StepMetadata::check(self.backend, self.target).built_by(self.build_compiler))
     }
 }
 
+/// Checks Rust analyzer that links to .rmetas from a checked rustc.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RustAnalyzer {
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -351,18 +377,17 @@ impl Step for RustAnalyzer {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustAnalyzer { target: run.target });
+        let build_compiler = prepare_compiler_for_check(run.builder, run.target, Mode::ToolRustc);
+        run.builder.ensure(RustAnalyzer { build_compiler, target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+        let build_compiler = self.build_compiler;
         let target = self.target;
-
-        builder.ensure(Rustc::new(target, builder));
 
         let mut cargo = prepare_tool_cargo(
             builder,
-            compiler,
+            build_compiler,
             Mode::ToolRustc,
             target,
             builder.kind,
@@ -379,7 +404,7 @@ impl Step for RustAnalyzer {
 
         // Cargo's output path in a given stage, compiled by a particular
         // compiler for the specified target.
-        let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
+        let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, Mode::ToolRustc, target))
             .with_prefix("rust-analyzer-check");
 
         let _guard = builder.msg_check("rust-analyzer artifacts", target, None);
@@ -387,7 +412,7 @@ impl Step for RustAnalyzer {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::check("rust-analyzer", self.target))
+        Some(StepMetadata::check("rust-analyzer", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -417,19 +442,11 @@ impl Step for Compiletest {
         } else {
             Mode::ToolStd
         };
-
-        let compiler = builder.compiler(
-            if mode == Mode::ToolBootstrap { 0 } else { builder.top_stage },
-            builder.config.host_target,
-        );
-
-        if mode != Mode::ToolBootstrap {
-            builder.ensure(Rustc::new(self.target, builder));
-        }
+        let build_compiler = prepare_compiler_for_check(builder, self.target, mode);
 
         let mut cargo = prepare_tool_cargo(
             builder,
-            compiler,
+            build_compiler,
             mode,
             self.target,
             builder.kind,
@@ -442,7 +459,7 @@ impl Step for Compiletest {
 
         cargo.arg("--all-targets");
 
-        let stamp = BuildStamp::new(&builder.cargo_out(compiler, mode, self.target))
+        let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, mode, self.target))
             .with_prefix("compiletest-check");
 
         let _guard = builder.msg_check("compiletest artifacts", self.target, None);
@@ -460,12 +477,15 @@ macro_rules! tool_check_step {
             // The part of this path after the final '/' is also used as a display name.
             path: $path:literal
             $(, alt_path: $alt_path:literal )*
+            , mode: $mode:path
+            $(, allow_features: $allow_features:expr )?
             $(, default: $default:literal )?
             $( , )?
         }
     ) => {
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
+            pub build_compiler: Compiler,
             pub target: TargetSelection,
         }
 
@@ -480,16 +500,30 @@ macro_rules! tool_check_step {
             }
 
             fn make_run(run: RunConfig<'_>) {
-                run.builder.ensure($name { target: run.target });
+                let target = run.target;
+                let build_compiler = prepare_compiler_for_check(run.builder, target, $mode);
+
+                // It doesn't make sense to cross-check bootstrap tools
+                if $mode == Mode::ToolBootstrap && target != run.builder.host_target {
+                    println!("WARNING: not checking bootstrap tool {} for target {target} as it is a bootstrap (host-only) tool", stringify!($path));
+                    return;
+                };
+
+                run.builder.ensure($name { target, build_compiler });
             }
 
             fn run(self, builder: &Builder<'_>) {
-                let Self { target } = self;
-                run_tool_check_step(builder, target, stringify!($name), $path);
+                let Self { target, build_compiler } = self;
+                let allow_features = {
+                    let mut _value = "";
+                    $( _value = $allow_features; )?
+                    _value
+                };
+                run_tool_check_step(builder, build_compiler, target, $path, $mode, allow_features);
             }
 
             fn metadata(&self) -> Option<StepMetadata> {
-                Some(StepMetadata::check(stringify!($name), self.target))
+                Some(StepMetadata::check(stringify!($name), self.target).built_by(self.build_compiler))
             }
         }
     }
@@ -498,19 +532,18 @@ macro_rules! tool_check_step {
 /// Used by the implementation of `Step::run` in `tool_check_step!`.
 fn run_tool_check_step(
     builder: &Builder<'_>,
+    build_compiler: Compiler,
     target: TargetSelection,
-    step_type_name: &str,
     path: &str,
+    mode: Mode,
+    allow_features: &str,
 ) {
     let display_name = path.rsplit('/').next().unwrap();
-    let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
-
-    builder.ensure(Rustc::new(target, builder));
 
     let mut cargo = prepare_tool_cargo(
         builder,
-        compiler,
-        Mode::ToolRustc,
+        build_compiler,
+        mode,
         target,
         builder.kind,
         path,
@@ -521,98 +554,65 @@ fn run_tool_check_step(
         SourceType::InTree,
         &[],
     );
+    cargo.allow_features(allow_features);
 
+    // FIXME: check bootstrap doesn't currently work with --all-targets
     cargo.arg("--all-targets");
 
-    let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
-        .with_prefix(&format!("{}-check", step_type_name.to_lowercase()));
+    let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, mode, target))
+        .with_prefix(&format!("{display_name}-check"));
 
-    let _guard = builder.msg_check(format!("{display_name} artifacts"), target, None);
+    let stage = match mode {
+        // Mode::ToolRustc is included here because of how msg_sysroot_tool prints stages
+        Mode::Std | Mode::ToolRustc => build_compiler.stage,
+        _ => build_compiler.stage + 1,
+    };
+
+    let _guard =
+        builder.msg_tool(builder.kind, mode, display_name, stage, &build_compiler.host, &target);
     run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
 }
 
-tool_check_step!(Rustdoc { path: "src/tools/rustdoc", alt_path: "src/librustdoc" });
+tool_check_step!(Rustdoc {
+    path: "src/tools/rustdoc",
+    alt_path: "src/librustdoc",
+    mode: Mode::ToolRustc
+});
 // Clippy, miri and Rustfmt are hybrids. They are external tools, but use a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
-tool_check_step!(Clippy { path: "src/tools/clippy" });
-tool_check_step!(Miri { path: "src/tools/miri" });
-tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri" });
-tool_check_step!(Rustfmt { path: "src/tools/rustfmt" });
-tool_check_step!(MiroptTestTools { path: "src/tools/miropt-test-tools" });
-tool_check_step!(TestFloatParse { path: "src/tools/test-float-parse" });
-tool_check_step!(FeaturesStatusDump { path: "src/tools/features-status-dump" });
+tool_check_step!(Clippy { path: "src/tools/clippy", mode: Mode::ToolRustc });
+tool_check_step!(Miri { path: "src/tools/miri", mode: Mode::ToolRustc });
+tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: Mode::ToolRustc });
+tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: Mode::ToolRustc });
+tool_check_step!(MiroptTestTools {
+    path: "src/tools/miropt-test-tools",
+    mode: Mode::ToolBootstrap
+});
+// We want to test the local std
+tool_check_step!(TestFloatParse {
+    path: "src/tools/test-float-parse",
+    mode: Mode::ToolStd,
+    allow_features: tool::TestFloatParse::ALLOW_FEATURES
+});
+tool_check_step!(FeaturesStatusDump {
+    path: "src/tools/features-status-dump",
+    mode: Mode::ToolBootstrap
+});
 
-tool_check_step!(Bootstrap { path: "src/bootstrap", default: false });
+tool_check_step!(Bootstrap { path: "src/bootstrap", mode: Mode::ToolBootstrap, default: false });
 
 // `run-make-support` will be built as part of suitable run-make compiletest test steps, but support
 // check to make it easier to work on.
-tool_check_step!(RunMakeSupport { path: "src/tools/run-make-support", default: false });
+tool_check_step!(RunMakeSupport {
+    path: "src/tools/run-make-support",
+    mode: Mode::ToolBootstrap,
+    default: false
+});
 
-/// Check step for the `coverage-dump` bootstrap tool. The coverage-dump tool
-/// is used internally by coverage tests.
-///
-/// FIXME(Zalathar): This is temporarily separate from the other tool check
-/// steps so that it can use the stage 0 compiler instead of `top_stage`,
-/// without introducing conflicts with the stage 0 redesign (#119899).
-///
-/// After the stage 0 redesign lands, we can look into using the stage 0
-/// compiler to check all bootstrap tools (#139170).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct CoverageDump;
-
-impl CoverageDump {
-    const PATH: &str = "src/tools/coverage-dump";
-}
-
-impl Step for CoverageDump {
-    type Output = ();
-
-    /// Most contributors won't care about coverage-dump, so don't make their
-    /// check builds slower unless they opt in and check it explicitly.
-    const DEFAULT: bool = false;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path(Self::PATH)
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Self {});
-    }
-
-    fn run(self, builder: &Builder<'_>) -> Self::Output {
-        // Make sure we haven't forgotten any fields, if there are any.
-        let Self {} = self;
-        let display_name = "coverage-dump";
-        let host = builder.config.host_target;
-        let target = host;
-        let mode = Mode::ToolBootstrap;
-
-        let compiler = builder.compiler(0, host);
-        let cargo = prepare_tool_cargo(
-            builder,
-            compiler,
-            mode,
-            target,
-            builder.kind,
-            Self::PATH,
-            SourceType::InTree,
-            &[],
-        );
-
-        let stamp = BuildStamp::new(&builder.cargo_out(compiler, mode, target))
-            .with_prefix(&format!("{display_name}-check"));
-
-        let _guard = builder.msg_tool(
-            builder.kind,
-            mode,
-            display_name,
-            compiler.stage,
-            &compiler.host,
-            &target,
-        );
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
-    }
-}
+tool_check_step!(CoverageDump {
+    path: "src/tools/coverage-dump",
+    mode: Mode::ToolBootstrap,
+    default: false
+});

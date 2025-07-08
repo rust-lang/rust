@@ -1834,7 +1834,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             };
             DynTrait(bounds, lifetime)
         }
-        TyKind::BareFn(barefn) => BareFunction(Box::new(clean_bare_fn_ty(barefn, cx))),
+        TyKind::FnPtr(barefn) => BareFunction(Box::new(clean_bare_fn_ty(barefn, cx))),
         TyKind::UnsafeBinder(unsafe_binder_ty) => {
             UnsafeBinder(Box::new(clean_unsafe_binder_ty(unsafe_binder_ty, cx)))
         }
@@ -2558,7 +2558,7 @@ fn clean_path_segment<'tcx>(
 }
 
 fn clean_bare_fn_ty<'tcx>(
-    bare_fn: &hir::BareFnTy<'tcx>,
+    bare_fn: &hir::FnPtrTy<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> BareFunctionDecl {
     let (generic_params, decl) = enter_impl_trait(cx, |cx| {

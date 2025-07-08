@@ -373,17 +373,10 @@ pub fn compile_declarative_macro(
     node_id: NodeId,
     edition: Edition,
 ) -> (SyntaxExtension, usize) {
+    let is_local = node_id != DUMMY_NODE_ID;
     let mk_syn_ext = |expander| {
-        SyntaxExtension::new(
-            sess,
-            SyntaxExtensionKind::LegacyBang(expander),
-            span,
-            Vec::new(),
-            edition,
-            ident.name,
-            attrs,
-            node_id != DUMMY_NODE_ID,
-        )
+        let kind = SyntaxExtensionKind::LegacyBang(expander);
+        SyntaxExtension::new(sess, kind, span, Vec::new(), edition, ident.name, attrs, is_local)
     };
     let dummy_syn_ext = |guar| (mk_syn_ext(Arc::new(DummyExpander(guar))), 0);
 
@@ -393,7 +386,8 @@ pub fn compile_declarative_macro(
     let body = macro_def.body.tokens.clone();
     let mut p = Parser::new(&sess.psess, body, rustc_parse::MACRO_ARGUMENTS);
 
-    // Don't abort iteration early, so that multiple errors can be reported.
+    // Don't abort iteration early, so that multiple errors can be reported. We only abort early on
+    // parse failures we can't recover from.
     let mut guar = None;
     let mut check_emission = |ret: Result<(), ErrorGuaranteed>| guar = guar.or(ret.err());
 
@@ -402,20 +396,11 @@ pub fn compile_declarative_macro(
     while p.token != token::Eof {
         let lhs_tt = p.parse_token_tree();
         let lhs_tt = parse_one_tt(lhs_tt, RulePart::Pattern, sess, node_id, features, edition);
-        // We don't handle errors here, the driver will abort after parsing/expansion. We can
-        // report every error in every macro this way.
-        check_emission(check_lhs_nt_follows(sess, node_id, &lhs_tt));
-        check_emission(check_lhs_no_empty_seq(sess, slice::from_ref(&lhs_tt)));
+        check_emission(check_lhs(sess, node_id, &lhs_tt));
         if let Err(e) = p.expect(exp!(FatArrow)) {
             return dummy_syn_ext(e.emit());
         }
-        if p.token == token::Eof {
-            let err_sp = p.token.span.shrink_to_hi();
-            let guar = sess
-                .dcx()
-                .struct_span_err(err_sp, "macro definition ended unexpectedly")
-                .with_span_label(err_sp, "expected right-hand side of macro rule")
-                .emit();
+        if let Some(guar) = check_no_eof(sess, &p, "expected right-hand side of macro rule") {
             return dummy_syn_ext(guar);
         }
         let rhs_tt = p.parse_token_tree();
@@ -454,11 +439,30 @@ pub fn compile_declarative_macro(
     }
 
     // Return the number of rules for unused rule linting, if this is a local macro.
-    let nrules = if node_id != DUMMY_NODE_ID { rules.len() } else { 0 };
+    let nrules = if is_local { rules.len() } else { 0 };
 
     let expander =
         Arc::new(MacroRulesMacroExpander { name: ident, span, node_id, transparency, rules });
     (mk_syn_ext(expander), nrules)
+}
+
+fn check_no_eof(sess: &Session, p: &Parser<'_>, msg: &'static str) -> Option<ErrorGuaranteed> {
+    if p.token == token::Eof {
+        let err_sp = p.token.span.shrink_to_hi();
+        let guar = sess
+            .dcx()
+            .struct_span_err(err_sp, "macro definition ended unexpectedly")
+            .with_span_label(err_sp, msg)
+            .emit();
+        return Some(guar);
+    }
+    None
+}
+
+fn check_lhs(sess: &Session, node_id: NodeId, lhs: &mbe::TokenTree) -> Result<(), ErrorGuaranteed> {
+    let e1 = check_lhs_nt_follows(sess, node_id, lhs);
+    let e2 = check_lhs_no_empty_seq(sess, slice::from_ref(lhs));
+    e1.and(e2)
 }
 
 fn check_lhs_nt_follows(

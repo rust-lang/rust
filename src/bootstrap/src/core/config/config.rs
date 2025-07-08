@@ -1025,7 +1025,7 @@ impl Config {
             || bench_stage.is_some();
 
         config.stage = match config.cmd {
-            Subcommand::Check { .. } => flags_stage.or(check_stage).unwrap_or(0),
+            Subcommand::Check { .. } => flags_stage.or(check_stage).unwrap_or(1),
             Subcommand::Clippy { .. } | Subcommand::Fix => flags_stage.or(check_stage).unwrap_or(1),
             // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
             Subcommand::Doc { .. } => {
@@ -1052,9 +1052,16 @@ impl Config {
         };
 
         // Now check that the selected stage makes sense, and if not, print a warning and end
-        if let (0, Subcommand::Build) = (config.stage, &config.cmd) {
-            eprintln!("WARNING: cannot build anything on stage 0. Use at least stage 1.");
-            exit!(1);
+        match (config.stage, &config.cmd) {
+            (0, Subcommand::Build) => {
+                eprintln!("WARNING: cannot build anything on stage 0. Use at least stage 1.");
+                exit!(1);
+            }
+            (0, Subcommand::Check { .. }) => {
+                eprintln!("WARNING: cannot check anything on stage 0. Use at least stage 1.");
+                exit!(1);
+            }
+            _ => {}
         }
 
         // CI should always run stage 2 builds, unless it specifically states otherwise

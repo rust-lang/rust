@@ -1312,7 +1312,7 @@ impl EarlyLintPass for UnusedParens {
                             None => true,
                         }
                     }
-                    ast::TyKind::BareFn(b) => {
+                    ast::TyKind::FnPtr(b) => {
                         !self.with_self_ty_parens || b.generic_params.is_empty()
                     }
                     _ => true,

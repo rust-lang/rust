@@ -1,4 +1,3 @@
-#![allow(non_camel_case_types)]
 #![expect(dead_code)]
 
 use libc::{c_char, c_uint};

@@ -37,13 +37,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidate: SelectionCandidate<'tcx>,
     ) -> Result<Selection<'tcx>, SelectionError<'tcx>> {
         Ok(match candidate {
-            SizedCandidate { has_nested } => {
-                let data = self.confirm_builtin_candidate(obligation, has_nested);
+            SizedCandidate => {
+                let data = self.confirm_builtin_candidate(obligation);
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
-            BuiltinCandidate { has_nested } => {
-                let data = self.confirm_builtin_candidate(obligation, has_nested);
+            BuiltinCandidate => {
+                let data = self.confirm_builtin_candidate(obligation);
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
@@ -249,50 +249,47 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn confirm_builtin_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
-        has_nested: bool,
     ) -> PredicateObligations<'tcx> {
-        debug!(?obligation, ?has_nested, "confirm_builtin_candidate");
-
+        debug!(?obligation, "confirm_builtin_candidate");
         let tcx = self.tcx();
-        let obligations = if has_nested {
-            let trait_def = obligation.predicate.def_id();
-            let conditions = match tcx.as_lang_item(trait_def) {
-                Some(LangItem::Sized) => {
-                    self.sizedness_conditions(obligation, SizedTraitKind::Sized)
-                }
-                Some(LangItem::MetaSized) => {
-                    self.sizedness_conditions(obligation, SizedTraitKind::MetaSized)
-                }
-                Some(LangItem::PointeeSized) => {
-                    bug!("`PointeeSized` is removing during lowering");
-                }
-                Some(LangItem::Copy | LangItem::Clone) => self.copy_clone_conditions(obligation),
-                Some(LangItem::FusedIterator) => self.fused_iterator_conditions(obligation),
-                other => bug!("unexpected builtin trait {trait_def:?} ({other:?})"),
-            };
-            let BuiltinImplConditions::Where(types) = conditions else {
-                bug!("obligation {:?} had matched a builtin impl but now doesn't", obligation);
-            };
-            let types = self.infcx.enter_forall_and_leak_universe(types);
-
-            let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
-            self.collect_predicates_for_types(
-                obligation.param_env,
-                cause,
-                obligation.recursion_depth + 1,
-                trait_def,
-                types,
-            )
-        } else {
-            PredicateObligations::new()
+        let trait_def = obligation.predicate.def_id();
+        let conditions = match tcx.as_lang_item(trait_def) {
+            Some(LangItem::Sized) => self.sizedness_conditions(obligation, SizedTraitKind::Sized),
+            Some(LangItem::MetaSized) => {
+                self.sizedness_conditions(obligation, SizedTraitKind::MetaSized)
+            }
+            Some(LangItem::PointeeSized) => {
+                bug!("`PointeeSized` is removing during lowering");
+            }
+            Some(LangItem::Copy | LangItem::Clone) => self.copy_clone_conditions(obligation),
+            Some(LangItem::FusedIterator) => self.fused_iterator_conditions(obligation),
+            Some(
+                LangItem::Destruct
+                | LangItem::DiscriminantKind
+                | LangItem::FnPtrTrait
+                | LangItem::PointeeTrait
+                | LangItem::Tuple
+                | LangItem::Unpin,
+            ) => BuiltinImplConditions::Where(ty::Binder::dummy(vec![])),
+            other => bug!("unexpected builtin trait {trait_def:?} ({other:?})"),
         };
+        let BuiltinImplConditions::Where(types) = conditions else {
+            bug!("obligation {:?} had matched a builtin impl but now doesn't", obligation);
+        };
+        let types = self.infcx.enter_forall_and_leak_universe(types);
 
-        debug!(?obligations);
-
-        obligations
+        let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
+        self.collect_predicates_for_types(
+            obligation.param_env,
+            cause,
+            obligation.recursion_depth + 1,
+            trait_def,
+            types,
+        )
     }
 
     #[instrument(level = "debug", skip(self))]

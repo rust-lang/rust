@@ -27,4 +27,15 @@ impl T for () {
     }
 }
 
+trait Baz {
+    fn foo();
+    fn foo() -> impl Sized;     //~ ERROR: the name `foo` is defined multiple times
+}
+
+trait Foo {
+    fn foo() -> impl Sized;
+    fn foo();                   //~ ERROR: the name `foo` is defined multiple times
+    fn foo() -> impl Sized;     //~ ERROR: the name `foo` is defined multiple times
+}
+
 fn main() {}

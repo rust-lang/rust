@@ -499,9 +499,9 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_bare_fn_safety(&self, span: Span, safety: Safety) {
+    fn check_fn_ptr_safety(&self, span: Span, safety: Safety) {
         if matches!(safety, Safety::Safe(_)) {
-            self.dcx().emit_err(errors::InvalidSafetyOnBareFn { span });
+            self.dcx().emit_err(errors::InvalidSafetyOnFnPtr { span });
         }
     }
 
@@ -785,8 +785,8 @@ impl<'a> AstValidator<'a> {
 
     fn visit_ty_common(&mut self, ty: &'a Ty) {
         match &ty.kind {
-            TyKind::BareFn(bfty) => {
-                self.check_bare_fn_safety(bfty.decl_span, bfty.safety);
+            TyKind::FnPtr(bfty) => {
+                self.check_fn_ptr_safety(bfty.decl_span, bfty.safety);
                 self.check_fn_decl(&bfty.decl, SelfSemantic::No);
                 Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
                     self.dcx().emit_err(errors::PatternFnPointer { span });

@@ -254,7 +254,7 @@ impl<'db> SourceAnalyzer<'db> {
         // expressions nor patterns).
         let expr_id = self.expr_id(expr.clone())?.as_expr()?;
         let infer = self.infer()?;
-        infer.expr_adjustments.get(&expr_id).map(|v| &**v)
+        infer.expr_adjustment(expr_id)
     }
 
     pub(crate) fn type_of_type(
@@ -286,7 +286,7 @@ impl<'db> SourceAnalyzer<'db> {
         let infer = self.infer()?;
         let coerced = expr_id
             .as_expr()
-            .and_then(|expr_id| infer.expr_adjustments.get(&expr_id))
+            .and_then(|expr_id| infer.expr_adjustment(expr_id))
             .and_then(|adjusts| adjusts.last().map(|adjust| adjust.target.clone()));
         let ty = infer[expr_id].clone();
         let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
@@ -302,12 +302,11 @@ impl<'db> SourceAnalyzer<'db> {
         let infer = self.infer()?;
         let coerced = match expr_or_pat_id {
             ExprOrPatId::ExprId(idx) => infer
-                .expr_adjustments
-                .get(&idx)
+                .expr_adjustment(idx)
                 .and_then(|adjusts| adjusts.last().cloned())
                 .map(|adjust| adjust.target),
             ExprOrPatId::PatId(idx) => {
-                infer.pat_adjustments.get(&idx).and_then(|adjusts| adjusts.last().cloned())
+                infer.pat_adjustment(idx).and_then(|adjusts| adjusts.last().cloned())
             }
         };
 
@@ -345,7 +344,7 @@ impl<'db> SourceAnalyzer<'db> {
     ) -> Option<BindingMode> {
         let id = self.pat_id(&pat.clone().into())?;
         let infer = self.infer()?;
-        infer.binding_modes.get(id.as_pat()?).map(|bm| match bm {
+        infer.binding_mode(id.as_pat()?).map(|bm| match bm {
             hir_ty::BindingMode::Move => BindingMode::Move,
             hir_ty::BindingMode::Ref(hir_ty::Mutability::Mut) => BindingMode::Ref(Mutability::Mut),
             hir_ty::BindingMode::Ref(hir_ty::Mutability::Not) => {
@@ -362,8 +361,7 @@ impl<'db> SourceAnalyzer<'db> {
         let infer = self.infer()?;
         Some(
             infer
-                .pat_adjustments
-                .get(&pat_id.as_pat()?)?
+                .pat_adjustment(pat_id.as_pat()?)?
                 .iter()
                 .map(|ty| Type::new_with_resolver(db, &self.resolver, ty.clone()))
                 .collect(),
@@ -736,7 +734,7 @@ impl<'db> SourceAnalyzer<'db> {
         let variant = self.infer()?.variant_resolution_for_pat(pat_id.as_pat()?)?;
         let variant_data = variant.fields(db);
         let field = FieldId { parent: variant, local_id: variant_data.field(&field_name)? };
-        let (adt, subst) = self.infer()?.type_of_pat.get(pat_id.as_pat()?)?.as_adt()?;
+        let (adt, subst) = self.infer()?[pat_id.as_pat()?].as_adt()?;
         let field_ty =
             db.field_types(variant).get(field.local_id)?.clone().substitute(Interner, subst);
         Some((
@@ -765,7 +763,8 @@ impl<'db> SourceAnalyzer<'db> {
             },
         };
 
-        let res = resolve_hir_path(db, &self.resolver, path, HygieneId::ROOT, Some(store))?;
+        let body_owner = self.resolver.body_owner();
+        let res = resolve_hir_value_path(db, &self.resolver, body_owner, path, HygieneId::ROOT)?;
         match res {
             PathResolution::Def(def) => Some(def),
             _ => None,
@@ -1249,7 +1248,7 @@ impl<'db> SourceAnalyzer<'db> {
         let infer = self.infer()?;
 
         let pat_id = self.pat_id(&pattern.clone().into())?.as_pat()?;
-        let substs = infer.type_of_pat[pat_id].as_adt()?.1;
+        let substs = infer[pat_id].as_adt()?.1;
 
         let (variant, missing_fields, _exhaustive) =
             record_pattern_missing_fields(db, infer, pat_id, &body[pat_id])?;
@@ -1785,8 +1784,8 @@ pub(crate) fn name_hygiene(db: &dyn HirDatabase, name: InFile<&SyntaxNode>) -> H
 }
 
 fn type_of_expr_including_adjust(infer: &InferenceResult, id: ExprId) -> Option<&Ty> {
-    match infer.expr_adjustments.get(&id).and_then(|adjustments| adjustments.last()) {
+    match infer.expr_adjustment(id).and_then(|adjustments| adjustments.last()) {
         Some(adjustment) => Some(&adjustment.target),
-        None => infer.type_of_expr.get(id),
+        None => Some(&infer[id]),
     }
 }

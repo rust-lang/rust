@@ -57,6 +57,7 @@ use rustc_hir::def::{
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::DisambiguatorState;
 use rustc_hir::{PrimTy, TraitCandidate};
+use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
@@ -1135,7 +1136,7 @@ pub struct Resolver<'ra, 'tcx> {
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'ra>>,
     unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident)>,
     /// A map from the macro to all its potentially unused arms.
-    unused_macro_rules: FxIndexMap<NodeId, UnordSet<usize>>,
+    unused_macro_rules: FxIndexMap<NodeId, DenseBitSet<usize>>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:

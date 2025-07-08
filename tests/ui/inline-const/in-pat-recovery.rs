@@ -4,7 +4,7 @@
 fn main() {
     match 1 {
         const { 1 + 7 } => {}
-        //~^ ERROR `inline_const_pat` has been removed
+        //~^ ERROR const blocks cannot be used as patterns
         2 => {}
         _ => {}
     }

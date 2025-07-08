@@ -93,7 +93,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             &[data.clone()],
             None,
             // Directly return to caller.
-            StackPopCleanup::Goto { ret, unwind: mir::UnwindAction::Continue },
+            ReturnContinuation::Goto { ret, unwind: mir::UnwindAction::Continue },
         )?;
 
         // We ourselves will return `0`, eventually (will be overwritten if we catch a panic).
@@ -144,7 +144,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 &[catch_unwind.data, payload],
                 None,
                 // Directly return to caller of `catch_unwind`.
-                StackPopCleanup::Goto {
+                ReturnContinuation::Goto {
                     ret: catch_unwind.ret,
                     // `catch_fn` must not unwind.
                     unwind: mir::UnwindAction::Unreachable,

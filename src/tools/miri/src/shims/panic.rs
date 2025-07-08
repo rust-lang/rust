@@ -22,7 +22,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ExternAbi::Rust,
             &[this.mplace_to_ref(&msg)?],
             None,
-            StackPopCleanup::Goto { ret: None, unwind },
+            ReturnContinuation::Goto { ret: None, unwind },
         )
     }
 
@@ -41,7 +41,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ExternAbi::Rust,
             &[this.mplace_to_ref(&msg)?],
             None,
-            StackPopCleanup::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
+            ReturnContinuation::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
         )
     }
 
@@ -70,7 +70,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ExternAbi::Rust,
                     &[index, len],
                     None,
-                    StackPopCleanup::Goto { ret: None, unwind },
+                    ReturnContinuation::Goto { ret: None, unwind },
                 )?;
             }
             MisalignedPointerDereference { required, found } => {
@@ -91,7 +91,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ExternAbi::Rust,
                     &[required, found],
                     None,
-                    StackPopCleanup::Goto { ret: None, unwind },
+                    ReturnContinuation::Goto { ret: None, unwind },
                 )?;
             }
 
@@ -104,7 +104,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ExternAbi::Rust,
                     &[],
                     None,
-                    StackPopCleanup::Goto { ret: None, unwind },
+                    ReturnContinuation::Goto { ret: None, unwind },
                 )?;
             }
         }

@@ -21,7 +21,7 @@ use crate::{
     inhabitedness::{is_enum_variant_uninhabited_from, is_ty_uninhabited_from},
 };
 
-use super::{FieldPat, Pat, PatKind, is_box};
+use super::{FieldPat, Pat, PatKind};
 
 use Constructor::*;
 
@@ -170,8 +170,6 @@ impl<'db> MatchCheckCtx<'db> {
             }
             PatKind::Deref { subpattern } => {
                 ctor = match pat.ty.kind(Interner) {
-                    // This is a box pattern.
-                    TyKind::Adt(adt, _) if is_box(self.db, adt.0) => Struct,
                     TyKind::Ref(..) => Ref,
                     _ => {
                         never!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, &pat.ty);
@@ -193,23 +191,6 @@ impl<'db> MatchCheckCtx<'db> {
                     TyKind::Tuple(_, substs) => {
                         ctor = Struct;
                         arity = substs.len(Interner);
-                    }
-                    TyKind::Adt(adt, _) if is_box(self.db, adt.0) => {
-                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
-                        // patterns. If we're here we can assume this is a box pattern.
-                        // FIXME(Nadrieril): A `Box` can in theory be matched either with `Box(_,
-                        // _)` or a box pattern. As a hack to avoid an ICE with the former, we
-                        // ignore other fields than the first one. This will trigger an error later
-                        // anyway.
-                        // See https://github.com/rust-lang/rust/issues/82772 ,
-                        // explanation: https://github.com/rust-lang/rust/pull/82789#issuecomment-796921977
-                        // The problem is that we can't know from the type whether we'll match
-                        // normally or through box-patterns. We'll have to figure out a proper
-                        // solution when we introduce generalized deref patterns. Also need to
-                        // prevent mixing of those two options.
-                        fields.retain(|ipat| ipat.idx == 0);
-                        ctor = Struct;
-                        arity = 1;
                     }
                     &TyKind::Adt(AdtId(adt), _) => {
                         ctor = match pat.kind.as_ref() {
@@ -277,12 +258,6 @@ impl<'db> MatchCheckCtx<'db> {
                         })
                         .collect(),
                 },
-                TyKind::Adt(adt, _) if is_box(self.db, adt.0) => {
-                    // Without `box_patterns`, the only legal pattern of type `Box` is `_` (outside
-                    // of `std`). So this branch is only reachable when the feature is enabled and
-                    // the pattern is a box pattern.
-                    PatKind::Deref { subpattern: subpatterns.next().unwrap() }
-                }
                 TyKind::Adt(adt, substs) => {
                     let variant = Self::variant_id_for_adt(self.db, pat.ctor(), adt.0).unwrap();
                     let subpatterns = self
@@ -343,14 +318,8 @@ impl PatCx for MatchCheckCtx<'_> {
             Struct | Variant(_) | UnionField => match *ty.kind(Interner) {
                 TyKind::Tuple(arity, ..) => arity,
                 TyKind::Adt(AdtId(adt), ..) => {
-                    if is_box(self.db, adt) {
-                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
-                        // patterns. If we're here we can assume this is a box pattern.
-                        1
-                    } else {
-                        let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
-                        variant.fields(self.db).fields().len()
-                    }
+                    let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
+                    variant.fields(self.db).fields().len()
                 }
                 _ => {
                     never!("Unexpected type for `Single` constructor: {:?}", ty);
@@ -383,29 +352,22 @@ impl PatCx for MatchCheckCtx<'_> {
                     tys.cloned().map(|ty| (ty, PrivateUninhabitedField(false))).collect()
                 }
                 TyKind::Ref(.., rty) => single(rty.clone()),
-                &TyKind::Adt(AdtId(adt), ref substs) => {
-                    if is_box(self.db, adt) {
-                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
-                        // patterns. If we're here we can assume this is a box pattern.
-                        let subst_ty = substs.at(Interner, 0).assert_ty_ref(Interner).clone();
-                        single(subst_ty)
-                    } else {
-                        let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
+                &TyKind::Adt(AdtId(adt), ..) => {
+                    let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
 
-                        let visibilities = LazyCell::new(|| self.db.field_visibilities(variant));
+                    let visibilities = LazyCell::new(|| self.db.field_visibilities(variant));
 
-                        self.list_variant_fields(ty, variant)
-                            .map(move |(fid, ty)| {
-                                let is_visible = || {
-                                    matches!(adt, hir_def::AdtId::EnumId(..))
-                                        || visibilities[fid].is_visible_from(self.db, self.module)
-                                };
-                                let is_uninhabited = self.is_uninhabited(&ty);
-                                let private_uninhabited = is_uninhabited && !is_visible();
-                                (ty, PrivateUninhabitedField(private_uninhabited))
-                            })
-                            .collect()
-                    }
+                    self.list_variant_fields(ty, variant)
+                        .map(move |(fid, ty)| {
+                            let is_visible = || {
+                                matches!(adt, hir_def::AdtId::EnumId(..))
+                                    || visibilities[fid].is_visible_from(self.db, self.module)
+                            };
+                            let is_uninhabited = self.is_uninhabited(&ty);
+                            let private_uninhabited = is_uninhabited && !is_visible();
+                            (ty, PrivateUninhabitedField(private_uninhabited))
+                        })
+                        .collect()
                 }
                 ty_kind => {
                     never!("Unexpected type for `{:?}` constructor: {:?}", ctor, ty_kind);

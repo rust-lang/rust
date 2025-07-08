@@ -444,7 +444,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         caller_abi: ExternAbi,
         args: &[ImmTy<'tcx>],
         dest: Option<&MPlaceTy<'tcx>>,
-        stack_pop: StackPopCleanup,
+        cont: ReturnContinuation,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -472,7 +472,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             &args.iter().map(|a| FnArg::Copy(a.clone().into())).collect::<Vec<_>>(),
             /*with_caller_location*/ false,
             &dest.into(),
-            stack_pop,
+            cont,
         )
     }
 

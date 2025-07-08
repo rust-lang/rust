@@ -768,15 +768,14 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     check_static_inhabited(tcx, def_id);
                     check_static_linkage(tcx, def_id);
                     res = res.and(wfcheck::check_static_item(tcx, def_id));
-
-                    // Only `Node::Item` and `Node::ForeignItem` still have HIR based
-                    // checks. Returning early here does not miss any checks and
-                    // avoids this query from having a direct dependency edge on the HIR
-                    return res;
                 }
-                DefKind::Const => {}
+                DefKind::Const => res = res.and(wfcheck::check_const_item(tcx, def_id)),
                 _ => unreachable!(),
             }
+            // Only `Node::Item` and `Node::ForeignItem` still have HIR based
+            // checks. Returning early here does not miss any checks and
+            // avoids this query from having a direct dependency edge on the HIR
+            return res;
         }
         DefKind::Enum => {
             tcx.ensure_ok().generics_of(def_id);
