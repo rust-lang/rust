@@ -75,16 +75,15 @@ mod alloc_addresses;
 mod borrow_tracker;
 mod clock;
 mod concurrency;
+mod data_structures;
 mod diagnostics;
 mod eval;
 mod helpers;
 mod intrinsics;
 mod machine;
 mod math;
-mod mono_hash_map;
 mod operator;
 mod provenance_gc;
-mod range_map;
 mod shims;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
@@ -132,6 +131,8 @@ pub use crate::concurrency::thread::{
     ThreadManager, TimeoutAnchor, TimeoutClock, UnblockKind,
 };
 pub use crate::concurrency::{GenmcConfig, GenmcCtx};
+pub use crate::data_structures::dedup_range_map::DedupRangeMap;
+pub use crate::data_structures::mono_hash_map::MonoHashMap;
 pub use crate::diagnostics::{
     EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo, report_error,
 };
@@ -145,10 +146,8 @@ pub use crate::machine::{
     AllocExtra, DynMachineCallback, FrameExtra, MachineCallback, MemoryKind, MiriInterpCx,
     MiriInterpCxExt, MiriMachine, MiriMemoryKind, PrimitiveLayouts, Provenance, ProvenanceExtra,
 };
-pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as _;
 pub use crate::provenance_gc::{EvalContextExt as _, LiveAllocs, VisitProvenance, VisitWith};
-pub use crate::range_map::RangeMap;
 pub use crate::shims::EmulateItemResult;
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
 pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
