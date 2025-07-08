@@ -216,6 +216,11 @@ pub unsafe fn simd_cast<T, U>(x: T) -> U;
 #[rustc_nounwind]
 pub unsafe fn simd_as<T, U>(x: T) -> U;
 
+/// Replacement for `transmute`, specifically for use with scalable SIMD types.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn simd_reinterpret<Src, Dst>(src: Src) -> Dst;
+
 /// Negates a vector elementwise.
 ///
 /// `T` must be a vector of integers or floats.
