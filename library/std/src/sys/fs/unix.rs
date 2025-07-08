@@ -373,7 +373,9 @@ impl Dir {
     }
 
     pub fn open_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<Self> {
-        run_path_with_cstr(path.as_ref(), &|path| self.open_c_dir(path, &OpenOptions::new()))
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        run_path_with_cstr(path.as_ref(), &|path| self.open_c_dir(path, &opts))
     }
 
     pub fn open_dir_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<Self> {
