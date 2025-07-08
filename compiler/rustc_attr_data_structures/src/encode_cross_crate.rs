@@ -25,6 +25,7 @@ impl AttributeKind {
             ConstStabilityIndirect => No,
             Deprecation { .. } => Yes,
             DocComment { .. } => Yes,
+            Dummy => No,
             ExportName { .. } => Yes,
             ExportStable => No,
             FfiConst(..) => No,

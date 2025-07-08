@@ -216,7 +216,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
-                    | AttributeKind::MacroTransparency(_),
+                    | AttributeKind::MacroTransparency(_)
+                    | AttributeKind::Dummy,
                 ) => { /* do nothing  */ }
                 Attribute::Parsed(AttributeKind::AsPtr(attr_span)) => {
                     self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)
