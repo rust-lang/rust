@@ -83,6 +83,7 @@
     - [m68k-unknown-linux-gnu](platform-support/m68k-unknown-linux-gnu.md)
     - [m68k-unknown-none-elf](platform-support/m68k-unknown-none-elf.md)
     - [mips64-openwrt-linux-musl](platform-support/mips64-openwrt-linux-musl.md)
+    - [mips64-unknown-linux-muslabi64](platform-support/mips64-unknown-linux-muslabi64.md)
     - [mipsel-sony-psx](platform-support/mipsel-sony-psx.md)
     - [mipsel-unknown-linux-gnu](platform-support/mipsel-unknown-linux-gnu.md)
     - [mips\*-mti-none-elf](platform-support/mips-mti-none-elf.md)

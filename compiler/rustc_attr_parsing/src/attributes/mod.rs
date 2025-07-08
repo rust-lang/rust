@@ -30,6 +30,7 @@ pub(crate) mod cfg;
 pub(crate) mod codegen_attrs;
 pub(crate) mod confusables;
 pub(crate) mod deprecation;
+pub(crate) mod dummy;
 pub(crate) mod inline;
 pub(crate) mod link_attrs;
 pub(crate) mod lint_helpers;
@@ -217,7 +218,14 @@ impl<S: Stage> OnDuplicate<S> {
 // them will be merged in another PR
 #[allow(unused)]
 pub(crate) enum AttributeOrder {
-    /// Duplicates after the first attribute will be an error.
+    /// Duplicates after the first attribute will be an error. I.e. only keep the lowest attribute.
+    ///
+    /// Attributes are processed from bottom to top, so this raises an error on all the attributes
+    /// further above the lowest one:
+    /// ```
+    /// #[stable(since="1.0")] //~ WARNING duplicated attribute
+    /// #[stable(since="2.0")]
+    /// ```
     ///
     /// This should be used where duplicates would be ignored, but carry extra
     /// meaning that could cause confusion. For example, `#[stable(since="1.0")]
@@ -226,6 +234,13 @@ pub(crate) enum AttributeOrder {
 
     /// Duplicates preceding the last instance of the attribute will be a
     /// warning, with a note that this will be an error in the future.
+    ///
+    /// Attributes are processed from bottom to top, so this raises a warning on all the attributes
+    /// below the higher one:
+    /// ```
+    /// #[path="foo.rs"]
+    /// #[path="bar.rs"] //~ WARNING duplicated attribute
+    /// ```
     ///
     /// This is the same as `FutureWarnFollowing`, except the last attribute is
     /// the one that is "used". Ideally these can eventually migrate to
