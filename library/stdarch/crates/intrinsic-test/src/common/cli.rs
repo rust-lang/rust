@@ -60,7 +60,7 @@ pub struct ProcessedCli {
     pub filename: PathBuf,
     pub toolchain: Option<String>,
     pub cpp_compiler: Option<String>,
-    pub c_runner: String,
+    pub runner: String,
     pub target: String,
     pub linker: Option<String>,
     pub cxx_toolchain_dir: Option<String>,
@@ -70,7 +70,7 @@ pub struct ProcessedCli {
 impl ProcessedCli {
     pub fn new(cli_options: Cli) -> Self {
         let filename = cli_options.input;
-        let c_runner = cli_options.runner.unwrap_or_default();
+        let runner = cli_options.runner.unwrap_or_default();
         let target = cli_options.target;
         let linker = cli_options.linker;
         let cxx_toolchain_dir = cli_options.cxx_toolchain_dir;
@@ -102,7 +102,7 @@ impl ProcessedCli {
         Self {
             toolchain,
             cpp_compiler,
-            c_runner,
+            runner,
             target,
             linker,
             cxx_toolchain_dir,
