@@ -16,7 +16,7 @@ use crate::debuginfo::FunctionDebugContext;
 use crate::prelude::*;
 
 pub(crate) fn pointer_ty(tcx: TyCtxt<'_>) -> types::Type {
-    match tcx.data_layout.pointer_size.bits() {
+    match tcx.data_layout.pointer_size().bits() {
         16 => types::I16,
         32 => types::I32,
         64 => types::I64,
