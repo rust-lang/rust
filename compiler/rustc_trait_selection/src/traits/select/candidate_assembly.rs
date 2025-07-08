@@ -80,11 +80,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 Some(LangItem::DiscriminantKind) => {
                     // `DiscriminantKind` is automatically implemented for every type.
-                    candidates.vec.push(BuiltinCandidate { has_nested: false });
+                    candidates.vec.push(BuiltinCandidate);
                 }
                 Some(LangItem::PointeeTrait) => {
                     // `Pointee` is automatically implemented for every type.
-                    candidates.vec.push(BuiltinCandidate { has_nested: false });
+                    candidates.vec.push(BuiltinCandidate);
                 }
                 Some(LangItem::Sized) => {
                     self.assemble_builtin_sized_candidate(
@@ -365,7 +365,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         {
             debug!(?self_ty, ?obligation, "assemble_fused_iterator_candidates",);
 
-            candidates.vec.push(BuiltinCandidate { has_nested: false });
+            candidates.vec.push(BuiltinCandidate);
         }
     }
 
@@ -810,7 +810,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         hir::Movability::Movable => {
                             // Movable coroutines are always `Unpin`, so add an
                             // unconditional builtin candidate.
-                            candidates.vec.push(BuiltinCandidate { has_nested: false });
+                            candidates.vec.push(BuiltinCandidate);
                         }
                     }
                 }
@@ -1122,10 +1122,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         sizedness: SizedTraitKind,
     ) {
         match self.sizedness_conditions(obligation, sizedness) {
-            BuiltinImplConditions::Where(nested) => {
-                candidates
-                    .vec
-                    .push(SizedCandidate { has_nested: !nested.skip_binder().is_empty() });
+            BuiltinImplConditions::Where(_nested) => {
+                candidates.vec.push(SizedCandidate);
             }
             BuiltinImplConditions::None => {}
             BuiltinImplConditions::Ambiguous => {
@@ -1143,10 +1141,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         match conditions {
-            BuiltinImplConditions::Where(nested) => {
-                candidates
-                    .vec
-                    .push(BuiltinCandidate { has_nested: !nested.skip_binder().is_empty() });
+            BuiltinImplConditions::Where(_) => {
+                candidates.vec.push(BuiltinCandidate);
             }
             BuiltinImplConditions::None => {}
             BuiltinImplConditions::Ambiguous => {
@@ -1160,7 +1156,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         _obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        candidates.vec.push(BuiltinCandidate { has_nested: false });
+        candidates.vec.push(BuiltinCandidate);
     }
 
     fn assemble_candidate_for_tuple(
@@ -1171,7 +1167,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
         match self_ty.kind() {
             ty::Tuple(_) => {
-                candidates.vec.push(BuiltinCandidate { has_nested: false });
+                candidates.vec.push(BuiltinCandidate);
             }
             ty::Infer(ty::TyVar(_)) => {
                 candidates.ambiguous = true;
@@ -1215,7 +1211,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx.resolve_vars_if_possible(obligation.self_ty());
 
         match self_ty.skip_binder().kind() {
-            ty::FnPtr(..) => candidates.vec.push(BuiltinCandidate { has_nested: false }),
+            ty::FnPtr(..) => candidates.vec.push(BuiltinCandidate),
             ty::Bool
             | ty::Char
             | ty::Int(_)
