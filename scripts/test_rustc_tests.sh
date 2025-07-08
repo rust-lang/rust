@@ -60,6 +60,7 @@ rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
 rm -r tests/run-make/embed-source-dwarf # embedding sources in debuginfo
 rm -r tests/run-make/used-proc-macro # used(linker) isn't supported yet
+rm tests/ui/attributes/fn-align-dyn.rs # per-function alignment not supported
 
 # requires LTO
 rm -r tests/run-make/cdylib
