@@ -2098,6 +2098,7 @@ symbols! {
         simd_reduce_mul_unordered,
         simd_reduce_or,
         simd_reduce_xor,
+        simd_reinterpret,
         simd_relaxed_fma,
         simd_rem,
         simd_round,
