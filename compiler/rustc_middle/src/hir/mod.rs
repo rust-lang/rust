@@ -239,8 +239,16 @@ pub fn provide(providers: &mut Providers) {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
         tcx.hir_opt_ident_span(hir_id)
     };
+    providers.ty_span = |tcx, def_id| {
+        let node = tcx.hir_node_by_def_id(def_id);
+        match node.ty() {
+            Some(ty) => ty.span,
+            None => bug!("{def_id:?} doesn't have a type: {node:#?}"),
+        }
+    };
     providers.fn_arg_idents = |tcx, def_id| {
-        if let Some(body_id) = tcx.hir_node_by_def_id(def_id).body_id() {
+        let node = tcx.hir_node_by_def_id(def_id);
+        if let Some(body_id) = node.body_id() {
             tcx.arena.alloc_from_iter(tcx.hir_body_param_idents(body_id))
         } else if let Node::TraitItem(&TraitItem {
             kind: TraitItemKind::Fn(_, TraitFn::Required(idents)),
@@ -249,7 +257,7 @@ pub fn provide(providers: &mut Providers) {
         | Node::ForeignItem(&ForeignItem {
             kind: ForeignItemKind::Fn(_, idents, _),
             ..
-        }) = tcx.hir_node(tcx.local_def_id_to_hir_id(def_id))
+        }) = node
         {
             idents
         } else {
