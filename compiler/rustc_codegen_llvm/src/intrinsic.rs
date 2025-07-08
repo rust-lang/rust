@@ -1236,6 +1236,18 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
 
+    if name == sym::simd_reinterpret {
+        require_simd!(ret_ty, SimdReturn);
+
+        return Ok(match args[0].val {
+            OperandValue::Ref(PlaceValue { llval: val, .. }) | OperandValue::Immediate(val) => {
+                bx.bitcast(val, llret_ty)
+            }
+            OperandValue::ZeroSized => bx.const_undef(llret_ty),
+            OperandValue::Pair(_, _) => todo!(),
+        });
+    }
+
     // every intrinsic below takes a SIMD vector as its first argument
     let (in_len, in_elem) = require_simd!(args[0].layout.ty, SimdInput);
     let in_ty = args[0].layout.ty;
