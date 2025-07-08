@@ -416,12 +416,9 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
         // We may support function pointers at some point in the future
         ty::FnPtr(..) => return Err(EvaluationFailure::NoSolution),
 
-        // Coroutines could implement `[const] Fn`,
+        // Closures could implement `[const] Fn`,
         // but they don't really need to right now.
-        ty::Closure(..)
-        | ty::CoroutineClosure(_, _)
-        | ty::Coroutine(_, _)
-        | ty::CoroutineWitness(_, _) => {
+        ty::Closure(..) | ty::CoroutineClosure(_, _) => {
             return Err(EvaluationFailure::NoSolution);
         }
 
