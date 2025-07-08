@@ -10,9 +10,6 @@ use crate::{fmt, ptr, slice, str};
 trait DisplayInt:
     PartialEq + PartialOrd + Div<Output = Self> + Rem<Output = Self> + Sub<Output = Self> + Copy
 {
-    fn zero() -> Self;
-    fn from_u8(u: u8) -> Self;
-    fn to_u8(&self) -> u8;
     #[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
     fn to_u32(&self) -> u32;
     fn to_u64(&self) -> u64;
@@ -22,9 +19,6 @@ trait DisplayInt:
 macro_rules! impl_int {
     ($($t:ident)*) => (
         $(impl DisplayInt for $t {
-            fn zero() -> Self { 0 }
-            fn from_u8(u: u8) -> Self { u as Self }
-            fn to_u8(&self) -> u8 { *self as u8 }
             #[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
             fn to_u32(&self) -> u32 { *self as u32 }
             fn to_u64(&self) -> u64 { *self as u64 }
@@ -38,137 +32,76 @@ impl_int! {
     u8 u16 u32 u64 u128 usize
 }
 
-/// A type that represents a specific radix
-///
-/// # Safety
-///
-/// `digit` must return an ASCII character.
-#[doc(hidden)]
-unsafe trait GenericRadix: Sized {
-    /// The number of digits.
-    const BASE: u8;
-
-    /// A radix-specific prefix string.
-    const PREFIX: &'static str;
-
-    /// Converts an integer to corresponding radix digit.
-    fn digit(x: u8) -> u8;
-
-    /// Format an unsigned integer using the radix using a formatter.
-    fn fmt_int<T: DisplayInt>(&self, mut x: T, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // The radix can be as low as 2, so we need a buffer of at least 128
-        // characters for a base 2 number.
-        let zero = T::zero();
-        let mut buf = [MaybeUninit::<u8>::uninit(); 128];
-        let mut offset = buf.len();
-        let base = T::from_u8(Self::BASE);
-
-        // Accumulate each digit of the number from the least significant
-        // to the most significant figure.
-        loop {
-            let n = x % base; // Get the current place value.
-            x = x / base; // Deaccumulate the number.
-            offset -= 1;
-            buf[offset].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
-            if x == zero {
-                // No more digits left to accumulate.
-                break;
-            };
-        }
-
-        // SAFETY: Starting from `offset`, all elements of the slice have been set.
-        let digits = unsafe { slice_buffer_to_str(&buf, offset) };
-        f.pad_integral(true, Self::PREFIX, digits)
-    }
-}
-
-/// A binary (base 2) radix
-#[derive(Clone, PartialEq)]
-struct Binary;
-
-/// An octal (base 8) radix
-#[derive(Clone, PartialEq)]
-struct Octal;
-
-/// A hexadecimal (base 16) radix, formatted with lower-case characters
-#[derive(Clone, PartialEq)]
-struct LowerHex;
-
-/// A hexadecimal (base 16) radix, formatted with upper-case characters
-#[derive(Clone, PartialEq)]
-struct UpperHex;
-
-macro_rules! radix {
-    ($T:ident, $base:expr, $prefix:expr, $($x:pat => $conv:expr),+) => {
-        unsafe impl GenericRadix for $T {
-            const BASE: u8 = $base;
-            const PREFIX: &'static str = $prefix;
-            fn digit(x: u8) -> u8 {
-                match x {
-                    $($x => $conv,)+
-                    x => panic!("number not in the range 0..={}: {}", Self::BASE - 1, x),
+/// Formatting of integers with a non-decimal radix.
+macro_rules! radix_integer {
+    (fmt::$Trait:ident for $Signed:ident and $Unsigned:ident, $prefix:literal, $dig_tab:literal) => {
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::$Trait for $Unsigned {
+            /// Format unsigned integers in the radix.
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                // Check macro arguments at compile time.
+                const {
+                    assert!($Unsigned::MIN == 0, "need unsigned");
+                    assert!($dig_tab.is_ascii(), "need single-byte entries");
                 }
+
+                // ASCII digits in ascending order are used as a lookup table.
+                const DIG_TAB: &[u8] = $dig_tab;
+                const BASE: $Unsigned = DIG_TAB.len() as $Unsigned;
+                const MAX_DIG_N: usize = $Unsigned::MAX.ilog(BASE) as usize + 1;
+
+                // Buffer digits of self with right alignment.
+                let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DIG_N];
+                // Count the number of bytes in buf that are not initialized.
+                let mut offset = buf.len();
+
+                // Accumulate each digit of the number from the least
+                // significant to the most significant figure.
+                let mut remain = *self;
+                loop {
+                    let digit = remain % BASE;
+                    remain /= BASE;
+
+                    offset -= 1;
+                    // SAFETY: `remain` will reach 0 and we will break before `offset` wraps
+                    unsafe { core::hint::assert_unchecked(offset < buf.len()) }
+                    buf[offset].write(DIG_TAB[digit as usize]);
+                    if remain == 0 {
+                        break;
+                    }
+                }
+
+                // SAFETY: Starting from `offset`, all elements of the slice have been set.
+                let digits = unsafe { slice_buffer_to_str(&buf, offset) };
+                f.pad_integral(true, $prefix, digits)
             }
         }
-    }
-}
 
-radix! { Binary,    2, "0b", x @  0 ..=  1 => b'0' + x }
-radix! { Octal,     8, "0o", x @  0 ..=  7 => b'0' + x }
-radix! { LowerHex, 16, "0x", x @  0 ..=  9 => b'0' + x, x @ 10 ..= 15 => b'a' + (x - 10) }
-radix! { UpperHex, 16, "0x", x @  0 ..=  9 => b'0' + x, x @ 10 ..= 15 => b'A' + (x - 10) }
-
-macro_rules! int_base {
-    (fmt::$Trait:ident for $T:ident -> $Radix:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl fmt::$Trait for $T {
+        impl fmt::$Trait for $Signed {
+            /// Format signed integers in the two’s-complement form.
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                $Radix.fmt_int(*self, f)
+                fmt::$Trait::fmt(&self.cast_unsigned(), f)
             }
         }
     };
 }
 
-macro_rules! integer {
-    ($Int:ident, $Uint:ident) => {
-        int_base! { fmt::Binary   for $Uint -> Binary }
-        int_base! { fmt::Octal    for $Uint -> Octal }
-        int_base! { fmt::LowerHex for $Uint -> LowerHex }
-        int_base! { fmt::UpperHex for $Uint -> UpperHex }
-
-        // Format signed integers as unsigned (two’s complement representation).
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl fmt::Binary for $Int {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Binary::fmt(&self.cast_unsigned(), f)
-            }
-        }
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl fmt::Octal for $Int {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Octal::fmt(&self.cast_unsigned(), f)
-            }
-        }
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl fmt::LowerHex for $Int {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::LowerHex::fmt(&self.cast_unsigned(), f)
-            }
-        }
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl fmt::UpperHex for $Int {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::UpperHex::fmt(&self.cast_unsigned(), f)
-            }
-        }
+/// Formatting of integers with a non-decimal radix.
+macro_rules! radix_integers {
+    ($Signed:ident, $Unsigned:ident) => {
+        radix_integer! { fmt::Binary   for $Signed and $Unsigned, "0b", b"01" }
+        radix_integer! { fmt::Octal    for $Signed and $Unsigned, "0o", b"01234567" }
+        radix_integer! { fmt::LowerHex for $Signed and $Unsigned, "0x", b"0123456789abcdef" }
+        radix_integer! { fmt::UpperHex for $Signed and $Unsigned, "0x", b"0123456789ABCDEF" }
     };
 }
-integer! { isize, usize }
-integer! { i8, u8 }
-integer! { i16, u16 }
-integer! { i32, u32 }
-integer! { i64, u64 }
-integer! { i128, u128 }
+radix_integers! { isize, usize }
+radix_integers! { i8, u8 }
+radix_integers! { i16, u16 }
+radix_integers! { i32, u32 }
+radix_integers! { i64, u64 }
+radix_integers! { i128, u128 }
 
 macro_rules! impl_Debug {
     ($($T:ident)*) => {
