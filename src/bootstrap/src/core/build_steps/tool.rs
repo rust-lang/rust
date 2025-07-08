@@ -910,6 +910,13 @@ impl Step for LldWrapper {
 
         tool_result
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::build("LldWrapper", self.target_compiler.host)
+                .built_by(self.build_compiler),
+        )
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

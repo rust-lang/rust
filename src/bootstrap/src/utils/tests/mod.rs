@@ -96,8 +96,6 @@ impl ConfigBuilder {
         // in-tree LLVM from sources.
         self.args.push("--set".to_string());
         self.args.push("llvm.download-ci-llvm=false".to_string());
-        self.args.push("--set".to_string());
-        self.args.push(format!("target.'{}'.llvm-config=false", get_host_target()));
 
         // Do not mess with the local rustc checkout build directory
         self.args.push("--build-dir".to_string());
