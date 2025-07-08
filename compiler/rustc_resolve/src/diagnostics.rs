@@ -1669,9 +1669,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut all_attrs: UnordMap<Symbol, Vec<_>> = UnordMap::default();
         // We're collecting these in a hashmap, and handle ordering the output further down.
         #[allow(rustc::potential_query_instability)]
-        for (def_id, data) in &self.macro_map {
+        for (def_id, data) in self
+            .local_macro_map
+            .iter()
+            .map(|(local_id, data)| (local_id.to_def_id(), data))
+            .chain(self.extern_macro_map.borrow().iter().map(|(id, d)| (*id, d)))
+        {
             for helper_attr in &data.ext.helper_attrs {
-                let item_name = self.tcx.item_name(*def_id);
+                let item_name = self.tcx.item_name(def_id);
                 all_attrs.entry(*helper_attr).or_default().push(item_name);
                 if helper_attr == &ident.name {
                     derives.push(item_name);

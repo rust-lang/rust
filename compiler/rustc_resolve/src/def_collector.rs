@@ -165,7 +165,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             self.create_def(i.id, i.kind.ident().map(|ident| ident.name), def_kind, i.span);
 
         if let Some(macro_data) = opt_macro_data {
-            self.resolver.macro_map.insert(def_id.to_def_id(), macro_data);
+            self.resolver.new_local_macro(def_id, macro_data);
         }
 
         self.with_parent(def_id, |this| {

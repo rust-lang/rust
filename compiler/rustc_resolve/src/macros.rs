@@ -354,8 +354,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             if unused_arms.is_empty() {
                 continue;
             }
-            let def_id = self.local_def_id(node_id).to_def_id();
-            let m = &self.macro_map[&def_id];
+            let def_id = self.local_def_id(node_id);
+            let m = &self.local_macro_map[&def_id];
             let SyntaxExtensionKind::LegacyBang(ref ext) = m.ext.kind else {
                 continue;
             };
@@ -1132,7 +1132,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    pub(crate) fn check_reserved_macro_name(&mut self, ident: Ident, res: Res) {
+    pub(crate) fn check_reserved_macro_name(&self, ident: Ident, res: Res) {
         // Reserve some names that are not quite covered by the general check
         // performed on `Resolver::builtin_attrs`.
         if ident.name == sym::cfg || ident.name == sym::cfg_attr {
@@ -1148,7 +1148,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ///
     /// Possibly replace its expander to a pre-defined one for built-in macros.
     pub(crate) fn compile_macro(
-        &mut self,
+        &self,
         macro_def: &ast::MacroDef,
         ident: Ident,
         attrs: &[rustc_hir::Attribute],

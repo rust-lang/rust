@@ -1128,10 +1128,12 @@ pub struct Resolver<'ra, 'tcx> {
     builtin_macros: FxHashMap<Symbol, SyntaxExtensionKind>,
     registered_tools: &'tcx RegisteredTools,
     macro_use_prelude: FxIndexMap<Symbol, NameBinding<'ra>>,
-    macro_map: FxHashMap<DefId, MacroData>,
+    local_macro_map: FxHashMap<LocalDefId, &'ra MacroData>,
+    /// Lazily populated cache of macros loaded from external crates.
+    extern_macro_map: RefCell<FxHashMap<DefId, &'ra MacroData>>,
     dummy_ext_bang: Arc<SyntaxExtension>,
     dummy_ext_derive: Arc<SyntaxExtension>,
-    non_macro_attr: MacroData,
+    non_macro_attr: &'ra MacroData,
     local_macro_def_scopes: FxHashMap<LocalDefId, Module<'ra>>,
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'ra>>,
     unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident)>,
@@ -1241,6 +1243,7 @@ pub struct ResolverArenas<'ra> {
     imports: TypedArena<ImportData<'ra>>,
     name_resolutions: TypedArena<RefCell<NameResolution<'ra>>>,
     ast_paths: TypedArena<ast::Path>,
+    macros: TypedArena<MacroData>,
     dropless: DroplessArena,
 }
 
@@ -1297,6 +1300,9 @@ impl<'ra> ResolverArenas<'ra> {
     }
     fn alloc_ast_paths(&'ra self, paths: &[ast::Path]) -> &'ra [ast::Path] {
         self.ast_paths.alloc_from_iter(paths.iter().cloned())
+    }
+    fn alloc_macro(&'ra self, macro_data: MacroData) -> &'ra MacroData {
+        self.macros.alloc(macro_data)
     }
     fn alloc_pattern_spans(&'ra self, spans: impl Iterator<Item = Span>) -> &'ra [Span] {
         self.dropless.alloc_from_iter(spans)
@@ -1540,10 +1546,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             builtin_macros: Default::default(),
             registered_tools,
             macro_use_prelude: Default::default(),
-            macro_map: FxHashMap::default(),
+            local_macro_map: Default::default(),
+            extern_macro_map: Default::default(),
             dummy_ext_bang: Arc::new(SyntaxExtension::dummy_bang(edition)),
             dummy_ext_derive: Arc::new(SyntaxExtension::dummy_derive(edition)),
-            non_macro_attr: MacroData::new(Arc::new(SyntaxExtension::non_macro_attr(edition))),
+            non_macro_attr: arenas
+                .alloc_macro(MacroData::new(Arc::new(SyntaxExtension::non_macro_attr(edition)))),
             invocation_parent_scopes: Default::default(),
             output_macro_rules_scopes: Default::default(),
             macro_rules_scopes: Default::default(),
@@ -1614,6 +1622,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             module_map,
             module_self_bindings,
         )
+    }
+
+    fn new_local_macro(&mut self, def_id: LocalDefId, macro_data: MacroData) -> &'ra MacroData {
+        let mac = self.arenas.alloc_macro(macro_data);
+        self.local_macro_map.insert(def_id, mac);
+        mac
     }
 
     fn next_node_id(&mut self) -> NodeId {
@@ -1734,7 +1748,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         f(self, MacroNS);
     }
 
-    fn is_builtin_macro(&mut self, res: Res) -> bool {
+    fn is_builtin_macro(&self, res: Res) -> bool {
         self.get_macro(res).is_some_and(|macro_data| macro_data.ext.builtin_name.is_some())
     }
 
