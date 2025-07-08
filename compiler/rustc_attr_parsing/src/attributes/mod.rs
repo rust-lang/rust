@@ -30,6 +30,7 @@ pub(crate) mod cfg;
 pub(crate) mod codegen_attrs;
 pub(crate) mod confusables;
 pub(crate) mod deprecation;
+pub(crate) mod dummy;
 pub(crate) mod inline;
 pub(crate) mod link_attrs;
 pub(crate) mod lint_helpers;
