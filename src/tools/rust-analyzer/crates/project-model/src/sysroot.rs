@@ -163,18 +163,18 @@ impl Sysroot {
         }
     }
 
-    pub fn discover_proc_macro_srv(&self) -> anyhow::Result<AbsPathBuf> {
-        let Some(root) = self.root() else {
-            return Err(anyhow::format_err!("no sysroot",));
-        };
-        ["libexec", "lib"]
-            .into_iter()
-            .map(|segment| root.join(segment).join("rust-analyzer-proc-macro-srv"))
-            .find_map(|server_path| probe_for_binary(server_path.into()))
-            .map(AbsPathBuf::assert)
-            .ok_or_else(|| {
-                anyhow::format_err!("cannot find proc-macro server in sysroot `{}`", root)
-            })
+    pub fn discover_proc_macro_srv(&self) -> Option<anyhow::Result<AbsPathBuf>> {
+        let root = self.root()?;
+        Some(
+            ["libexec", "lib"]
+                .into_iter()
+                .map(|segment| root.join(segment).join("rust-analyzer-proc-macro-srv"))
+                .find_map(|server_path| probe_for_binary(server_path.into()))
+                .map(AbsPathBuf::assert)
+                .ok_or_else(|| {
+                    anyhow::format_err!("cannot find proc-macro server in sysroot `{}`", root)
+                }),
+        )
     }
 
     fn assemble(
@@ -209,6 +209,7 @@ impl Sysroot {
     pub fn load_workspace(
         &self,
         sysroot_source_config: &RustSourceWorkspaceConfig,
+        no_deps: bool,
         current_dir: &AbsPath,
         progress: &dyn Fn(String),
     ) -> Option<RustLibSrcWorkspace> {
@@ -224,6 +225,7 @@ impl Sysroot {
                     &library_manifest,
                     current_dir,
                     cargo_config,
+                    no_deps,
                     progress,
                 ) {
                     Ok(loaded) => return Some(loaded),
@@ -318,6 +320,7 @@ impl Sysroot {
         library_manifest: &ManifestPath,
         current_dir: &AbsPath,
         cargo_config: &CargoMetadataConfig,
+        no_deps: bool,
         progress: &dyn Fn(String),
     ) -> Result<RustLibSrcWorkspace> {
         tracing::debug!("Loading library metadata: {library_manifest}");
@@ -333,7 +336,7 @@ impl Sysroot {
             current_dir,
             &cargo_config,
             self,
-            false,
+            no_deps,
             // Make sure we never attempt to write to the sysroot
             true,
             progress,

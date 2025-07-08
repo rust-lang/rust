@@ -15,6 +15,7 @@ mod float;
 #[cfg(no_fp_fmt_parse)]
 mod nofloat;
 mod num;
+mod num_buffer;
 mod rt;
 
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
@@ -32,6 +33,9 @@ pub enum Alignment {
     /// Indication that contents should be center-aligned.
     Center,
 }
+
+#[unstable(feature = "int_format_into", issue = "138215")]
+pub use num_buffer::{NumBuffer, NumBufferTrait};
 
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};

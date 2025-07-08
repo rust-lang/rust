@@ -14,7 +14,7 @@ it would be `T-libs-api`.
 Also check for any `A-` labels to add.
 -->
 
-This is the **tracking issue** for the `YOUR_LINT_NAME_HERE` future-compatibility warning and other related errors. The goal of this page is describe why this change was made and how you can fix code that is affected by it. It also provides a place to ask questions or register a complaint if you feel the change should not be made. For more information on the policy around future-compatibility warnings, see our [breaking change policy guidelines][guidelines].
+This is the **tracking issue** for the `YOUR_LINT_NAME_HERE` future-compatibility warning and other related errors. The goal of this page is to describe why this change was made and how you can fix code that is affected by it. It also provides a place to ask questions or register a complaint if you feel the change should not be made. For more information on the policy around future-compatibility warnings, see our [breaking change policy guidelines][guidelines].
 
 [guidelines]: https://rustc-dev-guide.rust-lang.org/bug-fix-procedure.html
 
@@ -44,7 +44,7 @@ This is the **tracking issue** for the `YOUR_LINT_NAME_HERE` future-compatibilit
 
 - [ ] Implement the lint
 - [ ] Raise lint level to deny
-- [ ] Make lint report in dependencies
+- [ ] Change the lint to report in dependencies
 - [ ] Switch to a hard error
 
 ### Implementation history

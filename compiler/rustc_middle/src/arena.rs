@@ -1,5 +1,3 @@
-#![allow(rustc::usage_of_ty_tykind)]
-
 /// This higher-order macro declares a list of types which can be allocated by `Arena`.
 ///
 /// Specifying the `decode` modifier will add decode impls for `&T` and `&[T]` where `T` is the type

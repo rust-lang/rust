@@ -40,6 +40,7 @@ impl AttributeKind {
             NonExhaustive(..) => Yes,
             Optimize(..) => No,
             PassByValue(..) => Yes,
+            Path(..) => No,
             PubTransparent(..) => Yes,
             Repr { .. } => No,
             RustcLayoutScalarValidRangeEnd(..) => Yes,

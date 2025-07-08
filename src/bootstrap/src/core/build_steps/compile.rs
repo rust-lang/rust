@@ -1741,17 +1741,19 @@ fn copy_codegen_backends_to_sysroot(
         }
 
         let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, backend);
-        let dylib = t!(fs::read_to_string(stamp.path()));
-        let file = Path::new(&dylib);
-        let filename = file.file_name().unwrap().to_str().unwrap();
-        // change `librustc_codegen_cranelift-xxxxxx.so` to
-        // `librustc_codegen_cranelift-release.so`
-        let target_filename = {
-            let dash = filename.find('-').unwrap();
-            let dot = filename.find('.').unwrap();
-            format!("{}-{}{}", &filename[..dash], builder.rust_release(), &filename[dot..])
-        };
-        builder.copy_link(file, &dst.join(target_filename), FileType::NativeLibrary);
+        if stamp.path().exists() {
+            let dylib = t!(fs::read_to_string(stamp.path()));
+            let file = Path::new(&dylib);
+            let filename = file.file_name().unwrap().to_str().unwrap();
+            // change `librustc_codegen_cranelift-xxxxxx.so` to
+            // `librustc_codegen_cranelift-release.so`
+            let target_filename = {
+                let dash = filename.find('-').unwrap();
+                let dot = filename.find('.').unwrap();
+                format!("{}-{}{}", &filename[..dash], builder.rust_release(), &filename[dot..])
+            };
+            builder.copy_link(file, &dst.join(target_filename), FileType::NativeLibrary);
+        }
     }
 }
 
@@ -2162,6 +2164,25 @@ impl Step for Assemble {
                 continue; // Already built as part of rustc
             }
 
+            // FIXME: this is a horrible hack used to make `x check` work when other codegen
+            // backends are enabled.
+            // `x check` will check stage 1 rustc, which copies its rmetas to the stage0 sysroot.
+            // Then it checks codegen backends, which correctly use these rmetas.
+            // Then it needs to check std, but for that it needs to build stage 1 rustc.
+            // This copies the build rmetas into the stage0 sysroot, effectively poisoning it,
+            // because we then have both check and build rmetas in the same sysroot.
+            // That would be fine on its own. However, when another codegen backend is enabled,
+            // then building stage 1 rustc implies also building stage 1 codegen backend (even if
+            // it isn't used for anything). And since that tries to use the poisoned
+            // rmetas, it fails to build.
+            // We don't actually need to build rustc-private codegen backends for checking std,
+            // so instead we skip that.
+            // Note: this would be also an issue for other rustc-private tools, but that is "solved"
+            // by check::Std being last in the list of checked things (see
+            // `Builder::get_step_descriptions`).
+            if builder.kind == Kind::Check && builder.top_stage == 1 {
+                continue;
+            }
             builder.ensure(CodegenBackend {
                 compiler: build_compiler,
                 target: target_compiler.host,

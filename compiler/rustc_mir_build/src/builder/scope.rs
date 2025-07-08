@@ -936,7 +936,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 valtree
             }
-            Err(ErrorHandled::Reported(..)) => return self.cfg.start_new_block().unit(),
+            Err(ErrorHandled::Reported(..)) => {
+                return block.unit();
+            }
             Err(ErrorHandled::TooGeneric(_)) => {
                 self.tcx.dcx().emit_fatal(ConstContinueBadConst { span: constant.span });
             }

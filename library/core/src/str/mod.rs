@@ -446,7 +446,7 @@ impl str {
     #[unstable(feature = "round_char_boundary", issue = "93743")]
     #[inline]
     pub fn ceil_char_boundary(&self, index: usize) -> usize {
-        if index > self.len() {
+        if index >= self.len() {
             self.len()
         } else {
             let upper_bound = Ord::min(index + 4, self.len());

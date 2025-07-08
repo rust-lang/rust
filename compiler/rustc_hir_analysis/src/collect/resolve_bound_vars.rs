@@ -704,7 +704,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match ty.kind {
-            hir::TyKind::BareFn(c) => {
+            hir::TyKind::FnPtr(c) => {
                 let (mut bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) = c
                     .generic_params
                     .iter()
@@ -728,8 +728,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     where_bound_origin: None,
                 };
                 self.with(scope, |this| {
-                    // a bare fn has no bounds, so everything
-                    // contained within is scoped within its binder.
+                    // a FnPtr has no bounds, so everything within is scoped within its binder
                     intravisit::walk_ty(this, ty);
                 });
             }
@@ -758,8 +757,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     where_bound_origin: None,
                 };
                 self.with(scope, |this| {
-                    // a bare fn has no bounds, so everything
-                    // contained within is scoped within its binder.
+                    // everything within is scoped within its binder
                     intravisit::walk_ty(this, ty);
                 });
             }
@@ -1419,7 +1417,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             hir::Node::OpaqueTy(_) => "higher-ranked lifetime from outer `impl Trait`",
             // Other items are fine.
             hir::Node::Item(_) | hir::Node::TraitItem(_) | hir::Node::ImplItem(_) => return Ok(()),
-            hir::Node::Ty(hir::Ty { kind: hir::TyKind::BareFn(_), .. }) => {
+            hir::Node::Ty(hir::Ty { kind: hir::TyKind::FnPtr(_), .. }) => {
                 "higher-ranked lifetime from function pointer"
             }
             hir::Node::Ty(hir::Ty { kind: hir::TyKind::TraitObject(..), .. }) => {

@@ -2,7 +2,9 @@ error[E0283]: type annotations needed
   --> $DIR/dedup-normalized-2-higher-ranked.rs:28:5
    |
 LL |     impls(rigid);
-   |     ^^^^^ cannot infer type of the type parameter `U` declared on the function `impls`
+   |     ^^^^^ ----- type must be known at this point
+   |     |
+   |     cannot infer type of the type parameter `U` declared on the function `impls`
    |
    = note: cannot satisfy `for<'b> <P as Trait>::Rigid: Bound<'b, _>`
 note: required by a bound in `impls`

@@ -460,19 +460,17 @@ pub struct InferenceResult {
     /// Whenever a tuple field expression access a tuple field, we allocate a tuple id in
     /// [`InferenceContext`] and store the tuples substitution there. This map is the reverse of
     /// that which allows us to resolve a [`TupleFieldId`]s type.
-    pub tuple_field_access_types: FxHashMap<TupleId, Substitution>,
+    tuple_field_access_types: FxHashMap<TupleId, Substitution>,
     /// During inference this field is empty and [`InferenceContext::diagnostics`] is filled instead.
-    pub diagnostics: Vec<InferenceDiagnostic>,
-    pub type_of_expr: ArenaMap<ExprId, Ty>,
+    diagnostics: Vec<InferenceDiagnostic>,
+    pub(crate) type_of_expr: ArenaMap<ExprId, Ty>,
     /// For each pattern record the type it resolves to.
     ///
     /// **Note**: When a pattern type is resolved it may still contain
     /// unresolved or missing subpatterns or subpatterns of mismatched types.
-    pub type_of_pat: ArenaMap<PatId, Ty>,
-    pub type_of_binding: ArenaMap<BindingId, Ty>,
-    pub type_of_rpit: ArenaMap<ImplTraitIdx, Ty>,
-    /// Type of the result of `.into_iter()` on the for. `ExprId` is the one of the whole for loop.
-    pub type_of_for_iterator: FxHashMap<ExprId, Ty>,
+    pub(crate) type_of_pat: ArenaMap<PatId, Ty>,
+    pub(crate) type_of_binding: ArenaMap<BindingId, Ty>,
+    pub(crate) type_of_rpit: ArenaMap<ImplTraitIdx, Ty>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
     /// Whether there are any type-mismatching errors in the result.
     // FIXME: This isn't as useful as initially thought due to us falling back placeholders to
@@ -483,7 +481,7 @@ pub struct InferenceResult {
     // FIXME: Move this into `InferenceContext`
     standard_types: InternedStandardTypes,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
-    pub pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
+    pub(crate) pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
     /// Stores the binding mode (`ref` in `let ref x = 2`) of bindings.
     ///
     /// This one is tied to the `PatId` instead of `BindingId`, because in some rare cases, a binding in an
@@ -497,12 +495,12 @@ pub struct InferenceResult {
     /// }
     /// ```
     /// the first `rest` has implicit `ref` binding mode, but the second `rest` binding mode is `move`.
-    pub binding_modes: ArenaMap<PatId, BindingMode>,
-    pub expr_adjustments: FxHashMap<ExprId, Box<[Adjustment]>>,
+    pub(crate) binding_modes: ArenaMap<PatId, BindingMode>,
+    pub(crate) expr_adjustments: FxHashMap<ExprId, Box<[Adjustment]>>,
     pub(crate) closure_info: FxHashMap<ClosureId, (Vec<CapturedItem>, FnTrait)>,
     // FIXME: remove this field
     pub mutated_bindings_in_closure: FxHashSet<BindingId>,
-    pub coercion_casts: FxHashSet<ExprId>,
+    pub(crate) coercion_casts: FxHashSet<ExprId>,
 }
 
 impl InferenceResult {
@@ -565,6 +563,26 @@ impl InferenceResult {
     }
     pub fn is_erroneous(&self) -> bool {
         self.has_errors && self.type_of_expr.iter().count() == 0
+    }
+
+    pub fn diagnostics(&self) -> &[InferenceDiagnostic] {
+        &self.diagnostics
+    }
+
+    pub fn tuple_field_access_type(&self, id: TupleId) -> &Substitution {
+        &self.tuple_field_access_types[&id]
+    }
+
+    pub fn pat_adjustment(&self, id: PatId) -> Option<&[Ty]> {
+        self.pat_adjustments.get(&id).map(|it| &**it)
+    }
+
+    pub fn expr_adjustment(&self, id: ExprId) -> Option<&[Adjustment]> {
+        self.expr_adjustments.get(&id).map(|it| &**it)
+    }
+
+    pub fn binding_mode(&self, id: PatId) -> Option<BindingMode> {
+        self.binding_modes.get(id).copied()
     }
 }
 
@@ -772,7 +790,6 @@ impl<'db> InferenceContext<'db> {
             type_of_pat,
             type_of_binding,
             type_of_rpit,
-            type_of_for_iterator,
             type_mismatches,
             has_errors,
             standard_types: _,
@@ -832,11 +849,6 @@ impl<'db> InferenceContext<'db> {
             *has_errors = *has_errors || ty.contains_unknown();
         }
         type_of_rpit.shrink_to_fit();
-        for ty in type_of_for_iterator.values_mut() {
-            *ty = table.resolve_completely(ty.clone());
-            *has_errors = *has_errors || ty.contains_unknown();
-        }
-        type_of_for_iterator.shrink_to_fit();
 
         *has_errors |= !type_mismatches.is_empty();
 

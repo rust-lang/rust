@@ -535,7 +535,7 @@ fn foo() {
 
         let resolved = scopes.resolve_name_in_scope(expr_scope, &name_ref.as_name()).unwrap();
         let pat_src = source_map
-            .pat_syntax(*source_map.binding_definitions[&resolved.binding()].first().unwrap())
+            .pat_syntax(*source_map.binding_definitions[resolved.binding()].first().unwrap())
             .unwrap();
 
         let local_name = pat_src.value.syntax_node_ptr().to_node(file.syntax());

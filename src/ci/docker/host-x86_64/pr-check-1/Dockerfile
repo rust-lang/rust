@@ -45,11 +45,11 @@ COPY host-x86_64/pr-check-1/validate-toolstate.sh /scripts/
 # We also skip the x86_64-unknown-linux-gnu target as it is well-tested by other jobs.
 ENV SCRIPT \
   /scripts/check-default-config-profiles.sh && \
-  python3 ../x.py build --stage 1 src/tools/build-manifest && \
+  python3 ../x.py build src/tools/build-manifest && \
   python3 ../x.py test --stage 0 src/tools/compiletest && \
   python3 ../x.py check compiletest --set build.compiletest-use-stage0-libtest=true && \
-  python3 ../x.py check --stage 1 --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu && \
-  python3 ../x.py check --stage 1 --set build.optimized-compiler-builtins=false core alloc std --target=aarch64-unknown-linux-gnu,i686-pc-windows-msvc,i686-unknown-linux-gnu,x86_64-apple-darwin,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc && \
+  python3 ../x.py check --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu && \
+  python3 ../x.py check --set build.optimized-compiler-builtins=false core alloc std --target=aarch64-unknown-linux-gnu,i686-pc-windows-msvc,i686-unknown-linux-gnu,x86_64-apple-darwin,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc && \
   /scripts/validate-toolstate.sh && \
   reuse --include-submodules lint && \
   python3 ../x.py test collect-license-metadata && \

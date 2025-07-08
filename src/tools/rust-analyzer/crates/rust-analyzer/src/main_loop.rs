@@ -783,9 +783,14 @@ impl GlobalState {
                             DiscoverProjectParam::Path(it) => DiscoverArgument::Path(it),
                         };
 
-                        let handle =
-                            discover.spawn(arg, &std::env::current_dir().unwrap()).unwrap();
-                        self.discover_handle = Some(handle);
+                        let handle = discover.spawn(
+                            arg,
+                            &std::env::current_dir()
+                                .expect("Failed to get cwd during project discovery"),
+                        );
+                        self.discover_handle = Some(handle.unwrap_or_else(|e| {
+                            panic!("Failed to spawn project discovery command: {e}")
+                        }));
                     }
                 }
             }

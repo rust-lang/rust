@@ -1059,8 +1059,8 @@ macro_rules! common_visitor_and_walkers {
                 TyKind::Tup(tuple_element_types) => {
                     walk_list!(vis, visit_ty, tuple_element_types);
                 }
-                TyKind::BareFn(function_declaration) => {
-                    let BareFnTy { safety, ext: _, generic_params, decl, decl_span } =
+                TyKind::FnPtr(function_declaration) => {
+                    let FnPtrTy { safety, ext: _, generic_params, decl, decl_span } =
                         &$($mut)? **function_declaration;
                     try_visit!(visit_safety(vis, safety));
                     try_visit!(visit_generic_params(vis, generic_params));

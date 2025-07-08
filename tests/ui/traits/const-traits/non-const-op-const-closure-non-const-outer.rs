@@ -11,5 +11,5 @@ impl Foo for () {
 
 fn main() {
     (const || { (()).foo() })();
-    //~^ ERROR: cannot call non-const method
+    //~^ ERROR: }: [const] Fn()` is not satisfied
 }

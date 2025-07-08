@@ -191,6 +191,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         target,
                         Target::Mod,
                     ),
+                Attribute::Parsed(AttributeKind::Path(_, attr_span)) => {
+                    self.check_generic_attr(hir_id, sym::path, *attr_span, target, Target::Mod)
+                }
                 Attribute::Parsed(AttributeKind::TrackCaller(attr_span)) => {
                     self.check_track_caller(hir_id, *attr_span, attrs, span, target)
                 }
@@ -1915,7 +1918,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// Checks if the `#[align]` attributes on `item` are valid.
     fn check_align(&self, span: Span, target: Target, align: Align, repr_span: Span) {
         match target {
-            Target::Fn | Target::Method(_) => {}
+            Target::Fn | Target::Method(_) | Target::ForeignFn => {}
             Target::Struct | Target::Union | Target::Enum => {
                 self.dcx().emit_err(errors::AlignShouldBeReprAlign {
                     span: repr_span,
@@ -1924,10 +1927,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 });
             }
             _ => {
-                self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
-                    hint_span: repr_span,
-                    span,
-                });
+                self.dcx().emit_err(errors::AlignAttrApplication { hint_span: repr_span, span });
             }
         }
 
@@ -2800,7 +2800,6 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
     // resolution for the attribute macro error.
     const ATTRS_TO_CHECK: &[Symbol] = &[
         sym::macro_export,
-        sym::path,
         sym::automatically_derived,
         sym::rustc_main,
         sym::derive,
@@ -2822,6 +2821,8 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
         }) = attr
         {
             (*first_attr_span, sym::repr)
+        } else if let Attribute::Parsed(AttributeKind::Path(.., span)) = attr {
+            (*span, sym::path)
         } else {
             continue;
         };
@@ -2946,8 +2947,8 @@ fn check_duplicates(
 
 fn doc_fake_variadic_is_allowed_self_ty(self_ty: &hir::Ty<'_>) -> bool {
     matches!(&self_ty.kind, hir::TyKind::Tup([_]))
-        || if let hir::TyKind::BareFn(bare_fn_ty) = &self_ty.kind {
-            bare_fn_ty.decl.inputs.len() == 1
+        || if let hir::TyKind::FnPtr(fn_ptr_ty) = &self_ty.kind {
+            fn_ptr_ty.decl.inputs.len() == 1
         } else {
             false
         }

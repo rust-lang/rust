@@ -10,15 +10,14 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 
-#[macro_use]
-extern crate rustc_smir;
 extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate rustc_middle;
+#[macro_use]
 extern crate stable_mir;
 
 use rustc_middle::ty::TyCtxt;
-use rustc_smir::rustc_internal;
+use stable_mir::rustc_internal;
 use std::io::Write;
 use std::ops::ControlFlow;
 

@@ -28,6 +28,7 @@ use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
 use crate::attributes::must_use::MustUseParser;
 use crate::attributes::no_implicit_prelude::NoImplicitPreludeParser;
 use crate::attributes::non_exhaustive::NonExhaustiveParser;
+use crate::attributes::path::PathParser as PathAttributeParser;
 use crate::attributes::repr::{AlignParser, ReprParser};
 use crate::attributes::rustc_internal::{
     RustcLayoutScalarValidRangeEnd, RustcLayoutScalarValidRangeStart,
@@ -133,6 +134,7 @@ attribute_parsers!(
         Single<LinkSectionParser>,
         Single<MustUseParser>,
         Single<OptimizeParser>,
+        Single<PathAttributeParser>,
         Single<RustcForceInlineParser>,
         Single<RustcLayoutScalarValidRangeEnd>,
         Single<RustcLayoutScalarValidRangeStart>,

@@ -1070,7 +1070,7 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
         if let TyKind::Never = t.kind {
             self.fully_stable = false;
         }
-        if let TyKind::BareFn(function) = t.kind {
+        if let TyKind::FnPtr(function) = t.kind {
             if extern_abi_stability(function.abi).is_err() {
                 self.fully_stable = false;
             }

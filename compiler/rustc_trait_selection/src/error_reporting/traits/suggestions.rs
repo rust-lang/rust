@@ -1187,6 +1187,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         has_custom_message: bool,
     ) -> bool {
         let span = obligation.cause.span;
+        let param_env = obligation.param_env;
+
+        let mk_result = |trait_pred_and_new_ty| {
+            let obligation =
+                self.mk_trait_obligation_with_new_self_ty(param_env, trait_pred_and_new_ty);
+            self.predicate_must_hold_modulo_regions(&obligation)
+        };
 
         let code = match obligation.cause.code() {
             ObligationCauseCode::FunctionArg { parent_code, .. } => parent_code,
@@ -1195,6 +1202,76 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             c @ ObligationCauseCode::WhereClauseInExpr(_, _, hir_id, _)
                 if self.tcx.hir_span(*hir_id).lo() == span.lo() =>
             {
+                // `hir_id` corresponds to the HIR node that introduced a `where`-clause obligation.
+                // If that obligation comes from a type in an associated method call, we need
+                // special handling here.
+                if let hir::Node::Expr(expr) = self.tcx.parent_hir_node(*hir_id)
+                    && let hir::ExprKind::Call(base, _) = expr.kind
+                    && let hir::ExprKind::Path(hir::QPath::TypeRelative(ty, segment)) = base.kind
+                    && let hir::Node::Expr(outer) = self.tcx.parent_hir_node(expr.hir_id)
+                    && let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, mtbl, _) = outer.kind
+                    && ty.span == span
+                {
+                    // We've encountered something like `&str::from("")`, where the intended code
+                    // was likely `<&str>::from("")`. The former is interpreted as "call method
+                    // `from` on `str` and borrow the result", while the latter means "call method
+                    // `from` on `&str`".
+
+                    let trait_pred_and_imm_ref = poly_trait_pred.map_bound(|p| {
+                        (p, Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_static, p.self_ty()))
+                    });
+                    let trait_pred_and_mut_ref = poly_trait_pred.map_bound(|p| {
+                        (p, Ty::new_mut_ref(self.tcx, self.tcx.lifetimes.re_static, p.self_ty()))
+                    });
+
+                    let imm_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_imm_ref);
+                    let mut_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_mut_ref);
+                    let sugg_msg = |pre: &str| {
+                        format!(
+                            "you likely meant to call the associated function `{FN}` for type \
+                             `&{pre}{TY}`, but the code as written calls associated function `{FN}` on \
+                             type `{TY}`",
+                            FN = segment.ident,
+                            TY = poly_trait_pred.self_ty(),
+                        )
+                    };
+                    match (imm_ref_self_ty_satisfies_pred, mut_ref_self_ty_satisfies_pred, mtbl) {
+                        (true, _, hir::Mutability::Not) | (_, true, hir::Mutability::Mut) => {
+                            err.multipart_suggestion_verbose(
+                                sugg_msg(mtbl.prefix_str()),
+                                vec![
+                                    (outer.span.shrink_to_lo(), "<".to_string()),
+                                    (span.shrink_to_hi(), ">".to_string()),
+                                ],
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                        (true, _, hir::Mutability::Mut) => {
+                            // There's an associated function found on the immutable borrow of the
+                            err.multipart_suggestion_verbose(
+                                sugg_msg("mut "),
+                                vec![
+                                    (outer.span.shrink_to_lo().until(span), "<&".to_string()),
+                                    (span.shrink_to_hi(), ">".to_string()),
+                                ],
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                        (_, true, hir::Mutability::Not) => {
+                            err.multipart_suggestion_verbose(
+                                sugg_msg(""),
+                                vec![
+                                    (outer.span.shrink_to_lo().until(span), "<&mut ".to_string()),
+                                    (span.shrink_to_hi(), ">".to_string()),
+                                ],
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                        _ => {}
+                    }
+                    // If we didn't return early here, we would instead suggest `&&str::from("")`.
+                    return false;
+                }
                 c
             }
             c if matches!(
@@ -1220,8 +1297,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             never_suggest_borrow.push(def_id);
         }
 
-        let param_env = obligation.param_env;
-
         // Try to apply the original trait bound by borrowing.
         let mut try_borrowing = |old_pred: ty::PolyTraitPredicate<'tcx>,
                                  blacklist: &[DefId]|
@@ -1243,11 +1318,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 )
             });
 
-            let mk_result = |trait_pred_and_new_ty| {
-                let obligation =
-                    self.mk_trait_obligation_with_new_self_ty(param_env, trait_pred_and_new_ty);
-                self.predicate_must_hold_modulo_regions(&obligation)
-            };
             let imm_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_imm_ref);
             let mut_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_mut_ref);
 
