@@ -29,6 +29,7 @@ impl AttributeKind {
             Ignore { .. } => No,
             Inline(..) => No,
             LinkName { .. } => Yes,
+            LinkOrdinal { .. } => Yes,
             LinkSection { .. } => No,
             LoopMatch(..) => No,
             MacroTransparency(..) => Yes,
