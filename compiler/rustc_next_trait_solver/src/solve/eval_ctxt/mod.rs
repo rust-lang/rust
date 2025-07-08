@@ -334,6 +334,19 @@ where
         (result, proof_tree)
     }
 
+    pub(super) fn with_capped_depth<R>(
+        &mut self,
+        max_depth: usize,
+        f: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        let info = self.search_graph.with_capped_depth_start(max_depth);
+        let r = f(self);
+        if let Some(info) = info {
+            self.search_graph.with_capped_depth_end(info);
+        }
+        r
+    }
+
     /// Creates a nested evaluation context that shares the same search graph as the
     /// one passed in. This is suitable for evaluation, granted that the search graph
     /// has had the nested goal recorded on its stack. This method only be used by
@@ -594,15 +607,31 @@ where
     #[instrument(level = "trace", skip(self))]
     pub(super) fn try_evaluate_added_goals(&mut self) -> Result<Certainty, NoSolution> {
         let mut response = Ok(Certainty::overflow(false));
-        for _ in 0..FIXPOINT_STEP_LIMIT {
-            // FIXME: This match is a bit ugly, it might be nice to change the inspect
-            // stuff to use a closure instead. which should hopefully simplify this a bit.
-            match self.evaluate_added_goals_step() {
+        for i in 0..FIXPOINT_STEP_LIMIT {
+            debug!(?i, ?self.nested_goals, "try_evaluate_added_goals_step");
+            let evaluate_step_result = if i == 0 {
+                self.with_capped_depth(4, |this| this.evaluate_added_goals_step())
+            } else {
+                self.evaluate_added_goals_step()
+            };
+            match evaluate_step_result {
                 Ok(Some(cert)) => {
-                    response = Ok(cert);
-                    break;
+                    if i == 0 {
+                        for (_, _, stalled_on) in &mut self.nested_goals {
+                            *stalled_on = None;
+                        }
+                    } else {
+                        response = Ok(cert);
+                        break;
+                    }
                 }
-                Ok(None) => {}
+                Ok(None) => {
+                    if i == 0 {
+                        for (_, _, stalled_on) in &mut self.nested_goals {
+                            *stalled_on = None;
+                        }
+                    }
+                }
                 Err(NoSolution) => {
                     response = Err(NoSolution);
                     break;

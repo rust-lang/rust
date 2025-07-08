@@ -255,7 +255,7 @@ where
     }
 
     fn bail_with_ambiguity(&mut self, responses: &[CanonicalResponse<I>]) -> CanonicalResponse<I> {
-        debug_assert!(responses.len() > 1);
+        debug_assert!(responses.len() > 0);
         let maybe_cause = responses.iter().fold(MaybeCause::Ambiguity, |maybe_cause, response| {
             // Pull down the certainty of `Certainty::Yes` to ambiguity when combining
             // these responses, b/c we're combining more than one response and this we
