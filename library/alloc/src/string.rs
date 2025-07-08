@@ -156,7 +156,7 @@ use crate::vec::{self, Vec};
 /// ```
 ///
 /// Next, what should `s[i]` return? Because indexing returns a reference
-/// to underlying data it could be `&u8`, `&[u8]`, or something else similar.
+/// to underlying data it could be `&u8`, `&[u8]`, or something similar.
 /// Since we're only providing one index, `&u8` makes the most sense but that
 /// might not be what the user expects and can be explicitly achieved with
 /// [`as_bytes()`]:
