@@ -1764,6 +1764,7 @@ symbols! {
         repr_align,
         repr_align_enum,
         repr_packed,
+        repr_scalable,
         repr_simd,
         repr_transparent,
         require,

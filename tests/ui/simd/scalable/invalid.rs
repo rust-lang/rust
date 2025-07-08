@@ -2,6 +2,7 @@
 #![allow(internal_features, unused_imports, unused_macros)]
 #![feature(extern_types)]
 #![feature(gen_blocks)]
+#![feature(repr_scalable)]
 #![feature(repr_simd)]
 #![feature(stmt_expr_attributes)]
 #![feature(trait_alias)]
