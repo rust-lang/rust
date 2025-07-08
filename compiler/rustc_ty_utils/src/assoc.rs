@@ -177,6 +177,17 @@ impl<'tcx> Visitor<'tcx> for RPITVisitor<'tcx> {
     }
 }
 
+struct DisambiguatorIdxVisitor {
+    depth: u32,
+}
+
+impl<'tcx> Visitor<'tcx> for DisambiguatorIdxVisitor {
+    fn visit_opaque_ty(&mut self, opaque: &'tcx hir::OpaqueTy<'tcx>) -> Self::Result {
+        self.depth += 1;
+        intravisit::walk_opaque_ty(self, opaque)
+    }
+}
+
 /// Given an `fn_def_id` of a trait or a trait implementation:
 ///
 /// if `fn_def_id` is a function defined inside a trait, then it synthesizes
@@ -211,16 +222,19 @@ fn associated_types_for_impl_traits_in_associated_fn(
                 let disambiguator_idx = trait_item_refs
                     .iter()
                     .take_while(|item| item.id.owner_id.def_id != fn_def_id)
-                    .fold(0, |acc, item| {
-                        if !matches!(item.kind, hir::AssocItemKind::Fn { .. }) {
-                            acc
-                        } else if def_path_id(item.id.owner_id.def_id) == def_path_data {
-                            tcx.def_key(item.id.owner_id.def_id).disambiguated_data.disambiguator
-                                + 1
-                        } else {
-                            acc
-                        }
-                    });
+                    .filter(|item| {
+                        matches!(item.kind, hir::AssocItemKind::Fn { .. })
+                            && def_path_id(item.id.owner_id.def_id) == def_path_data
+                    })
+                    .last()
+                    .map(|item| {
+                        let output = tcx.hir_get_fn_output(item.id.owner_id.def_id).unwrap();
+                        let mut visitor = DisambiguatorIdxVisitor { depth: 0 };
+                        visitor.visit_fn_ret_ty(output);
+                        tcx.def_key(item.id.owner_id.def_id).disambiguated_data.disambiguator
+                            + visitor.depth
+                    })
+                    .unwrap_or_default();
 
                 let data = DefPathData::AnonAssocTy(def_path_data);
                 let mut visitor = RPITVisitor {
