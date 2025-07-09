@@ -988,7 +988,7 @@ rustc_queries! {
     }
 
     query coroutine_hidden_types(
-        def_id: DefId
+        def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, ty::CoroutineWitnessTypes<TyCtxt<'tcx>>>> {
         desc { "looking up the hidden types stored across await points in a coroutine" }
     }
