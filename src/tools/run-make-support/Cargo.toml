@@ -1,7 +1,7 @@
 [package]
 name = "run_make_support"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 bstr = "1.12"
