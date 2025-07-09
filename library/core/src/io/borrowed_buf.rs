@@ -237,15 +237,6 @@ impl<'a> BorrowedCursor<'a> {
         }
     }
 
-    /// Returns a mutable reference to the uninitialized part of the cursor.
-    ///
-    /// It is safe to uninitialize any of these bytes.
-    #[inline]
-    pub fn uninit_mut(&mut self) -> &mut [MaybeUninit<u8>] {
-        // SAFETY: always in bounds
-        unsafe { self.buf.buf.get_unchecked_mut(self.buf.init..) }
-    }
-
     /// Returns a mutable reference to the whole cursor.
     ///
     /// # Safety
@@ -298,7 +289,9 @@ impl<'a> BorrowedCursor<'a> {
     /// Initializes all bytes in the cursor.
     #[inline]
     pub fn ensure_init(&mut self) -> &mut Self {
-        let uninit = self.uninit_mut();
+        // SAFETY: always in bounds and we never uninitialize these bytes.
+        let uninit = unsafe { self.buf.buf.get_unchecked_mut(self.buf.init..) };
+
         // SAFETY: 0 is a valid value for MaybeUninit<u8> and the length matches the allocation
         // since it is comes from a slice reference.
         unsafe {
