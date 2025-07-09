@@ -774,9 +774,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
                     #[allow(rustc::usage_of_type_ir_traits)]
                     if self.selcx.infcx.may_use_unstable_feature(obligation.param_env, symbol) {
-                        return ProcessResult::Changed(Default::default());
+                        ProcessResult::Changed(Default::default())
                     } else {
-                        return ProcessResult::Unchanged;
+                        ProcessResult::Unchanged
                     }
                 }
             },
