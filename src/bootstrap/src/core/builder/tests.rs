@@ -1551,7 +1551,7 @@ mod snapshot {
     }
 
     #[test]
-    fn doc_library_no_std_target() {
+    fn doc_core_no_std_target() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("doc")
@@ -1564,6 +1564,21 @@ mod snapshot {
         [doc] std 1 <host> crates=[core]
         ");
     }
+
+    #[test]
+    fn doc_library_no_std_target() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("library")
+                .override_target_no_std(&host_target())
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] std 1 <host> crates=[alloc,core]
+        ");
+    }
 }
 
 struct ExecutedSteps {
@@ -1574,6 +1589,7 @@ impl ExecutedSteps {
     fn render(&self) -> String {
         self.render_with(RenderConfig::default())
     }
+
     fn render_with(&self, config: RenderConfig) -> String {
         render_steps(&self.steps, config)
     }
