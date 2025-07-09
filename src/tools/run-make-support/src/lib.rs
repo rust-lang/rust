@@ -83,6 +83,6 @@ pub use crate::string::{
 };
 // Helpers for checking target information.
 pub use crate::targets::{
-    apple_os, is_aix, is_darwin, is_msvc, is_win7, is_windows, is_windows_gnu, is_windows_msvc,
+    apple_os, is_aix, is_darwin, is_win7, is_windows, is_windows_gnu, is_windows_msvc,
     llvm_components_contain, target, uname,
 };
