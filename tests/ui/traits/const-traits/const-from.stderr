@@ -1,0 +1,42 @@
+error[E0277]: the trait bound `String: const From<&str>` is not satisfied
+  --> $DIR/const-from.rs:29:18
+   |
+LL |     let mut st = String::from("world");
+   |                  ^^^^^^
+
+error[E0599]: the method `as_ref` exists for reference `&u8`, but its trait bounds were not satisfied
+  --> $DIR/const-from.rs:34:25
+   |
+LL |     let _: &u8      = x.as_ref();
+   |                         ^^^^^^ method cannot be called on `&u8` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `u8: AsRef<_>`
+           which is required by `&u8: AsRef<_>`
+
+error[E0599]: the method `as_mut` exists for mutable reference `&mut u8`, but its trait bounds were not satisfied
+  --> $DIR/const-from.rs:38:26
+   |
+LL |     let _: &mut u8  = ym.as_mut();
+   |                          ^^^^^^ method cannot be called on `&mut u8` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `u8: AsMut<_>`
+           which is required by `&mut u8: AsMut<_>`
+
+error[E0277]: the trait bound `[u8; 3]: const AsRef<[u8]>` is not satisfied
+  --> $DIR/const-from.rs:42:24
+   |
+LL |     let _: &[u8] = arr.as_ref();
+   |                        ^^^^^^
+
+error[E0277]: the trait bound `[u8; 3]: const AsMut<[u8]>` is not satisfied
+  --> $DIR/const-from.rs:45:29
+   |
+LL |     let _: &mut [u8] = arr2.as_mut();
+   |                             ^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

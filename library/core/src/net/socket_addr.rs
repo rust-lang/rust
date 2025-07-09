@@ -1,5 +1,6 @@
 use super::display_buffer::DisplayBuffer;
 use crate::fmt::{self, Write};
+use crate::marker::Destruct;
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 /// An internet socket address, either IPv4 or IPv6.
@@ -612,7 +613,8 @@ impl const From<SocketAddrV6> for SocketAddr {
 }
 
 #[stable(feature = "addr_from_into_ip", since = "1.17.0")]
-impl<I: Into<IpAddr>> From<(I, u16)> for SocketAddr {
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+impl<I: ~const Into<IpAddr> + ~const Destruct> const From<(I, u16)> for SocketAddr {
     /// Converts a tuple struct (Into<[`IpAddr`]>, `u16`) into a [`SocketAddr`].
     ///
     /// This conversion creates a [`SocketAddr::V4`] for an [`IpAddr::V4`]
