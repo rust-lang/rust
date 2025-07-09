@@ -907,3 +907,10 @@ pub(crate) struct AbiMustNotHaveReturnType {
     pub span: Span,
     pub abi: ExternAbi,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_scalable_vector_not_tuple_struct)]
+pub(crate) struct ScalableVectorNotTupleStruct {
+    #[primary_span]
+    pub span: Span,
+}
