@@ -153,6 +153,7 @@ pub fn ty_dtor_span<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Span> {
         | ty::CoroutineWitness(did, _)
         | ty::CoroutineClosure(did, _)
         | ty::Closure(did, _)
+        | ty::Init(did, _)
         | ty::FnDef(did, _)
         | ty::Foreign(did) => Some(tcx.def_span(did)),
         ty::Param(_) => None,

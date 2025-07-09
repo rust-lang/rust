@@ -50,7 +50,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
     // Transforms a ty:Ty for being encoded and used in the substitution dictionary.
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.kind() {
-            ty::Closure(..)
+            ty::Init(..)
+            | ty::Closure(..)
             | ty::Coroutine(..)
             | ty::CoroutineClosure(..)
             | ty::CoroutineWitness(..)

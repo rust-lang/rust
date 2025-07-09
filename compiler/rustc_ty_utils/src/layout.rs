@@ -524,7 +524,9 @@ fn layout_of_uncached<'tcx>(
             map_layout(layout)?
         }
 
-        ty::Closure(_, args) => univariant(args.as_closure().upvar_tys(), StructKind::AlwaysSized)?,
+        ty::Closure(_, args) | ty::Init(_, args) => {
+            univariant(args.as_closure().upvar_tys(), StructKind::AlwaysSized)?
+        }
 
         ty::CoroutineClosure(_, args) => {
             univariant(args.as_coroutine_closure().upvar_tys(), StructKind::AlwaysSized)?

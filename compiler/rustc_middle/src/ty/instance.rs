@@ -183,6 +183,11 @@ pub enum InstanceKind<'tcx> {
     /// async_drop_in_place poll function implementation (for generated coroutine).
     /// `Ty` here is `async_drop_in_place<T>::{closure}` coroutine type, not just `T`
     AsyncDropGlue(DefId, Ty<'tcx>),
+
+    /// `core::init::PinInit::<T>::pin_init`
+    ///
+    /// `Ty` here is `T`
+    Init(DefId, Ty<'tcx>),
 }
 
 impl<'tcx> Instance<'tcx> {
@@ -256,6 +261,7 @@ impl<'tcx> InstanceKind<'tcx> {
                 coroutine_closure_def_id: def_id,
                 receiver_by_ref: _,
             }
+            | InstanceKind::Init(def_id, _)
             | InstanceKind::DropGlue(def_id, _)
             | InstanceKind::CloneShim(def_id, _)
             | InstanceKind::FnPtrAddrShim(def_id, _)
@@ -273,6 +279,7 @@ impl<'tcx> InstanceKind<'tcx> {
             | InstanceKind::AsyncDropGlueCtorShim(def_id, _)
             | InstanceKind::AsyncDropGlue(def_id, _)
             | InstanceKind::FutureDropPollShim(def_id, ..)
+            | InstanceKind::Init(def_id, _)
             | InstanceKind::ThreadLocalShim(def_id) => Some(def_id),
             InstanceKind::VTableShim(..)
             | InstanceKind::ReifyShim(..)
@@ -348,6 +355,7 @@ impl<'tcx> InstanceKind<'tcx> {
             | InstanceKind::ConstructCoroutineInClosureShim { .. }
             | InstanceKind::DropGlue(..)
             | InstanceKind::Item(_)
+            | InstanceKind::Init(..)
             | InstanceKind::Intrinsic(..)
             | InstanceKind::ReifyShim(..)
             | InstanceKind::Virtual(..)
@@ -426,6 +434,7 @@ pub fn fmt_instance(
         InstanceKind::FutureDropPollShim(_, proxy_ty, impl_ty) => {
             write!(f, " - dropshim({proxy_ty}-{impl_ty})")
         }
+        InstanceKind::Init(_, ty) => write!(f, " - init({ty})"),
         InstanceKind::AsyncDropGlue(_, ty) => write!(f, " - shim({ty})"),
         InstanceKind::AsyncDropGlueCtorShim(_, ty) => write!(f, " - shim(Some({ty}))"),
     }

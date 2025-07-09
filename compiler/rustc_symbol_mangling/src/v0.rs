@@ -525,7 +525,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             | ty::FnDef(def_id, args)
             | ty::Closure(def_id, args)
             | ty::CoroutineClosure(def_id, args)
-            | ty::Coroutine(def_id, args) => {
+            | ty::Coroutine(def_id, args)
+            | ty::Init(def_id, args) => {
                 self.print_def_path(def_id, args)?;
             }
 

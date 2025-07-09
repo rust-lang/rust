@@ -890,6 +890,7 @@ impl TyCoercionStability {
                 | ty::Coroutine(..)
                 | ty::CoroutineWitness(..)
                 | ty::Closure(..)
+                | ty::Init(..)
                 | ty::CoroutineClosure(..)
                 | ty::Never
                 | ty::Tuple(_)

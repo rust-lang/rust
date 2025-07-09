@@ -947,6 +947,7 @@ fn try_write_constant<'tcx>(
         | ty::Param(_)
         | ty::Bound(..)
         | ty::Placeholder(..)
+        | ty::Init(..)
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)

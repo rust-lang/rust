@@ -706,6 +706,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 }
             },
 
+            hir::ExprKind::InitBlock(_) | hir::ExprKind::InitTail(_) => {
+                todo!("pinit: please implement thir")
+            }
+
             hir::ExprKind::Closure(hir::Closure { .. }) => {
                 let closure_ty = self.typeck_results.expr_ty(expr);
                 let (def_id, args, movability) = match *closure_ty.kind() {

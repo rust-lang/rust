@@ -776,6 +776,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         " of coroutine"
                     }
                     hir::ClosureKind::Closure => " of closure",
+                    hir::ClosureKind::Init => " of init block",
                 };
                 (span, mir_description, hir_ty)
             }

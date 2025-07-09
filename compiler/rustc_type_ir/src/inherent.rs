@@ -89,6 +89,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_closure(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
 
+    fn new_init(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+
     fn new_coroutine_witness(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
 
     fn new_ptr(interner: I, ty: Self, mutbl: Mutability) -> Self;
@@ -175,6 +177,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
             | ty::Coroutine(_, _)
+            | ty::Init(_, _)
             | ty::CoroutineWitness(_, _)
             | ty::Never
             | ty::Tuple(_)

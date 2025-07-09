@@ -300,6 +300,8 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Block(_, _)
             | ExprKind::Break(_, _)
             | ExprKind::Closure(_)
+            | ExprKind::InitBlock(_)
+            | ExprKind::InitTail(_)
             | ExprKind::ConstBlock(_)
             | ExprKind::Continue(_)
             | ExprKind::Dummy

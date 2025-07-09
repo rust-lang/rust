@@ -43,6 +43,7 @@ make_bridge_trait!(ForeignModuleDef);
 make_bridge_trait!(ForeignDef);
 make_bridge_trait!(FnDef);
 make_bridge_trait!(ClosureDef);
+make_bridge_trait!(InitDef);
 make_bridge_trait!(CoroutineDef);
 make_bridge_trait!(CoroutineClosureDef);
 make_bridge_trait!(AliasDef);
