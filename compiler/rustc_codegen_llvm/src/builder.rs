@@ -303,9 +303,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
 
         let id_str = "branch_weights";
-        let id = unsafe {
-            llvm::LLVMMDStringInContext2(self.cx.llcx, id_str.as_ptr().cast(), id_str.len())
-        };
+        let id = self.cx.create_metadata(id_str.into());
 
         // For switch instructions with 2 targets, the `llvm.expect` intrinsic is used.
         // This function handles switch instructions with more than 2 targets and it needs to

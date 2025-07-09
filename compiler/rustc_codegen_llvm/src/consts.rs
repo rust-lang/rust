@@ -477,13 +477,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 .unwrap_or(true)
         {
             if let Some(section) = attrs.link_section {
-                let section = unsafe {
-                    llvm::LLVMMDStringInContext2(
-                        self.llcx,
-                        section.as_str().as_c_char_ptr(),
-                        section.as_str().len(),
-                    )
-                };
+                let section = self.create_metadata(section.as_str().into());
                 assert!(alloc.provenance().ptrs().is_empty());
 
                 // The `inspect` method is okay here because we checked for provenance, and

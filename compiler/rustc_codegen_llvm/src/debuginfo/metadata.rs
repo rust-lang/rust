@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{iter, ptr};
 
-use libc::{c_char, c_longlong, c_uint};
+use libc::{c_longlong, c_uint};
 use rustc_abi::{Align, Size};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
@@ -1582,13 +1582,9 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     };
 
     let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, trait_ref);
+    let typeid = cx.create_metadata(trait_ref_typeid);
 
     unsafe {
-        let typeid = llvm::LLVMMDStringInContext2(
-            cx.llcx,
-            trait_ref_typeid.as_ptr() as *const c_char,
-            trait_ref_typeid.as_bytes().len(),
-        );
         let v = [llvm::LLVMValueAsMetadata(cx.const_usize(0)), typeid];
         llvm::LLVMRustGlobalAddMetadata(
             vtable,
