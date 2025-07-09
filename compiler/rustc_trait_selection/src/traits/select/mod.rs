@@ -188,18 +188,6 @@ struct EvaluatedCandidate<'tcx> {
     evaluation: EvaluationResult,
 }
 
-/// When does the builtin impl for `T: Trait` apply?
-#[derive(Debug)]
-enum BuiltinImplConditions<'tcx> {
-    /// The impl is conditional on `T1, T2, ...: Trait`.
-    Where(ty::Binder<'tcx, Vec<Ty<'tcx>>>),
-    /// There is no built-in impl. There may be some other
-    /// candidate (a where-clause or user-defined impl).
-    None,
-    /// It is unknown whether there is an impl.
-    Ambiguous,
-}
-
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn new(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
@@ -2104,14 +2092,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 impl<'tcx> SelectionContext<'_, 'tcx> {
     fn sizedness_conditions(
         &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
+        self_ty: Ty<'tcx>,
         sizedness: SizedTraitKind,
-    ) -> BuiltinImplConditions<'tcx> {
-        use self::BuiltinImplConditions::{Ambiguous, None, Where};
-
-        // NOTE: binder moved to (*)
-        let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
-
+    ) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
         match self_ty.kind() {
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Uint(_)
@@ -2129,59 +2112,44 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
-            | ty::Error(_) => {
-                // safe for everything
-                Where(ty::Binder::dummy(Vec::new()))
-            }
+            | ty::Error(_) => ty::Binder::dummy(vec![]),
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {
-                SizedTraitKind::Sized => None,
-                SizedTraitKind::MetaSized => Where(ty::Binder::dummy(Vec::new())),
+                SizedTraitKind::Sized => unreachable!("tried to assemble `Sized` for unsized type"),
+                SizedTraitKind::MetaSized => ty::Binder::dummy(vec![]),
             },
 
-            ty::Foreign(..) => None,
+            ty::Foreign(..) => unreachable!("tried to assemble `Sized` for unsized type"),
 
-            ty::Tuple(tys) => Where(
-                obligation.predicate.rebind(tys.last().map_or_else(Vec::new, |&last| vec![last])),
-            ),
+            ty::Tuple(tys) => {
+                ty::Binder::dummy(tys.last().map_or_else(Vec::new, |&last| vec![last]))
+            }
 
-            ty::Pat(ty, _) => Where(obligation.predicate.rebind(vec![*ty])),
+            ty::Pat(ty, _) => ty::Binder::dummy(vec![*ty]),
 
             ty::Adt(def, args) => {
                 if let Some(crit) = def.sizedness_constraint(self.tcx(), sizedness) {
-                    // (*) binder moved here
-                    Where(obligation.predicate.rebind(vec![crit.instantiate(self.tcx(), args)]))
+                    ty::Binder::dummy(vec![crit.instantiate(self.tcx(), args)])
                 } else {
-                    Where(ty::Binder::dummy(Vec::new()))
+                    ty::Binder::dummy(vec![])
                 }
             }
 
-            // FIXME(unsafe_binders): This binder needs to be squashed
-            ty::UnsafeBinder(binder_ty) => Where(binder_ty.map_bound(|ty| vec![ty])),
+            ty::UnsafeBinder(binder_ty) => binder_ty.map_bound(|ty| vec![ty]),
 
-            ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => None,
-            ty::Infer(ty::TyVar(_)) => Ambiguous,
-
-            // We can make this an ICE if/once we actually instantiate the trait obligation eagerly.
-            ty::Bound(..) => None,
-
-            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-                bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
+            ty::Alias(..)
+            | ty::Param(_)
+            | ty::Placeholder(..)
+            | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            | ty::Bound(..) => {
+                bug!("asked to assemble `Sized` of unexpected type: {:?}", self_ty);
             }
         }
     }
 
-    fn copy_clone_conditions(
-        &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
-    ) -> BuiltinImplConditions<'tcx> {
-        // NOTE: binder moved to (*)
-        let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
-
-        use self::BuiltinImplConditions::{Ambiguous, None, Where};
-
+    fn copy_clone_conditions(&mut self, self_ty: Ty<'tcx>) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
         match *self_ty.kind() {
-            ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => Where(ty::Binder::dummy(Vec::new())),
+            ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => ty::Binder::dummy(vec![]),
 
             ty::Uint(_)
             | ty::Int(_)
@@ -2193,127 +2161,78 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Never
             | ty::Ref(_, _, hir::Mutability::Not)
             | ty::Array(..) => {
-                // Implementations provided in libcore
-                None
+                unreachable!("tried to assemble `Sized` for type with libcore-provided impl")
             }
 
             // FIXME(unsafe_binder): Should we conditionally
             // (i.e. universally) implement copy/clone?
-            ty::UnsafeBinder(_) => None,
-
-            ty::Dynamic(..)
-            | ty::Str
-            | ty::Slice(..)
-            | ty::Foreign(..)
-            | ty::Ref(_, _, hir::Mutability::Mut) => None,
+            ty::UnsafeBinder(_) => unreachable!("tried to assemble `Sized` for unsafe binder"),
 
             ty::Tuple(tys) => {
                 // (*) binder moved here
-                Where(obligation.predicate.rebind(tys.iter().collect()))
+                ty::Binder::dummy(tys.iter().collect())
             }
 
             ty::Pat(ty, _) => {
                 // (*) binder moved here
-                Where(obligation.predicate.rebind(vec![ty]))
+                ty::Binder::dummy(vec![ty])
             }
 
             ty::Coroutine(coroutine_def_id, args) => {
                 match self.tcx().coroutine_movability(coroutine_def_id) {
-                    hir::Movability::Static => None,
+                    hir::Movability::Static => {
+                        unreachable!("tried to assemble `Sized` for static coroutine")
+                    }
                     hir::Movability::Movable => {
                         if self.tcx().features().coroutine_clone() {
-                            let resolved_upvars =
-                                self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
-                            let resolved_witness =
-                                self.infcx.shallow_resolve(args.as_coroutine().witness());
-                            if resolved_upvars.is_ty_var() || resolved_witness.is_ty_var() {
-                                // Not yet resolved.
-                                Ambiguous
-                            } else {
-                                let all = args
-                                    .as_coroutine()
+                            ty::Binder::dummy(
+                                args.as_coroutine()
                                     .upvar_tys()
                                     .iter()
                                     .chain([args.as_coroutine().witness()])
-                                    .collect::<Vec<_>>();
-                                Where(obligation.predicate.rebind(all))
-                            }
+                                    .collect::<Vec<_>>(),
+                            )
                         } else {
-                            None
+                            unreachable!(
+                                "tried to assemble `Sized` for coroutine without enabled feature"
+                            )
                         }
                     }
                 }
             }
 
-            ty::CoroutineWitness(def_id, args) => {
-                let hidden_types = rebind_coroutine_witness_types(
-                    self.infcx.tcx,
-                    def_id,
-                    args,
-                    obligation.predicate.bound_vars(),
-                );
-                Where(hidden_types)
-            }
+            ty::CoroutineWitness(def_id, args) => self
+                .infcx
+                .tcx
+                .coroutine_hidden_types(def_id)
+                .instantiate(self.infcx.tcx, args)
+                .map_bound(|witness| witness.types.to_vec()),
 
-            ty::Closure(_, args) => {
-                // (*) binder moved here
-                let ty = self.infcx.shallow_resolve(args.as_closure().tupled_upvars_ty());
-                if let ty::Infer(ty::TyVar(_)) = ty.kind() {
-                    // Not yet resolved.
-                    Ambiguous
-                } else {
-                    Where(obligation.predicate.rebind(args.as_closure().upvar_tys().to_vec()))
-                }
-            }
+            ty::Closure(_, args) => ty::Binder::dummy(args.as_closure().upvar_tys().to_vec()),
 
             ty::CoroutineClosure(_, args) => {
-                // (*) binder moved here
-                let ty = self.infcx.shallow_resolve(args.as_coroutine_closure().tupled_upvars_ty());
-                if let ty::Infer(ty::TyVar(_)) = ty.kind() {
-                    // Not yet resolved.
-                    Ambiguous
-                } else {
-                    Where(
-                        obligation
-                            .predicate
-                            .rebind(args.as_coroutine_closure().upvar_tys().to_vec()),
-                    )
-                }
+                ty::Binder::dummy(args.as_coroutine_closure().upvar_tys().to_vec())
             }
 
-            ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {
-                // Fallback to whatever user-defined impls exist in this case.
-                None
-            }
-
-            ty::Infer(ty::TyVar(_)) => {
-                // Unbound type variable. Might or might not have
-                // applicable impls and so forth, depending on what
-                // those type variables wind up being bound to.
-                Ambiguous
-            }
-
-            // We can make this an ICE if/once we actually instantiate the trait obligation eagerly.
-            ty::Bound(..) => None,
-
-            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            ty::Foreign(..)
+            | ty::Str
+            | ty::Slice(_)
+            | ty::Dynamic(..)
+            | ty::Adt(..)
+            | ty::Alias(..)
+            | ty::Param(..)
+            | ty::Placeholder(..)
+            | ty::Bound(..)
+            | ty::Ref(_, _, ty::Mutability::Mut)
+            | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
         }
     }
 
-    fn fused_iterator_conditions(
-        &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
-    ) -> BuiltinImplConditions<'tcx> {
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        if let ty::Coroutine(did, ..) = *self_ty.kind()
-            && self.tcx().coroutine_is_gen(did)
-        {
-            BuiltinImplConditions::Where(ty::Binder::dummy(Vec::new()))
-        } else {
-            BuiltinImplConditions::None
-        }
+    fn coroutine_is_gen(&mut self, self_ty: Ty<'tcx>) -> bool {
+        matches!(*self_ty.kind(), ty::Coroutine(did, ..)
+            if self.tcx().coroutine_is_gen(did))
     }
 
     /// For default impls, we need to break apart a type into its
@@ -2330,9 +2249,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     fn constituent_types_for_ty(
         &self,
-        t: ty::Binder<'tcx, Ty<'tcx>>,
+        t: Ty<'tcx>,
     ) -> Result<ty::Binder<'tcx, Vec<Ty<'tcx>>>, SelectionError<'tcx>> {
-        Ok(match *t.skip_binder().kind() {
+        Ok(match *t.kind() {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
@@ -2349,8 +2268,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             // `assemble_candidates_from_auto_impls`.
             ty::Foreign(..) => ty::Binder::dummy(Vec::new()),
 
-            // FIXME(unsafe_binders): Squash the double binder for now, I guess.
-            ty::UnsafeBinder(_) => return Err(SelectionError::Unimplemented),
+            ty::UnsafeBinder(ty) => ty.map_bound(|ty| vec![ty]),
 
             // Treat this like `struct str([u8]);`
             ty::Str => ty::Binder::dummy(vec![Ty::new_slice(self.tcx(), self.tcx().types.u8)]),
@@ -2364,40 +2282,47 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 bug!("asked to assemble constituent types of unexpected type: {:?}", t);
             }
 
-            ty::RawPtr(element_ty, _) | ty::Ref(_, element_ty, _) => t.rebind(vec![element_ty]),
+            ty::RawPtr(element_ty, _) | ty::Ref(_, element_ty, _) => {
+                ty::Binder::dummy(vec![element_ty])
+            }
 
-            ty::Pat(ty, _) | ty::Array(ty, _) | ty::Slice(ty) => t.rebind(vec![ty]),
+            ty::Pat(ty, _) | ty::Array(ty, _) | ty::Slice(ty) => ty::Binder::dummy(vec![ty]),
 
             ty::Tuple(tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-                t.rebind(tys.iter().collect())
+                ty::Binder::dummy(tys.iter().collect())
             }
 
             ty::Closure(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_closure().tupled_upvars_ty());
-                t.rebind(vec![ty])
+                ty::Binder::dummy(vec![ty])
             }
 
             ty::CoroutineClosure(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine_closure().tupled_upvars_ty());
-                t.rebind(vec![ty])
+                ty::Binder::dummy(vec![ty])
             }
 
             ty::Coroutine(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
                 let witness = args.as_coroutine().witness();
-                t.rebind([ty].into_iter().chain(iter::once(witness)).collect())
+                ty::Binder::dummy([ty].into_iter().chain(iter::once(witness)).collect())
             }
 
-            ty::CoroutineWitness(def_id, args) => {
-                rebind_coroutine_witness_types(self.infcx.tcx, def_id, args, t.bound_vars())
-            }
+            ty::CoroutineWitness(def_id, args) => self
+                .infcx
+                .tcx
+                .coroutine_hidden_types(def_id)
+                .instantiate(self.infcx.tcx, args)
+                .map_bound(|witness| witness.types.to_vec()),
 
             // For `PhantomData<T>`, we pass `T`.
-            ty::Adt(def, args) if def.is_phantom_data() => t.rebind(args.types().collect()),
+            ty::Adt(def, args) if def.is_phantom_data() => {
+                ty::Binder::dummy(args.types().collect())
+            }
 
             ty::Adt(def, args) => {
-                t.rebind(def.all_fields().map(|f| f.ty(self.tcx(), args)).collect())
+                ty::Binder::dummy(def.all_fields().map(|f| f.ty(self.tcx(), args)).collect())
             }
 
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
@@ -2408,7 +2333,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // which enforces a DAG between the functions requiring
                     // the auto trait bounds in question.
                     match self.tcx().type_of_opaque(def_id) {
-                        Ok(ty) => t.rebind(vec![ty.instantiate(self.tcx(), args)]),
+                        Ok(ty) => ty::Binder::dummy(vec![ty.instantiate(self.tcx(), args)]),
                         Err(_) => {
                             return Err(SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id));
                         }
@@ -2878,23 +2803,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         obligations
     }
-}
-
-fn rebind_coroutine_witness_types<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-    args: ty::GenericArgsRef<'tcx>,
-    bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
-) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
-    let bound_coroutine_types = tcx.coroutine_hidden_types(def_id).skip_binder();
-    let shifted_coroutine_types =
-        tcx.shift_bound_var_indices(bound_vars.len(), bound_coroutine_types.skip_binder());
-    ty::Binder::bind_with_vars(
-        ty::EarlyBinder::bind(shifted_coroutine_types.types.to_vec()).instantiate(tcx, args),
-        tcx.mk_bound_variable_kinds_from_iter(
-            bound_vars.iter().chain(bound_coroutine_types.bound_vars()),
-        ),
-    )
 }
 
 impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
