@@ -1980,12 +1980,12 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustBuildMinNum<'a>(
         B: &Builder<'a>,
         LHS: &'a Value,
-        LHS: &'a Value,
+        RHS: &'a Value,
     ) -> &'a Value;
     pub(crate) fn LLVMRustBuildMaxNum<'a>(
         B: &Builder<'a>,
         LHS: &'a Value,
-        LHS: &'a Value,
+        RHS: &'a Value,
     ) -> &'a Value;
 
     // Atomic Operations
