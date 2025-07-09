@@ -17,8 +17,12 @@ pub(super) fn hints(
     let parent = path.syntax().parent()?;
     let range = match path {
         Either::Left(path) => {
-            let paren =
-                parent.ancestors().take_while(|it| ast::ParenType::can_cast(it.kind())).last();
+            let paren = parent
+                .ancestors()
+                .take_while(|it| {
+                    ast::ParenType::can_cast(it.kind()) || ast::ForType::can_cast(it.kind())
+                })
+                .last();
             let parent = paren.as_ref().and_then(|it| it.parent()).unwrap_or(parent);
             if ast::TypeBound::can_cast(parent.kind())
                 || ast::TypeAnchor::can_cast(parent.kind())
@@ -134,6 +138,17 @@ fn foo(
                     _: &mut dyn T
                 ) {}
             "#]],
+        );
+    }
+
+    #[test]
+    fn hrtb_bound_does_not_add_dyn() {
+        check(
+            r#"
+//- minicore: fn
+fn test<F>(f: F) where F: for<'a> FnOnce(&'a i32) {}
+     // ^: Sized
+        "#,
         );
     }
 }
