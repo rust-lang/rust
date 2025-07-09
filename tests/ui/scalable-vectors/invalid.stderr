@@ -327,7 +327,13 @@ LL | #[rustc_scalable_vector(65536)]
    |
    = note: the value may not exceed `u16::MAX`
 
-error: aborting due to 38 previous errors
+error: scalable vector structs can only have scalable vector fields
+  --> $DIR/invalid.rs:162:18
+   |
+LL | struct OkayNoArg(f32);
+   |                  ^^^
+
+error: aborting due to 39 previous errors
 
 Some errors have detailed explanations: E0539, E0805.
 For more information about an error, try `rustc --explain E0539`.

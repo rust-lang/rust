@@ -1,7 +1,7 @@
 use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
-use rustc_abi::{ExternAbi, FieldIdx};
+use rustc_abi::{ExternAbi, FieldIdx, ScalableElt};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{EmissionGuarantee, MultiSpan};
@@ -92,7 +92,9 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let span = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
 
-    if def.repr().simd() {
+    if let Some(scalable) = def.repr().scalable {
+        check_scalable_vector(tcx, span, def_id, scalable);
+    } else if def.repr().simd() {
         check_simd(tcx, span, def_id);
     }
 
@@ -1421,6 +1423,100 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
                 )
                 .emit();
                 return;
+            }
+        }
+    }
+}
+
+#[tracing::instrument(skip(tcx), level = "debug")]
+fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalable: ScalableElt) {
+    let ty = tcx.type_of(def_id).instantiate_identity();
+    let ty::Adt(def, args) = ty.kind() else { return };
+    if !def.is_struct() {
+        tcx.dcx().delayed_bug("`rustc_scalable_vector` applied to non-struct");
+        return;
+    }
+
+    let fields = &def.non_enum_variant().fields;
+    match scalable {
+        ScalableElt::ElementCount(..) if fields.is_empty() => {
+            let mut err =
+                tcx.dcx().struct_span_err(span, "scalable vectors must have a single field");
+            err.help("scalable vector types' only field must be a primitive scalar type");
+            err.emit();
+            return;
+        }
+        ScalableElt::ElementCount(..) if fields.len() >= 2 => {
+            tcx.dcx().struct_span_err(span, "scalable vectors cannot have multiple fields").emit();
+            return;
+        }
+        ScalableElt::Container if fields.is_empty() => {
+            let mut err =
+                tcx.dcx().struct_span_err(span, "scalable vectors must have a single field");
+            err.help("tuples of scalable vectors can only contain multiple of the same scalable vector type");
+            err.emit();
+            return;
+        }
+        _ => {}
+    }
+
+    match scalable {
+        ScalableElt::ElementCount(..) => {
+            let element_ty = &fields[FieldIdx::ZERO].ty(tcx, args);
+
+            // Check that `element_ty` only uses types valid in the lanes of a scalable vector
+            // register: scalar types which directly match a "machine" type - integers, floats and
+            // bools
+            match element_ty.kind() {
+                ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Bool => (),
+                _ => {
+                    let mut err = tcx.dcx().struct_span_err(
+                        span,
+                        "element type of a scalable vector must be a primitive scalar",
+                    );
+                    err.help("only `u*`, `i*`, `f*` and `bool` types are accepted");
+                    err.emit();
+                }
+            }
+        }
+        ScalableElt::Container => {
+            let mut prev_field_ty = None;
+            for field in fields.iter() {
+                let element_ty = field.ty(tcx, args);
+                if let ty::Adt(def, _) = element_ty.kind()
+                    && def.repr().scalable()
+                {
+                    match def
+                        .repr()
+                        .scalable
+                        .expect("`repr().scalable.is_some()` != `repr().scalable()`")
+                    {
+                        ScalableElt::ElementCount(_) => { /* expected field */ }
+                        ScalableElt::Container => {
+                            tcx.dcx().span_err(
+                                tcx.def_span(field.did),
+                                "scalable vector structs cannot contain other scalable vector structs",
+                            );
+                            break;
+                        }
+                    }
+                } else {
+                    tcx.dcx().span_err(
+                        tcx.def_span(field.did),
+                        "scalable vector structs can only have scalable vector fields",
+                    );
+                    break;
+                }
+
+                if let Some(prev_ty) = prev_field_ty.replace(element_ty)
+                    && prev_ty != element_ty
+                {
+                    tcx.dcx().span_err(
+                        tcx.def_span(field.did),
+                        "all fields in a scalable vector struct must be the same type",
+                    );
+                    break;
+                }
             }
         }
     }
