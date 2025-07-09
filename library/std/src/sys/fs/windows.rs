@@ -1198,31 +1198,38 @@ impl Dir {
             io::const_error!(io::ErrorKind::InvalidFilename, "File name is too long");
         let mut opts = OpenOptions::new();
         opts.write(true);
-        let linkfile = File::open(link, &opts)?;
-        let utf16: Vec<u16> = original.iter().chain(original).copied().collect();
-        let file_name_len = u16::try_from(original.len()).or(Err(TOO_LONG_ERR))?;
+        opts.create(true);
+        opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
+        opts.attributes(c::FILE_ATTRIBUTE_REPARSE_POINT);
+        let linkfile = self.open_with(link, &opts)?;
+        let original_name_byte_len =
+            u16::try_from(size_of::<u16>() * original.len()).or(Err(TOO_LONG_ERR))?;
         let sym_buffer = c::SYMBOLIC_LINK_REPARSE_BUFFER {
             SubstituteNameOffset: 0,
-            SubstituteNameLength: file_name_len,
-            PrintNameOffset: file_name_len,
-            PrintNameLength: file_name_len,
+            SubstituteNameLength: original_name_byte_len,
+            PrintNameOffset: 0,
+            PrintNameLength: original_name_byte_len,
             Flags: if relative { c::SYMLINK_FLAG_RELATIVE } else { 0 },
             PathBuffer: 0,
         };
-        let layout = Layout::new::<c::REPARSE_DATA_BUFFER>();
-        let layout = layout
-            .extend(Layout::new::<c::SYMBOLIC_LINK_REPARSE_BUFFER>())
-            .or(Err(TOO_LONG_ERR))?
-            .0;
-        let layout = Layout::array::<u16>(original.len() * 2)
-            .and_then(|arr| layout.extend(arr))
-            .or(Err(TOO_LONG_ERR))?
-            .0;
+        let layout = Layout::from_size_align(
+            size_of::<c::REPARSE_DATA_BUFFER>()
+                + size_of::<c::SYMBOLIC_LINK_REPARSE_BUFFER>()
+                + size_of::<u16>() * (original.len() - 1),
+            align_of::<c::REPARSE_DATA_BUFFER>()
+                .max(align_of::<c::SYMBOLIC_LINK_REPARSE_BUFFER>())
+                .max(align_of::<u16>()),
+        )
+        .or(Err(TOO_LONG_ERR))?;
         let buffer = unsafe { alloc(layout) }.cast::<c::REPARSE_DATA_BUFFER>();
         unsafe {
             buffer.write(c::REPARSE_DATA_BUFFER {
                 ReparseTag: c::IO_REPARSE_TAG_SYMLINK,
-                ReparseDataLength: u16::try_from(size_of_val(&sym_buffer)).or(Err(TOO_LONG_ERR))?,
+                ReparseDataLength: u16::try_from(
+                    size_of::<c::SYMBOLIC_LINK_REPARSE_BUFFER>()
+                        + size_of::<u16>() * (original.len() - 1),
+                )
+                .or(Err(TOO_LONG_ERR))?,
                 Reserved: 0,
                 rest: (),
             });
@@ -1231,20 +1238,25 @@ impl Dir {
                 .cast::<c::SYMBOLIC_LINK_REPARSE_BUFFER>()
                 .write(sym_buffer);
             ptr::copy_nonoverlapping(
-                utf16.as_ptr(),
+                original.as_ptr(),
                 buffer
                     .add(offset_of!(c::REPARSE_DATA_BUFFER, rest))
                     .add(offset_of!(c::SYMBOLIC_LINK_REPARSE_BUFFER, PathBuffer))
                     .cast::<u16>(),
-                original.len() * 2,
+                original.len(),
             );
         };
         let result = unsafe {
             c::DeviceIoControl(
                 linkfile.handle.as_raw_handle(),
                 c::FSCTL_SET_REPARSE_POINT,
-                &raw const buffer as *const c_void,
-                u32::try_from(size_of_val(&buffer)).or(Err(TOO_LONG_ERR))?,
+                buffer as *mut c_void as *const c_void,
+                u32::try_from(
+                    size_of::<c::REPARSE_DATA_BUFFER>()
+                        + size_of::<c::SYMBOLIC_LINK_REPARSE_BUFFER>()
+                        + size_of::<u16>() * (original.len() - 1),
+                )
+                .or(Err(TOO_LONG_ERR))?,
                 ptr::null_mut(),
                 0,
                 ptr::null_mut(),
