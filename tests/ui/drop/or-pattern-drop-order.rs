@@ -65,12 +65,12 @@ fn main() {
         match (LogDrop(o, 3), Ok(LogDrop(o, 1)), LogDrop(o, 2)) { (x, Ok(y) | Err(y), z) => {} }
     });
     assert_drop_order(1..=2, |o| {
-        // The last or-pattern alternative determines the bindings' drop order: `x`, `y`.
-        match (true, LogDrop(o, 1), LogDrop(o, 2)) { (true, x, y) | (false, y, x) => {} }
+        // The first or-pattern alternative determines the bindings' drop order: `y`, `x`.
+        match (true, LogDrop(o, 2), LogDrop(o, 1)) { (true, x, y) | (false, y, x) => {} }
     });
     assert_drop_order(1..=2, |o| {
-        // That drop order is used regardless of which or-pattern alternative matches: `x`, `y`.
-        match (false, LogDrop(o, 2), LogDrop(o, 1)) { (true, x, y) | (false, y, x) => {} }
+        // That drop order is used regardless of which or-pattern alternative matches: `y`, `x`.
+        match (false, LogDrop(o, 1), LogDrop(o, 2)) { (true, x, y) | (false, y, x) => {} }
     });
 
     // Function params are visited one-by-one, and the order of bindings within a param's pattern is
