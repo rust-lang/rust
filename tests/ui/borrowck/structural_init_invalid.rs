@@ -18,8 +18,13 @@ struct S {
     z: u32,
 }
 
+struct EmptyWithDrop;
 
 impl Drop for D {
+    fn drop(&mut self) { }
+}
+
+impl Drop for EmptyWithDrop {
     fn drop(&mut self) { }
 }
 
@@ -57,6 +62,11 @@ fn cannot_partially_reinit_inner_adt_via_outer_with_drop() {
     //[stable]~^ ERROR assign to part of moved value: `d` [E0382]
     //[feature]~^^ ERROR assign of moved value: `d` [E0382]
     // FIXME: nonsense diagnostic
+}
+
+fn empty_struct_with_drop() {
+    let e: EmptyWithDrop;
+    drop(e); //~ ERROR E0381
 }
 
 fn main() { }

@@ -52,6 +52,8 @@ struct R<F> {
 impl<F> Q<F> { fn new(f: F) -> Self { Q { v: 0, r: R::new(f) } } }
 impl<F> R<F> { fn new(f: F) -> Self { R { w: 0, f } } }
 
+struct Empty;
+
 // Axes to cover:
 // * local/field: Is the structure in a local or a field
 // * fully/partial/void: Are we fully initializing it before using any part?
@@ -269,6 +271,19 @@ fn issue_27021() {
     }
 }
 
+// Strange case discovered during implementation.
+// FIXME: not decided if this should compile or not.
+fn test_empty_struct() {
+    let e: Empty;
+    drop(e); //[stable]~ ERROR used binding `e` isn't initialized [E0381]
+}
+
+#[expect(dropping_copy_types)]
+fn test_empty_tuple() {
+    let t: ();
+    drop(t); //[stable]~ ERROR used binding `t` isn't initialized [E0381]
+}
+
 fn main() {
     test_0000_local_fully_init_and_use_struct();
     test_0001_local_fully_init_and_use_tuple();
@@ -297,4 +312,7 @@ fn main() {
 
     issue_26996();
     issue_27021();
+
+    test_empty_struct();
+    test_empty_tuple();
 }

@@ -2093,7 +2093,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         let path = &self.move_data.move_paths[mpi];
 
         let field_count = match path.place.ty(self.body(), tcx).ty.kind() {
-            ty::Adt(adt, _) if adt.is_struct() => {
+            ty::Adt(adt, _) if adt.is_struct() && !adt.has_dtor(tcx) => {
                 let variant = adt.non_enum_variant();
 
                 if variant.field_list_has_applicable_non_exhaustive() {
@@ -2106,8 +2106,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
             _ => return true,
         };
-
-        // FIXME: destructors?
 
         // A structurally initialized type is "uninit" but all of it's fields are init.
         // This means all of it's fields must have MovePaths
