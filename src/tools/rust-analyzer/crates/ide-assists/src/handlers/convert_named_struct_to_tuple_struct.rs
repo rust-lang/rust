@@ -4,7 +4,8 @@ use itertools::Itertools;
 use syntax::{
     SyntaxKind,
     ast::{self, AstNode, HasAttrs, HasGenericParams, HasVisibility},
-    match_ast, ted,
+    match_ast,
+    syntax_editor::{Position, SyntaxEditor},
 };
 
 use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
@@ -97,11 +98,14 @@ fn edit_struct_def(
     // Note that we don't need to consider macro files in this function because this is
     // currently not triggered for struct definitions inside macro calls.
     let tuple_fields = record_fields.fields().filter_map(|f| {
-        let field = ast::make::tuple_field(f.visibility(), f.ty()?).clone_for_update();
-        ted::insert_all(
-            ted::Position::first_child_of(field.syntax()),
+        let field = ast::make::tuple_field(f.visibility(), f.ty()?);
+        let mut editor = SyntaxEditor::new(field.syntax().clone());
+        editor.insert_all(
+            Position::first_child_of(field.syntax()),
             f.attrs().map(|attr| attr.syntax().clone_subtree().clone_for_update().into()).collect(),
         );
+        let field_syntax = editor.finish().new_root().clone();
+        let field = ast::TupleField::cast(field_syntax)?;
         Some(field)
     });
     let tuple_fields = ast::make::tuple_field_list(tuple_fields);
@@ -1086,8 +1090,7 @@ pub struct $0Foo {
 }
 "#,
             r#"
-pub struct Foo(#[my_custom_attr]
-u32);
+pub struct Foo(#[my_custom_attr]u32);
 "#,
         );
     }
