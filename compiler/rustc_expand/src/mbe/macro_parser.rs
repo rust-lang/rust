@@ -73,6 +73,7 @@
 use std::borrow::Cow;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::fmt::Display;
+use std::mem;
 use std::rc::Rc;
 
 pub(crate) use NamedMatch::*;
@@ -687,6 +688,36 @@ impl TtParser {
 
             assert!(!self.cur_mps.is_empty());
         }
+    }
+
+    /// Match the token stream from `parser` against `matcher`; only keep parsed spans on success.
+    pub(super) fn parse_tt_preserve_spans<'matcher, T: Tracker<'matcher>>(
+        &mut self,
+        parser: &mut Cow<'_, Parser<'_>>,
+        matcher: &'matcher [MatcherLoc],
+        track: &mut T,
+    ) -> NamedParseResult<T::Failure> {
+        // Take a snapshot of the state of pre-expansion gating at this point.
+        // This is used so that if a matcher is not `Success(..)`ful,
+        // then the spans which became gated when parsing the unsuccessful matcher
+        // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
+        let mut gated_spans_snapshot = mem::take(&mut *parser.psess.gated_spans.spans.borrow_mut());
+        let result = self.parse_tt(parser, matcher, track);
+        track.after_arm(&result);
+        match &result {
+            Success(_) => {
+                // The matcher was `Success(..)`ful.
+                // Merge the gated spans from parsing the matcher with the preexisting ones.
+                parser.psess.gated_spans.merge(gated_spans_snapshot);
+            }
+            Failure(_) => {
+                // The matcher failed.
+                // Restore to the state before snapshotting and maybe try again.
+                mem::swap(&mut gated_spans_snapshot, &mut parser.psess.gated_spans.spans.borrow_mut());
+            }
+            _ => {}
+        }
+        result
     }
 
     fn ambiguity_error<F>(

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
-use std::{mem, slice};
+use std::slice;
 
 use ast::token::IdentIsRaw;
 use rustc_ast::token::NtPatKind::*;
@@ -318,24 +318,9 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     let mut tt_parser = TtParser::new(name);
     for (i, rule) in rules.iter().enumerate() {
         let _tracing_span = trace_span!("Matching arm", %i);
-
-        // Take a snapshot of the state of pre-expansion gating at this point.
-        // This is used so that if a matcher is not `Success(..)`ful,
-        // then the spans which became gated when parsing the unsuccessful matcher
-        // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
-        let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
-
-        let result = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &rule.lhs, track);
-
-        track.after_arm(&result);
-
-        match result {
+        match tt_parser.parse_tt_preserve_spans(&mut Cow::Borrowed(&parser), &rule.lhs, track) {
             Success(named_matches) => {
                 debug!("Parsed arm successfully");
-                // The matcher was `Success(..)`ful.
-                // Merge the gated spans from parsing the matcher with the preexisting ones.
-                psess.gated_spans.merge(gated_spans_snapshot);
-
                 return Ok((i, rule, named_matches));
             }
             Failure(_) => {
@@ -353,10 +338,6 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
                 return Err(CanRetry::No(guarantee));
             }
         }
-
-        // The matcher was not `Success(..)`ful.
-        // Restore to the state before snapshotting and maybe try again.
-        mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut());
     }
 
     Err(CanRetry::Yes)
