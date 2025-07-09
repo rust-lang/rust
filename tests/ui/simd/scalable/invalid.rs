@@ -175,13 +175,11 @@ fn main() {
 
 #[repr(transparent, simd, scalable(4))] //~ ERROR: transparent struct cannot have other repr hints
 struct CombinedWithReprTransparent {
-//~^ ERROR: SIMD vector's only field must be an array
     _ty: [f64],
 }
 
 #[repr(Rust, simd, scalable(4))] //~ ERROR: conflicting representation hints
 struct CombinedWithReprRust {
-//~^ ERROR: SIMD vector's only field must be an array
     _ty: [f64],
 }
 
@@ -189,7 +187,6 @@ struct CombinedWithReprRust {
 //~^ ERROR: conflicting representation hints
 //~^^ WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 struct CombinedWithReprC {
-//~^ ERROR: SIMD vector's only field must be an array
     _ty: [f64],
 }
 
@@ -224,6 +221,5 @@ struct ArgKind {
 
 #[repr(simd, scalable(4))]
 struct Okay {
-//~^ ERROR: SIMD vector's only field must be an array
     _ty: [f64],
 }

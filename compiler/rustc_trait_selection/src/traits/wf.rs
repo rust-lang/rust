@@ -748,6 +748,13 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
 
             ty::Array(subty, len) => {
                 self.require_sized(subty, ObligationCauseCode::SliceOrArrayElem);
+                if subty.is_scalable_simd() && !self.span.is_dummy() {
+                    self.tcx()
+                        .dcx()
+                        .struct_span_err(self.span, "scalable vectors cannot be array elements")
+                        .emit();
+                }
+
                 // Note that the len being WF is implicitly checked while visiting.
                 // Here we just check that it's of type usize.
                 let cause = self.cause(ObligationCauseCode::ArrayLen(t));
@@ -769,9 +776,25 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             }
 
             ty::Tuple(tys) => {
-                if let Some((_last, rest)) = tys.split_last() {
+                if let Some((last, rest)) = tys.split_last() {
                     for &elem in rest {
                         self.require_sized(elem, ObligationCauseCode::TupleElem);
+                        if elem.is_scalable_simd() && !self.span.is_dummy() {
+                            self.tcx()
+                                .dcx()
+                                .struct_span_err(
+                                    self.span,
+                                    "scalable vectors cannot be tuple fields",
+                                )
+                                .emit();
+                        }
+                    }
+
+                    if last.is_scalable_simd() && !self.span.is_dummy() {
+                        self.tcx()
+                            .dcx()
+                            .struct_span_err(self.span, "scalable vectors cannot be tuple fields")
+                            .emit();
                     }
                 }
             }
