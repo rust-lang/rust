@@ -5,26 +5,17 @@ use nix::sys::{ptrace, signal, wait};
 use nix::unistd;
 
 use super::CALLBACK_STACK_SIZE;
-use super::messages::{AccessEvent, Confirmation, MemEvents, StartFfiInfo, TraceRequest};
+use super::messages::{Confirmation, StartFfiInfo, TraceRequest};
+use crate::shims::native_lib::{AccessEvent, AccessRange, MemEvents};
 
 /// The flags to use when calling `waitid()`.
-/// Since bitwise or on the nix version of these flags is implemented as a trait,
-/// this cannot be const directly so we do it this way.
 const WAIT_FLAGS: wait::WaitPidFlag =
-    wait::WaitPidFlag::from_bits_truncate(libc::WUNTRACED | libc::WEXITED);
-
-/// Arch-specific maximum size a single access might perform. x86 value is set
-/// assuming nothing bigger than AVX-512 is available.
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-const ARCH_MAX_ACCESS_SIZE: usize = 64;
-/// The largest arm64 simd instruction operates on 16 bytes.
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-const ARCH_MAX_ACCESS_SIZE: usize = 16;
+    wait::WaitPidFlag::WUNTRACED.union(wait::WaitPidFlag::WEXITED);
 
 /// The default word size on a given platform, in bytes.
-#[cfg(any(target_arch = "x86", target_arch = "arm"))]
+#[cfg(target_arch = "x86")]
 const ARCH_WORD_SIZE: usize = 4;
-#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+#[cfg(target_arch = "x86_64")]
 const ARCH_WORD_SIZE: usize = 8;
 
 /// The address of the page set to be edited, initialised to a sentinel null
@@ -53,39 +44,25 @@ trait ArchIndependentRegs {
 // It's fine / desirable behaviour for values to wrap here, we care about just
 // preserving the bit pattern.
 #[cfg(target_arch = "x86_64")]
-#[expect(clippy::as_conversions)]
 #[rustfmt::skip]
 impl ArchIndependentRegs for libc::user_regs_struct {
     #[inline]
-    fn ip(&self) -> usize { self.rip as _ }
+    fn ip(&self) -> usize { self.rip.try_into().unwrap() }
     #[inline]
-    fn set_ip(&mut self, ip: usize) { self.rip = ip as _ }
+    fn set_ip(&mut self, ip: usize) { self.rip = ip.try_into().unwrap() }
     #[inline]
-    fn set_sp(&mut self, sp: usize) { self.rsp = sp as _ }
+    fn set_sp(&mut self, sp: usize) { self.rsp = sp.try_into().unwrap() }
 }
 
 #[cfg(target_arch = "x86")]
-#[expect(clippy::as_conversions)]
 #[rustfmt::skip]
 impl ArchIndependentRegs for libc::user_regs_struct {
     #[inline]
-    fn ip(&self) -> usize { self.eip as _ }
+    fn ip(&self) -> usize { self.eip.try_into().unwrap() }
     #[inline]
-    fn set_ip(&mut self, ip: usize) { self.eip = ip as _ }
+    fn set_ip(&mut self, ip: usize) { self.eip = ip.try_into().unwrap() }
     #[inline]
-    fn set_sp(&mut self, sp: usize) { self.esp = sp as _ }
-}
-
-#[cfg(target_arch = "aarch64")]
-#[expect(clippy::as_conversions)]
-#[rustfmt::skip]
-impl ArchIndependentRegs for libc::user_regs_struct {
-    #[inline]
-    fn ip(&self) -> usize { self.pc as _ }
-    #[inline]
-    fn set_ip(&mut self, ip: usize) { self.pc = ip as _ }
-    #[inline]
-    fn set_sp(&mut self, sp: usize) { self.sp = sp as _ }
+    fn set_sp(&mut self, sp: usize) { self.esp = sp.try_into().unwrap() }
 }
 
 /// A unified event representing something happening on the child process. Wraps
@@ -109,11 +86,24 @@ pub enum ExecEvent {
 /// A listener for the FFI start info channel along with relevant state.
 pub struct ChildListener {
     /// The matching channel for the child's `Supervisor` struct.
-    pub message_rx: ipc::IpcReceiver<TraceRequest>,
+    message_rx: ipc::IpcReceiver<TraceRequest>,
+    /// ...
+    confirm_tx: ipc::IpcSender<Confirmation>,
     /// Whether an FFI call is currently ongoing.
-    pub attached: bool,
+    attached: bool,
     /// If `Some`, overrides the return code with the given value.
-    pub override_retcode: Option<i32>,
+    override_retcode: Option<i32>,
+    /// Last code obtained from a child exiting.
+    last_code: Option<i32>,
+}
+
+impl ChildListener {
+    pub fn new(
+        message_rx: ipc::IpcReceiver<TraceRequest>,
+        confirm_tx: ipc::IpcSender<Confirmation>,
+    ) -> Self {
+        Self { message_rx, confirm_tx, attached: false, override_retcode: None, last_code: None }
+    }
 }
 
 impl Iterator for ChildListener {
@@ -133,16 +123,10 @@ impl Iterator for ChildListener {
                 Ok(stat) =>
                     match stat {
                         // Child exited normally with a specific code set.
-                        wait::WaitStatus::Exited(_, code) => {
-                            let code = self.override_retcode.unwrap_or(code);
-                            return Some(ExecEvent::Died(Some(code)));
-                        }
+                        wait::WaitStatus::Exited(_, code) => self.last_code = Some(code),
                         // Child was killed by a signal, without giving a code.
-                        wait::WaitStatus::Signaled(_, _, _) =>
-                            return Some(ExecEvent::Died(self.override_retcode)),
-                        // Child entered a syscall. Since we're always technically
-                        // tracing, only pass this along if we're actively
-                        // monitoring the child.
+                        wait::WaitStatus::Signaled(_, _, _) => self.last_code = None,
+                        // Child entered or exited a syscall.
                         wait::WaitStatus::PtraceSyscall(pid) =>
                             if self.attached {
                                 return Some(ExecEvent::Syscall(pid));
@@ -179,10 +163,8 @@ impl Iterator for ChildListener {
                             },
                         _ => (),
                     },
-                // This case should only trigger if all children died and we
-                // somehow missed that, but it's best we not allow any room
-                // for deadlocks.
-                Err(_) => return Some(ExecEvent::Died(None)),
+                // This case should only trigger when all children died.
+                Err(_) => return Some(ExecEvent::Died(self.override_retcode.or(self.last_code))),
             }
 
             // Similarly, do a non-blocking poll of the IPC channel.
@@ -196,7 +178,10 @@ impl Iterator for ChildListener {
                             self.attached = true;
                             return Some(ExecEvent::Start(info));
                         },
-                    TraceRequest::OverrideRetcode(code) => self.override_retcode = Some(code),
+                    TraceRequest::OverrideRetcode(code) => {
+                        self.override_retcode = Some(code);
+                        self.confirm_tx.send(Confirmation).unwrap();
+                    }
                 }
             }
 
@@ -210,6 +195,12 @@ impl Iterator for ChildListener {
 /// It likely died, with this return code if we have one.
 #[derive(Debug)]
 pub struct ExecEnd(pub Option<i32>);
+
+/// Whether to call `ptrace::cont()` immediately. Used exclusively by `wait_for_signal`.
+enum InitialCont {
+    Yes,
+    No,
+}
 
 /// This is the main loop of the supervisor process. It runs in a separate
 /// process from the rest of Miri (but because we fork, addresses for anything
@@ -239,12 +230,12 @@ pub fn sv_loop(
     let mut curr_pid = init_pid;
 
     // There's an initial sigstop we need to deal with.
-    wait_for_signal(Some(curr_pid), signal::SIGSTOP, false)?;
+    wait_for_signal(Some(curr_pid), signal::SIGSTOP, InitialCont::No)?;
     ptrace::cont(curr_pid, None).unwrap();
 
     for evt in listener {
         match evt {
-            // start_ffi was called by the child, so prep memory.
+            // Child started ffi, so prep memory.
             ExecEvent::Start(ch_info) => {
                 // All the pages that the child process is "allowed to" access.
                 ch_pages = ch_info.page_ptrs;
@@ -252,17 +243,17 @@ pub fn sv_loop(
                 ch_stack = Some(ch_info.stack_ptr);
 
                 // We received the signal and are no longer in the main listener loop,
-                // so we can let the child move on to the end of start_ffi where it will
+                // so we can let the child move on to the end of the ffi prep where it will
                 // raise a SIGSTOP. We need it to be signal-stopped *and waited for* in
                 // order to do most ptrace operations!
                 confirm_tx.send(Confirmation).unwrap();
                 // We can't trust simply calling `Pid::this()` in the child process to give the right
                 // PID for us, so we get it this way.
-                curr_pid = wait_for_signal(None, signal::SIGSTOP, false).unwrap();
+                curr_pid = wait_for_signal(None, signal::SIGSTOP, InitialCont::No).unwrap();
 
                 ptrace::syscall(curr_pid, None).unwrap();
             }
-            // end_ffi was called by the child.
+            // Child wants to end tracing.
             ExecEvent::End => {
                 // Hand over the access info we traced.
                 event_tx.send(MemEvents { acc_events }).unwrap();
@@ -322,10 +313,6 @@ fn get_disasm() -> capstone::Capstone {
         {cs_pre.x86().mode(arch::x86::ArchMode::Mode64)}
         #[cfg(target_arch = "x86")]
         {cs_pre.x86().mode(arch::x86::ArchMode::Mode32)}
-        #[cfg(target_arch = "aarch64")]
-        {cs_pre.arm64().mode(arch::arm64::ArchMode::Arm)}
-        #[cfg(target_arch = "arm")]
-        {cs_pre.arm().mode(arch::arm::ArchMode::Arm)}
     }
     .detail(true)
     .build()
@@ -339,9 +326,9 @@ fn get_disasm() -> capstone::Capstone {
 fn wait_for_signal(
     pid: Option<unistd::Pid>,
     wait_signal: signal::Signal,
-    init_cont: bool,
+    init_cont: InitialCont,
 ) -> Result<unistd::Pid, ExecEnd> {
-    if init_cont {
+    if matches!(init_cont, InitialCont::Yes) {
         ptrace::cont(pid.unwrap(), None).unwrap();
     }
     // Repeatedly call `waitid` until we get the signal we want, or the process dies.
@@ -374,6 +361,74 @@ fn wait_for_signal(
     }
 }
 
+/// Add the memory events from `op` being executed while there is a memory access at `addr` to
+/// `acc_events`. Return whether this was a memory operand.
+fn capstone_find_events(
+    addr: usize,
+    op: &capstone::arch::ArchOperand,
+    acc_events: &mut Vec<AccessEvent>,
+) -> bool {
+    use capstone::prelude::*;
+    match op {
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        arch::ArchOperand::X86Operand(x86_operand) => {
+            match x86_operand.op_type {
+                // We only care about memory accesses
+                arch::x86::X86OperandType::Mem(_) => {
+                    let push = AccessRange { addr, size: x86_operand.size.into() };
+                    // It's called a "RegAccessType" but it also applies to memory
+                    let acc_ty = x86_operand.access.unwrap();
+                    // The same instruction might do both reads and writes, so potentially add both.
+                    // We do not know the order in which they happened, but writing and then reading
+                    // makes little sense so we put the read first. That is also the more
+                    // conservative choice.
+                    if acc_ty.is_readable() {
+                        acc_events.push(AccessEvent::Read(push.clone()));
+                    }
+                    if acc_ty.is_writable() {
+                        acc_events.push(AccessEvent::Write(push));
+                    }
+
+                    return true;
+                }
+                _ => (),
+            }
+        }
+        // FIXME: arm64
+        _ => unimplemented!(),
+    }
+
+    false
+}
+
+/// Extract the events from the given instruction.
+fn capstone_disassemble(
+    instr: &[u8],
+    addr: usize,
+    cs: &capstone::Capstone,
+    acc_events: &mut Vec<AccessEvent>,
+) -> capstone::CsResult<()> {
+    // The arch_detail is what we care about, but it relies on these temporaries
+    // that we can't drop. 0x1000 is the default base address for Captsone, and
+    // we're expecting 1 instruction.
+    let insns = cs.disasm_count(instr, 0x1000, 1)?;
+    let ins_detail = cs.insn_detail(&insns[0])?;
+    let arch_detail = ins_detail.arch_detail();
+
+    let mut found_mem_op = false;
+
+    for op in arch_detail.operands() {
+        if capstone_find_events(addr, &op, acc_events) {
+            if found_mem_op {
+                panic!("more than one memory operand found; we don't know which one accessed what");
+            }
+            found_mem_op = true;
+        }
+    }
+
+    Ok(())
+}
+
 /// Grabs the access that caused a segfault and logs it down if it's to our memory,
 /// or kills the child and returns the appropriate error otherwise.
 fn handle_segfault(
@@ -384,111 +439,6 @@ fn handle_segfault(
     cs: &capstone::Capstone,
     acc_events: &mut Vec<AccessEvent>,
 ) -> Result<(), ExecEnd> {
-    /// This is just here to not pollute the main namespace with `capstone::prelude::*`.
-    #[inline]
-    fn capstone_disassemble(
-        instr: &[u8],
-        addr: usize,
-        cs: &capstone::Capstone,
-        acc_events: &mut Vec<AccessEvent>,
-    ) -> capstone::CsResult<()> {
-        use capstone::prelude::*;
-
-        // The arch_detail is what we care about, but it relies on these temporaries
-        // that we can't drop. 0x1000 is the default base address for Captsone, and
-        // we're expecting 1 instruction.
-        let insns = cs.disasm_count(instr, 0x1000, 1)?;
-        let ins_detail = cs.insn_detail(&insns[0])?;
-        let arch_detail = ins_detail.arch_detail();
-
-        for op in arch_detail.operands() {
-            match op {
-                #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-                arch::ArchOperand::X86Operand(x86_operand) => {
-                    match x86_operand.op_type {
-                        // We only care about memory accesses
-                        arch::x86::X86OperandType::Mem(_) => {
-                            let push = addr..addr.strict_add(usize::from(x86_operand.size));
-                            // It's called a "RegAccessType" but it also applies to memory
-                            let acc_ty = x86_operand.access.unwrap();
-                            if acc_ty.is_readable() {
-                                acc_events.push(AccessEvent::Read(push.clone()));
-                            }
-                            if acc_ty.is_writable() {
-                                acc_events.push(AccessEvent::Write(push));
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-                #[cfg(target_arch = "aarch64")]
-                arch::ArchOperand::Arm64Operand(arm64_operand) => {
-                    // Annoyingly, we don't always get the size here, so just be pessimistic for now.
-                    match arm64_operand.op_type {
-                        arch::arm64::Arm64OperandType::Mem(_) => {
-                            // B = 1 byte, H = 2 bytes, S = 4 bytes, D = 8 bytes, Q = 16 bytes.
-                            let size = match arm64_operand.vas {
-                                // Not an fp/simd instruction.
-                                arch::arm64::Arm64Vas::ARM64_VAS_INVALID => ARCH_WORD_SIZE,
-                                // 1 byte.
-                                arch::arm64::Arm64Vas::ARM64_VAS_1B => 1,
-                                // 2 bytes.
-                                arch::arm64::Arm64Vas::ARM64_VAS_1H => 2,
-                                // 4 bytes.
-                                arch::arm64::Arm64Vas::ARM64_VAS_4B
-                                | arch::arm64::Arm64Vas::ARM64_VAS_2H
-                                | arch::arm64::Arm64Vas::ARM64_VAS_1S => 4,
-                                // 8 bytes.
-                                arch::arm64::Arm64Vas::ARM64_VAS_8B
-                                | arch::arm64::Arm64Vas::ARM64_VAS_4H
-                                | arch::arm64::Arm64Vas::ARM64_VAS_2S
-                                | arch::arm64::Arm64Vas::ARM64_VAS_1D => 8,
-                                // 16 bytes.
-                                arch::arm64::Arm64Vas::ARM64_VAS_16B
-                                | arch::arm64::Arm64Vas::ARM64_VAS_8H
-                                | arch::arm64::Arm64Vas::ARM64_VAS_4S
-                                | arch::arm64::Arm64Vas::ARM64_VAS_2D
-                                | arch::arm64::Arm64Vas::ARM64_VAS_1Q => 16,
-                            };
-                            let push = addr..addr.strict_add(size);
-                            // FIXME: This now has access type info in the latest
-                            // git version of capstone because this pissed me off
-                            // and I added it. Change this when it updates.
-                            acc_events.push(AccessEvent::Read(push.clone()));
-                            acc_events.push(AccessEvent::Write(push));
-                        }
-                        _ => (),
-                    }
-                }
-                #[cfg(target_arch = "arm")]
-                arch::ArchOperand::ArmOperand(arm_operand) =>
-                    match arm_operand.op_type {
-                        arch::arm::ArmOperandType::Mem(_) => {
-                            // We don't get info on the size of the access, but
-                            // we're at least told if it's a vector instruction.
-                            let size = if arm_operand.vector_index.is_some() {
-                                ARCH_MAX_ACCESS_SIZE
-                            } else {
-                                ARCH_WORD_SIZE
-                            };
-                            let push = addr..addr.strict_add(size);
-                            let acc_ty = arm_operand.access.unwrap();
-                            if acc_ty.is_readable() {
-                                acc_events.push(AccessEvent::Read(push.clone()));
-                            }
-                            if acc_ty.is_writable() {
-                                acc_events.push(AccessEvent::Write(push));
-                            }
-                        }
-                        _ => (),
-                    },
-                _ => unimplemented!(),
-            }
-        }
-
-        Ok(())
-    }
-
     // Get information on what caused the segfault. This contains the address
     // that triggered it.
     let siginfo = ptrace::getsiginfo(pid).unwrap();
@@ -515,7 +465,7 @@ fn handle_segfault(
     //   global atomic variables. This is what we use the temporary callback stack for.
     // - Step 1 instruction
     // - Parse executed code to estimate size & type of access
-    // - Reprotect the memory by executing `mempr_on` in the child.
+    // - Reprotect the memory by executing `mempr_on` in the child, using the callback stack again.
     // - Continue
 
     // Ensure the stack is properly zeroed out!
@@ -552,7 +502,7 @@ fn handle_segfault(
     ptrace::setregs(pid, new_regs).unwrap();
 
     // Our mempr_* functions end with a raise(SIGSTOP).
-    wait_for_signal(Some(pid), signal::SIGSTOP, true)?;
+    wait_for_signal(Some(pid), signal::SIGSTOP, InitialCont::Yes)?;
 
     // Step 1 instruction.
     ptrace::setregs(pid, regs_bak).unwrap();
@@ -573,6 +523,12 @@ fn handle_segfault(
     let regs_bak = ptrace::getregs(pid).unwrap();
     new_regs = regs_bak;
     let ip_poststep = regs_bak.ip();
+
+    // Ensure that we've actually gone forwards.
+    assert!(ip_poststep > ip_prestep);
+    // But not by too much. 64 bytes should be "big enough" on ~any architecture.
+    assert!(ip_prestep.strict_add(64) > ip_poststep);
+
     // We need to do reads/writes in word-sized chunks.
     let diff = (ip_poststep.strict_sub(ip_prestep)).div_ceil(ARCH_WORD_SIZE);
     let instr = (ip_prestep..ip_prestep.strict_add(diff)).fold(vec![], |mut ret, ip| {
@@ -587,20 +543,14 @@ fn handle_segfault(
     });
 
     // Now figure out the size + type of access and log it down.
-    // This will mark down e.g. the same area being read multiple times,
-    // since it's more efficient to compress the accesses at the end.
-    if capstone_disassemble(&instr, addr, cs, acc_events).is_err() {
-        // Read goes first because we need to be pessimistic.
-        acc_events.push(AccessEvent::Read(addr..addr.strict_add(ARCH_MAX_ACCESS_SIZE)));
-        acc_events.push(AccessEvent::Write(addr..addr.strict_add(ARCH_MAX_ACCESS_SIZE)));
-    }
+    capstone_disassemble(&instr, addr, cs, acc_events).expect("Failed to disassemble instruction");
 
     // Reprotect everything and continue.
     #[expect(clippy::as_conversions)]
     new_regs.set_ip(mempr_on as usize);
     new_regs.set_sp(stack_ptr);
     ptrace::setregs(pid, new_regs).unwrap();
-    wait_for_signal(Some(pid), signal::SIGSTOP, true)?;
+    wait_for_signal(Some(pid), signal::SIGSTOP, InitialCont::Yes)?;
 
     ptrace::setregs(pid, regs_bak).unwrap();
     ptrace::syscall(pid, None).unwrap();
