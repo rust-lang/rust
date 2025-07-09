@@ -1720,7 +1720,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             } else {
                 cfi::typeid_for_fnabi(self.tcx, fn_abi, options)
             };
-            let typeid_metadata = self.cx.typeid_metadata(typeid).unwrap();
+            let typeid_metadata = self.cx.create_metadata(typeid);
             let dbg_loc = self.get_dbg_loc();
 
             // Test whether the function pointer is associated with the type identifier using the

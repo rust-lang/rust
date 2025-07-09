@@ -76,12 +76,12 @@ fn match_args_from_caller_to_enzyme<'ll>(
         outer_pos = 1;
     }
 
-    let enzyme_const = cx.create_metadata("enzyme_const".to_string()).unwrap();
-    let enzyme_out = cx.create_metadata("enzyme_out".to_string()).unwrap();
-    let enzyme_dup = cx.create_metadata("enzyme_dup".to_string()).unwrap();
-    let enzyme_dupv = cx.create_metadata("enzyme_dupv".to_string()).unwrap();
-    let enzyme_dupnoneed = cx.create_metadata("enzyme_dupnoneed".to_string()).unwrap();
-    let enzyme_dupnoneedv = cx.create_metadata("enzyme_dupnoneedv".to_string()).unwrap();
+    let enzyme_const = cx.create_metadata("enzyme_const".to_string());
+    let enzyme_out = cx.create_metadata("enzyme_out".to_string());
+    let enzyme_dup = cx.create_metadata("enzyme_dup".to_string());
+    let enzyme_dupv = cx.create_metadata("enzyme_dupv".to_string());
+    let enzyme_dupnoneed = cx.create_metadata("enzyme_dupnoneed".to_string());
+    let enzyme_dupnoneedv = cx.create_metadata("enzyme_dupnoneedv".to_string());
 
     while activity_pos < inputs.len() {
         let diff_activity = inputs[activity_pos as usize];
@@ -378,12 +378,12 @@ fn generate_enzyme_call<'ll>(
         let mut args = Vec::with_capacity(num_args as usize + 1);
         args.push(fn_to_diff);
 
-        let enzyme_primal_ret = cx.create_metadata("enzyme_primal_return".to_string()).unwrap();
+        let enzyme_primal_ret = cx.create_metadata("enzyme_primal_return".to_string());
         if matches!(attrs.ret_activity, DiffActivity::Dual | DiffActivity::Active) {
             args.push(cx.get_metadata_value(enzyme_primal_ret));
         }
         if attrs.width > 1 {
-            let enzyme_width = cx.create_metadata("enzyme_width".to_string()).unwrap();
+            let enzyme_width = cx.create_metadata("enzyme_width".to_string());
             args.push(cx.get_metadata_value(enzyme_width));
             args.push(cx.get_const_int(cx.type_i64(), attrs.width as u64));
         }

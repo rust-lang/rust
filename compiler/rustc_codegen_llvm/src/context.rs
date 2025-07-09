@@ -473,6 +473,7 @@ pub(crate) unsafe fn create_module<'ll>(
     #[allow(clippy::option_env_unwrap)]
     let rustc_producer =
         format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"));
+
     let name_metadata = unsafe {
         llvm::LLVMMDStringInContext2(
             llcx,
@@ -698,10 +699,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         }
     }
 
-    pub(crate) fn create_metadata(&self, name: String) -> Option<&'ll Metadata> {
-        Some(unsafe {
+    pub(crate) fn create_metadata(&self, name: String) -> &'ll Metadata {
+        unsafe {
             llvm::LLVMMDStringInContext2(self.llcx(), name.as_ptr() as *const c_char, name.len())
-        })
+        }
     }
 
     pub(crate) fn get_functions(&self) -> Vec<&'ll Value> {
