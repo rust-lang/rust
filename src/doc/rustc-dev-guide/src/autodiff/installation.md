@@ -13,7 +13,7 @@ cd rust
 
 Afterwards you can build rustc using:
 ```bash
-./x.py build --stage 1 library
+./x build --stage 1 library
 ```
 
 Afterwards rustc toolchain link will allow you to use it through cargo:
@@ -25,10 +25,10 @@ rustup toolchain install nightly # enables -Z unstable-options
 You can then run our test cases:
 
 ```bash
-./x.py test --stage 1 tests/codegen/autodiff
-./x.py test --stage 1 tests/pretty/autodiff
-./x.py test --stage 1 tests/ui/autodiff
-./x.py test --stage 1 tests/ui/feature-gates/feature-gate-autodiff.rs
+./x test --stage 1 tests/codegen/autodiff
+./x test --stage 1 tests/pretty/autodiff
+./x test --stage 1 tests/ui/autodiff
+./x test --stage 1 tests/ui/feature-gates/feature-gate-autodiff.rs
 ```
 
 Autodiff is still experimental, so if you want to use it in your own projects, you will need to add `lto="fat"` to your Cargo.toml 

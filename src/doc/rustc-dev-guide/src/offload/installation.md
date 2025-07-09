@@ -13,7 +13,7 @@ cd rust
 
 Afterwards you can build rustc using:
 ```bash
-./x.py build --stage 1 library
+./x build --stage 1 library
 ```
 
 Afterwards rustc toolchain link will allow you to use it through cargo:
@@ -40,7 +40,7 @@ This gives you a working LLVM build.
 ## Testing
 run
 ```
-./x.py test --stage 1 tests/codegen/gpu_offload
+./x test --stage 1 tests/codegen/gpu_offload
 ```
 
 ## Usage
