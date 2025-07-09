@@ -1,5 +1,6 @@
 use ide_db::{
-    imports::import_assets::item_for_path_search, use_trivial_constructor::use_trivial_constructor,
+    imports::import_assets::item_for_path_search, syntax_helpers::suggest_name::NameGenerator,
+    use_trivial_constructor::use_trivial_constructor,
 };
 use syntax::{
     ast::{self, AstNode, HasName, HasVisibility, StructKind, edit_in_place::Indent, make},
@@ -35,10 +36,30 @@ use crate::{
 pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
 
-    // We want to only apply this to non-union structs with named fields
     let field_list = match strukt.kind() {
-        StructKind::Record(named) => named,
-        _ => return None,
+        StructKind::Record(named) => {
+            named.fields().filter_map(|f| Some((f.name()?, f.ty()?))).collect::<Vec<_>>()
+        }
+        StructKind::Tuple(tuple) => {
+            let mut name_generator = NameGenerator::default();
+            tuple
+                .fields()
+                .enumerate()
+                .filter_map(|(i, f)| {
+                    let ty = f.ty()?;
+                    let name = match name_generator.for_type(
+                        &ctx.sema.resolve_type(&ty)?,
+                        ctx.db(),
+                        ctx.edition(),
+                    ) {
+                        Some(name) => name,
+                        None => name_generator.suggest_name(&format!("_{i}")),
+                    };
+                    Some((make::name(name.as_str()), f.ty()?))
+                })
+                .collect::<Vec<_>>()
+        }
+        StructKind::Unit => return None,
     };
 
     // Return early if we've found an existing new fn
@@ -50,11 +71,9 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     let target = strukt.syntax().text_range();
     acc.add(AssistId::generate("generate_new"), "Generate `new`", target, |builder| {
         let trivial_constructors = field_list
-            .fields()
-            .map(|f| {
-                let name = f.name()?;
-
-                let ty = ctx.sema.resolve_type(&f.ty()?)?;
+            .iter()
+            .map(|(name, ty)| {
+                let ty = ctx.sema.resolve_type(ty)?;
 
                 let item_in_ns = hir::ItemInNs::from(hir::ModuleDef::from(ty.as_adt()?));
 
@@ -73,34 +92,44 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                     edition,
                 )?;
 
-                Some(make::record_expr_field(make::name_ref(&name.text()), Some(expr)))
+                Some((make::name_ref(&name.text()), Some(expr)))
             })
             .collect::<Vec<_>>();
 
-        let params = field_list.fields().enumerate().filter_map(|(i, f)| {
+        let params = field_list.iter().enumerate().filter_map(|(i, (name, ty))| {
             if trivial_constructors[i].is_none() {
-                let name = f.name()?;
-                let ty = f.ty()?;
-
-                Some(make::param(make::ident_pat(false, false, name).into(), ty))
+                Some(make::param(make::ident_pat(false, false, name.clone()).into(), ty.clone()))
             } else {
                 None
             }
         });
         let params = make::param_list(None, params);
 
-        let fields = field_list.fields().enumerate().filter_map(|(i, f)| {
-            let constructor = trivial_constructors[i].clone();
-            if constructor.is_some() {
+        let fields = field_list.iter().enumerate().map(|(i, (name, _))| {
+            if let Some(constructor) = trivial_constructors[i].clone() {
                 constructor
             } else {
-                Some(make::record_expr_field(make::name_ref(&f.name()?.text()), None))
+                (make::name_ref(&name.text()), None)
             }
         });
-        let fields = make::record_expr_field_list(fields);
 
-        let record_expr = make::record_expr(make::ext::ident_path("Self"), fields);
-        let body = make::block_expr(None, Some(record_expr.into()));
+        let tail_expr: ast::Expr = match strukt.kind() {
+            StructKind::Record(_) => {
+                let fields = fields.map(|(name, expr)| make::record_expr_field(name, expr));
+                let fields = make::record_expr_field_list(fields);
+                make::record_expr(make::ext::ident_path("Self"), fields).into()
+            }
+            StructKind::Tuple(_) => {
+                let args = fields.map(|(arg, expr)| {
+                    let arg = || make::expr_path(make::path_unqualified(make::path_segment(arg)));
+                    expr.unwrap_or_else(arg)
+                });
+                let arg_list = make::arg_list(args);
+                make::expr_call(make::expr_path(make::ext::ident_path("Self")), arg_list).into()
+            }
+            StructKind::Unit => unreachable!(),
+        };
+        let body = make::block_expr(None, tail_expr.into());
 
         let ret_type = make::ret_type(make::ty_path(make::ext::ident_path("Self")));
 
@@ -120,8 +149,35 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         .clone_for_update();
         fn_.indent(1.into());
 
-        // Add a tabstop before the name
         if let Some(cap) = ctx.config.snippet_cap {
+            match strukt.kind() {
+                StructKind::Tuple(_) => {
+                    let struct_args = fn_
+                        .body()
+                        .unwrap()
+                        .syntax()
+                        .descendants()
+                        .filter(|it| syntax::ast::ArgList::can_cast(it.kind()))
+                        .flat_map(|args| args.children())
+                        .filter(|it| syntax::ast::PathExpr::can_cast(it.kind()))
+                        .enumerate()
+                        .filter_map(|(i, node)| {
+                            if trivial_constructors[i].is_none() { Some(node) } else { None }
+                        });
+                    if let Some(fn_params) = fn_.param_list() {
+                        for (struct_arg, fn_param) in struct_args.zip(fn_params.params()) {
+                            if let Some(fn_pat) = fn_param.pat() {
+                                let fn_pat = fn_pat.syntax().clone();
+                                builder
+                                    .add_placeholder_snippet_group(cap, vec![struct_arg, fn_pat]);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+
+            // Add a tabstop before the name
             if let Some(name) = fn_.name() {
                 builder.add_tabstop_before(cap, name);
             }
@@ -157,7 +213,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
 }
 
 #[cfg(test)]
-mod tests {
+mod record_tests {
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
@@ -689,6 +745,311 @@ impl<T> Source<T> {
 
     pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
         Source { file_id: self.file_id, ast: f(self.ast) }
+    }
+}
+"#,
+        );
+    }
+}
+
+#[cfg(test)]
+mod tuple_tests {
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
+
+    use super::*;
+
+    #[test]
+    fn test_generate_new_with_zst_fields() {
+        check_assist(
+            generate_new,
+            r#"
+struct Empty;
+
+struct Foo(Empty$0);
+"#,
+            r#"
+struct Empty;
+
+struct Foo(Empty);
+
+impl Foo {
+    fn $0new() -> Self {
+        Self(Empty)
+    }
+}
+"#,
+        );
+        check_assist(
+            generate_new,
+            r#"
+struct Empty;
+
+struct Foo(String, Empty$0);
+"#,
+            r#"
+struct Empty;
+
+struct Foo(String, Empty);
+
+impl Foo {
+    fn $0new(${1:_0}: String) -> Self {
+        Self(${1:_0}, Empty)
+    }
+}
+"#,
+        );
+        check_assist(
+            generate_new,
+            r#"
+enum Empty { Bar }
+
+struct Foo(Empty$0);
+"#,
+            r#"
+enum Empty { Bar }
+
+struct Foo(Empty);
+
+impl Foo {
+    fn $0new() -> Self {
+        Self(Empty::Bar)
+    }
+}
+"#,
+        );
+
+        // make sure the assist only works on unit variants
+        check_assist(
+            generate_new,
+            r#"
+struct Empty {}
+
+struct Foo(Empty$0);
+"#,
+            r#"
+struct Empty {}
+
+struct Foo(Empty);
+
+impl Foo {
+    fn $0new(${1:empty}: Empty) -> Self {
+        Self(${1:empty})
+    }
+}
+"#,
+        );
+        check_assist(
+            generate_new,
+            r#"
+enum Empty { Bar {} }
+
+struct Foo(Empty$0);
+"#,
+            r#"
+enum Empty { Bar {} }
+
+struct Foo(Empty);
+
+impl Foo {
+    fn $0new(${1:empty}: Empty) -> Self {
+        Self(${1:empty})
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_new() {
+        check_assist(
+            generate_new,
+            r#"
+struct Foo($0);
+"#,
+            r#"
+struct Foo();
+
+impl Foo {
+    fn $0new() -> Self {
+        Self()
+    }
+}
+"#,
+        );
+        check_assist(
+            generate_new,
+            r#"
+struct Foo<T: Clone>($0);
+"#,
+            r#"
+struct Foo<T: Clone>();
+
+impl<T: Clone> Foo<T> {
+    fn $0new() -> Self {
+        Self()
+    }
+}
+"#,
+        );
+        check_assist(
+            generate_new,
+            r#"
+struct Foo<'a, T: Foo<'a>>($0);
+"#,
+            r#"
+struct Foo<'a, T: Foo<'a>>();
+
+impl<'a, T: Foo<'a>> Foo<'a, T> {
+    fn $0new() -> Self {
+        Self()
+    }
+}
+"#,
+        );
+        check_assist(
+            generate_new,
+            r#"
+struct Foo(String$0);
+"#,
+            r#"
+struct Foo(String);
+
+impl Foo {
+    fn $0new(${1:_0}: String) -> Self {
+        Self(${1:_0})
+    }
+}
+"#,
+        );
+        check_assist(
+            generate_new,
+            r#"
+struct Vec<T> { };
+struct Foo(String, Vec<i32>$0);
+"#,
+            r#"
+struct Vec<T> { };
+struct Foo(String, Vec<i32>);
+
+impl Foo {
+    fn $0new(${1:_0}: String, ${2:items}: Vec<i32>) -> Self {
+        Self(${1:_0}, ${2:items})
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn check_that_visibility_modifiers_dont_get_brought_in() {
+        check_assist(
+            generate_new,
+            r#"
+struct Vec<T> { };
+struct Foo(pub String, pub Vec<i32>$0);
+"#,
+            r#"
+struct Vec<T> { };
+struct Foo(pub String, pub Vec<i32>);
+
+impl Foo {
+    fn $0new(${1:_0}: String, ${2:items}: Vec<i32>) -> Self {
+        Self(${1:_0}, ${2:items})
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn generate_new_not_applicable_if_fn_exists() {
+        check_assist_not_applicable(
+            generate_new,
+            r#"
+struct Foo($0);
+
+impl Foo {
+    fn new() -> Self {
+        Self
+    }
+}
+"#,
+        );
+
+        check_assist_not_applicable(
+            generate_new,
+            r#"
+struct Foo($0);
+
+impl Foo {
+    fn New() -> Self {
+        Self
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn generate_new_target() {
+        check_assist_target(
+            generate_new,
+            r#"
+struct SomeThingIrrelevant;
+/// Has a lifetime parameter
+struct Foo<'a, T: Foo<'a>>($0);
+struct EvenMoreIrrelevant;
+"#,
+            "/// Has a lifetime parameter
+struct Foo<'a, T: Foo<'a>>();",
+        );
+    }
+
+    #[test]
+    fn test_unrelated_new() {
+        check_assist(
+            generate_new,
+            r#"
+pub struct AstId<N: AstNode> {
+    file_id: HirFileId,
+    file_ast_id: FileAstId<N>,
+}
+
+impl<N: AstNode> AstId<N> {
+    pub fn new(file_id: HirFileId, file_ast_id: FileAstId<N>) -> AstId<N> {
+        AstId { file_id, file_ast_id }
+    }
+}
+
+pub struct Source<T>(pub HirFileId,$0 pub T);
+
+impl<T> Source<T> {
+    pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
+        Source(self.file_id, f(self.ast))
+    }
+}
+"#,
+            r#"
+pub struct AstId<N: AstNode> {
+    file_id: HirFileId,
+    file_ast_id: FileAstId<N>,
+}
+
+impl<N: AstNode> AstId<N> {
+    pub fn new(file_id: HirFileId, file_ast_id: FileAstId<N>) -> AstId<N> {
+        AstId { file_id, file_ast_id }
+    }
+}
+
+pub struct Source<T>(pub HirFileId, pub T);
+
+impl<T> Source<T> {
+    pub fn $0new(${1:_0}: HirFileId, ${2:_1}: T) -> Self {
+        Self(${1:_0}, ${2:_1})
+    }
+
+    pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
+        Source(self.file_id, f(self.ast))
     }
 }
 "#,
