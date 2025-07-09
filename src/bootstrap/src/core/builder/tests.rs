@@ -1579,6 +1579,22 @@ mod snapshot {
         [doc] std 1 <host> crates=[alloc,core]
         ");
     }
+
+    #[test]
+    fn doc_library_no_std_target_cross_compile() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("library")
+                .targets(&[TEST_TRIPLE_1])
+                .override_target_no_std(TEST_TRIPLE_1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] std 1 <target1> crates=[alloc,core]
+        ");
+    }
 }
 
 struct ExecutedSteps {
