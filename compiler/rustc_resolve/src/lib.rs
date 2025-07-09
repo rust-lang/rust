@@ -891,6 +891,13 @@ impl<'ra> NameBindingData<'ra> {
         }
     }
 
+    fn import_source(&self) -> NameBinding<'ra> {
+        match self.kind {
+            NameBindingKind::Import { binding, .. } => binding,
+            _ => unreachable!(),
+        }
+    }
+
     fn is_ambiguity_recursive(&self) -> bool {
         self.ambiguity.is_some()
             || match self.kind {
