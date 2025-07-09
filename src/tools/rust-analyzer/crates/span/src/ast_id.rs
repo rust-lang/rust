@@ -30,7 +30,7 @@ use std::{
 use la_arena::{Arena, Idx, RawIdx};
 use rustc_hash::{FxBuildHasher, FxHashMap};
 use syntax::{
-    AstNode, AstPtr, SyntaxNode, SyntaxNodePtr,
+    AstNode, AstPtr, SyntaxKind, SyntaxNode, SyntaxNodePtr,
     ast::{self, HasName},
     match_ast,
 };
@@ -92,6 +92,7 @@ impl fmt::Debug for ErasedFileAstId {
             Use,
             Impl,
             BlockExpr,
+            AsmExpr,
             Fixup,
         );
         if f.alternate() {
@@ -144,6 +145,10 @@ enum ErasedFileAstIdKind {
     Impl,
     /// Associated with [`BlockExprFileAstId`].
     BlockExpr,
+    // `global_asm!()` is an item, so we need to give it an `AstId`. So we give to all inline asm
+    // because incrementality is not a problem, they will always be the only item in the macro file,
+    // and memory usage also not because they're rare.
+    AsmExpr,
     /// Keep this last.
     Root,
 }
@@ -204,14 +209,17 @@ impl ErasedFileAstId {
             .or_else(|| extern_block_ast_id(node, index_map))
             .or_else(|| use_ast_id(node, index_map))
             .or_else(|| impl_ast_id(node, index_map))
+            .or_else(|| asm_expr_ast_id(node, index_map))
     }
 
     fn should_alloc(node: &SyntaxNode) -> bool {
-        should_alloc_has_name(node)
-            || should_alloc_assoc_item(node)
-            || ast::ExternBlock::can_cast(node.kind())
-            || ast::Use::can_cast(node.kind())
-            || ast::Impl::can_cast(node.kind())
+        let kind = node.kind();
+        should_alloc_has_name(kind)
+            || should_alloc_assoc_item(kind)
+            || ast::ExternBlock::can_cast(kind)
+            || ast::Use::can_cast(kind)
+            || ast::Impl::can_cast(kind)
+            || ast::AsmExpr::can_cast(kind)
     }
 
     #[inline]
@@ -326,6 +334,19 @@ fn use_ast_id(
 ) -> Option<ErasedFileAstId> {
     if ast::Use::can_cast(node.kind()) {
         Some(index_map.new_id(ErasedFileAstIdKind::Use, ()))
+    } else {
+        None
+    }
+}
+
+impl AstIdNode for ast::AsmExpr {}
+
+fn asm_expr_ast_id(
+    node: &SyntaxNode,
+    index_map: &mut ErasedAstIdNextIndexMap,
+) -> Option<ErasedFileAstId> {
+    if ast::AsmExpr::can_cast(node.kind()) {
+        Some(index_map.new_id(ErasedFileAstIdKind::AsmExpr, ()))
     } else {
         None
     }
@@ -449,8 +470,7 @@ macro_rules! register_has_name_ast_id {
             }
         }
 
-        fn should_alloc_has_name(node: &SyntaxNode) -> bool {
-            let kind = node.kind();
+        fn should_alloc_has_name(kind: SyntaxKind) -> bool {
             false $( || ast::$ident::can_cast(kind) )*
         }
     };
@@ -501,8 +521,7 @@ macro_rules! register_assoc_item_ast_id {
             }
         }
 
-        fn should_alloc_assoc_item(node: &SyntaxNode) -> bool {
-            let kind = node.kind();
+        fn should_alloc_assoc_item(kind: SyntaxKind) -> bool {
             false $( || ast::$ident::can_cast(kind) )*
         }
     };
