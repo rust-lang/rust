@@ -1,7 +1,6 @@
 //! Random value generation.
-//!
-//! The [`Random`] trait allows generating a random value for a type using a
-//! given [`RandomSource`].
+
+use crate::range::RangeFull;
 
 /// A source of randomness.
 #[unstable(feature = "random", issue = "130703")]
@@ -15,39 +14,33 @@ pub trait RandomSource {
     fn fill_bytes(&mut self, bytes: &mut [u8]);
 }
 
-/// A trait for getting a random value for a type.
-///
-/// **Warning:** Be careful when manipulating random values! The
-/// [`random`](Random::random) method on integers samples them with a uniform
-/// distribution, so a value of 1 is just as likely as [`i32::MAX`]. By using
-/// modulo operations, some of the resulting values can become more likely than
-/// others. Use audited crates when in doubt.
+/// A trait representing a distribution of random values for a type.
 #[unstable(feature = "random", issue = "130703")]
-pub trait Random: Sized {
-    /// Generates a random value.
-    fn random(source: &mut (impl RandomSource + ?Sized)) -> Self;
+pub trait Distribution<T> {
+    /// Samples a random value from the distribution, using the specified random source.
+    fn sample(&self, source: &mut (impl RandomSource + ?Sized)) -> T;
 }
 
-impl Random for bool {
-    fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
-        u8::random(source) & 1 == 1
+impl<T, DT: Distribution<T>> Distribution<T> for &DT {
+    fn sample(&self, source: &mut (impl RandomSource + ?Sized)) -> T {
+        (*self).sample(source)
+    }
+}
+
+impl Distribution<bool> for RangeFull {
+    fn sample(&self, source: &mut (impl RandomSource + ?Sized)) -> bool {
+        let byte: u8 = RangeFull.sample(source);
+        byte & 1 == 1
     }
 }
 
 macro_rules! impl_primitive {
     ($t:ty) => {
-        impl Random for $t {
-            /// Generates a random value.
-            ///
-            /// **Warning:** Be careful when manipulating the resulting value! This
-            /// method samples according to a uniform distribution, so a value of 1 is
-            /// just as likely as [`MAX`](Self::MAX). By using modulo operations, some
-            /// values can become more likely than others. Use audited crates when in
-            /// doubt.
-            fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
-                let mut bytes = (0 as Self).to_ne_bytes();
+        impl Distribution<$t> for RangeFull {
+            fn sample(&self, source: &mut (impl RandomSource + ?Sized)) -> $t {
+                let mut bytes = (0 as $t).to_ne_bytes();
                 source.fill_bytes(&mut bytes);
-                Self::from_ne_bytes(bytes)
+                <$t>::from_ne_bytes(bytes)
             }
         }
     };
