@@ -6,7 +6,7 @@ In the future, `std::offload` should become available in nightly builds for user
 
 First you need to clone and configure the Rust repository:
 ```bash
-git clone --depth=1 git@github.com:rust-lang/rust.git
+git clone git@github.com:rust-lang/rust
 cd rust
 ./configure --enable-llvm-link-shared --release-channel=nightly --enable-llvm-assertions --enable-offload --enable-enzyme --enable-clang --enable-lld --enable-option-checking --enable-ninja --disable-docs
 ```
@@ -26,7 +26,7 @@ rustup toolchain install nightly # enables -Z unstable-options
 
 ## Build instruction for LLVM itself
 ```bash
-git clone --depth=1 git@github.com:llvm/llvm-project.git 
+git clone git@github.com:llvm/llvm-project
 cd llvm-project
 mkdir build
 cd build
