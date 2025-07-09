@@ -38,7 +38,7 @@ pub(super) fn hints(
                 return None;
             }
             sema.resolve_trait(&path.path()?)?;
-            paren.map_or_else(|| path.syntax().text_range(), |it| it.text_range())
+            path.syntax().text_range()
         }
         Either::Right(dyn_) => {
             if dyn_.dyn_token().is_some() {
@@ -93,7 +93,7 @@ fn foo(_: &T,  _: for<'a> T) {}
 impl T {}
   // ^ dyn
 impl T for (T) {}
-        // ^^^ dyn
+         // ^ dyn
 impl T
 "#,
         );
@@ -116,7 +116,7 @@ fn foo(
     _: &mut (T + T)
     //       ^^^^^ dyn
     _: *mut (T),
-    //      ^^^ dyn
+    //       ^ dyn
 ) {}
 "#,
         );
@@ -148,6 +148,17 @@ fn foo(
 //- minicore: fn
 fn test<F>(f: F) where F: for<'a> FnOnce(&'a i32) {}
      // ^: Sized
+        "#,
+        );
+    }
+
+    #[test]
+    fn with_parentheses() {
+        check(
+            r#"
+trait T {}
+fn foo(v: &(T)) {}
+         // ^ dyn
         "#,
         );
     }
