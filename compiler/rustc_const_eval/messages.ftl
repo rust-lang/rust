@@ -294,19 +294,22 @@ const_eval_pointer_arithmetic_overflow =
     overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
 
 const_eval_pointer_out_of_bounds =
-    {const_eval_bad_pointer_op_attempting}, but got {$pointer} which {$inbounds_size_is_neg ->
-        [false] {$alloc_size_minus_ptr_offset ->
-                [0] is at or beyond the end of the allocation of size {$alloc_size ->
-                    [1] 1 byte
-                    *[x] {$alloc_size} bytes
+    {const_eval_bad_pointer_op_attempting}, but got {$pointer} which {$ptr_offset_is_neg ->
+        [true] points to before the beginning of the allocation
+        *[false] {$inbounds_size_is_neg ->
+            [false] {$alloc_size_minus_ptr_offset ->
+                        [0] is at or beyond the end of the allocation of size {$alloc_size ->
+                            [1] 1 byte
+                            *[x] {$alloc_size} bytes
+                        }
+                        [1] is only 1 byte from the end of the allocation
+                        *[x] is only {$alloc_size_minus_ptr_offset} bytes from the end of the allocation
+                    }
+            *[true] {$ptr_offset_abs ->
+                    [0] is at the beginning of the allocation
+                    *[other] is only {$ptr_offset_abs} bytes from the beginning of the allocation
                 }
-                [1] is only 1 byte from the end of the allocation
-                *[x] is only {$alloc_size_minus_ptr_offset} bytes from the end of the allocation
-            }
-        *[true] {$ptr_offset_abs ->
-                [0] is at the beginning of the allocation
-                *[other] is only {$ptr_offset_abs} bytes from the beginning of the allocation
-            }
+        }
     }
 
 const_eval_pointer_use_after_free =
