@@ -41,6 +41,7 @@ pub use bstr;
 pub use gimli;
 pub use libc;
 pub use object;
+pub use pdb;
 pub use regex;
 pub use serde_json;
 pub use similar;
