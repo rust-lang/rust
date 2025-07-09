@@ -160,3 +160,4 @@ struct Okay(f32);
 
 #[rustc_scalable_vector]
 struct OkayNoArg(f32);
+//~^ ERROR: scalable vector structs can only have scalable vector fields
