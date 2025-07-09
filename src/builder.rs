@@ -975,7 +975,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn volatile_load(&mut self, ty: Type<'gcc>, ptr: RValue<'gcc>) -> RValue<'gcc> {
         let ptr = self.context.new_cast(self.location, ptr, ty.make_volatile().make_pointer());
-        ptr.dereference(self.location).to_rvalue()
+        // (FractalFir): We insert a local here, to ensure this volatile load can't move across
+        // blocks.
+        let local = self.current_func().new_local(self.location, ty, "volatile_tmp");
+        self.block.add_assignment(self.location, local, ptr.dereference(self.location).to_rvalue());
+        local.to_rvalue()
     }
 
     fn atomic_load(
