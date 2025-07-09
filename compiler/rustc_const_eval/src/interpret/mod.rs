@@ -37,6 +37,7 @@ pub use self::place::{MPlaceTy, MemPlaceMeta, PlaceTy, Writeable};
 use self::place::{MemPlace, Place};
 pub use self::projection::{OffsetMode, Projectable};
 pub use self::stack::{Frame, FrameInfo, LocalState, ReturnContinuation, StackPopInfo};
+pub use self::util::EnteredTraceSpan;
 pub(crate) use self::util::create_static_alloc;
 pub use self::validity::{CtfeValidationMode, RangeSet, RefTracking};
 pub use self::visitor::ValueVisitor;
