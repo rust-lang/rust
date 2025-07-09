@@ -13,7 +13,7 @@ use std::{
 use either::Either;
 use hir_def::{
     DefWithBodyId, FunctionId, MacroId, StructId, TraitId, VariantId,
-    expr_store::{Body, ExprOrPatSource, path::Path},
+    expr_store::{Body, ExprOrPatSource, HygieneId, path::Path},
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
     nameres::{ModuleOrigin, crate_def_map},
     resolver::{self, HasResolver, Resolver, TypeNs},
@@ -50,7 +50,7 @@ use crate::{
     Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
-    source_analyzer::{SourceAnalyzer, name_hygiene, resolve_hir_path},
+    source_analyzer::{SourceAnalyzer, resolve_hir_path},
 };
 
 const CONTINUE_NO_BREAKS: ControlFlow<Infallible, ()> = ControlFlow::Continue(());
@@ -2288,7 +2288,7 @@ impl<'db> SemanticsScope<'db> {
             self.db,
             &self.resolver,
             &Path::BarePath(Interned::new(ModPath::from_segments(kind, segments))),
-            name_hygiene(self.db, InFile::new(self.file_id, ast_path.syntax())),
+            HygieneId::ROOT,
             None,
         )
     }
