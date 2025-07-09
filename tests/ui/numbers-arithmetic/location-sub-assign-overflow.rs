@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:location-sub-assign-overflow.rs
+//@ check-run-results
 
 fn main() {
     let mut a: u8 = 0;

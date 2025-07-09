@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:diverging_fn called
+//@ check-run-results
 //@ needs-subprocess
 
 fn diverging_fn() -> ! {

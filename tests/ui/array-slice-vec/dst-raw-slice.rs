@@ -1,7 +1,7 @@
 // Test bounds checking for DST raw slices
 
 //@ run-fail
-//@ error-pattern:index out of bounds
+//@ check-run-results
 //@ needs-subprocess
 
 #[allow(unconditional_panic)]

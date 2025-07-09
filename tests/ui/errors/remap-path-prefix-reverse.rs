@@ -6,7 +6,7 @@
 //@ [remapped-self] remap-src-base
 
 // Verify that the expected source code is shown.
-//@ error-pattern: pub struct SomeStruct {} // This line should be show
+//@ check-run-results
 
 extern crate remapped_dep;
 

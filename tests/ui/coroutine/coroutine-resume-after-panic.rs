@@ -1,6 +1,6 @@
 //@ run-fail
 //@ needs-unwind
-//@ error-pattern:coroutine resumed after panicking
+//@ check-run-results
 //@ needs-subprocess
 
 // Test that we get the correct message for resuming a panicked coroutine.

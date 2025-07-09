@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern: An error message for you
+//@ check-run-results
 //@ failure-status: 1
 //@ needs-subprocess
 

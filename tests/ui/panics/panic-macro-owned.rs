@@ -1,6 +1,5 @@
 //@ run-fail
-//@ error-pattern:panicked
-//@ error-pattern:test-fail-owned
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() {

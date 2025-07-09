@@ -1,6 +1,5 @@
 //@ run-fail
-//@ error-pattern:thread 'main' panicked
-//@ error-pattern:foobar
+//@ check-run-results
 //@ needs-subprocess
 
 use std::panic;

@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:location-mod-by-zero.rs
+//@ check-run-results
 
 fn main() {
     let _ = 1 % &0;

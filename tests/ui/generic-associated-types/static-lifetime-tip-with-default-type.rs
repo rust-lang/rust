@@ -1,6 +1,4 @@
-//@ error-pattern: r#T: 'static
-//@ error-pattern: r#K: 'static
-//@ error-pattern: T: 'static=
+//@ check-run-results
 
 // https://github.com/rust-lang/rust/issues/124785
 

@@ -3,7 +3,7 @@
 // panic when resumed after completion.
 
 //@ run-fail
-//@ error-pattern:coroutine resumed after completion
+//@ check-run-results
 //@ edition:2018
 
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]

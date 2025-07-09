@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:location-divide-by-zero.rs
+//@ check-run-results
 
 // https://github.com/rust-lang/rust/issues/114814
 

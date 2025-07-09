@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:stop
+//@ check-run-results
 //@ needs-subprocess
 
 // #18576

@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:internal error: entered unreachable code: uhoh
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() {

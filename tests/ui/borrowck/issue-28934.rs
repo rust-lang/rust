@@ -2,7 +2,7 @@
 // which were not being considered during the contraction phase.
 
 //@ run-fail
-//@ error-pattern:explicit panic
+//@ check-run-results
 //@ needs-subprocess
 
 struct Parser<'i: 't, 't>(&'i u8, &'t u8);

@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:Number is odd
+//@ check-run-results
 //@ needs-subprocess
 
 fn even(x: usize) -> bool {

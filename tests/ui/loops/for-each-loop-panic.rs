@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:moop
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() {

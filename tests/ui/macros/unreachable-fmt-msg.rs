@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:internal error: entered unreachable code: 6 is not prime
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() {

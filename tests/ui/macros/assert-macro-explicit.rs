@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:assertion failed: false
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() {

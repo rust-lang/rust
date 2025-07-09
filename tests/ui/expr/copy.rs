@@ -1,3 +1,4 @@
+// FLUFFY
 //@ run-pass
 
 fn f(arg: &mut A) {

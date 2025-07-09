@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:test
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() {

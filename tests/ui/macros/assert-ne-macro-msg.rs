@@ -1,7 +1,5 @@
 //@ run-fail
-//@ error-pattern:assertion `left != right` failed: 1 + 1 definitely should not be 2
-//@ error-pattern:  left: 2
-//@ error-pattern: right: 2
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() {

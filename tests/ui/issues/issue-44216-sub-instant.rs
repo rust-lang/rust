@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:overflow
+//@ check-run-results
 //@ needs-subprocess
 
 use std::time::{Instant, Duration};

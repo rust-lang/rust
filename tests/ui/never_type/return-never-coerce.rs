@@ -1,7 +1,7 @@
 // Test that ! coerces to other types.
 
 //@ run-fail
-//@ error-pattern:aah!
+//@ check-run-results
 //@ needs-subprocess
 
 fn call_another_fn<T, F: FnOnce() -> T>(f: F) -> T {

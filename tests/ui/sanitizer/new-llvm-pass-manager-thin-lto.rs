@@ -12,7 +12,7 @@
 //@[opt0]compile-flags: -Copt-level=0
 //@[opt1]compile-flags: -Copt-level=1
 //@ run-fail
-//@ error-pattern: ERROR: AddressSanitizer: stack-use-after-scope
+//@ check-run-results
 
 static mut P: *mut usize = std::ptr::null_mut();
 

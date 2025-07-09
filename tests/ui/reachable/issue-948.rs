@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:beep boop
+//@ check-run-results
 //@ needs-subprocess
 
 #![allow(unused_variables)]

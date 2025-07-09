@@ -1,6 +1,5 @@
 //@ run-fail
-//@ error-pattern:panicked
-//@ error-pattern:test-assert-static
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() {

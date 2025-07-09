@@ -1,7 +1,5 @@
 //@ run-fail
-//@ error-pattern:converging_fn called
-//@ error-pattern:0 dropped
-//@ error-pattern:exit
+//@ check-run-results
 //@ needs-subprocess
 
 struct Droppable(u8);

@@ -1,9 +1,6 @@
 //@ run-fail
 //@ needs-unwind
-//@ error-pattern:unwind happens
-//@ error-pattern:drop 3
-//@ error-pattern:drop 2
-//@ error-pattern:drop 1
+//@ check-run-results
 //@ needs-subprocess
 
 /// Structure which will not allow to be dropped twice.

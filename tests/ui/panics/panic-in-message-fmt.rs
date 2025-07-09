@@ -3,7 +3,6 @@
 //@ run-fail
 //@ exec-env:RUST_BACKTRACE=0
 //@ check-run-results
-//@ error-pattern: panicked while processing panic
 //@ normalize-stderr: "\n +[0-9]+:[^\n]+" -> ""
 //@ normalize-stderr: "\n +at [^\n]+" -> ""
 //@ normalize-stderr: "(core/src/panicking\.rs):[0-9]+:[0-9]+" -> "$1:$$LINE:$$COL"

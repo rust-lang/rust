@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:quux
+//@ check-run-results
 //@ needs-subprocess
 
 fn my_err(s: String) -> ! {

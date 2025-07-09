@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:oh, dear
+//@ check-run-results
 //@ needs-subprocess
 
 fn main() -> ! {

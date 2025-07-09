@@ -1,7 +1,7 @@
 // Issue #7580
 
 //@ run-fail
-//@ error-pattern:panic works
+//@ check-run-results
 //@ needs-subprocess
 
 use std::*;

@@ -2,8 +2,7 @@
 // be talking about `async fn`s instead.
 
 //@ run-fail
-//@ error-pattern: thread 'main' panicked
-//@ error-pattern: `async fn` resumed after completion
+//@ check-run-results
 //@ edition:2018
 
 #![feature(coroutines, coroutine_trait)]

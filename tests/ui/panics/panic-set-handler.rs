@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:greetings from the panic handler
+//@ check-run-results
 //@ needs-subprocess
 
 use std::panic;

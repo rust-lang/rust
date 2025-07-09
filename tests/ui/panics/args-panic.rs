@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:meep
+//@ check-run-results
 //@ needs-subprocess
 
 fn f(_a: isize, _b: isize, _c: Box<isize>) {

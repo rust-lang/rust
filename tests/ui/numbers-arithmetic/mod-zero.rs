@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:attempt to calculate the remainder with a divisor of zero
+//@ check-run-results
 //@ needs-subprocess
 
 #[allow(unconditional_panic)]

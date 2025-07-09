@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:location-divide-assign-by-zero.rs
+//@ check-run-results
 
 fn main() {
     let mut a = 1;
