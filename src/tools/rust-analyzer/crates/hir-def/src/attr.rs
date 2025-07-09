@@ -331,7 +331,7 @@ fn parse_rustc_legacy_const_generics(tt: &crate::tt::TopSubtree) -> Box<[u32]> {
 }
 
 fn merge_repr(this: &mut ReprOptions, other: ReprOptions) {
-    let ReprOptions { int, align, pack, flags, field_shuffle_seed: _ } = this;
+    let ReprOptions { int, align, pack, flags, field_shuffle_seed: _, target_feature: _ } = this;
     flags.insert(other.flags);
     *align = (*align).max(other.align);
     *pack = match (*pack, other.pack) {

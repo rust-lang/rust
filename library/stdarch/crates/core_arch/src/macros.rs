@@ -59,7 +59,7 @@ macro_rules! types {
         $(
             $(#[$doc:meta])*
             $(stability: [$stability_already: meta])*
-            pub struct $name:ident($len:literal x $v:vis $elem_type:ty);
+            pub struct $name:ident($len:literal x $v:vis $elem_type:ty) $(feature=$target_feature:literal)*;
         )*
     ) => (types! {
         $(
@@ -70,7 +70,7 @@ macro_rules! types {
             $(#[$doc])*
             $(stability: [$stability_already])*
             stability: [$stability_first]
-            pub struct $name($len x $v $elem_type);
+            pub struct $name($len x $v $elem_type) $(feature=$target_feature)*;
         )*
     });
 
@@ -78,14 +78,14 @@ macro_rules! types {
         $(
             $(#[$doc:meta])*
             $(stability: [$stability: meta])+
-            pub struct $name:ident($len:literal x $v:vis $elem_type:ty);
+            pub struct $name:ident($len:literal x $v:vis $elem_type:ty) $(feature=$target_feature:literal)*;
         )*
     ) => ($(
         $(#[$doc])*
         $(#[$stability])+
         #[derive(Copy, Clone)]
         #[allow(non_camel_case_types)]
-        #[repr(simd)]
+        #[repr(simd$(($target_feature))*)]
         #[allow(clippy::missing_inline_in_public_items)]
         pub struct $name($v [$elem_type; $len]);
 

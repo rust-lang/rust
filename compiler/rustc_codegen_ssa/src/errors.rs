@@ -1310,3 +1310,13 @@ pub(crate) struct FeatureNotValid<'a> {
     #[help]
     pub plus_hint: bool,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_type_depends_target_feature)]
+pub(crate) struct TypeDependsOnTargetFeature<'tcx> {
+    #[primary_span]
+    pub span: Span,
+
+    pub target_feature: String,
+    pub ty: Ty<'tcx>,
+}

@@ -1,5 +1,6 @@
 use std::iter;
 
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -7,6 +8,7 @@ use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
+use rustc_span::Symbol;
 use rustc_target::callconv::{FnAbi, PassMode};
 use tracing::{debug, instrument};
 
@@ -120,6 +122,8 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     /// Caller location propagated if this function has `#[track_caller]`.
     caller_location: Option<OperandRef<'tcx, Bx::Value>>,
+
+    target_features: FxIndexSet<Symbol>,
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -176,6 +180,11 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let mut mir = tcx.instance_mir(instance.def);
 
+    let mut target_features = tcx.sess.unstable_target_features.clone();
+    if tcx.def_kind(instance.def_id()).has_codegen_attrs() {
+        let attrs = tcx.codegen_fn_attrs(instance.def_id());
+        target_features.extend(attrs.target_features.iter().map(|feature| feature.name));
+    }
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
 
@@ -228,6 +237,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         debug_context,
         per_local_var_debug_info: None,
         caller_location: None,
+        target_features,
     };
 
     // It may seem like we should iterate over `required_consts` to ensure they all successfully

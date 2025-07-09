@@ -8,9 +8,11 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::{self, DefLocation, Location, TerminatorKind, traversal};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::{bug, span_bug};
+use rustc_span::Symbol;
 use tracing::debug;
 
 use super::FunctionCx;
+use crate::errors::TypeDependsOnTargetFeature;
 use crate::traits::*;
 
 pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
@@ -157,6 +159,30 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
             self.visit_local(place_ref.local, context, location);
         }
     }
+
+    fn check_type_abi_concerns(&self, local: mir::Local) {
+        static IGNORED_CRATES: [&str; 3] = ["memchr", "core", "hashbrown"];
+
+        let ty = self.fx.mir.local_decls[local].ty;
+        let ty = self.fx.monomorphize(ty);
+        let ty = ty.peel_refs();
+
+        if let Some(abi_feature) = ty.abi_target_feature() {
+            let tcx = self.fx.cx.tcx();
+            let krate = tcx.crate_name(self.fx.instance.def_id().krate);
+            if !IGNORED_CRATES.contains(&krate.as_str()) {
+                if !self.fx.target_features.contains(&Symbol::intern(&abi_feature)) {
+                    let span = self.fx.mir.local_decls[local].source_info.span;
+
+                    tcx.sess.dcx().emit_err(TypeDependsOnTargetFeature {
+                        span,
+                        ty,
+                        target_feature: abi_feature,
+                    });
+                }
+            }
+        }
+    }
 }
 
 impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer<'a, 'b, 'tcx, Bx> {
@@ -189,6 +215,8 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
     }
 
     fn visit_local(&mut self, local: mir::Local, context: PlaceContext, location: Location) {
+        self.check_type_abi_concerns(local);
+
         match context {
             PlaceContext::MutatingUse(MutatingUseContext::Call) => {
                 let call = location.block;

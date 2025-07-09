@@ -94,7 +94,7 @@ body:
                                                                                                 did: DefId(0:10 ~ thir_tree_match[fcf8]::Foo)
                                                                                                 variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[fcf8]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[fcf8]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[fcf8]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[fcf8])), safety: Safe, value: None }], tainted: None, flags:  }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[fcf8]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[fcf8]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], tainted: None, flags:  }]
                                                                                                 flags: IS_ENUM
-                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , field_shuffle_seed: 3477539199540094892 }
+                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , target_feature: None, field_shuffle_seed: 3477539199540094892 }
                                                                                         args: []
                                                                                         variant_index: 0
                                                                                         subpatterns: [
@@ -108,7 +108,7 @@ body:
                                                                                                                 did: DefId(0:3 ~ thir_tree_match[fcf8]::Bar)
                                                                                                                 variants: [VariantDef { def_id: DefId(0:4 ~ thir_tree_match[fcf8]::Bar::First), ctor: Some((Const, DefId(0:5 ~ thir_tree_match[fcf8]::Bar::First::{constructor#0}))), name: "First", discr: Relative(0), fields: [], tainted: None, flags:  }, VariantDef { def_id: DefId(0:6 ~ thir_tree_match[fcf8]::Bar::Second), ctor: Some((Const, DefId(0:7 ~ thir_tree_match[fcf8]::Bar::Second::{constructor#0}))), name: "Second", discr: Relative(1), fields: [], tainted: None, flags:  }, VariantDef { def_id: DefId(0:8 ~ thir_tree_match[fcf8]::Bar::Third), ctor: Some((Const, DefId(0:9 ~ thir_tree_match[fcf8]::Bar::Third::{constructor#0}))), name: "Third", discr: Relative(2), fields: [], tainted: None, flags:  }]
                                                                                                                 flags: IS_ENUM
-                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , field_shuffle_seed: 10333377570083945360 }
+                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , target_feature: None, field_shuffle_seed: 10333377570083945360 }
                                                                                                         args: []
                                                                                                         variant_index: 0
                                                                                                         subpatterns: []
@@ -156,7 +156,7 @@ body:
                                                                                                 did: DefId(0:10 ~ thir_tree_match[fcf8]::Foo)
                                                                                                 variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[fcf8]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[fcf8]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[fcf8]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[fcf8])), safety: Safe, value: None }], tainted: None, flags:  }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[fcf8]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[fcf8]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], tainted: None, flags:  }]
                                                                                                 flags: IS_ENUM
-                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , field_shuffle_seed: 3477539199540094892 }
+                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , target_feature: None, field_shuffle_seed: 3477539199540094892 }
                                                                                         args: []
                                                                                         variant_index: 0
                                                                                         subpatterns: [
@@ -208,7 +208,7 @@ body:
                                                                                                 did: DefId(0:10 ~ thir_tree_match[fcf8]::Foo)
                                                                                                 variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[fcf8]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[fcf8]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[fcf8]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[fcf8])), safety: Safe, value: None }], tainted: None, flags:  }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[fcf8]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[fcf8]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], tainted: None, flags:  }]
                                                                                                 flags: IS_ENUM
-                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , field_shuffle_seed: 3477539199540094892 }
+                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , target_feature: None, field_shuffle_seed: 3477539199540094892 }
                                                                                         args: []
                                                                                         variant_index: 1
                                                                                         subpatterns: []
