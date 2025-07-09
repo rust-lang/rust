@@ -208,6 +208,10 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         self.is_struct()
     }
 
+    fn is_scalable_vector(self) -> bool {
+        self.repr().scalable()
+    }
+
     fn struct_tail_ty(self, interner: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
         Some(interner.type_of(self.non_enum_variant().tail_opt()?.did))
     }

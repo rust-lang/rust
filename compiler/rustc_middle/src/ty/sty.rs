@@ -1834,9 +1834,12 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Tuple(tys) => tys.last().is_none_or(|ty| ty.has_trivial_sizedness(tcx, sizedness)),
 
-            ty::Adt(def, args) => def
-                .sizedness_constraint(tcx, sizedness)
-                .is_none_or(|ty| ty.instantiate(tcx, args).has_trivial_sizedness(tcx, sizedness)),
+            ty::Adt(def, args) => {
+                def.repr().scalable() // see comment on `sizedness_conditions`
+                    || def.sizedness_constraint(tcx, sizedness).is_none_or(|ty| {
+                        ty.instantiate(tcx, args).has_trivial_sizedness(tcx, sizedness)
+                    })
+            }
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
 
