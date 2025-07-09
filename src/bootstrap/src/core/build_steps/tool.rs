@@ -1140,6 +1140,7 @@ macro_rules! tool_extended {
             stable: $stable:expr
             $( , add_bins_to_sysroot: $add_bins_to_sysroot:expr )?
             $( , add_features: $add_features:expr )?
+            $( , cargo_args: $cargo_args:expr )?
             $( , )?
         }
     ) => {
@@ -1180,6 +1181,7 @@ macro_rules! tool_extended {
                     $path,
                     None $( .or(Some(&$add_bins_to_sysroot)) )?,
                     None $( .or(Some($add_features)) )?,
+                    None $( .or(Some($cargo_args)) )?,
                 )
             }
 
@@ -1219,6 +1221,7 @@ fn should_run_tool_build_step<'a>(
     )
 }
 
+#[expect(clippy::too_many_arguments)] // silence overeager clippy lint
 fn run_tool_build_step(
     builder: &Builder<'_>,
     compiler: Compiler,
@@ -1227,6 +1230,7 @@ fn run_tool_build_step(
     path: &'static str,
     add_bins_to_sysroot: Option<&[&str]>,
     add_features: Option<fn(&Builder<'_>, TargetSelection, &mut Vec<String>)>,
+    cargo_args: Option<&[&'static str]>,
 ) -> ToolBuildResult {
     let mut extra_features = Vec::new();
     if let Some(func) = add_features {
@@ -1243,7 +1247,7 @@ fn run_tool_build_step(
             extra_features,
             source_type: SourceType::InTree,
             allow_features: "",
-            cargo_args: vec![],
+            cargo_args: cargo_args.unwrap_or_default().iter().map(|s| String::from(*s)).collect(),
             artifact_kind: ToolArtifactKind::Binary,
         });
 
@@ -1294,7 +1298,9 @@ tool_extended!(Miri {
     path: "src/tools/miri",
     tool_name: "miri",
     stable: false,
-    add_bins_to_sysroot: ["miri"]
+    add_bins_to_sysroot: ["miri"],
+    // Avoid costly rebuilds by always including the tests.
+    cargo_args: &["--all-targets"],
 });
 tool_extended!(CargoMiri {
     path: "src/tools/miri/cargo-miri",
