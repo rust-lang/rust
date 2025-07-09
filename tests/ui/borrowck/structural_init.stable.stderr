@@ -1,5 +1,5 @@
 error[E0381]: partially assigned binding `s` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-use.rs:97:5
+  --> $DIR/structural_init.rs:104:5
    |
 LL |     let s: S<B>;
    |         - binding declared here but left uninitialized
@@ -9,7 +9,7 @@ LL |     s.x = 10; s.y = Box::new(20);
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0381]: partially assigned binding `t` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-use.rs:103:5
+  --> $DIR/structural_init.rs:110:5
    |
 LL |     let t: T;
    |         - binding declared here but left uninitialized
@@ -19,7 +19,7 @@ LL |     t.0 = 10; t.1 = Box::new(20);
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0382]: assign to part of moved value: `s`
-  --> $DIR/issue-21232-partial-init-and-use.rs:109:5
+  --> $DIR/structural_init.rs:116:5
    |
 LL |     let mut s: S<B> = S::new(); drop(s);
    |         -----                        - value moved here
@@ -29,7 +29,7 @@ LL |     s.x = 10; s.y = Box::new(20);
    |     ^^^^^^^^ value partially assigned here after move
    |
 note: if `S<Box<u32>>` implemented `Clone`, you could clone the value
-  --> $DIR/issue-21232-partial-init-and-use.rs:15:1
+  --> $DIR/structural_init.rs:20:1
    |
 LL | struct S<Y> {
    | ^^^^^^^^^^^ consider implementing `Clone` for this type
@@ -38,7 +38,7 @@ LL |     let mut s: S<B> = S::new(); drop(s);
    |                                      - you could clone this value
 
 error[E0382]: assign to part of moved value: `t`
-  --> $DIR/issue-21232-partial-init-and-use.rs:116:5
+  --> $DIR/structural_init.rs:123:5
    |
 LL |     let mut t: T = (0, Box::new(0)); drop(t);
    |         -----                             - value moved here
@@ -53,7 +53,7 @@ LL |     let mut t: T = (0, Box::new(0)); drop(t.clone());
    |                                            ++++++++
 
 error[E0381]: partially assigned binding `s` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-use.rs:123:5
+  --> $DIR/structural_init.rs:130:5
    |
 LL |     let s: S<B>;
    |         - binding declared here but left uninitialized
@@ -63,7 +63,7 @@ LL |     s.x = 10;
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0381]: partially assigned binding `t` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-use.rs:129:5
+  --> $DIR/structural_init.rs:136:5
    |
 LL |     let t: T;
    |         - binding declared here but left uninitialized
@@ -73,7 +73,7 @@ LL |     t.0 = 10;
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0382]: assign to part of moved value: `s`
-  --> $DIR/issue-21232-partial-init-and-use.rs:135:5
+  --> $DIR/structural_init.rs:142:5
    |
 LL |     let mut s: S<B> = S::new(); drop(s);
    |         -----                        - value moved here
@@ -83,7 +83,7 @@ LL |     s.x = 10;
    |     ^^^^^^^^ value partially assigned here after move
    |
 note: if `S<Box<u32>>` implemented `Clone`, you could clone the value
-  --> $DIR/issue-21232-partial-init-and-use.rs:15:1
+  --> $DIR/structural_init.rs:20:1
    |
 LL | struct S<Y> {
    | ^^^^^^^^^^^ consider implementing `Clone` for this type
@@ -92,7 +92,7 @@ LL |     let mut s: S<B> = S::new(); drop(s);
    |                                      - you could clone this value
 
 error[E0382]: assign to part of moved value: `t`
-  --> $DIR/issue-21232-partial-init-and-use.rs:142:5
+  --> $DIR/structural_init.rs:149:5
    |
 LL |     let mut t: T = (0, Box::new(0)); drop(t);
    |         -----                             - value moved here
@@ -107,7 +107,7 @@ LL |     let mut t: T = (0, Box::new(0)); drop(t.clone());
    |                                            ++++++++
 
 error[E0381]: partially assigned binding `s` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-use.rs:149:5
+  --> $DIR/structural_init.rs:156:5
    |
 LL |     let s: S<Void>;
    |         - binding declared here but left uninitialized
@@ -117,7 +117,7 @@ LL |     s.x = 10;
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0381]: partially assigned binding `t` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-use.rs:155:5
+  --> $DIR/structural_init.rs:162:5
    |
 LL |     let t: Tvoid;
    |         - binding declared here but left uninitialized
@@ -127,7 +127,7 @@ LL |     t.0 = 10;
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0381]: partially assigned binding `q` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-use.rs:170:5
+  --> $DIR/structural_init.rs:177:5
    |
 LL |     let q: Q<S<B>>;
    |         - binding declared here but left uninitialized
@@ -137,7 +137,7 @@ LL |     q.r.f.x = 10; q.r.f.y = Box::new(20);
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0381]: partially assigned binding `q` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-use.rs:176:5
+  --> $DIR/structural_init.rs:183:5
    |
 LL |     let q: Q<T>;
    |         - binding declared here but left uninitialized
@@ -147,7 +147,7 @@ LL |     q.r.f.0 = 10; q.r.f.1 = Box::new(20);
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0382]: assign to part of moved value: `q.r`
-  --> $DIR/issue-21232-partial-init-and-use.rs:182:5
+  --> $DIR/structural_init.rs:189:5
    |
 LL |     let mut q: Q<S<B>> = Q::new(S::new()); drop(q.r);
    |                                                 --- value moved here
@@ -157,7 +157,7 @@ LL |     q.r.f.x = 10; q.r.f.y = Box::new(20);
    = note: move occurs because `q.r` has type `R<S<Box<u32>>>`, which does not implement the `Copy` trait
 
 error[E0382]: assign to part of moved value: `q.r`
-  --> $DIR/issue-21232-partial-init-and-use.rs:189:5
+  --> $DIR/structural_init.rs:196:5
    |
 LL |     let mut q: Q<T> = Q::new((0, Box::new(0))); drop(q.r);
    |                                                      --- value moved here
@@ -167,7 +167,7 @@ LL |     q.r.f.0 = 10; q.r.f.1 = Box::new(20);
    = note: move occurs because `q.r` has type `R<(u32, Box<u32>)>`, which does not implement the `Copy` trait
 
 error[E0381]: partially assigned binding `q` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-use.rs:196:5
+  --> $DIR/structural_init.rs:203:5
    |
 LL |     let q: Q<S<B>>;
    |         - binding declared here but left uninitialized
@@ -177,7 +177,7 @@ LL |     q.r.f.x = 10;
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0381]: partially assigned binding `q` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-use.rs:202:5
+  --> $DIR/structural_init.rs:209:5
    |
 LL |     let q: Q<T>;
    |         - binding declared here but left uninitialized
@@ -187,7 +187,7 @@ LL |     q.r.f.0 = 10;
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0382]: assign to part of moved value: `q.r`
-  --> $DIR/issue-21232-partial-init-and-use.rs:208:5
+  --> $DIR/structural_init.rs:215:5
    |
 LL |     let mut q: Q<S<B>> = Q::new(S::new()); drop(q.r);
    |                                                 --- value moved here
@@ -197,7 +197,7 @@ LL |     q.r.f.x = 10;
    = note: move occurs because `q.r` has type `R<S<Box<u32>>>`, which does not implement the `Copy` trait
 
 error[E0382]: assign to part of moved value: `q.r`
-  --> $DIR/issue-21232-partial-init-and-use.rs:215:5
+  --> $DIR/structural_init.rs:222:5
    |
 LL |     let mut q: Q<T> = Q::new((0, Box::new(0))); drop(q.r);
    |                                                      --- value moved here
@@ -207,27 +207,27 @@ LL |     q.r.f.0 = 10;
    = note: move occurs because `q.r` has type `R<(u32, Box<u32>)>`, which does not implement the `Copy` trait
 
 error[E0381]: partially assigned binding `q` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-use.rs:222:5
+  --> $DIR/structural_init.rs:229:5
    |
-LL |     let mut q: Q<S<Void>>;
-   |         ----- binding declared here but left uninitialized
+LL |     let q: Q<S<Void>>;
+   |         - binding declared here but left uninitialized
 LL |     q.r.f.x = 10;
    |     ^^^^^^^^^^^^ `q.r.f` partially assigned here but it isn't fully initialized
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0381]: partially assigned binding `q` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-use.rs:228:5
+  --> $DIR/structural_init.rs:235:5
    |
-LL |     let mut q: Q<Tvoid>;
-   |         ----- binding declared here but left uninitialized
+LL |     let q: Q<Tvoid>;
+   |         - binding declared here but left uninitialized
 LL |     q.r.f.0 = 10;
    |     ^^^^^^^^^^^^ `q.r.f` partially assigned here but it isn't fully initialized
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0382]: assign to part of moved value: `c`
-  --> $DIR/issue-21232-partial-init-and-use.rs:245:13
+  --> $DIR/structural_init.rs:252:13
    |
 LL |     let mut c = (1, "".to_owned());
    |         ----- move occurs because `c` has type `(i32, String)`, which does not implement the `Copy` trait
@@ -243,7 +243,7 @@ LL |         ref c2 => {
    |         +++
 
 error[E0382]: assign to part of moved value: `c`
-  --> $DIR/issue-21232-partial-init-and-use.rs:255:13
+  --> $DIR/structural_init.rs:262:13
    |
 LL |     let mut c = (1, (1, "".to_owned()));
    |         ----- move occurs because `c` has type `(i32, (i32, String))`, which does not implement the `Copy` trait
@@ -259,7 +259,7 @@ LL |         ref c2 => {
    |         +++
 
 error[E0382]: assign to part of moved value: `c.1`
-  --> $DIR/issue-21232-partial-init-and-use.rs:263:13
+  --> $DIR/structural_init.rs:270:13
    |
 LL |         c2 => {
    |         -- value moved here

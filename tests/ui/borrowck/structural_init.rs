@@ -1,16 +1,17 @@
+//@ revisions: stable feature
+//@[feature] run-pass
+// gate-test-structural_init
+#![cfg_attr(feature, feature(structural_init))]
+
 // This test enumerates various cases of interest for partial
 // [re]initialization of ADTs and tuples.
 //
-// See rust-lang/rust#21232, rust-lang/rust#54986, and rust-lang/rust#54987.
+// All of the tests in this file should fail to compile normally
+// and compile with `feature(structural_init)`.
 //
-// All of tests in this file are expected to change from being
-// rejected, at least under NLL (by rust-lang/rust#54986) to being
-// **accepted** when rust-lang/rust#54987 is implemented.
-// (That's why there are assertions in the code.)
-//
-// See issue-21232-partial-init-and-erroneous-use.rs for cases of
-// tests that are meant to continue failing to compile once
-// rust-lang/rust#54987 is implemented.
+// See structural_init_invalid.rs for cases of
+// tests that are meant to continue failing to compile
+// with `feature(structural_init)`.
 
 struct S<Y> {
     x: u32,
@@ -37,11 +38,13 @@ fn borrow_t(t: &T) { assert_eq!(t.0, 10); assert_eq!(*t.1, 20); }
 fn move_t(t: T) {  assert_eq!(t.0, 10); assert_eq!(*t.1, 20); }
 
 struct Q<F> {
+    #[allow(dead_code)]
     v: u32,
     r: R<F>,
 }
 
 struct R<F> {
+    #[allow(dead_code)]
     w: u32,
     f: F,
 }
@@ -94,65 +97,65 @@ macro_rules! use_part {
 
 fn test_0000_local_fully_init_and_use_struct() {
     let s: S<B>;
-    s.x = 10; s.y = Box::new(20); //~ ERROR E0381
+    s.x = 10; s.y = Box::new(20); //[stable]~ ERROR E0381
     use_fully!(struct s);
 }
 
 fn test_0001_local_fully_init_and_use_tuple() {
     let t: T;
-    t.0 = 10; t.1 = Box::new(20); //~ ERROR E0381
+    t.0 = 10; t.1 = Box::new(20); //[stable]~ ERROR E0381
     use_fully!(tuple t);
 }
 
 fn test_0010_local_fully_reinit_and_use_struct() {
     let mut s: S<B> = S::new(); drop(s);
     s.x = 10; s.y = Box::new(20);
-    //~^ ERROR assign to part of moved value: `s` [E0382]
+    //[stable]~^ ERROR assign to part of moved value: `s` [E0382]
     use_fully!(struct s);
 }
 
 fn test_0011_local_fully_reinit_and_use_tuple() {
     let mut t: T = (0, Box::new(0)); drop(t);
     t.0 = 10; t.1 = Box::new(20);
-    //~^ ERROR assign to part of moved value: `t` [E0382]
+    //[stable]~^ ERROR assign to part of moved value: `t` [E0382]
     use_fully!(tuple t);
 }
 
 fn test_0100_local_partial_init_and_use_struct() {
     let s: S<B>;
-    s.x = 10; //~ ERROR E0381
+    s.x = 10; //[stable]~ ERROR E0381
     use_part!(struct s);
 }
 
 fn test_0101_local_partial_init_and_use_tuple() {
     let t: T;
-    t.0 = 10; //~ ERROR E0381
+    t.0 = 10; //[stable]~ ERROR E0381
     use_part!(tuple t);
 }
 
 fn test_0110_local_partial_reinit_and_use_struct() {
     let mut s: S<B> = S::new(); drop(s);
     s.x = 10;
-    //~^ ERROR assign to part of moved value: `s` [E0382]
+    //[stable]~^ ERROR assign to part of moved value: `s` [E0382]
     use_part!(struct s);
 }
 
 fn test_0111_local_partial_reinit_and_use_tuple() {
     let mut t: T = (0, Box::new(0)); drop(t);
     t.0 = 10;
-    //~^ ERROR assign to part of moved value: `t` [E0382]
+    //[stable]~^ ERROR assign to part of moved value: `t` [E0382]
     use_part!(tuple t);
 }
 
 fn test_0200_local_void_init_and_use_struct() {
     let s: S<Void>;
-    s.x = 10; //~ ERROR E0381
+    s.x = 10; //[stable]~ ERROR E0381
     use_part!(struct s);
 }
 
 fn test_0201_local_void_init_and_use_tuple() {
     let t: Tvoid;
-    t.0 = 10; //~ ERROR E0381
+    t.0 = 10; //[stable]~ ERROR E0381
     use_part!(tuple t);
 }
 
@@ -167,65 +170,65 @@ fn test_0201_local_void_init_and_use_tuple() {
 
 fn test_1000_field_fully_init_and_use_struct() {
     let q: Q<S<B>>;
-    q.r.f.x = 10; q.r.f.y = Box::new(20); //~ ERROR E0381
+    q.r.f.x = 10; q.r.f.y = Box::new(20); //[stable]~ ERROR E0381
     use_fully!(struct q.r.f);
 }
 
 fn test_1001_field_fully_init_and_use_tuple() {
     let q: Q<T>;
-    q.r.f.0 = 10; q.r.f.1 = Box::new(20); //~ ERROR E0381
+    q.r.f.0 = 10; q.r.f.1 = Box::new(20); //[stable]~ ERROR E0381
     use_fully!(tuple q.r.f);
 }
 
 fn test_1010_field_fully_reinit_and_use_struct() {
     let mut q: Q<S<B>> = Q::new(S::new()); drop(q.r);
     q.r.f.x = 10; q.r.f.y = Box::new(20);
-    //~^ ERROR assign to part of moved value: `q.r` [E0382]
+    //[stable]~^ ERROR assign to part of moved value: `q.r` [E0382]
     use_fully!(struct q.r.f);
 }
 
 fn test_1011_field_fully_reinit_and_use_tuple() {
     let mut q: Q<T> = Q::new((0, Box::new(0))); drop(q.r);
     q.r.f.0 = 10; q.r.f.1 = Box::new(20);
-    //~^ ERROR assign to part of moved value: `q.r` [E0382]
+    //[stable]~^ ERROR assign to part of moved value: `q.r` [E0382]
     use_fully!(tuple q.r.f);
 }
 
 fn test_1100_field_partial_init_and_use_struct() {
     let q: Q<S<B>>;
-    q.r.f.x = 10; //~ ERROR E0381
+    q.r.f.x = 10; //[stable]~ ERROR E0381
     use_part!(struct q.r.f);
 }
 
 fn test_1101_field_partial_init_and_use_tuple() {
     let q: Q<T>;
-    q.r.f.0 = 10; //~ ERROR E0381
+    q.r.f.0 = 10; //[stable]~ ERROR E0381
     use_part!(tuple q.r.f);
 }
 
 fn test_1110_field_partial_reinit_and_use_struct() {
     let mut q: Q<S<B>> = Q::new(S::new()); drop(q.r);
     q.r.f.x = 10;
-    //~^ ERROR assign to part of moved value: `q.r` [E0382]
+    //[stable]~^ ERROR assign to part of moved value: `q.r` [E0382]
     use_part!(struct q.r.f);
 }
 
 fn test_1111_field_partial_reinit_and_use_tuple() {
     let mut q: Q<T> = Q::new((0, Box::new(0))); drop(q.r);
     q.r.f.0 = 10;
-    //~^ ERROR assign to part of moved value: `q.r` [E0382]
+    //[stable]~^ ERROR assign to part of moved value: `q.r` [E0382]
     use_part!(tuple q.r.f);
 }
 
 fn test_1200_field_void_init_and_use_struct() {
-    let mut q: Q<S<Void>>;
-    q.r.f.x = 10; //~ ERROR E0381
+    let q: Q<S<Void>>;
+    q.r.f.x = 10; //[stable]~ ERROR E0381
     use_part!(struct q.r.f);
 }
 
 fn test_1201_field_void_init_and_use_tuple() {
-    let mut q: Q<Tvoid>;
-    q.r.f.0 = 10; //~ ERROR E0381
+    let q: Q<Tvoid>;
+    q.r.f.0 = 10; //[stable]~ ERROR E0381
     use_part!(tuple q.r.f);
 }
 
@@ -242,7 +245,7 @@ fn issue_26996() {
     let mut c = (1, "".to_owned());
     match c {
         c2 => {
-            c.0 = 2; //~ ERROR assign to part of moved value
+            c.0 = 2; //[stable]~ ERROR assign to part of moved value
             assert_eq!(c2.0, 1);
         }
     }
@@ -252,7 +255,7 @@ fn issue_27021() {
     let mut c = (1, (1, "".to_owned()));
     match c {
         c2 => {
-            (c.1).0 = 2; //~ ERROR assign to part of moved value
+            (c.1).0 = 2; //[stable]~ ERROR assign to part of moved value
             assert_eq!((c2.1).0, 1);
         }
     }
@@ -260,7 +263,7 @@ fn issue_27021() {
     let mut c = (1, (1, (1, "".to_owned())));
     match c.1 {
         c2 => {
-            ((c.1).1).0 = 3; //~ ERROR assign to part of moved value
+            ((c.1).1).0 = 3; //[stable]~ ERROR assign to part of moved value
             assert_eq!((c2.1).0, 1);
         }
     }

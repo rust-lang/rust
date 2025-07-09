@@ -1,5 +1,5 @@
 error[E0381]: assigned binding `d` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:28:5
+  --> $DIR/structural_init_invalid.rs:31:5
    |
 LL |     let d: D;
    |         - binding declared here but left uninitialized
@@ -9,7 +9,7 @@ LL |     d.x = 10;
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0381]: assigned binding `d` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:33:5
+  --> $DIR/structural_init_invalid.rs:36:5
    |
 LL |     let mut d: D;
    |         ----- binding declared here but left uninitialized
@@ -19,7 +19,7 @@ LL |     d.x = 10;
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0382]: assign of moved value: `d`
-  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:39:5
+  --> $DIR/structural_init_invalid.rs:42:5
    |
 LL |     let mut d = D { x: 0, s: S{ y: 0, z: 0 } };
    |         ----- move occurs because `d` has type `D`, which does not implement the `Copy` trait
@@ -28,35 +28,35 @@ LL |     drop(d);
 LL |     d.x = 10;
    |     ^^^^^^^^ value assigned here after move
 
-error[E0381]: partially assigned binding `d` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:45:5
+error[E0381]: assigned binding `d` isn't fully initialized
+  --> $DIR/structural_init_invalid.rs:48:5
    |
 LL |     let d: D;
    |         - binding declared here but left uninitialized
 LL |     d.s.y = 20;
-   |     ^^^^^^^^^^ `d.s` partially assigned here but it isn't fully initialized
+   |     ^^^^^^^^^^ `d` assigned here but it isn't fully initialized
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: partially assigned binding `d` isn't fully initialized
-  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:50:5
+error[E0381]: assigned binding `d` isn't fully initialized
+  --> $DIR/structural_init_invalid.rs:53:5
    |
 LL |     let mut d: D;
    |         ----- binding declared here but left uninitialized
 LL |     d.s.y = 20;
-   |     ^^^^^^^^^^ `d.s` partially assigned here but it isn't fully initialized
+   |     ^^^^^^^^^^ `d` assigned here but it isn't fully initialized
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0382]: assign to part of moved value: `d`
-  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:56:5
+error[E0382]: assign of moved value: `d`
+  --> $DIR/structural_init_invalid.rs:59:5
    |
 LL |     let mut d = D { x: 0, s: S{ y: 0, z: 0} };
    |         ----- move occurs because `d` has type `D`, which does not implement the `Copy` trait
 LL |     drop(d);
    |          - value moved here
 LL |     d.s.y = 20;
-   |     ^^^^^^^^^^ value partially assigned here after move
+   |     ^^^^^^^^^^ value assigned here after move
 
 error: aborting due to 6 previous errors
 

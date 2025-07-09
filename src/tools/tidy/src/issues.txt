@@ -2971,8 +2971,6 @@ ui/nll/issue-112604-closure-output-normalize.rs
 ui/nll/issue-16223.rs
 ui/nll/issue-21114-ebfull.rs
 ui/nll/issue-21114-kixunil.rs
-ui/nll/issue-21232-partial-init-and-erroneous-use.rs
-ui/nll/issue-21232-partial-init-and-use.rs
 ui/nll/issue-22323-temp-destruction.rs
 ui/nll/issue-24535-allow-mutable-borrow-in-match-guard.rs
 ui/nll/issue-27282-move-match-input-into-guard.rs

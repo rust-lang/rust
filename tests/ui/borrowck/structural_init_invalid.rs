@@ -1,12 +1,12 @@
+//@ revisions: stable feature
+#![cfg_attr(feature, feature(structural_init))]
+
 // This test enumerates various cases of interest where an ADT or tuple is
 // partially initialized and then used in some way that is wrong *even*
-// after rust-lang/rust#54987 is implemented.
+// with `feature(structural_init)`. The error output in both cases should be identical.
 //
-// See rust-lang/rust#21232, rust-lang/rust#54986, and rust-lang/rust#54987.
-//
-// See issue-21232-partial-init-and-use.rs for cases of tests that are
-// meant to compile and run successfully once rust-lang/rust#54987 is
-// implemented.
+// See structural_init.rs for cases of tests that are
+// meant to compile and run successfully with `structural_init`.
 
 struct D {
     x: u32,
@@ -54,7 +54,9 @@ fn cannot_partially_reinit_inner_adt_via_outer_with_drop() {
     let mut d = D { x: 0, s: S{ y: 0, z: 0} };
     drop(d);
     d.s.y = 20;
-    //~^ ERROR assign to part of moved value: `d` [E0382]
+    //[stable]~^ ERROR assign to part of moved value: `d` [E0382]
+    //[feature]~^^ ERROR assign of moved value: `d` [E0382]
+    // FIXME: nonsense diagnostic
 }
 
 fn main() { }
