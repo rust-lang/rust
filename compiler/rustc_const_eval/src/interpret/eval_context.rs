@@ -96,7 +96,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// This inherent method takes priority over the trait method with the same name in LayoutOf,
     /// and allows wrapping the actual [LayoutOf::layout_of] with a tracing span.
     /// See [LayoutOf::layout_of] for the original documentation.
-    #[inline]
+    #[inline(always)]
     pub fn layout_of(
         &self,
         ty: Ty<'tcx>,

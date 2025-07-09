@@ -137,10 +137,10 @@
 //! 2. An operation causes the value to depend on its own address not changing
 //!     * e.g. calling [`poll`] for the first time on the produced [`Future`]
 //! 3. Further pieces of the safe interface of the type use internal [`unsafe`] operations which
-//! assume that the address of the value is stable
+//!    assume that the address of the value is stable
 //!     * e.g. subsequent calls to [`poll`]
 //! 4. Before the value is invalidated (e.g. deallocated), it is *dropped*, giving it a chance to
-//! notify anything with pointers to itself that those pointers will be invalidated
+//!    notify anything with pointers to itself that those pointers will be invalidated
 //!     * e.g. [`drop`]ping the [`Future`] [^pin-drop-future]
 //!
 //! There are two possible ways to ensure the invariants required for 2. and 3. above (which
@@ -148,8 +148,8 @@
 //!
 //! 1. Have the value detect when it is moved and update all the pointers that point to itself.
 //! 2. Guarantee that the address of the value does not change (and that memory is not re-used
-//! for anything else) during the time that the pointers to it are expected to be valid to
-//! dereference.
+//!    for anything else) during the time that the pointers to it are expected to be valid to
+//!    dereference.
 //!
 //! Since, as we discussed, Rust can move values without notifying them that they have moved, the
 //! first option is ruled out.
@@ -160,11 +160,11 @@
 //! be able to enforce this invariant in Rust:
 //!
 //! 1. Offer a wholly `unsafe` API to interact with the object, thus requiring every caller to
-//! uphold the invariant themselves
+//!    uphold the invariant themselves
 //! 2. Store the value that must not be moved behind a carefully managed pointer internal to
-//! the object
+//!    the object
 //! 3. Leverage the type system to encode and enforce this invariant by presenting a restricted
-//! API surface to interact with *any* object that requires these invariants
+//!    API surface to interact with *any* object that requires these invariants
 //!
 //! The first option is quite obviously undesirable, as the [`unsafe`]ty of the interface will
 //! become viral throughout all code that interacts with the object.
@@ -530,7 +530,7 @@
 //! but it also implies that,
 //!
 //! 2. The memory location that stores the value must not get invalidated or otherwise repurposed
-//! during the lifespan of the pinned value until its [`drop`] returns or panics
+//!    during the lifespan of the pinned value until its [`drop`] returns or panics
 //!
 //! This point is subtle but required for intrusive data structures to be implemented soundly.
 //!
