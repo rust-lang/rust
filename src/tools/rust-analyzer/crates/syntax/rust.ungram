@@ -158,6 +158,7 @@ Item =
 | TypeAlias
 | Union
 | Use
+| AsmExpr
 
 MacroRules =
   Attr* Visibility?

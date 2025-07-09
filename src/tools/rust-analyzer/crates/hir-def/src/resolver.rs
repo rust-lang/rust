@@ -1052,17 +1052,6 @@ impl<'db> Scope<'db> {
     }
 }
 
-pub fn resolver_for_expr(
-    db: &dyn DefDatabase,
-    owner: DefWithBodyId,
-    expr_id: ExprId,
-) -> Resolver<'_> {
-    let r = owner.resolver(db);
-    let scopes = db.expr_scopes(owner);
-    let scope_id = scopes.scope_for(expr_id);
-    resolver_for_scope_(db, scopes, scope_id, r, owner)
-}
-
 pub fn resolver_for_scope(
     db: &dyn DefDatabase,
     owner: DefWithBodyId,

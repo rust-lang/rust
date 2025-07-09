@@ -23,16 +23,15 @@ SOURCE_FILE
             R_PAREN ")"
           SEMICOLON ";"
         WHITESPACE "\n    "
-        EXPR_STMT
-          ASM_EXPR
-            BUILTIN_KW "builtin"
-            POUND "#"
-            GLOBAL_ASM_KW "global_asm"
-            L_PAREN "("
-            LITERAL
-              STRING "\"\""
-            R_PAREN ")"
-          SEMICOLON ";"
+        ASM_EXPR
+          BUILTIN_KW "builtin"
+          POUND "#"
+          GLOBAL_ASM_KW "global_asm"
+          L_PAREN "("
+          LITERAL
+            STRING "\"\""
+          R_PAREN ")"
+        SEMICOLON ";"
         WHITESPACE "\n    "
         EXPR_STMT
           ASM_EXPR

@@ -328,7 +328,7 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
 //         tmp = out(reg) _,
 //     );
 // }
-fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
+pub(crate) fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
     p.expect(T!['(']);
     if expr(p).is_none() {
         p.err_and_bump("expected asm template");

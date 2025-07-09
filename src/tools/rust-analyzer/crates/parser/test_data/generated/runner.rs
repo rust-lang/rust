@@ -300,6 +300,8 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/generic_param_list.rs");
     }
     #[test]
+    fn global_asm() { run_and_expect_no_errors("test_data/parser/inline/ok/global_asm.rs"); }
+    #[test]
     fn half_open_range_pat() {
         run_and_expect_no_errors("test_data/parser/inline/ok/half_open_range_pat.rs");
     }

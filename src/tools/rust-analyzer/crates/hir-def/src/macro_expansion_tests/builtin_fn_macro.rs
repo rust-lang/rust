@@ -33,10 +33,9 @@ macro_rules! global_asm {() => {}}
 #[rustc_builtin_macro]
 macro_rules! naked_asm {() => {}}
 
-// FIXME: This creates an error
-// global_asm! {
-//     ""
-// }
+global_asm! {
+    ""
+}
 
 #[unsafe(naked)]
 extern "C" fn foo() {
@@ -64,10 +63,7 @@ macro_rules! global_asm {() => {}}
 #[rustc_builtin_macro]
 macro_rules! naked_asm {() => {}}
 
-// FIXME: This creates an error
-// global_asm! {
-//     ""
-// }
+builtin #global_asm ("")
 
 #[unsafe(naked)]
 extern "C" fn foo() {
