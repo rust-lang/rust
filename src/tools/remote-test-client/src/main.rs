@@ -335,7 +335,7 @@ fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
         std::process::exit(code);
     } else {
         println!("died due to signal {}", code);
-        std::process::exit(3);
+        std::process::exit(128 + code);
     }
 }
 

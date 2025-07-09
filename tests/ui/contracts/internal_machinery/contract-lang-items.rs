@@ -4,7 +4,7 @@
 //@ [unchk_fail_post] run-pass
 //@ [chk_pass] run-pass
 //
-//@ [chk_fail_post] run-fail
+//@ [chk_fail_post] run-crash
 //
 //@ [unchk_pass] compile-flags: -Zcontract-checks=no
 //@ [unchk_fail_post] compile-flags: -Zcontract-checks=no
