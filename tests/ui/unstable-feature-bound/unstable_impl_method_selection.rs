@@ -1,6 +1,6 @@
-//@ aux-build:unstable_impl_coherence_inference_aux.rs
+//@ aux-build:unstable_impl_method_selection_aux.rs
 
-extern crate unstable_impl_coherence_inference_aux as aux;
+extern crate unstable_impl_method_selection_aux as aux;
 use aux::Trait;
 
 // The test below should not infer the type based on the fact
