@@ -277,6 +277,10 @@ fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
 }
 
 impl ExtraBackendMethods for GccCodegenBackend {
+    fn supports_parallel(&self) -> bool {
+        false
+    }
+
     fn codegen_allocator(
         &self,
         tcx: TyCtxt<'_>,
@@ -345,8 +349,7 @@ impl Deref for SyncContext {
 }
 
 unsafe impl Send for SyncContext {}
-// FIXME(antoyo): that shouldn't be Sync. Parallel compilation is currently disabled with "-Zno-parallel-llvm".
-// TODO: disable it here by returning false in CodegenBackend::supports_parallel().
+// FIXME(antoyo): that shouldn't be Sync. Parallel compilation is currently disabled with "CodegenBackend::supports_parallel()".
 unsafe impl Sync for SyncContext {}
 
 impl WriteBackendMethods for GccCodegenBackend {
