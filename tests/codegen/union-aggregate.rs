@@ -4,6 +4,7 @@
 
 #![crate_type = "lib"]
 #![feature(transparent_unions)]
+#![feature(repr_simd)]
 
 #[repr(transparent)]
 union MU<T: Copy> {
@@ -81,5 +82,27 @@ fn make_mu_pair_uninit() -> MU<(u8, u32)> {
     // CHECK-LABEL: { i8, i32 } @make_mu_pair_uninit()
     // CHECK-NEXT: start:
     // CHECK-NEXT: ret { i8, i32 } undef
+    MU { uninit: () }
+}
+
+#[repr(simd)]
+#[derive(Copy, Clone)]
+struct I32X32([i32; 32]);
+
+#[no_mangle]
+fn make_mu_simd(x: I32X32) -> MU<I32X32> {
+    // CHECK-LABEL: void @make_mu_simd(ptr{{.+}}%_0, ptr{{.+}}%x)
+    // CHECK-NEXT: start:
+    // CHECK-NEXT: %[[TEMP:.+]] = load <32 x i32>, ptr %x,
+    // CHECK-NEXT: store <32 x i32> %[[TEMP]], ptr %_0,
+    // CHECK-NEXT: ret void
+    MU { value: x }
+}
+
+#[no_mangle]
+fn make_mu_simd_uninit() -> MU<I32X32> {
+    // CHECK-LABEL: void @make_mu_simd_uninit(ptr{{.+}}%_0)
+    // CHECK-NEXT: start:
+    // CHECK-NEXT: ret void
     MU { uninit: () }
 }
