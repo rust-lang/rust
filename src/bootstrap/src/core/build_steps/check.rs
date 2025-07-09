@@ -47,6 +47,13 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        if !run.builder.download_rustc() && run.builder.config.skip_std_check_if_no_download_rustc {
+            eprintln!(
+                "WARNING: `--skip-std-check-if-no-download-rustc` flag was passed and `rust.download-rustc` is not available. Skipping."
+            );
+            return;
+        }
+
         let crates = std_crates_for_run_make(&run);
         run.builder.ensure(Std {
             build_compiler: prepare_compiler_for_check(run.builder, run.target, Mode::Std),
@@ -56,13 +63,6 @@ impl Step for Std {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        if !builder.download_rustc() && builder.config.skip_std_check_if_no_download_rustc {
-            eprintln!(
-                "WARNING: `--skip-std-check-if-no-download-rustc` flag was passed and `rust.download-rustc` is not available. Skipping."
-            );
-            return;
-        }
-
         let build_compiler = self.build_compiler;
         let stage = build_compiler.stage;
         let target = self.target;
