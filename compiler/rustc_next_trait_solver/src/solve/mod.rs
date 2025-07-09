@@ -154,11 +154,11 @@ where
         symbol: <I as Interner>::Symbol,
     ) -> QueryResult<I> {
         if self.may_use_unstable_feature(param_env, symbol) {
-            return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
-            return self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
                 MaybeCause::Ambiguity,
-            ));
+            ))
         }
     }
 

@@ -848,9 +848,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
                     #[allow(rustc::usage_of_type_ir_traits)]
                     if self.infcx.may_use_unstable_feature(obligation.param_env, symbol) {
-                        return Ok(EvaluatedToOk);
+                        Ok(EvaluatedToOk)
                     } else {
-                        return Ok(EvaluatedToAmbig);
+                        Ok(EvaluatedToAmbig)
                     }
                 }
 
