@@ -49,7 +49,7 @@ pub(crate) fn declare_simple_fn<'ll>(
     };
 
     llvm::SetFunctionCallConv(llfn, callconv);
-    llvm::SetUnnamedAddress(llfn, unnamed);
+    llvm::set_unnamed_address(llfn, unnamed);
     llvm::set_visibility(llfn, visibility);
 
     llfn

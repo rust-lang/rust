@@ -1630,7 +1630,7 @@ pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
     // When full debuginfo is enabled, we want to try and prevent vtables from being
     // merged. Otherwise debuggers will have a hard time mapping from dyn pointer
     // to concrete type.
-    llvm::SetUnnamedAddress(vtable, llvm::UnnamedAddr::No);
+    llvm::set_unnamed_address(vtable, llvm::UnnamedAddr::No);
 
     let vtable_name =
         compute_debuginfo_vtable_name(cx.tcx, ty, poly_trait_ref, VTableNameKind::GlobalVariable);
