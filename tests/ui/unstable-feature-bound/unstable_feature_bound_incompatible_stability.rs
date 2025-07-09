@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 #![stable(feature = "a", since = "1.1.1" )]
 
-// Lint against the usage of both #[unstable_feature_bound] and #[stable] on the 
+// Lint against the usage of both #[unstable_feature_bound] and #[stable] on the
 // same item.
 
 #[stable(feature = "a", since = "1.1.1")]
