@@ -302,8 +302,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        let id_str = "branch_weights";
-        let id = self.cx.create_metadata(id_str.into());
+        let id = self.cx.create_metadata(b"branch_weights");
 
         // For switch instructions with 2 targets, the `llvm.expect` intrinsic is used.
         // This function handles switch instructions with more than 2 targets and it needs to
@@ -1718,7 +1717,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             } else {
                 cfi::typeid_for_fnabi(self.tcx, fn_abi, options)
             };
-            let typeid_metadata = self.cx.create_metadata(typeid);
+            let typeid_metadata = self.cx.create_metadata(typeid.as_bytes());
             let dbg_loc = self.get_dbg_loc();
 
             // Test whether the function pointer is associated with the type identifier using the

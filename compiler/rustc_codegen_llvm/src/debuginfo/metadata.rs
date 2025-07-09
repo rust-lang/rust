@@ -1582,7 +1582,7 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     };
 
     let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, trait_ref);
-    let typeid = cx.create_metadata(trait_ref_typeid);
+    let typeid = cx.create_metadata(trait_ref_typeid.as_bytes());
 
     unsafe {
         let v = [llvm::LLVMValueAsMetadata(cx.const_usize(0)), typeid];

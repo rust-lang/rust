@@ -475,7 +475,7 @@ pub(crate) unsafe fn create_module<'ll>(
     let rustc_producer =
         format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"));
 
-    let name_metadata = cx.create_metadata(rustc_producer);
+    let name_metadata = cx.create_metadata(rustc_producer.as_bytes());
 
     unsafe {
         llvm::LLVMAddNamedMetadataOperand(
@@ -695,7 +695,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         }
     }
 
-    pub(crate) fn create_metadata(&self, name: String) -> &'ll Metadata {
+    pub(crate) fn create_metadata(&self, name: &[u8]) -> &'ll Metadata {
         unsafe {
             llvm::LLVMMDStringInContext2(self.llcx(), name.as_ptr() as *const c_char, name.len())
         }

@@ -176,7 +176,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 {
                     let typeid = cfi::typeid_for_instance(self.tcx, instance, options);
                     if typeids.insert(typeid.clone()) {
-                        self.add_type_metadata(llfn, typeid);
+                        self.add_type_metadata(llfn, typeid.as_bytes());
                     }
                 }
             } else {
@@ -189,7 +189,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 .map(cfi::TypeIdOptions::from_iter)
                 {
                     let typeid = cfi::typeid_for_fnabi(self.tcx, fn_abi, options);
-                    self.add_type_metadata(llfn, typeid);
+                    self.add_type_metadata(llfn, typeid.as_bytes());
                 }
             }
         }

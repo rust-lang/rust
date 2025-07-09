@@ -17,7 +17,7 @@ use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument, trace};
 
-use crate::common::{AsCCharPtr, CodegenCx};
+use crate::common::CodegenCx;
 use crate::errors::SymbolAlreadyDefined;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -477,16 +477,14 @@ impl<'ll> CodegenCx<'ll, '_> {
                 .unwrap_or(true)
         {
             if let Some(section) = attrs.link_section {
-                let section = self.create_metadata(section.as_str().into());
+                let section = self.create_metadata(section.as_str().as_bytes());
                 assert!(alloc.provenance().ptrs().is_empty());
 
                 // The `inspect` method is okay here because we checked for provenance, and
                 // because we are doing this access to inspect the final interpreter state (not
                 // as part of the interpreter execution).
                 let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len());
-                let alloc = unsafe {
-                    llvm::LLVMMDStringInContext2(self.llcx, bytes.as_c_char_ptr(), bytes.len())
-                };
+                let alloc = self.create_metadata(bytes);
                 let data = [section, alloc];
                 let meta =
                     unsafe { llvm::LLVMMDNodeInContext2(self.llcx, data.as_ptr(), data.len()) };

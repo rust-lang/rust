@@ -298,7 +298,7 @@ impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> TypeMembershipCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn add_type_metadata(&self, function: &'ll Value, typeid: String) {
+    fn add_type_metadata(&self, function: &'ll Value, typeid: &[u8]) {
         let typeid_metadata = self.create_metadata(typeid);
         unsafe {
             let v = [llvm::LLVMValueAsMetadata(self.const_usize(0)), typeid_metadata];
@@ -310,7 +310,7 @@ impl<'ll, 'tcx> TypeMembershipCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn set_type_metadata(&self, function: &'ll Value, typeid: String) {
+    fn set_type_metadata(&self, function: &'ll Value, typeid: &[u8]) {
         let typeid_metadata = self.create_metadata(typeid);
         unsafe {
             let v = [llvm::LLVMValueAsMetadata(self.const_usize(0)), typeid_metadata];
@@ -322,7 +322,7 @@ impl<'ll, 'tcx> TypeMembershipCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn typeid_metadata(&self, typeid: String) -> Option<&'ll Metadata> {
+    fn typeid_metadata(&self, typeid: &[u8]) -> Option<&'ll Metadata> {
         Some(self.create_metadata(typeid))
     }
 
