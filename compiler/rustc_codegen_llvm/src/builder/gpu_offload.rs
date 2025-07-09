@@ -58,19 +58,25 @@ fn generate_at_one<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Value {
     at_one
 }
 
-// The meaning of the __tgt_offload_entry (as per llvm docs) is
-// Type,  Identifier, Description
-// void*,   addr,     Address of global symbol within device image (function or global)
-// char*,   name,     Name of the symbol
-// size_t,  size,     Size of the entry info (0 if it is a function)
-// int32_t, flags,    Flags associated with the entry (see Target Region Entry Flags)
-// int32_t, reserved, Reserved, to be used by the runtime library.
 pub(crate) fn add_tgt_offload_entry<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Type {
     let offload_entry_ty = cx.type_named_struct("struct.__tgt_offload_entry");
     let tptr = cx.type_ptr();
     let ti64 = cx.type_i64();
     let ti32 = cx.type_i32();
     let ti16 = cx.type_i16();
+    // For each kernel to run on the gpu, we will later generate one entry of this type.
+    // coppied from LLVM
+    // typedef struct {
+    //   uint64_t Reserved;
+    //   uint16_t Version;
+    //   uint16_t Kind;
+    //   uint32_t Flags; Flags associated with the entry (see Target Region Entry Flags)
+    //   void *Address; Address of global symbol within device image (function or global)
+    //   char *SymbolName;
+    //   uint64_t Size; Size of the entry info (0 if it is a function)
+    //   uint64_t Data;
+    //   void *AuxAddr;
+    // } __tgt_offload_entry;
     let entry_elements = vec![ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr];
     cx.set_struct_body(offload_entry_ty, &entry_elements, false);
     offload_entry_ty
@@ -83,19 +89,30 @@ fn gen_tgt_kernel_global<'ll>(cx: &'ll SimpleCx<'_>) {
     let ti32 = cx.type_i32();
     let tarr = cx.type_array(ti32, 3);
 
-    // For each kernel to run on the gpu, we will later generate one entry of this type.
-    // coppied from LLVM
-    // typedef struct {
-    //   uint64_t Reserved;
-    //   uint16_t Version;
-    //   uint16_t Kind;
-    //   uint32_t Flags;
-    //   void *Address;
-    //   char *SymbolName;
-    //   uint64_t Size;
-    //   uint64_t Data;
-    //   void *AuxAddr;
-    // } __tgt_offload_entry;
+    // Taken from the LLVM APITypes.h declaration:
+    //struct KernelArgsTy {
+    //  uint32_t Version = 0; // Version of this struct for ABI compatibility.
+    //  uint32_t NumArgs = 0; // Number of arguments in each input pointer.
+    //  void **ArgBasePtrs =
+    //      nullptr;                 // Base pointer of each argument (e.g. a struct).
+    //  void **ArgPtrs = nullptr;    // Pointer to the argument data.
+    //  int64_t *ArgSizes = nullptr; // Size of the argument data in bytes.
+    //  int64_t *ArgTypes = nullptr; // Type of the data (e.g. to / from).
+    //  void **ArgNames = nullptr;   // Name of the data for debugging, possibly null.
+    //  void **ArgMappers = nullptr; // User-defined mappers, possibly null.
+    //  uint64_t Tripcount =
+    //      0; // Tripcount for the teams / distribute loop, 0 otherwise.
+    //  struct {
+    //    uint64_t NoWait : 1; // Was this kernel spawned with a `nowait` clause.
+    //    uint64_t IsCUDA : 1; // Was this kernel spawned via CUDA.
+    //    uint64_t Unused : 62;
+    //  } Flags = {0, 0, 0};
+    //  // The number of teams (for x,y,z dimension).
+    //  uint32_t NumTeams[3] = {0, 0, 0};
+    //  // The number of threads (for x,y,z dimension).
+    //  uint32_t ThreadLimit[3] = {0, 0, 0};
+    //  uint32_t DynCGroupMem = 0; // Amount of dynamic cgroup memory requested.
+    //};
     let kernel_elements =
         vec![ti32, ti32, tptr, tptr, tptr, tptr, tptr, tptr, ti64, ti64, tarr, tarr, ti32];
 
@@ -180,7 +197,7 @@ fn gen_define_handling<'ll>(
 
     // We do not know their size anymore at this level, so hardcode a placeholder.
     // A follow-up pr will track these from the frontend, where we still have Rust types.
-    // Then, we will be able to figure out that e.g. `&[f32;1024]` will result in 32*1024 bytes.
+    // Then, we will be able to figure out that e.g. `&[f32;256]` will result in 4*256 bytes.
     // I decided that 1024 bytes is a great placeholder value for now.
     add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{num}"), &vec![1024; num_ptr_types]);
     // Here we figure out whether something needs to be copied to the gpu (=1), from the gpu (=2),
@@ -285,135 +302,139 @@ fn gen_call_handling<'ll>(
     let (begin_mapper_decl, _, end_mapper_decl, fn_ty) = gen_tgt_data_mappers(&cx);
 
     let main_fn = cx.get_function("main");
-    if let Some(main_fn) = main_fn {
-        let kernel_name = "kernel_1";
-        let call = unsafe {
-            llvm::LLVMRustGetFunctionCall(main_fn, kernel_name.as_c_char_ptr(), kernel_name.len())
-        };
-        let kernel_call = if call.is_some() {
-            call.unwrap()
-        } else {
-            return;
-        };
-        let kernel_call_bb = unsafe { llvm::LLVMGetInstructionParent(kernel_call) };
-        let called = unsafe { llvm::LLVMGetCalledValue(kernel_call).unwrap() };
-        let mut builder = SBuilder::build(cx, kernel_call_bb);
+    let Some(main_fn) = main_fn else { return };
+    let kernel_name = "kernel_1";
+    let call = unsafe {
+        llvm::LLVMRustGetFunctionCall(main_fn, kernel_name.as_c_char_ptr(), kernel_name.len())
+    };
+    let Some(kernel_call) = call else {
+        return;
+    };
+    let kernel_call_bb = unsafe { llvm::LLVMGetInstructionParent(kernel_call) };
+    let called = unsafe { llvm::LLVMGetCalledValue(kernel_call).unwrap() };
+    let mut builder = SBuilder::build(cx, kernel_call_bb);
 
-        let types = cx.func_params_types(cx.get_type_of_global(called));
-        let num_args = types.len() as u64;
+    let types = cx.func_params_types(cx.get_type_of_global(called));
+    let num_args = types.len() as u64;
 
-        // Step 0)
-        // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
-        // %6 = alloca %struct.__tgt_bin_desc, align 8
-        unsafe { llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, main_fn) };
+    // Step 0)
+    // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
+    // %6 = alloca %struct.__tgt_bin_desc, align 8
+    unsafe { llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, main_fn) };
 
-        let tgt_bin_desc_alloca = builder.direct_alloca(tgt_bin_desc, Align::EIGHT, "EmptyDesc");
+    let tgt_bin_desc_alloca = builder.direct_alloca(tgt_bin_desc, Align::EIGHT, "EmptyDesc");
 
-        let ty = cx.type_array(cx.type_ptr(), num_args);
-        // Baseptr are just the input pointer to the kernel, stored in a local alloca
-        let a1 = builder.direct_alloca(ty, Align::EIGHT, ".offload_baseptrs");
-        // Ptrs are the result of a gep into the baseptr, at least for our trivial types.
-        let a2 = builder.direct_alloca(ty, Align::EIGHT, ".offload_ptrs");
-        // These represent the sizes in bytes, e.g. the entry for `&[f64; 16]` will be 8*16.
-        let ty2 = cx.type_array(cx.type_i64(), num_args);
-        let a4 = builder.direct_alloca(ty2, Align::EIGHT, ".offload_sizes");
-        // Now we allocate once per function param, a copy to be passed to one of our maps.
-        let mut vals = vec![];
-        let mut geps = vec![];
-        let i32_0 = cx.get_const_i32(0);
-        for (index, in_ty) in types.iter().enumerate() {
-            // get function arg, store it into the alloca, and read it.
-            let p = llvm::get_param(called, index as u32);
-            let name = llvm::get_value_name(p);
-            let name = str::from_utf8(name).unwrap();
-            let arg_name = CString::new(format!("{name}.addr")).unwrap();
-            let alloca =
-                unsafe { llvm::LLVMBuildAlloca(builder.llbuilder, in_ty, arg_name.as_ptr()) };
-            builder.store(p, alloca, Align::EIGHT);
-            let val = builder.load(in_ty, alloca, Align::EIGHT);
-            let gep = builder.inbounds_gep(cx.type_f32(), val, &[i32_0]);
-            vals.push(val);
-            geps.push(gep);
-        }
+    let ty = cx.type_array(cx.type_ptr(), num_args);
+    // Baseptr are just the input pointer to the kernel, stored in a local alloca
+    let a1 = builder.direct_alloca(ty, Align::EIGHT, ".offload_baseptrs");
+    // Ptrs are the result of a gep into the baseptr, at least for our trivial types.
+    let a2 = builder.direct_alloca(ty, Align::EIGHT, ".offload_ptrs");
+    // These represent the sizes in bytes, e.g. the entry for `&[f64; 16]` will be 8*16.
+    let ty2 = cx.type_array(cx.type_i64(), num_args);
+    let a4 = builder.direct_alloca(ty2, Align::EIGHT, ".offload_sizes");
+    // Now we allocate once per function param, a copy to be passed to one of our maps.
+    let mut vals = vec![];
+    let mut geps = vec![];
+    let i32_0 = cx.get_const_i32(0);
+    for (index, in_ty) in types.iter().enumerate() {
+        // get function arg, store it into the alloca, and read it.
+        let p = llvm::get_param(called, index as u32);
+        let name = llvm::get_value_name(p);
+        let name = str::from_utf8(name).unwrap();
+        let arg_name = format!("{name}.addr");
+        let alloca = builder.direct_alloca(in_ty, Align::EIGHT, &arg_name);
 
-        // Step 1)
-        unsafe { llvm::LLVMRustPositionBefore(builder.llbuilder, kernel_call) };
-        builder.memset(
-            tgt_bin_desc_alloca,
-            cx.get_const_i8(0),
-            cx.get_const_i64(32),
-            Align::from_bytes(8).unwrap(),
-        );
-
-        let mapper_fn_ty = cx.type_func(&[cx.type_ptr()], cx.type_void());
-        let register_lib_decl = declare_offload_fn(&cx, "__tgt_register_lib", mapper_fn_ty);
-        let unregister_lib_decl = declare_offload_fn(&cx, "__tgt_unregister_lib", mapper_fn_ty);
-        let init_ty = cx.type_func(&[], cx.type_void());
-        let init_rtls_decl = declare_offload_fn(cx, "__tgt_init_all_rtls", init_ty);
-
-        // call void @__tgt_register_lib(ptr noundef %6)
-        builder.call(mapper_fn_ty, register_lib_decl, &[tgt_bin_desc_alloca], None);
-        // call void @__tgt_init_all_rtls()
-        builder.call(init_ty, init_rtls_decl, &[], None);
-
-        for i in 0..num_args {
-            let idx = cx.get_const_i32(i);
-            let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, idx]);
-            builder.store(vals[i as usize], gep1, Align::EIGHT);
-            let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, idx]);
-            builder.store(geps[i as usize], gep2, Align::EIGHT);
-            let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, idx]);
-            builder.store(cx.get_const_i64(1024), gep3, Align::EIGHT);
-        }
-
-        // Step 2)
-        let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
-        let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
-        let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, i32_0]);
-
-        let nullptr = cx.const_null(cx.type_ptr());
-        let o_type = o_types[0];
-        let s_ident_t = generate_at_one(&cx);
-        let args = vec![
-            s_ident_t,
-            cx.get_const_i64(u64::MAX),
-            cx.get_const_i32(num_args),
-            gep1,
-            gep2,
-            gep3,
-            o_type,
-            nullptr,
-            nullptr,
-        ];
-        builder.call(fn_ty, begin_mapper_decl, &args, None);
-
-        // Step 4)
-        unsafe { llvm::LLVMRustPositionAfter(builder.llbuilder, kernel_call) };
-
-        let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
-        let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
-        let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, i32_0]);
-
-        let nullptr = cx.const_null(cx.type_ptr());
-        let o_type = o_types[0];
-        let args = vec![
-            s_ident_t,
-            cx.get_const_i64(u64::MAX),
-            cx.get_const_i32(num_args),
-            gep1,
-            gep2,
-            gep3,
-            o_type,
-            nullptr,
-            nullptr,
-        ];
-        builder.call(fn_ty, end_mapper_decl, &args, None);
-        builder.call(mapper_fn_ty, unregister_lib_decl, &[tgt_bin_desc_alloca], None);
-
-        // With this we generated the following begin and end mappers. We could easily generate the
-        // update mapper in an update.
-        // call void @__tgt_target_data_begin_mapper(ptr @1, i64 -1, i32 3, ptr %27, ptr %28, ptr %29, ptr @.offload_maptypes, ptr null, ptr null)
-        // call void @__tgt_target_data_update_mapper(ptr @1, i64 -1, i32 2, ptr %46, ptr %47, ptr %48, ptr @.offload_maptypes.1, ptr null, ptr null)
-        // call void @__tgt_target_data_end_mapper(ptr @1, i64 -1, i32 3, ptr %49, ptr %50, ptr %51, ptr @.offload_maptypes, ptr null, ptr null)
+        builder.store(p, alloca, Align::EIGHT);
+        let val = builder.load(in_ty, alloca, Align::EIGHT);
+        let gep = builder.inbounds_gep(cx.type_f32(), val, &[i32_0]);
+        vals.push(val);
+        geps.push(gep);
     }
+
+    // Step 1)
+    unsafe { llvm::LLVMRustPositionBefore(builder.llbuilder, kernel_call) };
+    builder.memset(
+        tgt_bin_desc_alloca,
+        cx.get_const_i8(0),
+        cx.get_const_i64(32),
+        Align::from_bytes(8).unwrap(),
+    );
+
+    let mapper_fn_ty = cx.type_func(&[cx.type_ptr()], cx.type_void());
+    let register_lib_decl = declare_offload_fn(&cx, "__tgt_register_lib", mapper_fn_ty);
+    let unregister_lib_decl = declare_offload_fn(&cx, "__tgt_unregister_lib", mapper_fn_ty);
+    let init_ty = cx.type_func(&[], cx.type_void());
+    let init_rtls_decl = declare_offload_fn(cx, "__tgt_init_all_rtls", init_ty);
+
+    // call void @__tgt_register_lib(ptr noundef %6)
+    builder.call(mapper_fn_ty, register_lib_decl, &[tgt_bin_desc_alloca], None);
+    // call void @__tgt_init_all_rtls()
+    builder.call(init_ty, init_rtls_decl, &[], None);
+
+    for i in 0..num_args {
+        let idx = cx.get_const_i32(i);
+        let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, idx]);
+        builder.store(vals[i as usize], gep1, Align::EIGHT);
+        let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, idx]);
+        builder.store(geps[i as usize], gep2, Align::EIGHT);
+        let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, idx]);
+        // As mentioned above, we don't use Rust type informatino yet. So for now we will just
+        // assume that we have 1024 bytes, 256 f32 values.
+        // FIXME(offload): write an offload frontend and handle arbitrary types.
+        builder.store(cx.get_const_i64(1024), gep3, Align::EIGHT);
+    }
+
+    // Step 2)
+    let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
+    let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
+    let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, i32_0]);
+
+    let nullptr = cx.const_null(cx.type_ptr());
+    let o_type = o_types[0];
+    let s_ident_t = generate_at_one(&cx);
+    let args = vec![
+        s_ident_t,
+        cx.get_const_i64(u64::MAX),
+        cx.get_const_i32(num_args),
+        gep1,
+        gep2,
+        gep3,
+        o_type,
+        nullptr,
+        nullptr,
+    ];
+    builder.call(fn_ty, begin_mapper_decl, &args, None);
+
+    // Step 3)
+    // Here we will add code for the actual kernel launches in a follow-up PR.
+    // FIXME(offload): launch kernels
+
+    // Step 4)
+    unsafe { llvm::LLVMRustPositionAfter(builder.llbuilder, kernel_call) };
+
+    let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
+    let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
+    let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, i32_0]);
+
+    let nullptr = cx.const_null(cx.type_ptr());
+    let o_type = o_types[0];
+    let args = vec![
+        s_ident_t,
+        cx.get_const_i64(u64::MAX),
+        cx.get_const_i32(num_args),
+        gep1,
+        gep2,
+        gep3,
+        o_type,
+        nullptr,
+        nullptr,
+    ];
+    builder.call(fn_ty, end_mapper_decl, &args, None);
+    builder.call(mapper_fn_ty, unregister_lib_decl, &[tgt_bin_desc_alloca], None);
+
+    // With this we generated the following begin and end mappers. We could easily generate the
+    // update mapper in an update.
+    // call void @__tgt_target_data_begin_mapper(ptr @1, i64 -1, i32 3, ptr %27, ptr %28, ptr %29, ptr @.offload_maptypes, ptr null, ptr null)
+    // call void @__tgt_target_data_update_mapper(ptr @1, i64 -1, i32 2, ptr %46, ptr %47, ptr %48, ptr @.offload_maptypes.1, ptr null, ptr null)
+    // call void @__tgt_target_data_end_mapper(ptr @1, i64 -1, i32 3, ptr %49, ptr %50, ptr %51, ptr @.offload_maptypes, ptr null, ptr null)
 }
