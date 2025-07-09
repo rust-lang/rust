@@ -205,6 +205,7 @@ pub(crate) struct DropImplOnWrongItem {
     #[primary_span]
     #[label]
     pub span: Span,
+    pub trait_: Symbol,
 }
 
 #[derive(Diagnostic)]
