@@ -5,11 +5,11 @@
 //! This also includes code for pattern bindings in `let` statements and
 //! function parameters.
 
-use std::assert_matches::assert_matches;
 use std::borrow::Borrow;
 use std::mem;
 use std::sync::Arc;
 
+use itertools::{Itertools, Position};
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -561,16 +561,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // return: it isn't bound by move until right before enter the arm.
             // To handle this we instead unschedule it's drop after each time
             // we lower the guard.
+            // As a result, we end up with the drop order of the last sub-branch we lower. To use
+            // the drop order for the first sub-branch, we lower sub-branches in reverse (#142163).
+            // TODO: I'm saving the breaking change for the next commit. For now, a stopgap:
+            let sub_branch_to_use_the_drops_from =
+                if arm_match_scope.is_some() { Position::Last } else { Position::First };
             let target_block = self.cfg.start_new_block();
-            let mut schedule_drops = ScheduleDrops::Yes;
-            let arm = arm_match_scope.unzip().0;
-            // We keep a stack of all of the bindings and type ascriptions
-            // from the parent candidates that we visit, that also need to
-            // be bound for each candidate.
-            for sub_branch in branch.sub_branches {
-                if let Some(arm) = arm {
-                    self.clear_top_scope(arm.scope);
-                }
+            for (pos, sub_branch) in branch.sub_branches.into_iter().with_position() {
+                debug_assert!(pos != Position::Only);
+                let schedule_drops = if pos == sub_branch_to_use_the_drops_from {
+                    ScheduleDrops::Yes
+                } else {
+                    ScheduleDrops::No
+                };
                 let binding_end = self.bind_and_guard_matched_candidate(
                     sub_branch,
                     fake_borrow_temps,
@@ -579,9 +582,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     schedule_drops,
                     emit_storage_live,
                 );
-                if arm.is_none() {
-                    schedule_drops = ScheduleDrops::No;
-                }
                 self.cfg.goto(binding_end, outer_source_info, target_block);
             }
 
@@ -2453,11 +2453,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // Bindings for guards require some extra handling to automatically
             // insert implicit references/dereferences.
-            self.bind_matched_candidate_for_guard(
-                block,
-                schedule_drops,
-                sub_branch.bindings.iter(),
-            );
+            // This always schedules storage drops, so we may need to unschedule them below.
+            self.bind_matched_candidate_for_guard(block, sub_branch.bindings.iter());
             let guard_frame = GuardFrame {
                 locals: sub_branch
                     .bindings
@@ -2488,6 +2485,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         DeclareLetBindings::No, // For guards, `let` bindings are declared separately
                     )
                 });
+
+            // If this isn't the final sub-branch being lowered, we need to unschedule drops of
+            // bindings and temporaries created for and by the guard. As a result, the drop order
+            // for the arm will correspond to the binding order of the final sub-branch lowered.
+            if matches!(schedule_drops, ScheduleDrops::No) {
+                self.clear_top_scope(arm.scope);
+            }
 
             let source_info = self.source_info(guard_span);
             let guard_end = self.source_info(tcx.sess.source_map().end_point(guard_span));
@@ -2538,14 +2542,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let cause = FakeReadCause::ForGuardBinding;
                 self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(local_id));
             }
-            assert_matches!(
-                schedule_drops,
-                ScheduleDrops::Yes,
-                "patterns with guards must schedule drops"
-            );
+            // Only schedule drops for the last sub-branch we lower.
             self.bind_matched_candidate_for_arm_body(
                 post_guard_block,
-                ScheduleDrops::Yes,
+                schedule_drops,
                 by_value_bindings,
                 emit_storage_live,
             );
@@ -2671,7 +2671,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bind_matched_candidate_for_guard<'b>(
         &mut self,
         block: BasicBlock,
-        schedule_drops: ScheduleDrops,
         bindings: impl IntoIterator<Item = &'b Binding<'tcx>>,
     ) where
         'tcx: 'b,
@@ -2690,12 +2689,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // a reference R: &T pointing to the location matched by
             // the pattern, and every occurrence of P within a guard
             // denotes *R.
+            // Drops must be scheduled to emit `StorageDead` on the guard's failure/break branches.
             let ref_for_guard = self.storage_live_binding(
                 block,
                 binding.var_id,
                 binding.span,
                 RefWithinGuard,
-                schedule_drops,
+                ScheduleDrops::Yes,
             );
             match binding.binding_mode.0 {
                 ByRef::No => {
@@ -2705,13 +2705,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     self.cfg.push_assign(block, source_info, ref_for_guard, rvalue);
                 }
                 ByRef::Yes(mutbl) => {
-                    // The arm binding will be by reference, so eagerly create it now.
+                    // The arm binding will be by reference, so eagerly create it now. Drops must
+                    // be scheduled to emit `StorageDead` on the guard's failure/break branches.
                     let value_for_arm = self.storage_live_binding(
                         block,
                         binding.var_id,
                         binding.span,
                         OutsideGuard,
-                        schedule_drops,
+                        ScheduleDrops::Yes,
                     );
 
                     let rvalue =
