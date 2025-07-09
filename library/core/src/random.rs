@@ -7,6 +7,11 @@
 #[unstable(feature = "random", issue = "130703")]
 pub trait RandomSource {
     /// Fills `bytes` with random bytes.
+    ///
+    /// Note that calling `fill_bytes` multiple times is not equivalent to calling `fill_bytes` once
+    /// with a larger buffer. A `RandomSource` is allowed to return different bytes for those two
+    /// cases. For instance, this allows a `RandomSource` to generate a word at a time and throw
+    /// part of it away if not needed.
     fn fill_bytes(&mut self, bytes: &mut [u8]);
 }
 
