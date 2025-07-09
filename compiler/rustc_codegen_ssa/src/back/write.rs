@@ -15,8 +15,8 @@ use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_errors::emitter::Emitter;
 use rustc_errors::translation::Translator;
 use rustc_errors::{
-    Diag, DiagArgMap, DiagCtxt, DiagMessage, ErrCode, FatalErrorMarker, Level, MultiSpan, Style,
-    Suggestions,
+    Diag, DiagArgMap, DiagCtxt, DiagMessage, ErrCode, FatalError, FatalErrorMarker, Level,
+    MultiSpan, Style, Suggestions,
 };
 use rustc_fs_util::link_or_copy;
 use rustc_incremental::{
@@ -992,6 +992,155 @@ fn do_fat_lto<B: ExtraBackendMethods>(
     B::codegen(cgcx, module, &cgcx.module_config)
 }
 
+fn do_thin_lto<'a, B: ExtraBackendMethods>(
+    cgcx: &'a CodegenContext<B>,
+    llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
+    exported_symbols_for_lto: Arc<Vec<String>>,
+    each_linked_rlib_for_lto: Vec<PathBuf>,
+    needs_thin_lto: Vec<(String, <B as WriteBackendMethods>::ThinBuffer)>,
+    lto_import_only_modules: Vec<(
+        SerializedModule<<B as WriteBackendMethods>::ModuleBuffer>,
+        WorkProduct,
+    )>,
+) -> Vec<CompiledModule> {
+    check_lto_allowed(&cgcx);
+
+    let (coordinator_send, coordinator_receive) = channel();
+
+    // First up, convert our jobserver into a helper thread so we can use normal
+    // mpsc channels to manage our messages and such.
+    // After we've requested tokens then we'll, when we can,
+    // get tokens on `coordinator_receive` which will
+    // get managed in the main loop below.
+    let coordinator_send2 = coordinator_send.clone();
+    let helper = jobserver::client()
+        .into_helper_thread(move |token| {
+            drop(coordinator_send2.send(Message::Token::<B>(token)));
+        })
+        .expect("failed to spawn helper thread");
+
+    let mut work_items = vec![];
+
+    // We have LTO work to do. Perform the serial work here of
+    // figuring out what we're going to LTO and then push a
+    // bunch of work items onto our queue to do LTO. This all
+    // happens on the coordinator thread but it's very quick so
+    // we don't worry about tokens.
+    for (work, cost) in generate_thin_lto_work(
+        cgcx,
+        &exported_symbols_for_lto,
+        &each_linked_rlib_for_lto,
+        needs_thin_lto,
+        lto_import_only_modules,
+    ) {
+        let insertion_index =
+            work_items.binary_search_by_key(&cost, |&(_, cost)| cost).unwrap_or_else(|e| e);
+        work_items.insert(insertion_index, (work, cost));
+        if cgcx.parallel {
+            helper.request_token();
+        }
+    }
+
+    let mut codegen_aborted = None;
+
+    // These are the Jobserver Tokens we currently hold. Does not include
+    // the implicit Token the compiler process owns no matter what.
+    let mut tokens = vec![];
+
+    // Amount of tokens that are used (including the implicit token).
+    let mut used_token_count = 0;
+
+    let mut compiled_modules = vec![];
+
+    // Run the message loop while there's still anything that needs message
+    // processing. Note that as soon as codegen is aborted we simply want to
+    // wait for all existing work to finish, so many of the conditions here
+    // only apply if codegen hasn't been aborted as they represent pending
+    // work to be done.
+    loop {
+        if codegen_aborted.is_none() {
+            if used_token_count == 0 && work_items.is_empty() {
+                // All codegen work is done.
+                break;
+            }
+
+            // Spin up what work we can, only doing this while we've got available
+            // parallelism slots and work left to spawn.
+            while used_token_count < tokens.len() + 1
+                && let Some((item, _)) = work_items.pop()
+            {
+                spawn_work(&cgcx, coordinator_send.clone(), llvm_start_time, item);
+                used_token_count += 1;
+            }
+        } else {
+            // Don't queue up any more work if codegen was aborted, we're
+            // just waiting for our existing children to finish.
+            if used_token_count == 0 {
+                break;
+            }
+        }
+
+        // Relinquish accidentally acquired extra tokens. Subtract 1 for the implicit token.
+        tokens.truncate(used_token_count.saturating_sub(1));
+
+        match coordinator_receive.recv().unwrap() {
+            // Save the token locally and the next turn of the loop will use
+            // this to spawn a new unit of work, or it may get dropped
+            // immediately if we have no more work to spawn.
+            Message::Token(token) => match token {
+                Ok(token) => {
+                    tokens.push(token);
+                }
+                Err(e) => {
+                    let msg = &format!("failed to acquire jobserver token: {e}");
+                    cgcx.diag_emitter.fatal(msg);
+                    codegen_aborted = Some(FatalError);
+                }
+            },
+
+            Message::CodegenDone { .. }
+            | Message::CodegenComplete
+            | Message::CodegenAborted
+            | Message::AddImportOnlyModule { .. } => {
+                unreachable!()
+            }
+
+            Message::WorkItem { result } => {
+                // If a thread exits successfully then we drop a token associated
+                // with that worker and update our `used_token_count` count.
+                // We may later re-acquire a token to continue running more work.
+                // We may also not actually drop a token here if the worker was
+                // running with an "ephemeral token".
+                used_token_count -= 1;
+
+                match result {
+                    Ok(WorkItemResult::Finished(compiled_module)) => {
+                        compiled_modules.push(compiled_module);
+                    }
+                    Ok(WorkItemResult::NeedsFatLto(_)) | Ok(WorkItemResult::NeedsThinLto(_, _)) => {
+                        unreachable!()
+                    }
+                    Err(Some(WorkerFatalError)) => {
+                        // Like `CodegenAborted`, wait for remaining work to finish.
+                        codegen_aborted = Some(FatalError);
+                    }
+                    Err(None) => {
+                        // If the thread failed that means it panicked, so
+                        // we abort immediately.
+                        bug!("worker thread panicked");
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(codegen_aborted) = codegen_aborted {
+        codegen_aborted.raise();
+    }
+
+    compiled_modules
+}
+
 fn execute_thin_lto_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     module: lto::ThinModule<B>,
@@ -1085,9 +1234,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
     regular_config: Arc<ModuleConfig>,
     allocator_config: Arc<ModuleConfig>,
     allocator_module: Option<ModuleCodegen<B::Module>>,
-    tx_to_llvm_workers: Sender<Message<B>>,
+    coordinator_send: Sender<Message<B>>,
 ) -> thread::JoinHandle<Result<CompiledModules, ()>> {
-    let coordinator_send = tx_to_llvm_workers;
     let sess = tcx.sess;
 
     let mut each_linked_rlib_for_lto = Vec::new();
@@ -1307,7 +1455,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let mut needs_fat_lto = Vec::new();
         let mut needs_thin_lto = Vec::new();
         let mut lto_import_only_modules = Vec::new();
-        let mut started_lto = false;
 
         /// Possible state transitions:
         /// - Ongoing -> Completed
@@ -1397,48 +1544,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 if running_with_any_token(main_thread_state, running_with_own_token) == 0
                     && work_items.is_empty()
                 {
-                    // All codegen work is done. Do we have LTO work to do?
-                    if needs_fat_lto.is_empty()
-                        && needs_thin_lto.is_empty()
-                        && lto_import_only_modules.is_empty()
-                    {
-                        // Nothing more to do!
-                        break;
-                    }
-
-                    // We have LTO work to do. Perform the serial work here of
-                    // figuring out what we're going to LTO and then push a
-                    // bunch of work items onto our queue to do LTO. This all
-                    // happens on the coordinator thread but it's very quick so
-                    // we don't worry about tokens.
-                    assert!(!started_lto);
-                    started_lto = true;
-
-                    if !needs_fat_lto.is_empty() {
-                        // We're doing fat LTO outside of the main loop.
-                        break;
-                    }
-
-                    check_lto_allowed(&cgcx);
-
-                    let needs_thin_lto = mem::take(&mut needs_thin_lto);
-                    let import_only_modules = mem::take(&mut lto_import_only_modules);
-
-                    for (work, cost) in generate_thin_lto_work(
-                        &cgcx,
-                        &exported_symbols_for_lto,
-                        &each_linked_rlib_file_for_lto,
-                        needs_thin_lto,
-                        import_only_modules,
-                    ) {
-                        let insertion_index = work_items
-                            .binary_search_by_key(&cost, |&(_, cost)| cost)
-                            .unwrap_or_else(|e| e);
-                        work_items.insert(insertion_index, (work, cost));
-                        if cgcx.parallel {
-                            helper.request_token();
-                        }
-                    }
+                    // All codegen work is done.
+                    break;
                 }
 
                 // In this branch, we know that everything has been codegened,
@@ -1576,12 +1683,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             compiled_modules.push(compiled_module);
                         }
                         Ok(WorkItemResult::NeedsFatLto(fat_lto_input)) => {
-                            assert!(!started_lto);
                             assert!(needs_thin_lto.is_empty());
                             needs_fat_lto.push(fat_lto_input);
                         }
                         Ok(WorkItemResult::NeedsThinLto(name, thin_buffer)) => {
-                            assert!(!started_lto);
                             assert!(needs_fat_lto.is_empty());
                             needs_thin_lto.push((name, thin_buffer));
                         }
@@ -1598,7 +1703,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 }
 
                 Message::AddImportOnlyModule { module_data, work_product } => {
-                    assert!(!started_lto);
                     assert_eq!(codegen_state, Ongoing);
                     assert_eq!(main_thread_state, MainThreadState::Codegenning);
                     lto_import_only_modules.push((module_data, work_product));
@@ -1614,6 +1718,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         drop(codegen_state);
         drop(tokens);
         drop(helper);
+        assert!(work_items.is_empty());
 
         if !needs_fat_lto.is_empty() {
             assert!(compiled_modules.is_empty());
@@ -1628,6 +1733,18 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 lto_import_only_modules,
             );
             compiled_modules.push(module);
+        } else if !needs_thin_lto.is_empty() || !lto_import_only_modules.is_empty() {
+            assert!(compiled_modules.is_empty());
+            assert!(needs_fat_lto.is_empty());
+
+            compiled_modules.extend(do_thin_lto(
+                &cgcx,
+                &mut llvm_start_time,
+                exported_symbols_for_lto,
+                each_linked_rlib_file_for_lto,
+                needs_thin_lto,
+                lto_import_only_modules,
+            ));
         }
 
         // Drop to print timings
