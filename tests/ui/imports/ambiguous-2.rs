@@ -1,5 +1,4 @@
-//@ ignore-test
-// ^^ don't know how to change this test
+//@ check-pass
 //@ aux-build: ../ambiguous-1.rs
 // https://github.com/rust-lang/rust/pull/113099#issuecomment-1633574396
 

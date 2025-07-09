@@ -1,5 +1,5 @@
 warning: ambiguous glob re-exports
-  --> $DIR/ambiguous-1.rs:10:13
+  --> $DIR/ambiguous-1.rs:13:13
    |
 LL |     pub use self::evp::*;
    |             ^^^^^^^^^^^^ the name `id` in the value namespace is first re-exported here
@@ -9,8 +9,8 @@ LL |     pub use self::handwritten::*;
    |
    = note: `#[warn(ambiguous_glob_reexports)]` on by default
 
-error: `id` is ambiguous
-  --> $DIR/ambiguous-1.rs:26:5
+warning: `id` is ambiguous
+  --> $DIR/ambiguous-1.rs:29:5
    |
 LL |     id();
    |     ^^ ambiguous name
@@ -19,24 +19,28 @@ LL |     id();
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `id` could refer to the function imported here
-  --> $DIR/ambiguous-1.rs:10:13
+  --> $DIR/ambiguous-1.rs:13:13
    |
 LL |     pub use self::evp::*;
    |             ^^^^^^^^^^^^
    = help: consider adding an explicit import of `id` to disambiguate
 note: `id` could also refer to the function imported here
-  --> $DIR/ambiguous-1.rs:12:13
+  --> $DIR/ambiguous-1.rs:15:13
    |
 LL |     pub use self::handwritten::*;
    |             ^^^^^^^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `id` to disambiguate
-   = note: `#[deny(ambiguous_glob_imports)]` on by default
+note: the lint level is defined here
+  --> $DIR/ambiguous-1.rs:4:9
+   |
+LL | #![warn(ambiguous_glob_imports)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error; 1 warning emitted
+warning: 2 warnings emitted
 
 Future incompatibility report: Future breakage diagnostic:
-error: `id` is ambiguous
-  --> $DIR/ambiguous-1.rs:26:5
+warning: `id` is ambiguous
+  --> $DIR/ambiguous-1.rs:29:5
    |
 LL |     id();
    |     ^^ ambiguous name
@@ -45,16 +49,20 @@ LL |     id();
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `id` could refer to the function imported here
-  --> $DIR/ambiguous-1.rs:10:13
+  --> $DIR/ambiguous-1.rs:13:13
    |
 LL |     pub use self::evp::*;
    |             ^^^^^^^^^^^^
    = help: consider adding an explicit import of `id` to disambiguate
 note: `id` could also refer to the function imported here
-  --> $DIR/ambiguous-1.rs:12:13
+  --> $DIR/ambiguous-1.rs:15:13
    |
 LL |     pub use self::handwritten::*;
    |             ^^^^^^^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `id` to disambiguate
-   = note: `#[deny(ambiguous_glob_imports)]` on by default
+note: the lint level is defined here
+  --> $DIR/ambiguous-1.rs:4:9
+   |
+LL | #![warn(ambiguous_glob_imports)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
 

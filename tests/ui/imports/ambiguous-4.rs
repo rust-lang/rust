@@ -1,5 +1,4 @@
-//@ ignore-test
-// ^^ don't know how to change this test
+//@ check-pass
 //@ aux-build: ../ambiguous-4-extern.rs
 
 extern crate ambiguous_4_extern;
