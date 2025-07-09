@@ -125,7 +125,8 @@ fn test_valid_shebang() {
 }
 
 fn check_lexing(src: &str, expect: Expect) {
-    let actual: String = tokenize(src).map(|token| format!("{:?}\n", token)).collect();
+    let actual: String =
+        tokenize(src, FrontmatterAllowed::No).map(|token| format!("{:?}\n", token)).collect();
     expect.assert_eq(&actual)
 }
 

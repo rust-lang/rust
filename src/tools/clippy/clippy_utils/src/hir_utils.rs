@@ -12,7 +12,7 @@ use rustc_hir::{
     Pat, PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, StructTailExpr,
     TraitBoundModifiers, Ty, TyKind, TyPat, TyPatKind,
 };
-use rustc_lexer::{TokenKind, tokenize};
+use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Symbol, SyntaxContext, sym};
@@ -686,7 +686,7 @@ fn reduce_exprkind<'hir>(cx: &LateContext<'_>, kind: &'hir ExprKind<'hir>) -> &'
             // `{}` => `()`
             ([], None)
                 if block.span.check_source_text(cx, |src| {
-                    tokenize(src)
+                    tokenize(src, FrontmatterAllowed::No)
                         .map(|t| t.kind)
                         .filter(|t| {
                             !matches!(

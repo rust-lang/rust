@@ -120,7 +120,7 @@ fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comment> 
         pos += shebang_len;
     }
 
-    for token in rustc_lexer::tokenize(&text[pos..]) {
+    for token in rustc_lexer::tokenize(&text[pos..], rustc_lexer::FrontmatterAllowed::No) {
         let token_text = &text[pos..pos + token.len as usize];
         match token.kind {
             rustc_lexer::TokenKind::Whitespace => {
