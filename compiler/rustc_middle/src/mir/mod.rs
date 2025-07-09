@@ -1433,6 +1433,13 @@ impl<'tcx> BasicBlockData<'tcx> {
     pub fn strip_nops(&mut self) {
         self.retain_statements(|stmt| !matches!(stmt.kind, StatementKind::Nop))
     }
+
+    pub fn drop_debuginfo(&mut self) {
+        self.after_last_stmt_debuginfos = Vec::new();
+        for stmt in self.statements.iter_mut() {
+            stmt.debuginfos = Vec::new();
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
