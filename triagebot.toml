@@ -15,6 +15,8 @@ allow-unauthenticated = [
 
 [close]
 
+[transfer]
+
 [issue-links]
 
 [mentions."clippy_lints/src/doc"]
