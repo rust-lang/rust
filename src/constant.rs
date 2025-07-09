@@ -372,6 +372,8 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             continue;
         }
 
+        let mut data = DataDescription::new();
+
         let (data_id, alloc, section_name) = match todo_item {
             TodoItem::Alloc(alloc_id) => {
                 let alloc = match tcx.global_alloc(alloc_id) {
@@ -390,7 +392,10 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 (data_id, alloc, None)
             }
             TodoItem::Static(def_id) => {
-                let section_name = tcx.codegen_fn_attrs(def_id).link_section;
+                let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
+                let section_name = codegen_fn_attrs.link_section;
+
+                data.set_used(codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER));
 
                 let alloc = tcx.eval_static_initializer(def_id).unwrap();
 
@@ -405,7 +410,6 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             }
         };
 
-        let mut data = DataDescription::new();
         let alloc = alloc.inner();
         data.set_align(alloc.align.bytes());
 
