@@ -181,7 +181,7 @@ from_str_float_impl!(f64);
 // to avoid ICEs.
 
 #[cfg(not(target_has_reliable_f16))]
-impl FromStr for f16 {
+impl const FromStr for f16 {
     type Err = ParseFloatError;
 
     #[inline]
