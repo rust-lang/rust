@@ -396,149 +396,148 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 
     fn codegen_static_item(&mut self, def_id: DefId) {
-        unsafe {
-            assert!(
-                llvm::LLVMGetInitializer(
-                    self.instances.borrow().get(&Instance::mono(self.tcx, def_id)).unwrap()
-                )
-                .is_none()
-            );
-            let attrs = self.tcx.codegen_fn_attrs(def_id);
+        assert!(
+            llvm::LLVMGetInitializer(
+                self.instances.borrow().get(&Instance::mono(self.tcx, def_id)).unwrap()
+            )
+            .is_none()
+        );
+        let attrs = self.tcx.codegen_fn_attrs(def_id);
 
-            let Ok((v, alloc)) = codegen_static_initializer(self, def_id) else {
-                // Error has already been reported
-                return;
-            };
-            let alloc = alloc.inner();
+        let Ok((v, alloc)) = codegen_static_initializer(self, def_id) else {
+            // Error has already been reported
+            return;
+        };
+        let alloc = alloc.inner();
 
-            let val_llty = self.val_ty(v);
+        let val_llty = self.val_ty(v);
 
-            let g = self.get_static_inner(def_id, val_llty);
-            let llty = self.get_type_of_global(g);
+        let g = self.get_static_inner(def_id, val_llty);
+        let llty = self.get_type_of_global(g);
 
-            let g = if val_llty == llty {
-                g
-            } else {
-                // codegen_static_initializer creates the global value just from the
-                // `Allocation` data by generating one big struct value that is just
-                // all the bytes and pointers after each other. This will almost never
-                // match the type that the static was declared with. Unfortunately
-                // we can't just LLVMConstBitCast our way out of it because that has very
-                // specific rules on what can be cast. So instead of adding a new way to
-                // generate static initializers that match the static's type, we picked
-                // the easier option and retroactively change the type of the static item itself.
-                let name = llvm::get_value_name(g);
-                llvm::set_value_name(g, b"");
+        let g = if val_llty == llty {
+            g
+        } else {
+            // codegen_static_initializer creates the global value just from the
+            // `Allocation` data by generating one big struct value that is just
+            // all the bytes and pointers after each other. This will almost never
+            // match the type that the static was declared with. Unfortunately
+            // we can't just LLVMConstBitCast our way out of it because that has very
+            // specific rules on what can be cast. So instead of adding a new way to
+            // generate static initializers that match the static's type, we picked
+            // the easier option and retroactively change the type of the static item itself.
+            let name = String::from_utf8(llvm::get_value_name(g))
+                .expect("we declare our statics with a utf8-valid name");
+            llvm::set_value_name(g, b"");
 
-                let linkage = llvm::get_linkage(g);
-                let visibility = llvm::get_visibility(g);
+            let linkage = llvm::get_linkage(g);
+            let visibility = llvm::get_visibility(g);
 
-                let new_g = llvm::LLVMRustGetOrInsertGlobal(
-                    self.llmod,
-                    name.as_c_char_ptr(),
-                    name.len(),
-                    val_llty,
-                );
+            let new_g = self.declare_global(&name, val_llty);
 
-                llvm::set_linkage(new_g, linkage);
-                llvm::set_visibility(new_g, visibility);
+            llvm::set_linkage(new_g, linkage);
+            llvm::set_visibility(new_g, visibility);
 
-                // The old global has had its name removed but is returned by
-                // get_static since it is in the instance cache. Provide an
-                // alternative lookup that points to the new global so that
-                // global_asm! can compute the correct mangled symbol name
-                // for the global.
-                self.renamed_statics.borrow_mut().insert(def_id, new_g);
+            // The old global has had its name removed but is returned by
+            // get_static since it is in the instance cache. Provide an
+            // alternative lookup that points to the new global so that
+            // global_asm! can compute the correct mangled symbol name
+            // for the global.
+            self.renamed_statics.borrow_mut().insert(def_id, new_g);
 
-                // To avoid breaking any invariants, we leave around the old
-                // global for the moment; we'll replace all references to it
-                // with the new global later. (See base::codegen_backend.)
-                self.statics_to_rauw.borrow_mut().push((g, new_g));
-                new_g
-            };
-            set_global_alignment(self, g, alloc.align);
-            llvm::set_initializer(g, v);
+            // To avoid breaking any invariants, we leave around the old
+            // global for the moment; we'll replace all references to it
+            // with the new global later. (See base::codegen_backend.)
+            self.statics_to_rauw.borrow_mut().push((g, new_g));
+            new_g
+        };
+        set_global_alignment(self, g, alloc.align);
+        llvm::set_initializer(g, v);
 
-            self.assume_dso_local(g, true);
+        self.assume_dso_local(g, true);
 
-            // Forward the allocation's mutability (picked by the const interner) to LLVM.
-            if alloc.mutability.is_not() {
-                llvm::set_global_constant(g, true);
-            }
+        // Forward the allocation's mutability (picked by the const interner) to LLVM.
+        if alloc.mutability.is_not() {
+            llvm::set_global_constant(g, true);
+        }
 
-            debuginfo::build_global_var_di_node(self, def_id, g);
+        debuginfo::build_global_var_di_node(self, def_id, g);
 
-            if attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
-                llvm::set_thread_local_mode(g, self.tls_model);
-            }
+        if attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
+            llvm::set_thread_local_mode(g, self.tls_model);
+        }
 
-            // Wasm statics with custom link sections get special treatment as they
-            // go into custom sections of the wasm executable. The exception to this
-            // is the `.init_array` section which are treated specially by the wasm linker.
-            if self.tcx.sess.target.is_like_wasm
-                && attrs
-                    .link_section
-                    .map(|link_section| !link_section.as_str().starts_with(".init_array"))
-                    .unwrap_or(true)
-            {
-                if let Some(section) = attrs.link_section {
-                    let section = llvm::LLVMMDStringInContext2(
+        // Wasm statics with custom link sections get special treatment as they
+        // go into custom sections of the wasm executable. The exception to this
+        // is the `.init_array` section which are treated specially by the wasm linker.
+        if self.tcx.sess.target.is_like_wasm
+            && attrs
+                .link_section
+                .map(|link_section| !link_section.as_str().starts_with(".init_array"))
+                .unwrap_or(true)
+        {
+            if let Some(section) = attrs.link_section {
+                let section = unsafe {
+                    llvm::LLVMMDStringInContext2(
                         self.llcx,
                         section.as_str().as_c_char_ptr(),
                         section.as_str().len(),
-                    );
-                    assert!(alloc.provenance().ptrs().is_empty());
+                    )
+                };
+                assert!(alloc.provenance().ptrs().is_empty());
 
-                    // The `inspect` method is okay here because we checked for provenance, and
-                    // because we are doing this access to inspect the final interpreter state (not
-                    // as part of the interpreter execution).
-                    let bytes =
-                        alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len());
-                    let alloc =
-                        llvm::LLVMMDStringInContext2(self.llcx, bytes.as_c_char_ptr(), bytes.len());
-                    let data = [section, alloc];
-                    let meta = llvm::LLVMMDNodeInContext2(self.llcx, data.as_ptr(), data.len());
-                    let val = self.get_metadata_value(meta);
+                // The `inspect` method is okay here because we checked for provenance, and
+                // because we are doing this access to inspect the final interpreter state (not
+                // as part of the interpreter execution).
+                let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len());
+                let alloc = unsafe {
+                    llvm::LLVMMDStringInContext2(self.llcx, bytes.as_c_char_ptr(), bytes.len())
+                };
+                let data = [section, alloc];
+                let meta =
+                    unsafe { llvm::LLVMMDNodeInContext2(self.llcx, data.as_ptr(), data.len()) };
+                let val = self.get_metadata_value(meta);
+                unsafe {
                     llvm::LLVMAddNamedMetadataOperand(
                         self.llmod,
                         c"wasm.custom_sections".as_ptr(),
                         val,
-                    );
-                }
-            } else {
-                base::set_link_section(g, attrs);
+                    )
+                };
             }
+        } else {
+            base::set_link_section(g, attrs);
+        }
 
-            base::set_variable_sanitizer_attrs(g, attrs);
+        base::set_variable_sanitizer_attrs(g, attrs);
 
-            if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER) {
-                // `USED` and `USED_LINKER` can't be used together.
-                assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER));
+        if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER) {
+            // `USED` and `USED_LINKER` can't be used together.
+            assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER));
 
-                // The semantics of #[used] in Rust only require the symbol to make it into the
-                // object file. It is explicitly allowed for the linker to strip the symbol if it
-                // is dead, which means we are allowed to use `llvm.compiler.used` instead of
-                // `llvm.used` here.
-                //
-                // Additionally, https://reviews.llvm.org/D97448 in LLVM 13 started emitting unique
-                // sections with SHF_GNU_RETAIN flag for llvm.used symbols, which may trigger bugs
-                // in the handling of `.init_array` (the static constructor list) in versions of
-                // the gold linker (prior to the one released with binutils 2.36).
-                //
-                // That said, we only ever emit these when `#[used(compiler)]` is explicitly
-                // requested. This is to avoid similar breakage on other targets, in particular
-                // MachO targets have *their* static constructor lists broken if `llvm.compiler.used`
-                // is emitted rather than `llvm.used`. However, that check happens when assigning
-                // the `CodegenFnAttrFlags` in the `codegen_fn_attrs` query, so we don't need to
-                // take care of it here.
-                self.add_compiler_used_global(g);
-            }
-            if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
-                // `USED` and `USED_LINKER` can't be used together.
-                assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER));
+            // The semantics of #[used] in Rust only require the symbol to make it into the
+            // object file. It is explicitly allowed for the linker to strip the symbol if it
+            // is dead, which means we are allowed to use `llvm.compiler.used` instead of
+            // `llvm.used` here.
+            //
+            // Additionally, https://reviews.llvm.org/D97448 in LLVM 13 started emitting unique
+            // sections with SHF_GNU_RETAIN flag for llvm.used symbols, which may trigger bugs
+            // in the handling of `.init_array` (the static constructor list) in versions of
+            // the gold linker (prior to the one released with binutils 2.36).
+            //
+            // That said, we only ever emit these when `#[used(compiler)]` is explicitly
+            // requested. This is to avoid similar breakage on other targets, in particular
+            // MachO targets have *their* static constructor lists broken if `llvm.compiler.used`
+            // is emitted rather than `llvm.used`. However, that check happens when assigning
+            // the `CodegenFnAttrFlags` in the `codegen_fn_attrs` query, so we don't need to
+            // take care of it here.
+            self.add_compiler_used_global(g);
+        }
+        if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
+            // `USED` and `USED_LINKER` can't be used together.
+            assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER));
 
-                self.add_used_global(g);
-            }
+            self.add_used_global(g);
         }
     }
 

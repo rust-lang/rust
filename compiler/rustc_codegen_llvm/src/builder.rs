@@ -637,17 +637,16 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         } else if place.layout.is_llvm_immediate() {
             let mut const_llval = None;
             let llty = place.layout.llvm_type(self);
-            unsafe {
-                if let Some(global) = llvm::LLVMIsAGlobalVariable(place.val.llval) {
-                    if llvm::LLVMIsGlobalConstant(global) == llvm::True {
-                        if let Some(init) = llvm::LLVMGetInitializer(global) {
-                            if self.val_ty(init) == llty {
-                                const_llval = Some(init);
-                            }
+            if let Some(global) = llvm::LLVMIsAGlobalVariable(place.val.llval) {
+                if llvm::LLVMIsGlobalConstant(global) == llvm::True {
+                    if let Some(init) = llvm::LLVMGetInitializer(global) {
+                        if self.val_ty(init) == llty {
+                            const_llval = Some(init);
                         }
                     }
                 }
             }
+
             let llval = const_llval.unwrap_or_else(|| {
                 let load = self.load(llty, place.val.llval, place.val.align);
                 if let abi::BackendRepr::Scalar(scalar) = place.layout.backend_repr {
