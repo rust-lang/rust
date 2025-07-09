@@ -124,6 +124,11 @@ impl SearchPath {
             early_dcx.early_fatal("empty search path given via `-L`");
         }
 
+        if !dir.exists() {
+            #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
+            early_dcx.early_warn(format!("search path `{}` does not exist", dir.display()));
+        }
+
         Self::new(kind, dir)
     }
 
