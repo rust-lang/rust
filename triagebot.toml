@@ -931,6 +931,15 @@ instead.
 """
 cc = ["@tgross35"]
 
+[mentions."library/stdarch"]
+message = """
+`stdarch` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/stdarch](https://github.com/rust-lang/stdarch) \
+instead.
+"""
+cc = ["@Amanieu", "@folkertdev", "@sayantn"]
+
 [mentions."library/core/src/intrinsics/simd.rs"]
 message = """
 Some changes occurred to the platform-builtins intrinsics. Make sure the
