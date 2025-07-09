@@ -64,7 +64,7 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         if linkage != Linkage::Internal && self.tcx.is_compiler_builtins(LOCAL_CRATE) {
             #[cfg(feature = "master")]
             decl.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
-        } else {
+        } else if visibility != Visibility::Default {
             #[cfg(feature = "master")]
             decl.add_attribute(FnAttribute::Visibility(base::visibility_to_gcc(visibility)));
         }
