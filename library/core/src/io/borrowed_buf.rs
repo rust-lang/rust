@@ -132,7 +132,6 @@ impl<'data> BorrowedBuf<'data> {
     #[inline]
     pub fn unfilled<'this>(&'this mut self) -> BorrowedCursor<'this> {
         BorrowedCursor {
-            start: self.filled,
             // SAFETY: we never assign into `BorrowedCursor::buf`, so treating its
             // lifetime covariantly is safe.
             buf: unsafe {
@@ -188,9 +187,6 @@ pub struct BorrowedCursor<'a> {
     // we create a `BorrowedCursor`. This is only safe if we never replace `buf` by assigning into
     // it, so don't do that!
     buf: &'a mut BorrowedBuf<'a>,
-    /// The length of the filled portion of the underlying buffer at the time of the cursor's
-    /// creation.
-    start: usize,
 }
 
 impl<'a> BorrowedCursor<'a> {
@@ -208,7 +204,6 @@ impl<'a> BorrowedCursor<'a> {
                     self.buf,
                 )
             },
-            start: self.start,
         }
     }
 
@@ -218,13 +213,12 @@ impl<'a> BorrowedCursor<'a> {
         self.buf.capacity() - self.buf.filled
     }
 
-    /// Returns the number of bytes written to this cursor since it was created from a `BorrowedBuf`.
+    /// Returns the number of bytes written to the `BorrowedBuf` this cursor was created from.
     ///
-    /// Note that if this cursor is a reborrowed clone of another, then the count returned is the
-    /// count written via either cursor, not the count since the cursor was reborrowed.
+    /// In particular, the count returned is shared by all reborrows of the cursor.
     #[inline]
     pub fn written(&self) -> usize {
-        self.buf.filled - self.start
+        self.buf.filled
     }
 
     /// Returns a mutable reference to the initialized portion of the cursor.

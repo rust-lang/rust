@@ -124,7 +124,7 @@ fn reborrow_written() {
     assert_eq!(cursor2.written(), 32);
     assert_eq!(cursor.written(), 32);
 
-    assert_eq!(buf.unfilled().written(), 0);
+    assert_eq!(buf.unfilled().written(), 32);
     assert_eq!(buf.init_len(), 32);
     assert_eq!(buf.filled().len(), 32);
     let filled = buf.filled();
