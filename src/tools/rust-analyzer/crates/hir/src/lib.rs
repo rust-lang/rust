@@ -3220,7 +3220,8 @@ impl Macro {
         }
     }
 
-    pub fn is_asm_or_global_asm(&self, db: &dyn HirDatabase) -> bool {
+    /// Is this `asm!()`, or a variant of it (e.g. `global_asm!()`)?
+    pub fn is_asm_like(&self, db: &dyn HirDatabase) -> bool {
         match self.id {
             MacroId::Macro2Id(it) => {
                 matches!(it.lookup(db).expander, MacroExpander::BuiltIn(m) if m.is_asm())

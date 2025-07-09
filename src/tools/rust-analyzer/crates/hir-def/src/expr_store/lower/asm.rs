@@ -10,7 +10,7 @@ use tt::TextRange;
 
 use crate::{
     expr_store::lower::{ExprCollector, FxIndexSet},
-    hir::{AsmOperand, AsmOptions, Expr, ExprId, InlineAsm, InlineAsmRegOrRegClass},
+    hir::{AsmOperand, AsmOptions, Expr, ExprId, InlineAsm, InlineAsmKind, InlineAsmRegOrRegClass},
 };
 
 impl ExprCollector<'_> {
@@ -269,8 +269,17 @@ impl ExprCollector<'_> {
                     }
                 })
         };
+
+        let kind = if asm.global_asm_token().is_some() {
+            InlineAsmKind::GlobalAsm
+        } else if asm.naked_asm_token().is_some() {
+            InlineAsmKind::NakedAsm
+        } else {
+            InlineAsmKind::Asm
+        };
+
         let idx = self.alloc_expr(
-            Expr::InlineAsm(InlineAsm { operands: operands.into_boxed_slice(), options }),
+            Expr::InlineAsm(InlineAsm { operands: operands.into_boxed_slice(), options, kind }),
             syntax_ptr,
         );
         self.source_map

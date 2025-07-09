@@ -28,6 +28,20 @@ fn test_asm_expand() {
         r#"
 #[rustc_builtin_macro]
 macro_rules! asm {() => {}}
+#[rustc_builtin_macro]
+macro_rules! global_asm {() => {}}
+#[rustc_builtin_macro]
+macro_rules! naked_asm {() => {}}
+
+// FIXME: This creates an error
+// global_asm! {
+//     ""
+// }
+
+#[unsafe(naked)]
+extern "C" fn foo() {
+    naked_asm!("");
+}
 
 fn main() {
     let i: u64 = 3;
@@ -45,6 +59,20 @@ fn main() {
         expect![[r##"
 #[rustc_builtin_macro]
 macro_rules! asm {() => {}}
+#[rustc_builtin_macro]
+macro_rules! global_asm {() => {}}
+#[rustc_builtin_macro]
+macro_rules! naked_asm {() => {}}
+
+// FIXME: This creates an error
+// global_asm! {
+//     ""
+// }
+
+#[unsafe(naked)]
+extern "C" fn foo() {
+    builtin #naked_asm ("");
+}
 
 fn main() {
     let i: u64 = 3;

@@ -253,8 +253,7 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = p.start();
     p.bump_remap(T![builtin]);
     p.bump(T![#]);
-    if p.at_contextual_kw(T![offset_of]) {
-        p.bump_remap(T![offset_of]);
+    if p.eat_contextual_kw(T![offset_of]) {
         p.expect(T!['(']);
         type_(p);
         p.expect(T![,]);
@@ -278,8 +277,7 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
             p.expect(T![')']);
         }
         Some(m.complete(p, OFFSET_OF_EXPR))
-    } else if p.at_contextual_kw(T![format_args]) {
-        p.bump_remap(T![format_args]);
+    } else if p.eat_contextual_kw(T![format_args]) {
         p.expect(T!['(']);
         expr(p);
         if p.eat(T![,]) {
@@ -302,7 +300,16 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         }
         p.expect(T![')']);
         Some(m.complete(p, FORMAT_ARGS_EXPR))
-    } else if p.at_contextual_kw(T![asm]) {
+    } else if p.eat_contextual_kw(T![asm])
+        || p.eat_contextual_kw(T![global_asm])
+        || p.eat_contextual_kw(T![naked_asm])
+    {
+        // test asm_kinds
+        // fn foo() {
+        //     builtin#asm("");
+        //     builtin#global_asm("");
+        //     builtin#naked_asm("");
+        // }
         parse_asm_expr(p, m)
     } else {
         m.abandon(p);
@@ -322,7 +329,6 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
 //     );
 // }
 fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
-    p.bump_remap(T![asm]);
     p.expect(T!['(']);
     if expr(p).is_none() {
         p.err_and_bump("expected asm template");

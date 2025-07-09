@@ -118,6 +118,14 @@ impl AsmExpr {
     pub fn asm_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![asm]) }
     #[inline]
     pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
+    #[inline]
+    pub fn global_asm_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![global_asm])
+    }
+    #[inline]
+    pub fn naked_asm_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![naked_asm])
+    }
 }
 pub struct AsmLabel {
     pub(crate) syntax: SyntaxNode,

@@ -7,7 +7,7 @@ use either::Either;
 use hir_def::{
     AdtId, DefWithBodyId, FieldId, FunctionId, VariantId,
     expr_store::{Body, path::Path},
-    hir::{AsmOperand, Expr, ExprId, ExprOrPatId, Pat, PatId, Statement, UnaryOp},
+    hir::{AsmOperand, Expr, ExprId, ExprOrPatId, InlineAsmKind, Pat, PatId, Statement, UnaryOp},
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
     signatures::StaticFlags,
     type_ref::Rawness,
@@ -315,7 +315,12 @@ impl<'db> UnsafeVisitor<'db> {
                 self.inside_assignment = old_inside_assignment;
             }
             Expr::InlineAsm(asm) => {
-                self.on_unsafe_op(current.into(), UnsafetyReason::InlineAsm);
+                if asm.kind == InlineAsmKind::Asm {
+                    // `naked_asm!()` requires `unsafe` on the attribute (`#[unsafe(naked)]`),
+                    // and `global_asm!()` doesn't require it at all.
+                    self.on_unsafe_op(current.into(), UnsafetyReason::InlineAsm);
+                }
+
                 asm.operands.iter().for_each(|(_, op)| match op {
                     AsmOperand::In { expr, .. }
                     | AsmOperand::Out { expr: Some(expr), .. }
