@@ -30,7 +30,7 @@ use std::{
 use la_arena::{Arena, Idx, RawIdx};
 use rustc_hash::{FxBuildHasher, FxHashMap};
 use syntax::{
-    AstNode, AstPtr, SyntaxKind, SyntaxNode, SyntaxNodePtr,
+    AstNode, AstPtr, SyntaxNode, SyntaxNodePtr,
     ast::{self, HasName},
     match_ast,
 };
@@ -278,7 +278,6 @@ impl<N> FileAstId<N> {
 
 #[derive(Hash)]
 struct ErasedHasNameFileAstId<'a> {
-    kind: SyntaxKind,
     name: &'a str,
 }
 
@@ -433,7 +432,6 @@ macro_rules! register_has_name_ast_id {
         )+
 
         fn has_name_ast_id(node: &SyntaxNode, index_map: &mut ErasedAstIdNextIndexMap) -> Option<ErasedFileAstId> {
-            let kind = node.kind();
             match_ast! {
                 match node {
                     $(
@@ -441,7 +439,6 @@ macro_rules! register_has_name_ast_id {
                             let name = node.$name_method();
                             let name = name.as_ref().map_or("", |it| it.text_non_mutable());
                             let result = ErasedHasNameFileAstId {
-                                kind,
                                 name,
                             };
                             Some(index_map.new_id(ErasedFileAstIdKind::$ident, result))
@@ -483,7 +480,6 @@ macro_rules! register_assoc_item_ast_id {
             index_map: &mut ErasedAstIdNextIndexMap,
             parent: Option<&ErasedFileAstId>,
         ) -> Option<ErasedFileAstId> {
-            let kind = node.kind();
             match_ast! {
                 match node {
                     $(
@@ -491,7 +487,6 @@ macro_rules! register_assoc_item_ast_id {
                             let name = $name_callback(node);
                             let name = name.as_ref().map_or("", |it| it.text_non_mutable());
                             let properties = ErasedHasNameFileAstId {
-                                kind,
                                 name,
                             };
                             let result = ErasedAssocItemFileAstId {
