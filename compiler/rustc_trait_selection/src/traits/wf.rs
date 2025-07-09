@@ -771,9 +771,25 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             }
 
             ty::Tuple(tys) => {
-                if let Some((_last, rest)) = tys.split_last() {
+                if let Some((last, rest)) = tys.split_last() {
                     for &elem in rest {
                         self.require_sized(elem, ObligationCauseCode::TupleElem);
+                        if elem.is_scalable_vector() && !self.span.is_dummy() {
+                            self.tcx()
+                                .dcx()
+                                .struct_span_err(
+                                    self.span,
+                                    "scalable vectors cannot be tuple fields",
+                                )
+                                .emit();
+                        }
+                    }
+
+                    if last.is_scalable_vector() && !self.span.is_dummy() {
+                        self.tcx()
+                            .dcx()
+                            .struct_span_err(self.span, "scalable vectors cannot be tuple fields")
+                            .emit();
                     }
                 }
             }
