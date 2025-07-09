@@ -563,17 +563,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // we lower the guard.
             // As a result, we end up with the drop order of the last sub-branch we lower. To use
             // the drop order for the first sub-branch, we lower sub-branches in reverse (#142163).
-            // TODO: I'm saving the breaking change for the next commit. For now, a stopgap:
-            let sub_branch_to_use_the_drops_from =
-                if arm_match_scope.is_some() { Position::Last } else { Position::First };
             let target_block = self.cfg.start_new_block();
-            for (pos, sub_branch) in branch.sub_branches.into_iter().with_position() {
+            for (pos, sub_branch) in branch.sub_branches.into_iter().rev().with_position() {
                 debug_assert!(pos != Position::Only);
-                let schedule_drops = if pos == sub_branch_to_use_the_drops_from {
-                    ScheduleDrops::Yes
-                } else {
-                    ScheduleDrops::No
-                };
+                let schedule_drops =
+                    if pos == Position::Last { ScheduleDrops::Yes } else { ScheduleDrops::No };
                 let binding_end = self.bind_and_guard_matched_candidate(
                     sub_branch,
                     fake_borrow_temps,
