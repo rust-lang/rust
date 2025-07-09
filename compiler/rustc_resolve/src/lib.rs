@@ -1290,7 +1290,7 @@ impl<'ra> ResolverArenas<'ra> {
         self.name_resolutions.alloc(Default::default())
     }
     fn alloc_macro_rules_scope(&'ra self, scope: MacroRulesScope<'ra>) -> MacroRulesScopeRef<'ra> {
-        Interned::new_unchecked(self.dropless.alloc(Cell::new(scope)))
+        self.dropless.alloc(Cell::new(scope))
     }
     fn alloc_macro_rules_binding(
         &'ra self,
