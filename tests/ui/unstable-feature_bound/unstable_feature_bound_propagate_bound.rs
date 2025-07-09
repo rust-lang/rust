@@ -26,7 +26,6 @@ impl Foo for Bar {
 }
 
 
-#[stable(feature = "a", since = "1.1.1")]
 #[unstable_feature_bound(feat_bar)]
 fn bar() {
     Bar::foo();
