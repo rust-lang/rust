@@ -61,7 +61,7 @@ fn clear() {
     assert_eq!(rbuf.filled().len(), 0);
     assert_eq!(rbuf.unfilled().capacity(), 16);
 
-    assert_eq!(rbuf.unfilled().init_ref(), [255; 16]);
+    assert_eq!(rbuf.unfilled().init_mut(), [255; 16]);
 }
 
 #[test]
@@ -142,7 +142,6 @@ fn cursor_set_init() {
     }
 
     assert_eq!(rbuf.init_len(), 8);
-    assert_eq!(rbuf.unfilled().init_ref().len(), 8);
     assert_eq!(rbuf.unfilled().init_mut().len(), 8);
     assert_eq!(rbuf.unfilled().uninit_mut().len(), 8);
     assert_eq!(unsafe { rbuf.unfilled().as_mut().len() }, 16);
@@ -160,7 +159,6 @@ fn cursor_set_init() {
     }
 
     assert_eq!(rbuf.init_len(), 12);
-    assert_eq!(rbuf.unfilled().init_ref().len(), 8);
     assert_eq!(rbuf.unfilled().init_mut().len(), 8);
     assert_eq!(rbuf.unfilled().uninit_mut().len(), 4);
     assert_eq!(unsafe { rbuf.unfilled().as_mut().len() }, 12);

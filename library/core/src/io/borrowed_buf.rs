@@ -227,16 +227,6 @@ impl<'a> BorrowedCursor<'a> {
         self.buf.filled - self.start
     }
 
-    /// Returns a shared reference to the initialized portion of the cursor.
-    #[inline]
-    pub fn init_ref(&self) -> &[u8] {
-        // SAFETY: We only slice the initialized part of the buffer, which is always valid
-        unsafe {
-            let buf = self.buf.buf.get_unchecked(self.buf.filled..self.buf.init);
-            buf.assume_init_ref()
-        }
-    }
-
     /// Returns a mutable reference to the initialized portion of the cursor.
     #[inline]
     pub fn init_mut(&mut self) -> &mut [u8] {
