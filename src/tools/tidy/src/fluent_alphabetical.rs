@@ -104,7 +104,7 @@ pub fn check(path: &Path, bless: bool, bad: &mut bool) {
                 if sorted != contents {
                     let mut f =
                         OpenOptions::new().write(true).truncate(true).open(ent.path()).unwrap();
-                    f.write(sorted.as_bytes()).unwrap();
+                    f.write_all(sorted.as_bytes()).unwrap();
                 }
             } else {
                 check_alphabetic(

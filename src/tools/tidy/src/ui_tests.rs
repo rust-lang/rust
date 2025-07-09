@@ -57,7 +57,7 @@ const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
 fn check_entries(tests_path: &Path, bad: &mut bool) {
     let mut directories: HashMap<PathBuf, u32> = HashMap::new();
 
-    for dir in Walk::new(&tests_path.join("ui")) {
+    for dir in Walk::new(tests_path.join("ui")) {
         if let Ok(entry) = dir {
             let parent = entry.path().parent().unwrap().to_path_buf();
             *directories.entry(parent).or_default() += 1;
@@ -99,7 +99,7 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
 "#;
 
     let path = &root_path.join("tests");
-    check_entries(&path, bad);
+    check_entries(path, bad);
 
     // the list of files in ui tests that are allowed to start with `issue-XXXX`
     // BTreeSet because we would like a stable ordering so --bless works
@@ -109,13 +109,12 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
         .strip_prefix(issues_txt_header)
         .unwrap()
         .lines()
-        .map(|line| {
+        .inspect(|&line| {
             if prev_line > line {
                 is_sorted = false;
             }
 
             prev_line = line;
-            line
         })
         .collect();
 

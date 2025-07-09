@@ -64,8 +64,8 @@ fn check_impl(
     extra_checks: Option<&str>,
     pos_args: &[String],
 ) -> Result<(), Error> {
-    let show_diff = std::env::var("TIDY_PRINT_DIFF")
-        .map_or(false, |v| v.eq_ignore_ascii_case("true") || v == "1");
+    let show_diff =
+        std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1");
 
     // Split comma-separated args up
     let lint_args = match extra_checks {
@@ -141,7 +141,7 @@ fn check_impl(
             );
         }
         // Rethrow error
-        let _ = res?;
+        res?;
     }
 
     if python_fmt {
@@ -173,7 +173,7 @@ fn check_impl(
         }
 
         // Rethrow error
-        let _ = res?;
+        res?;
     }
 
     if cpp_fmt {
@@ -244,7 +244,7 @@ fn check_impl(
             }
         }
         // Rethrow error
-        let _ = res?;
+        res?;
     }
 
     if shell_lint {
@@ -286,8 +286,8 @@ fn run_ruff(
     file_args: &[&OsStr],
     ruff_args: &[&OsStr],
 ) -> Result<(), Error> {
-    let mut cfg_args_ruff = cfg_args.into_iter().copied().collect::<Vec<_>>();
-    let mut file_args_ruff = file_args.into_iter().copied().collect::<Vec<_>>();
+    let mut cfg_args_ruff = cfg_args.to_vec();
+    let mut file_args_ruff = file_args.to_vec();
 
     let mut cfg_path = root_path.to_owned();
     cfg_path.extend(RUFF_CONFIG_PATH);
@@ -305,7 +305,7 @@ fn run_ruff(
         file_args_ruff.push(root_path.as_os_str());
     }
 
-    let mut args: Vec<&OsStr> = ruff_args.into_iter().copied().collect();
+    let mut args: Vec<&OsStr> = ruff_args.to_vec();
     args.extend(merge_args(&cfg_args_ruff, &file_args_ruff));
     py_runner(py_path, true, None, "ruff", &args)
 }
