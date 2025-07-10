@@ -7,7 +7,6 @@ edition = "2024"
 [dependencies]
 assert-instr-macro = { path = "../assert-instr-macro" }
 simd-test-macro = { path = "../simd-test-macro" }
-lazy_static = "1.0"
 rustc-demangle = "0.1.8"
 cfg-if = "1.0"
 

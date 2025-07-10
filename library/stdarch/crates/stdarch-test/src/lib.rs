@@ -7,13 +7,11 @@
 #![allow(clippy::missing_docs_in_private_items, clippy::print_stdout)]
 
 #[macro_use]
-extern crate lazy_static;
-#[macro_use]
 extern crate cfg_if;
 
 pub use assert_instr_macro::*;
 pub use simd_test_macro::*;
-use std::{cmp, collections::HashSet, env, hash, hint::black_box, str};
+use std::{cmp, collections::HashSet, env, hash, hint::black_box, str, sync::LazyLock};
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -25,9 +23,7 @@ cfg_if! {
     }
 }
 
-lazy_static! {
-    static ref DISASSEMBLY: HashSet<Function> = disassemble_myself();
-}
+static DISASSEMBLY: LazyLock<HashSet<Function>> = LazyLock::new(disassemble_myself);
 
 #[derive(Debug)]
 struct Function {

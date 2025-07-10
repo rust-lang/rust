@@ -726,7 +726,6 @@ dependencies = [
  "assert-instr-macro",
  "cc",
  "cfg-if",
- "lazy_static",
  "rustc-demangle",
  "simd-test-macro",
  "wasmprinter",
