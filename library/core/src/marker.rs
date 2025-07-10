@@ -210,6 +210,11 @@ pub trait PointeeSized {
 ///   - `Trait` is dyn-compatible[^1].
 ///   - The type is sized.
 ///   - The type outlives `'a`.
+/// - Trait objects `dyn TraitA + AutoA... + 'a` implement `Unsize<dyn TraitB + AutoB... + 'b>`
+///    if all of these conditions are met:
+///   - `TraitB` is a supertrait of `TraitA`.
+///   - `AutoB...` is a subset of `AutoA...`.
+///   - `'a` outlives `'b`.
 /// - Structs `Foo<..., T1, ..., Tn, ...>` implement `Unsize<Foo<..., U1, ..., Un, ...>>`
 ///   where any number of (type and const) parameters may be changed if all of these conditions
 ///   are met:
