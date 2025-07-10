@@ -207,9 +207,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         {
             // These cases are all UB to actually hit, so don't emit code for them.
             // (The size mismatches are reachable via `transmute_unchecked`.)
-            // We can't use unreachable because that's a terminator, and we
-            // need something that can be in the middle of a basic block.
-            bx.assume(bx.cx().const_bool(false))
+            bx.unreachable_nonterminator();
         } else {
             // Since in this path we have a place anyway, we can store or copy to it,
             // making sure we use the destination place's alignment even if the
@@ -236,9 +234,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             || operand.layout.is_uninhabited()
             || cast.is_uninhabited()
         {
-            // We can't use unreachable because that's a terminator, and we
-            // need something that can be in the middle of a basic block.
-            bx.assume(bx.cx().const_bool(false));
+            bx.unreachable_nonterminator();
 
             // We still need to return a value of the appropriate type, but
             // it's already UB so do the easiest thing available.
