@@ -200,7 +200,7 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
         // so we don't bork things on panic or a contributor using Ctrl+C
         let blessed_issues_path = tidy_src.join("issues_blessed.txt");
         let mut blessed_issues_txt = fs::File::create(&blessed_issues_path).unwrap();
-        blessed_issues_txt.write(issues_txt_header.as_bytes()).unwrap();
+        blessed_issues_txt.write_all(issues_txt_header.as_bytes()).unwrap();
         // If we changed paths to use the OS separator, reassert Unix chauvinism for blessing.
         for filename in allowed_issue_names.difference(&remaining_issue_names) {
             writeln!(blessed_issues_txt, "{filename}").unwrap();
