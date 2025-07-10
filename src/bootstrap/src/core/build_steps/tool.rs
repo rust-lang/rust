@@ -381,20 +381,26 @@ pub(crate) fn get_tool_target_compiler(
     builder: &Builder<'_>,
     mode: ToolTargetBuildMode,
 ) -> Compiler {
-    let (target, min_build_compiler_stage) = match mode {
+    let (target, build_compiler_stage) = match mode {
         ToolTargetBuildMode::Build(target) => {
             assert!(builder.top_stage > 0);
+            // If we want to build a stage N tool, we need to compile it with stage N-1 rustc
             (target, builder.top_stage - 1)
         }
         ToolTargetBuildMode::Dist(target_compiler) => {
             assert!(target_compiler.stage > 0);
+            // If we want to dist a stage N rustc, we want to attach stage N tool to it.
+            // And to build that tool, we need to compile it with stage N-1 rustc
             (target_compiler.host, target_compiler.stage - 1)
         }
     };
+
     let compiler = if builder.host_target == target {
-        builder.compiler(min_build_compiler_stage, builder.host_target)
+        builder.compiler(build_compiler_stage, builder.host_target)
     } else {
-        builder.compiler(min_build_compiler_stage.max(1), builder.host_target)
+        // If we are cross-compiling a stage 1 tool, we cannot do that with a stage 0 compiler,
+        // so we auto-bump the tool's stage to 2.
+        builder.compiler(build_compiler_stage.max(1), builder.host_target)
     };
     builder.std(compiler, target);
     compiler
