@@ -112,11 +112,24 @@ impl CppCompilation {
         &mut self.0
     }
 
-    pub fn run(&self, inputs: &[String], output: &str) -> std::io::Result<std::process::Output> {
+    pub fn compile_object_file(
+        &self,
+        input: &str,
+        output: &str,
+    ) -> std::io::Result<std::process::Output> {
+        let mut cmd = clone_command(&self.0);
+        cmd.args([input, "-c", "-o", output]);
+        cmd.output()
+    }
+
+    pub fn link_executable(
+        &self,
+        inputs: impl Iterator<Item = String>,
+        output: &str,
+    ) -> std::io::Result<std::process::Output> {
         let mut cmd = clone_command(&self.0);
         cmd.args(inputs);
         cmd.args(["-o", output]);
-
         cmd.output()
     }
 }

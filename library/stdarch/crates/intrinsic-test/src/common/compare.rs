@@ -15,12 +15,12 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
         .par_iter()
         .filter_map(|intrinsic_name| {
             let c = runner_command(runner)
-                .arg(format!("./c_programs/{intrinsic_name}"))
+                .arg("./c_programs/intrinsic-test-programs")
+                .arg(intrinsic_name)
                 .output();
 
             let rust = runner_command(runner)
                 .arg(format!("target/{target}/release/{intrinsic_name}"))
-                .env("RUSTFLAGS", "-Cdebuginfo=0")
                 .output();
 
             let (c, rust) = match (c, rust) {
