@@ -8,6 +8,7 @@
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
+extern crate std;
 
 fn b<C>(e: C) { }
 
