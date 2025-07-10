@@ -4567,7 +4567,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_transmute",
- "rustc_type_ir",
  "smallvec",
  "thin-vec",
  "tracing",
