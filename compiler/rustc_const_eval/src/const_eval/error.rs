@@ -11,8 +11,8 @@ use rustc_span::{Span, Symbol};
 use super::CompileTimeMachine;
 use crate::errors::{self, FrameNote, ReportErrorExt};
 use crate::interpret::{
-    ErrorHandled, Frame, InterpErrorInfo, InterpErrorKind, MachineStopType, err_inval,
-    err_machine_stop,
+    CtfeProvenance, ErrorHandled, Frame, InterpErrorInfo, InterpErrorKind, MachineStopType,
+    Pointer, err_inval, err_machine_stop,
 };
 
 /// The CTFE machine has some custom error kinds.
@@ -32,12 +32,12 @@ pub enum ConstEvalErrKind {
     /// Called `const_make_global` twice.
     ConstMakeGlobalPtrAlreadyMadeGlobal(AllocId),
     /// Called `const_make_global` on a non-heap pointer.
-    ConstMakeGlobalPtrIsNonHeap(String),
+    ConstMakeGlobalPtrIsNonHeap(Pointer<Option<CtfeProvenance>>),
     /// Called `const_make_global` on a dangling pointer.
-    ConstMakeGlobalWithDanglingPtr(String),
+    ConstMakeGlobalWithDanglingPtr(Pointer<Option<CtfeProvenance>>),
     /// Called `const_make_global` on a pointer that does not start at the
     /// beginning of an object.
-    ConstMakeGlobalWithOffset(String),
+    ConstMakeGlobalWithOffset(Pointer<Option<CtfeProvenance>>),
 }
 
 impl MachineStopType for ConstEvalErrKind {
@@ -74,7 +74,7 @@ impl MachineStopType for ConstEvalErrKind {
             ConstMakeGlobalPtrIsNonHeap(ptr)
             | ConstMakeGlobalWithOffset(ptr)
             | ConstMakeGlobalWithDanglingPtr(ptr) => {
-                adder("ptr".into(), ptr.into_diag_arg(&mut None));
+                adder("ptr".into(), format!("{ptr:?}").into_diag_arg(&mut None));
             }
             ConstMakeGlobalPtrAlreadyMadeGlobal(alloc) => {
                 adder("alloc".into(), alloc.into_diag_arg(&mut None));

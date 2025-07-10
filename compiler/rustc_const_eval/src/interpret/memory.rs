@@ -315,33 +315,33 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// mark the `const_allocate`d pointer immutable so we can intern it.
     pub fn make_const_heap_ptr_global(
         &mut self,
-        ptr: Pointer<Option<M::Provenance>>,
+        ptr: Pointer<Option<CtfeProvenance>>,
     ) -> InterpResult<'tcx>
     where
-        M: Machine<'tcx, MemoryKind = crate::const_eval::MemoryKind>,
+        M: Machine<'tcx, MemoryKind = crate::const_eval::MemoryKind, Provenance = CtfeProvenance>,
     {
         let (alloc_id, offset, _) = self.ptr_get_alloc_id(ptr, 0)?;
         if offset.bytes() != 0 {
-            return Err(ConstEvalErrKind::ConstMakeGlobalWithOffset(format!("{ptr:?}"))).into();
+            return Err(ConstEvalErrKind::ConstMakeGlobalWithOffset(ptr)).into();
         }
 
         let not_local_heap =
             matches!(self.tcx.try_get_global_alloc(alloc_id), Some(GlobalAlloc::Memory(_)));
 
         if not_local_heap {
-            return Err(ConstEvalErrKind::ConstMakeGlobalPtrIsNonHeap(format!("{ptr:?}"))).into();
+            return Err(ConstEvalErrKind::ConstMakeGlobalPtrIsNonHeap(ptr)).into();
         }
 
-        let (kind, alloc) = self.memory.alloc_map.get_mut_or(alloc_id, || {
-            Err(ConstEvalErrKind::ConstMakeGlobalWithDanglingPtr(format!("{ptr:?}")))
-        })?;
+        let (kind, alloc) = self
+            .memory
+            .alloc_map
+            .get_mut_or(alloc_id, || Err(ConstEvalErrKind::ConstMakeGlobalWithDanglingPtr(ptr)))?;
 
         alloc.mutability = Mutability::Not;
 
         match kind {
             MemoryKind::Stack | MemoryKind::CallerLocation => {
-                return Err(ConstEvalErrKind::ConstMakeGlobalPtrIsNonHeap(format!("{ptr:?}")))
-                    .into();
+                return Err(ConstEvalErrKind::ConstMakeGlobalPtrIsNonHeap(ptr)).into();
             }
             MemoryKind::Machine(crate::const_eval::MemoryKind::Heap { was_made_global }) => {
                 if *was_made_global {
