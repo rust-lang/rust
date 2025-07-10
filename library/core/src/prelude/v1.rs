@@ -75,6 +75,7 @@ mod ambiguous_macro_only {
     pub use crate::*;
 }
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[doc(no_inline)]
 pub use self::ambiguous_macro_only::{env, panic};
 
 #[unstable(feature = "cfg_select", issue = "115585")]
