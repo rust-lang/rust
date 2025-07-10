@@ -425,6 +425,28 @@ float_test! {
 }
 
 float_test! {
+    name: is_finite,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        let zero: Float = 0.0;
+        let pos: Float = 42.8;
+        let neg: Float = -109.2;
+        assert!(!nan.is_finite());
+        assert!(!inf.is_finite());
+        assert!(!neg_inf.is_finite());
+        assert!(zero.is_finite());
+        assert!(pos.is_finite());
+        assert!(neg.is_finite());
+    }
+}
+
+float_test! {
     name: min,
     attrs: {
         f16: #[cfg(any(miri, target_has_reliable_f16_math))],
