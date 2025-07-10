@@ -224,6 +224,8 @@ pub use self::poison::{MappedMutexGuard, MappedRwLockReadGuard, MappedRwLockWrit
 #[unstable(feature = "mpmc_channel", issue = "126840")]
 pub mod mpmc;
 pub mod mpsc;
+#[unstable(feature = "oneshot_channel", issue = "143674")]
+pub mod oneshot;
 
 #[unstable(feature = "sync_poison_mod", issue = "134646")]
 pub mod poison;
