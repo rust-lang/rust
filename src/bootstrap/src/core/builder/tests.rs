@@ -637,8 +637,8 @@ mod snapshot {
 
     use crate::core::build_steps::{compile, dist, doc, test, tool};
     use crate::core::builder::tests::{
-        TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3, configure, configure_with_args, first,
-        host_target, render_steps, run_build,
+        RenderConfig, TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3, configure, configure_with_args,
+        first, host_target, render_steps, run_build,
     };
     use crate::core::builder::{Builder, Kind, StepDescription, StepMetadata};
     use crate::core::config::TargetSelection;
@@ -994,7 +994,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 0 <host>
-        [doc] std 1 <host>
+        [doc] std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
         ");
     }
 
@@ -1043,12 +1043,12 @@ mod snapshot {
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 1 <host>
-        [doc] std 2 <host>
+        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] std 2 <host>
+        [doc] std 2 <host> crates=[]
         [dist] mingw <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
@@ -1075,12 +1075,12 @@ mod snapshot {
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> WasmComponentLd 2 <host>
         [build] rustdoc 1 <host>
-        [doc] std 2 <host>
+        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] std 2 <host>
+        [doc] std 2 <host> crates=[]
         [dist] mingw <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
@@ -1112,15 +1112,15 @@ mod snapshot {
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 1 <host>
-        [doc] std 2 <host>
-        [doc] std 2 <target1>
+        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
+        [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [dist] docs <target1>
-        [doc] std 2 <host>
-        [doc] std 2 <target1>
+        [doc] std 2 <host> crates=[]
+        [doc] std 2 <target1> crates=[]
         [dist] mingw <host>
         [dist] mingw <target1>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
@@ -1149,14 +1149,14 @@ mod snapshot {
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 1 <host>
-        [doc] std 2 <host>
+        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
         [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 2 <host> -> std 2 <target1>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] std 2 <host>
+        [doc] std 2 <host> crates=[]
         [dist] mingw <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
@@ -1186,8 +1186,8 @@ mod snapshot {
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 1 <host>
-        [doc] std 2 <host>
-        [doc] std 2 <target1>
+        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
+        [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
         [build] rustc 1 <host> -> std 1 <target1>
@@ -1195,8 +1195,8 @@ mod snapshot {
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [dist] docs <target1>
-        [doc] std 2 <host>
-        [doc] std 2 <target1>
+        [doc] std 2 <host> crates=[]
+        [doc] std 2 <target1> crates=[]
         [dist] mingw <host>
         [dist] mingw <target1>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
@@ -1228,11 +1228,11 @@ mod snapshot {
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 1 <host>
-        [doc] std 2 <target1>
+        [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <target1>
-        [doc] std 2 <target1>
+        [doc] std 2 <target1> crates=[]
         [dist] mingw <target1>
         [build] rustc 2 <host> -> std 2 <target1>
         [dist] rustc 2 <host> -> std 2 <target1>
@@ -1260,14 +1260,14 @@ mod snapshot {
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> WasmComponentLd 2 <host>
         [build] rustdoc 1 <host>
-        [doc] std 2 <target1>
+        [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 2 <host> -> std 2 <target1>
         [build] rustc 0 <host> -> LintDocs 1 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <target1>
-        [doc] std 2 <target1>
+        [doc] std 2 <target1> crates=[]
         [dist] mingw <target1>
         [build] llvm <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
@@ -1575,6 +1575,80 @@ mod snapshot {
         steps.assert_contains(StepMetadata::test("CrateLibrustc", host));
         steps.assert_contains_fuzzy(StepMetadata::build("rustc", host));
     }
+
+    #[test]
+    fn doc_library() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("library")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
+        ");
+    }
+
+    #[test]
+    fn doc_core() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("core")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] std 1 <host> crates=[core]
+        ");
+    }
+
+    #[test]
+    fn doc_core_no_std_target() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("core")
+                .override_target_no_std(&host_target())
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] std 1 <host> crates=[core]
+        ");
+    }
+
+    #[test]
+    fn doc_library_no_std_target() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("library")
+                .override_target_no_std(&host_target())
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] std 1 <host> crates=[alloc,core]
+        ");
+    }
+
+    #[test]
+    fn doc_library_no_std_target_cross_compile() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("library")
+                .targets(&[TEST_TRIPLE_1])
+                .override_target_no_std(TEST_TRIPLE_1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] std 1 <target1> crates=[alloc,core]
+        ");
+    }
 }
 
 struct ExecutedSteps {
@@ -1583,7 +1657,11 @@ struct ExecutedSteps {
 
 impl ExecutedSteps {
     fn render(&self) -> String {
-        render_steps(&self.steps)
+        self.render_with(RenderConfig::default())
+    }
+
+    fn render_with(&self, config: RenderConfig) -> String {
+        render_steps(&self.steps, config)
     }
 
     #[track_caller]
@@ -1592,7 +1670,7 @@ impl ExecutedSteps {
         if !self.contains(&metadata) {
             panic!(
                 "Metadata `{}` ({metadata:?}) not found in executed steps:\n{}",
-                render_metadata(&metadata),
+                render_metadata(&metadata, &RenderConfig::default()),
                 self.render()
             );
         }
@@ -1607,7 +1685,7 @@ impl ExecutedSteps {
         if !self.contains_fuzzy(&metadata) {
             panic!(
                 "Metadata `{}` ({metadata:?}) not found in executed steps:\n{}",
-                render_metadata(&metadata),
+                render_metadata(&metadata, &RenderConfig::default()),
                 self.render()
             );
         }
@@ -1619,7 +1697,7 @@ impl ExecutedSteps {
         if self.contains(&metadata) {
             panic!(
                 "Metadata `{}` ({metadata:?}) found in executed steps (it should not be there):\n{}",
-                render_metadata(&metadata),
+                render_metadata(&metadata, &RenderConfig::default()),
                 self.render()
             );
         }
@@ -1641,7 +1719,7 @@ impl ExecutedSteps {
 }
 
 fn fuzzy_metadata_eq(executed: &StepMetadata, to_match: &StepMetadata) -> bool {
-    let StepMetadata { name, kind, target, built_by: _, stage: _ } = executed;
+    let StepMetadata { name, kind, target, built_by: _, stage: _, metadata } = executed;
     *name == to_match.name && *kind == to_match.kind && *target == to_match.target
 }
 
@@ -1672,6 +1750,16 @@ impl ConfigBuilder {
     }
 }
 
+struct RenderConfig {
+    normalize_host: bool,
+}
+
+impl Default for RenderConfig {
+    fn default() -> Self {
+        Self { normalize_host: true }
+    }
+}
+
 /// Renders the executed bootstrap steps for usage in snapshot tests with insta.
 /// Only renders certain important steps.
 /// Each value in `steps` should be a tuple of (Step, step output).
@@ -1679,7 +1767,7 @@ impl ConfigBuilder {
 /// The arrow in the rendered output (`X -> Y`) means `X builds Y`.
 /// This is similar to the output printed by bootstrap to stdout, but here it is
 /// generated purely for the purpose of tests.
-fn render_steps(steps: &[ExecutedStep]) -> String {
+fn render_steps(steps: &[ExecutedStep], config: RenderConfig) -> String {
     steps
         .iter()
         .filter_map(|step| {
@@ -1689,32 +1777,35 @@ fn render_steps(steps: &[ExecutedStep]) -> String {
                 return None;
             };
 
-            Some(render_metadata(&metadata))
+            Some(render_metadata(&metadata, &config))
         })
         .collect::<Vec<_>>()
         .join("\n")
 }
 
-fn render_metadata(metadata: &StepMetadata) -> String {
+fn render_metadata(metadata: &StepMetadata, config: &RenderConfig) -> String {
     let mut record = format!("[{}] ", metadata.kind.as_str());
     if let Some(compiler) = metadata.built_by {
-        write!(record, "{} -> ", render_compiler(compiler));
+        write!(record, "{} -> ", render_compiler(compiler, config));
     }
     let stage = metadata.get_stage().map(|stage| format!("{stage} ")).unwrap_or_default();
-    write!(record, "{} {stage}<{}>", metadata.name, normalize_target(metadata.target));
+    write!(record, "{} {stage}<{}>", metadata.name, normalize_target(metadata.target, config));
+    if let Some(metadata) = &metadata.metadata {
+        write!(record, " {metadata}");
+    }
     record
 }
 
-fn normalize_target(target: TargetSelection) -> String {
-    target
-        .to_string()
-        .replace(&host_target(), "host")
-        .replace(TEST_TRIPLE_1, "target1")
-        .replace(TEST_TRIPLE_2, "target2")
+fn normalize_target(target: TargetSelection, config: &RenderConfig) -> String {
+    let mut target = target.to_string();
+    if config.normalize_host {
+        target = target.replace(&host_target(), "host");
+    }
+    target.replace(TEST_TRIPLE_1, "target1").replace(TEST_TRIPLE_2, "target2")
 }
 
-fn render_compiler(compiler: Compiler) -> String {
-    format!("rustc {} <{}>", compiler.stage, normalize_target(compiler.host))
+fn render_compiler(compiler: Compiler, config: &RenderConfig) -> String {
+    format!("rustc {} <{}>", compiler.stage, normalize_target(compiler.host, config))
 }
 
 fn host_target() -> String {
