@@ -807,7 +807,7 @@ impl ExecutionContext {
 
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();
-        Some(StreamingCommand { child, stdout, stderr })
+        Some(StreamingCommand { child, stdout, stderr, fingerprint, start_time })
     }
 }
 
@@ -818,8 +818,14 @@ impl AsRef<ExecutionContext> for ExecutionContext {
 }
 
 impl StreamingCommand {
-    pub fn wait(mut self) -> Result<ExitStatus, std::io::Error> {
-        self.child.wait()
+    pub fn wait(
+        mut self,
+        exec_ctx: impl AsRef<ExecutionContext>,
+    ) -> Result<ExitStatus, std::io::Error> {
+        let exec_ctx = exec_ctx.as_ref();
+        let output = self.child.wait();
+        exec_ctx.profiler().record_execution(self.fingerprint, self.start_time);
+        output
     }
 }
 
