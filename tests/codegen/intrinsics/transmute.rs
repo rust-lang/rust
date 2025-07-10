@@ -29,28 +29,28 @@ pub struct Aggregate8(u8);
 // CHECK-LABEL: @check_bigger_size(
 #[no_mangle]
 pub unsafe fn check_bigger_size(x: u16) -> u32 {
-    // CHECK: call void @llvm.assume(i1 false)
+    // CHECK: store i1 true, ptr poison, align 1
     transmute_unchecked(x)
 }
 
 // CHECK-LABEL: @check_smaller_size(
 #[no_mangle]
 pub unsafe fn check_smaller_size(x: u32) -> u16 {
-    // CHECK: call void @llvm.assume(i1 false)
+    // CHECK: store i1 true, ptr poison, align 1
     transmute_unchecked(x)
 }
 
 // CHECK-LABEL: @check_smaller_array(
 #[no_mangle]
 pub unsafe fn check_smaller_array(x: [u32; 7]) -> [u32; 3] {
-    // CHECK: call void @llvm.assume(i1 false)
+    // CHECK: store i1 true, ptr poison, align 1
     transmute_unchecked(x)
 }
 
 // CHECK-LABEL: @check_bigger_array(
 #[no_mangle]
 pub unsafe fn check_bigger_array(x: [u32; 3]) -> [u32; 7] {
-    // CHECK: call void @llvm.assume(i1 false)
+    // CHECK: store i1 true, ptr poison, align 1
     transmute_unchecked(x)
 }
 
@@ -58,9 +58,9 @@ pub unsafe fn check_bigger_array(x: [u32; 3]) -> [u32; 7] {
 #[no_mangle]
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub unsafe fn check_to_empty_array(x: [u32; 5]) -> [u32; 0] {
-    // CHECK-NOT: trap
-    // CHECK: call void @llvm.trap
-    // CHECK-NOT: trap
+    // CHECK: start
+    // CHECK-NEXT: store i1 true, ptr poison, align 1
+    // CHECK-NEXT: ret void
     mir! {
         {
             RET = CastTransmute(x);
@@ -73,9 +73,9 @@ pub unsafe fn check_to_empty_array(x: [u32; 5]) -> [u32; 0] {
 #[no_mangle]
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub unsafe fn check_from_empty_array(x: [u32; 0]) -> [u32; 5] {
-    // CHECK-NOT: call
-    // CHECK: call void @llvm.assume(i1 false)
-    // CHECK-NOT: call
+    // CHECK: start
+    // CHECK-NEXT: store i1 true, ptr poison, align 1
+    // CHECK-NEXT: ret void
     mir! {
         {
             RET = CastTransmute(x);
@@ -88,9 +88,9 @@ pub unsafe fn check_from_empty_array(x: [u32; 0]) -> [u32; 5] {
 #[no_mangle]
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub unsafe fn check_to_uninhabited(x: u16) {
-    // CHECK-NOT: trap
-    // CHECK: call void @llvm.trap
-    // CHECK-NOT: trap
+    // CHECK: start
+    // CHECK-NEXT: store i1 true, ptr poison, align 1
+    // CHECK-NEXT: ret void
     mir! {
         let temp: BigNever;
         {
@@ -104,7 +104,9 @@ pub unsafe fn check_to_uninhabited(x: u16) {
 #[no_mangle]
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub unsafe fn check_from_uninhabited(x: BigNever) -> u16 {
-    // CHECK: ret i16 poison
+    // CHECK: start
+    // CHECK-NEXT: store i1 true, ptr poison, align 1
+    // CHECK-NEXT: ret i16 poison
     mir! {
         {
             RET = CastTransmute(x);
@@ -401,9 +403,9 @@ pub unsafe fn check_issue_109992(x: ()) -> [(); 1] {
 pub unsafe fn check_unit_to_never(x: ()) {
     // This uses custom MIR to avoid MIR optimizations having removed ZST ops.
 
-    // CHECK-NOT: trap
-    // CHECK: call void @llvm.trap
-    // CHECK-NOT: trap
+    // CHECK: start
+    // CHECK-NEXT: store i1 true, ptr poison, align 1
+    // CHECK-NEXT: ret void
     mir! {
         let temp: ZstNever;
         {
@@ -420,6 +422,7 @@ pub unsafe fn check_unit_from_never(x: ZstNever) -> () {
     // This uses custom MIR to avoid MIR optimizations having removed ZST ops.
 
     // CHECK: start
+    // CHECK-NEXT: store i1 true, ptr poison, align 1
     // CHECK-NEXT: ret void
     mir! {
         {
