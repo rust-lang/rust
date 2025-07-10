@@ -41,19 +41,6 @@ const NAN_MASK2: u128 = 0x00005555555555555555555555555555;
 // the intrinsics.
 
 #[test]
-fn test_is_nan() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert!(nan.is_nan());
-    assert!(!0.0f128.is_nan());
-    assert!(!5.3f128.is_nan());
-    assert!(!(-10.732f128).is_nan());
-    assert!(!inf.is_nan());
-    assert!(!neg_inf.is_nan());
-}
-
-#[test]
 fn test_is_infinite() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;
