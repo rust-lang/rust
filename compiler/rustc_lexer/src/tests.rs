@@ -124,9 +124,9 @@ fn test_valid_shebang() {
     assert_eq!(strip_shebang(input), None);
 }
 
-fn check_lexing(src: &str, expect: Expect) {
+fn check_lexing(src: &str, frontmatter_allowed: FrontmatterAllowed, expect: Expect) {
     let actual: String =
-        tokenize(src, FrontmatterAllowed::No).map(|token| format!("{:?}\n", token)).collect();
+        tokenize(src, frontmatter_allowed).map(|token| format!("{:?}\n", token)).collect();
     expect.assert_eq(&actual)
 }
 
@@ -134,6 +134,7 @@ fn check_lexing(src: &str, expect: Expect) {
 fn smoke_test() {
     check_lexing(
         "/* my source file */ fn main() { println!(\"zebra\"); }\n",
+        FrontmatterAllowed::No,
         expect![[r#"
             Token { kind: BlockComment { doc_style: None, terminated: true }, len: 20 }
             Token { kind: Whitespace, len: 1 }
@@ -172,6 +173,7 @@ fn comment_flavors() {
 /** outer doc block */
 /*! inner doc block */
 ",
+        FrontmatterAllowed::No,
         expect![[r#"
             Token { kind: Whitespace, len: 1 }
             Token { kind: LineComment { doc_style: None }, len: 7 }
@@ -200,6 +202,7 @@ fn comment_flavors() {
 fn nested_block_comments() {
     check_lexing(
         "/* /* */ */'a'",
+        FrontmatterAllowed::No,
         expect![[r#"
             Token { kind: BlockComment { doc_style: None, terminated: true }, len: 11 }
             Token { kind: Literal { kind: Char { terminated: true }, suffix_start: 3 }, len: 3 }
@@ -211,6 +214,7 @@ fn nested_block_comments() {
 fn characters() {
     check_lexing(
         "'a' ' ' '\\n'",
+        FrontmatterAllowed::No,
         expect![[r#"
             Token { kind: Literal { kind: Char { terminated: true }, suffix_start: 3 }, len: 3 }
             Token { kind: Whitespace, len: 1 }
@@ -225,6 +229,7 @@ fn characters() {
 fn lifetime() {
     check_lexing(
         "'abc",
+        FrontmatterAllowed::No,
         expect![[r#"
             Token { kind: Lifetime { starts_with_number: false }, len: 4 }
         "#]],
@@ -235,6 +240,7 @@ fn lifetime() {
 fn raw_string() {
     check_lexing(
         "r###\"\"#a\\b\x00c\"\"###",
+        FrontmatterAllowed::No,
         expect![[r#"
             Token { kind: Literal { kind: RawStr { n_hashes: Some(3) }, suffix_start: 17 }, len: 17 }
         "#]],
@@ -258,6 +264,7 @@ b"a"
 r###"raw"###suffix
 br###"raw"###suffix
 "####,
+        FrontmatterAllowed::No,
         expect![[r#"
             Token { kind: Whitespace, len: 1 }
             Token { kind: Literal { kind: Char { terminated: true }, suffix_start: 3 }, len: 3 }
@@ -283,6 +290,81 @@ br###"raw"###suffix
             Token { kind: Literal { kind: RawStr { n_hashes: Some(3) }, suffix_start: 12 }, len: 18 }
             Token { kind: Whitespace, len: 1 }
             Token { kind: Literal { kind: RawByteStr { n_hashes: Some(3) }, suffix_start: 13 }, len: 19 }
+            Token { kind: Whitespace, len: 1 }
+        "#]],
+    )
+}
+
+#[test]
+fn frontmatter_allowed() {
+    check_lexing(
+        r#"
+---cargo
+[dependencies]
+clap = "4"
+---
+
+fn main() {}
+"#,
+        FrontmatterAllowed::Yes,
+        expect![[r#"
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Frontmatter { has_invalid_preceding_whitespace: false, invalid_infostring: false }, len: 38 }
+            Token { kind: Whitespace, len: 2 }
+            Token { kind: Ident, len: 2 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Ident, len: 4 }
+            Token { kind: OpenParen, len: 1 }
+            Token { kind: CloseParen, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: OpenBrace, len: 1 }
+            Token { kind: CloseBrace, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+        "#]],
+    )
+}
+
+#[test]
+fn frontmatter_disallowed() {
+    check_lexing(
+        r#"
+---cargo
+[dependencies]
+clap = "4"
+---
+
+fn main() {}
+"#,
+        FrontmatterAllowed::No,
+        expect![[r#"
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Minus, len: 1 }
+            Token { kind: Minus, len: 1 }
+            Token { kind: Minus, len: 1 }
+            Token { kind: Ident, len: 5 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: OpenBracket, len: 1 }
+            Token { kind: Ident, len: 12 }
+            Token { kind: CloseBracket, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Ident, len: 4 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Eq, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Str { terminated: true }, suffix_start: 3 }, len: 3 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Minus, len: 1 }
+            Token { kind: Minus, len: 1 }
+            Token { kind: Minus, len: 1 }
+            Token { kind: Whitespace, len: 2 }
+            Token { kind: Ident, len: 2 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Ident, len: 4 }
+            Token { kind: OpenParen, len: 1 }
+            Token { kind: CloseParen, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: OpenBrace, len: 1 }
+            Token { kind: CloseBrace, len: 1 }
             Token { kind: Whitespace, len: 1 }
         "#]],
     )
