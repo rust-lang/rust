@@ -14131,8 +14131,8 @@ intrinsics:
       - ['vld1q_dup_u32', '*const u32', 'uint32x4_t', 'vld1.32', 'ld1r', 'u32x4::splat']
       - ['vld1q_dup_f32', '*const f32', 'float32x4_t', 'vld1.32', 'ld1r', 'f32x4::splat']
 
-      - ['vld1q_dup_s64', '*const i64', 'int64x2_t', 'vldr', 'ld1', 'i64x2::splat']
-      - ['vld1q_dup_u64', '*const u64', 'uint64x2_t', 'vldr', 'ld1', 'u64x2::splat']
+      - ['vld1q_dup_s64', '*const i64', 'int64x2_t', 'vldr', 'ld1r', 'i64x2::splat']
+      - ['vld1q_dup_u64', '*const u64', 'uint64x2_t', 'vldr', 'ld1r', 'u64x2::splat']
     compose:
       - FnCall:
           - transmute
