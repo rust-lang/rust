@@ -743,10 +743,6 @@ fn doc_std(
     }
 
     for krate in requested_crates {
-        if krate == "sysroot" {
-            // The sysroot crate is an implementation detail, don't include it in public docs.
-            continue;
-        }
         cargo.arg("-p").arg(krate);
     }
 
