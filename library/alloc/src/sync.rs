@@ -3571,6 +3571,16 @@ impl<T: Default> Default for Arc<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "pin_default_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Default> Default for Pin<Arc<T>> {
+    /// Creates a new pinned `Arc<T>`, with the `Default` value for `T`.
+    #[inline]
+    fn default() -> Pin<Arc<T>> {
+        unsafe { Pin::new_unchecked(Arc::<T>::default()) }
+    }
+}
+
 /// Struct to hold the static `ArcInner` used for empty `Arc<str/CStr/[T]>` as
 /// returned by `Default::default`.
 ///
@@ -3651,6 +3661,16 @@ impl<T> Default for Arc<[T]> {
         // If T's alignment is too large for the static, make a new unique allocation.
         let arr: [T; 0] = [];
         Arc::from(arr)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "pin_default_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T> Default for Pin<Arc<[T]>> {
+    /// Creates an empty `[T]` inside a pinned `Arc`.
+    #[inline]
+    fn default() -> Self {
+        unsafe { Pin::new_unchecked(Arc::<[T]>::default()) }
     }
 }
 
