@@ -19,7 +19,7 @@ pub fn check(cx: &LateContext<'_>, bl: &PullDownBrokenLink<'_>, doc: &str, fragm
 }
 
 fn warn_if_broken_link(cx: &LateContext<'_>, bl: &PullDownBrokenLink<'_>, doc: &str, fragments: &[DocFragment]) {
-    if let Some(span) = source_span_for_markdown_range(cx.tcx, doc, &bl.span, fragments) {
+    if let Some((span, _)) = source_span_for_markdown_range(cx.tcx, doc, &bl.span, fragments) {
         let mut len = 0;
 
         // grab raw link data

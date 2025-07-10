@@ -175,10 +175,6 @@ fn check_rvalue<'tcx>(
         Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => {
             Err((span, "casting pointers to ints is unstable in const fn".into()))
         },
-        Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::DynStar, _), _, _) => {
-            // FIXME(dyn-star)
-            unimplemented!()
-        },
         Rvalue::Cast(CastKind::Transmute, _, _) => Err((
             span,
             "transmute can attempt to turn pointers into integers, so is unstable in const fn".into(),
@@ -451,7 +447,7 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
     // FIXME(const_trait_impl, fee1-dead) revert to const destruct once it works again
     #[expect(unused)]
     fn is_ty_const_destruct_unused<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>) -> bool {
-        // If this doesn't need drop at all, then don't select `~const Destruct`.
+        // If this doesn't need drop at all, then don't select `[const] Destruct`.
         if !ty.needs_drop(tcx, body.typing_env(tcx)) {
             return false;
         }

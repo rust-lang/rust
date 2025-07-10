@@ -61,8 +61,8 @@ LL | fn bad_trait_object(arg0: &(dyn Any + Send + Send)) {
 error: these bounds contain repeated elements
   --> tests/ui/trait_duplication_in_bounds.rs:174:36
    |
-LL | const fn const_trait_bounds_bad<T: ~const ConstTrait + ~const ConstTrait>() {}
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `~const ConstTrait`
+LL | const fn const_trait_bounds_bad<T: [const] ConstTrait + [const] ConstTrait>() {}
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `[const] ConstTrait`
 
 error: these where clauses contain repeated elements
   --> tests/ui/trait_duplication_in_bounds.rs:181:8

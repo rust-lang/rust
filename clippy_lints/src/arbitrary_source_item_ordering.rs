@@ -266,7 +266,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
             .tcx
             .hir_attrs(item.hir_id())
             .iter()
-            .any(|attr| matches!(attr, Attribute::Parsed(AttributeKind::Repr(..))))
+            .any(|attr| matches!(attr, Attribute::Parsed(AttributeKind::Repr { .. })))
         {
             // Do not lint items with a `#[repr]` attribute as their layout may be imposed by an external API.
             return;
