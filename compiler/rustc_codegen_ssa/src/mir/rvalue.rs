@@ -649,7 +649,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandRef { val: OperandValue::Immediate(static_), layout }
             }
             mir::Rvalue::Use(ref operand) => self.codegen_operand(bx, operand),
-            mir::Rvalue::Repeat(..) => bug!("{rvalue:?} in codegen_rvalue_operand"),
+            mir::Rvalue::Repeat(ref elem, len_const) => {
+                // All arrays have `BackendRepr::Memory`, so only the ZST cases
+                // end up here. Anything else forces the destination local to be
+                // `Memory`, and thus ends up handled in `codegen_rvalue` instead.
+                let operand = self.codegen_operand(bx, elem);
+                let array_ty = Ty::new_array_with_const_len(bx.tcx(), operand.layout.ty, len_const);
+                let array_ty = self.monomorphize(array_ty);
+                let array_layout = bx.layout_of(array_ty);
+                assert!(array_layout.is_zst());
+                OperandRef { val: OperandValue::ZeroSized, layout: array_layout }
+            }
             mir::Rvalue::Aggregate(ref kind, ref fields) => {
                 let (variant_index, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
@@ -1019,12 +1029,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::NullaryOp(..) |
             mir::Rvalue::ThreadLocalRef(_) |
             mir::Rvalue::Use(..) |
+            mir::Rvalue::Repeat(..) | // (*)
             mir::Rvalue::Aggregate(..) | // (*)
             mir::Rvalue::WrapUnsafeBinder(..) => // (*)
                 true,
-            // Arrays are always aggregates, so it's not worth checking anything here.
-            // (If it's really `[(); N]` or `[T; 0]` and we use the place path, fine.)
-            mir::Rvalue::Repeat(..) => false,
         }
 
         // (*) this is only true if the type is suitable
