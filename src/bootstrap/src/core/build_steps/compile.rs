@@ -449,26 +449,24 @@ fn copy_self_contained_objects(
     target_deps
 }
 
-/// Resolves standard library crates for `Std::run_make` for any build kind (like check, build, clippy, etc.).
+/// Resolves standard library crates for `Std::run_make` for any build kind (like check, doc,
+/// build, clippy, etc.).
 pub fn std_crates_for_run_make(run: &RunConfig<'_>) -> Vec<String> {
-    // FIXME: Extend builder tests to cover the `crates` field of `Std` instances.
-    if cfg!(test) {
-        return vec![];
-    }
+    let mut crates = run.make_run_crates(builder::Alias::Library);
 
-    let has_alias = run.paths.iter().any(|set| set.assert_single_path().path.ends_with("library"));
+    // For no_std targets, we only want to check core and alloc
+    // Regardless of core/alloc being selected explicitly or via the "library" default alias,
+    // we only want to keep these two crates.
+    // The set of no_std crates should be kept in sync with what `Builder::std_cargo` does.
+    // Note: an alternative design would be to return an enum from this function (Default vs Subset)
+    // of crates. However, several steps currently pass `-p <package>` even if all crates are
+    // selected, because Cargo behaves differently in that case. To keep that behavior without
+    // making further changes, we pre-filter the no-std crates here.
     let target_is_no_std = run.builder.no_std(run.target).unwrap_or(false);
-
-    // For no_std targets, do not add any additional crates to the compilation other than what `compile::std_cargo` already adds for no_std targets.
     if target_is_no_std {
-        vec![]
+        crates.retain(|c| c == "core" || c == "alloc");
     }
-    // If the paths include "library", build the entire standard library.
-    else if has_alias {
-        run.make_run_crates(builder::Alias::Library)
-    } else {
-        run.cargo_crates_in_set()
-    }
+    crates
 }
 
 /// Tries to find LLVM's `compiler-rt` source directory, for building `library/profiler_builtins`.

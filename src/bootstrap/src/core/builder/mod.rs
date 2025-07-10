@@ -146,6 +146,8 @@ pub struct StepMetadata {
     target: TargetSelection,
     built_by: Option<Compiler>,
     stage: Option<u32>,
+    /// Additional opaque string printed in the metadata
+    metadata: Option<String>,
 }
 
 impl StepMetadata {
@@ -170,7 +172,7 @@ impl StepMetadata {
     }
 
     fn new(name: &'static str, target: TargetSelection, kind: Kind) -> Self {
-        Self { name, kind, target, built_by: None, stage: None }
+        Self { name, kind, target, built_by: None, stage: None, metadata: None }
     }
 
     pub fn built_by(mut self, compiler: Compiler) -> Self {
@@ -180,6 +182,11 @@ impl StepMetadata {
 
     pub fn stage(mut self, stage: u32) -> Self {
         self.stage = Some(stage);
+        self
+    }
+
+    pub fn with_metadata(mut self, metadata: String) -> Self {
+        self.metadata = Some(metadata);
         self
     }
 
