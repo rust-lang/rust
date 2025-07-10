@@ -51,7 +51,7 @@ use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use crate::borrow_set::{BorrowData, BorrowSet};
-use crate::consumers::{BodyWithBorrowckFacts, ConsumerOptions};
+use crate::consumers::BodyWithBorrowckFacts;
 use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows};
 use crate::diagnostics::{
     AccessKind, BorrowckDiagnosticsBuffer, IllegalMoveOriginKind, MoveError, RegionName,
@@ -124,7 +124,7 @@ fn mir_borrowck(
         let opaque_types = ConcreteOpaqueTypes(Default::default());
         Ok(tcx.arena.alloc(opaque_types))
     } else {
-        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def);
+        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None);
         // We need to manually borrowck all nested bodies from the HIR as
         // we do not generate MIR for dead code. Not doing so causes us to
         // never check closures in dead code.
@@ -134,7 +134,7 @@ fn mir_borrowck(
         }
 
         let PropagatedBorrowCheckResults { closure_requirements, used_mut_upvars } =
-            do_mir_borrowck(&mut root_cx, def, None).0;
+            do_mir_borrowck(&mut root_cx, def);
         debug_assert!(closure_requirements.is_none());
         debug_assert!(used_mut_upvars.is_empty());
         root_cx.finalize()
@@ -289,17 +289,12 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
 
 /// Perform the actual borrow checking.
 ///
-/// Use `consumer_options: None` for the default behavior of returning
-/// [`PropagatedBorrowCheckResults`] only. Otherwise, return [`BodyWithBorrowckFacts`]
-/// according to the given [`ConsumerOptions`].
-///
 /// For nested bodies this should only be called through `root_cx.get_or_insert_nested`.
 #[instrument(skip(root_cx), level = "debug")]
 fn do_mir_borrowck<'tcx>(
     root_cx: &mut BorrowCheckRootCtxt<'tcx>,
     def: LocalDefId,
-    consumer_options: Option<ConsumerOptions>,
-) -> (PropagatedBorrowCheckResults<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
+) -> PropagatedBorrowCheckResults<'tcx> {
     let tcx = root_cx.tcx;
     let infcx = BorrowckInferCtxt::new(tcx, def);
     let (input_body, promoted) = tcx.mir_promoted(def);
@@ -343,7 +338,6 @@ fn do_mir_borrowck<'tcx>(
         &location_table,
         &move_data,
         &borrow_set,
-        consumer_options,
     );
 
     // Dump MIR results into a file, if that is enabled. This lets us
@@ -483,23 +477,24 @@ fn do_mir_borrowck<'tcx>(
         used_mut_upvars: mbcx.used_mut_upvars,
     };
 
-    let body_with_facts = if consumer_options.is_some() {
-        Some(Box::new(BodyWithBorrowckFacts {
-            body: body_owned,
-            promoted,
-            borrow_set,
-            region_inference_context: regioncx,
-            location_table: polonius_input.as_ref().map(|_| location_table),
-            input_facts: polonius_input,
-            output_facts: polonius_output,
-        }))
-    } else {
-        None
-    };
+    if let Some(consumer) = &mut root_cx.consumer {
+        consumer.insert_body(
+            def,
+            BodyWithBorrowckFacts {
+                body: body_owned,
+                promoted,
+                borrow_set,
+                region_inference_context: regioncx,
+                location_table: polonius_input.as_ref().map(|_| location_table),
+                input_facts: polonius_input,
+                output_facts: polonius_output,
+            },
+        );
+    }
 
     debug!("do_mir_borrowck: result = {:#?}", result);
 
-    (result, body_with_facts)
+    result
 }
 
 fn get_flow_results<'a, 'tcx>(

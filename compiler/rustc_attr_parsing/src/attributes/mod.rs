@@ -140,7 +140,7 @@ impl<T: SingleAttributeParser<S>, S: Stage> AttributeParser<S> for Single<T, S> 
             if let Some(pa) = T::convert(cx, args) {
                 match T::ATTRIBUTE_ORDER {
                     // keep the first and report immediately. ignore this attribute
-                    AttributeOrder::KeepFirst => {
+                    AttributeOrder::KeepInnermost => {
                         if let Some((_, unused)) = group.1 {
                             T::ON_DUPLICATE.exec::<T>(cx, cx.attr_span, unused);
                             return;
@@ -148,7 +148,7 @@ impl<T: SingleAttributeParser<S>, S: Stage> AttributeParser<S> for Single<T, S> 
                     }
                     // keep the new one and warn about the previous,
                     // then replace
-                    AttributeOrder::KeepLast => {
+                    AttributeOrder::KeepOutermost => {
                         if let Some((_, used)) = group.1 {
                             T::ON_DUPLICATE.exec::<T>(cx, used, cx.attr_span);
                         }
@@ -165,9 +165,6 @@ impl<T: SingleAttributeParser<S>, S: Stage> AttributeParser<S> for Single<T, S> 
     }
 }
 
-// FIXME(jdonszelmann): logic is implemented but the attribute parsers needing
-// them will be merged in another PR
-#[allow(unused)]
 pub(crate) enum OnDuplicate<S: Stage> {
     /// Give a default warning
     Warn,
@@ -213,39 +210,29 @@ impl<S: Stage> OnDuplicate<S> {
         }
     }
 }
-//
-// FIXME(jdonszelmann): logic is implemented but the attribute parsers needing
-// them will be merged in another PR
-#[allow(unused)]
+
 pub(crate) enum AttributeOrder {
-    /// Duplicates after the first attribute will be an error. I.e. only keep the lowest attribute.
+    /// Duplicates after the innermost instance of the attribute will be an error/warning.
+    /// Only keep the lowest attribute.
     ///
-    /// Attributes are processed from bottom to top, so this raises an error on all the attributes
+    /// Attributes are processed from bottom to top, so this raises a warning/error on all the attributes
     /// further above the lowest one:
     /// ```
     /// #[stable(since="1.0")] //~ WARNING duplicated attribute
     /// #[stable(since="2.0")]
     /// ```
-    ///
-    /// This should be used where duplicates would be ignored, but carry extra
-    /// meaning that could cause confusion. For example, `#[stable(since="1.0")]
-    /// #[stable(since="2.0")]`, which version should be used for `stable`?
-    KeepFirst,
+    KeepInnermost,
 
-    /// Duplicates preceding the last instance of the attribute will be a
-    /// warning, with a note that this will be an error in the future.
+    /// Duplicates before the outermost instance of the attribute will be an error/warning.
+    /// Only keep the highest attribute.
     ///
-    /// Attributes are processed from bottom to top, so this raises a warning on all the attributes
-    /// below the higher one:
+    /// Attributes are processed from bottom to top, so this raises a warning/error on all the attributes
+    /// below the highest one:
     /// ```
     /// #[path="foo.rs"]
     /// #[path="bar.rs"] //~ WARNING duplicated attribute
     /// ```
-    ///
-    /// This is the same as `FutureWarnFollowing`, except the last attribute is
-    /// the one that is "used". Ideally these can eventually migrate to
-    /// `ErrorPreceding`.
-    KeepLast,
+    KeepOutermost,
 }
 
 /// An even simpler version of [`SingleAttributeParser`]:
@@ -271,7 +258,7 @@ impl<T: NoArgsAttributeParser<S>, S: Stage> Default for WithoutArgs<T, S> {
 
 impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for WithoutArgs<T, S> {
     const PATH: &[Symbol] = T::PATH;
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = T::ON_DUPLICATE;
     const TEMPLATE: AttributeTemplate = template!(Word);
 

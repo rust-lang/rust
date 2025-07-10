@@ -9,7 +9,7 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{build_native_static_lib, cc, is_msvc, llvm_ar, run, rustc};
+use run_make_support::{build_native_static_lib, cc, is_windows_msvc, llvm_ar, run, rustc};
 
 fn main() {
     build_native_static_lib("test");
@@ -21,7 +21,7 @@ fn main() {
         .input("test.c")
         .arg("-mbranch-protection=bti+pac-ret+leaf")
         .run();
-    let obj_file = if is_msvc() { "test.obj" } else { "test" };
+    let obj_file = if is_windows_msvc() { "test.obj" } else { "test" };
     llvm_ar().obj_to_ar().output_input("libtest.a", &obj_file).run();
     rustc().arg("-Zbranch-protection=bti,pac-ret,leaf").input("test.rs").run();
     run("test");
@@ -33,7 +33,7 @@ fn main() {
     //     .input("test.c")
     //     .arg("-mbranch-protection=bti+pac-ret+pc+leaf")
     //     .run();
-    // let obj_file = if is_msvc() { "test.obj" } else { "test" };
+    // let obj_file = if is_windows_msvc() { "test.obj" } else { "test" };
     // llvm_ar().obj_to_ar().output_input("libtest.a", &obj_file).run();
     // rustc().arg("-Zbranch-protection=bti,pac-ret,pc,leaf").input("test.rs").run();
     // run("test");

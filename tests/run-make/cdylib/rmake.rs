@@ -10,13 +10,13 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{cc, cwd, dynamic_lib_name, is_msvc, rfs, run, rustc};
+use run_make_support::{cc, cwd, dynamic_lib_name, is_windows_msvc, rfs, run, rustc};
 
 fn main() {
     rustc().input("bar.rs").run();
     rustc().input("foo.rs").run();
 
-    if is_msvc() {
+    if is_windows_msvc() {
         cc().input("foo.c").arg("foo.dll.lib").out_exe("foo").run();
     } else {
         cc().input("foo.c").arg("-lfoo").library_search_path(cwd()).output("foo").run();

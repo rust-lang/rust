@@ -146,12 +146,12 @@ attr_parsing_unused_duplicate =
     unused attribute
     .suggestion = remove this attribute
     .note = attribute also specified here
-    .warn = {-passes_previously_accepted}
+    .warn = {-attr_parsing_previously_accepted}
 
 attr_parsing_unused_multiple =
     multiple `{$name}` attributes
     .suggestion = remove this attribute
     .note = attribute also specified here
 
--attr_parsing_perviously_accepted =
+-attr_parsing_previously_accepted =
     this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

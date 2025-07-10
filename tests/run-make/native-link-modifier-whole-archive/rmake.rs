@@ -10,11 +10,11 @@
 // Reason: compiling C++ code does not work well when cross-compiling
 // plus, the compiled binary is executed
 
-use run_make_support::{cxx, is_msvc, llvm_ar, run, run_with_args, rustc, static_lib_name};
+use run_make_support::{cxx, is_windows_msvc, llvm_ar, run, run_with_args, rustc, static_lib_name};
 
 fn main() {
     let mut cxx = cxx();
-    if is_msvc() {
+    if is_windows_msvc() {
         cxx.arg("-EHs");
     }
     cxx.input("c_static_lib_with_constructor.cpp")
@@ -24,7 +24,7 @@ fn main() {
 
     let mut llvm_ar = llvm_ar();
     llvm_ar.obj_to_ar();
-    if is_msvc() {
+    if is_windows_msvc() {
         llvm_ar
             .output_input(
                 static_lib_name("c_static_lib_with_constructor"),

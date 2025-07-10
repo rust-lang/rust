@@ -28,6 +28,10 @@ const fn foo() -> usize {
     1
 }
 
+fn with_nested_body(opt: Option<i32>) -> Option<i32> {
+    opt.map(|x| x + 1)
+}
+
 fn main() {
     let bar: [Bar; foo()] = [Bar::new()];
     assert_eq!(bar[0].provided(), foo());
