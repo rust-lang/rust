@@ -143,7 +143,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         // statements itself to avoid moving the (relatively) large statements twice.
         // We do not push the statements directly into the target block (`bb`) as that is slower
         // due to additional reallocations
-        let mut merged_blocks = Vec::new();
+        let mut merged_blocks: Vec<BasicBlock> = Vec::new();
         let mut outer_changed = false;
         loop {
             let mut changed = false;
@@ -157,9 +157,19 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
                 let mut terminator =
                     self.basic_blocks[bb].terminator.take().expect("invalid terminator state");
-
-                terminator
-                    .successors_mut(|successor| self.collapse_goto_chain(successor, &mut changed));
+                let mut debuginfos = if let Some(first_succ) = terminator.successors().next()
+                    && terminator.successors().all(|s| s == first_succ)
+                {
+                    Some(Vec::new())
+                } else {
+                    None
+                };
+                terminator.successors_mut(|successor| {
+                    self.collapse_goto_chain(successor, &mut changed, debuginfos.as_mut())
+                });
+                if let Some(mut debuginfos) = debuginfos {
+                    self.basic_blocks[bb].after_last_stmt_debuginfos.append(&mut debuginfos);
+                }
 
                 let mut inner_changed = true;
                 merged_blocks.clear();
@@ -176,10 +186,19 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 if statements_to_merge > 0 {
                     let mut statements = std::mem::take(&mut self.basic_blocks[bb].statements);
                     statements.reserve(statements_to_merge);
+                    let mut parent_bb_last_debuginfos =
+                        std::mem::take(&mut self.basic_blocks[bb].after_last_stmt_debuginfos);
                     for &from in &merged_blocks {
+                        if let Some(stmt) = self.basic_blocks[from].statements.first_mut() {
+                            parent_bb_last_debuginfos.append(&mut stmt.debuginfos);
+                            std::mem::swap(&mut parent_bb_last_debuginfos, &mut stmt.debuginfos);
+                        }
                         statements.append(&mut self.basic_blocks[from].statements);
+                        parent_bb_last_debuginfos
+                            .append(&mut self.basic_blocks[from].after_last_stmt_debuginfos);
                     }
                     self.basic_blocks[bb].statements = statements;
+                    self.basic_blocks[bb].after_last_stmt_debuginfos = parent_bb_last_debuginfos;
                 }
 
                 self.basic_blocks[bb].terminator = Some(terminator);
@@ -214,7 +233,12 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     }
 
     /// Collapse a goto chain starting from `start`
-    fn collapse_goto_chain(&mut self, start: &mut BasicBlock, changed: &mut bool) {
+    fn collapse_goto_chain(
+        &mut self,
+        start: &mut BasicBlock,
+        changed: &mut bool,
+        pred_debuginfos: Option<&mut Vec<StmtDebugInfo<'tcx>>>,
+    ) {
         // Using `SmallVec` here, because in some logs on libcore oli-obk saw many single-element
         // goto chains. We should probably benchmark different sizes.
         let mut terminators: SmallVec<[_; 1]> = Default::default();
@@ -228,11 +252,18 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         }
         let last = current;
         *start = last;
+        let mut debuginfos = Vec::new();
         while let Some((current, mut terminator)) = terminators.pop() {
             let Terminator { kind: TerminatorKind::Goto { ref mut target }, .. } = terminator
             else {
                 unreachable!();
             };
+            if *target != last {
+                self.basic_blocks[current]
+                    .after_last_stmt_debuginfos
+                    .extend_from_slice(&debuginfos);
+            }
+            debuginfos.extend_from_slice(&self.basic_blocks[current].after_last_stmt_debuginfos);
             *changed |= *target != last;
             *target = last;
             debug!("collapsing goto chain from {:?} to {:?}", current, target);
@@ -246,6 +277,9 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 self.pred_count[current] -= 1;
             }
             self.basic_blocks[current].terminator = Some(terminator);
+        }
+        if let Some(parent_debuginfos) = pred_debuginfos {
+            parent_debuginfos.append(&mut debuginfos);
         }
     }
 
