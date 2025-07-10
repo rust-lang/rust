@@ -246,8 +246,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         for (span, suggestion) in clone_spans {
                             diag.span_suggestion(
                                 span,
-                                span.get_source_text(cx)
-                                    .map_or("change the call to".to_owned(), |src| format!("change `{src}` to")),
+                                span.get_source_text(cx).map_or_else(
+                                    || "change the call to".to_owned(),
+                                    |src| format!("change `{src}` to"),
+                                ),
                                 suggestion,
                                 Applicability::Unspecified,
                             );
@@ -275,8 +277,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         for (span, suggestion) in clone_spans {
                             diag.span_suggestion(
                                 span,
-                                span.get_source_text(cx)
-                                    .map_or("change the call to".to_owned(), |src| format!("change `{src}` to")),
+                                span.get_source_text(cx).map_or_else(
+                                    || "change the call to".to_owned(),
+                                    |src| format!("change `{src}` to"),
+                                ),
                                 suggestion,
                                 Applicability::Unspecified,
                             );
