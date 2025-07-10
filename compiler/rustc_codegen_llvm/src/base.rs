@@ -109,9 +109,14 @@ pub(crate) fn compile_codegen_unit(
             }
 
             // Finalize code coverage by injecting the coverage map. Note, the coverage map will
-            // also be added to the `llvm.compiler.used` variable, created next.
+            // also be added to the `llvm.compiler.used` variable, created below.
             if cx.sess().instrument_coverage() {
                 cx.coverageinfo_finalize();
+            }
+
+            // Finalize debuginfo. This adds to `llvm.used`, created below.
+            if cx.sess().opts.debuginfo != DebugInfo::None {
+                cx.debuginfo_finalize();
             }
 
             // Create the llvm.used and llvm.compiler.used variables.
@@ -129,11 +134,6 @@ pub(crate) fn compile_codegen_unit(
                     llvm::LLVMReplaceAllUsesWith(old_g, new_g);
                     llvm::LLVMDeleteGlobal(old_g);
                 }
-            }
-
-            // Finalize debuginfo
-            if cx.sess().opts.debuginfo != DebugInfo::None {
-                cx.debuginfo_finalize();
             }
         }
 

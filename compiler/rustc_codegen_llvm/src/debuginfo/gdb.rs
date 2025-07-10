@@ -1,5 +1,7 @@
 // .debug_gdb_scripts binary section.
 
+use std::ffi::CString;
+
 use rustc_ast::attr;
 use rustc_codegen_ssa::base::collect_debugger_visualizers_transitive;
 use rustc_codegen_ssa::traits::*;
@@ -9,31 +11,21 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerType;
 use rustc_session::config::{CrateType, DebugInfo};
 use rustc_span::sym;
 
-use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::value::Value;
 
-/// Inserts a side-effect free instruction sequence that makes sure that the
-/// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
-pub(crate) fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder<'_, '_, '_>) {
-    if needs_gdb_debug_scripts_section(bx) {
-        let gdb_debug_scripts_section = get_or_insert_gdb_debug_scripts_section_global(bx);
-        // Load just the first byte as that's all that's necessary to force
-        // LLVM to keep around the reference to the global.
-        let volatile_load_instruction = bx.volatile_load(bx.type_i8(), gdb_debug_scripts_section);
-        unsafe {
-            llvm::LLVMSetAlignment(volatile_load_instruction, 1);
-        }
-    }
-}
-
 /// Allocates the global variable responsible for the .debug_gdb_scripts binary
 /// section.
 pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
-    cx: &CodegenCx<'ll, '_>,
+    cx: &mut CodegenCx<'ll, '_>,
 ) -> &'ll Value {
-    let c_section_var_name = c"__rustc_debug_gdb_scripts_section__";
+    let c_section_var_name = CString::new(format!(
+        "__rustc_debug_gdb_scripts_section_{}_{:08x}",
+        cx.tcx.crate_name(LOCAL_CRATE),
+        cx.tcx.stable_crate_id(LOCAL_CRATE),
+    ))
+    .unwrap();
     let section_var_name = c_section_var_name.to_str().unwrap();
 
     let section_var = unsafe { llvm::LLVMGetNamedGlobal(cx.llmod, c_section_var_name.as_ptr()) };
@@ -80,6 +72,8 @@ pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
             // This should make sure that the whole section is not larger than
             // the string it contains. Otherwise we get a warning from GDB.
             llvm::LLVMSetAlignment(section_var, 1);
+            // Make sure that the linker doesn't optimize the global away.
+            cx.add_used_global(section_var);
             section_var
         }
     })
