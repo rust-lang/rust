@@ -65,7 +65,7 @@ impl OutputMode {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Default)]
-pub struct CommandCacheKey {
+pub struct CommandFingerprint {
     program: OsString,
     args: Vec<OsString>,
     envs: Vec<(OsString, Option<OsString>)>,
@@ -244,12 +244,9 @@ impl<'a> BootstrapCommand {
         }
     }
 
-    pub fn cache_key(&self) -> Option<CommandCacheKey> {
-        if !self.should_cache {
-            return None;
-        }
+    pub fn fingerprint(&self) -> CommandFingerprint {
         let command = &self.command;
-        Some(CommandCacheKey {
+        CommandFingerprint {
             program: command.get_program().into(),
             args: command.get_args().map(OsStr::to_os_string).collect(),
             envs: command
@@ -257,7 +254,7 @@ impl<'a> BootstrapCommand {
                 .map(|(k, v)| (k.to_os_string(), v.map(|val| val.to_os_string())))
                 .collect(),
             cwd: command.get_current_dir().map(Path::to_path_buf),
-        })
+        }
     }
 }
 
@@ -435,7 +432,7 @@ pub struct ExecutionContext {
 
 #[derive(Default)]
 pub struct CommandCache {
-    cache: Mutex<HashMap<CommandCacheKey, CommandOutput>>,
+    cache: Mutex<HashMap<CommandFingerprint, CommandOutput>>,
 }
 
 enum CommandState<'a> {
@@ -446,7 +443,8 @@ enum CommandState<'a> {
         stdout: OutputMode,
         stderr: OutputMode,
         executed_at: &'a Location<'a>,
-        cache_key: Option<CommandCacheKey>,
+        fingerprint: CommandFingerprint,
+        start_time: Instant,
     },
 }
 
@@ -454,6 +452,8 @@ pub struct StreamingCommand {
     child: Child,
     pub stdout: Option<ChildStdout>,
     pub stderr: Option<ChildStderr>,
+    fingerprint: CommandFingerprint,
+    start_time: Instant,
 }
 
 #[must_use]
@@ -462,11 +462,11 @@ pub struct DeferredCommand<'a> {
 }
 
 impl CommandCache {
-    pub fn get(&self, key: &CommandCacheKey) -> Option<CommandOutput> {
+    pub fn get(&self, key: &CommandFingerprint) -> Option<CommandOutput> {
         self.cache.lock().unwrap().get(key).cloned()
     }
 
-    pub fn insert(&self, key: CommandCacheKey, output: CommandOutput) {
+    pub fn insert(&self, key: CommandFingerprint, output: CommandOutput) {
         self.cache.lock().unwrap().insert(key, output);
     }
 }
@@ -539,10 +539,9 @@ impl ExecutionContext {
         stdout: OutputMode,
         stderr: OutputMode,
     ) -> DeferredCommand<'a> {
-        let cache_key = command.cache_key();
+        let fingerprint = command.fingerprint();
 
-        if let Some(cached_output) = cache_key.as_ref().and_then(|key| self.command_cache.get(key))
-        {
+        if let Some(cached_output) = self.command_cache.get(&fingerprint) {
             command.mark_as_executed();
             self.verbose(|| println!("Cache hit: {command:?}"));
             return DeferredCommand { state: CommandState::Cached(cached_output) };
@@ -559,7 +558,8 @@ impl ExecutionContext {
                     stdout,
                     stderr,
                     executed_at,
-                    cache_key,
+                    fingerprint,
+                    start_time: Instant::now(),
                 },
             };
         }
@@ -575,6 +575,8 @@ impl ExecutionContext {
         cmd.stdout(stdout.stdio());
         cmd.stderr(stderr.stdio());
 
+        let start_time = Instant::now();
+
         let child = cmd.spawn();
 
         DeferredCommand {
@@ -584,7 +586,8 @@ impl ExecutionContext {
                 stdout,
                 stderr,
                 executed_at,
-                cache_key,
+                fingerprint,
+                start_time,
             },
         }
     }
@@ -638,6 +641,8 @@ impl ExecutionContext {
         if !command.run_in_dry_run && self.dry_run() {
             return None;
         }
+        let start_time = Instant::now();
+        let fingerprint = command.fingerprint();
         let cmd = &mut command.command;
         cmd.stdout(stdout.stdio());
         cmd.stderr(stderr.stdio());
@@ -669,16 +674,26 @@ impl<'a> DeferredCommand<'a> {
     pub fn wait_for_output(self, exec_ctx: impl AsRef<ExecutionContext>) -> CommandOutput {
         match self.state {
             CommandState::Cached(output) => output,
-            CommandState::Deferred { process, command, stdout, stderr, executed_at, cache_key } => {
+            CommandState::Deferred {
+                process,
+                command,
+                stdout,
+                stderr,
+                executed_at,
+                fingerprint,
+                start_time,
+            } => {
                 let exec_ctx = exec_ctx.as_ref();
 
                 let output =
                     Self::finish_process(process, command, stdout, stderr, executed_at, exec_ctx);
 
                 if (!exec_ctx.dry_run() || command.run_in_dry_run)
-                    && let (Some(cache_key), Some(_)) = (&cache_key, output.status())
+                    && output.status().is_some()
+                    && command.should_cache
                 {
-                    exec_ctx.command_cache.insert(cache_key.clone(), output.clone());
+                    exec_ctx.command_cache.insert(fingerprint.clone(), output.clone());
+                    exec_ctx.profiler.record_execution(fingerprint.clone(), start_time);
                 }
 
                 output
