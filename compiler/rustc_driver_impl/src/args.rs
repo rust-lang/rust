@@ -1,6 +1,6 @@
 use std::{env, error, fmt, fs, io};
 
-use rustc_session::EarlyDiagCtxt;
+use rustc_session::{EarlyDiagCtxt, config};
 
 /// Expands argfiles in command line arguments.
 #[derive(Default)]
@@ -153,3 +153,40 @@ impl fmt::Display for Error {
 }
 
 impl error::Error for Error {}
+
+/// check if suspect is a confusables of any option or arg in rustc or fake_args
+pub(crate) fn check_confusables(suspect: &str, fake_args: &[&str]) -> Option<String> {
+    let suspect = suspect.strip_prefix("-").unwrap_or(suspect);
+    // Check if s1 starts with s2, ignoring hyphens vs underscores
+    fn starts_with_ignoring_separators(s1: &str, s2: &str) -> bool {
+        let normalized_s1 = s1.replace('-', "_");
+        let normalized_s2 = s2.replace('-', "_");
+        normalized_s1.starts_with(&normalized_s2)
+    }
+
+    let optgroups = config::rustc_optgroups();
+    for option in optgroups {
+        let prefix = String::from("--");
+        if starts_with_ignoring_separators(option.long_name(), suspect) {
+            return Some(prefix + option.long_name());
+        }
+    }
+    for option in config::CG_OPTIONS {
+        let prefix = String::from("-C ");
+        if starts_with_ignoring_separators(option.name(), suspect) {
+            return Some(prefix + option.name());
+        }
+    }
+    for option in config::Z_OPTIONS {
+        let prefix = String::from("-Z ");
+        if starts_with_ignoring_separators(option.name(), suspect) {
+            return Some(prefix + option.name());
+        }
+    }
+    for arg in fake_args {
+        if starts_with_ignoring_separators(arg, suspect) {
+            return Some("".to_string());
+        }
+    }
+    None
+}
