@@ -8,13 +8,14 @@ use rustc_codegen_ssa::traits::BaseTypeCodegenMethods;
 use crate::builder::SBuilder;
 use crate::common::AsCCharPtr;
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, Linkage};
+use crate::llvm::{self, Linkage, Type, Value};
 use crate::{LlvmCodegenBackend, SimpleCx, attributes};
 
 pub(crate) fn handle_gpu_code<'ll>(
     _cgcx: &CodegenContext<LlvmCodegenBackend>,
     cx: &'ll SimpleCx<'_>,
 ) {
+    // The offload memory transfer type for each kernel
     let mut o_types = vec![];
     let mut kernels = vec![];
     let offload_entry_ty = add_tgt_offload_entry(&cx);
@@ -43,7 +44,7 @@ fn generate_at_one<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Value {
 
     // @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
     let struct_ident_ty = cx.type_named_struct("struct.ident_t");
-    let struct_elems: Vec<&llvm::Value> = vec![
+    let struct_elems = vec![
         cx.get_const_i32(0),
         cx.get_const_i32(2),
         cx.get_const_i32(0),
@@ -163,7 +164,7 @@ pub(crate) fn add_unnamed_global<'ll>(
     l: Linkage,
 ) -> &'ll llvm::Value {
     let llglobal = add_global(cx, name, initializer, l);
-    unsafe { llvm::LLVMSetUnnamedAddress(llglobal, llvm::UnnamedAddr::Global) };
+    llvm::SetUnnamedAddress(llglobal, llvm::UnnamedAddr::Global);
     llglobal
 }
 
@@ -220,24 +221,20 @@ fn gen_define_handling<'ll>(
     let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
     let llglobal = add_unnamed_global(&cx, &offload_entry_name, initializer, InternalLinkage);
     llvm::set_alignment(llglobal, Align::ONE);
-    let c_section_name = CString::new(".llvm.rodata.offloading").unwrap();
-    llvm::set_section(llglobal, &c_section_name);
+    llvm::set_section(llglobal, c".llvm.rodata.offloading");
 
     // Not actively used yet, for calling real kernels
     let name = format!(".offloading.entry.kernel_{num}");
-    let ci64_0 = cx.get_const_i64(0);
-    let ci16_1 = cx.get_const_i16(1);
-    let elems: Vec<&llvm::Value> = vec![
-        ci64_0,
-        ci16_1,
-        ci16_1,
-        cx.get_const_i32(0),
-        region_id,
-        llglobal,
-        ci64_0,
-        ci64_0,
-        cx.const_null(cx.type_ptr()),
-    ];
+
+    // See the __tgt_offload_entry documentation above.
+    let reserved = cx.get_const_i64(0);
+    let version = cx.get_const_i16(1);
+    let kind = cx.get_const_i16(1);
+    let flags = cx.get_const_i32(0);
+    let size = cx.get_const_i64(0);
+    let data = cx.get_const_i64(0);
+    let aux_addr = cx.const_null(cx.type_ptr());
+    let elems = vec![reserved, version, kind, flags, region_id, llglobal, size, data, aux_addr];
 
     let initializer = crate::common::named_struct(offload_entry_ty, &elems);
     let c_name = CString::new(name).unwrap();
@@ -353,12 +350,7 @@ fn gen_call_handling<'ll>(
 
     // Step 1)
     unsafe { llvm::LLVMRustPositionBefore(builder.llbuilder, kernel_call) };
-    builder.memset(
-        tgt_bin_desc_alloca,
-        cx.get_const_i8(0),
-        cx.get_const_i64(32),
-        Align::from_bytes(8).unwrap(),
-    );
+    builder.memset(tgt_bin_desc_alloca, cx.get_const_i8(0), cx.get_const_i64(32), Align::EIGHT);
 
     let mapper_fn_ty = cx.type_func(&[cx.type_ptr()], cx.type_void());
     let register_lib_decl = declare_offload_fn(&cx, "__tgt_register_lib", mapper_fn_ty);
@@ -384,26 +376,48 @@ fn gen_call_handling<'ll>(
         builder.store(cx.get_const_i64(1024), gep3, Align::EIGHT);
     }
 
-    // Step 2)
-    let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
-    let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
-    let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, i32_0]);
+    // For now we have a very simplistic indexing scheme into our
+    // offload_{baseptrs,ptrs,sizes}. We will probably improve this along with our gpu frontend pr.
+    fn get_geps<'a, 'll>(
+        builder: &mut SBuilder<'a, 'll>,
+        cx: &'ll SimpleCx<'ll>,
+        ty: &'ll Type,
+        ty2: &'ll Type,
+        a1: &'ll Value,
+        a2: &'ll Value,
+        a4: &'ll Value,
+    ) -> (&'ll Value, &'ll Value, &'ll Value) {
+        let i32_0 = cx.get_const_i32(0);
 
-    let nullptr = cx.const_null(cx.type_ptr());
-    let o_type = o_types[0];
+        let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
+        let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
+        let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, i32_0]);
+        (gep1, gep2, gep3)
+    }
+
+    fn generate_mapper_call<'a, 'll>(
+        builder: &mut SBuilder<'a, 'll>,
+        cx: &'ll SimpleCx<'ll>,
+        geps: (&'ll Value, &'ll Value, &'ll Value),
+        o_type: &'ll Value,
+        fn_to_call: &'ll Value,
+        fn_ty: &'ll Type,
+        num_args: u64,
+        s_ident_t: &'ll Value,
+    ) {
+        let nullptr = cx.const_null(cx.type_ptr());
+        let i64_max = cx.get_const_i64(u64::MAX);
+        let num_args = cx.get_const_i32(num_args);
+        let args =
+            vec![s_ident_t, i64_max, num_args, geps.0, geps.1, geps.2, o_type, nullptr, nullptr];
+        builder.call(fn_ty, fn_to_call, &args, None);
+    }
+
+    // Step 2)
     let s_ident_t = generate_at_one(&cx);
-    let args = vec![
-        s_ident_t,
-        cx.get_const_i64(u64::MAX),
-        cx.get_const_i32(num_args),
-        gep1,
-        gep2,
-        gep3,
-        o_type,
-        nullptr,
-        nullptr,
-    ];
-    builder.call(fn_ty, begin_mapper_decl, &args, None);
+    let o = o_types[0];
+    let geps = get_geps(&mut builder, &cx, ty, ty2, a1, a2, a4);
+    generate_mapper_call(&mut builder, &cx, geps, o, begin_mapper_decl, fn_ty, num_args, s_ident_t);
 
     // Step 3)
     // Here we will add code for the actual kernel launches in a follow-up PR.
@@ -412,24 +426,9 @@ fn gen_call_handling<'ll>(
     // Step 4)
     unsafe { llvm::LLVMRustPositionAfter(builder.llbuilder, kernel_call) };
 
-    let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
-    let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
-    let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, i32_0]);
+    let geps = get_geps(&mut builder, &cx, ty, ty2, a1, a2, a4);
+    generate_mapper_call(&mut builder, &cx, geps, o, end_mapper_decl, fn_ty, num_args, s_ident_t);
 
-    let nullptr = cx.const_null(cx.type_ptr());
-    let o_type = o_types[0];
-    let args = vec![
-        s_ident_t,
-        cx.get_const_i64(u64::MAX),
-        cx.get_const_i32(num_args),
-        gep1,
-        gep2,
-        gep3,
-        o_type,
-        nullptr,
-        nullptr,
-    ];
-    builder.call(fn_ty, end_mapper_decl, &args, None);
     builder.call(mapper_fn_ty, unregister_lib_decl, &[tgt_bin_desc_alloca], None);
 
     // With this we generated the following begin and end mappers. We could easily generate the
