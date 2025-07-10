@@ -116,6 +116,8 @@ const CONTEXTUAL_KEYWORDS: &[&str] =
 // keywords we use for special macro expansions
 const CONTEXTUAL_BUILTIN_KEYWORDS: &[&str] = &[
     "asm",
+    "naked_asm",
+    "global_asm",
     "att_syntax",
     "builtin",
     "clobber_abi",

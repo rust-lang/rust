@@ -125,8 +125,8 @@ register_builtin! {
     (assert, Assert) => assert_expand,
     (stringify, Stringify) => stringify_expand,
     (asm, Asm) => asm_expand,
-    (global_asm, GlobalAsm) => asm_expand,
-    (naked_asm, NakedAsm) => asm_expand,
+    (global_asm, GlobalAsm) => global_asm_expand,
+    (naked_asm, NakedAsm) => naked_asm_expand,
     (cfg, Cfg) => cfg_expand,
     (core_panic, CorePanic) => panic_expand,
     (std_panic, StdPanic) => panic_expand,
@@ -321,6 +321,36 @@ fn asm_expand(
     let pound = mk_pound(span);
     let expanded = quote! {span =>
         builtin #pound asm #tt
+    };
+    ExpandResult::ok(expanded)
+}
+
+fn global_asm_expand(
+    _db: &dyn ExpandDatabase,
+    _id: MacroCallId,
+    tt: &tt::TopSubtree,
+    span: Span,
+) -> ExpandResult<tt::TopSubtree> {
+    let mut tt = tt.clone();
+    tt.top_subtree_delimiter_mut().kind = tt::DelimiterKind::Parenthesis;
+    let pound = mk_pound(span);
+    let expanded = quote! {span =>
+        builtin #pound global_asm #tt
+    };
+    ExpandResult::ok(expanded)
+}
+
+fn naked_asm_expand(
+    _db: &dyn ExpandDatabase,
+    _id: MacroCallId,
+    tt: &tt::TopSubtree,
+    span: Span,
+) -> ExpandResult<tt::TopSubtree> {
+    let mut tt = tt.clone();
+    tt.top_subtree_delimiter_mut().kind = tt::DelimiterKind::Parenthesis;
+    let pound = mk_pound(span);
+    let expanded = quote! {span =>
+        builtin #pound naked_asm #tt
     };
     ExpandResult::ok(expanded)
 }

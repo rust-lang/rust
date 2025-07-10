@@ -261,6 +261,19 @@ fn opt_item_without_modifiers(p: &mut Parser<'_>, m: Marker) -> Result<(), Marke
         T![const] if (la == IDENT || la == T![_] || la == T![mut]) => consts::konst(p, m),
         T![static] if (la == IDENT || la == T![_] || la == T![mut]) => consts::static_(p, m),
 
+        IDENT
+            if p.at_contextual_kw(T![builtin])
+                && p.nth_at(1, T![#])
+                && p.nth_at_contextual_kw(2, T![global_asm]) =>
+        {
+            p.bump_remap(T![builtin]);
+            p.bump(T![#]);
+            p.bump_remap(T![global_asm]);
+            // test global_asm
+            // builtin#global_asm("")
+            expressions::parse_asm_expr(p, m);
+        }
+
         _ => return Err(m),
     };
     Ok(())

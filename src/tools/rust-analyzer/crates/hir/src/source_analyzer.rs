@@ -1439,9 +1439,11 @@ fn scope_for(
 ) -> Option<ScopeId> {
     node.ancestors_with_macros(db)
         .take_while(|it| {
-            !ast::Item::can_cast(it.kind())
-                || ast::MacroCall::can_cast(it.kind())
-                || ast::Use::can_cast(it.kind())
+            let kind = it.kind();
+            !ast::Item::can_cast(kind)
+                || ast::MacroCall::can_cast(kind)
+                || ast::Use::can_cast(kind)
+                || ast::AsmExpr::can_cast(kind)
         })
         .filter_map(|it| it.map(ast::Expr::cast).transpose())
         .filter_map(|it| source_map.node_expr(it.as_ref())?.as_expr())

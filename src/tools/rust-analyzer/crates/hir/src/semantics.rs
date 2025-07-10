@@ -1776,7 +1776,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn is_unsafe_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
         let Some(mac) = self.resolve_macro_call(macro_call) else { return false };
-        if mac.is_asm_or_global_asm(self.db) {
+        if mac.is_asm_like(self.db) {
             return true;
         }
 

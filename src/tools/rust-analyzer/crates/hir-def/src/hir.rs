@@ -332,6 +332,17 @@ pub struct OffsetOf {
 pub struct InlineAsm {
     pub operands: Box<[(Option<Name>, AsmOperand)]>,
     pub options: AsmOptions,
+    pub kind: InlineAsmKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum InlineAsmKind {
+    /// `asm!()`.
+    Asm,
+    /// `global_asm!()`.
+    GlobalAsm,
+    /// `naked_asm!()`.
+    NakedAsm,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]

@@ -158,6 +158,7 @@ Item =
 | TypeAlias
 | Union
 | Use
+| AsmExpr
 
 MacroRules =
   Attr* Visibility?
@@ -409,7 +410,8 @@ OffsetOfExpr =
 // global_asm := "global_asm!(" format_string *("," format_string) *("," operand) [","] ")"
 // format_string := STRING_LITERAL / RAW_STRING_LITERAL
 AsmExpr =
-  Attr* 'builtin' '#' 'asm' '(' template:(Expr (',' Expr)*) (AsmPiece (',' AsmPiece)*)? ','? ')'
+  Attr* 'builtin' '#' ( 'asm' | 'global_asm' | 'naked_asm' )
+  '(' template:(Expr (',' Expr)*) (AsmPiece (',' AsmPiece)*)? ','? ')'
 
 // operand_expr := expr / "_" / expr "=>" expr / expr "=>" "_"
 AsmOperandExpr = in_expr:Expr ('=>' out_expr:Expr)?

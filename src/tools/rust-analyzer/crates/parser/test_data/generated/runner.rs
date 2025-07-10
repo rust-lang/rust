@@ -21,6 +21,8 @@ mod ok {
     #[test]
     fn asm_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_expr.rs"); }
     #[test]
+    fn asm_kinds() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_kinds.rs"); }
+    #[test]
     fn asm_label() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_label.rs"); }
     #[test]
     fn assoc_const_eq() {
@@ -297,6 +299,8 @@ mod ok {
     fn generic_param_list() {
         run_and_expect_no_errors("test_data/parser/inline/ok/generic_param_list.rs");
     }
+    #[test]
+    fn global_asm() { run_and_expect_no_errors("test_data/parser/inline/ok/global_asm.rs"); }
     #[test]
     fn half_open_range_pat() {
         run_and_expect_no_errors("test_data/parser/inline/ok/half_open_range_pat.rs");
