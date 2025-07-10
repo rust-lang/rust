@@ -429,7 +429,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 // specific rules on what can be cast. So instead of adding a new way to
                 // generate static initializers that match the static's type, we picked
                 // the easier option and retroactively change the type of the static item itself.
-                let name = llvm::get_value_name(g).to_vec();
+                let name = llvm::get_value_name(g);
                 llvm::set_value_name(g, b"");
 
                 let linkage = llvm::get_linkage(g);

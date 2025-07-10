@@ -1182,7 +1182,7 @@ fn create_msvc_imps(
         .filter_map(|val| {
             // Exclude some symbols that we know are not Rust symbols.
             let name = llvm::get_value_name(val);
-            if ignored(name) { None } else { Some((val, name)) }
+            if ignored(&name) { None } else { Some((val, name)) }
         })
         .map(move |(val, name)| {
             let mut imp_name = prefix.as_bytes().to_vec();
