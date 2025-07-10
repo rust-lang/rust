@@ -535,6 +535,9 @@ trigger_files = [
 [autolabel."S-waiting-on-review"]
 new_pr = true
 
+[autolabel."S-waiting-on-author"]
+new_draft = true
+
 [autolabel."needs-triage"]
 new_issue = true
 exclude_labels = [
