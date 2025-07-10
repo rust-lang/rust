@@ -16,12 +16,15 @@ use directive::{Directive, DirectiveKind};
 static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     RegexBuilder::new(
         r"
-        ^\s*
-        //@\s+
-        (?P<negated>!?)
-        (?P<directive>[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)
-        (?P<args>.*)$
-    ",
+            # Any number of whitespaces.
+            \s*
+            # The directive prefix (`//@`) and 1 or more whitespaces after.
+            //@\s+
+            # The directive itself (1 or more word or `-` characters).
+            (?P<directive>[\w-]+)
+            # The optional remainder (1 non-word character and 0 or more of any characters after).
+            (?P<args>\W.*)?
+        ",
     )
     .ignore_whitespace(true)
     .build()
