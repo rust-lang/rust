@@ -26,19 +26,6 @@ const NAN_MASK1: u64 = 0x000a_aaaa_aaaa_aaaa;
 const NAN_MASK2: u64 = 0x0005_5555_5555_5555;
 
 #[test]
-fn test_one() {
-    let one: f64 = 1.0f64;
-    assert_biteq!(1.0, one);
-    assert!(!one.is_infinite());
-    assert!(one.is_finite());
-    assert!(one.is_sign_positive());
-    assert!(!one.is_sign_negative());
-    assert!(!one.is_nan());
-    assert!(one.is_normal());
-    assert_eq!(Fp::Normal, one.classify());
-}
-
-#[test]
 fn test_is_nan() {
     let nan: f64 = f64::NAN;
     let inf: f64 = f64::INFINITY;
