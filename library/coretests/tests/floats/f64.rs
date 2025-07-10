@@ -26,11 +26,6 @@ const NAN_MASK1: u64 = 0x000a_aaaa_aaaa_aaaa;
 const NAN_MASK2: u64 = 0x0005_5555_5555_5555;
 
 #[test]
-fn test_num_f64() {
-    super::test_num(10f64, 2f64);
-}
-
-#[test]
 fn test_neg_infinity() {
     let neg_inf: f64 = f64::NEG_INFINITY;
     assert!(neg_inf.is_infinite());

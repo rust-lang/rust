@@ -43,11 +43,6 @@ const NAN_MASK1: u16 = 0x02aa;
 /// Second pattern over the mantissa
 const NAN_MASK2: u16 = 0x0155;
 
-#[test]
-fn test_num_f16() {
-    super::test_num(10f16, 2f16);
-}
-
 // FIXME(f16_f128,miri): many of these have to be disabled since miri does not yet support
 // the intrinsics.
 

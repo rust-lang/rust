@@ -1,7 +1,6 @@
 // FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
 #![cfg(target_has_reliable_f128)]
 
-use core::ops::{Add, Div, Mul, Sub};
 use std::f128::consts;
 use std::num::FpCategory as Fp;
 
@@ -37,20 +36,6 @@ const NAN_MASK1: u128 = 0x0000aaaaaaaaaaaaaaaaaaaaaaaaaaaa;
 
 /// Second pattern over the mantissa
 const NAN_MASK2: u128 = 0x00005555555555555555555555555555;
-
-#[test]
-fn test_num_f128() {
-    // FIXME(f16_f128): replace with a `test_num` call once the required `fmodl`/`fmodf128`
-    // function is available on all platforms.
-    let ten = 10f128;
-    let two = 2f128;
-    assert_biteq!(ten.add(two), ten + two);
-    assert_biteq!(ten.sub(two), ten - two);
-    assert_biteq!(ten.mul(two), ten * two);
-    assert_biteq!(ten.div(two), ten / two);
-    #[cfg(any(miri, target_has_reliable_f128_math))]
-    assert_biteq!(core::ops::Rem::rem(ten, two), ten % two);
-}
 
 // FIXME(f16_f128,miri): many of these have to be disabled since miri does not yet support
 // the intrinsics.

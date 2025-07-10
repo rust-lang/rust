@@ -1,4 +1,3 @@
-use std::fmt;
 use std::num::FpCategory as Fp;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
@@ -190,6 +189,8 @@ macro_rules! float_test {
                 use super::Approx;
                 #[allow(unused)]
                 use std::num::FpCategory as Fp;
+                #[allow(unused)]
+                use std::ops::{Add, Div, Mul, Rem, Sub};
                 // Shadow the runtime versions of the macro with const-compatible versions.
                 #[allow(unused)]
                 use $crate::floats::{
@@ -229,29 +230,41 @@ macro_rules! float_test {
     };
 }
 
-/// Helper function for testing numeric operations
-pub fn test_num<T>(ten: T, two: T)
-where
-    T: PartialEq
-        + Add<Output = T>
-        + Sub<Output = T>
-        + Mul<Output = T>
-        + Div<Output = T>
-        + Rem<Output = T>
-        + fmt::Debug
-        + Copy,
-{
-    assert_eq!(ten.add(two), ten + two);
-    assert_eq!(ten.sub(two), ten - two);
-    assert_eq!(ten.mul(two), ten * two);
-    assert_eq!(ten.div(two), ten / two);
-    assert_eq!(ten.rem(two), ten % two);
-}
-
 mod f128;
 mod f16;
 mod f32;
 mod f64;
+
+float_test! {
+    name: num,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let two: Float = 2.0;
+        let ten: Float = 10.0;
+        assert_biteq!(ten.add(two), ten + two);
+        assert_biteq!(ten.sub(two), ten - two);
+        assert_biteq!(ten.mul(two), ten * two);
+        assert_biteq!(ten.div(two), ten / two);
+    }
+}
+
+// FIXME(f16_f128): merge into `num` once the required `fmodl`/`fmodf128` function is available on
+// all platforms.
+float_test! {
+    name: num_rem,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+    },
+    test<Float> {
+        let two: Float = 2.0;
+        let ten: Float = 10.0;
+        assert_biteq!(ten.rem(two), ten % two);
+    }
+}
 
 float_test! {
     name: nan,
