@@ -64,13 +64,12 @@ pub(crate) fn replace_is_method_with_if_let_method(
                     let pat = make.tuple_struct_pat(make.ident_path(text), [var_pat.into()]);
                     let let_expr = make.expr_let(pat.into(), receiver);
 
-                    if let Some(cap) = ctx.config.snippet_cap {
-                        if let Some(ast::Pat::TupleStructPat(pat)) = let_expr.pat() {
-                            if let Some(first_var) = pat.fields().next() {
-                                let placeholder = edit.make_placeholder_snippet(cap);
-                                editor.add_annotation(first_var.syntax(), placeholder);
-                            }
-                        }
+                    if let Some(cap) = ctx.config.snippet_cap
+                        && let Some(ast::Pat::TupleStructPat(pat)) = let_expr.pat()
+                        && let Some(first_var) = pat.fields().next()
+                    {
+                        let placeholder = edit.make_placeholder_snippet(cap);
+                        editor.add_annotation(first_var.syntax(), placeholder);
                     }
 
                     editor.replace(call_expr.syntax(), let_expr.syntax());
