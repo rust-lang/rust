@@ -1,4 +1,4 @@
-//@ compile-flags: -Zoffload=Enable -C opt-level=3  -Clto=fat
+//@ compile-flags: -Zoffload=Enable -Zunstable-options -C opt-level=3  -Clto=fat
 //@ no-prefer-dynamic
 //@ needs-enzyme
 

@@ -2654,6 +2654,15 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         )
     }
 
+    if !nightly_options::is_unstable_enabled(matches)
+        && unstable_opts.offload.contains(&Offload::Enable)
+    {
+        early_dcx.early_fatal(
+            "`-Zoffload=Enable` also requires `-Zunstable-options` \
+                and a nightly compiler",
+        )
+    }
+
     // For testing purposes, until we have more feedback about these options: ensure `-Z
     // unstable-options` is required when using the unstable `-C link-self-contained` and `-C
     // linker-flavor` options.
