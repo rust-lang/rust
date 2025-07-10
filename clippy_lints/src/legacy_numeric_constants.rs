@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::{get_parent_expr, is_from_proc_macro};
 use hir::def_id::DefId;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -102,16 +102,12 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
-        let ExprKind::Path(qpath) = &expr.kind else {
-            return;
-        };
-
         // `std::<integer>::<CONST>` check
-        let (span, sugg, msg) = if let QPath::Resolved(None, path) = qpath
+        let (span, sugg, msg) = if let ExprKind::Path(qpath) = &expr.kind
+            && let QPath::Resolved(None, path) = qpath
             && let Some(def_id) = path.res.opt_def_id()
             && is_numeric_const(cx, def_id)
-            && let def_path = cx.get_def_path(def_id)
-            && let [.., mod_name, name] = &*def_path
+            && let [.., mod_name, name] = &*cx.get_def_path(def_id)
             // Skip linting if this usage looks identical to the associated constant,
             // since this would only require removing a `use` import (which is already linted).
             && !is_numeric_const_path_canonical(path, [*mod_name, *name])
@@ -122,16 +118,16 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
                 "usage of a legacy numeric constant",
             )
         // `<integer>::xxx_value` check
-        } else if let QPath::TypeRelative(mod_path, last_segment) = qpath
-            && let Some(def_id) = cx.qpath_res(qpath, expr.hir_id).opt_def_id()
-            && let Some(par_expr) = get_parent_expr(cx, expr)
-            && let ExprKind::Call(_, []) = par_expr.kind
+        } else if let ExprKind::Call(func, []) = &expr.kind
+            && let ExprKind::Path(qpath) = &func.kind
+            && let QPath::TypeRelative(ty, last_segment) = qpath
+            && let Some(def_id) = cx.qpath_res(qpath, func.hir_id).opt_def_id()
             && is_integer_method(cx, def_id)
         {
             let name = last_segment.ident.name.as_str();
-            let mod_name = clippy_utils::source::snippet(cx, mod_path.span, "_");
+            let mod_name = clippy_utils::source::snippet(cx, ty.span, "_");
             (
-                par_expr.span,
+                expr.span,
                 format!("{}::{}", mod_name, name[..=2].to_ascii_uppercase()),
                 "usage of a legacy numeric method",
             )
