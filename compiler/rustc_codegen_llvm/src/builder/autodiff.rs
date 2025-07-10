@@ -252,8 +252,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
 
     // FIXME(ZuseZ4): the CC/Addr/Vis values are best effort guesses, we should look at tests and
     // think a bit more about what should go here.
-    // FIXME(Sa4dUs): have to find a way to get the cc, using `FastCallConv` for now
-    let cc = 8;
+    let cc = unsafe { llvm::LLVMGetFunctionCallConv(fn_to_diff) };
     let ad_fn = declare_simple_fn(
         cx,
         &ad_name,

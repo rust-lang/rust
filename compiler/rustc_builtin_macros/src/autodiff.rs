@@ -16,9 +16,9 @@ mod llvm_enzyme {
     use rustc_ast::tokenstream::*;
     use rustc_ast::visit::AssocCtxt::*;
     use rustc_ast::{
-        self as ast, AngleBracketedArg, AngleBracketedArgs, AssocItemKind, BindingMode, ExprKind,
-        FnRetTy, FnSig, GenericArg, GenericArgs, Generics, ItemKind, MetaItemInner, PatKind, Path,
-        PathSegment, QSelf, TyKind, Visibility,
+        self as ast, AngleBracketedArg, AngleBracketedArgs, AssocItemKind, BindingMode, FnRetTy,
+        FnSig, GenericArg, GenericArgs, Generics, ItemKind, MetaItemInner, PatKind, Path,
+        PathSegment, TyKind, Visibility,
     };
     use rustc_expand::base::{Annotatable, ExtCtxt};
     use rustc_span::{Ident, Span, Symbol, kw, sym};
@@ -74,10 +74,12 @@ mod llvm_enzyme {
     }
 
     // Get information about the function the macro is applied to
-    fn extract_item_info(iitem: &P<ast::Item>) -> Option<(Visibility, FnSig, Ident, Generics)> {
+    fn extract_item_info(
+        iitem: &P<ast::Item>,
+    ) -> Option<(Visibility, FnSig, Ident, Generics, bool)> {
         match &iitem.kind {
             ItemKind::Fn(box ast::Fn { sig, ident, generics, .. }) => {
-                Some((iitem.vis.clone(), sig.clone(), ident.clone(), generics.clone()))
+                Some((iitem.vis.clone(), sig.clone(), ident.clone(), generics.clone(), false))
             }
             _ => None,
         }
@@ -229,16 +231,20 @@ mod llvm_enzyme {
         // first get information about the annotable item: visibility, signature, name and generic
         // parameters.
         // these will be used to generate the differentiated version of the function
-        let Some((vis, sig, primal, generics)) = (match &item {
+        let Some((vis, sig, primal, generics, impl_of_trait)) = (match &item {
             Annotatable::Item(iitem) => extract_item_info(iitem),
             Annotatable::Stmt(stmt) => match &stmt.kind {
                 ast::StmtKind::Item(iitem) => extract_item_info(iitem),
                 _ => None,
             },
-            Annotatable::AssocItem(assoc_item, Impl { .. }) => match &assoc_item.kind {
-                ast::AssocItemKind::Fn(box ast::Fn { sig, ident, generics, .. }) => {
-                    Some((assoc_item.vis.clone(), sig.clone(), ident.clone(), generics.clone()))
-                }
+            Annotatable::AssocItem(assoc_item, Impl { of_trait }) => match &assoc_item.kind {
+                ast::AssocItemKind::Fn(box ast::Fn { sig, ident, generics, .. }) => Some((
+                    assoc_item.vis.clone(),
+                    sig.clone(),
+                    ident.clone(),
+                    generics.clone(),
+                    *of_trait,
+                )),
                 _ => None,
             },
             _ => None,
@@ -333,18 +339,21 @@ mod llvm_enzyme {
         let (d_sig, new_args, idents, errored) = gen_enzyme_decl(ecx, &sig, &x, span);
 
         // TODO(Sa4dUs): Remove this and all the related logic
-        let _d_body = gen_enzyme_body(
-            ecx, &x, n_active, &sig, &d_sig, primal, &new_args, span, sig_span, idents, errored,
-            &generics,
-        );
-
-        let d_body = call_enzyme_autodiff(
+        let d_body = gen_enzyme_body(
             ecx,
-            primal,
-            first_ident(&meta_item_vec[0]),
-            span,
+            &x,
+            n_active,
+            &sig,
             &d_sig,
+            primal,
+            &new_args,
+            span,
+            sig_span,
+            idents,
+            errored,
+            first_ident(&meta_item_vec[0]),
             &generics,
+            impl_of_trait,
         );
 
         // The first element of it is the name of the function to be generated
@@ -441,8 +450,6 @@ mod llvm_enzyme {
             tokens: ts,
         });
 
-        let vis_clone = vis.clone();
-
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
         let d_attr = outer_normal_attr(&rustc_ad_attr, new_id, span);
         let d_annotatable = match &item {
@@ -479,9 +486,7 @@ mod llvm_enzyme {
             }
         };
 
-        let dummy_const_annotatable = gen_dummy_const(ecx, span, primal, sig, generics, vis_clone);
-
-        return vec![orig_annotatable, dummy_const_annotatable, d_annotatable];
+        return vec![orig_annotatable, d_annotatable];
     }
 
     // shadow arguments (the extra ones which were not in the original (primal) function), in reverse mode must be
@@ -513,9 +518,10 @@ mod llvm_enzyme {
         span: Span,
         d_sig: &FnSig,
         generics: &Generics,
-    ) -> P<ast::Block> {
-        let primal_path_expr = gen_turbofish_expr(ecx, primal, generics, span);
-        let diff_path_expr = gen_turbofish_expr(ecx, diff, generics, span);
+        is_impl: bool,
+    ) -> rustc_ast::Stmt {
+        let primal_path_expr = gen_turbofish_expr(ecx, primal, generics, span, is_impl);
+        let diff_path_expr = gen_turbofish_expr(ecx, diff, generics, span, is_impl);
 
         let tuple_expr = ecx.expr_tuple(
             span,
@@ -545,9 +551,7 @@ mod llvm_enzyme {
             vec![primal_path_expr, diff_path_expr, tuple_expr].into(),
         );
 
-        let block = ecx.block_expr(call_expr);
-
-        block
+        ecx.stmt_expr(call_expr)
     }
 
     // Generate turbofish expression from fn name and generics
@@ -557,6 +561,7 @@ mod llvm_enzyme {
         ident: Ident,
         generics: &Generics,
         span: Span,
+        is_impl: bool,
     ) -> P<ast::Expr> {
         let generic_args = generics
             .params
@@ -568,7 +573,7 @@ mod llvm_enzyme {
             })
             .collect::<ThinVec<_>>();
 
-        let args = AngleBracketedArgs { span, args: generic_args };
+        let args: AngleBracketedArgs = AngleBracketedArgs { span, args: generic_args };
 
         let segment = PathSegment {
             ident,
@@ -576,79 +581,18 @@ mod llvm_enzyme {
             args: Some(P(GenericArgs::AngleBracketed(args))),
         };
 
-        let path = Path { span, segments: thin_vec![segment], tokens: None };
-
-        ecx.expr_path(path)
-    }
-
-    // Generate dummy const to prevent primal function
-    // from being optimized away before applying enzyme
-    // ```
-    // const _: () =
-    // {
-    //     #[used]
-    //     pub static DUMMY_PTR: fn_type = primal_fn;
-    // };
-    // ```
-    fn gen_dummy_const(
-        ecx: &ExtCtxt<'_>,
-        span: Span,
-        primal: Ident,
-        sig: FnSig,
-        generics: Generics,
-        vis: Visibility,
-    ) -> Annotatable {
-        // #[used]
-        let used_attr = P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::used)));
-        let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
-        let used_attr = outer_normal_attr(&used_attr, new_id, span);
-
-        // static DUMMY_PTR: <fn_type> = <primal_ident>
-        let static_ident = Ident::from_str_and_span("DUMMY_PTR", span);
-        let fn_ptr_ty = ast::TyKind::BareFn(Box::new(ast::BareFnTy {
-            safety: sig.header.safety,
-            ext: sig.header.ext,
-            generic_params: generics.params,
-            decl: sig.decl,
-            decl_span: sig.span,
-        }));
-        let static_ty = ecx.ty(span, fn_ptr_ty);
-
-        let static_expr = ecx.expr_path(ecx.path(span, vec![primal]));
-        let static_item_kind = ast::ItemKind::Static(Box::new(ast::StaticItem {
-            ident: static_ident,
-            ty: static_ty,
-            safety: ast::Safety::Default,
-            mutability: ast::Mutability::Not,
-            expr: Some(static_expr),
-            define_opaque: None,
-        }));
-
-        let static_item = ast::Item {
-            attrs: thin_vec![used_attr],
-            id: ast::DUMMY_NODE_ID,
-            span,
-            vis,
-            kind: static_item_kind,
-            tokens: None,
+        let segments = if is_impl {
+            thin_vec![
+                PathSegment { ident: Ident::from_str("Foo"), id: ast::DUMMY_NODE_ID, args: None },
+                segment,
+            ]
+        } else {
+            thin_vec![segment]
         };
 
-        let block_expr = ecx.expr_block(Box::new(ast::Block {
-            stmts: thin_vec![ecx.stmt_item(span, P(static_item))],
-            id: ast::DUMMY_NODE_ID,
-            rules: ast::BlockCheckMode::Default,
-            span,
-            tokens: None,
-        }));
+        let path = Path { span, segments, tokens: None };
 
-        let const_item = ecx.item_const(
-            span,
-            Ident::from_str_and_span("_", span),
-            ecx.ty(span, ast::TyKind::Tup(thin_vec![])),
-            block_expr,
-        );
-
-        Annotatable::Item(const_item)
+        ecx.expr_path(path)
     }
 
     // Will generate a body of the type:
@@ -666,33 +610,14 @@ mod llvm_enzyme {
         ecx: &ExtCtxt<'_>,
         span: Span,
         primal: Ident,
-        new_names: &[String],
-        sig_span: Span,
+        _new_names: &[String],
+        _sig_span: Span,
         new_decl_span: Span,
         idents: &[Ident],
         errored: bool,
         generics: &Generics,
     ) -> (P<ast::Block>, P<ast::Expr>, P<ast::Expr>, P<ast::Expr>) {
         let blackbox_path = ecx.std_path(&[sym::hint, sym::black_box]);
-        let noop = ast::InlineAsm {
-            asm_macro: ast::AsmMacro::Asm,
-            template: vec![ast::InlineAsmTemplatePiece::String("NOP".into())],
-            template_strs: Box::new([]),
-            operands: vec![],
-            clobber_abis: vec![],
-            options: ast::InlineAsmOptions::PURE | ast::InlineAsmOptions::NOMEM,
-            line_spans: vec![],
-        };
-        let noop_expr = ecx.expr_asm(span, P(noop));
-        let unsf = ast::BlockCheckMode::Unsafe(ast::UnsafeSource::CompilerGenerated);
-        let unsf_block = ast::Block {
-            stmts: thin_vec![ecx.stmt_semi(noop_expr)],
-            id: ast::DUMMY_NODE_ID,
-            tokens: None,
-            rules: unsf,
-            span,
-        };
-        let unsf_expr = ecx.expr_block(P(unsf_block));
         let blackbox_call_expr = ecx.expr_path(ecx.path(span, blackbox_path));
         let primal_call = gen_primal_call(ecx, span, primal, idents, generics);
         let black_box_primal_call = ecx.expr_call(
@@ -700,25 +625,13 @@ mod llvm_enzyme {
             blackbox_call_expr.clone(),
             thin_vec![primal_call.clone()],
         );
-        let tup_args = new_names
-            .iter()
-            .map(|arg| ecx.expr_path(ecx.path_ident(span, Ident::from_str(arg))))
-            .collect();
-
-        let black_box_remaining_args = ecx.expr_call(
-            sig_span,
-            blackbox_call_expr.clone(),
-            thin_vec![ecx.expr_tuple(sig_span, tup_args)],
-        );
 
         let mut body = ecx.block(span, ThinVec::new());
-        body.stmts.push(ecx.stmt_semi(unsf_expr));
 
         // This uses primal args which won't be available if we errored before
         if !errored {
             body.stmts.push(ecx.stmt_semi(black_box_primal_call.clone()));
         }
-        body.stmts.push(ecx.stmt_semi(black_box_remaining_args));
 
         (body, primal_call, black_box_primal_call, blackbox_call_expr)
     }
@@ -733,9 +646,9 @@ mod llvm_enzyme {
     /// from optimizing any arguments away.
     fn gen_enzyme_body(
         ecx: &ExtCtxt<'_>,
-        x: &AutoDiffAttrs,
-        n_active: u32,
-        sig: &ast::FnSig,
+        _x: &AutoDiffAttrs,
+        _n_active: u32,
+        _sig: &ast::FnSig,
         d_sig: &ast::FnSig,
         primal: Ident,
         new_names: &[String],
@@ -743,19 +656,15 @@ mod llvm_enzyme {
         sig_span: Span,
         idents: Vec<Ident>,
         errored: bool,
+        diff_ident: Ident,
         generics: &Generics,
+        is_impl: bool,
     ) -> P<ast::Block> {
         let new_decl_span = d_sig.span;
 
-        // Just adding some default inline-asm and black_box usages to prevent early inlining
-        // and optimizations which alter the function signature.
-        //
-        // The bb_primal_call is the black_box call of the primal function. We keep it around,
-        // since it has the convenient property of returning the type of the primal function,
-        // Remember, we only care to match types here.
-        // No matter which return we pick, we always wrap it into a std::hint::black_box call,
-        // to prevent rustc from propagating it into the caller.
-        let (mut body, primal_call, bb_primal_call, bb_call_expr) = init_body_helper(
+        // Add a call to the primal function to prevent it from being inlined
+        // and call `enzyme_autodiff` intrinsic (this also covers the return type)
+        let (mut body, _primal_call, _bb_primal_call, _bb_call_expr) = init_body_helper(
             ecx,
             span,
             primal,
@@ -767,98 +676,15 @@ mod llvm_enzyme {
             generics,
         );
 
-        if !has_ret(&d_sig.decl.output) {
-            // there is no return type that we have to match, () works fine.
-            return body;
-        }
-
-        // Everything from here onwards just tries to fullfil the return type. Fun!
-
-        // having an active-only return means we'll drop the original return type.
-        // So that can be treated identical to not having one in the first place.
-        let primal_ret = has_ret(&sig.decl.output) && !x.has_active_only_ret();
-
-        if primal_ret && n_active == 0 && x.mode.is_rev() {
-            // We only have the primal ret.
-            body.stmts.push(ecx.stmt_expr(bb_primal_call));
-            return body;
-        }
-
-        if !primal_ret && n_active == 1 {
-            // Again no tuple return, so return default float val.
-            let ty = match d_sig.decl.output {
-                FnRetTy::Ty(ref ty) => ty.clone(),
-                FnRetTy::Default(span) => {
-                    panic!("Did not expect Default ret ty: {:?}", span);
-                }
-            };
-            let arg = ty.kind.is_simple_path().unwrap();
-            let tmp = ecx.def_site_path(&[arg, kw::Default]);
-            let default_call_expr = ecx.expr_path(ecx.path(span, tmp));
-            let default_call_expr = ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
-            body.stmts.push(ecx.stmt_expr(default_call_expr));
-            return body;
-        }
-
-        let mut exprs: P<ast::Expr> = primal_call;
-        let d_ret_ty = match d_sig.decl.output {
-            FnRetTy::Ty(ref ty) => ty.clone(),
-            FnRetTy::Default(span) => {
-                panic!("Did not expect Default ret ty: {:?}", span);
-            }
-        };
-        if x.mode.is_fwd() {
-            // Fwd mode is easy. If the return activity is Const, we support arbitrary types.
-            // Otherwise, we only support a scalar, a pair of scalars, or an array of scalars.
-            // We checked that (on a best-effort base) in the preceding gen_enzyme_decl function.
-            // In all three cases, we can return `std::hint::black_box(<T>::default())`.
-            if x.ret_activity == DiffActivity::Const {
-                // Here we call the primal function, since our dummy function has the same return
-                // type due to the Const return activity.
-                exprs = ecx.expr_call(new_decl_span, bb_call_expr, thin_vec![exprs]);
-            } else {
-                let q = QSelf { ty: d_ret_ty, path_span: span, position: 0 };
-                let y = ExprKind::Path(
-                    Some(P(q)),
-                    ecx.path_ident(span, Ident::with_dummy_span(kw::Default)),
-                );
-                let default_call_expr = ecx.expr(span, y);
-                let default_call_expr =
-                    ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
-                exprs = ecx.expr_call(new_decl_span, bb_call_expr, thin_vec![default_call_expr]);
-            }
-        } else if x.mode.is_rev() {
-            if x.width == 1 {
-                // We either have `-> ArbitraryType` or `-> (ArbitraryType, repeated_float_scalars)`.
-                match d_ret_ty.kind {
-                    TyKind::Tup(ref args) => {
-                        // We have a tuple return type. We need to create a tuple of the same size
-                        // and fill it with default values.
-                        let mut exprs2 = thin_vec![exprs];
-                        for arg in args.iter().skip(1) {
-                            let arg = arg.kind.is_simple_path().unwrap();
-                            let tmp = ecx.def_site_path(&[arg, kw::Default]);
-                            let default_call_expr = ecx.expr_path(ecx.path(span, tmp));
-                            let default_call_expr =
-                                ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
-                            exprs2.push(default_call_expr);
-                        }
-                        exprs = ecx.expr_tuple(new_decl_span, exprs2);
-                    }
-                    _ => {
-                        // Interestingly, even the `-> ArbitraryType` case
-                        // ends up getting matched and handled correctly above,
-                        // so we don't have to handle any other case for now.
-                        panic!("Unsupported return type: {:?}", d_ret_ty);
-                    }
-                }
-            }
-            exprs = ecx.expr_call(new_decl_span, bb_call_expr, thin_vec![exprs]);
-        } else {
-            unreachable!("Unsupported mode: {:?}", x.mode);
-        }
-
-        body.stmts.push(ecx.stmt_expr(exprs));
+        body.stmts.push(call_enzyme_autodiff(
+            ecx,
+            primal,
+            diff_ident,
+            new_decl_span,
+            d_sig,
+            generics,
+            is_impl,
+        ));
 
         body
     }
