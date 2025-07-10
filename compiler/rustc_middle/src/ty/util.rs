@@ -1052,9 +1052,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
         }
 
         self.depth += 1;
-        ensure_sufficient_stack(|| {
+        let ty = ensure_sufficient_stack(|| {
             self.tcx.type_of(alias.def_id).instantiate(self.tcx, alias.args).fold_with(self)
-        })
+        });
+        self.depth -= 1;
+        ty
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
