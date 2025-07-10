@@ -264,5 +264,17 @@ error: function call inside of `get_or_insert`
 LL |     let _ = x.get_or_insert(g());
    |               ^^^^^^^^^^^^^^^^^^ help: try: `get_or_insert_with(g)`
 
-error: aborting due to 41 previous errors
+error: function call inside of `and`
+  --> tests/ui/or_fun_call.rs:448:15
+   |
+LL |     let _ = x.and(g());
+   |               ^^^^^^^^ help: try: `and_then(|_| g())`
+
+error: function call inside of `and`
+  --> tests/ui/or_fun_call.rs:458:15
+   |
+LL |     let _ = x.and(g());
+   |               ^^^^^^^^ help: try: `and_then(|_| g())`
+
+error: aborting due to 43 previous errors
 
