@@ -27681,15 +27681,10 @@ pub fn vmaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmax_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v8i8")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smax.v8i8"
-        )]
-        fn _vmax_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t;
+    unsafe {
+        let mask: int8x8_t = simd_ge(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmax_s8(a, b) }
 }
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_s8)"]
@@ -27710,15 +27705,10 @@ pub fn vmax_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmaxq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v16i8")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smax.v16i8"
-        )]
-        fn _vmaxq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t;
+    unsafe {
+        let mask: int8x16_t = simd_ge(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmaxq_s8(a, b) }
 }
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_s16)"]
@@ -27739,15 +27729,10 @@ pub fn vmaxq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmax_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v4i16")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smax.v4i16"
-        )]
-        fn _vmax_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t;
+    unsafe {
+        let mask: int16x4_t = simd_ge(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmax_s16(a, b) }
 }
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_s16)"]
@@ -27768,15 +27753,10 @@ pub fn vmax_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmaxq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v8i16")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smax.v8i16"
-        )]
-        fn _vmaxq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t;
+    unsafe {
+        let mask: int16x8_t = simd_ge(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmaxq_s16(a, b) }
 }
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_s32)"]
@@ -27797,15 +27777,10 @@ pub fn vmaxq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmax_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v2i32")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smax.v2i32"
-        )]
-        fn _vmax_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t;
+    unsafe {
+        let mask: int32x2_t = simd_ge(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmax_s32(a, b) }
 }
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_s32)"]
@@ -27826,15 +27801,10 @@ pub fn vmax_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmaxq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v4i32")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smax.v4i32"
-        )]
-        fn _vmaxq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t;
+    unsafe {
+        let mask: int32x4_t = simd_ge(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmaxq_s32(a, b) }
 }
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_u8)"]
@@ -27855,15 +27825,10 @@ pub fn vmaxq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmax_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxu.v8i8")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umax.v8i8"
-        )]
-        fn _vmax_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
+    unsafe {
+        let mask: uint8x8_t = simd_ge(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmax_u8(a, b) }
 }
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_u8)"]
@@ -27884,15 +27849,10 @@ pub fn vmax_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmaxq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxu.v16i8")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umax.v16i8"
-        )]
-        fn _vmaxq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
+    unsafe {
+        let mask: uint8x16_t = simd_ge(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmaxq_u8(a, b) }
 }
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_u16)"]
@@ -27913,15 +27873,10 @@ pub fn vmaxq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmax_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxu.v4i16")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umax.v4i16"
-        )]
-        fn _vmax_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
+    unsafe {
+        let mask: uint16x4_t = simd_ge(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmax_u16(a, b) }
 }
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_u16)"]
@@ -27942,15 +27897,10 @@ pub fn vmax_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmaxq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxu.v8i16")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umax.v8i16"
-        )]
-        fn _vmaxq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
+    unsafe {
+        let mask: uint16x8_t = simd_ge(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmaxq_u16(a, b) }
 }
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_u32)"]
@@ -27971,15 +27921,10 @@ pub fn vmaxq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmax_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxu.v2i32")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umax.v2i32"
-        )]
-        fn _vmax_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
+    unsafe {
+        let mask: uint32x2_t = simd_ge(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmax_u32(a, b) }
 }
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_u32)"]
@@ -28000,15 +27945,10 @@ pub fn vmax_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmaxq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxu.v4i32")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umax.v4i32"
-        )]
-        fn _vmaxq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
+    unsafe {
+        let mask: uint32x4_t = simd_ge(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmaxq_u32(a, b) }
 }
 #[doc = "Floating-point Maximum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnm_f16)"]
@@ -28233,15 +28173,10 @@ pub fn vminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmin_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v8i8")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smin.v8i8"
-        )]
-        fn _vmin_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t;
+    unsafe {
+        let mask: int8x8_t = simd_le(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmin_s8(a, b) }
 }
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_s8)"]
@@ -28262,15 +28197,10 @@ pub fn vmin_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vminq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v16i8")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smin.v16i8"
-        )]
-        fn _vminq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t;
+    unsafe {
+        let mask: int8x16_t = simd_le(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vminq_s8(a, b) }
 }
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_s16)"]
@@ -28291,15 +28221,10 @@ pub fn vminq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmin_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v4i16")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smin.v4i16"
-        )]
-        fn _vmin_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t;
+    unsafe {
+        let mask: int16x4_t = simd_le(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmin_s16(a, b) }
 }
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_s16)"]
@@ -28320,15 +28245,10 @@ pub fn vmin_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vminq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v8i16")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smin.v8i16"
-        )]
-        fn _vminq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t;
+    unsafe {
+        let mask: int16x8_t = simd_le(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vminq_s16(a, b) }
 }
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_s32)"]
@@ -28349,15 +28269,10 @@ pub fn vminq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmin_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v2i32")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smin.v2i32"
-        )]
-        fn _vmin_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t;
+    unsafe {
+        let mask: int32x2_t = simd_le(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmin_s32(a, b) }
 }
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_s32)"]
@@ -28378,15 +28293,10 @@ pub fn vmin_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vminq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v4i32")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smin.v4i32"
-        )]
-        fn _vminq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t;
+    unsafe {
+        let mask: int32x4_t = simd_le(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vminq_s32(a, b) }
 }
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_u8)"]
@@ -28407,15 +28317,10 @@ pub fn vminq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmin_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminu.v8i8")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umin.v8i8"
-        )]
-        fn _vmin_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
+    unsafe {
+        let mask: uint8x8_t = simd_le(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmin_u8(a, b) }
 }
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_u8)"]
@@ -28436,15 +28341,10 @@ pub fn vmin_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vminq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminu.v16i8")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umin.v16i8"
-        )]
-        fn _vminq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
+    unsafe {
+        let mask: uint8x16_t = simd_le(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vminq_u8(a, b) }
 }
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_u16)"]
@@ -28465,15 +28365,10 @@ pub fn vminq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmin_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminu.v4i16")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umin.v4i16"
-        )]
-        fn _vmin_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
+    unsafe {
+        let mask: uint16x4_t = simd_le(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmin_u16(a, b) }
 }
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_u16)"]
@@ -28494,15 +28389,10 @@ pub fn vmin_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vminq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminu.v8i16")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umin.v8i16"
-        )]
-        fn _vminq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
+    unsafe {
+        let mask: uint16x8_t = simd_le(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vminq_u16(a, b) }
 }
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_u32)"]
@@ -28523,15 +28413,10 @@ pub fn vminq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmin_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminu.v2i32")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umin.v2i32"
-        )]
-        fn _vmin_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
+    unsafe {
+        let mask: uint32x2_t = simd_le(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vmin_u32(a, b) }
 }
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_u32)"]
@@ -28552,15 +28437,10 @@ pub fn vmin_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vminq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminu.v4i32")]
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umin.v4i32"
-        )]
-        fn _vminq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
+    unsafe {
+        let mask: uint32x4_t = simd_le(a, b);
+        simd_select(mask, a, b)
     }
-    unsafe { _vminq_u32(a, b) }
 }
 #[doc = "Floating-point Minimum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnm_f16)"]
