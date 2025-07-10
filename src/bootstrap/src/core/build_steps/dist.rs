@@ -2370,8 +2370,8 @@ impl Step for LlvmBitcodeLinker {
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let target = self.target;
 
-        let llbc_linker =
-            builder.ensure(tool::LlvmBitcodeLinker::for_compiler(builder, self.target_compiler));
+        let llbc_linker = builder
+            .ensure(tool::LlvmBitcodeLinker::for_use_by_compiler(builder, self.target_compiler));
 
         let self_contained_bin_dir = format!("lib/rustlib/{}/bin/self-contained", target.triple);
 

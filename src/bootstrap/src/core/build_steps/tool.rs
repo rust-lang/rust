@@ -897,7 +897,7 @@ pub struct LldWrapper {
 
 impl LldWrapper {
     /// Returns `LldWrapper` that should be **used** by the passed compiler.
-    pub fn for_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
+    pub fn for_use_by_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
         Self {
             build_compiler: get_tool_target_compiler(
                 builder,
@@ -998,7 +998,7 @@ pub struct WasmComponentLd {
 
 impl WasmComponentLd {
     /// Returns `WasmComponentLd` that should be **used** by the passed compiler.
-    pub fn for_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
+    pub fn for_use_by_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
         Self {
             build_compiler: get_tool_target_compiler(
                 builder,
@@ -1165,7 +1165,7 @@ pub struct LlvmBitcodeLinker {
 
 impl LlvmBitcodeLinker {
     /// Returns `LlvmBitcodeLinker` that should be **used** by the passed compiler.
-    pub fn for_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
+    pub fn for_use_by_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
         Self {
             build_compiler: get_tool_target_compiler(
                 builder,

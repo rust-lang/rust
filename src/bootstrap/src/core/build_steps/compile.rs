@@ -2056,7 +2056,7 @@ impl Step for Assemble {
             if builder.config.llvm_bitcode_linker_enabled {
                 trace!("llvm-bitcode-linker enabled, installing");
                 let llvm_bitcode_linker = builder.ensure(
-                    crate::core::build_steps::tool::LlvmBitcodeLinker::for_compiler(
+                    crate::core::build_steps::tool::LlvmBitcodeLinker::for_use_by_compiler(
                         builder,
                         target_compiler,
                     ),
@@ -2259,9 +2259,11 @@ impl Step for Assemble {
         copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
 
         if builder.config.lld_enabled {
-            let lld_wrapper = builder.ensure(
-                crate::core::build_steps::tool::LldWrapper::for_compiler(builder, target_compiler),
-            );
+            let lld_wrapper =
+                builder.ensure(crate::core::build_steps::tool::LldWrapper::for_use_by_compiler(
+                    builder,
+                    target_compiler,
+                ));
             copy_lld_artifacts(builder, lld_wrapper, target_compiler);
         }
 
@@ -2289,11 +2291,12 @@ impl Step for Assemble {
         // In addition to `rust-lld` also install `wasm-component-ld` when
         // is enabled. This is used by the `wasm32-wasip2` target of Rust.
         if builder.tool_enabled("wasm-component-ld") {
-            let wasm_component =
-                builder.ensure(crate::core::build_steps::tool::WasmComponentLd::for_compiler(
+            let wasm_component = builder.ensure(
+                crate::core::build_steps::tool::WasmComponentLd::for_use_by_compiler(
                     builder,
                     target_compiler,
-                ));
+                ),
+            );
             builder.copy_link(
                 &wasm_component.tool_path,
                 &libdir_bin.join(wasm_component.tool_path.file_name().unwrap()),
