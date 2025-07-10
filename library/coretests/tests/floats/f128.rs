@@ -41,18 +41,6 @@ const NAN_MASK2: u128 = 0x00005555555555555555555555555555;
 // the intrinsics.
 
 #[test]
-fn test_neg_infinity() {
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert!(neg_inf.is_infinite());
-    assert!(!neg_inf.is_finite());
-    assert!(!neg_inf.is_sign_positive());
-    assert!(neg_inf.is_sign_negative());
-    assert!(!neg_inf.is_nan());
-    assert!(!neg_inf.is_normal());
-    assert_eq!(Fp::Infinite, neg_inf.classify());
-}
-
-#[test]
 fn test_zero() {
     let zero: f128 = 0.0f128;
     assert_biteq!(0.0, zero);

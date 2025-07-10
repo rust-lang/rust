@@ -31,18 +31,6 @@ const NAN_MASK2: u32 = 0x0055_5555;
 const APPROX_DELTA: f32 = if cfg!(miri) { 1e-4 } else { 1e-6 };
 
 #[test]
-fn test_neg_infinity() {
-    let neg_inf: f32 = f32::NEG_INFINITY;
-    assert!(neg_inf.is_infinite());
-    assert!(!neg_inf.is_finite());
-    assert!(!neg_inf.is_sign_positive());
-    assert!(neg_inf.is_sign_negative());
-    assert!(!neg_inf.is_nan());
-    assert!(!neg_inf.is_normal());
-    assert_eq!(Fp::Infinite, neg_inf.classify());
-}
-
-#[test]
 fn test_zero() {
     let zero: f32 = 0.0f32;
     assert_biteq!(0.0, zero);

@@ -305,6 +305,24 @@ float_test! {
 }
 
 float_test! {
+    name: neg_infinity,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert!(neg_inf.is_infinite());
+        assert!(!neg_inf.is_finite());
+        assert!(!neg_inf.is_sign_positive());
+        assert!(neg_inf.is_sign_negative());
+        assert!(!neg_inf.is_nan());
+        assert!(!neg_inf.is_normal());
+        assert!(matches!(neg_inf.classify(), Fp::Infinite));
+    }
+}
+
+float_test! {
     name: min,
     attrs: {
         f16: #[cfg(any(miri, target_has_reliable_f16_math))],
