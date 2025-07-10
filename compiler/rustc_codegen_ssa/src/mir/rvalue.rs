@@ -236,14 +236,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             || operand.layout.is_uninhabited()
             || cast.is_uninhabited()
         {
-            if !operand.layout.is_uninhabited() {
-                // Since this is known statically and the input could have existed
-                // without already having hit UB, might as well trap for it.
-                bx.abort();
-            }
+            // We can't use unreachable because that's a terminator, and we
+            // need something that can be in the middle of a basic block.
+            bx.assume(bx.cx().const_bool(false));
 
-            // Because this transmute is UB, return something easy to generate,
-            // since it's fine that later uses of the value are probably UB.
+            // We still need to return a value of the appropriate type, but
+            // it's already UB so do the easiest thing available.
             return OperandValue::poison(bx, cast);
         }
 
