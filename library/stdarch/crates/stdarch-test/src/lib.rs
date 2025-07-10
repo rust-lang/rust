@@ -61,11 +61,12 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
     black_box(shim_addr);
 
     //eprintln!("shim name: {fnname}");
-    let function = &DISASSEMBLY
-        .get(&Function::new(fnname))
-        .unwrap_or_else(|| panic!("function \"{fnname}\" not found in the disassembly"));
+    let Some(function) = &DISASSEMBLY.get(&Function::new(fnname)) else {
+        panic!("function `{fnname}` not found in the disassembly")
+    };
     //eprintln!("  function: {:?}", function);
 
+    // Trim any filler instructions.
     let mut instrs = &function.instrs[..];
     while instrs.last().is_some_and(|s| s == "nop" || s == "int3") {
         instrs = &instrs[..instrs.len() - 1];
@@ -80,11 +81,17 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
     // 2. It is a mark, indicating that the instruction will be
     // compiled into other instructions - mainly because of llvm
     // optimization.
-    let expected = if expected == "unknown" {
-        "<unknown>" // Workaround for rust-lang/stdarch#1674, todo: remove when the issue is fixed
-    } else {
-        expected
+    let expected = match expected {
+        // `<unknown>` is what LLVM will generate for unknown instructions. We use this to fail
+        // loudly when LLVM does start supporting these instructions.
+        //
+        // This was introduced in https://github.com/rust-lang/stdarch/pull/1674 to work around the
+        // RISC-V P extension not yet being supported.
+        "unknown" => "<unknown>",
+        _ => expected,
     };
+
+    // Check whether the given instruction is part of the disassemblied body.
     let found = expected == "nop" || instrs.iter().any(|s| s.starts_with(expected));
 
     // Look for subroutine call instructions in the disassembly to detect whether
