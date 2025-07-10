@@ -3,13 +3,14 @@ warning: ambiguous glob re-exports
    |
 LL |     pub use self::range::*;
    |             ^^^^^^^^^^^^^^ the name `date_range` in the value namespace is first re-exported here
+LL |
 LL |     use super::prelude::*;
    |         ----------------- but the name `date_range` in the value namespace is also re-exported here
    |
    = note: `#[warn(ambiguous_glob_reexports)]` on by default
 
 warning: `date_range` is ambiguous
-  --> $DIR/ambiguous-9.rs:24:5
+  --> $DIR/ambiguous-9.rs:26:5
    |
 LL |     date_range();
    |     ^^^^^^^^^^ ambiguous name
@@ -24,7 +25,7 @@ LL |     pub use self::range::*;
    |             ^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
 note: `date_range` could also refer to the function imported here
-  --> $DIR/ambiguous-9.rs:9:9
+  --> $DIR/ambiguous-9.rs:10:9
    |
 LL |     use super::prelude::*;
    |         ^^^^^^^^^^^^^^^^^
@@ -32,15 +33,16 @@ LL |     use super::prelude::*;
    = note: `#[warn(ambiguous_glob_imports)]` on by default
 
 warning: ambiguous glob re-exports
-  --> $DIR/ambiguous-9.rs:16:13
+  --> $DIR/ambiguous-9.rs:17:13
    |
 LL |     pub use self::t::*;
    |             ^^^^^^^^^^ the name `date_range` in the value namespace is first re-exported here
+LL |
 LL |     pub use super::dsl::*;
    |             ------------- but the name `date_range` in the value namespace is also re-exported here
 
 warning: `date_range` is ambiguous
-  --> $DIR/ambiguous-9.rs:24:5
+  --> $DIR/ambiguous-9.rs:26:5
    |
 LL |     date_range();
    |     ^^^^^^^^^^ ambiguous name
@@ -49,13 +51,13 @@ LL |     date_range();
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `date_range` could refer to the function imported here
-  --> $DIR/ambiguous-9.rs:20:5
+  --> $DIR/ambiguous-9.rs:22:5
    |
 LL | use dsl::*;
    |     ^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
 note: `date_range` could also refer to the function imported here
-  --> $DIR/ambiguous-9.rs:21:5
+  --> $DIR/ambiguous-9.rs:23:5
    |
 LL | use prelude::*;
    |     ^^^^^^^^^^

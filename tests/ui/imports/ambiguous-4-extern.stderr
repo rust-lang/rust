@@ -3,13 +3,14 @@ warning: ambiguous glob re-exports
    |
 LL | pub use evp::*;
    |         ^^^^^^ the name `id` in the value namespace is first re-exported here
+LL |
 LL | pub use handwritten::*;
    |         -------------- but the name `id` in the value namespace is also re-exported here
    |
    = note: `#[warn(ambiguous_glob_reexports)]` on by default
 
 warning: `id` is ambiguous
-  --> $DIR/ambiguous-4-extern.rs:23:5
+  --> $DIR/ambiguous-4-extern.rs:24:5
    |
 LL |     id();
    |     ^^ ambiguous name
@@ -24,7 +25,7 @@ LL | pub use evp::*;
    |         ^^^^^^
    = help: consider adding an explicit import of `id` to disambiguate
 note: `id` could also refer to the function imported here
-  --> $DIR/ambiguous-4-extern.rs:11:9
+  --> $DIR/ambiguous-4-extern.rs:12:9
    |
 LL | pub use handwritten::*;
    |         ^^^^^^^^^^^^^^

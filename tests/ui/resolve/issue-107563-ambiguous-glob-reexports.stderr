@@ -1,18 +1,18 @@
 error[E0659]: `A` is ambiguous
-  --> $DIR/issue-107563-ambiguous-glob-reexports.rs:25:24
+  --> $DIR/issue-107563-ambiguous-glob-reexports.rs:29:24
    |
 LL |     pub use ambiguous::A;
    |                        ^ ambiguous name
    |
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `A` could refer to the type alias imported here
-  --> $DIR/issue-107563-ambiguous-glob-reexports.rs:19:13
+  --> $DIR/issue-107563-ambiguous-glob-reexports.rs:23:13
    |
 LL |     pub use self::m1::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `A` to disambiguate
 note: `A` could also refer to the type alias imported here
-  --> $DIR/issue-107563-ambiguous-glob-reexports.rs:21:13
+  --> $DIR/issue-107563-ambiguous-glob-reexports.rs:25:13
    |
 LL |     pub use self::m2::*;
    |             ^^^^^^^^^^^
@@ -34,7 +34,7 @@ LL | #![deny(ambiguous_glob_reexports)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: ambiguous glob re-exports
-  --> $DIR/issue-107563-ambiguous-glob-reexports.rs:19:13
+  --> $DIR/issue-107563-ambiguous-glob-reexports.rs:23:13
    |
 LL |     pub use self::m1::*;
    |             ^^^^^^^^^^^ the name `A` in the type namespace is first re-exported here
