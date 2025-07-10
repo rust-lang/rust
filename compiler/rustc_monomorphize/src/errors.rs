@@ -78,6 +78,8 @@ pub(crate) struct AbiErrorDisabledVectorType<'a> {
     pub ty: Ty<'a>,
     /// Whether this is a problem at a call site or at a declaration.
     pub is_call: bool,
+    /// Whether this is a problem with a fixed length vector or a scalable vector
+    pub is_scalable: bool,
 }
 
 #[derive(Diagnostic)]
