@@ -1,12 +1,12 @@
 use std::ffi::CString;
 
 use llvm::Linkage::*;
-use rustc_abi::Align;
+use rustc_abi::{AddressSpace, Align};
 use rustc_codegen_ssa::back::write::CodegenContext;
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods;
 
 use crate::builder::gpu_offload::*;
-use crate::llvm::{self, Visibility};
+use crate::llvm::{self, Linkage, Type, Value, Visibility};
 use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx};
 
 pub(crate) fn create_struct_ty<'ll>(
@@ -22,6 +22,23 @@ pub(crate) fn create_struct_ty<'ll>(
     }
 }
 
+pub(crate) fn add_global_decl<'ll>(
+    cx: &SimpleCx<'ll>,
+    ty: &'ll Type,
+    name: &str,
+    l: Linkage,
+    hidden: bool,
+) -> &'ll llvm::Value {
+    let c_name = CString::new(name).unwrap();
+    let llglobal: &'ll llvm::Value = llvm::add_global(cx.llmod, ty, &c_name);
+    llvm::set_global_constant(llglobal, true);
+    llvm::set_linkage(llglobal, l);
+    if hidden {
+        llvm::set_visibility(llglobal, Visibility::Hidden);
+    }
+    llglobal
+}
+
 // We don't copy types from other functions because we generate a new module and context.
 // Bringing in types from other contexts would likely cause issues.
 pub(crate) fn gen_image_wrapper_module(cgcx: &CodegenContext<LlvmCodegenBackend>) {
@@ -32,6 +49,7 @@ pub(crate) fn gen_image_wrapper_module(cgcx: &CodegenContext<LlvmCodegenBackend>
         ModuleLlvm::new_simple(name, dl_cstr.into_raw(), target_cstr.into_raw(), &cgcx).unwrap();
     let cx = SimpleCx::new(m.llmod(), m.llcx, cgcx.pointer_size);
     let tptr = cx.type_ptr();
+    let tptr1 = cx.type_ptr_ext(AddressSpace(1));
     let ti64 = cx.type_i64();
     let ti32 = cx.type_i32();
     let ti16 = cx.type_i16();
@@ -44,28 +62,22 @@ pub(crate) fn gen_image_wrapper_module(cgcx: &CodegenContext<LlvmCodegenBackend>
     let offload_entry_ty = add_tgt_offload_entry(&cx);
     let offload_entry_arr = cx.type_array(offload_entry_ty, 0);
 
-    let c_name = CString::new("__start_omp_offloading_entries").unwrap();
-    let llglobal = llvm::add_global(cx.llmod, offload_entry_arr, &c_name);
-    llvm::set_global_constant(llglobal, true);
-    llvm::set_linkage(llglobal, ExternalLinkage);
-    llvm::set_visibility(llglobal, Visibility::Hidden);
-    let c_name = CString::new("__stop_omp_offloading_entries").unwrap();
-    let llglobal = llvm::add_global(cx.llmod, offload_entry_arr, &c_name);
-    llvm::set_global_constant(llglobal, true);
-    llvm::set_linkage(llglobal, ExternalLinkage);
-    llvm::set_visibility(llglobal, Visibility::Hidden);
+    let name = "__start_omp_offloading_entries";
+    add_global_decl(&cx, offload_entry_arr, name, ExternalLinkage, true);
 
-    let c_name = CString::new("__dummy.omp_offloading_entries").unwrap();
-    let llglobal = llvm::add_global(cx.llmod, offload_entry_arr, &c_name);
-    llvm::set_global_constant(llglobal, true);
-    llvm::set_linkage(llglobal, InternalLinkage);
+    let name = "__stop_omp_offloading_entries";
+    add_global_decl(&cx, offload_entry_arr, name, ExternalLinkage, true);
+
+    let name = "__dummy.omp_offloading_entries";
+    let llglobal = add_global_decl(&cx, offload_entry_arr, name, InternalLinkage, false);
+
     let c_section_name = CString::new("omp_offloading_entries").unwrap();
     llvm::set_section(llglobal, &c_section_name);
     let zeroinit = cx.const_null(offload_entry_arr);
     llvm::set_initializer(llglobal, zeroinit);
 
     CString::new("llvm.compiler.used").unwrap();
-    let arr_val = cx.const_array(tptr, &[llglobal]);
+    let arr_val = cx.const_array(tptr1, &[llglobal]);
     let c_section_name = CString::new("llvm.metadata").unwrap();
     let llglobal = add_global(&cx, "llvm.compiler.used", arr_val, AppendingLinkage);
     llvm::set_section(llglobal, &c_section_name);
@@ -74,30 +86,9 @@ pub(crate) fn gen_image_wrapper_module(cgcx: &CodegenContext<LlvmCodegenBackend>
     //@llvm.compiler.used = appending global [1 x ptr] [ptr @__dummy.omp_offloading_entries], section "llvm.metadata"
 
     let mapper_fn_ty = cx.type_func(&[tptr], cx.type_void());
-    crate::declare::declare_simple_fn(
-        &cx,
-        &"__tgt_unregister_lib",
-        llvm::CallConv::CCallConv,
-        llvm::UnnamedAddr::No,
-        llvm::Visibility::Default,
-        mapper_fn_ty,
-    );
-    crate::declare::declare_simple_fn(
-        &cx,
-        &"__tgt_register_lib",
-        llvm::CallConv::CCallConv,
-        llvm::UnnamedAddr::No,
-        llvm::Visibility::Default,
-        mapper_fn_ty,
-    );
-    crate::declare::declare_simple_fn(
-        &cx,
-        &"atexit",
-        llvm::CallConv::CCallConv,
-        llvm::UnnamedAddr::No,
-        llvm::Visibility::Default,
-        cx.type_func(&[tptr], ti32),
-    );
+    declare_offload_fn(&cx, &"__tgt_register_lib", mapper_fn_ty);
+    declare_offload_fn(&cx, &"__tgt_unregister_lib", mapper_fn_ty);
+    declare_offload_fn(&cx, &"atexit", cx.type_func(&[tptr], ti32));
 
     let unknown_txt = "11111111111111";
     let c_entry_name = CString::new(unknown_txt).unwrap();
