@@ -66,6 +66,13 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         _ => return Err(CopyImplementationError::NotAnAdt),
     };
 
+    // Scalable vectors have an unsized field that would normally disallow a `Copy` impl on the
+    // type, but that type doesn't actually exist, it's just a marker to know the element type of
+    // the vector. After codegen, scalable vectors are just a register that can be trivially copied.
+    if adt.repr().scalable() {
+        return Ok(());
+    }
+
     all_fields_implement_trait(
         tcx,
         param_env,

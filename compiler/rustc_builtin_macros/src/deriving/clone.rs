@@ -33,37 +33,48 @@ pub(crate) fn expand_deriving_clone(
     let substructure;
     let is_simple;
     match item {
-        Annotatable::Item(annitem) => match &annitem.kind {
-            ItemKind::Struct(_, Generics { params, .. }, _)
-            | ItemKind::Enum(_, Generics { params, .. }, _) => {
-                let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
-                let has_derive_copy = cx.resolver.has_derive_copy(container_id);
-                if has_derive_copy
-                    && !params
-                        .iter()
-                        .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
-                {
-                    bounds = vec![];
-                    is_simple = true;
-                    substructure = combine_substructure(Box::new(|c, s, sub| {
-                        cs_clone_simple("Clone", c, s, sub, false)
-                    }));
-                } else {
-                    bounds = vec![];
-                    is_simple = false;
-                    substructure =
-                        combine_substructure(Box::new(|c, s, sub| cs_clone("Clone", c, s, sub)));
+        Annotatable::Item(annitem) => {
+            let has_repr_scalable = annitem.attrs.iter().any(|attr| {
+                attr.has_name(sym::repr)
+                    && attr
+                        .meta_item_list()
+                        .map(|list| list.iter().any(|inner| inner.has_name(sym::scalable)))
+                        .unwrap_or(false)
+            });
+
+            match &annitem.kind {
+                ItemKind::Struct(_, Generics { params, .. }, _)
+                | ItemKind::Enum(_, Generics { params, .. }, _) => {
+                    let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
+                    let has_derive_copy = cx.resolver.has_derive_copy(container_id);
+                    if has_derive_copy
+                        && !params
+                            .iter()
+                            .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
+                    {
+                        bounds = vec![];
+                        is_simple = true;
+                        substructure = combine_substructure(Box::new(move |c, s, sub| {
+                            cs_clone_simple("Clone", c, s, sub, false, has_repr_scalable)
+                        }));
+                    } else {
+                        bounds = vec![];
+                        is_simple = false;
+                        substructure = combine_substructure(Box::new(|c, s, sub| {
+                            cs_clone("Clone", c, s, sub)
+                        }));
+                    }
                 }
+                ItemKind::Union(..) => {
+                    bounds = vec![Path(path_std!(marker::Copy))];
+                    is_simple = true;
+                    substructure = combine_substructure(Box::new(move |c, s, sub| {
+                        cs_clone_simple("Clone", c, s, sub, true, has_repr_scalable)
+                    }));
+                }
+                _ => cx.dcx().span_bug(span, "`#[derive(Clone)]` on wrong item kind"),
             }
-            ItemKind::Union(..) => {
-                bounds = vec![Path(path_std!(marker::Copy))];
-                is_simple = true;
-                substructure = combine_substructure(Box::new(|c, s, sub| {
-                    cs_clone_simple("Clone", c, s, sub, true)
-                }));
-            }
-            _ => cx.dcx().span_bug(span, "`#[derive(Clone)]` on wrong item kind"),
-        },
+        }
 
         _ => cx.dcx().span_bug(span, "`#[derive(Clone)]` on trait item or impl item"),
     }
@@ -98,6 +109,7 @@ fn cs_clone_simple(
     trait_span: Span,
     substr: &Substructure<'_>,
     is_union: bool,
+    has_repr_scalable: bool,
 ) -> BlockOrExpr {
     let mut stmts = ThinVec::new();
     let mut seen_type_names = FxHashSet::default();
@@ -112,6 +124,9 @@ fn cs_clone_simple(
                 // Already produced an assertion for this type.
                 // Anonymous structs or unions must be eliminated as they cannot be
                 // type parameters.
+            } else if has_repr_scalable {
+                // Fields of scalable vector types are just markers for codegen, don't assert they
+                // implement `Clone`
             } else {
                 // let _: AssertParamIsClone<FieldTy>;
                 super::assert_ty_bounds(
