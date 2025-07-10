@@ -168,10 +168,17 @@ For `#[instrument]`, it's recommended to:
 
 ### Profiling bootstrap
 
-You can use the `COMMAND` tracing target to trace execution of most commands spawned by bootstrap. If you also use the `BOOTSTRAP_PROFILE=1` environment variable, bootstrap will generate a Chrome JSON trace file, which can be visualized in Chrome's `chrome://tracing` page or on https://ui.perfetto.dev.
+You can set the `BOOTSTRAP_PROFILE=1` environment variable to enable command execution profiling during bootstrap. This generates:
+
+* A Chrome trace file (for visualization in `chrome://tracing` or [Perfetto](https://ui.perfetto.dev)) if tracing is enabled via `BOOTSTRAP_TRACING=COMMAND=trace`
+* A plain-text summary file, `bootstrap-profile-{pid}.txt`, listing all commands sorted by execution time (slowest first), along with cache hits and working directories
+
+Note: the `.txt` report is always generated when `BOOTSTRAP_PROFILE=1` is set — tracing is not required.
+
+Example usage:
 
 ```bash
-$ BOOTSTRAP_TRACING=COMMAND=trace BOOTSTRAP_PROFILE=1 ./x build library
+$ BOOTSTRAP_PROFILE=1 BOOTSTRAP_TRACING=COMMAND=trace ./x build library
 ```
 
 ### rust-analyzer integration?
