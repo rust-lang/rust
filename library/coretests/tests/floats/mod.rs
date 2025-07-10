@@ -274,6 +274,24 @@ float_test! {
 }
 
 float_test! {
+    name: infinity,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let inf: Float = Float::INFINITY;
+        assert!(inf.is_infinite());
+        assert!(!inf.is_finite());
+        assert!(inf.is_sign_positive());
+        assert!(!inf.is_sign_negative());
+        assert!(!inf.is_nan());
+        assert!(!inf.is_normal());
+        assert!(matches!(inf.classify(), Fp::Infinite));
+    }
+}
+
+float_test! {
     name: min,
     attrs: {
         f16: #[cfg(any(miri, target_has_reliable_f16_math))],

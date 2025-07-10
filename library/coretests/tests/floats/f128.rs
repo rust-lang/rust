@@ -56,18 +56,6 @@ fn test_num_f128() {
 // the intrinsics.
 
 #[test]
-fn test_infinity() {
-    let inf: f128 = f128::INFINITY;
-    assert!(inf.is_infinite());
-    assert!(!inf.is_finite());
-    assert!(inf.is_sign_positive());
-    assert!(!inf.is_sign_negative());
-    assert!(!inf.is_nan());
-    assert!(!inf.is_normal());
-    assert_eq!(Fp::Infinite, inf.classify());
-}
-
-#[test]
 fn test_neg_infinity() {
     let neg_inf: f128 = f128::NEG_INFINITY;
     assert!(neg_inf.is_infinite());
