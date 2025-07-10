@@ -57,11 +57,9 @@ const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
 fn check_entries(tests_path: &Path, bad: &mut bool) {
     let mut directories: HashMap<PathBuf, u32> = HashMap::new();
 
-    for dir in Walk::new(tests_path.join("ui")) {
-        if let Ok(entry) = dir {
-            let parent = entry.path().parent().unwrap().to_path_buf();
-            *directories.entry(parent).or_default() += 1;
-        }
+    for entry in Walk::new(tests_path.join("ui")).flatten() {
+        let parent = entry.path().parent().unwrap().to_path_buf();
+        *directories.entry(parent).or_default() += 1;
     }
 
     let (mut max, mut max_issues) = (0, 0);
