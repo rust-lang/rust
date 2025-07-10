@@ -5,6 +5,7 @@
 //@ compile-flags: -C symbol-mangling-version=v0
 
 #![crate_type = "rlib"]
+#![feature(asm_const_ptr)]
 
 use std::arch::global_asm;
 
@@ -26,6 +27,10 @@ global_asm!("call {}", sym my_func);
 global_asm!("lea rax, [rip + {}]", sym MY_STATIC);
 // CHECK: call _RNvC[[CRATE_IDENT:[a-zA-Z0-9]{12}]]_10global_asm6foobar
 global_asm!("call {}", sym foobar);
+// CHECK: lea rax, [rip + _RNSC[[CRATE_IDENT]]_10global_asms4_10global_asm.0]
+global_asm!("lea rax, [rip + {}]", const &1);
+// CHECK: lea rax, [rip + _RNSC[[CRATE_IDENT]]_10global_asms5_10global_asm.0+4]
+global_asm!("lea rax, [rip + {}]", const &[1; 2][1]);
 // CHECK: _RNvC[[CRATE_IDENT]]_10global_asm6foobar:
 fn foobar() {
     loop {}
