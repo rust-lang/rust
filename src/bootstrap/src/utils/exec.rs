@@ -10,13 +10,17 @@
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Formatter};
+use std::fs::File;
 use std::hash::Hash;
+use std::io::{BufWriter, Write};
 use std::panic::Location;
 use std::path::Path;
+use std::process;
 use std::process::{
     Child, ChildStderr, ChildStdout, Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio,
 };
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use build_helper::ci::CiEnv;
 use build_helper::drop_bomb::DropBomb;
@@ -70,6 +74,150 @@ pub struct CommandFingerprint {
     args: Vec<OsString>,
     envs: Vec<(OsString, Option<OsString>)>,
     cwd: Option<PathBuf>,
+}
+
+impl FormatShortCmd for CommandFingerprint {
+    fn format_short_cmd(&self) -> String {
+        let program = Path::new(&self.program);
+        let mut line = vec![program.file_name().unwrap().to_str().unwrap().to_owned()];
+        line.extend(self.args.iter().map(|arg| arg.to_string_lossy().into_owned()));
+        line.extend(self.cwd.iter().map(|p| p.to_string_lossy().into_owned()));
+        line.join(" ")
+    }
+}
+
+#[derive(Default, Clone)]
+pub struct CommandProfile {
+    pub traces: Vec<ExecutionTrace>,
+}
+
+#[derive(Default)]
+pub struct CommandProfiler {
+    stats: Mutex<HashMap<CommandFingerprint, CommandProfile>>,
+}
+
+impl CommandProfiler {
+    pub fn record_execution(&self, key: CommandFingerprint, start_time: Instant) {
+        let mut stats = self.stats.lock().unwrap();
+        let entry = stats.entry(key).or_default();
+        entry.traces.push(ExecutionTrace::Executed { duration: start_time.elapsed() });
+    }
+
+    pub fn record_cache_hit(&self, key: CommandFingerprint) {
+        let mut stats = self.stats.lock().unwrap();
+        let entry = stats.entry(key).or_default();
+        entry.traces.push(ExecutionTrace::CacheHit);
+    }
+
+    pub fn report_summary(&self, start_time: Instant) {
+        let pid = process::id();
+        let filename = format!("bootstrap-profile-{pid}.txt");
+
+        let file = match File::create(&filename) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("Failed to create profiler output file: {e}");
+                return;
+            }
+        };
+
+        let mut writer = BufWriter::new(file);
+        let stats = self.stats.lock().unwrap();
+
+        let mut entries: Vec<_> = stats
+            .iter()
+            .map(|(key, profile)| {
+                let max_duration = profile
+                    .traces
+                    .iter()
+                    .filter_map(|trace| match trace {
+                        ExecutionTrace::Executed { duration, .. } => Some(*duration),
+                        _ => None,
+                    })
+                    .max();
+
+                (key, profile, max_duration)
+            })
+            .collect();
+
+        entries.sort_by(|a, b| b.2.cmp(&a.2));
+
+        let total_bootstrap_duration = start_time.elapsed();
+
+        let total_fingerprints = entries.len();
+        let mut total_cache_hits = 0;
+        let mut total_execution_duration = Duration::ZERO;
+        let mut total_saved_duration = Duration::ZERO;
+
+        for (key, profile, max_duration) in &entries {
+            writeln!(writer, "Command: {:?}", key.format_short_cmd()).unwrap();
+
+            let mut hits = 0;
+            let mut runs = 0;
+            let mut command_total_duration = Duration::ZERO;
+
+            for trace in &profile.traces {
+                match trace {
+                    ExecutionTrace::CacheHit => {
+                        hits += 1;
+                    }
+                    ExecutionTrace::Executed { duration, .. } => {
+                        runs += 1;
+                        command_total_duration += *duration;
+                    }
+                }
+            }
+
+            total_cache_hits += hits;
+            total_execution_duration += command_total_duration;
+            // This makes sense only in our current setup, where:
+            // - If caching is enabled, we record the timing for the initial execution,
+            //   and all subsequent runs will be cache hits.
+            // - If caching is disabled or unused, there will be no cache hits,
+            //   and we'll record timings for all executions.
+            total_saved_duration += command_total_duration * hits as u32;
+
+            let command_vs_bootstrap = if total_bootstrap_duration > Duration::ZERO {
+                100.0 * command_total_duration.as_secs_f64()
+                    / total_bootstrap_duration.as_secs_f64()
+            } else {
+                0.0
+            };
+
+            let duration_str = match max_duration {
+                Some(d) => format!("{d:.2?}"),
+                None => "-".into(),
+            };
+
+            writeln!(
+                writer,
+                "Summary: {runs} run(s), {hits} hit(s), max_duration={duration_str} total_duration: {command_total_duration:.2?} ({command_vs_bootstrap:.2?}% of total)\n"
+            )
+            .unwrap();
+        }
+
+        let overhead_time = total_bootstrap_duration
+            .checked_sub(total_execution_duration)
+            .unwrap_or(Duration::ZERO);
+
+        writeln!(writer, "\n=== Aggregated Summary ===").unwrap();
+        writeln!(writer, "Total unique commands (fingerprints): {total_fingerprints}").unwrap();
+        writeln!(writer, "Total time spent in command executions: {total_execution_duration:.2?}")
+            .unwrap();
+        writeln!(writer, "Total bootstrap time: {total_bootstrap_duration:.2?}").unwrap();
+        writeln!(writer, "Time spent outside command executions: {overhead_time:.2?}").unwrap();
+        writeln!(writer, "Total cache hits: {total_cache_hits}").unwrap();
+        writeln!(writer, "Estimated time saved due to cache hits: {total_saved_duration:.2?}")
+            .unwrap();
+
+        println!("Command profiler report saved to {filename}");
+    }
+}
+
+#[derive(Clone)]
+pub enum ExecutionTrace {
+    CacheHit,
+    Executed { duration: Duration },
 }
 
 /// Wrapper around `std::process::Command`.
@@ -399,7 +547,6 @@ impl Default for CommandOutput {
 
 /// Helper trait to format both Command and BootstrapCommand as a short execution line,
 /// without all the other details (e.g. environment variables).
-#[cfg(feature = "tracing")]
 pub trait FormatShortCmd {
     fn format_short_cmd(&self) -> String;
 }
@@ -428,6 +575,7 @@ pub struct ExecutionContext {
     pub fail_fast: bool,
     delayed_failures: Arc<Mutex<Vec<String>>>,
     command_cache: Arc<CommandCache>,
+    profiler: Arc<CommandProfiler>,
 }
 
 #[derive(Default)]
@@ -481,6 +629,10 @@ impl ExecutionContext {
             DryRun::Disabled => false,
             DryRun::SelfCheck | DryRun::UserSelected => true,
         }
+    }
+
+    pub fn profiler(&self) -> &CommandProfiler {
+        &self.profiler
     }
 
     pub fn get_dry_run(&self) -> &DryRun {
@@ -544,6 +696,7 @@ impl ExecutionContext {
         if let Some(cached_output) = self.command_cache.get(&fingerprint) {
             command.mark_as_executed();
             self.verbose(|| println!("Cache hit: {command:?}"));
+            self.profiler.record_cache_hit(fingerprint);
             return DeferredCommand { state: CommandState::Cached(cached_output) };
         }
 
