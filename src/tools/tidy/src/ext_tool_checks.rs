@@ -20,7 +20,10 @@
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::str::FromStr;
 use std::{fmt, fs, io};
+
+use crate::CiInfo;
 
 const MIN_PY_REV: (u32, u32) = (3, 9);
 const MIN_PY_REV_STR: &str = "≥3.9";
@@ -36,15 +39,19 @@ const RUFF_CONFIG_PATH: &[&str] = &["src", "tools", "tidy", "config", "ruff.toml
 const RUFF_CACHE_PATH: &[&str] = &["cache", "ruff_cache"];
 const PIP_REQ_PATH: &[&str] = &["src", "tools", "tidy", "config", "requirements.txt"];
 
+// this must be kept in sync with with .github/workflows/spellcheck.yml
+const SPELLCHECK_DIRS: &[&str] = &["compiler", "library", "src/bootstrap", "src/librustdoc"];
+
 pub fn check(
     root_path: &Path,
     outdir: &Path,
+    ci_info: &CiInfo,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
     bad: &mut bool,
 ) {
-    if let Err(e) = check_impl(root_path, outdir, bless, extra_checks, pos_args) {
+    if let Err(e) = check_impl(root_path, outdir, ci_info, bless, extra_checks, pos_args) {
         tidy_error!(bad, "{e}");
     }
 }
@@ -52,6 +59,7 @@ pub fn check(
 fn check_impl(
     root_path: &Path,
     outdir: &Path,
+    ci_info: &CiInfo,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
@@ -61,25 +69,45 @@ fn check_impl(
 
     // Split comma-separated args up
     let lint_args = match extra_checks {
-        Some(s) => s.strip_prefix("--extra-checks=").unwrap().split(',').collect(),
+        Some(s) => s
+            .strip_prefix("--extra-checks=")
+            .unwrap()
+            .split(',')
+            .map(|s| {
+                if s == "spellcheck:fix" {
+                    eprintln!("warning: `spellcheck:fix` is no longer valid, use `--extra-checks=spellcheck --bless`");
+                }
+                (ExtraCheckArg::from_str(s), s)
+            })
+            .filter_map(|(res, src)| match res {
+                Ok(arg) => {
+                    if arg.is_inactive_auto(ci_info) {
+                        None
+                    } else {
+                        Some(arg)
+                    }
+                }
+                Err(err) => {
+                    // only warn because before bad extra checks would be silently ignored.
+                    eprintln!("warning: bad extra check argument {src:?}: {err:?}");
+                    None
+                }
+            })
+            .collect(),
         None => vec![],
     };
 
-    if lint_args.contains(&"spellcheck:fix") {
-        return Err(Error::Generic(
-            "`spellcheck:fix` is no longer valid, use `--extra=check=spellcheck --bless`"
-                .to_string(),
-        ));
+    macro_rules! extra_check {
+        ($lang:ident, $kind:ident) => {
+            lint_args.iter().any(|arg| arg.matches(ExtraCheckLang::$lang, ExtraCheckKind::$kind))
+        };
     }
 
-    let python_all = lint_args.contains(&"py");
-    let python_lint = lint_args.contains(&"py:lint") || python_all;
-    let python_fmt = lint_args.contains(&"py:fmt") || python_all;
-    let shell_all = lint_args.contains(&"shell");
-    let shell_lint = lint_args.contains(&"shell:lint") || shell_all;
-    let cpp_all = lint_args.contains(&"cpp");
-    let cpp_fmt = lint_args.contains(&"cpp:fmt") || cpp_all;
-    let spellcheck = lint_args.contains(&"spellcheck");
+    let python_lint = extra_check!(Py, Lint);
+    let python_fmt = extra_check!(Py, Fmt);
+    let shell_lint = extra_check!(Shell, Lint);
+    let cpp_fmt = extra_check!(Cpp, Fmt);
+    let spellcheck = extra_check!(Spellcheck, None);
 
     let mut py_path = None;
 
@@ -234,15 +262,9 @@ fn check_impl(
 
     if spellcheck {
         let config_path = root_path.join("typos.toml");
-        // sync target files with .github/workflows/spellcheck.yml
-        let mut args = vec![
-            "-c",
-            config_path.as_os_str().to_str().unwrap(),
-            "./compiler",
-            "./library",
-            "./src/bootstrap",
-            "./src/librustdoc",
-        ];
+        let mut args = vec!["-c", config_path.as_os_str().to_str().unwrap()];
+
+        args.extend_from_slice(SPELLCHECK_DIRS);
 
         if bless {
             eprintln!("spellcheck files and fix");
@@ -636,5 +658,138 @@ impl fmt::Display for Error {
 impl From<io::Error> for Error {
     fn from(value: io::Error) -> Self {
         Self::Io(value)
+    }
+}
+
+#[derive(Debug)]
+enum ExtraCheckParseError {
+    #[allow(dead_code, reason = "shown through Debug")]
+    UnknownKind(String),
+    #[allow(dead_code)]
+    UnknownLang(String),
+    UnsupportedKindForLang,
+    /// Too many `:`
+    TooManyParts,
+    /// Tried to parse the empty string
+    Empty,
+    /// `auto` specified without lang part.
+    AutoRequiresLang,
+}
+
+struct ExtraCheckArg {
+    auto: bool,
+    lang: ExtraCheckLang,
+    /// None = run all extra checks for the given lang
+    kind: Option<ExtraCheckKind>,
+}
+
+impl ExtraCheckArg {
+    fn matches(&self, lang: ExtraCheckLang, kind: ExtraCheckKind) -> bool {
+        self.lang == lang && self.kind.map(|k| k == kind).unwrap_or(true)
+    }
+
+    /// Returns `true` if this is an auto arg and the relevant files are not modified.
+    fn is_inactive_auto(&self, ci_info: &CiInfo) -> bool {
+        if !self.auto {
+            return false;
+        }
+        let ext = match self.lang {
+            ExtraCheckLang::Py => ".py",
+            ExtraCheckLang::Cpp => ".cpp",
+            ExtraCheckLang::Shell => ".sh",
+            ExtraCheckLang::Spellcheck => {
+                return !crate::files_modified(ci_info, |s| {
+                    SPELLCHECK_DIRS.iter().any(|dir| Path::new(s).starts_with(dir))
+                });
+            }
+        };
+        !crate::files_modified(ci_info, |s| s.ends_with(ext))
+    }
+
+    fn has_supported_kind(&self) -> bool {
+        let Some(kind) = self.kind else {
+            // "run all extra checks" mode is supported for all languages.
+            return true;
+        };
+        use ExtraCheckKind::*;
+        let supported_kinds: &[_] = match self.lang {
+            ExtraCheckLang::Py => &[Fmt, Lint],
+            ExtraCheckLang::Cpp => &[Fmt],
+            ExtraCheckLang::Shell => &[Lint],
+            ExtraCheckLang::Spellcheck => &[],
+        };
+        supported_kinds.contains(&kind)
+    }
+}
+
+impl FromStr for ExtraCheckArg {
+    type Err = ExtraCheckParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut auto = false;
+        let mut parts = s.split(':');
+        let Some(mut first) = parts.next() else {
+            return Err(ExtraCheckParseError::Empty);
+        };
+        if first == "auto" {
+            let Some(part) = parts.next() else {
+                return Err(ExtraCheckParseError::AutoRequiresLang);
+            };
+            auto = true;
+            first = part;
+        }
+        let second = parts.next();
+        if parts.next().is_some() {
+            return Err(ExtraCheckParseError::TooManyParts);
+        }
+        let arg = Self { auto, lang: first.parse()?, kind: second.map(|s| s.parse()).transpose()? };
+        if !arg.has_supported_kind() {
+            return Err(ExtraCheckParseError::UnsupportedKindForLang);
+        }
+
+        Ok(arg)
+    }
+}
+
+#[derive(PartialEq, Copy, Clone)]
+enum ExtraCheckLang {
+    Py,
+    Shell,
+    Cpp,
+    Spellcheck,
+}
+
+impl FromStr for ExtraCheckLang {
+    type Err = ExtraCheckParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "py" => Self::Py,
+            "shell" => Self::Shell,
+            "cpp" => Self::Cpp,
+            "spellcheck" => Self::Spellcheck,
+            _ => return Err(ExtraCheckParseError::UnknownLang(s.to_string())),
+        })
+    }
+}
+
+#[derive(PartialEq, Copy, Clone)]
+enum ExtraCheckKind {
+    Lint,
+    Fmt,
+    /// Never parsed, but used as a placeholder for
+    /// langs that never have a specific kind.
+    None,
+}
+
+impl FromStr for ExtraCheckKind {
+    type Err = ExtraCheckParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "lint" => Self::Lint,
+            "fmt" => Self::Fmt,
+            _ => return Err(ExtraCheckParseError::UnknownKind(s.to_string())),
+        })
     }
 }
