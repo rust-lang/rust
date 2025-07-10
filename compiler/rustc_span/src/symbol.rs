@@ -912,6 +912,7 @@ symbols! {
         enumerate_method,
         env,
         env_CFG_RELEASE: env!("CFG_RELEASE"),
+        enzyme_autodiff,
         eprint_macro,
         eprintln_macro,
         eq,
