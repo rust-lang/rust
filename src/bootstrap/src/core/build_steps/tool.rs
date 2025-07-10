@@ -1052,7 +1052,7 @@ impl Step for WasmComponentLd {
             path: "src/tools/wasm-component-ld",
             source_type: SourceType::InTree,
             extra_features: vec![],
-            allow_features: "min-specialization",
+            allow_features: "",
             cargo_args: vec![],
             artifact_kind: ToolArtifactKind::Binary,
         })
