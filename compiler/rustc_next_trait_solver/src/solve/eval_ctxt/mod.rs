@@ -21,8 +21,8 @@ use crate::coherence;
 use crate::delegate::SolverDelegate;
 use crate::placeholder::BoundVarReplacer;
 use crate::solve::inspect::{self, ProofTreeBuilder};
-use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::search_graph::SearchGraph;
+use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
     CanonicalInput, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluation, GoalEvaluationKind,
     GoalSource, GoalStalledOn, HasChanged, NestedNormalizationGoals, NoSolution, QueryInput,

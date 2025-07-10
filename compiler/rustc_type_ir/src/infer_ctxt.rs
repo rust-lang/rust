@@ -276,16 +276,15 @@ pub trait InferCtxtLike: Sized {
     );
 
     fn reset_opaque_types(&self);
-
 }
-
 
 pub fn may_use_unstable_feature<'a, I: Interner, Infcx>(
     infcx: &'a Infcx,
     param_env: I::ParamEnv,
     symbol: I::Symbol,
-) -> bool 
-where Infcx: InferCtxtLike<Interner = I>
+) -> bool
+where
+    Infcx: InferCtxtLike<Interner = I>,
 {
     // Iterate through all goals in param_env to find the one that has the same symbol.
     for pred in param_env.caller_bounds().iter() {
