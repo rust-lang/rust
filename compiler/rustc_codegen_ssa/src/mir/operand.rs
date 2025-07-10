@@ -186,7 +186,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         offset: Size,
     ) -> Self {
         let alloc_align = alloc.inner().align;
-        assert!(alloc_align >= layout.align.abi);
+        assert!(alloc_align >= layout.align.abi, "{alloc_align:?} < {:?}", layout.align.abi);
 
         let read_scalar = |start, size, s: abi::Scalar, ty| {
             match alloc.0.read_scalar(
