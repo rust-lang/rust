@@ -444,6 +444,21 @@ impl<'tcx> Terminator<'tcx> {
         self.kind.successors()
     }
 
+    /// Return `Some` if all successors are identical.
+    #[inline]
+    pub fn identical_successor(&self) -> Option<BasicBlock> {
+        let mut successors = self.successors();
+        let Some(first_succ) = successors.next() else {
+            return None;
+        };
+        while let Some(succ) = successors.next() {
+            if first_succ != succ {
+                return None;
+            }
+        }
+        Some(first_succ)
+    }
+
     #[inline]
     pub fn successors_mut<'a>(&'a mut self, f: impl FnMut(&'a mut BasicBlock)) {
         self.kind.successors_mut(f)
