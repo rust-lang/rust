@@ -613,6 +613,25 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn scalable_alloca(&mut self, elt: u64, align: Align, element_ty: Ty<'_>) -> Self::Value {
+        let mut bx = Builder::with_cx(self.cx);
+        bx.position_at_start(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn()) });
+        let llvm_ty = match element_ty.kind() {
+            ty::Bool => bx.type_i1(),
+            ty::Int(int_ty) => self.cx.type_int_from_ty(*int_ty),
+            ty::Uint(uint_ty) => self.cx.type_uint_from_ty(*uint_ty),
+            ty::Float(float_ty) => self.cx.type_float_from_ty(*float_ty),
+            _ => unreachable!("scalable vectors can only contain a bool, int, uint or float"),
+        };
+
+        unsafe {
+            let ty = llvm::LLVMScalableVectorType(llvm_ty, elt.try_into().unwrap());
+            let alloca = llvm::LLVMBuildAlloca(&bx.llbuilder, ty, UNNAMED);
+            llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
+            alloca
+        }
+    }
+
     fn load(&mut self, ty: &'ll Type, ptr: &'ll Value, align: Align) -> &'ll Value {
         unsafe {
             let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
