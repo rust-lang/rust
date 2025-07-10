@@ -31,7 +31,7 @@ use rustc_middle::ty::{
     TypeFoldable, TypeVisitableExt, TypingMode, Upcast, elaborate,
 };
 use rustc_span::{Symbol, sym};
-use rustc_type_ir::InferCtxtLike;
+use rustc_type_ir::may_use_unstable_feature;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -846,8 +846,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
-                    #[allow(rustc::usage_of_type_ir_traits)]
-                    if self.infcx.may_use_unstable_feature(obligation.param_env, symbol) {
+                    if may_use_unstable_feature(self.infcx, obligation.param_env, symbol) {
                         Ok(EvaluatedToOk)
                     } else {
                         Ok(EvaluatedToAmbig)
