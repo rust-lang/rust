@@ -1165,7 +1165,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self.push_suggestion(CodeSuggestion {
             substitutions,
             msg: self.subdiagnostic_message_to_diagnostic_message(msg),
-            style: SuggestionStyle::ShowCode,
+            style: SuggestionStyle::ShowAlways,
             applicability,
         });
         self

@@ -61,10 +61,8 @@ error[E0277]: `dummy2::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:48:13
    |
 LL |     is_send(Box::new(TestType));
-   |     ------- -^^^^^^^^^^^^^^^^^
-   |     |       |
-   |     |       the trait `Send` is not implemented for `Unique<dummy2::TestType>`
-   |     |       help: consider borrowing here: `&`
+   |     ------- ^^^^^^^^^^^^^^^^^^ the trait `Send` is not implemented for `Unique<dummy2::TestType>`
+   |     |
    |     required by a bound introduced by this call
    |
    = note: the trait bound `Unique<dummy2::TestType>: Send` is not satisfied
@@ -76,6 +74,10 @@ note: required by a bound in `is_send`
    |
 LL | fn is_send<T: Send>(_: T) {}
    |               ^^^^ required by this bound in `is_send`
+help: consider borrowing here
+   |
+LL |     is_send(&Box::new(TestType));
+   |             +
 
 error[E0277]: `dummy3::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:56:13
