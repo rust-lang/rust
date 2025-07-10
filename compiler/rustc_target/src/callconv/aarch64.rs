@@ -78,7 +78,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    if !ret.layout.is_sized() {
+    if !ret.layout.is_sized() || ret.layout.is_scalable_vector() {
         // Not touching this...
         return;
     }
@@ -110,7 +110,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    if !arg.layout.is_sized() {
+    if !arg.layout.is_sized() || arg.layout.is_scalable_vector() {
         // Not touching this...
         return;
     }

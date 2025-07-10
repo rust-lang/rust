@@ -82,6 +82,10 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 }))
             }
 
+            BackendRepr::ScalableVector { .. } => {
+                unreachable!("`homogeneous_aggregate` should not be called for scalable vectors")
+            }
+
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { sized: true } => {
                 // Helper for computing `homogeneous_aggregate`, allowing a custom
                 // starting offset (used below for handling variants).

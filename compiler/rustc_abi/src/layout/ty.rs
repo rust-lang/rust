@@ -172,6 +172,7 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug {
     fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
     fn is_transparent(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_scalable_vector(this: TyAndLayout<'a, Self>) -> bool;
     /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
     fn is_pass_indirectly_in_non_rustic_abis_flag_set(this: TyAndLayout<'a, Self>) -> bool;
 }
@@ -269,6 +270,13 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
     {
         Ty::is_transparent(self)
+    }
+
+    pub fn is_scalable_vector<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_scalable_vector(self)
     }
 
     /// If this method returns `true`, then this type should always have a `PassMode` of

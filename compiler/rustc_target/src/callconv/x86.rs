@@ -103,6 +103,9 @@ where
                         }
                         false
                     }
+                    BackendRepr::ScalableVector { .. } => {
+                        panic!("scalable vectors are unsupported")
+                    }
                 }
             }
 
