@@ -2,5 +2,5 @@
 struct S {
     d: [u32; {
         #![cfg] {
-            #![w,) //~ ERROR mismatched closing delimiter
+            #![w,)
                    //~ ERROR this file contains an unclosed delimiter

@@ -1,3 +1,3 @@
 //@ compile-flags: -Zunpretty=ast-tree
-#![c={#![c[)x   //~ ERROR mismatched closing delimiter
-                //~ ERROR this file contains an unclosed delimiter
+//~v ERROR this file contains an unclosed delimiter
+#![c={#![c[)x

@@ -77,12 +77,12 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             );
         }
 
-        if let Some((delim, _)) = self.diag_info.open_delimiters.last() {
+        if let Some((delim, _)) = self.diag_info.open_delimiters.last().cloned() {
             report_suspicious_mismatch_block(
                 &mut err,
-                &self.diag_info,
+                &mut self.diag_info,
                 self.psess.source_map(),
-                *delim,
+                delim,
             )
         }
         err
@@ -238,13 +238,18 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         this_spacing
     }
 
-    fn close_delim_err(&mut self, delim: Delimiter) -> Diag<'psess> {
+    fn close_delim_err(&mut self, close_delim: Delimiter) -> Diag<'psess> {
         // An unexpected closing delimiter (i.e., there is no matching opening delimiter).
         let token_str = token_to_string(&self.token);
         let msg = format!("unexpected closing delimiter: `{token_str}`");
         let mut err = self.dcx().struct_span_err(self.token.span, msg);
 
-        report_suspicious_mismatch_block(&mut err, &self.diag_info, self.psess.source_map(), delim);
+        report_suspicious_mismatch_block(
+            &mut err,
+            &mut self.diag_info,
+            self.psess.source_map(),
+            close_delim,
+        );
         err.span_label(self.token.span, "unexpected closing delimiter");
         err
     }
