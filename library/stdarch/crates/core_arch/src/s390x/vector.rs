@@ -2265,14 +2265,14 @@ mod sealed {
 
     #[inline]
     #[target_feature(enable = "vector")]
-    #[cfg_attr(test, assert_instr("vlbb"))]
+    #[cfg_attr(test, assert_instr(vlbb))]
     unsafe fn test_vec_load_bndry(ptr: *const i32) -> MaybeUninit<vector_signed_int> {
         vector_signed_int::vec_load_bndry::<512>(ptr)
     }
 
     #[inline]
     #[target_feature(enable = "vector")]
-    #[cfg_attr(test, assert_instr(vst))]
+    #[cfg_attr(test, assert_instr(vstl))]
     unsafe fn test_vec_store_len(vector: vector_signed_int, ptr: *mut i32, byte_count: u32) {
         vector.vec_store_len(ptr, byte_count)
     }
@@ -2798,11 +2798,11 @@ mod sealed {
     }
 
     test_impl! { vec_vmal_ib(a: vector_signed_char, b: vector_signed_char, c: vector_signed_char) -> vector_signed_char [simd_mladd, vmalb ] }
-    test_impl! { vec_vmal_ih(a: vector_signed_short, b: vector_signed_short, c: vector_signed_short) -> vector_signed_short[simd_mladd, vmalh ] }
+    test_impl! { vec_vmal_ih(a: vector_signed_short, b: vector_signed_short, c: vector_signed_short) -> vector_signed_short[simd_mladd, vmalhw ] }
     test_impl! { vec_vmal_if(a: vector_signed_int, b: vector_signed_int, c: vector_signed_int) -> vector_signed_int [simd_mladd, vmalf ] }
 
     test_impl! { vec_vmal_ub(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char) -> vector_unsigned_char [simd_mladd, vmalb ] }
-    test_impl! { vec_vmal_uh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_short) -> vector_unsigned_short[simd_mladd, vmalh ] }
+    test_impl! { vec_vmal_uh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_short) -> vector_unsigned_short[simd_mladd, vmalhw ] }
     test_impl! { vec_vmal_uf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_int) -> vector_unsigned_int [simd_mladd, vmalf ] }
 
     impl_mul!([VectorMladd vec_mladd] vec_vmal_ib (vector_signed_char, vector_signed_char, vector_signed_char) -> vector_signed_char );
