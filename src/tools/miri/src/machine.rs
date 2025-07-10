@@ -1828,7 +1828,9 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
 
     fn enter_trace_span(span: impl FnOnce() -> tracing::Span) -> impl EnteredTraceSpan {
         #[cfg(feature = "tracing")]
-        { span().entered() }
+        {
+            span().entered()
+        }
         #[cfg(not(feature = "tracing"))]
         {
             let _ = span; // so we avoid the "unused variable" warning
