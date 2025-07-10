@@ -1,3 +1,6 @@
+//! Test that all bytes of a TypeId must have the
+//! TypeId marker provenance.
+
 #![feature(const_type_id, const_trait_impl, const_cmp)]
 
 use std::any::TypeId;
@@ -10,7 +13,7 @@ const _: () = {
         std::ptr::write(ptr.offset(1), 999);
     }
     assert!(a == b);
-    //~^ ERROR: one of the TypeId arguments is invalid, the hash does not match the type it represents
+    //~^ ERROR: pointer must point to some allocation
 };
 
 fn main() {}
