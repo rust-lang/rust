@@ -1,9 +1,9 @@
-use crate::{is_msvc, is_win7, is_windows, uname};
+use crate::{is_win7, is_windows, is_windows_msvc, uname};
 
 /// `EXTRACFLAGS`
 pub fn extra_c_flags() -> Vec<&'static str> {
     if is_windows() {
-        if is_msvc() {
+        if is_windows_msvc() {
             let mut libs =
                 vec!["ws2_32.lib", "userenv.lib", "bcrypt.lib", "ntdll.lib", "synchronization.lib"];
             if is_win7() {
@@ -29,7 +29,7 @@ pub fn extra_c_flags() -> Vec<&'static str> {
 /// `EXTRACXXFLAGS`
 pub fn extra_cxx_flags() -> Vec<&'static str> {
     if is_windows() {
-        if is_msvc() { vec![] } else { vec!["-lstdc++"] }
+        if is_windows_msvc() { vec![] } else { vec!["-lstdc++"] }
     } else {
         match &uname()[..] {
             "Darwin" => vec!["-lc++"],
