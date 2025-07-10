@@ -1832,6 +1832,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             span().entered()
         }
         #[cfg(not(feature = "tracing"))]
+        #[expect(clippy::unused_unit)]
         {
             let _ = span; // so we avoid the "unused variable" warning
             ()
