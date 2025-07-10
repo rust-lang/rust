@@ -14138,6 +14138,7 @@ intrinsics:
     doc: "Load one single-element structure and Replicate to all lanes (of one register)."
     arguments: ["ptr: {type[1]}"]
     return_type: "{neon_type[2]}"
+    big_endian_inverse: false
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ['"{type[3]}"']] }  ]]
@@ -14147,40 +14148,36 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - ['vld1_dup_s8', '*const i8', 'int8x8_t', 'vld1.8', 'ld1r', 'vld1_lane_s8::<0>', 'i8x8::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0]']
-      - ['vld1_dup_u8', '*const u8', 'uint8x8_t', 'vld1.8', 'ld1r', 'vld1_lane_u8::<0>', 'u8x8::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0]']
-      - ['vld1_dup_p8', '*const p8', 'poly8x8_t', 'vld1.8', 'ld1r', 'vld1_lane_p8::<0>', 'u8x8::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0]']
+      - ['vld1_dup_s8', '*const i8', 'int8x8_t', 'vld1.8', 'ld1r', 'i8x8::splat']
+      - ['vld1_dup_u8', '*const u8', 'uint8x8_t', 'vld1.8', 'ld1r', 'u8x8::splat']
+      - ['vld1_dup_p8', '*const p8', 'poly8x8_t', 'vld1.8', 'ld1r', 'u8x8::splat']
 
-      - ['vld1q_dup_s8', '*const i8', 'int8x16_t', 'vld1.8', 'ld1r', 'vld1q_lane_s8::<0>', 'i8x16::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]']
-      - ['vld1q_dup_u8', '*const u8', 'uint8x16_t', 'vld1.8', 'ld1r', 'vld1q_lane_u8::<0>', 'u8x16::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]']
-      - ['vld1q_dup_p8', '*const p8', 'poly8x16_t', 'vld1.8', 'ld1r', 'vld1q_lane_p8::<0>', 'u8x16::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]']
+      - ['vld1q_dup_s8', '*const i8', 'int8x16_t', 'vld1.8', 'ld1r', 'i8x16::splat']
+      - ['vld1q_dup_u8', '*const u8', 'uint8x16_t', 'vld1.8', 'ld1r', 'u8x16::splat']
+      - ['vld1q_dup_p8', '*const p8', 'poly8x16_t', 'vld1.8', 'ld1r', 'u8x16::splat']
 
-      - ['vld1_dup_s16', '*const i16', 'int16x4_t', 'vld1.16', 'ld1r', 'vld1_lane_s16::<0>', 'i16x4::splat(0)', '[0, 0, 0, 0]']
-      - ['vld1_dup_u16', '*const u16', 'uint16x4_t', 'vld1.16', 'ld1r', 'vld1_lane_u16::<0>', 'u16x4::splat(0)', '[0, 0, 0, 0]']
-      - ['vld1_dup_p16', '*const p16', 'poly16x4_t', 'vld1.16', 'ld1r', 'vld1_lane_p16::<0>', 'u16x4::splat(0)', '[0, 0, 0, 0]']
+      - ['vld1_dup_s16', '*const i16', 'int16x4_t', 'vld1.16', 'ld1r', 'i16x4::splat']
+      - ['vld1_dup_u16', '*const u16', 'uint16x4_t', 'vld1.16', 'ld1r', 'u16x4::splat']
+      - ['vld1_dup_p16', '*const p16', 'poly16x4_t', 'vld1.16', 'ld1r', 'u16x4::splat']
 
-      - ['vld1q_dup_s16', '*const i16', 'int16x8_t', 'vld1.16', 'ld1r', 'vld1q_lane_s16::<0>', 'i16x8::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0]']
-      - ['vld1q_dup_u16', '*const u16', 'uint16x8_t', 'vld1.16', 'ld1r', 'vld1q_lane_u16::<0>', 'u16x8::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0]']
-      - ['vld1q_dup_p16', '*const p16', 'poly16x8_t', 'vld1.16', 'ld1r', 'vld1q_lane_p16::<0>', 'u16x8::splat(0)', '[0, 0, 0, 0, 0, 0, 0, 0]']
+      - ['vld1q_dup_s16', '*const i16', 'int16x8_t', 'vld1.16', 'ld1r', 'i16x8::splat']
+      - ['vld1q_dup_u16', '*const u16', 'uint16x8_t', 'vld1.16', 'ld1r', 'u16x8::splat']
+      - ['vld1q_dup_p16', '*const p16', 'poly16x8_t', 'vld1.16', 'ld1r', 'u16x8::splat']
 
-      - ['vld1_dup_s32', '*const i32', 'int32x2_t', 'vld1.32', 'ld1r', 'vld1_lane_s32::<0>', 'i32x2::splat(0)', '[0, 0]']
-      - ['vld1_dup_u32', '*const u32', 'uint32x2_t', 'vld1.32', 'ld1r', 'vld1_lane_u32::<0>', 'u32x2::splat(0)', '[0, 0]']
-      - ['vld1_dup_f32', '*const f32', 'float32x2_t', 'vld1.32', 'ld1r', 'vld1_lane_f32::<0>', 'f32x2::splat(0.0)', '[0, 0]']
+      - ['vld1_dup_s32', '*const i32', 'int32x2_t', 'vld1.32', 'ld1r', 'i32x2::splat']
+      - ['vld1_dup_u32', '*const u32', 'uint32x2_t', 'vld1.32', 'ld1r', 'u32x2::splat']
+      - ['vld1_dup_f32', '*const f32', 'float32x2_t', 'vld1.32', 'ld1r', 'f32x2::splat']
 
-      - ['vld1q_dup_s32', '*const i32', 'int32x4_t', 'vld1.32', 'ld1r', 'vld1q_lane_s32::<0>', 'i32x4::splat(0)', '[0, 0, 0, 0]']
-      - ['vld1q_dup_u32', '*const u32', 'uint32x4_t', 'vld1.32', 'ld1r', 'vld1q_lane_u32::<0>', 'u32x4::splat(0)', '[0, 0, 0, 0]']
-      - ['vld1q_dup_f32', '*const f32', 'float32x4_t', 'vld1.32', 'ld1r', 'vld1q_lane_f32::<0>', 'f32x4::splat(0.0)', '[0, 0, 0, 0]']
+      - ['vld1q_dup_s32', '*const i32', 'int32x4_t', 'vld1.32', 'ld1r', 'i32x4::splat']
+      - ['vld1q_dup_u32', '*const u32', 'uint32x4_t', 'vld1.32', 'ld1r', 'u32x4::splat']
+      - ['vld1q_dup_f32', '*const f32', 'float32x4_t', 'vld1.32', 'ld1r', 'f32x4::splat']
 
-      - ['vld1q_dup_s64', '*const i64', 'int64x2_t', 'vldr', 'ld1', 'vld1q_lane_s64::<0>', 'i64x2::splat(0)', '[0, 0]']
-      - ['vld1q_dup_u64', '*const u64', 'uint64x2_t', 'vldr', 'ld1', 'vld1q_lane_u64::<0>', 'u64x2::splat(0)', '[0, 0]']
+      - ['vld1q_dup_s64', '*const i64', 'int64x2_t', 'vldr', 'ld1', 'i64x2::splat']
+      - ['vld1q_dup_u64', '*const u64', 'uint64x2_t', 'vldr', 'ld1', 'u64x2::splat']
     compose:
-      - Let:
-          - x
-          - FnCall:
-              - '{type[5]}'
-              - - ptr
-                - FnCall: [transmute, ['{type[6]}']]
-      - FnCall: ['simd_shuffle!', [x, x, '{type[7]}']]
+      - FnCall:
+          - transmute
+          - - FnCall: ['{type[5]}', ["*ptr"]]
 
   - name: "{type[0]}"
     doc: "Absolute difference and accumulate (64-bit)"
