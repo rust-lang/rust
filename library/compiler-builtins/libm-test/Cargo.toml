@@ -31,7 +31,7 @@ short-benchmarks = []
 anyhow = "1.0.98"
 # This is not directly used but is required so we can enable `gmp-mpfr-sys/force-cross`.
 gmp-mpfr-sys = { version = "1.6.5", optional = true, default-features = false }
-iai-callgrind = { version = "0.14.1", optional = true }
+iai-callgrind = { version = "0.15.2", optional = true }
 indicatif = { version = "0.18.0", default-features = false }
 libm = { path = "../libm", features = ["unstable-public-internals"] }
 libm-macros = { path = "../crates/libm-macros" }

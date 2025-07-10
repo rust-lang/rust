@@ -14,7 +14,7 @@ rand_xoshiro = "0.7"
 # To compare float builtins against
 rustc_apfloat = "0.2.3"
 # Really a dev dependency, but dev dependencies can't be optional
-iai-callgrind = { version = "0.14.1", optional = true }
+iai-callgrind = { version = "0.15.2", optional = true }
 
 [dependencies.compiler_builtins]
 path = "../builtins-shim"
