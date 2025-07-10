@@ -484,6 +484,29 @@ float_test! {
 }
 
 float_test! {
+    name: classify,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        let zero: Float = 0.0;
+        let neg_zero: Float = -0.0;
+        let one: Float = 1.0;
+        assert!(matches!(nan.classify(), Fp::Nan));
+        assert!(matches!(inf.classify(), Fp::Infinite));
+        assert!(matches!(neg_inf.classify(), Fp::Infinite));
+        assert!(matches!(zero.classify(), Fp::Zero));
+        assert!(matches!(neg_zero.classify(), Fp::Zero));
+        assert!(matches!(one.classify(), Fp::Normal));
+        assert!(matches!(Float::MIN_POSITIVE_NORMAL.classify(), Fp::Normal));
+        assert!(matches!(Float::MAX_SUBNORMAL.classify(), Fp::Subnormal));
+    }
+}
+
+float_test! {
     name: min,
     attrs: {
         f16: #[cfg(any(miri, target_has_reliable_f16_math))],

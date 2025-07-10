@@ -2,7 +2,6 @@
 #![cfg(target_has_reliable_f128)]
 
 use std::f128::consts;
-use std::num::FpCategory as Fp;
 
 use super::{assert_approx_eq, assert_biteq};
 
@@ -39,23 +38,6 @@ const NAN_MASK2: u128 = 0x00005555555555555555555555555555;
 
 // FIXME(f16_f128,miri): many of these have to be disabled since miri does not yet support
 // the intrinsics.
-
-#[test]
-fn test_classify() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    let zero: f128 = 0.0f128;
-    let neg_zero: f128 = -0.0;
-    assert_eq!(nan.classify(), Fp::Nan);
-    assert_eq!(inf.classify(), Fp::Infinite);
-    assert_eq!(neg_inf.classify(), Fp::Infinite);
-    assert_eq!(zero.classify(), Fp::Zero);
-    assert_eq!(neg_zero.classify(), Fp::Zero);
-    assert_eq!(1f128.classify(), Fp::Normal);
-    assert_eq!(1e-4931f128.classify(), Fp::Normal);
-    assert_eq!(1e-4932f128.classify(), Fp::Subnormal);
-}
 
 #[test]
 #[cfg(any(miri, target_has_reliable_f128_math))]

@@ -1,6 +1,5 @@
 use core::f64;
 use core::f64::consts;
-use core::num::FpCategory as Fp;
 
 use super::{assert_approx_eq, assert_biteq};
 
@@ -24,22 +23,6 @@ const NAN_MASK1: u64 = 0x000a_aaaa_aaaa_aaaa;
 
 /// Second pattern over the mantissa
 const NAN_MASK2: u64 = 0x0005_5555_5555_5555;
-
-#[test]
-fn test_classify() {
-    let nan: f64 = f64::NAN;
-    let inf: f64 = f64::INFINITY;
-    let neg_inf: f64 = f64::NEG_INFINITY;
-    let zero: f64 = 0.0f64;
-    let neg_zero: f64 = -0.0;
-    assert_eq!(nan.classify(), Fp::Nan);
-    assert_eq!(inf.classify(), Fp::Infinite);
-    assert_eq!(neg_inf.classify(), Fp::Infinite);
-    assert_eq!(zero.classify(), Fp::Zero);
-    assert_eq!(neg_zero.classify(), Fp::Zero);
-    assert_eq!(1e-307f64.classify(), Fp::Normal);
-    assert_eq!(1e-308f64.classify(), Fp::Subnormal);
-}
 
 #[test]
 fn test_abs() {

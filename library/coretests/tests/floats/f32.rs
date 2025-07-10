@@ -1,6 +1,5 @@
 use core::f32;
 use core::f32::consts;
-use core::num::FpCategory as Fp;
 
 use super::{assert_approx_eq, assert_biteq};
 
@@ -29,23 +28,6 @@ const NAN_MASK2: u32 = 0x0055_5555;
 /// These values are purely used as a canary to test against and are thus not a stable guarantee Rust provides.
 /// They serve as a way to get an idea of the real precision of floating point operations on different platforms.
 const APPROX_DELTA: f32 = if cfg!(miri) { 1e-4 } else { 1e-6 };
-
-#[test]
-fn test_classify() {
-    let nan: f32 = f32::NAN;
-    let inf: f32 = f32::INFINITY;
-    let neg_inf: f32 = f32::NEG_INFINITY;
-    let zero: f32 = 0.0f32;
-    let neg_zero: f32 = -0.0;
-    assert_eq!(nan.classify(), Fp::Nan);
-    assert_eq!(inf.classify(), Fp::Infinite);
-    assert_eq!(neg_inf.classify(), Fp::Infinite);
-    assert_eq!(zero.classify(), Fp::Zero);
-    assert_eq!(neg_zero.classify(), Fp::Zero);
-    assert_eq!(1f32.classify(), Fp::Normal);
-    assert_eq!(1e-37f32.classify(), Fp::Normal);
-    assert_eq!(1e-38f32.classify(), Fp::Subnormal);
-}
 
 #[test]
 fn test_abs() {
