@@ -544,24 +544,30 @@ fn layout_of_uncached<'tcx>(
             // * #[repr(simd)] struct S([T; 4])
             //
             // where T is a primitive scalar (integer/float/pointer).
-            let Some(ty::Array(e_ty, e_len)) = def
+            let f0_ty = def
                 .is_struct()
                 .then(|| &def.variant(FIRST_VARIANT).fields)
                 .filter(|fields| fields.len() == 1)
-                .map(|fields| *fields[FieldIdx::ZERO].ty(tcx, args).kind())
-            else {
+                .map(|fields| *fields[FieldIdx::ZERO].ty(tcx, args).kind());
+
+            let (e_ty, e_len) = if let Some(ty::Array(e_ty, e_len)) = f0_ty {
+                let e_len = extract_const_value(cx, ty, e_len)?
+                    .try_to_target_usize(tcx)
+                    .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
+                (e_ty, e_len)
+            } else if let Some(ty::Slice(e_ty)) = f0_ty
+                && def.repr().scalable()
+            {
+                (e_ty, 1)
+            } else {
                 // Invalid SIMD types should have been caught by typeck by now.
                 let guar = tcx.dcx().delayed_bug("#[repr(simd)] was applied to an invalid ADT");
                 return Err(error(cx, LayoutError::ReferencesError(guar)));
             };
 
-            let e_len = extract_const_value(cx, ty, e_len)?
-                .try_to_target_usize(tcx)
-                .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
-
             let e_ly = cx.layout_of(e_ty)?;
 
-            map_layout(cx.calc.simd_type(e_ly, e_len, def.repr().packed()))?
+            map_layout(cx.calc.simd_type(e_ly, e_len, def.repr().packed(), def.repr().scalable))?
         }
 
         // ADTs.

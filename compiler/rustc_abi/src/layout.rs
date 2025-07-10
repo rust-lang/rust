@@ -151,6 +151,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         element: F,
         count: u64,
         repr_packed: bool,
+        scalable: Option<u32>,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         let elt = element.as_ref();
         if count == 0 {
@@ -169,7 +170,12 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let dl = self.cx.data_layout();
         let size =
             elt.size.checked_mul(count, dl).ok_or_else(|| LayoutCalculatorError::SizeOverflow)?;
-        let (repr, align) = if repr_packed && !count.is_power_of_two() {
+        let (repr, align) = if let Some(elt) = scalable {
+            (
+                BackendRepr::ScalableVector { element: e_repr, count: elt as u64 },
+                dl.llvmlike_vector_align(size),
+            )
+        } else if repr_packed && !count.is_power_of_two() {
             // Non-power-of-two vectors have padding up to the next power-of-two.
             // If we're a packed repr, remove the padding while keeping the alignment as close
             // to a vector as possible.
@@ -461,6 +467,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 BackendRepr::Scalar(..)
                 | BackendRepr::ScalarPair(..)
                 | BackendRepr::SimdVector { .. }
+                | BackendRepr::ScalableVector { .. }
                 | BackendRepr::Memory { .. } => repr,
             },
         };
@@ -532,7 +539,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     hide_niches(a);
                     hide_niches(b);
                 }
-                BackendRepr::SimdVector { element, count: _ } => hide_niches(element),
+                BackendRepr::SimdVector { element, .. }
+                | BackendRepr::ScalableVector { element, .. } => hide_niches(element),
                 BackendRepr::Memory { sized: _ } => {}
             }
             st.largest_niche = None;

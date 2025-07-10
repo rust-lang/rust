@@ -98,6 +98,9 @@ where
                         }
                         false
                     }
+                    BackendRepr::ScalableVector { .. } => {
+                        unreachable!("scalable vectors are unsupported")
+                    }
                 }
             }
 

@@ -396,7 +396,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                         imm
                     }
                 }
-                BackendRepr::ScalarPair(_, _) | BackendRepr::Memory { .. } => bug!(),
+                BackendRepr::ScalarPair(_, _)
+                | BackendRepr::Memory { .. }
+                | BackendRepr::ScalableVector { .. } => bug!(),
             })
         };
 
@@ -601,7 +603,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRefBuilder<'tcx, V> {
             BackendRepr::ScalarPair(a, b) => {
                 OperandValueBuilder::Pair(Either::Right(a), Either::Right(b))
             }
-            BackendRepr::SimdVector { .. } => OperandValueBuilder::Vector(Either::Right(())),
+            BackendRepr::SimdVector { .. } | BackendRepr::ScalableVector { .. } => {
+                OperandValueBuilder::Vector(Either::Right(()))
+            }
             BackendRepr::Memory { .. } => {
                 bug!("Cannot use non-ZST Memory-ABI type in operand builder: {layout:?}");
             }

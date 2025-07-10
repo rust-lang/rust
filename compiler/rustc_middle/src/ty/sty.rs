@@ -1218,19 +1218,25 @@ impl<'tcx> Ty<'tcx> {
         let variant = def.non_enum_variant();
         assert_eq!(variant.fields.len(), 1);
         let field_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
-        let Array(f0_elem_ty, f0_len) = field_ty.kind() else {
-            bug!("Simd type has non-array field type {field_ty:?}")
-        };
-        // FIXME(repr_simd): https://github.com/rust-lang/rust/pull/78863#discussion_r522784112
-        // The way we evaluate the `N` in `[T; N]` here only works since we use
-        // `simd_size_and_type` post-monomorphization. It will probably start to ICE
-        // if we use it in generic code. See the `simd-array-trait` ui test.
-        (
-            f0_len
-                .try_to_target_usize(tcx)
-                .expect("expected SIMD field to have definite array size"),
-            *f0_elem_ty,
-        )
+
+        match field_ty.kind() {
+            Array(f0_elem_ty, f0_len) => {
+                // FIXME(repr_simd): https://github.com/rust-lang/rust/pull/78863#discussion_r522784112
+                // The way we evaluate the `N` in `[T; N]` here only works since we use
+                // `simd_size_and_type` post-monomorphization. It will probably start to ICE
+                // if we use it in generic code. See the `simd-array-trait` ui test.
+                (
+                    f0_len
+                        .try_to_target_usize(tcx)
+                        .expect("expected SIMD field to have definite array size"),
+                    *f0_elem_ty,
+                )
+            }
+            Slice(f0_elem_ty) if def.repr().scalable() => {
+                (def.repr().scalable.unwrap_or(0) as u64, *f0_elem_ty)
+            }
+            _ => bug!("Simd type has non-array field type {field_ty:?}"),
+        }
     }
 
     #[inline]
