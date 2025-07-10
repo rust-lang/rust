@@ -1,14 +1,14 @@
 use syntax::{
     ast::{self, AstNode, HasName, edit_in_place::Indent, make},
-    ted,
+    syntax_editor::{Position, SyntaxEditor},
 };
 
 use crate::{AssistContext, AssistId, Assists, utils};
 
-fn insert_impl(impl_: ast::Impl, nominal: &ast::Adt) {
+fn insert_impl(editor: &mut SyntaxEditor, impl_: &ast::Impl, nominal: &ast::Adt) {
     let indent = nominal.indent_level();
-    ted::insert_all_raw(
-        ted::Position::after(nominal.syntax()),
+    editor.insert_all(
+        Position::after(nominal.syntax()),
         vec![
             // Add a blank line after the ADT, and indentation for the impl to match the ADT
             make::tokens::whitespace(&format!("\n\n{indent}")).into(),
@@ -51,14 +51,17 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
             // Generate the impl
             let impl_ = utils::generate_impl(&nominal);
 
+            let mut editor = edit.make_editor(nominal.syntax());
             // Add a tabstop after the left curly brace
             if let Some(cap) = ctx.config.snippet_cap {
                 if let Some(l_curly) = impl_.assoc_item_list().and_then(|it| it.l_curly_token()) {
-                    edit.add_tabstop_after_token(cap, l_curly);
+                    let tabstop = edit.make_tabstop_after(cap);
+                    editor.add_annotation(l_curly, tabstop);
                 }
             }
 
-            insert_impl(impl_, &edit.make_mut(nominal));
+            insert_impl(&mut editor, &impl_, &nominal);
+            edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -97,18 +100,22 @@ pub(crate) fn generate_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             // Generate the impl
             let impl_ = utils::generate_trait_impl_intransitive(&nominal, make::ty_placeholder());
 
+            let mut editor = edit.make_editor(nominal.syntax());
             // Make the trait type a placeholder snippet
             if let Some(cap) = ctx.config.snippet_cap {
                 if let Some(trait_) = impl_.trait_() {
-                    edit.add_placeholder_snippet(cap, trait_);
+                    let placeholder = edit.make_placeholder_snippet(cap);
+                    editor.add_annotation(trait_.syntax(), placeholder);
                 }
 
                 if let Some(l_curly) = impl_.assoc_item_list().and_then(|it| it.l_curly_token()) {
-                    edit.add_tabstop_after_token(cap, l_curly);
+                    let tabstop = edit.make_tabstop_after(cap);
+                    editor.add_annotation(l_curly, tabstop);
                 }
             }
 
-            insert_impl(impl_, &edit.make_mut(nominal));
+            insert_impl(&mut editor, &impl_, &nominal);
+            edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
