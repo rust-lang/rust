@@ -221,15 +221,19 @@ fn default_compiler(
         }
 
         t if t.contains("-wasi") => {
-            let root = build
-                .wasi_sdk_path
-                .as_ref()
-                .expect("WASI_SDK_PATH mut be configured for a -wasi target");
+            let root = build.wasi_sdk_path.as_ref();
+            if root.is_none() {
+                let cfg = build.config.target_config.get(&target).unwrap();
+                cfg.wasi_root.as_ref().expect(
+                    "WASI_SDK_PATH or <target>.wasi_root must be configured for a -wasi target",
+                );
+                return None;
+            }
             let compiler = match compiler {
                 Language::C => format!("{t}-clang"),
                 Language::CPlusPlus => format!("{t}-clang++"),
             };
-            let compiler = root.join("bin").join(compiler);
+            let compiler = root.unwrap().join("bin").join(compiler);
             Some(compiler)
         }
 
