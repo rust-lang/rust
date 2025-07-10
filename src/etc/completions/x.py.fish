@@ -293,7 +293,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand doc" -l skip-std-check-if-no-d
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l test-args -d 'extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l compiletest-rustc-args -d 'extra options to pass the compiler when running compiletest tests' -r
-complete -c x.py -n "__fish_x.py_using_subcommand test" -l extra-checks -d 'comma-separated list of other files types to check (accepts py, py:lint, py:fmt, shell, shell:lint, cpp, cpp:fmt, spellcheck, spellcheck:fix)' -r
+complete -c x.py -n "__fish_x.py_using_subcommand test" -l extra-checks -d 'comma-separated list of other files types to check (accepts py, py:lint, py:fmt, shell, shell:lint, cpp, cpp:fmt, spellcheck)' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l compare-mode -d 'mode describing what file the actual ui output will be compared to' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l pass -d 'force {check,build,run}-pass tests to this mode' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l run -d 'whether to execute run-* tests' -r

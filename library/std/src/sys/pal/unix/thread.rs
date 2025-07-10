@@ -222,7 +222,7 @@ impl Thread {
 
     #[cfg(target_os = "vxworks")]
     pub fn set_name(name: &CStr) {
-        let mut name = truncate_cstr::<{ libc::VX_TASK_RENAME_LENGTH - 1 }>(name);
+        let mut name = truncate_cstr::<{ (libc::VX_TASK_RENAME_LENGTH - 1) as usize }>(name);
         let res = unsafe { libc::taskNameSet(libc::taskIdSelf(), name.as_mut_ptr()) };
         debug_assert_eq!(res, libc::OK);
     }

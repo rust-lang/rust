@@ -112,12 +112,13 @@ impl Direction for Backward {
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::SwitchInt { targets: _, ref discr } => {
+                mir::TerminatorKind::SwitchInt { ref targets, ref discr } => {
                     if let Some(mut data) = analysis.get_switch_int_data(block, discr) {
                         let mut tmp = analysis.bottom_value(body);
                         for &value in &body.basic_blocks.switch_sources()[&(block, pred)] {
                             tmp.clone_from(exit_state);
-                            analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, value);
+                            analysis
+                                .apply_switch_int_edge_effect(&mut data, &mut tmp, value, targets);
                             propagate(pred, &tmp);
                         }
                     } else {
@@ -290,20 +291,20 @@ impl Direction for Forward {
                     for (value, target) in targets.iter() {
                         tmp.clone_from(exit_state);
                         let value = SwitchTargetValue::Normal(value);
-                        analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, value);
+                        analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, value, targets);
                         propagate(target, &tmp);
                     }
 
                     // Once we get to the final, "otherwise" branch, there is no need to preserve
                     // `exit_state`, so pass it directly to `apply_switch_int_edge_effect` to save
                     // a clone of the dataflow state.
-                    let otherwise = targets.otherwise();
                     analysis.apply_switch_int_edge_effect(
                         &mut data,
                         exit_state,
                         SwitchTargetValue::Otherwise,
+                        targets,
                     );
-                    propagate(otherwise, exit_state);
+                    propagate(targets.otherwise(), exit_state);
                 } else {
                     for target in targets.all_targets() {
                         propagate(*target, exit_state);

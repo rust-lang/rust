@@ -4,7 +4,7 @@ use crate::artifact_names::{dynamic_lib_name, static_lib_name};
 use crate::external_deps::c_cxx_compiler::{cc, cxx};
 use crate::external_deps::llvm::llvm_ar;
 use crate::path_helpers::path;
-use crate::targets::{is_darwin, is_msvc, is_windows};
+use crate::targets::{is_darwin, is_windows, is_windows_msvc};
 
 // FIXME(Oneirical): These native build functions should take a Path-based generic.
 
@@ -24,12 +24,12 @@ pub fn build_native_static_lib_optimized(lib_name: &str) -> PathBuf {
 
 #[track_caller]
 fn build_native_static_lib_internal(lib_name: &str, optimzed: bool) -> PathBuf {
-    let obj_file = if is_msvc() { format!("{lib_name}") } else { format!("{lib_name}.o") };
+    let obj_file = if is_windows_msvc() { format!("{lib_name}") } else { format!("{lib_name}.o") };
     let src = format!("{lib_name}.c");
     let lib_path = static_lib_name(lib_name);
 
     let mut cc = cc();
-    if !is_msvc() {
+    if !is_windows_msvc() {
         cc.arg("-v");
     }
     if optimzed {
@@ -37,7 +37,7 @@ fn build_native_static_lib_internal(lib_name: &str, optimzed: bool) -> PathBuf {
     }
     cc.arg("-c").out_exe(&obj_file).input(src).optimize().run();
 
-    let obj_file = if is_msvc() {
+    let obj_file = if is_windows_msvc() {
         PathBuf::from(format!("{lib_name}.obj"))
     } else {
         PathBuf::from(format!("{lib_name}.o"))
@@ -50,16 +50,17 @@ fn build_native_static_lib_internal(lib_name: &str, optimzed: bool) -> PathBuf {
 /// [`std::env::consts::DLL_PREFIX`] and [`std::env::consts::DLL_EXTENSION`].
 #[track_caller]
 pub fn build_native_dynamic_lib(lib_name: &str) -> PathBuf {
-    let obj_file = if is_msvc() { format!("{lib_name}") } else { format!("{lib_name}.o") };
+    let obj_file = if is_windows_msvc() { format!("{lib_name}") } else { format!("{lib_name}.o") };
     let src = format!("{lib_name}.c");
     let lib_path = dynamic_lib_name(lib_name);
-    if is_msvc() {
+    if is_windows_msvc() {
         cc().arg("-c").out_exe(&obj_file).input(src).run();
     } else {
         cc().arg("-v").arg("-c").out_exe(&obj_file).input(src).run();
     };
-    let obj_file = if is_msvc() { format!("{lib_name}.obj") } else { format!("{lib_name}.o") };
-    if is_msvc() {
+    let obj_file =
+        if is_windows_msvc() { format!("{lib_name}.obj") } else { format!("{lib_name}.o") };
+    if is_windows_msvc() {
         let out_arg = format!("-out:{lib_path}");
         cc().input(&obj_file).args(&["-link", "-dll", &out_arg]).run();
     } else if is_darwin() {
@@ -79,15 +80,15 @@ pub fn build_native_dynamic_lib(lib_name: &str) -> PathBuf {
 /// Built from a C++ file.
 #[track_caller]
 pub fn build_native_static_lib_cxx(lib_name: &str) -> PathBuf {
-    let obj_file = if is_msvc() { format!("{lib_name}") } else { format!("{lib_name}.o") };
+    let obj_file = if is_windows_msvc() { format!("{lib_name}") } else { format!("{lib_name}.o") };
     let src = format!("{lib_name}.cpp");
     let lib_path = static_lib_name(lib_name);
-    if is_msvc() {
+    if is_windows_msvc() {
         cxx().arg("-EHs").arg("-c").out_exe(&obj_file).input(src).run();
     } else {
         cxx().arg("-c").out_exe(&obj_file).input(src).run();
     };
-    let obj_file = if is_msvc() {
+    let obj_file = if is_windows_msvc() {
         PathBuf::from(format!("{lib_name}.obj"))
     } else {
         PathBuf::from(format!("{lib_name}.o"))

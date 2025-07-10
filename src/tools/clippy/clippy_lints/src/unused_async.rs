@@ -169,7 +169,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
         let iter = self
             .unused_async_fns
             .iter()
-            .filter(|UnusedAsyncFn { def_id, .. }| (!self.async_fns_as_value.contains(def_id)));
+            .filter(|UnusedAsyncFn { def_id, .. }| !self.async_fns_as_value.contains(def_id));
 
         for fun in iter {
             span_lint_hir_and_then(

@@ -125,6 +125,7 @@
 //!   `Option::<T>::None`
 //! - `transmute::<_, [u8; size_of::<T>()]>(Option::<T>::None)` is sound and produces
 //!   `[0u8; size_of::<T>()]`
+//!
 //! These cases are identified by the second column:
 //!
 //! | `T`                                                                 | Transmuting between `[0u8; size_of::<T>()]` and `Option::<T>::None` sound? |
@@ -2111,7 +2112,8 @@ where
 impl<T> crate::clone::UseCloned for Option<T> where T: crate::clone::UseCloned {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Default for Option<T> {
+#[rustc_const_unstable(feature = "const_default", issue = "67792")]
+impl<T> const Default for Option<T> {
     /// Returns [`None`][Option::None].
     ///
     /// # Examples

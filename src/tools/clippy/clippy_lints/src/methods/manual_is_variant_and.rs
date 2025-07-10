@@ -1,14 +1,16 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::get_parent_expr;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{get_parent_expr, sym};
+use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
+use rustc_hir::{BinOpKind, Closure, Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{BytePos, Span, sym};
+use rustc_span::{Span, Symbol};
 
 use super::MANUAL_IS_VARIANT_AND;
 
@@ -62,54 +64,154 @@ pub(super) fn check(
     );
 }
 
-fn emit_lint(cx: &LateContext<'_>, op: BinOpKind, parent: &Expr<'_>, method_span: Span, is_option: bool) {
-    if let Some(before_map_snippet) = snippet_opt(cx, parent.span.with_hi(method_span.lo()))
-        && let Some(after_map_snippet) = snippet_opt(cx, method_span.with_lo(method_span.lo() + BytePos(3)))
-    {
-        span_lint_and_sugg(
-            cx,
-            MANUAL_IS_VARIANT_AND,
-            parent.span,
-            format!(
-                "called `.map() {}= {}()`",
-                if op == BinOpKind::Eq { '=' } else { '!' },
-                if is_option { "Some" } else { "Ok" },
-            ),
-            "use",
-            if is_option && op == BinOpKind::Ne {
-                format!("{before_map_snippet}is_none_or{after_map_snippet}",)
-            } else {
+#[derive(Clone, Copy, PartialEq)]
+enum Flavor {
+    Option,
+    Result,
+}
+
+impl Flavor {
+    const fn symbol(self) -> Symbol {
+        match self {
+            Self::Option => sym::Option,
+            Self::Result => sym::Result,
+        }
+    }
+
+    const fn positive(self) -> Symbol {
+        match self {
+            Self::Option => sym::Some,
+            Self::Result => sym::Ok,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum Op {
+    Eq,
+    Ne,
+}
+
+impl std::fmt::Display for Op {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Eq => write!(f, "=="),
+            Self::Ne => write!(f, "!="),
+        }
+    }
+}
+
+impl TryFrom<BinOpKind> for Op {
+    type Error = ();
+    fn try_from(op: BinOpKind) -> Result<Self, Self::Error> {
+        match op {
+            BinOpKind::Eq => Ok(Self::Eq),
+            BinOpKind::Ne => Ok(Self::Ne),
+            _ => Err(()),
+        }
+    }
+}
+
+/// Represents the argument of the `.map()` function, as a closure or as a path
+/// in case η-reduction is used.
+enum MapFunc<'hir> {
+    Closure(&'hir Closure<'hir>),
+    Path(&'hir Expr<'hir>),
+}
+
+impl<'hir> TryFrom<&'hir Expr<'hir>> for MapFunc<'hir> {
+    type Error = ();
+
+    fn try_from(expr: &'hir Expr<'hir>) -> Result<Self, Self::Error> {
+        match expr.kind {
+            ExprKind::Closure(closure) => Ok(Self::Closure(closure)),
+            ExprKind::Path(_) => Ok(Self::Path(expr)),
+            _ => Err(()),
+        }
+    }
+}
+
+impl<'hir> MapFunc<'hir> {
+    /// Build a suggestion suitable for use in a `.map()`-like function. η-expansion will be applied
+    /// as needed.
+    fn sugg(self, cx: &LateContext<'hir>, invert: bool, app: &mut Applicability) -> String {
+        match self {
+            Self::Closure(closure) => {
+                let body = Sugg::hir_with_applicability(cx, cx.tcx.hir_body(closure.body).value, "..", app);
                 format!(
-                    "{}{before_map_snippet}{}{after_map_snippet}",
-                    if op == BinOpKind::Eq { "" } else { "!" },
-                    if is_option { "is_some_and" } else { "is_ok_and" },
+                    "{} {}",
+                    snippet_with_applicability(cx, closure.fn_decl_span, "|..|", app),
+                    if invert { !body } else { body }
                 )
             },
-            Applicability::MachineApplicable,
-        );
+            Self::Path(expr) => {
+                let path = snippet_with_applicability(cx, expr.span, "_", app);
+                if invert {
+                    format!("|x| !{path}(x)")
+                } else {
+                    path.to_string()
+                }
+            },
+        }
     }
+}
+
+fn emit_lint<'tcx>(
+    cx: &LateContext<'tcx>,
+    span: Span,
+    op: Op,
+    flavor: Flavor,
+    in_some_or_ok: bool,
+    map_func: MapFunc<'tcx>,
+    recv: &Expr<'_>,
+) {
+    let mut app = Applicability::MachineApplicable;
+    let recv = snippet_with_applicability(cx, recv.span, "_", &mut app);
+
+    let (invert_expr, method, invert_body) = match (flavor, op) {
+        (Flavor::Option, Op::Eq) => (false, "is_some_and", !in_some_or_ok),
+        (Flavor::Option, Op::Ne) => (false, "is_none_or", in_some_or_ok),
+        (Flavor::Result, Op::Eq) => (false, "is_ok_and", !in_some_or_ok),
+        (Flavor::Result, Op::Ne) => (true, "is_ok_and", !in_some_or_ok),
+    };
+    span_lint_and_sugg(
+        cx,
+        MANUAL_IS_VARIANT_AND,
+        span,
+        format!("called `.map() {op} {pos}()`", pos = flavor.positive(),),
+        "use",
+        format!(
+            "{inversion}{recv}.{method}({body})",
+            inversion = if invert_expr { "!" } else { "" },
+            body = map_func.sugg(cx, invert_body, &mut app),
+        ),
+        app,
+    );
 }
 
 pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let Some(parent_expr) = get_parent_expr(cx, expr)
         && let ExprKind::Binary(op, left, right) = parent_expr.kind
-        && matches!(op.node, BinOpKind::Eq | BinOpKind::Ne)
         && op.span.eq_ctxt(expr.span)
+        && let Ok(op) = Op::try_from(op.node)
     {
         // Check `left` and `right` expression in any order, and for `Option` and `Result`
         for (expr1, expr2) in [(left, right), (right, left)] {
-            for item in [sym::Option, sym::Result] {
-                if let ExprKind::Call(call, ..) = expr1.kind
+            for flavor in [Flavor::Option, Flavor::Result] {
+                if let ExprKind::Call(call, [arg]) = expr1.kind
+                    && let ExprKind::Lit(lit) = arg.kind
+                    && let LitKind::Bool(bool_cst) = lit.node
                     && let ExprKind::Path(QPath::Resolved(_, path)) = call.kind
                     && let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), _) = path.res
                     && let ty = cx.typeck_results().expr_ty(expr1)
                     && let ty::Adt(adt, args) = ty.kind()
-                    && cx.tcx.is_diagnostic_item(item, adt.did())
+                    && cx.tcx.is_diagnostic_item(flavor.symbol(), adt.did())
                     && args.type_at(0).is_bool()
-                    && let ExprKind::MethodCall(_, recv, _, span) = expr2.kind
-                    && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), item)
+                    && let ExprKind::MethodCall(_, recv, [map_expr], _) = expr2.kind
+                    && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), flavor.symbol())
+                    && let Ok(map_func) = MapFunc::try_from(map_expr)
                 {
-                    return emit_lint(cx, op.node, parent_expr, span, item == sym::Option);
+                    return emit_lint(cx, parent_expr.span, op, flavor, bool_cst, map_func, recv);
                 }
             }
         }

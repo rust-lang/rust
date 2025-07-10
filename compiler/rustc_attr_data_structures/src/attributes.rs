@@ -240,6 +240,9 @@ pub enum AttributeKind {
     /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
 
+    /// Represents `#[rustc_dummy]`.
+    Dummy,
+
     /// Represents [`#[export_name]`](https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute).
     ExportName {
         /// The name to export this item with.
@@ -247,6 +250,15 @@ pub enum AttributeKind {
         name: Symbol,
         span: Span,
     },
+
+    /// Represents `#[export_stable]`.
+    ExportStable,
+
+    /// Represents `#[ffi_const]`.
+    FfiConst(Span),
+
+    /// Represents `#[ffi_pure]`.
+    FfiPure(Span),
 
     /// Represents `#[ignore]`
     Ignore {
@@ -325,6 +337,9 @@ pub enum AttributeKind {
         /// Span of the attribute.
         span: Span,
     },
+
+    /// Represents `#[rustc_std_internal_symbol]`.
+    StdInternalSymbol(Span),
 
     /// Represents `#[target_feature(enable = "...")]`
     TargetFeature(ThinVec<(Symbol, Span)>, Span),

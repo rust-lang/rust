@@ -9,7 +9,7 @@
 //@ ignore-wasm
 // Reason: WASM does not support dynamic libraries
 
-use run_make_support::{cc, is_msvc, regex, run, rustc, static_lib_name};
+use run_make_support::{cc, is_windows_msvc, regex, run, rustc, static_lib_name};
 
 fn main() {
     rustc().arg("-Cprefer-dynamic").input("bar.rs").run();
@@ -27,7 +27,7 @@ fn main() {
     let (_, native_link_args) = libs.split_once("note: native-static-libs: ").unwrap();
     // divide the command-line arguments in a vec
     let mut native_link_args = native_link_args.split(' ').collect::<Vec<&str>>();
-    if is_msvc() {
+    if is_windows_msvc() {
         // For MSVC pass the arguments on to the linker.
         native_link_args.insert(0, "-link");
     }

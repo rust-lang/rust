@@ -406,6 +406,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             scrut_span,
             refutable,
             known_valid_scrutinee,
+            internal_state: Default::default(),
         }
     }
 

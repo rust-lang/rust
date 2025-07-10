@@ -96,7 +96,6 @@
   
       bb2: {
           StorageLive(_8);
-          _28 = const false;
           _8 = move ((_5 as Ok).0: std::boxed::Box<dyn std::fmt::Display>);
           StorageLive(_9);
           StorageLive(_10);
@@ -186,7 +185,7 @@
       bb9: {
           StorageDead(_6);
           _29 = discriminant(_5);
-          switchInt(move _29) -> [0: bb11, otherwise: bb13];
+          switchInt(move _29) -> [0: bb10, otherwise: bb11];
       }
   
       bb10: {
@@ -200,14 +199,6 @@
       }
   
       bb11: {
-          switchInt(copy _28) -> [0: bb10, otherwise: bb12];
-      }
-  
-      bb12: {
-          drop(((_5 as Ok).0: std::boxed::Box<dyn std::fmt::Display>)) -> [return: bb10, unwind unreachable];
-      }
-  
-      bb13: {
           drop(_5) -> [return: bb10, unwind unreachable];
       }
   }
