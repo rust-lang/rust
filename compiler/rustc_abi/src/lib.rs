@@ -1753,6 +1753,10 @@ impl AddressSpace {
 pub enum BackendRepr {
     Scalar(Scalar),
     ScalarPair(Scalar, Scalar),
+    ScalableVector {
+        element: Scalar,
+        count: u64,
+    },
     SimdVector {
         element: Scalar,
         count: u64,
@@ -1771,6 +1775,9 @@ impl BackendRepr {
         match *self {
             BackendRepr::Scalar(_)
             | BackendRepr::ScalarPair(..)
+            // FIXME(repr_scalable): Scalable vectors are `Sized` while the `sized_hierarchy`
+            // feature is not yet fully implemented
+            | BackendRepr::ScalableVector { .. }
             | BackendRepr::SimdVector { .. } => false,
             BackendRepr::Memory { sized } => !sized,
         }
@@ -1811,7 +1818,9 @@ impl BackendRepr {
             BackendRepr::Scalar(s) => Some(s.align(cx).abi),
             BackendRepr::ScalarPair(s1, s2) => Some(s1.align(cx).max(s2.align(cx)).abi),
             // The align of a Vector can vary in surprising ways
-            BackendRepr::SimdVector { .. } | BackendRepr::Memory { .. } => None,
+            BackendRepr::SimdVector { .. }
+            | BackendRepr::Memory { .. }
+            | BackendRepr::ScalableVector { .. } => None,
         }
     }
 
@@ -1833,7 +1842,9 @@ impl BackendRepr {
                 Some(size)
             }
             // The size of a Vector can vary in surprising ways
-            BackendRepr::SimdVector { .. } | BackendRepr::Memory { .. } => None,
+            BackendRepr::SimdVector { .. }
+            | BackendRepr::Memory { .. }
+            | BackendRepr::ScalableVector { .. } => None,
         }
     }
 
@@ -1848,6 +1859,9 @@ impl BackendRepr {
                 BackendRepr::SimdVector { element: element.to_union(), count }
             }
             BackendRepr::Memory { .. } => BackendRepr::Memory { sized: true },
+            BackendRepr::ScalableVector { element, count } => {
+                BackendRepr::ScalableVector { element: element.to_union(), count }
+            }
         }
     }
 
@@ -2088,7 +2102,9 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if this is an aggregate type (including a ScalarPair!)
     pub fn is_aggregate(&self) -> bool {
         match self.backend_repr {
-            BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => false,
+            BackendRepr::Scalar(_)
+            | BackendRepr::SimdVector { .. }
+            | BackendRepr::ScalableVector { .. } => false,
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => true,
         }
     }
@@ -2182,6 +2198,19 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         self.is_sized() && self.size.bytes() == 0 && self.align.abi.bytes() == 1
     }
 
+    /// Returns `true` if the size of the type is only known at runtime.
+    pub fn is_runtime_sized(&self) -> bool {
+        matches!(self.backend_repr, BackendRepr::ScalableVector { .. })
+    }
+
+    /// Returns the elements count of a scalable vector.
+    pub fn scalable_vector_element_count(&self) -> Option<u64> {
+        match self.backend_repr {
+            BackendRepr::ScalableVector { count, .. } => Some(count),
+            _ => None,
+        }
+    }
+
     /// Returns `true` if the type is a ZST and not unsized.
     ///
     /// Note that this does *not* imply that the type is irrelevant for layout! It can still have
@@ -2190,6 +2219,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         match self.backend_repr {
             BackendRepr::Scalar(_)
             | BackendRepr::ScalarPair(..)
+            | BackendRepr::ScalableVector { .. }
             | BackendRepr::SimdVector { .. } => false,
             BackendRepr::Memory { sized } => sized && self.size.bytes() == 0,
         }

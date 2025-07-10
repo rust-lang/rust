@@ -91,7 +91,9 @@ where
                 }
             }
         },
-        BackendRepr::SimdVector { .. } => return Err(CannotUseFpConv),
+        BackendRepr::SimdVector { .. } | BackendRepr::ScalableVector { .. } => {
+            return Err(CannotUseFpConv);
+        }
         BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => match arg_layout.fields {
             FieldsShape::Primitive => {
                 unreachable!("aggregates can't have `FieldsShape::Primitive`")

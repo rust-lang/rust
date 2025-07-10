@@ -82,6 +82,8 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 }))
             }
 
+            BackendRepr::ScalableVector { .. } => Err(Heterogeneous),
+
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { sized: true } => {
                 // Helper for computing `homogeneous_aggregate`, allowing a custom
                 // starting offset (used below for handling variants).
