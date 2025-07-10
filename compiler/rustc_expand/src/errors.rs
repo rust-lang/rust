@@ -496,6 +496,50 @@ pub(crate) use metavar_exprs::*;
 mod metavar_exprs {
     use super::*;
 
+    #[derive(Diagnostic, Default)]
+    #[diag(expand_mve_extra_tokens)]
+    pub(crate) struct MveExtraTokens {
+        #[primary_span]
+        #[suggestion(code = "", applicability = "machine-applicable")]
+        pub span: Span,
+        #[label]
+        pub ident_span: Span,
+        pub extra_count: usize,
+
+        // The rest is only used for specific diagnostics and can be default if neither
+        // `note` is `Some`.
+        #[note(expand_exact)]
+        pub exact_args_note: Option<()>,
+        #[note(expand_range)]
+        pub range_args_note: Option<()>,
+        pub min_or_exact_args: usize,
+        pub max_args: usize,
+        pub name: String,
+    }
+
+    #[derive(Diagnostic)]
+    #[note]
+    #[diag(expand_mve_missing_paren)]
+    pub(crate) struct MveMissingParen {
+        #[primary_span]
+        #[label]
+        pub ident_span: Span,
+        #[label(expand_unexpected)]
+        pub unexpected_span: Option<Span>,
+        #[suggestion(code = "( /* ... */ )", applicability = "has-placeholders")]
+        pub insert_span: Option<Span>,
+    }
+
+    #[derive(Diagnostic)]
+    #[note]
+    #[diag(expand_mve_unrecognized_expr)]
+    pub(crate) struct MveUnrecognizedExpr {
+        #[primary_span]
+        #[label]
+        pub span: Span,
+        pub valid_expr_list: &'static str,
+    }
+
     #[derive(Diagnostic)]
     #[diag(expand_mve_unrecognized_var)]
     pub(crate) struct MveUnrecognizedVar {
