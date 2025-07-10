@@ -168,7 +168,7 @@ fn check_impl(
         let inference_result = db.infer(def);
 
         for (pat, mut ty) in inference_result.type_of_pat.iter() {
-            if let Pat::Bind { id, .. } = body.pats[pat] {
+            if let Pat::Bind { id, .. } = body[pat] {
                 ty = &inference_result.type_of_binding[id];
             }
             let node = match pat_node(&body_source_map, pat, &db) {
@@ -316,7 +316,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         }
 
         for (pat, mut ty) in inference_result.type_of_pat.iter() {
-            if let Pat::Bind { id, .. } = body.pats[pat] {
+            if let Pat::Bind { id, .. } = body[pat] {
                 ty = &inference_result.type_of_binding[id];
             }
             let node = match body_source_map.pat_syntax(pat) {

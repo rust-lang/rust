@@ -242,11 +242,7 @@ impl<'db> SourceAnalyzer<'db> {
 
     fn binding_id_of_pat(&self, pat: &ast::IdentPat) -> Option<BindingId> {
         let pat_id = self.pat_id(&pat.clone().into())?;
-        if let Pat::Bind { id, .. } = self.store()?.pats[pat_id.as_pat()?] {
-            Some(id)
-        } else {
-            None
-        }
+        if let Pat::Bind { id, .. } = self.store()?[pat_id.as_pat()?] { Some(id) } else { None }
     }
 
     pub(crate) fn expr_adjustments(&self, expr: &ast::Expr) -> Option<&[Adjustment]> {
@@ -997,7 +993,7 @@ impl<'db> SourceAnalyzer<'db> {
         let parent_hir_path = path
             .parent_path()
             .and_then(|p| collector.lower_path(p, &mut ExprCollector::impl_trait_error_allocator));
-        let store = collector.store.finish();
+        let (store, _) = collector.store.finish();
 
         // Case where path is a qualifier of a use tree, e.g. foo::bar::{Baz, Qux} where we are
         // trying to resolve foo::bar.
@@ -1206,7 +1202,7 @@ impl<'db> SourceAnalyzer<'db> {
         let mut collector = ExprCollector::new(db, self.resolver.module(), self.file_id);
         let hir_path =
             collector.lower_path(path.clone(), &mut ExprCollector::impl_trait_error_allocator)?;
-        let store = collector.store.finish();
+        let (store, _) = collector.store.finish();
         Some(resolve_hir_path_(
             db,
             &self.resolver,

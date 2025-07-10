@@ -508,9 +508,9 @@ fn f() {
 }
     "#,
     );
-    assert_eq!(body.bindings.len(), 1, "should have a binding for `B`");
+    assert_eq!(body.assert_expr_only().bindings.len(), 1, "should have a binding for `B`");
     assert_eq!(
-        body.bindings[BindingId::from_raw(RawIdx::from_u32(0))].name.as_str(),
+        body[BindingId::from_raw(RawIdx::from_u32(0))].name.as_str(),
         "B",
         "should have a binding for `B`",
     );
@@ -566,6 +566,7 @@ const fn f(x: i32) -> i32 {
     );
 
     let mtch_arms = body
+        .assert_expr_only()
         .exprs
         .iter()
         .find_map(|(_, expr)| {
@@ -578,10 +579,10 @@ const fn f(x: i32) -> i32 {
         .unwrap();
 
     let MatchArm { pat, .. } = mtch_arms[1];
-    match body.pats[pat] {
+    match body[pat] {
         Pat::Range { start, end } => {
-            let hir_start = &body.exprs[start.unwrap()];
-            let hir_end = &body.exprs[end.unwrap()];
+            let hir_start = &body[start.unwrap()];
+            let hir_end = &body[end.unwrap()];
 
             assert!(matches!(hir_start, Expr::Path { .. }));
             assert!(matches!(hir_end, Expr::Path { .. }));

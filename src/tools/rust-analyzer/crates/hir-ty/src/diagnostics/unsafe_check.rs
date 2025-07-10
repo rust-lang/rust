@@ -217,7 +217,7 @@ impl<'db> UnsafeVisitor<'db> {
     }
 
     fn walk_pat(&mut self, current: PatId) {
-        let pat = &self.body.pats[current];
+        let pat = &self.body[current];
 
         if self.inside_union_destructure {
             match pat {
@@ -264,7 +264,7 @@ impl<'db> UnsafeVisitor<'db> {
     }
 
     fn walk_expr(&mut self, current: ExprId) {
-        let expr = &self.body.exprs[current];
+        let expr = &self.body[current];
         let inside_assignment = mem::replace(&mut self.inside_assignment, false);
         match expr {
             &Expr::Call { callee, .. } => {
@@ -284,7 +284,7 @@ impl<'db> UnsafeVisitor<'db> {
                 self.resolver.reset_to_guard(guard);
             }
             Expr::Ref { expr, rawness: Rawness::RawPtr, mutability: _ } => {
-                match self.body.exprs[*expr] {
+                match self.body[*expr] {
                     // Do not report unsafe for `addr_of[_mut]!(EXTERN_OR_MUT_STATIC)`,
                     // see https://github.com/rust-lang/rust/pull/125834.
                     Expr::Path(_) => return,

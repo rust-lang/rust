@@ -130,7 +130,7 @@ impl MirLowerCtx<'_> {
                 .collect::<Vec<_>>()
                 .into(),
         );
-        Ok(match &self.body.pats[pattern] {
+        Ok(match &self.body[pattern] {
             Pat::Missing => return Err(MirLowerError::IncompletePattern),
             Pat::Wild => (current, current_else),
             Pat::Tuple { args, ellipsis } => {
@@ -436,7 +436,7 @@ impl MirLowerCtx<'_> {
                     (next, Some(else_target))
                 }
             },
-            Pat::Lit(l) => match &self.body.exprs[*l] {
+            Pat::Lit(l) => match &self.body[*l] {
                 Expr::Literal(l) => {
                     if mode == MatchingMode::Check {
                         let c = self.lower_literal_to_operand(self.infer[pattern].clone(), l)?;

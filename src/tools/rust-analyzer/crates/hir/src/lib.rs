@@ -2034,7 +2034,7 @@ impl DefWithBody {
                     )
                 }
                 let mol = &borrowck_result.mutability_of_locals;
-                for (binding_id, binding_data) in body.bindings.iter() {
+                for (binding_id, binding_data) in body.bindings() {
                     if binding_data.problems.is_some() {
                         // We should report specific diagnostics for these problems, not `need-mut` and `unused-mut`.
                         continue;

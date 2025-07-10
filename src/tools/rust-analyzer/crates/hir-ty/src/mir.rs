@@ -1212,10 +1212,9 @@ impl MirSpan {
         match *self {
             MirSpan::ExprId(expr) => matches!(body[expr], Expr::Ref { .. }),
             // FIXME: Figure out if this is correct wrt. match ergonomics.
-            MirSpan::BindingId(binding) => matches!(
-                body.bindings[binding].mode,
-                BindingAnnotation::Ref | BindingAnnotation::RefMut
-            ),
+            MirSpan::BindingId(binding) => {
+                matches!(body[binding].mode, BindingAnnotation::Ref | BindingAnnotation::RefMut)
+            }
             MirSpan::PatId(_) | MirSpan::SelfParam | MirSpan::Unknown => false,
         }
     }
