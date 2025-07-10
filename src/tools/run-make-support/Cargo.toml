@@ -13,6 +13,7 @@ gimli = "0.32"
 build_helper = { path = "../../build_helper" }
 serde_json = "1.0"
 libc = "0.2"
+pdb = "0.8.0"
 
 [lib]
 crate-type = ["lib", "dylib"]
