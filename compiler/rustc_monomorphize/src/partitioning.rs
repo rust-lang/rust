@@ -205,6 +205,7 @@ where
     let mut codegen_units = UnordMap::default();
     let is_incremental_build = cx.tcx.sess.opts.incremental.is_some();
     let mut internalization_candidates = UnordSet::default();
+    let mut cgu_def_id_cache = UnordMap::default();
 
     // Determine if monomorphizations instantiated in this crate will be made
     // available to downstream crates. This depends on whether we are in
@@ -234,13 +235,44 @@ where
         let is_volatile = is_incremental_build && mono_item.is_generic_fn();
 
         let cgu_name = match characteristic_def_id {
-            Some(def_id) => compute_codegen_unit_name(
-                cx.tcx,
-                cgu_name_builder,
-                def_id,
-                is_volatile,
-                cgu_name_cache,
-            ),
+            Some(def_id) => {
+                let cgu_def_id = *cgu_def_id_cache.entry(def_id).or_insert_with(|| {
+                    // Find the innermost module that is not nested within a function.
+                    let mut current_def_id = def_id;
+                    let mut cgu_def_id = None;
+                    // Walk backwards from the item we want to find the module for.
+                    loop {
+                        if current_def_id.is_crate_root() {
+                            if cgu_def_id.is_none() {
+                                // If we have not found a module yet, take the crate root.
+                                cgu_def_id = Some(def_id.krate.as_def_id());
+                            }
+                            break;
+                        } else if cx.tcx.def_kind(current_def_id) == DefKind::Mod {
+                            if cgu_def_id.is_none() {
+                                cgu_def_id = Some(current_def_id);
+                            }
+                        } else {
+                            // If we encounter something that is not a module, throw away
+                            // any module that we've found so far because we now know that
+                            // it is nested within something else.
+                            cgu_def_id = None;
+                        }
+
+                        current_def_id = cx.tcx.parent(current_def_id);
+                    }
+
+                    cgu_def_id.unwrap()
+                });
+
+                compute_codegen_unit_name(
+                    cx.tcx,
+                    cgu_name_builder,
+                    cgu_def_id,
+                    is_volatile,
+                    cgu_name_cache,
+                )
+            }
             None => fallback_cgu_name(cgu_name_builder),
         };
 
@@ -693,37 +725,10 @@ fn characteristic_def_id_of_mono_item<'tcx>(
 fn compute_codegen_unit_name(
     tcx: TyCtxt<'_>,
     name_builder: &mut CodegenUnitNameBuilder<'_>,
-    def_id: DefId,
+    cgu_def_id: DefId,
     volatile: bool,
     cache: &mut CguNameCache,
 ) -> Symbol {
-    // Find the innermost module that is not nested within a function.
-    let mut current_def_id = def_id;
-    let mut cgu_def_id = None;
-    // Walk backwards from the item we want to find the module for.
-    loop {
-        if current_def_id.is_crate_root() {
-            if cgu_def_id.is_none() {
-                // If we have not found a module yet, take the crate root.
-                cgu_def_id = Some(def_id.krate.as_def_id());
-            }
-            break;
-        } else if tcx.def_kind(current_def_id) == DefKind::Mod {
-            if cgu_def_id.is_none() {
-                cgu_def_id = Some(current_def_id);
-            }
-        } else {
-            // If we encounter something that is not a module, throw away
-            // any module that we've found so far because we now know that
-            // it is nested within something else.
-            cgu_def_id = None;
-        }
-
-        current_def_id = tcx.parent(current_def_id);
-    }
-
-    let cgu_def_id = cgu_def_id.unwrap();
-
     *cache.entry((cgu_def_id, volatile)).or_insert_with(|| {
         let def_path = tcx.def_path(cgu_def_id);
 
