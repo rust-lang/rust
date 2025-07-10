@@ -1,11 +1,8 @@
 use crate::common::cli::ProcessedCli;
-use crate::common::compile_c::CompilationCommandBuilder;
-use crate::common::gen_c::compile_c_programs;
+use crate::common::compile_c::{CompilationCommandBuilder, CppCompilation};
 
-pub fn compile_c_arm(config: &ProcessedCli, intrinsics_name_list: &[String]) -> bool {
-    let Some(ref cpp_compiler) = config.cpp_compiler else {
-        return true;
-    };
+pub fn build_cpp_compilation(config: &ProcessedCli) -> Option<CppCompilation> {
+    let cpp_compiler = config.cpp_compiler.as_ref()?;
 
     // -ffp-contract=off emulates Rust's approach of not fusing separate mul-add operations
     let mut command = CompilationCommandBuilder::new()
@@ -21,15 +18,12 @@ pub fn compile_c_arm(config: &ProcessedCli, intrinsics_name_list: &[String]) -> 
         command = command.add_arch_flags(vec!["faminmax", "lut", "sha3"]);
     }
 
-    /*
-     * clang++ cannot link an aarch64_be object file, so we invoke
-     * aarch64_be-unknown-linux-gnu's C++ linker. This ensures that we
-     * are testing the intrinsics against LLVM.
-     *
-     * Note: setting `--sysroot=<...>` which is the obvious thing to do
-     * does not work as it gets caught up with `#include_next <stdlib.h>`
-     * not existing...
-     */
+    if !cpp_compiler.contains("clang") {
+        command = command.add_extra_flag("-flax-vector-conversions");
+    }
+
+    let mut cpp_compiler = command.into_cpp_compilation();
+
     if config.target.contains("aarch64_be") {
         let Some(ref cxx_toolchain_dir) = config.cxx_toolchain_dir else {
             panic!(
@@ -38,38 +32,20 @@ pub fn compile_c_arm(config: &ProcessedCli, intrinsics_name_list: &[String]) -> 
             )
         };
 
-        let linker = if let Some(ref linker) = config.linker {
-            linker.to_owned()
-        } else {
-            format!("{cxx_toolchain_dir}/bin/aarch64_be-none-linux-gnu-g++")
-        };
-
-        trace!("using linker: {linker}");
-
-        command = command.set_linker(linker).set_include_paths(vec![
-                "/include",
-                "/aarch64_be-none-linux-gnu/include",
-                "/aarch64_be-none-linux-gnu/include/c++/14.3.1",
-                "/aarch64_be-none-linux-gnu/include/c++/14.3.1/aarch64_be-none-linux-gnu",
-                "/aarch64_be-none-linux-gnu/include/c++/14.3.1/backward",
-                "/aarch64_be-none-linux-gnu/libc/usr/include",
+        cpp_compiler.command_mut().args([
+            &format!("--sysroot={cxx_toolchain_dir}/aarch64_be-none-linux-gnu/libc"),
+            "--include-directory",
+            &format!("{cxx_toolchain_dir}/aarch64_be-none-linux-gnu/include/c++/14.3.1"),
+            "--include-directory",
+            &format!("{cxx_toolchain_dir}/aarch64_be-none-linux-gnu/include/c++/14.3.1/aarch64_be-none-linux-gnu"),
+            "-L",
+            &format!("{cxx_toolchain_dir}/lib/gcc/aarch64_be-none-linux-gnu/14.3.1"),
+            "-L",
+            &format!("{cxx_toolchain_dir}/aarch64_be-none-linux-gnu/libc/usr/lib"),
+            "-B",
+            &format!("{cxx_toolchain_dir}/lib/gcc/aarch64_be-none-linux-gnu/14.3.1"),
         ]);
     }
 
-    if !cpp_compiler.contains("clang") {
-        command = command.add_extra_flag("-flax-vector-conversions");
-    }
-
-    let compiler_commands = intrinsics_name_list
-        .iter()
-        .map(|intrinsic_name| {
-            command
-                .clone()
-                .set_input_name(intrinsic_name)
-                .set_output_name(intrinsic_name)
-                .make_string()
-        })
-        .collect::<Vec<_>>();
-
-    compile_c_programs(&compiler_commands)
+    Some(cpp_compiler)
 }

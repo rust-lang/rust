@@ -7,6 +7,7 @@ mod types;
 use crate::common::SupportedArchitectureTest;
 use crate::common::cli::ProcessedCli;
 use crate::common::compare::compare_outputs;
+use crate::common::gen_c::compile_c_programs;
 use crate::common::gen_rust::compile_rust_programs;
 use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
 use crate::common::intrinsic_helpers::TypeKind;
@@ -66,7 +67,8 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             &[POLY128_OSTREAM_DEF],
         );
 
-        compile::compile_c_arm(&self.cli_options, intrinsics_name_list.as_slice())
+        let pipeline = compile::build_cpp_compilation(&self.cli_options).unwrap();
+        compile_c_programs(&pipeline, &intrinsics_name_list)
     }
 
     fn build_rust_file(&self) -> bool {
