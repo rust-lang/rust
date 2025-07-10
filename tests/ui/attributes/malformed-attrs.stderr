@@ -576,7 +576,7 @@ warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
 LL | #[diagnostic::do_not_recommend()]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
+   = note: `#[warn(malformed_diagnostic_attributes)]` on by default
 
 warning: missing options for `on_unimplemented` attribute
   --> $DIR/malformed-attrs.rs:138:1

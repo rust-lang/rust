@@ -25,7 +25,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt, Visibility};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
-    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
     UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
 use rustc_session::parse::feature_err;
@@ -690,7 +690,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             );
 
             self.tcx.sess.psess.buffer_lint(
-                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
                 attribute.span(),
                 node_id,
                 BuiltinLintDiag::UnknownDiagnosticAttribute { span: attribute.span(), typo_name },
