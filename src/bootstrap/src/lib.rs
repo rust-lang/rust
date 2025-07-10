@@ -22,7 +22,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use std::time::SystemTime;
+use std::time::{Instant, SystemTime};
 use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
@@ -1927,6 +1927,10 @@ to download LLVM rather than building it.
 
     pub fn exec_ctx(&self) -> &ExecutionContext {
         &self.config.exec_ctx
+    }
+
+    pub fn report_summary(&self, start_time: Instant) {
+        self.config.exec_ctx.profiler().report_summary(start_time);
     }
 }
 
