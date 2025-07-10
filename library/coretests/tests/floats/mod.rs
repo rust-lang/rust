@@ -342,6 +342,26 @@ float_test! {
 }
 
 float_test! {
+    name: neg_zero,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let neg_zero: Float = -0.0;
+        assert!(0.0 == neg_zero);
+        assert_biteq!(-0.0, neg_zero);
+        assert!(!neg_zero.is_infinite());
+        assert!(neg_zero.is_finite());
+        assert!(!neg_zero.is_sign_positive());
+        assert!(neg_zero.is_sign_negative());
+        assert!(!neg_zero.is_nan());
+        assert!(!neg_zero.is_normal());
+        assert!(matches!(neg_zero.classify(), Fp::Zero));
+    }
+}
+
+float_test! {
     name: min,
     attrs: {
         f16: #[cfg(any(miri, target_has_reliable_f16_math))],

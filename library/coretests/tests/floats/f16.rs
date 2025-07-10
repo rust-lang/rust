@@ -47,20 +47,6 @@ const NAN_MASK2: u16 = 0x0155;
 // the intrinsics.
 
 #[test]
-fn test_neg_zero() {
-    let neg_zero: f16 = -0.0;
-    assert_eq!(0.0, neg_zero);
-    assert_biteq!(-0.0, neg_zero);
-    assert!(!neg_zero.is_infinite());
-    assert!(neg_zero.is_finite());
-    assert!(!neg_zero.is_sign_positive());
-    assert!(neg_zero.is_sign_negative());
-    assert!(!neg_zero.is_nan());
-    assert!(!neg_zero.is_normal());
-    assert_eq!(Fp::Zero, neg_zero.classify());
-}
-
-#[test]
 fn test_one() {
     let one: f16 = 1.0f16;
     assert_biteq!(1.0, one);
