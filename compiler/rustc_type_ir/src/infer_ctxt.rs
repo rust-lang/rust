@@ -307,7 +307,7 @@ where Infcx: InferCtxtLike<Interner = I>
     //
     // Return ambiguity can also prevent people from writing code which depends on inference guidance
     // that might no longer work after the impl is stabilised,
-    // tests/ui/unstable-feature_bound/unstable_impl_coherence_inherence.rs is one of the example.
+    // tests/ui/unstable-feature-bound/unstable_impl_method_selection.rs is one of the example.
     //
     // Note: `feature_bound_holds_in_crate` does not consider a feature to be enabled
     // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
