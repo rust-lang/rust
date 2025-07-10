@@ -97,6 +97,13 @@ fn main() {
     (<u32>::max_value());
     //~^ ERROR: usage of a legacy numeric method
     //~| HELP: use the associated constant instead
+    ((i32::max_value)());
+    //~^ ERROR: usage of a legacy numeric method
+    //~| HELP: use the associated constant instead
+    type Ω = i32;
+    Ω::max_value();
+    //~^ ERROR: usage of a legacy numeric method
+    //~| HELP: use the associated constant instead
 }
 
 #[warn(clippy::legacy_numeric_constants)]

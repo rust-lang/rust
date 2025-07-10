@@ -243,8 +243,32 @@ LL -     (<u32>::max_value());
 LL +     u32::MAX;
    |
 
+error: usage of a legacy numeric method
+  --> tests/ui/legacy_numeric_constants.rs:100:5
+   |
+LL |     ((i32::max_value)());
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: use the associated constant instead
+   |
+LL -     ((i32::max_value)());
+LL +     i32::MAX;
+   |
+
+error: usage of a legacy numeric method
+  --> tests/ui/legacy_numeric_constants.rs:104:5
+   |
+LL |     Ω::max_value();
+   |     ^^^^^^^^^^^^^^
+   |
+help: use the associated constant instead
+   |
+LL -     Ω::max_value();
+LL +     Ω::MAX;
+   |
+
 error: usage of a legacy numeric constant
-  --> tests/ui/legacy_numeric_constants.rs:131:5
+  --> tests/ui/legacy_numeric_constants.rs:138:5
    |
 LL |     std::u32::MAX;
    |     ^^^^^^^^^^^^^
@@ -255,5 +279,5 @@ LL -     std::u32::MAX;
 LL +     u32::MAX;
    |
 
-error: aborting due to 21 previous errors
+error: aborting due to 23 previous errors
 
