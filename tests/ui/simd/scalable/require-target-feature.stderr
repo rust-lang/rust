@@ -1,0 +1,10 @@
+error: this function definition uses scalable vector type `svint32_t` which (with the chosen ABI) requires the `sve` target feature, which is not enabled
+  --> $DIR/require-target-feature.rs:29:1
+   |
+LL | pub fn non_annotated_callee(x: svint32_t) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
+   |
+   = help: consider enabling it globally (`-C target-feature=+sve`) or locally (`#[target_feature(enable="sve")]`)
+
+error: aborting due to 1 previous error
+
