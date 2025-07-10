@@ -1,6 +1,4 @@
 //! A single-producer, single-consumer (oneshot) channel.
-//!
-//! TODO more docs.
 
 use crate::sync::mpmc;
 use crate::sync::mpsc::{RecvError, SendError};
@@ -8,8 +6,6 @@ use crate::time::{Duration, Instant};
 use crate::{error, fmt};
 
 /// Creates a new oneshot channel, returning the sender/receiver halves.
-///
-/// TODO more docs.
 #[must_use]
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
@@ -22,8 +18,6 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// The sending half of a oneshot channel.
-///
-/// TODO more docs.
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 pub struct Sender<T> {
     /// The `oneshot` channel is simply a wrapper around a `mpmc` channel.
@@ -62,8 +56,6 @@ impl<T> fmt::Debug for Sender<T> {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// The receiving half of a oneshot channel.
-///
-/// TODO more docs.
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 pub struct Receiver<T> {
     /// The `oneshot` channel is simply a wrapper around a `mpmc` channel.
@@ -88,11 +80,9 @@ impl<T> Receiver<T> {
         self.inner.recv()
     }
 
-    // Fallable methods.
+    // Fallible methods.
 
     /// Attempts to return a pending value on this receiver without blocking.
-    ///
-    /// TODO examples.
     #[unstable(feature = "oneshot_channel", issue = "143674")]
     pub fn try_recv(self) -> Result<T, TryRecvError<T>> {
         self.inner.try_recv().map_err(|err| match err {
@@ -103,8 +93,6 @@ impl<T> Receiver<T> {
 
     /// Attempts to wait for a value on this receiver, returning an error if the corresponding
     /// [`Sender`] half of this channel has been dropped, or if it waits more than `timeout`.
-    ///
-    /// TODO examples.
     #[unstable(feature = "oneshot_channel", issue = "143674")]
     pub fn recv_timeout(self, timeout: Duration) -> Result<T, RecvTimeoutError<T>> {
         self.inner.recv_timeout(timeout).map_err(|err| match err {
@@ -115,8 +103,6 @@ impl<T> Receiver<T> {
 
     /// Attempts to wait for a value on this receiver, returning an error if the corresponding
     /// [`Sender`] half of this channel has been dropped, or if `deadline` is reached.
-    ///
-    /// TODO examples.
     #[unstable(feature = "oneshot_channel", issue = "143674")]
     pub fn recv_deadline(self, deadline: Instant) -> Result<T, RecvTimeoutError<T>> {
         self.inner.recv_deadline(deadline).map_err(|err| match err {
