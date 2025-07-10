@@ -273,14 +273,15 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
     if let Some(input_tail) = input.strip_prefix("#!") {
         // Ok, this is a shebang but if the next non-whitespace token is `[`,
         // then it may be valid Rust code, so consider it Rust code.
-        let next_non_whitespace_token = tokenize(input_tail).map(|tok| tok.kind).find(|tok| {
-            !matches!(
-                tok,
-                TokenKind::Whitespace
-                    | TokenKind::LineComment { doc_style: None }
-                    | TokenKind::BlockComment { doc_style: None, .. }
-            )
-        });
+        let next_non_whitespace_token =
+            tokenize(input_tail, FrontmatterAllowed::No).map(|tok| tok.kind).find(|tok| {
+                !matches!(
+                    tok,
+                    TokenKind::Whitespace
+                        | TokenKind::LineComment { doc_style: None }
+                        | TokenKind::BlockComment { doc_style: None, .. }
+                )
+            });
         if next_non_whitespace_token != Some(TokenKind::OpenBracket) {
             // No other choice than to consider this a shebang.
             return Some(2 + input_tail.lines().next().unwrap_or_default().len());
@@ -303,8 +304,16 @@ pub fn validate_raw_str(input: &str, prefix_len: u32) -> Result<(), RawStrError>
 }
 
 /// Creates an iterator that produces tokens from the input string.
-pub fn tokenize(input: &str) -> impl Iterator<Item = Token> {
-    let mut cursor = Cursor::new(input, FrontmatterAllowed::No);
+///
+/// When parsing a full Rust document,
+/// first [`strip_shebang`] and then allow frontmatters with [`FrontmatterAllowed::Yes`].
+///
+/// When tokenizing a slice of a document, be sure to disallow frontmatters with [`FrontmatterAllowed::No`]
+pub fn tokenize(
+    input: &str,
+    frontmatter_allowed: FrontmatterAllowed,
+) -> impl Iterator<Item = Token> {
+    let mut cursor = Cursor::new(input, frontmatter_allowed);
     std::iter::from_fn(move || {
         let token = cursor.advance_token();
         if token.kind != TokenKind::Eof { Some(token) } else { None }
