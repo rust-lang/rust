@@ -535,6 +535,9 @@ trigger_files = [
 [autolabel."S-waiting-on-review"]
 new_pr = true
 
+[autolabel."S-waiting-on-author"]
+new_draft = true
+
 [autolabel."needs-triage"]
 new_issue = true
 exclude_labels = [
@@ -931,6 +934,15 @@ instead.
 """
 cc = ["@tgross35"]
 
+[mentions."library/stdarch"]
+message = """
+`stdarch` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/stdarch](https://github.com/rust-lang/stdarch) \
+instead.
+"""
+cc = ["@Amanieu", "@folkertdev", "@sayantn"]
+
 [mentions."library/core/src/intrinsics/simd.rs"]
 message = """
 Some changes occurred to the platform-builtins intrinsics. Make sure the
@@ -1079,6 +1091,10 @@ cc = ["@jieyouxu"]
 [mentions."src/tools/tidy/src/deps.rs"]
 message = "The list of allowed third-party dependencies may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
 cc = ["@davidtwco", "@wesleywiser"]
+
+[mentions."src/tools/tidy/src/ext_tool_checks.rs"]
+message = "`tidy` extra checks were modified."
+cc = ["@lolbinarycat"]
 
 [mentions."src/bootstrap/src/core/config"]
 message = """

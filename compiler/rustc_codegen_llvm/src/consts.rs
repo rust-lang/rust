@@ -27,10 +27,9 @@ use crate::{base, debuginfo};
 
 pub(crate) fn const_alloc_to_llvm<'ll>(
     cx: &CodegenCx<'ll, '_>,
-    alloc: ConstAllocation<'_>,
+    alloc: &Allocation,
     is_static: bool,
 ) -> &'ll Value {
-    let alloc = alloc.inner();
     // We expect that callers of const_alloc_to_llvm will instead directly codegen a pointer or
     // integer for any &ZST where the ZST is a constant (i.e. not a static). We should never be
     // producing empty LLVM allocations as they're just adding noise to binaries and forcing less
@@ -141,7 +140,7 @@ fn codegen_static_initializer<'ll, 'tcx>(
     def_id: DefId,
 ) -> Result<(&'ll Value, ConstAllocation<'tcx>), ErrorHandled> {
     let alloc = cx.tcx.eval_static_initializer(def_id)?;
-    Ok((const_alloc_to_llvm(cx, alloc, /*static*/ true), alloc))
+    Ok((const_alloc_to_llvm(cx, alloc.inner(), /*static*/ true), alloc))
 }
 
 fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align: Align) {

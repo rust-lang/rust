@@ -12,7 +12,7 @@
 //@ ignore-cross-compile
 //@ ignore-wasm
 
-use run_make_support::{is_msvc, rustc};
+use run_make_support::{is_windows_msvc, rustc};
 
 fn main() {
     // build supporting crate
@@ -41,9 +41,9 @@ fn main() {
             ($lib:literal in $args:ident) => {{
                 let lib = format!(
                     "{}{}{}",
-                    if !is_msvc() { "-l" } else { "" },
+                    if !is_windows_msvc() { "-l" } else { "" },
                     $lib,
-                    if !is_msvc() { "" } else { ".lib" },
+                    if !is_windows_msvc() { "" } else { ".lib" },
                 );
                 let found = $args.contains(&&*lib);
                 assert!(found, "unable to find lib `{}` in those linker args: {:?}", lib, $args);

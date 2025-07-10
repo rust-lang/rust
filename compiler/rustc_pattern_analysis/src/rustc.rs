@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::fmt;
 use std::iter::once;
 
@@ -99,6 +100,16 @@ pub struct RustcPatCtxt<'p, 'tcx: 'p> {
     /// Whether the data at the scrutinee is known to be valid. This is false if the scrutinee comes
     /// from a union field, a pointer deref, or a reference deref (pending opsem decisions).
     pub known_valid_scrutinee: bool,
+    pub internal_state: RustcPatCtxtState,
+}
+
+/// Private fields of [`RustcPatCtxt`], separated out to permit record initialization syntax.
+#[derive(Clone, Default)]
+pub struct RustcPatCtxtState {
+    /// Has a deref pattern been lowered? This is initialized to `false` and is updated by
+    /// [`RustcPatCtxt::lower_pat`] in order to avoid performing deref-pattern-specific validation
+    /// for everything containing patterns.
+    has_lowered_deref_pat: Cell<bool>,
 }
 
 impl<'p, 'tcx: 'p> fmt::Debug for RustcPatCtxt<'p, 'tcx> {
@@ -474,6 +485,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 fields = vec![self.lower_pat(subpattern).at_index(0)];
                 arity = 1;
                 ctor = DerefPattern(cx.reveal_opaque_ty(subpattern.ty));
+                self.internal_state.has_lowered_deref_pat.set(true);
             }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
                 match ty.kind() {
@@ -1027,6 +1039,25 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
             );
         }
     }
+
+    fn match_may_contain_deref_pats(&self) -> bool {
+        self.internal_state.has_lowered_deref_pat.get()
+    }
+
+    fn report_mixed_deref_pat_ctors(
+        &self,
+        deref_pat: &crate::pat::DeconstructedPat<Self>,
+        normal_pat: &crate::pat::DeconstructedPat<Self>,
+    ) -> Self::Error {
+        let deref_pattern_label = deref_pat.data().span;
+        let normal_constructor_label = normal_pat.data().span;
+        self.tcx.dcx().emit_err(errors::MixedDerefPatternConstructors {
+            spans: vec![deref_pattern_label, normal_constructor_label],
+            smart_pointer_ty: deref_pat.ty().inner(),
+            deref_pattern_label,
+            normal_constructor_label,
+        })
+    }
 }
 
 /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
@@ -1055,13 +1086,6 @@ pub fn analyze_match<'p, 'tcx>(
 ) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
     let scrut_ty = tycx.reveal_opaque_ty(scrut_ty);
 
-    // The analysis doesn't support deref patterns mixed with normal constructors; error if present.
-    // FIXME(deref_patterns): This only needs to run when a deref pattern was found during lowering.
-    if tycx.tcx.features().deref_patterns() {
-        let pat_column = PatternColumn::new(arms);
-        detect_mixed_deref_pat_ctors(tycx, &pat_column)?;
-    }
-
     let scrut_validity = PlaceValidity::from_bool(tycx.known_valid_scrutinee);
     let report = compute_match_usefulness(
         tycx,
@@ -1079,49 +1103,4 @@ pub fn analyze_match<'p, 'tcx>(
     }
 
     Ok(report)
-}
-
-// FIXME(deref_patterns): Currently it's the responsibility of the frontend (rustc or rust-analyzer)
-// to ensure that deref patterns don't appear in the same column as normal constructors. Deref
-// patterns aren't currently implemented in rust-analyzer, but should they be, the columnwise check
-// here could be made generic and shared between frontends.
-fn detect_mixed_deref_pat_ctors<'p, 'tcx>(
-    cx: &RustcPatCtxt<'p, 'tcx>,
-    column: &PatternColumn<'p, RustcPatCtxt<'p, 'tcx>>,
-) -> Result<(), ErrorGuaranteed> {
-    let Some(&ty) = column.head_ty() else {
-        return Ok(());
-    };
-
-    // Check for a mix of deref patterns and normal constructors.
-    let mut normal_ctor_span = None;
-    let mut deref_pat_span = None;
-    for pat in column.iter() {
-        match pat.ctor() {
-            // The analysis can handle mixing deref patterns with wildcards and opaque patterns.
-            Wildcard | Opaque(_) => {}
-            DerefPattern(_) => deref_pat_span = Some(pat.data().span),
-            // Nothing else can be compared to deref patterns in `Constructor::is_covered_by`.
-            _ => normal_ctor_span = Some(pat.data().span),
-        }
-    }
-    if let Some(normal_constructor_label) = normal_ctor_span
-        && let Some(deref_pattern_label) = deref_pat_span
-    {
-        return Err(cx.tcx.dcx().emit_err(errors::MixedDerefPatternConstructors {
-            spans: vec![deref_pattern_label, normal_constructor_label],
-            smart_pointer_ty: ty.inner(),
-            deref_pattern_label,
-            normal_constructor_label,
-        }));
-    }
-
-    // Specialize and recurse into the patterns' fields.
-    let set = column.analyze_ctors(cx, &ty)?;
-    for ctor in set.present {
-        for specialized_column in column.specialize(cx, &ty, &ctor).iter() {
-            detect_mixed_deref_pat_ctors(cx, specialized_column)?;
-        }
-    }
-    Ok(())
 }

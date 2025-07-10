@@ -54,29 +54,26 @@ symcheck=(cargo run -p symbol-check --release)
 [[ "$target" = "wasm"* ]] && symcheck+=(--features wasm)
 symcheck+=(-- build-and-check)
 
-"${symcheck[@]}" -p compiler_builtins --target "$target"
-"${symcheck[@]}" -p compiler_builtins --target "$target" --release
-"${symcheck[@]}" -p compiler_builtins --target "$target" --features c
-"${symcheck[@]}" -p compiler_builtins --target "$target" --features c --release
-"${symcheck[@]}" -p compiler_builtins --target "$target" --features no-asm
-"${symcheck[@]}" -p compiler_builtins --target "$target" --features no-asm --release
-"${symcheck[@]}" -p compiler_builtins --target "$target" --features no-f16-f128
-"${symcheck[@]}" -p compiler_builtins --target "$target" --features no-f16-f128 --release
+"${symcheck[@]}" "$target" -- -p compiler_builtins
+"${symcheck[@]}" "$target" -- -p compiler_builtins --release
+"${symcheck[@]}" "$target" -- -p compiler_builtins --features c
+"${symcheck[@]}" "$target" -- -p compiler_builtins --features c --release
+"${symcheck[@]}" "$target" -- -p compiler_builtins --features no-asm
+"${symcheck[@]}" "$target" -- -p compiler_builtins --features no-asm --release
+"${symcheck[@]}" "$target" -- -p compiler_builtins --features no-f16-f128
+"${symcheck[@]}" "$target" -- -p compiler_builtins --features no-f16-f128 --release
 
 run_intrinsics_test() {
-    args=(
-        --target "$target" --verbose \
-        --manifest-path builtins-test-intrinsics/Cargo.toml
-    )
-    args+=( "$@" )
+    build_args=(--verbose --manifest-path builtins-test-intrinsics/Cargo.toml)
+    build_args+=("$@")
 
     # symcheck also checks the results of builtins-test-intrinsics
-    "${symcheck[@]}" "${args[@]}"
+    "${symcheck[@]}" "$target" -- "${build_args[@]}"
 
     # FIXME: we get access violations on Windows, our entrypoint may need to
     # be tweaked.
     if [ "${BUILD_ONLY:-}" != "1" ] && ! [[ "$target" = *"windows"* ]]; then
-        cargo run "${args[@]}"
+        cargo run --target "$target" "${build_args[@]}"
     fi
 }
 

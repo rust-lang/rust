@@ -11,7 +11,7 @@ pub(crate) struct RustcLayoutScalarValidRangeStart;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStart {
     const PATH: &'static [Symbol] = &[sym::rustc_layout_scalar_valid_range_start];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(List: "start");
 
@@ -25,7 +25,7 @@ pub(crate) struct RustcLayoutScalarValidRangeEnd;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeEnd {
     const PATH: &'static [Symbol] = &[sym::rustc_layout_scalar_valid_range_end];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(List: "end");
 
@@ -62,7 +62,7 @@ pub(crate) struct RustcObjectLifetimeDefaultParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {
     const PATH: &[rustc_span::Symbol] = &[sym::rustc_object_lifetime_default];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(Word);
 

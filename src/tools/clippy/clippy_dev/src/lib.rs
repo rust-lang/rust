@@ -2,7 +2,6 @@
     rustc_private,
     exit_status_error,
     if_let_guard,
-    let_chains,
     os_str_slice,
     os_string_truncate,
     slice_split_once

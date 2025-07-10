@@ -204,10 +204,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     AttributeKind::RustcLayoutScalarValidRangeStart(_num, attr_span)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(_num, attr_span),
                 ) => self.check_rustc_layout_scalar_valid_range(*attr_span, span, target),
+                Attribute::Parsed(AttributeKind::ExportStable) => {
+                    // handled in `check_export`
+                }
+                &Attribute::Parsed(AttributeKind::FfiConst(attr_span)) => {
+                    self.check_ffi_const(attr_span, target)
+                }
+                &Attribute::Parsed(AttributeKind::FfiPure(attr_span)) => {
+                    self.check_ffi_pure(attr_span, attrs, target)
+                }
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
-                    | AttributeKind::MacroTransparency(_),
+                    | AttributeKind::MacroTransparency(_)
+                    | AttributeKind::Dummy,
                 ) => { /* do nothing  */ }
                 Attribute::Parsed(AttributeKind::AsPtr(attr_span)) => {
                     self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)
@@ -232,6 +242,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 &Attribute::Parsed(AttributeKind::PassByValue(attr_span)) => {
                     self.check_pass_by_value(attr_span, span, target)
+                }
+                &Attribute::Parsed(AttributeKind::StdInternalSymbol(attr_span)) => {
+                    self.check_rustc_std_internal_symbol(attr_span, span, target)
                 }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -258,9 +271,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         ),
                         [sym::no_link, ..] => self.check_no_link(hir_id, attr, span, target),
                         [sym::debugger_visualizer, ..] => self.check_debugger_visualizer(attr, target),
-                        [sym::rustc_std_internal_symbol, ..] => {
-                            self.check_rustc_std_internal_symbol(attr, span, target)
-                        }
                         [sym::rustc_no_implicit_autorefs, ..] => {
                             self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
                         }
@@ -300,8 +310,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::rustc_has_incoherent_inherent_impls, ..] => {
                             self.check_has_incoherent_inherent_impls(attr, span, target)
                         }
-                        [sym::ffi_pure, ..] => self.check_ffi_pure(attr.span(), attrs, target),
-                        [sym::ffi_const, ..] => self.check_ffi_const(attr.span(), target),
                         [sym::link_ordinal, ..] => self.check_link_ordinal(attr, span, target),
                         [sym::link, ..] => self.check_link(hir_id, attr, span, target),
                         [sym::macro_use, ..] | [sym::macro_escape, ..] => {
@@ -346,7 +354,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::cfg_attr
                             | sym::cfg_trace
                             | sym::cfg_attr_trace
-                            | sym::export_stable // handled in `check_export`
                             // need to be fixed
                             | sym::cfi_encoding // FIXME(cfi_encoding)
                             | sym::pointee // FIXME(derive_coerce_pointee)
@@ -1507,7 +1514,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             self.dcx().emit_err(errors::FfiPureInvalidTarget { attr_span });
             return;
         }
-        if attrs.iter().any(|a| a.has_name(sym::ffi_const)) {
+        if find_attr!(attrs, AttributeKind::FfiConst(_)) {
             // `#[ffi_const]` functions cannot be `#[ffi_pure]`
             self.dcx().emit_err(errors::BothFfiConstAndPure { attr_span });
         }
@@ -2214,13 +2221,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_rustc_std_internal_symbol(&self, attr: &Attribute, span: Span, target: Target) {
+    fn check_rustc_std_internal_symbol(&self, attr_span: Span, span: Span, target: Target) {
         match target {
             Target::Fn | Target::Static | Target::ForeignFn | Target::ForeignStatic => {}
             _ => {
-                self.tcx
-                    .dcx()
-                    .emit_err(errors::RustcStdInternalSymbol { attr_span: attr.span(), span });
+                self.tcx.dcx().emit_err(errors::RustcStdInternalSymbol { attr_span, span });
             }
         }
     }

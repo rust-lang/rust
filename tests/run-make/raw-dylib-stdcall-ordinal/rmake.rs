@@ -10,7 +10,7 @@
 //@ only-windows
 // Reason: this test specifically exercises a 32bit Windows calling convention.
 
-use run_make_support::{cc, diff, is_msvc, run, rustc};
+use run_make_support::{cc, diff, is_windows_msvc, run, rustc};
 
 // NOTE: build_native_dynamic lib is not used, as the special `def` files
 // must be passed to the CC compiler.
@@ -18,7 +18,7 @@ use run_make_support::{cc, diff, is_msvc, run, rustc};
 fn main() {
     rustc().crate_type("lib").crate_name("raw_dylib_test").input("lib.rs").run();
     rustc().crate_type("bin").input("driver.rs").run();
-    if is_msvc() {
+    if is_windows_msvc() {
         cc().arg("-c").out_exe("exporter").input("exporter.c").run();
         cc().input("exporter.obj")
             .arg("exporter-msvc.def")

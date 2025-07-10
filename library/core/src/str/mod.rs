@@ -3072,7 +3072,8 @@ impl AsRef<[u8]> for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Default for &str {
+#[rustc_const_unstable(feature = "const_default", issue = "67792")]
+impl const Default for &str {
     /// Creates an empty str
     #[inline]
     fn default() -> Self {
@@ -3081,7 +3082,8 @@ impl Default for &str {
 }
 
 #[stable(feature = "default_mut_str", since = "1.28.0")]
-impl Default for &mut str {
+#[rustc_const_unstable(feature = "const_default", issue = "67792")]
+impl const Default for &mut str {
     /// Creates an empty mutable str
     #[inline]
     fn default() -> Self {

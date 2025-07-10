@@ -878,7 +878,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             confusing_method_to_numeric_cast::check(cx, expr, cast_from_expr, cast_from, cast_to);
             fn_to_numeric_cast::check(cx, expr, cast_from_expr, cast_from, cast_to);
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_from_expr, cast_from, cast_to);
-            zero_ptr::check(cx, expr, cast_from_expr, cast_to_hir);
+            zero_ptr::check(cx, expr, cast_from_expr, cast_to_hir, self.msrv);
 
             if self.msrv.meets(cx, msrvs::MANUAL_DANGLING_PTR) {
                 manual_dangling_ptr::check(cx, expr, cast_from_expr, cast_to_hir);

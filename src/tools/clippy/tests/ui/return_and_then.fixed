@@ -99,6 +99,92 @@ fn main() {
         };
         None
     }
+
+    #[expect(clippy::diverging_sub_expression)]
+    fn with_return_in_expression() -> Option<i32> {
+        _ = (
+            return {
+                let x = Some("")?;
+                if x.len() > 2 { Some(3) } else { None }
+            },
+            //~^ return_and_then
+            10,
+        );
+    }
+
+    fn inside_if(a: bool, i: Option<u32>) -> Option<u32> {
+        if a {
+            let i = i?;
+            if i > 3 { Some(i) } else { None }
+            //~^ return_and_then
+        } else {
+            Some(42)
+        }
+    }
+
+    fn inside_match(a: u32, i: Option<u32>) -> Option<u32> {
+        match a {
+            1 | 2 => {
+                let i = i?;
+                if i > 3 { Some(i) } else { None }
+            },
+            //~^ return_and_then
+            3 | 4 => Some(42),
+            _ => None,
+        }
+    }
+
+    fn inside_match_and_block_and_if(a: u32, i: Option<u32>) -> Option<u32> {
+        match a {
+            1 | 2 => {
+                let a = a * 3;
+                if a.is_multiple_of(2) {
+                    let i = i?;
+                    if i > 3 { Some(i) } else { None }
+                    //~^ return_and_then
+                } else {
+                    Some(10)
+                }
+            },
+            3 | 4 => Some(42),
+            _ => None,
+        }
+    }
+
+    #[expect(clippy::never_loop)]
+    fn with_break(i: Option<u32>) -> Option<u32> {
+        match i {
+            Some(1) => loop {
+                break ({
+                    let i = i?;
+                    if i > 3 { Some(i) } else { None }
+                });
+                //~^ return_and_then
+            },
+            Some(2) => 'foo: loop {
+                loop {
+                    break 'foo ({
+                        let i = i?;
+                        if i > 3 { Some(i) } else { None }
+                    });
+                    //~^ return_and_then
+                }
+            },
+            Some(3) => 'bar: {
+                break 'bar ({
+                    let i = i?;
+                    if i > 3 { Some(i) } else { None }
+                });
+                //~^ return_and_then
+            },
+            Some(4) => 'baz: loop {
+                _ = loop {
+                    break i.and_then(|i| if i > 3 { Some(i) } else { None });
+                };
+            },
+            _ => None,
+        }
+    }
 }
 
 fn gen_option(n: i32) -> Option<i32> {
@@ -123,4 +209,49 @@ mod issue14781 {
 
         Ok(())
     }
+}
+
+mod issue15111 {
+    #[derive(Debug)]
+    struct EvenOdd {
+        even: Option<u32>,
+        odd: Option<u32>,
+    }
+
+    impl EvenOdd {
+        fn new(i: Option<u32>) -> Self {
+            Self {
+                even: i.and_then(|i| if i.is_multiple_of(2) { Some(i) } else { None }),
+                odd: i.and_then(|i| if i.is_multiple_of(2) { None } else { Some(i) }),
+            }
+        }
+    }
+
+    fn with_if_let(i: Option<u32>) -> u32 {
+        if let Some(x) = i.and_then(|i| if i.is_multiple_of(2) { Some(i) } else { None }) {
+            x
+        } else {
+            std::hint::black_box(0)
+        }
+    }
+
+    fn main() {
+        let _ = EvenOdd::new(Some(2));
+    }
+}
+
+mod issue14927 {
+    use std::path::Path;
+    struct A {
+        pub func: fn(check: bool, a: &Path, b: Option<&Path>),
+    }
+    const MY_A: A = A {
+        func: |check, a, b| {
+            if check {
+                let _ = ();
+            } else if let Some(parent) = b.and_then(|p| p.parent()) {
+                let _ = ();
+            }
+        },
+    };
 }

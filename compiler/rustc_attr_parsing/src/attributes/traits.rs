@@ -12,7 +12,7 @@ pub(crate) struct SkipDuringMethodDispatchParser;
 
 impl<S: Stage> SingleAttributeParser<S> for SkipDuringMethodDispatchParser {
     const PATH: &[Symbol] = &[sym::rustc_skip_during_method_dispatch];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
     const TEMPLATE: AttributeTemplate = template!(List: "array, boxed_slice");

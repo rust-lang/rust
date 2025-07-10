@@ -489,6 +489,14 @@ impl PatCx for MatchCheckCtx<'_> {
     fn complexity_exceeded(&self) -> Result<(), Self::Error> {
         Err(())
     }
+
+    fn report_mixed_deref_pat_ctors(
+        &self,
+        _deref_pat: &DeconstructedPat<'_>,
+        _normal_pat: &DeconstructedPat<'_>,
+    ) {
+        // FIXME(deref_patterns): This could report an error comparable to the one in rustc.
+    }
 }
 
 impl fmt::Debug for MatchCheckCtx<'_> {

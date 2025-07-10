@@ -910,6 +910,13 @@ impl Step for LldWrapper {
 
         tool_result
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::build("LldWrapper", self.target_compiler.host)
+                .built_by(self.build_compiler),
+        )
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -1014,9 +1021,8 @@ impl Step for RustAnalyzerProcMacroSrv {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LlvmBitcodeLinker {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
-    pub extra_features: Vec<String>,
 }
 
 impl Step for LlvmBitcodeLinker {
@@ -1032,8 +1038,9 @@ impl Step for LlvmBitcodeLinker {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LlvmBitcodeLinker {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
-            extra_features: Vec::new(),
+            build_compiler: run
+                .builder
+                .compiler(run.builder.top_stage, run.builder.config.host_target),
             target: run.target,
         });
     }
@@ -1043,35 +1050,22 @@ impl Step for LlvmBitcodeLinker {
         instrument(level = "debug", name = "LlvmBitcodeLinker::run", skip_all)
     )]
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
-        let tool_result = builder.ensure(ToolBuild {
-            compiler: self.compiler,
+        builder.ensure(ToolBuild {
+            compiler: self.build_compiler,
             target: self.target,
             tool: "llvm-bitcode-linker",
             mode: Mode::ToolRustc,
             path: "src/tools/llvm-bitcode-linker",
             source_type: SourceType::InTree,
-            extra_features: self.extra_features,
+            extra_features: vec![],
             allow_features: "",
             cargo_args: Vec::new(),
             artifact_kind: ToolArtifactKind::Binary,
-        });
+        })
+    }
 
-        if tool_result.target_compiler.stage > 0 {
-            let bindir_self_contained = builder
-                .sysroot(tool_result.target_compiler)
-                .join(format!("lib/rustlib/{}/bin/self-contained", self.target.triple));
-            t!(fs::create_dir_all(&bindir_self_contained));
-            let bin_destination = bindir_self_contained
-                .join(exe("llvm-bitcode-linker", tool_result.target_compiler.host));
-            builder.copy_link(&tool_result.tool_path, &bin_destination, FileType::Executable);
-            ToolBuildResult {
-                tool_path: bin_destination,
-                build_compiler: tool_result.build_compiler,
-                target_compiler: tool_result.target_compiler,
-            }
-        } else {
-            tool_result
-        }
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::build("LlvmBitcodeLinker", self.target).built_by(self.build_compiler))
     }
 }
 

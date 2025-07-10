@@ -22,19 +22,7 @@ impl<'a> Part<'a> {
     pub fn len(&self) -> usize {
         match *self {
             Part::Zero(nzeroes) => nzeroes,
-            Part::Num(v) => {
-                if v < 1_000 {
-                    if v < 10 {
-                        1
-                    } else if v < 100 {
-                        2
-                    } else {
-                        3
-                    }
-                } else {
-                    if v < 10_000 { 4 } else { 5 }
-                }
-            }
+            Part::Num(v) => v.checked_ilog10().unwrap_or_default() as usize + 1,
             Part::Copy(buf) => buf.len(),
         }
     }
@@ -82,21 +70,14 @@ pub struct Formatted<'a> {
 impl<'a> Formatted<'a> {
     /// Returns the exact byte length of combined formatted result.
     pub fn len(&self) -> usize {
-        let mut len = self.sign.len();
-        for part in self.parts {
-            len += part.len();
-        }
-        len
+        self.sign.len() + self.parts.iter().map(|part| part.len()).sum::<usize>()
     }
 
     /// Writes all formatted parts into the supplied buffer.
     /// Returns the number of written bytes, or `None` if the buffer is not enough.
     /// (It may still leave partially written bytes in the buffer; do not rely on that.)
     pub fn write(&self, out: &mut [u8]) -> Option<usize> {
-        if out.len() < self.sign.len() {
-            return None;
-        }
-        out[..self.sign.len()].copy_from_slice(self.sign.as_bytes());
+        out.get_mut(..self.sign.len())?.copy_from_slice(self.sign.as_bytes());
 
         let mut written = self.sign.len();
         for part in self.parts {

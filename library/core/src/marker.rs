@@ -210,9 +210,14 @@ pub trait PointeeSized {
 ///   - `Trait` is dyn-compatible[^1].
 ///   - The type is sized.
 ///   - The type outlives `'a`.
+/// - Trait objects `dyn TraitA + AutoA... + 'a` implement `Unsize<dyn TraitB + AutoB... + 'b>`
+///    if all of these conditions are met:
+///   - `TraitB` is a supertrait of `TraitA`.
+///   - `AutoB...` is a subset of `AutoA...`.
+///   - `'a` outlives `'b`.
 /// - Structs `Foo<..., T1, ..., Tn, ...>` implement `Unsize<Foo<..., U1, ..., Un, ...>>`
-/// where any number of (type and const) parameters may be changed if all of these conditions
-/// are met:
+///   where any number of (type and const) parameters may be changed if all of these conditions
+///   are met:
 ///   - Only the last field of `Foo` has a type involving the parameters `T1`, ..., `Tn`.
 ///   - All other parameters of the struct are equal.
 ///   - `Field<T1, ..., Tn>: Unsize<Field<U1, ..., Un>>`, where `Field<...>` stands for the actual
@@ -858,7 +863,8 @@ impl<T: PointeeSized> Clone for PhantomData<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> Default for PhantomData<T> {
+#[rustc_const_unstable(feature = "const_default", issue = "67792")]
+impl<T: PointeeSized> const Default for PhantomData<T> {
     fn default() -> Self {
         Self
     }

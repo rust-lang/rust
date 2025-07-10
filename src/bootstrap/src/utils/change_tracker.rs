@@ -461,4 +461,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "`download-rustc` has been temporarily disabled for the library profile due to implementation bugs (see #142505).",
     },
+    ChangeInfo {
+        change_id: 143398,
+        severity: ChangeSeverity::Info,
+        summary: "The --extra-checks flag now supports prefixing any check with `auto:` to only run it if relevant files are modified",
+    },
 ];

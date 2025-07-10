@@ -6,10 +6,10 @@
 // checks that linker arguments remain intact and in the order they were originally passed in.
 // See https://github.com/rust-lang/rust/pull/70665
 
-use run_make_support::{is_msvc, rustc};
+use run_make_support::{is_windows_msvc, rustc};
 
 fn main() {
-    let linker = if is_msvc() { "msvc" } else { "ld" };
+    let linker = if is_windows_msvc() { "msvc" } else { "ld" };
 
     rustc()
         .input("empty.rs")

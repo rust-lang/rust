@@ -15,9 +15,9 @@ use std::{fmt, ptr};
 use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_middle::bug;
 use rustc_middle::mir::display_allocation;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::{bug, throw_ub_format};
 use tracing::{debug, instrument, trace};
 
 use super::{
@@ -346,6 +346,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         kind = "vtable",
                     )
                 }
+                Some(GlobalAlloc::TypeId { .. }) => {
+                    err_ub_custom!(
+                        fluent::const_eval_invalid_dealloc,
+                        alloc_id = alloc_id,
+                        kind = "typeid",
+                    )
+                }
                 Some(GlobalAlloc::Static(..) | GlobalAlloc::Memory(..)) => {
                     err_ub_custom!(
                         fluent::const_eval_invalid_dealloc,
@@ -615,6 +622,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             Some(GlobalAlloc::Function { .. }) => throw_ub!(DerefFunctionPointer(id)),
             Some(GlobalAlloc::VTable(..)) => throw_ub!(DerefVTablePointer(id)),
+            Some(GlobalAlloc::TypeId { .. }) => throw_ub!(DerefTypeIdPointer(id)),
             None => throw_ub!(PointerUseAfterFree(id, CheckInAllocMsg::MemoryAccess)),
             Some(GlobalAlloc::Static(def_id)) => {
                 assert!(self.tcx.is_static(def_id));
@@ -896,7 +904,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let (size, align) = global_alloc.size_and_align(*self.tcx, self.typing_env);
             let mutbl = global_alloc.mutability(*self.tcx, self.typing_env);
             let kind = match global_alloc {
-                GlobalAlloc::Static { .. } | GlobalAlloc::Memory { .. } => AllocKind::LiveData,
+                GlobalAlloc::TypeId { .. }
+                | GlobalAlloc::Static { .. }
+                | GlobalAlloc::Memory { .. } => AllocKind::LiveData,
                 GlobalAlloc::Function { .. } => bug!("We already checked function pointers above"),
                 GlobalAlloc::VTable { .. } => AllocKind::VTable,
             };
@@ -934,6 +944,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 _ => None,
             }
         }
+    }
+
+    /// Takes a pointer that is the first chunk of a `TypeId` and return the type that its
+    /// provenance refers to, as well as the segment of the hash that this pointer covers.
+    pub fn get_ptr_type_id(
+        &self,
+        ptr: Pointer<Option<M::Provenance>>,
+    ) -> InterpResult<'tcx, (Ty<'tcx>, Size)> {
+        let (alloc_id, offset, _meta) = self.ptr_get_alloc_id(ptr, 0)?;
+        let GlobalAlloc::TypeId { ty } = self.tcx.global_alloc(alloc_id) else {
+            throw_ub_format!("type_id_eq: `TypeId` provenance is not a type id")
+        };
+        interp_ok((ty, offset))
     }
 
     pub fn get_ptr_fn(
@@ -1196,6 +1219,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> std::fmt::Debug for DumpAllocs<'a, 'tcx, M> {
                         }
                         Some(GlobalAlloc::VTable(ty, dyn_ty)) => {
                             write!(fmt, " (vtable: impl {dyn_ty} for {ty})")?;
+                        }
+                        Some(GlobalAlloc::TypeId { ty }) => {
+                            write!(fmt, " (typeid for {ty})")?;
                         }
                         Some(GlobalAlloc::Static(did)) => {
                             write!(fmt, " (static: {})", self.ecx.tcx.def_path_str(did))?;
