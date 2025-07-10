@@ -2,7 +2,10 @@ monomorphize_abi_error_disabled_vector_type =
   this function {$is_call ->
     [true] call
     *[false] definition
-  } uses SIMD vector type `{$ty}` which (with the chosen ABI) requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
+  } uses {$is_scalable ->
+    [true] scalable
+    *[false] SIMD
+  } vector type `{$ty}` which (with the chosen ABI) requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
     [true] {" "}in the caller
     *[false] {""}
   }
