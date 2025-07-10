@@ -89,7 +89,7 @@ pub fn simd_test(
     for feature in target_features {
         let q = quote_spanned! {
             proc_macro2::Span::call_site() =>
-            if !#macro_test!(#feature) {
+            if !::std::arch::#macro_test!(#feature) {
                 missing_features.push(#feature);
             }
         };

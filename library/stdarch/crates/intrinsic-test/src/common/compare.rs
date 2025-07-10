@@ -48,7 +48,7 @@ pub fn compare_outputs(
                 return Some(FailureReason::RunRust(intrinsic_name.clone()));
             }
 
-            info!("Comparing intrinsic: {}", intrinsic_name);
+            info!("Comparing intrinsic: {intrinsic_name}");
 
             let c = std::str::from_utf8(&c.stdout)
                 .unwrap()

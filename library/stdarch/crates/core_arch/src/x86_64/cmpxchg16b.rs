@@ -48,7 +48,7 @@ pub unsafe fn cmpxchg16b(
     success: Ordering,
     failure: Ordering,
 ) -> u128 {
-    debug_assert!(dst as usize % 16 == 0);
+    debug_assert!(dst.addr().is_multiple_of(16));
 
     let res = crate::sync::atomic::atomic_compare_exchange(dst, old, new, success, failure);
     res.unwrap_or_else(|x| x)
