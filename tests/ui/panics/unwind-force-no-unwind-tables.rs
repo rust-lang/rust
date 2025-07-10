@@ -1,3 +1,7 @@
+//! This test checks that Rust's unwinding mechanism correctly executes `Drop`
+//! implementations during stack unwinding, even when unwind tables (`uwtable`)
+//! are explicitly disabled via `-C force-unwind-tables=n`.
+
 //@ run-pass
 //@ needs-unwind
 //@ ignore-windows target requires uwtable
@@ -26,9 +30,12 @@ fn increase(count: &mut u8) {
 
 fn main() {
     let mut count = 0;
-    assert!(panic::catch_unwind(AssertUnwindSafe(
-        #[inline(never)]
-        || increase(&mut count)
-    )).is_err());
+    assert!(
+        panic::catch_unwind(AssertUnwindSafe(
+            #[inline(never)]
+            || increase(&mut count)
+        ))
+        .is_err()
+    );
     assert_eq!(count, 1);
 }

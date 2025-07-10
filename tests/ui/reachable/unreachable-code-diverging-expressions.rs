@@ -26,9 +26,13 @@ fn call_id_3() {
 
 fn ret_guard() {
     match 2 {
-      x if (return) => { x; }
-      x if let true = return => { x; }
-      _ => {}
+        x if (return) => {
+            x;
+        }
+        x if let true = return => {
+            x;
+        }
+        _ => {}
     }
 }
 

@@ -1,3 +1,5 @@
+//! Checks complex `use` syntax and availability of types across nested modules.
+
 //@ run-pass
 
 mod a {
