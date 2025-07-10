@@ -47,19 +47,6 @@ const NAN_MASK2: u16 = 0x0155;
 // the intrinsics.
 
 #[test]
-fn test_is_infinite() {
-    let nan: f16 = f16::NAN;
-    let inf: f16 = f16::INFINITY;
-    let neg_inf: f16 = f16::NEG_INFINITY;
-    assert!(!nan.is_infinite());
-    assert!(inf.is_infinite());
-    assert!(neg_inf.is_infinite());
-    assert!(!0.0f16.is_infinite());
-    assert!(!42.8f16.is_infinite());
-    assert!(!(-109.2f16).is_infinite());
-}
-
-#[test]
 fn test_is_finite() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
