@@ -5,13 +5,10 @@ use std::intrinsics::const_eval_select;
 
 const fn not_fn_items() {
     const_eval_select((), || {}, || {});
-    //~^ ERROR this argument must be a function item
-    //~| ERROR this argument must be a function item
+    //~^ ERROR const FnOnce()` is not satisfied
     const_eval_select((), 42, 0xDEADBEEF);
     //~^ ERROR expected a `FnOnce()` closure
     //~| ERROR expected a `FnOnce()` closure
-    //~| ERROR this argument must be a function item
-    //~| ERROR this argument must be a function item
 }
 
 const fn foo(n: i32) -> i32 {
@@ -40,7 +37,7 @@ const fn args_ty_mismatch() {
 
 const fn non_const_fn() {
     const_eval_select((1,), bar, bar);
-    //~^ ERROR this argument must be a `const fn`
+    //~^ ERROR the trait bound `fn(i32) -> bool {bar}: const FnOnce(i32)` is not satisfied
 }
 
 fn main() {}

@@ -1,5 +1,6 @@
-//@ known-bug: #110395
-// FIXME check-pass
+//@ check-pass
+//@ revisions: next old
+//@[next] compile-flags: -Znext-solver
 
 #![feature(const_trait_impl)]
 
