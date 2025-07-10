@@ -2,6 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::source::SpanRangeExt;
 use hir::def_id::DefId;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -103,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
         // `std::<integer>::<CONST>` check
-        let (span, sugg, msg) = if let ExprKind::Path(qpath) = &expr.kind
+        let (sugg, msg) = if let ExprKind::Path(qpath) = &expr.kind
             && let QPath::Resolved(None, path) = qpath
             && let Some(def_id) = path.res.opt_def_id()
             && is_numeric_const(cx, def_id)
@@ -113,8 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
             && !is_numeric_const_path_canonical(path, [*mod_name, *name])
         {
             (
-                expr.span,
-                format!("{mod_name}::{name}"),
+                vec![(expr.span, format!("{mod_name}::{name}"))],
                 "usage of a legacy numeric constant",
             )
         // `<integer>::xxx_value` check
@@ -124,13 +124,24 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
             && let Some(def_id) = cx.qpath_res(qpath, func.hir_id).opt_def_id()
             && is_integer_method(cx, def_id)
         {
-            let name = last_segment.ident.name.as_str();
-            let mod_name = clippy_utils::source::snippet(cx, ty.span, "_");
-            (
-                expr.span,
-                format!("{}::{}", mod_name, name[..=2].to_ascii_uppercase()),
-                "usage of a legacy numeric method",
-            )
+            let mut sugg = vec![
+                // Replace the function name up to the end by the constant name
+                (
+                    last_segment.ident.span.to(expr.span.shrink_to_hi()),
+                    last_segment.ident.name.as_str()[..=2].to_ascii_uppercase(),
+                ),
+            ];
+            let before_span = expr.span.shrink_to_lo().until(ty.span);
+            if !before_span.is_empty() {
+                // Remove everything before the type name
+                sugg.push((before_span, String::new()));
+            }
+            // Use `::` between the type name and the constant
+            let between_span = ty.span.shrink_to_hi().until(last_segment.ident.span);
+            if !between_span.check_source_text(cx, |s| s == "::") {
+                sugg.push((between_span, String::from("::")));
+            }
+            (sugg, "usage of a legacy numeric method")
         } else {
             return;
         };
@@ -139,9 +150,8 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
             && self.msrv.meets(cx, msrvs::NUMERIC_ASSOCIATED_CONSTANTS)
             && !is_from_proc_macro(cx, expr)
         {
-            span_lint_and_then(cx, LEGACY_NUMERIC_CONSTANTS, span, msg, |diag| {
-                diag.span_suggestion_verbose(
-                    span,
+            span_lint_and_then(cx, LEGACY_NUMERIC_CONSTANTS, expr.span, msg, |diag| {
+                diag.multipart_suggestion_verbose(
                     "use the associated constant instead",
                     sugg,
                     Applicability::MaybeIncorrect,
