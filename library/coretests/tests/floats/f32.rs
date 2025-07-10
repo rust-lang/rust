@@ -31,23 +31,6 @@ const NAN_MASK2: u32 = 0x0055_5555;
 const APPROX_DELTA: f32 = if cfg!(miri) { 1e-4 } else { 1e-6 };
 
 #[test]
-fn test_is_normal() {
-    let nan: f32 = f32::NAN;
-    let inf: f32 = f32::INFINITY;
-    let neg_inf: f32 = f32::NEG_INFINITY;
-    let zero: f32 = 0.0f32;
-    let neg_zero: f32 = -0.0;
-    assert!(!nan.is_normal());
-    assert!(!inf.is_normal());
-    assert!(!neg_inf.is_normal());
-    assert!(!zero.is_normal());
-    assert!(!neg_zero.is_normal());
-    assert!(1f32.is_normal());
-    assert!(1e-37f32.is_normal());
-    assert!(!1e-38f32.is_normal());
-}
-
-#[test]
 fn test_classify() {
     let nan: f32 = f32::NAN;
     let inf: f32 = f32::INFINITY;

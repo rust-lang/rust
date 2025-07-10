@@ -47,23 +47,6 @@ const NAN_MASK2: u16 = 0x0155;
 // the intrinsics.
 
 #[test]
-fn test_is_normal() {
-    let nan: f16 = f16::NAN;
-    let inf: f16 = f16::INFINITY;
-    let neg_inf: f16 = f16::NEG_INFINITY;
-    let zero: f16 = 0.0f16;
-    let neg_zero: f16 = -0.0;
-    assert!(!nan.is_normal());
-    assert!(!inf.is_normal());
-    assert!(!neg_inf.is_normal());
-    assert!(!zero.is_normal());
-    assert!(!neg_zero.is_normal());
-    assert!(1f16.is_normal());
-    assert!(1e-4f16.is_normal());
-    assert!(!1e-5f16.is_normal());
-}
-
-#[test]
 fn test_classify() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;

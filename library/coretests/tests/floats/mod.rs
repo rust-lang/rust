@@ -1,27 +1,40 @@
 use std::num::FpCategory as Fp;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
-/// Set the default tolerance for float comparison based on the type.
-trait Approx {
-    const LIM: Self;
+trait TestableFloat {
+    /// Set the default tolerance for float comparison based on the type.
+    const APPROX: Self;
+    const MIN_POSITIVE_NORMAL: Self;
+    const MAX_SUBNORMAL: Self;
 }
 
-impl Approx for f16 {
-    const LIM: Self = 1e-3;
+impl TestableFloat for f16 {
+    const APPROX: Self = 1e-3;
+    const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
+    const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
 }
-impl Approx for f32 {
-    const LIM: Self = 1e-6;
+
+impl TestableFloat for f32 {
+    const APPROX: Self = 1e-6;
+    const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
+    const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
 }
-impl Approx for f64 {
-    const LIM: Self = 1e-6;
+
+impl TestableFloat for f64 {
+    const APPROX: Self = 1e-6;
+    const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
+    const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
 }
-impl Approx for f128 {
-    const LIM: Self = 1e-9;
+
+impl TestableFloat for f128 {
+    const APPROX: Self = 1e-9;
+    const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
+    const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
 }
 
 /// Determine the tolerance for values of the argument type.
-const fn lim_for_ty<T: Approx + Copy>(_x: T) -> T {
-    T::LIM
+const fn lim_for_ty<T: TestableFloat + Copy>(_x: T) -> T {
+    T::APPROX
 }
 
 // We have runtime ("rt") and const versions of these macros.
@@ -186,7 +199,7 @@ macro_rules! float_test {
             $( $( #[$const_meta] )+ )?
             mod const_ {
                 #[allow(unused)]
-                use super::Approx;
+                use super::TestableFloat;
                 #[allow(unused)]
                 use std::num::FpCategory as Fp;
                 #[allow(unused)]
@@ -443,6 +456,30 @@ float_test! {
         assert!(zero.is_finite());
         assert!(pos.is_finite());
         assert!(neg.is_finite());
+    }
+}
+
+float_test! {
+    name: is_normal,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        let zero: Float = 0.0;
+        let neg_zero: Float = -0.0;
+        let one : Float = 1.0;
+        assert!(!nan.is_normal());
+        assert!(!inf.is_normal());
+        assert!(!neg_inf.is_normal());
+        assert!(!zero.is_normal());
+        assert!(!neg_zero.is_normal());
+        assert!(one.is_normal());
+        assert!(Float::MIN_POSITIVE_NORMAL.is_normal());
+        assert!(!Float::MAX_SUBNORMAL.is_normal());
     }
 }
 

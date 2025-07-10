@@ -41,23 +41,6 @@ const NAN_MASK2: u128 = 0x00005555555555555555555555555555;
 // the intrinsics.
 
 #[test]
-fn test_is_normal() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    let zero: f128 = 0.0f128;
-    let neg_zero: f128 = -0.0;
-    assert!(!nan.is_normal());
-    assert!(!inf.is_normal());
-    assert!(!neg_inf.is_normal());
-    assert!(!zero.is_normal());
-    assert!(!neg_zero.is_normal());
-    assert!(1f128.is_normal());
-    assert!(1e-4931f128.is_normal());
-    assert!(!1e-4932f128.is_normal());
-}
-
-#[test]
 fn test_classify() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;
