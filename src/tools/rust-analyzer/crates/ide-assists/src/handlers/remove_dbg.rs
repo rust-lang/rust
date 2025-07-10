@@ -1,8 +1,9 @@
 use itertools::Itertools;
 use syntax::{
-    Edition, NodeOrToken, SyntaxElement, T, TextRange, TextSize,
-    ast::{self, AstNode, AstToken, make},
-    match_ast, ted,
+    Edition, NodeOrToken, SyntaxNode, SyntaxToken, T,
+    ast::{self, AstNode, make},
+    match_ast,
+    syntax_editor::{Position, SyntaxEditor},
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -40,21 +41,23 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
 
     let replacements =
         macro_calls.into_iter().filter_map(compute_dbg_replacement).collect::<Vec<_>>();
-
-    acc.add(
-        AssistId::quick_fix("remove_dbg"),
-        "Remove dbg!()",
-        replacements.iter().map(|&(range, _)| range).reduce(|acc, range| acc.cover(range))?,
-        |builder| {
-            for (range, expr) in replacements {
-                if let Some(expr) = expr {
-                    builder.replace(range, expr.to_string());
-                } else {
-                    builder.delete(range);
-                }
+    let target = replacements
+        .iter()
+        .flat_map(|(node_or_token, _)| node_or_token.iter())
+        .map(|t| t.text_range())
+        .reduce(|acc, range| acc.cover(range))?;
+    acc.add(AssistId::quick_fix("remove_dbg"), "Remove dbg!()", target, |builder| {
+        let mut editor = builder.make_editor(ctx.source_file().syntax());
+        for (range, expr) in replacements {
+            if let Some(expr) = expr {
+                editor.insert(Position::before(range[0].clone()), expr.syntax().clone_for_update());
             }
-        },
-    )
+            for node_or_token in range {
+                editor.delete(node_or_token);
+            }
+        }
+        builder.add_file_edits(ctx.vfs_file_id(), editor);
+    })
 }
 
 /// Returns `None` when either
@@ -63,7 +66,9 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
 /// - (`macro_expr` has no parent - is that possible?)
 ///
 /// Returns `Some(_, None)` when the macro call should just be removed.
-fn compute_dbg_replacement(macro_expr: ast::MacroExpr) -> Option<(TextRange, Option<ast::Expr>)> {
+fn compute_dbg_replacement(
+    macro_expr: ast::MacroExpr,
+) -> Option<(Vec<NodeOrToken<SyntaxNode, SyntaxToken>>, Option<ast::Expr>)> {
     let macro_call = macro_expr.macro_call()?;
     let tt = macro_call.token_tree()?;
     let r_delim = NodeOrToken::Token(tt.right_delimiter_token()?);
@@ -88,22 +93,22 @@ fn compute_dbg_replacement(macro_expr: ast::MacroExpr) -> Option<(TextRange, Opt
             match_ast! {
                 match parent {
                     ast::StmtList(_) => {
-                        let range = macro_expr.syntax().text_range();
-                        let range = match whitespace_start(macro_expr.syntax().prev_sibling_or_token()) {
-                            Some(start) => range.cover_offset(start),
-                            None => range,
-                        };
-                        (range, None)
+                        let mut replace = vec![macro_expr.syntax().clone().into()];
+                        if let Some(prev_sibling) = macro_expr.syntax().prev_sibling_or_token()
+                            && prev_sibling.kind() == syntax::SyntaxKind::WHITESPACE {
+                                replace.push(prev_sibling);
+                        }
+                        (replace, None)
                     },
                     ast::ExprStmt(it) => {
-                        let range = it.syntax().text_range();
-                        let range = match whitespace_start(it.syntax().prev_sibling_or_token()) {
-                            Some(start) => range.cover_offset(start),
-                            None => range,
-                        };
-                        (range, None)
+                        let mut replace = vec![it.syntax().clone().into()];
+                        if let Some(prev_sibling) = it.syntax().prev_sibling_or_token()
+                            && prev_sibling.kind() == syntax::SyntaxKind::WHITESPACE {
+                                replace.push(prev_sibling);
+                        }
+                        (replace, None)
                     },
-                    _ => (macro_call.syntax().text_range(), Some(make::ext::expr_unit())),
+                    _ => (vec![macro_call.syntax().clone().into()], Some(make::ext::expr_unit())),
                 }
             }
         }
@@ -147,13 +152,13 @@ fn compute_dbg_replacement(macro_expr: ast::MacroExpr) -> Option<(TextRange, Opt
             };
             let expr = replace_nested_dbgs(expr.clone());
             let expr = if wrap { make::expr_paren(expr).into() } else { expr.clone_subtree() };
-            (macro_call.syntax().text_range(), Some(expr))
+            (vec![macro_call.syntax().clone().into()], Some(expr))
         }
         // dbg!(expr0, expr1, ...)
         exprs => {
             let exprs = exprs.iter().cloned().map(replace_nested_dbgs);
             let expr = make::expr_tuple(exprs);
-            (macro_call.syntax().text_range(), Some(expr.into()))
+            (vec![macro_call.syntax().clone().into()], Some(expr.into()))
         }
     })
 }
@@ -178,8 +183,8 @@ fn replace_nested_dbgs(expanded: ast::Expr) -> ast::Expr {
         return replaced;
     }
 
-    let expanded = expanded.clone_for_update();
-
+    let expanded = expanded.clone_subtree();
+    let mut editor = SyntaxEditor::new(expanded.syntax().clone());
     // We need to collect to avoid mutation during traversal.
     let macro_exprs: Vec<_> =
         expanded.syntax().descendants().filter_map(ast::MacroExpr::cast).collect();
@@ -191,17 +196,13 @@ fn replace_nested_dbgs(expanded: ast::Expr) -> ast::Expr {
         };
 
         if let Some(expr) = expr_opt {
-            ted::replace(mac.syntax(), expr.syntax().clone_for_update());
+            editor.replace(mac.syntax(), expr.syntax().clone_for_update());
         } else {
-            ted::remove(mac.syntax());
+            editor.delete(mac.syntax());
         }
     }
-
-    expanded
-}
-
-fn whitespace_start(it: Option<SyntaxElement>) -> Option<TextSize> {
-    Some(it?.into_token().and_then(ast::Whitespace::cast)?.syntax().text_range().start())
+    let expanded_syntax = editor.finish().new_root().clone();
+    ast::Expr::cast(expanded_syntax).unwrap()
 }
 
 #[cfg(test)]
