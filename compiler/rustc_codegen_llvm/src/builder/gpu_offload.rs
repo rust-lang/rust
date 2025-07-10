@@ -248,7 +248,7 @@ fn gen_define_handling<'ll>(
     o_types
 }
 
-fn declare_offload_fn<'ll>(
+pub(crate) fn declare_offload_fn<'ll>(
     cx: &'ll SimpleCx<'_>,
     name: &str,
     ty: &'ll llvm::Type,
