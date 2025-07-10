@@ -60,7 +60,7 @@ fn issue9956() {
     //~^ redundant_closure_call
 
     // immediately calling only one closure, so we can't remove the other ones
-    let a = (|| || 123);
+    let a = || || 123;
     //~^ redundant_closure_call
     dbg!(a()());
 
@@ -143,4 +143,16 @@ fn issue_12358() {
     // The lint would suggest to alter the line below to `make_closure!(x)`, which is semantically
     // different.
     make_closure!(x)();
+}
+
+#[rustfmt::skip]
+fn issue_9583() {
+    Some(true) == Some(true);
+     //~^ redundant_closure_call
+    Some(true) == Some(true);
+    //~^ redundant_closure_call
+    Some(if 1 > 2 {1} else {2}) == Some(2);
+    //~^ redundant_closure_call
+    Some( 1 > 2 ) == Some(true);
+    //~^ redundant_closure_call
 }

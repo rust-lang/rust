@@ -146,5 +146,99 @@ LL +                 if x.len() > 2 { Some(3) } else { None }
 LL ~             };
    |
 
-error: aborting due to 10 previous errors
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:97:20
+   |
+LL |             return Some("").and_then(|x| if x.len() > 2 { Some(3) } else { None }),
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~             return {
+LL +                 let x = Some("")?;
+LL +                 if x.len() > 2 { Some(3) } else { None }
+LL ~             },
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:105:13
+   |
+LL |             i.and_then(|i| if i > 3 { Some(i) } else { None })
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~             let i = i?;
+LL +             if i > 3 { Some(i) } else { None }
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:114:22
+   |
+LL |             1 | 2 => i.and_then(|i| if i > 3 { Some(i) } else { None }),
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~             1 | 2 => {
+LL +                 let i = i?;
+LL +                 if i > 3 { Some(i) } else { None }
+LL ~             },
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:126:21
+   |
+LL |                     i.and_then(|i| if i > 3 { Some(i) } else { None })
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~                     let i = i?;
+LL +                     if i > 3 { Some(i) } else { None }
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:141:23
+   |
+LL |                 break i.and_then(|i| if i > 3 { Some(i) } else { None });
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~                 break ({
+LL +                     let i = i?;
+LL +                     if i > 3 { Some(i) } else { None }
+LL ~                 });
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:146:32
+   |
+LL |                     break 'foo i.and_then(|i| if i > 3 { Some(i) } else { None });
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~                     break 'foo ({
+LL +                         let i = i?;
+LL +                         if i > 3 { Some(i) } else { None }
+LL ~                     });
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:151:28
+   |
+LL |                 break 'bar i.and_then(|i| if i > 3 { Some(i) } else { None });
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~                 break 'bar ({
+LL +                     let i = i?;
+LL +                     if i > 3 { Some(i) } else { None }
+LL ~                 });
+   |
+
+error: aborting due to 17 previous errors
 
