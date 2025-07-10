@@ -44,7 +44,7 @@ implement a new tool feature or test, that should happen in one collective rustc
     * `miri` ([sync guide](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#advanced-topic-syncing-with-the-rustc-repo))
     * `rust-analyzer` ([sync script](https://github.com/rust-lang/rust-analyzer/blob/2e13684be123eca7181aa48e043e185d8044a84a/xtask/src/release.rs#L147))
     * `rustc-dev-guide` ([josh sync](#synchronizing-a-josh-subtree))
-    * `compiler-builtins`
+    * `compiler-builtins` ([josh sync](#synchronizing-a-josh-subtree))
     * `stdarch` ([josh sync](#synchronizing-a-josh-subtree))
 
 ### Josh subtrees
@@ -56,6 +56,7 @@ The [josh] tool is an alternative to git subtrees, which manages git history in 
 We use a dedicated tool called [`rustc-josh-sync`][josh-sync] for performing Josh subtree updates.
 Currently, we are migrating Josh repositories to it. So far, it is used in:
 
+- compiler-builtins
 - rustc-dev-guide
 - stdarch
 
