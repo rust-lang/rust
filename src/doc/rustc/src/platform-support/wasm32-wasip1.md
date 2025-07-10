@@ -42,6 +42,7 @@ said since when this document was last updated those interested in maintaining
 this target are:
 
 [@alexcrichton](https://github.com/alexcrichton)
+[@loganek](https://github.com/loganek)
 
 ## Requirements
 
