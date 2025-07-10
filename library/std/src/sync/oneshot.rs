@@ -24,18 +24,15 @@ pub struct Sender<T> {
     inner: mpmc::Sender<T>,
 }
 
-/// The sending end of the channel can be sent between threads, as long as it is not used to
-/// receive non-sendable things.
+/// SAFETY: Since the only methods in which synchronization must occur take full ownership of the
+/// [`Sender`], it is perfectly safe to share a &[`Sender`] between threads (as it is effectively
+/// useless without full ownership).
 #[unstable(feature = "oneshot_channel", issue = "143674")]
-unsafe impl<T: Send> Send for Sender<T> {}
-
-/// FIXME: Try to boil down <https://github.com/rust-lang/rust/pull/111087> into a doc comment.
-#[unstable(feature = "oneshot_channel", issue = "143674")]
-unsafe impl<T: Send> Sync for Sender<T> {}
+unsafe impl<T> Sync for Sender<T> {}
 
 impl<T> Sender<T> {
     /// Attempts to send a value through this channel. This can only fail if the corresponding
-    /// `Receiver<T>` has been dropped.
+    /// [`Receiver<T>`] has been dropped.
     ///
     /// This method is non-blocking (wait-free).
     #[unstable(feature = "oneshot_channel", issue = "143674")]
@@ -62,19 +59,16 @@ pub struct Receiver<T> {
     inner: mpmc::Receiver<T>,
 }
 
-/// The receiving end of the channel can be sent between threads, as long as it is not used to
-/// receive non-sendable things.
+/// SAFETY: Since the only methods in which synchronization must occur take full ownership of the
+/// [`Receiver`], it is perfectly safe to share a &[`Receiver`] between threads (as it is unable to
+/// receive any values without full ownership).
 #[unstable(feature = "oneshot_channel", issue = "143674")]
-unsafe impl<T: Send> Send for Receiver<T> {}
-
-/// FIXME: Why is `mpsc::Receiver` !Sync but `mpmc::Receiver` is? Write this in a doc comment.
-#[unstable(feature = "oneshot_channel", issue = "143674")]
-impl<T> !Sync for Receiver<T> {}
+unsafe impl<T> Sync for Receiver<T> {}
 
 impl<T> Receiver<T> {
     /// Receives the value from the sending end, blocking the calling thread until it gets it.
     ///
-    /// Can only fail if the corresponding `Sender<T>` has been dropped.
+    /// Can only fail if the corresponding [`Sender<T>`] has been dropped.
     #[unstable(feature = "oneshot_channel", issue = "143674")]
     pub fn recv(self) -> Result<T, RecvError> {
         self.inner.recv()
