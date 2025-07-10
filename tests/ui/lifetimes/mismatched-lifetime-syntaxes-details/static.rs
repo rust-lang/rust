@@ -14,26 +14,26 @@ impl Trait for () {
 }
 
 fn ampersand(x: &'static u8) -> &u8 {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR eliding a lifetime that's named elsewhere is confusing
     x
 }
 
 struct Brackets<'a>(&'a u8);
 
 fn brackets(x: &'static u8) -> Brackets {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR hiding a lifetime that's named elsewhere is confusing
     Brackets(x)
 }
 
 struct Comma<'a, T>(&'a T);
 
 fn comma(x: &'static u8) -> Comma<u8> {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR hiding a lifetime that's named elsewhere is confusing
     Comma(x)
 }
 
 fn underscore(x: &'static u8) -> &'_ u8 {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR eliding a lifetime that's named elsewhere is confusing
     x
 }
 

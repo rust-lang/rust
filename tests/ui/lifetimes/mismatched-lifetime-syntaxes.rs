@@ -5,109 +5,111 @@ struct ContainsLifetime<'a>(&'a u8);
 
 struct S(u8);
 
+// ref to ref
+
 fn explicit_bound_ref_to_implicit_ref<'a>(v: &'a u8) -> &u8 {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR eliding a lifetime that's named elsewhere is confusing
     v
 }
 
 fn explicit_bound_ref_to_explicit_anonymous_ref<'a>(v: &'a u8) -> &'_ u8 {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR eliding a lifetime that's named elsewhere is confusing
     v
 }
 
-// ---
+// path to path
 
 fn implicit_path_to_explicit_anonymous_path(v: ContainsLifetime) -> ContainsLifetime<'_> {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR hiding a lifetime that's elided elsewhere is confusing
     v
 }
 
 fn explicit_anonymous_path_to_implicit_path(v: ContainsLifetime<'_>) -> ContainsLifetime {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR hiding a lifetime that's elided elsewhere is confusing
     v
 }
 
 fn explicit_bound_path_to_implicit_path<'a>(v: ContainsLifetime<'a>) -> ContainsLifetime {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR hiding a lifetime that's named elsewhere is confusing
     v
 }
 
 fn explicit_bound_path_to_explicit_anonymous_path<'a>(
     v: ContainsLifetime<'a>,
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR eliding a lifetime that's named elsewhere is confusing
 ) -> ContainsLifetime<'_> {
     v
 }
 
-// ---
+// ref to path
 
 fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR hiding a lifetime that's elided elsewhere is confusing
     ContainsLifetime(v)
 }
 
 fn explicit_anonymous_ref_to_implicit_path(v: &'_ u8) -> ContainsLifetime {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR hiding a lifetime that's elided elsewhere is confusing
     ContainsLifetime(v)
 }
 
 fn explicit_bound_ref_to_implicit_path<'a>(v: &'a u8) -> ContainsLifetime {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR hiding a lifetime that's named elsewhere is confusing
     ContainsLifetime(v)
 }
 
 fn explicit_bound_ref_to_explicit_anonymous_path<'a>(v: &'a u8) -> ContainsLifetime<'_> {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR eliding a lifetime that's named elsewhere is confusing
     ContainsLifetime(v)
 }
 
-// ---
+// path to ref
 
 fn implicit_path_to_implicit_ref(v: ContainsLifetime) -> &u8 {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR hiding a lifetime that's elided elsewhere is confusing
     v.0
 }
 
 fn implicit_path_to_explicit_anonymous_ref(v: ContainsLifetime) -> &'_ u8 {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR hiding a lifetime that's elided elsewhere is confusing
     v.0
 }
 
 fn explicit_bound_path_to_implicit_ref<'a>(v: ContainsLifetime<'a>) -> &u8 {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR eliding a lifetime that's named elsewhere is confusing
     v.0
 }
 
 fn explicit_bound_path_to_explicit_anonymous_ref<'a>(v: ContainsLifetime<'a>) -> &'_ u8 {
-    //~^ ERROR lifetime flowing from input to output with different syntax
+    //~^ ERROR eliding a lifetime that's named elsewhere is confusing
     v.0
 }
 
 impl S {
     fn method_explicit_bound_ref_to_implicit_ref<'a>(&'a self) -> &u8 {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
         &self.0
     }
 
     fn method_explicit_bound_ref_to_explicit_anonymous_ref<'a>(&'a self) -> &'_ u8 {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
         &self.0
     }
 
     // ---
 
     fn method_explicit_anonymous_ref_to_implicit_path(&'_ self) -> ContainsLifetime {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR hiding a lifetime that's elided elsewhere is confusing
         ContainsLifetime(&self.0)
     }
 
     fn method_explicit_bound_ref_to_implicit_path<'a>(&'a self) -> ContainsLifetime {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR hiding a lifetime that's named elsewhere is confusing
         ContainsLifetime(&self.0)
     }
 
     fn method_explicit_bound_ref_to_explicit_anonymous_path<'a>(&'a self) -> ContainsLifetime<'_> {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
         ContainsLifetime(&self.0)
     }
 }
@@ -122,43 +124,43 @@ mod static_suggestions {
     struct S(u8);
 
     fn static_ref_to_implicit_ref(v: &'static u8) -> &u8 {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
         v
     }
 
     fn static_ref_to_explicit_anonymous_ref(v: &'static u8) -> &'_ u8 {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
         v
     }
 
     fn static_ref_to_implicit_path(v: &'static u8) -> ContainsLifetime {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR hiding a lifetime that's named elsewhere is confusing
         ContainsLifetime(v)
     }
 
     fn static_ref_to_explicit_anonymous_path(v: &'static u8) -> ContainsLifetime<'_> {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
         ContainsLifetime(v)
     }
 
     impl S {
         fn static_ref_to_implicit_ref(&'static self) -> &u8 {
-            //~^ ERROR lifetime flowing from input to output with different syntax
+            //~^ ERROR eliding a lifetime that's named elsewhere is confusing
             &self.0
         }
 
         fn static_ref_to_explicit_anonymous_ref(&'static self) -> &'_ u8 {
-            //~^ ERROR lifetime flowing from input to output with different syntax
+            //~^ ERROR eliding a lifetime that's named elsewhere is confusing
             &self.0
         }
 
         fn static_ref_to_implicit_path(&'static self) -> ContainsLifetime {
-            //~^ ERROR lifetime flowing from input to output with different syntax
+            //~^ ERROR hiding a lifetime that's named elsewhere is confusing
             ContainsLifetime(&self.0)
         }
 
         fn static_ref_to_explicit_anonymous_path(&'static self) -> ContainsLifetime<'_> {
-            //~^ ERROR lifetime flowing from input to output with different syntax
+            //~^ ERROR eliding a lifetime that's named elsewhere is confusing
             ContainsLifetime(&self.0)
         }
     }
@@ -170,23 +172,23 @@ mod impl_trait {
     struct ContainsLifetime<'a>(&'a u8);
 
     fn explicit_bound_ref_to_impl_trait_bound<'a>(v: &'a u8) -> impl FnOnce() + '_ {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
         move || _ = v
     }
 
     fn explicit_bound_ref_to_impl_trait_precise_capture<'a>(v: &'a u8) -> impl FnOnce() + use<'_> {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
         move || _ = v
     }
 
     fn explicit_bound_path_to_impl_trait_bound<'a>(v: ContainsLifetime<'a>) -> impl FnOnce() + '_ {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
         move || _ = v
     }
 
     fn explicit_bound_path_to_impl_trait_precise_capture<'a>(
         v: ContainsLifetime<'a>,
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
     ) -> impl FnOnce() + use<'_> {
         move || _ = v
     }
@@ -200,13 +202,13 @@ mod dyn_trait {
     struct ContainsLifetime<'a>(&'a u8);
 
     fn explicit_bound_ref_to_dyn_trait_bound<'a>(v: &'a u8) -> Box<dyn Iterator<Item = &u8> + '_> {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
         Box::new(iter::once(v))
     }
 
     fn explicit_bound_path_to_dyn_trait_bound<'a>(
         v: ContainsLifetime<'a>,
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR hiding a lifetime that's named elsewhere is confusing
     ) -> Box<dyn Iterator<Item = ContainsLifetime> + '_> {
         Box::new(iter::once(v))
     }
@@ -214,9 +216,27 @@ mod dyn_trait {
 
 /// These tests serve to exercise edge cases of the lint formatting
 mod diagnostic_output {
+    #[derive(Copy, Clone)]
+    struct ContainsLifetime<'a>(&'a u8);
+
+    fn multiple_inputs<'a>(v: (&'a u8, &'a u8)) -> &u8 {
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
+        v.0
+    }
+
     fn multiple_outputs<'a>(v: &'a u8) -> (&u8, &u8) {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
         (v, v)
+    }
+
+    fn all_three_categories<'a>(v: ContainsLifetime<'a>) -> (&u8, ContainsLifetime) {
+        //~^ ERROR hiding or eliding a lifetime that's named elsewhere is confusing
+        (v.0, v)
+    }
+
+    fn explicit_bound_output<'a>(v: &'a u8) -> (&u8, &'a u8, ContainsLifetime<'a>) {
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
+        (v, v, ContainsLifetime(v))
     }
 }
 
@@ -228,20 +248,20 @@ mod trait_functions {
 
     trait TheTrait {
         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime;
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR hiding a lifetime that's elided elsewhere is confusing
 
         fn method_implicit_ref_to_implicit_path(&self) -> ContainsLifetime;
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR hiding a lifetime that's elided elsewhere is confusing
     }
 
     impl TheTrait for &u8 {
         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime {
-            //~^ ERROR lifetime flowing from input to output with different syntax
+            //~^ ERROR hiding a lifetime that's elided elsewhere is confusing
             ContainsLifetime(v)
         }
 
         fn method_implicit_ref_to_implicit_path(&self) -> ContainsLifetime {
-            //~^ ERROR lifetime flowing from input to output with different syntax
+            //~^ ERROR hiding a lifetime that's elided elsewhere is confusing
             ContainsLifetime(self)
         }
     }
@@ -255,7 +275,7 @@ mod foreign_functions {
 
     extern "Rust" {
         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime;
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR hiding a lifetime that's elided elsewhere is confusing
     }
 }
 

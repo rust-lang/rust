@@ -508,27 +508,50 @@ lint_metavariable_still_repeating = variable `{$name}` is still repeating at thi
 
 lint_metavariable_wrong_operator = meta-variable repeats with different Kleene operator
 
-lint_mismatched_lifetime_syntaxes =
-    lifetime flowing from input to output with different syntax can be confusing
-    .label_mismatched_lifetime_syntaxes_inputs =
-        {$n_inputs ->
-            [one] this lifetime flows
-            *[other] these lifetimes flow
-        } to the output
-    .label_mismatched_lifetime_syntaxes_outputs =
-        the {$n_outputs ->
-            [one] lifetime gets
-            *[other] lifetimes get
-        } resolved as `{$lifetime_name}`
+lint_mismatched_lifetime_syntaxes_eliding_while_named =
+    eliding a lifetime that's named elsewhere is confusing
+
+lint_mismatched_lifetime_syntaxes_help =
+    the same lifetime is referred to in inconsistent ways, making the signature confusing
+
+lint_mismatched_lifetime_syntaxes_hiding_and_eliding_while_named =
+    hiding or eliding a lifetime that's named elsewhere is confusing
+
+lint_mismatched_lifetime_syntaxes_hiding_while_elided =
+    hiding a lifetime that's elided elsewhere is confusing
+
+lint_mismatched_lifetime_syntaxes_hiding_while_named =
+    hiding a lifetime that's named elsewhere is confusing
+
+lint_mismatched_lifetime_syntaxes_input_elided =
+    the lifetime is elided here
+
+lint_mismatched_lifetime_syntaxes_input_hidden =
+    the lifetime is hidden here
+
+lint_mismatched_lifetime_syntaxes_input_named =
+    the lifetime is named here
+
+lint_mismatched_lifetime_syntaxes_output_elided =
+    the same lifetime is elided here
+
+lint_mismatched_lifetime_syntaxes_output_hidden =
+    the same lifetime is hidden here
+
+lint_mismatched_lifetime_syntaxes_output_named =
+    the same lifetime is named here
 
 lint_mismatched_lifetime_syntaxes_suggestion_explicit =
-    one option is to consistently use `{$lifetime_name}`
+    consistently use `{$lifetime_name}`
 
 lint_mismatched_lifetime_syntaxes_suggestion_implicit =
-    one option is to consistently remove the lifetime
+    remove the lifetime name from references
 
 lint_mismatched_lifetime_syntaxes_suggestion_mixed =
-    one option is to remove the lifetime for references and use the anonymous lifetime for paths
+    remove the lifetime name from references and use `'_` for type paths
+
+lint_mismatched_lifetime_syntaxes_suggestion_mixed_only_paths =
+    use `'_` for type paths
 
 lint_missing_unsafe_on_extern = extern blocks should be unsafe
     .suggestion = needs `unsafe` before the extern keyword

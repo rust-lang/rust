@@ -6,13 +6,13 @@
 #[warn(mismatched_lifetime_syntaxes)]
 mod foo {
     fn bar(x: &'static u8) -> &u8 {
-        //~^ WARNING lifetime flowing from input to output with different syntax
+        //~^ WARNING eliding a lifetime that's named elsewhere is confusing
         x
     }
 
     #[deny(mismatched_lifetime_syntaxes)]
     fn baz(x: &'static u8) -> &u8 {
-        //~^ ERROR lifetime flowing from input to output with different syntax
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
         x
     }
 }

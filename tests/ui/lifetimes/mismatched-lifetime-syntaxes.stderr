@@ -1,538 +1,613 @@
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:8:47
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:10:47
    |
 LL | fn explicit_bound_ref_to_implicit_ref<'a>(v: &'a u8) -> &u8 {
-   |                                               ^^        --- the lifetime gets resolved as `'a`
+   |                                               ^^        --- the same lifetime is elided here
    |                                               |
-   |                                               this lifetime flows to the output
+   |                                               the lifetime is named here
    |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
 note: the lint level is defined here
   --> $DIR/mismatched-lifetime-syntaxes.rs:1:9
    |
 LL | #![deny(mismatched_lifetime_syntaxes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: one option is to consistently use `'a`
+help: consistently use `'a`
    |
 LL | fn explicit_bound_ref_to_implicit_ref<'a>(v: &'a u8) -> &'a u8 {
    |                                                          ++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:13:57
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:15:57
    |
 LL | fn explicit_bound_ref_to_explicit_anonymous_ref<'a>(v: &'a u8) -> &'_ u8 {
-   |                                                         ^^         -- the lifetime gets resolved as `'a`
+   |                                                         ^^         -- the same lifetime is elided here
    |                                                         |
-   |                                                         this lifetime flows to the output
+   |                                                         the lifetime is named here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL - fn explicit_bound_ref_to_explicit_anonymous_ref<'a>(v: &'a u8) -> &'_ u8 {
 LL + fn explicit_bound_ref_to_explicit_anonymous_ref<'a>(v: &'a u8) -> &'a u8 {
    |
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:20:48
+error: hiding a lifetime that's elided elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:22:48
    |
 LL | fn implicit_path_to_explicit_anonymous_path(v: ContainsLifetime) -> ContainsLifetime<'_> {
-   |                                                ^^^^^^^^^^^^^^^^                      -- the lifetime gets resolved as `'_`
+   |                                                ^^^^^^^^^^^^^^^^                      -- the same lifetime is elided here
    |                                                |
-   |                                                this lifetime flows to the output
+   |                                                the lifetime is hidden here
    |
-help: one option is to consistently use `'_`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'_`
    |
 LL | fn implicit_path_to_explicit_anonymous_path(v: ContainsLifetime<'_>) -> ContainsLifetime<'_> {
    |                                                                ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:25:65
+error: hiding a lifetime that's elided elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:27:65
    |
 LL | fn explicit_anonymous_path_to_implicit_path(v: ContainsLifetime<'_>) -> ContainsLifetime {
-   |                                                                 ^^      ---------------- the lifetime gets resolved as `'_`
+   |                                                                 ^^      ---------------- the same lifetime is hidden here
    |                                                                 |
-   |                                                                 this lifetime flows to the output
+   |                                                                 the lifetime is elided here
    |
-help: one option is to consistently use `'_`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'_`
    |
 LL | fn explicit_anonymous_path_to_implicit_path(v: ContainsLifetime<'_>) -> ContainsLifetime<'_> {
    |                                                                                         ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:30:65
+error: hiding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:32:65
    |
 LL | fn explicit_bound_path_to_implicit_path<'a>(v: ContainsLifetime<'a>) -> ContainsLifetime {
-   |                                                                 ^^      ---------------- the lifetime gets resolved as `'a`
+   |                                                                 ^^      ---------------- the same lifetime is hidden here
    |                                                                 |
-   |                                                                 this lifetime flows to the output
+   |                                                                 the lifetime is named here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL | fn explicit_bound_path_to_implicit_path<'a>(v: ContainsLifetime<'a>) -> ContainsLifetime<'a> {
    |                                                                                         ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:36:25
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:38:25
    |
 LL |     v: ContainsLifetime<'a>,
-   |                         ^^ this lifetime flows to the output
+   |                         ^^ the lifetime is named here
 LL |
 LL | ) -> ContainsLifetime<'_> {
-   |                       -- the lifetime gets resolved as `'a`
+   |                       -- the same lifetime is elided here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL - ) -> ContainsLifetime<'_> {
 LL + ) -> ContainsLifetime<'a> {
    |
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:44:37
+error: hiding a lifetime that's elided elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:46:37
    |
 LL | fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime {
-   |                                     ^^^     ---------------- the lifetime gets resolved as `'_`
+   |                                     ^^^     ---------------- the same lifetime is hidden here
    |                                     |
-   |                                     this lifetime flows to the output
+   |                                     the lifetime is elided here
    |
-help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
    |
 LL | fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime<'_> {
    |                                                             ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:49:48
+error: hiding a lifetime that's elided elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:51:48
    |
 LL | fn explicit_anonymous_ref_to_implicit_path(v: &'_ u8) -> ContainsLifetime {
-   |                                                ^^        ---------------- the lifetime gets resolved as `'_`
+   |                                                ^^        ---------------- the same lifetime is hidden here
    |                                                |
-   |                                                this lifetime flows to the output
+   |                                                the lifetime is elided here
    |
-help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
    |
-LL - fn explicit_anonymous_ref_to_implicit_path(v: &'_ u8) -> ContainsLifetime {
-LL + fn explicit_anonymous_ref_to_implicit_path(v: &u8) -> ContainsLifetime<'_> {
-   |
+LL | fn explicit_anonymous_ref_to_implicit_path(v: &'_ u8) -> ContainsLifetime<'_> {
+   |                                                                          ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:54:48
+error: hiding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:56:48
    |
 LL | fn explicit_bound_ref_to_implicit_path<'a>(v: &'a u8) -> ContainsLifetime {
-   |                                                ^^        ---------------- the lifetime gets resolved as `'a`
+   |                                                ^^        ---------------- the same lifetime is hidden here
    |                                                |
-   |                                                this lifetime flows to the output
+   |                                                the lifetime is named here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL | fn explicit_bound_ref_to_implicit_path<'a>(v: &'a u8) -> ContainsLifetime<'a> {
    |                                                                          ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:59:58
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:61:58
    |
 LL | fn explicit_bound_ref_to_explicit_anonymous_path<'a>(v: &'a u8) -> ContainsLifetime<'_> {
-   |                                                          ^^                         -- the lifetime gets resolved as `'a`
+   |                                                          ^^                         -- the same lifetime is elided here
    |                                                          |
-   |                                                          this lifetime flows to the output
+   |                                                          the lifetime is named here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL - fn explicit_bound_ref_to_explicit_anonymous_path<'a>(v: &'a u8) -> ContainsLifetime<'_> {
 LL + fn explicit_bound_ref_to_explicit_anonymous_path<'a>(v: &'a u8) -> ContainsLifetime<'a> {
    |
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:66:37
+error: hiding a lifetime that's elided elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:68:37
    |
 LL | fn implicit_path_to_implicit_ref(v: ContainsLifetime) -> &u8 {
-   |                                     ^^^^^^^^^^^^^^^^     --- the lifetime gets resolved as `'_`
+   |                                     ^^^^^^^^^^^^^^^^     --- the same lifetime is elided here
    |                                     |
-   |                                     this lifetime flows to the output
+   |                                     the lifetime is hidden here
    |
-help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
    |
 LL | fn implicit_path_to_implicit_ref(v: ContainsLifetime<'_>) -> &u8 {
    |                                                     ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:71:47
+error: hiding a lifetime that's elided elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:73:47
    |
 LL | fn implicit_path_to_explicit_anonymous_ref(v: ContainsLifetime) -> &'_ u8 {
-   |                                               ^^^^^^^^^^^^^^^^      -- the lifetime gets resolved as `'_`
+   |                                               ^^^^^^^^^^^^^^^^      -- the same lifetime is elided here
    |                                               |
-   |                                               this lifetime flows to the output
+   |                                               the lifetime is hidden here
    |
-help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
    |
-LL - fn implicit_path_to_explicit_anonymous_ref(v: ContainsLifetime) -> &'_ u8 {
-LL + fn implicit_path_to_explicit_anonymous_ref(v: ContainsLifetime<'_>) -> &u8 {
-   |
+LL | fn implicit_path_to_explicit_anonymous_ref(v: ContainsLifetime<'_>) -> &'_ u8 {
+   |                                                               ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:76:64
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:78:64
    |
 LL | fn explicit_bound_path_to_implicit_ref<'a>(v: ContainsLifetime<'a>) -> &u8 {
-   |                                                                ^^      --- the lifetime gets resolved as `'a`
+   |                                                                ^^      --- the same lifetime is elided here
    |                                                                |
-   |                                                                this lifetime flows to the output
+   |                                                                the lifetime is named here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL | fn explicit_bound_path_to_implicit_ref<'a>(v: ContainsLifetime<'a>) -> &'a u8 {
    |                                                                         ++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:81:74
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:83:74
    |
 LL | fn explicit_bound_path_to_explicit_anonymous_ref<'a>(v: ContainsLifetime<'a>) -> &'_ u8 {
-   |                                                                          ^^       -- the lifetime gets resolved as `'a`
+   |                                                                          ^^       -- the same lifetime is elided here
    |                                                                          |
-   |                                                                          this lifetime flows to the output
+   |                                                                          the lifetime is named here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL - fn explicit_bound_path_to_explicit_anonymous_ref<'a>(v: ContainsLifetime<'a>) -> &'_ u8 {
 LL + fn explicit_bound_path_to_explicit_anonymous_ref<'a>(v: ContainsLifetime<'a>) -> &'a u8 {
    |
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:87:55
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:89:55
    |
 LL |     fn method_explicit_bound_ref_to_implicit_ref<'a>(&'a self) -> &u8 {
-   |                                                       ^^          --- the lifetime gets resolved as `'a`
+   |                                                       ^^          --- the same lifetime is elided here
    |                                                       |
-   |                                                       this lifetime flows to the output
+   |                                                       the lifetime is named here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL |     fn method_explicit_bound_ref_to_implicit_ref<'a>(&'a self) -> &'a u8 {
    |                                                                    ++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:92:65
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:94:65
    |
 LL |     fn method_explicit_bound_ref_to_explicit_anonymous_ref<'a>(&'a self) -> &'_ u8 {
-   |                                                                 ^^           -- the lifetime gets resolved as `'a`
+   |                                                                 ^^           -- the same lifetime is elided here
    |                                                                 |
-   |                                                                 this lifetime flows to the output
+   |                                                                 the lifetime is named here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL -     fn method_explicit_bound_ref_to_explicit_anonymous_ref<'a>(&'a self) -> &'_ u8 {
 LL +     fn method_explicit_bound_ref_to_explicit_anonymous_ref<'a>(&'a self) -> &'a u8 {
    |
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:99:56
+error: hiding a lifetime that's elided elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:101:56
    |
 LL |     fn method_explicit_anonymous_ref_to_implicit_path(&'_ self) -> ContainsLifetime {
-   |                                                        ^^          ---------------- the lifetime gets resolved as `'_`
+   |                                                        ^^          ---------------- the same lifetime is hidden here
    |                                                        |
-   |                                                        this lifetime flows to the output
+   |                                                        the lifetime is elided here
    |
-help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
    |
-LL -     fn method_explicit_anonymous_ref_to_implicit_path(&'_ self) -> ContainsLifetime {
-LL +     fn method_explicit_anonymous_ref_to_implicit_path(&self) -> ContainsLifetime<'_> {
-   |
+LL |     fn method_explicit_anonymous_ref_to_implicit_path(&'_ self) -> ContainsLifetime<'_> {
+   |                                                                                    ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:104:56
+error: hiding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:106:56
    |
 LL |     fn method_explicit_bound_ref_to_implicit_path<'a>(&'a self) -> ContainsLifetime {
-   |                                                        ^^          ---------------- the lifetime gets resolved as `'a`
+   |                                                        ^^          ---------------- the same lifetime is hidden here
    |                                                        |
-   |                                                        this lifetime flows to the output
+   |                                                        the lifetime is named here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL |     fn method_explicit_bound_ref_to_implicit_path<'a>(&'a self) -> ContainsLifetime<'a> {
    |                                                                                    ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:109:66
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:111:66
    |
 LL |     fn method_explicit_bound_ref_to_explicit_anonymous_path<'a>(&'a self) -> ContainsLifetime<'_> {
-   |                                                                  ^^                           -- the lifetime gets resolved as `'a`
+   |                                                                  ^^                           -- the same lifetime is elided here
    |                                                                  |
-   |                                                                  this lifetime flows to the output
+   |                                                                  the lifetime is named here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL -     fn method_explicit_bound_ref_to_explicit_anonymous_path<'a>(&'a self) -> ContainsLifetime<'_> {
 LL +     fn method_explicit_bound_ref_to_explicit_anonymous_path<'a>(&'a self) -> ContainsLifetime<'a> {
    |
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:124:39
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:126:39
    |
 LL |     fn static_ref_to_implicit_ref(v: &'static u8) -> &u8 {
-   |                                       ^^^^^^^        --- the lifetime gets resolved as `'static`
+   |                                       ^^^^^^^        --- the same lifetime is elided here
    |                                       |
-   |                                       this lifetime flows to the output
+   |                                       the lifetime is named here
    |
-help: one option is to consistently use `'static`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'static`
    |
 LL |     fn static_ref_to_implicit_ref(v: &'static u8) -> &'static u8 {
    |                                                       +++++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:129:49
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:131:49
    |
 LL |     fn static_ref_to_explicit_anonymous_ref(v: &'static u8) -> &'_ u8 {
-   |                                                 ^^^^^^^         -- the lifetime gets resolved as `'static`
+   |                                                 ^^^^^^^         -- the same lifetime is elided here
    |                                                 |
-   |                                                 this lifetime flows to the output
+   |                                                 the lifetime is named here
    |
-help: one option is to consistently use `'static`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'static`
    |
 LL -     fn static_ref_to_explicit_anonymous_ref(v: &'static u8) -> &'_ u8 {
 LL +     fn static_ref_to_explicit_anonymous_ref(v: &'static u8) -> &'static u8 {
    |
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:134:40
+error: hiding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:136:40
    |
 LL |     fn static_ref_to_implicit_path(v: &'static u8) -> ContainsLifetime {
-   |                                        ^^^^^^^        ---------------- the lifetime gets resolved as `'static`
+   |                                        ^^^^^^^        ---------------- the same lifetime is hidden here
    |                                        |
-   |                                        this lifetime flows to the output
+   |                                        the lifetime is named here
    |
-help: one option is to consistently use `'static`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'static`
    |
 LL |     fn static_ref_to_implicit_path(v: &'static u8) -> ContainsLifetime<'static> {
    |                                                                       +++++++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:139:50
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:141:50
    |
 LL |     fn static_ref_to_explicit_anonymous_path(v: &'static u8) -> ContainsLifetime<'_> {
-   |                                                  ^^^^^^^                         -- the lifetime gets resolved as `'static`
+   |                                                  ^^^^^^^                         -- the same lifetime is elided here
    |                                                  |
-   |                                                  this lifetime flows to the output
+   |                                                  the lifetime is named here
    |
-help: one option is to consistently use `'static`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'static`
    |
 LL -     fn static_ref_to_explicit_anonymous_path(v: &'static u8) -> ContainsLifetime<'_> {
 LL +     fn static_ref_to_explicit_anonymous_path(v: &'static u8) -> ContainsLifetime<'static> {
    |
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:145:40
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:147:40
    |
 LL |         fn static_ref_to_implicit_ref(&'static self) -> &u8 {
-   |                                        ^^^^^^^          --- the lifetime gets resolved as `'static`
+   |                                        ^^^^^^^          --- the same lifetime is elided here
    |                                        |
-   |                                        this lifetime flows to the output
+   |                                        the lifetime is named here
    |
-help: one option is to consistently use `'static`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'static`
    |
 LL |         fn static_ref_to_implicit_ref(&'static self) -> &'static u8 {
    |                                                          +++++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:150:50
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:152:50
    |
 LL |         fn static_ref_to_explicit_anonymous_ref(&'static self) -> &'_ u8 {
-   |                                                  ^^^^^^^           -- the lifetime gets resolved as `'static`
+   |                                                  ^^^^^^^           -- the same lifetime is elided here
    |                                                  |
-   |                                                  this lifetime flows to the output
+   |                                                  the lifetime is named here
    |
-help: one option is to consistently use `'static`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'static`
    |
 LL -         fn static_ref_to_explicit_anonymous_ref(&'static self) -> &'_ u8 {
 LL +         fn static_ref_to_explicit_anonymous_ref(&'static self) -> &'static u8 {
    |
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:155:41
+error: hiding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:157:41
    |
 LL |         fn static_ref_to_implicit_path(&'static self) -> ContainsLifetime {
-   |                                         ^^^^^^^          ---------------- the lifetime gets resolved as `'static`
+   |                                         ^^^^^^^          ---------------- the same lifetime is hidden here
    |                                         |
-   |                                         this lifetime flows to the output
+   |                                         the lifetime is named here
    |
-help: one option is to consistently use `'static`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'static`
    |
 LL |         fn static_ref_to_implicit_path(&'static self) -> ContainsLifetime<'static> {
    |                                                                          +++++++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:160:51
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:162:51
    |
 LL |         fn static_ref_to_explicit_anonymous_path(&'static self) -> ContainsLifetime<'_> {
-   |                                                   ^^^^^^^                           -- the lifetime gets resolved as `'static`
+   |                                                   ^^^^^^^                           -- the same lifetime is elided here
    |                                                   |
-   |                                                   this lifetime flows to the output
+   |                                                   the lifetime is named here
    |
-help: one option is to consistently use `'static`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'static`
    |
 LL -         fn static_ref_to_explicit_anonymous_path(&'static self) -> ContainsLifetime<'_> {
 LL +         fn static_ref_to_explicit_anonymous_path(&'static self) -> ContainsLifetime<'static> {
    |
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:172:55
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:174:55
    |
 LL |     fn explicit_bound_ref_to_impl_trait_bound<'a>(v: &'a u8) -> impl FnOnce() + '_ {
-   |                                                       ^^                        -- the lifetime gets resolved as `'a`
+   |                                                       ^^                        -- the same lifetime is elided here
    |                                                       |
-   |                                                       this lifetime flows to the output
+   |                                                       the lifetime is named here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL -     fn explicit_bound_ref_to_impl_trait_bound<'a>(v: &'a u8) -> impl FnOnce() + '_ {
 LL +     fn explicit_bound_ref_to_impl_trait_bound<'a>(v: &'a u8) -> impl FnOnce() + 'a {
    |
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:177:65
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:179:65
    |
 LL |     fn explicit_bound_ref_to_impl_trait_precise_capture<'a>(v: &'a u8) -> impl FnOnce() + use<'_> {
-   |                                                                 ^^                            -- the lifetime gets resolved as `'a`
-   |                                                                 |
-   |                                                                 this lifetime flows to the output
+   |                                                                 ^^ the lifetime is named here -- the same lifetime is elided here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL -     fn explicit_bound_ref_to_impl_trait_precise_capture<'a>(v: &'a u8) -> impl FnOnce() + use<'_> {
 LL +     fn explicit_bound_ref_to_impl_trait_precise_capture<'a>(v: &'a u8) -> impl FnOnce() + use<'a> {
    |
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:182:72
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:184:72
    |
 LL |     fn explicit_bound_path_to_impl_trait_bound<'a>(v: ContainsLifetime<'a>) -> impl FnOnce() + '_ {
-   |                                                                        ^^                      -- the lifetime gets resolved as `'a`
+   |                                                                        ^^                      -- the same lifetime is elided here
    |                                                                        |
-   |                                                                        this lifetime flows to the output
+   |                                                                        the lifetime is named here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL -     fn explicit_bound_path_to_impl_trait_bound<'a>(v: ContainsLifetime<'a>) -> impl FnOnce() + '_ {
 LL +     fn explicit_bound_path_to_impl_trait_bound<'a>(v: ContainsLifetime<'a>) -> impl FnOnce() + 'a {
    |
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:188:29
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:190:29
    |
 LL |         v: ContainsLifetime<'a>,
-   |                             ^^ this lifetime flows to the output
+   |                             ^^ the lifetime is named here
 LL |
 LL |     ) -> impl FnOnce() + use<'_> {
-   |                              -- the lifetime gets resolved as `'a`
+   |                              -- the same lifetime is elided here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL -     ) -> impl FnOnce() + use<'_> {
 LL +     ) -> impl FnOnce() + use<'a> {
    |
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:202:54
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:204:54
    |
 LL |     fn explicit_bound_ref_to_dyn_trait_bound<'a>(v: &'a u8) -> Box<dyn Iterator<Item = &u8> + '_> {
-   |                                                      ^^                                ---    -- the lifetimes get resolved as `'a`
-   |                                                      |                                 |
-   |                                                      |                                 the lifetimes get resolved as `'a`
-   |                                                      this lifetime flows to the output
+   |                                                      ^^ the lifetime is named here     --- the same lifetime is elided here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL |     fn explicit_bound_ref_to_dyn_trait_bound<'a>(v: &'a u8) -> Box<dyn Iterator<Item = &'a u8> + '_> {
    |                                                                                         ++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:208:29
+error: hiding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:210:29
    |
 LL |         v: ContainsLifetime<'a>,
-   |                             ^^ this lifetime flows to the output
+   |                             ^^ the lifetime is named here
 LL |
 LL |     ) -> Box<dyn Iterator<Item = ContainsLifetime> + '_> {
-   |                                  ----------------    -- the lifetimes get resolved as `'a`
-   |                                  |
-   |                                  the lifetimes get resolved as `'a`
+   |                                  ---------------- the same lifetime is hidden here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL |     ) -> Box<dyn Iterator<Item = ContainsLifetime<'a>> + '_> {
    |                                                  ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:217:33
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:222:33
+   |
+LL |     fn multiple_inputs<'a>(v: (&'a u8, &'a u8)) -> &u8 {
+   |                                 ^^      ^^         --- the same lifetime is elided here
+   |                                 |       |
+   |                                 |       the lifetime is named here
+   |                                 the lifetime is named here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
+   |
+LL |     fn multiple_inputs<'a>(v: (&'a u8, &'a u8)) -> &'a u8 {
+   |                                                     ++
+
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:227:33
    |
 LL |     fn multiple_outputs<'a>(v: &'a u8) -> (&u8, &u8) {
-   |                                 ^^         ---  --- the lifetimes get resolved as `'a`
+   |                                 ^^         ---  --- the same lifetime is elided here
    |                                 |          |
-   |                                 |          the lifetimes get resolved as `'a`
-   |                                 this lifetime flows to the output
+   |                                 |          the same lifetime is elided here
+   |                                 the lifetime is named here
    |
-help: one option is to consistently use `'a`
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
    |
 LL |     fn multiple_outputs<'a>(v: &'a u8) -> (&'a u8, &'a u8) {
    |                                             ++      ++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:230:45
+error: hiding or eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:232:53
+   |
+LL |     fn all_three_categories<'a>(v: ContainsLifetime<'a>) -> (&u8, ContainsLifetime) {
+   |                                                     ^^       ---  ---------------- the same lifetime is hidden here
+   |                                                     |        |
+   |                                                     |        the same lifetime is elided here
+   |                                                     the lifetime is named here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
+   |
+LL |     fn all_three_categories<'a>(v: ContainsLifetime<'a>) -> (&'a u8, ContainsLifetime<'a>) {
+   |                                                               ++                     ++++
+
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:237:38
+   |
+LL |     fn explicit_bound_output<'a>(v: &'a u8) -> (&u8, &'a u8, ContainsLifetime<'a>) {
+   |                                      ^^         ---   --                      -- the same lifetime is named here
+   |                                      |          |     |
+   |                                      |          |     the same lifetime is named here
+   |                                      |          the same lifetime is elided here
+   |                                      the lifetime is named here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: consistently use `'a`
+   |
+LL |     fn explicit_bound_output<'a>(v: &'a u8) -> (&'a u8, &'a u8, ContainsLifetime<'a>) {
+   |                                                  ++
+
+error: hiding a lifetime that's elided elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:250:45
    |
 LL |         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime;
-   |                                             ^^^     ---------------- the lifetime gets resolved as `'_`
+   |                                             ^^^     ---------------- the same lifetime is hidden here
    |                                             |
-   |                                             this lifetime flows to the output
+   |                                             the lifetime is elided here
    |
-help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
    |
 LL |         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime<'_>;
    |                                                                     ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:233:49
+error: hiding a lifetime that's elided elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:253:49
    |
 LL |         fn method_implicit_ref_to_implicit_path(&self) -> ContainsLifetime;
-   |                                                 ^^^^^     ---------------- the lifetime gets resolved as `'_`
+   |                                                 ^^^^^     ---------------- the same lifetime is hidden here
    |                                                 |
-   |                                                 this lifetime flows to the output
+   |                                                 the lifetime is elided here
    |
-help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
    |
 LL |         fn method_implicit_ref_to_implicit_path(&self) -> ContainsLifetime<'_>;
    |                                                                           ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:238:45
+error: hiding a lifetime that's elided elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:258:45
    |
 LL |         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime {
-   |                                             ^^^     ---------------- the lifetime gets resolved as `'_`
+   |                                             ^^^     ---------------- the same lifetime is hidden here
    |                                             |
-   |                                             this lifetime flows to the output
+   |                                             the lifetime is elided here
    |
-help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
    |
 LL |         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime<'_> {
    |                                                                     ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:243:49
+error: hiding a lifetime that's elided elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:263:49
    |
 LL |         fn method_implicit_ref_to_implicit_path(&self) -> ContainsLifetime {
-   |                                                 ^^^^^     ---------------- the lifetime gets resolved as `'_`
+   |                                                 ^^^^^     ---------------- the same lifetime is hidden here
    |                                                 |
-   |                                                 this lifetime flows to the output
+   |                                                 the lifetime is elided here
    |
-help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
    |
 LL |         fn method_implicit_ref_to_implicit_path(&self) -> ContainsLifetime<'_> {
    |                                                                           ++++
 
-error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:257:45
+error: hiding a lifetime that's elided elsewhere is confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:277:45
    |
 LL |         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime;
-   |                                             ^^^     ---------------- the lifetime gets resolved as `'_`
+   |                                             ^^^     ---------------- the same lifetime is hidden here
    |                                             |
-   |                                             this lifetime flows to the output
+   |                                             the lifetime is elided here
    |
-help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
    |
 LL |         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime<'_>;
    |                                                                     ++++
 
-error: aborting due to 39 previous errors
+error: aborting due to 42 previous errors
 

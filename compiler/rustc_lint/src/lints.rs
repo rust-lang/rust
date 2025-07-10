@@ -21,6 +21,7 @@ use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
 
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
 use crate::errors::{OverruledAttributeSub, RequestedLevel};
+use crate::lifetime_syntax::LifetimeSyntaxCategories;
 use crate::{LateContext, fluent_generated as fluent};
 
 // array_into_iter.rs
@@ -3194,30 +3195,59 @@ pub(crate) struct ReservedMultihash {
 
 #[derive(Debug)]
 pub(crate) struct MismatchedLifetimeSyntaxes {
-    pub lifetime_name: String,
-    pub inputs: Vec<Span>,
-    pub outputs: Vec<Span>,
+    pub inputs: LifetimeSyntaxCategories<Vec<Span>>,
+    pub outputs: LifetimeSyntaxCategories<Vec<Span>>,
 
     pub suggestions: Vec<MismatchedLifetimeSyntaxesSuggestion>,
 }
 
 impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for MismatchedLifetimeSyntaxes {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
-        diag.primary_message(fluent::lint_mismatched_lifetime_syntaxes);
+        let counts = self.inputs.len() + self.outputs.len();
+        let message = match counts {
+            LifetimeSyntaxCategories { hidden: 0, elided: 0, named: 0 } => {
+                panic!("No lifetime mismatch detected")
+            }
 
-        diag.arg("lifetime_name", self.lifetime_name);
+            LifetimeSyntaxCategories { hidden: _, elided: _, named: 0 } => {
+                fluent::lint_mismatched_lifetime_syntaxes_hiding_while_elided
+            }
 
-        diag.arg("n_inputs", self.inputs.len());
-        for input in self.inputs {
-            let a = diag.eagerly_translate(fluent::lint_label_mismatched_lifetime_syntaxes_inputs);
-            diag.span_label(input, a);
+            LifetimeSyntaxCategories { hidden: _, elided: 0, named: _ } => {
+                fluent::lint_mismatched_lifetime_syntaxes_hiding_while_named
+            }
+
+            LifetimeSyntaxCategories { hidden: 0, elided: _, named: _ } => {
+                fluent::lint_mismatched_lifetime_syntaxes_eliding_while_named
+            }
+
+            LifetimeSyntaxCategories { hidden: _, elided: _, named: _ } => {
+                fluent::lint_mismatched_lifetime_syntaxes_hiding_and_eliding_while_named
+            }
+        };
+        diag.primary_message(message);
+
+        for s in self.inputs.hidden {
+            diag.span_label(s, fluent::lint_mismatched_lifetime_syntaxes_input_hidden);
+        }
+        for s in self.inputs.elided {
+            diag.span_label(s, fluent::lint_mismatched_lifetime_syntaxes_input_elided);
+        }
+        for s in self.inputs.named {
+            diag.span_label(s, fluent::lint_mismatched_lifetime_syntaxes_input_named);
         }
 
-        diag.arg("n_outputs", self.outputs.len());
-        for output in self.outputs {
-            let a = diag.eagerly_translate(fluent::lint_label_mismatched_lifetime_syntaxes_outputs);
-            diag.span_label(output, a);
+        for s in self.outputs.hidden {
+            diag.span_label(s, fluent::lint_mismatched_lifetime_syntaxes_output_hidden);
         }
+        for s in self.outputs.elided {
+            diag.span_label(s, fluent::lint_mismatched_lifetime_syntaxes_output_elided);
+        }
+        for s in self.outputs.named {
+            diag.span_label(s, fluent::lint_mismatched_lifetime_syntaxes_output_named);
+        }
+
+        diag.help(fluent::lint_mismatched_lifetime_syntaxes_help);
 
         let mut suggestions = self.suggestions.into_iter();
         if let Some(s) = suggestions.next() {
@@ -3245,7 +3275,7 @@ pub(crate) enum MismatchedLifetimeSyntaxesSuggestion {
     },
 
     Explicit {
-        lifetime_name_sugg: String,
+        lifetime_name: String,
         suggestions: Vec<(Span, String)>,
         tool_only: bool,
     },
@@ -3285,6 +3315,12 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
             }
 
             Mixed { implicit_suggestions, explicit_anonymous_suggestions, tool_only } => {
+                let message = if implicit_suggestions.is_empty() {
+                    fluent::lint_mismatched_lifetime_syntaxes_suggestion_mixed_only_paths
+                } else {
+                    fluent::lint_mismatched_lifetime_syntaxes_suggestion_mixed
+                };
+
                 let implicit_suggestions =
                     implicit_suggestions.into_iter().map(|s| (s, String::new()));
 
@@ -3292,19 +3328,19 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
                     implicit_suggestions.chain(explicit_anonymous_suggestions).collect();
 
                 diag.multipart_suggestion_with_style(
-                    fluent::lint_mismatched_lifetime_syntaxes_suggestion_mixed,
+                    message,
                     suggestions,
                     Applicability::MaybeIncorrect,
                     style(tool_only),
                 );
             }
 
-            Explicit { lifetime_name_sugg, suggestions, tool_only } => {
-                diag.arg("lifetime_name_sugg", lifetime_name_sugg);
+            Explicit { lifetime_name, suggestions, tool_only } => {
+                diag.arg("lifetime_name", lifetime_name);
                 let msg = diag.eagerly_translate(
                     fluent::lint_mismatched_lifetime_syntaxes_suggestion_explicit,
                 );
-                diag.remove_arg("lifetime_name_sugg");
+                diag.remove_arg("lifetime_name");
                 diag.multipart_suggestion_with_style(
                     msg,
                     suggestions,

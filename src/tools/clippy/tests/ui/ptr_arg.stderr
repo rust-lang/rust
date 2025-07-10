@@ -231,18 +231,19 @@ error: writing `&String` instead of `&str` involves a new object where a slice w
 LL |     fn good(v1: &String, v2: &String) {
    |                              ^^^^^^^ help: change this to: `&str`
 
-error: lifetime flowing from input to output with different syntax can be confusing
+error: eliding a lifetime that's named elsewhere is confusing
   --> tests/ui/ptr_arg.rs:314:36
    |
 LL |     fn cow_good_ret_ty<'a>(input: &'a Cow<'a, str>) -> &str {
-   |                                    ^^     ^^           ---- the lifetime gets resolved as `'a`
+   |                                    ^^     ^^           ---- the same lifetime is elided here
    |                                    |      |
-   |                                    |      these lifetimes flow to the output
-   |                                    these lifetimes flow to the output
+   |                                    |      the lifetime is named here
+   |                                    the lifetime is named here
    |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
    = note: `-D mismatched-lifetime-syntaxes` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(mismatched_lifetime_syntaxes)]`
-help: one option is to consistently use `'a`
+help: consistently use `'a`
    |
 LL |     fn cow_good_ret_ty<'a>(input: &'a Cow<'a, str>) -> &'a str {
    |                                                         ++
