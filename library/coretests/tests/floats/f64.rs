@@ -26,19 +26,6 @@ const NAN_MASK1: u64 = 0x000a_aaaa_aaaa_aaaa;
 const NAN_MASK2: u64 = 0x0005_5555_5555_5555;
 
 #[test]
-fn test_zero() {
-    let zero: f64 = 0.0f64;
-    assert_biteq!(0.0, zero);
-    assert!(!zero.is_infinite());
-    assert!(zero.is_finite());
-    assert!(zero.is_sign_positive());
-    assert!(!zero.is_sign_negative());
-    assert!(!zero.is_nan());
-    assert!(!zero.is_normal());
-    assert_eq!(Fp::Zero, zero.classify());
-}
-
-#[test]
 fn test_neg_zero() {
     let neg_zero: f64 = -0.0;
     assert_eq!(0.0, neg_zero);
