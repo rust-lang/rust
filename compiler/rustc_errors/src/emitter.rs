@@ -3526,7 +3526,7 @@ pub fn is_case_difference(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
     // All the chars that differ in capitalization are confusable (above):
     let confusable = iter::zip(found.chars(), suggested.chars())
         .filter(|(f, s)| f != s)
-        .all(|(f, s)| (ascii_confusables.contains(&f) || ascii_confusables.contains(&s)));
+        .all(|(f, s)| ascii_confusables.contains(&f) || ascii_confusables.contains(&s));
     confusable && found.to_lowercase() == suggested.to_lowercase()
             // FIXME: We sometimes suggest the same thing we already have, which is a
             //        bug, but be defensive against that here.

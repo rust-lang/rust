@@ -25,7 +25,7 @@ impl flags::Scip {
         eprintln!("Generating SCIP start...");
         let now = Instant::now();
 
-        let no_progress = &|s| (eprintln!("rust-analyzer: Loading {s}"));
+        let no_progress = &|s| eprintln!("rust-analyzer: Loading {s}");
         let root =
             vfs::AbsPathBuf::assert_utf8(std::env::current_dir()?.join(&self.path)).normalize();
 
