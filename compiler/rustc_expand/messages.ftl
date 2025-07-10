@@ -133,6 +133,58 @@ expand_module_multiple_candidates =
 expand_must_repeat_once =
     this must repeat at least once
 
+expand_mve_concat_invalid_in =
+    invalid item within a {"`${concat(..)}`"} expression
+    .metavar_label = expanding this metavariable
+    .float_lit = float literals cannot be concatenated
+    .c_str_lit = C string literals cannot be concatenated
+    .b_str_lit = byte literals cannot be concatenated
+    .raw_ident = raw identifiers cannot be concatenated
+    .unsupported = unsupported input for `concat(..)`
+    .valid_types = `concat` can join {$valid}
+    .expected_metavar = expected an identifier
+    .expected_metavar_dollar = `$` indicates the start of a metavariable
+    .invalid_metavar = expanding something
+    .valid_metavars = {"`${concat(..)}`"} can join metavariables of type {$valid}
+
+expand_mve_concat_invalid_out =
+    invalid item within a {"`${concat(..)}`"} would produce an invalid identifier
+    .label = todo
+
+expand_mve_expected_ident =
+    expected an identifier
+    .not_ident = not a valid identifier
+    .expr_name = expected a metavariable expression name: `{"${expr( /* ... */ )}"}`
+    .expr_name_note = valid metavariable expressions are {$valid_expr_list}
+    .ignore_expr_note = `ignore` takes a metavariable argument
+    .count_expr_note = `count` takes a metavariable argument
+
+expand_mve_extra_tokens =
+    unexpected trailing tokens
+    .label = for this metavariable expression
+    .range = the `{$name}` metavariable expression takes between {$min_or_exact_args} and {$max_args} arguments
+    .exact = the `{$name}` metavariable expression takes {$min_or_exact_args ->
+        [zero] no arguments
+        [one] a single argument
+        *[other] {$min_or_exact_args} arguments
+    }
+    .suggestion = try removing {$extra_count ->
+        [one] this token
+        *[other] these tokens
+    }
+
+expand_mve_missing_paren =
+    expected `(`
+    .label = for this this metavariable expression
+    .unexpected = unexpected token
+    .note = metavariable expressions use function-like parentheses syntax
+    .suggestion = try adding parentheses
+
+expand_mve_unrecognized_expr =
+    unrecognized metavariable expression
+    .label = not a valid metavariable expression
+    .note = valid metavariable expressions are {$valid_expr_list}
+
 expand_mve_unrecognized_var =
     variable `{$key}` is not recognized in meta-variable expression
 

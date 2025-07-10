@@ -7,8 +7,11 @@
 macro_rules! pre_expansion {
     ($a:ident) => {
         ${concat("hi", " bye ")};
+        //~^ ERROR invalid item within a `${concat(..)}` expression
         ${concat("hi", "-", "bye")};
+        //~^ ERROR invalid item within a `${concat(..)}` expression
         ${concat($a, "-")};
+        //~^ ERROR invalid item within a `${concat(..)}` expression
     }
 }
 

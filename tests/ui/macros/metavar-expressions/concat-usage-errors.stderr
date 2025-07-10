@@ -1,8 +1,8 @@
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:7:10
+error: `concat` must have at least two elements
+  --> $DIR/concat-usage-errors.rs:7:11
    |
 LL |         ${concat()}
-   |          ^^^^^^^^^^
+   |           ^^^^^^
 
 error: `concat` must have at least two elements
   --> $DIR/concat-usage-errors.rs:10:11
@@ -10,11 +10,11 @@ error: `concat` must have at least two elements
 LL |         ${concat(aaaa)}
    |           ^^^^^^
 
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:13:10
+error: `concat` must have at least two elements
+  --> $DIR/concat-usage-errors.rs:13:11
    |
 LL |         ${concat(aaaa,)}
-   |          ^^^^^^^^^^^^^^^
+   |           ^^^^^^
 
 error: expected comma
   --> $DIR/concat-usage-errors.rs:18:10
@@ -34,112 +34,128 @@ error: expected comma
 LL |         ${concat($ex, aaaa 123)}
    |          ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:30:10
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:56:22
    |
-LL |         ${concat($ex, aaaa,)}
-   |          ^^^^^^^^^^^^^^^^^^^^
+LL |         let ${concat("\u{00BD}", $ident)}: () = ();
+   |                      ^^^^^^^^^^
 
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:90:26
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:76:30
    |
-LL |         let ${concat(_a, 'b')}: () = ();
-   |                          ^^^
+LL |         let ${concat($ident, "\u{00BD}")}: () = ();
+   |                              ^^^^^^^^^^
 
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:93:26
-   |
-LL |         let ${concat(_a, 1)}: () = ();
-   |                          ^
-
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:95:26
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:91:26
    |
 LL |         let ${concat(_a, 1.5)}: () = ();
    |                          ^^^
+   |
+   = note: float literals cannot be concatenated
+   = note: `concat` can join metavariables, identifiers, string literals, and integer literals
 
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:97:26
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:94:26
    |
 LL |         let ${concat(_a, c"hi")}: () = ();
    |                          ^^^^^
+   |
+   = note: C string literals cannot be concatenated
+   = note: `concat` can join metavariables, identifiers, string literals, and integer literals
 
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:99:26
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:96:26
    |
 LL |         let ${concat(_a, b"hi")}: () = ();
    |                          ^^^^^
+   |
+   = note: byte literals cannot be concatenated
+   = note: `concat` can join metavariables, identifiers, string literals, and integer literals
 
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:101:26
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:98:26
    |
 LL |         let ${concat(_a, b'b')}: () = ();
    |                          ^^^^
+   |
+   = note: byte literals cannot be concatenated
+   = note: `concat` can join metavariables, identifiers, string literals, and integer literals
 
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:103:26
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:100:26
    |
 LL |         let ${concat(_a, b'b')}: () = ();
    |                          ^^^^
-
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:106:30
    |
-LL |         let ${concat($ident, 'b')}: () = ();
-   |                              ^^^
+   = note: byte literals cannot be concatenated
+   = note: `concat` can join metavariables, identifiers, string literals, and integer literals
 
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:108:30
-   |
-LL |         let ${concat($ident, 1)}: () = ();
-   |                              ^
-
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:110:30
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:103:30
    |
 LL |         let ${concat($ident, 1.5)}: () = ();
    |                              ^^^
+   |
+   = note: float literals cannot be concatenated
+   = note: `concat` can join metavariables, identifiers, string literals, and integer literals
 
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:112:30
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:105:30
    |
 LL |         let ${concat($ident, c"hi")}: () = ();
    |                              ^^^^^
+   |
+   = note: C string literals cannot be concatenated
+   = note: `concat` can join metavariables, identifiers, string literals, and integer literals
 
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:114:30
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:107:30
    |
 LL |         let ${concat($ident, b"hi")}: () = ();
    |                              ^^^^^
+   |
+   = note: byte literals cannot be concatenated
+   = note: `concat` can join metavariables, identifiers, string literals, and integer literals
 
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:116:30
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:109:30
    |
 LL |         let ${concat($ident, b'b')}: () = ();
    |                              ^^^^
+   |
+   = note: byte literals cannot be concatenated
+   = note: `concat` can join metavariables, identifiers, string literals, and integer literals
 
-error: expected identifier or string literal
-  --> $DIR/concat-usage-errors.rs:118:30
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:111:30
    |
 LL |         let ${concat($ident, b'b')}: () = ();
    |                              ^^^^
+   |
+   = note: byte literals cannot be concatenated
+   = note: `concat` can join metavariables, identifiers, string literals, and integer literals
 
-error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
-  --> $DIR/concat-usage-errors.rs:24:19
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:150:20
    |
 LL |         ${concat($ex, aaaa)}
-   |                   ^^
+   |                   -- expanding this metavariable
+...
+LL |     syntax_errors!(1);
+   |                    ^
    |
-   = note: currently only string literals are supported
+   = note: expanding something
+   = note: `${concat(..)}` can join metavariables of type `ident`, `literal`, and `tt`
 
 error: variable `foo` is not recognized in meta-variable expression
-  --> $DIR/concat-usage-errors.rs:37:30
+  --> $DIR/concat-usage-errors.rs:36:30
    |
 LL |         const ${concat(FOO, $foo)}: i32 = 2;
    |                              ^^^
 
 error: `${concat(..)}` is not generating a valid identifier
-  --> $DIR/concat-usage-errors.rs:44:14
+  --> $DIR/concat-usage-errors.rs:43:14
    |
 LL |         let ${concat("1", $ident)}: () = ();
    |              ^^^^^^^^^^^^^^^^^^^^^
@@ -149,22 +165,22 @@ LL |     starting_number!(_abc);
    |
    = note: this error originates in the macro `starting_number` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` is not generating a valid identifier
-  --> $DIR/concat-usage-errors.rs:57:14
+error: expected pattern, found `$`
+  --> $DIR/concat-usage-errors.rs:56:13
    |
 LL |         let ${concat("\u{00BD}", $ident)}: () = ();
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^ expected pattern
 ...
 LL |     starting_invalid_unicode!(_abc);
    |     ------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `starting_invalid_unicode` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` is not generating a valid identifier
-  --> $DIR/concat-usage-errors.rs:76:14
+error: expected pattern, found `$`
+  --> $DIR/concat-usage-errors.rs:76:13
    |
 LL |         let ${concat($ident, "\u{00BD}")}: () = ();
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^ expected pattern
 ...
 LL |     ending_invalid_unicode!(_abc);
    |     ----------------------------- in this macro invocation
@@ -172,9 +188,9 @@ LL |     ending_invalid_unicode!(_abc);
    = note: this error originates in the macro `ending_invalid_unicode` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected pattern, found `$`
-  --> $DIR/concat-usage-errors.rs:90:13
+  --> $DIR/concat-usage-errors.rs:91:13
    |
-LL |         let ${concat(_a, 'b')}: () = ();
+LL |         let ${concat(_a, 1.5)}: () = ();
    |             ^ expected pattern
 ...
 LL |     unsupported_literals!(_abc);
@@ -183,7 +199,7 @@ LL |     unsupported_literals!(_abc);
    = note: this error originates in the macro `unsupported_literals` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `${concat(..)}` is not generating a valid identifier
-  --> $DIR/concat-usage-errors.rs:83:14
+  --> $DIR/concat-usage-errors.rs:84:14
    |
 LL |         let ${concat("", "")}: () = ();
    |              ^^^^^^^^^^^^^^^^
@@ -193,152 +209,117 @@ LL |     empty!();
    |
    = note: this error originates in the macro `empty` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `${concat(..)}` is not generating a valid identifier
-  --> $DIR/concat-usage-errors.rs:125:16
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:165:25
    |
-LL |         const ${concat(_foo, $literal)}: () = ();
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^
-...
 LL |     bad_literal_string!("\u{00BD}");
-   |     ------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
+   |                         ^^^^^^^^^^
 
-error: `${concat(..)}` is not generating a valid identifier
-  --> $DIR/concat-usage-errors.rs:125:16
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:167:25
    |
-LL |         const ${concat(_foo, $literal)}: () = ();
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL |     bad_literal_string!("\x41");
-   |     --------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: `${concat(..)}` is not generating a valid identifier
-  --> $DIR/concat-usage-errors.rs:125:16
-   |
-LL |         const ${concat(_foo, $literal)}: () = ();
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^
-...
 LL |     bad_literal_string!("🤷");
-   |     ------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
+   |                         ^^^^
 
-error: `${concat(..)}` is not generating a valid identifier
-  --> $DIR/concat-usage-errors.rs:125:16
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:168:25
    |
-LL |         const ${concat(_foo, $literal)}: () = ();
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^
-...
 LL |     bad_literal_string!("d[-_-]b");
-   |     ------------------------------ in this macro invocation
-   |
-   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
+   |                         ^^^^^^^^^
 
-error: `${concat(..)}` is not generating a valid identifier
-  --> $DIR/concat-usage-errors.rs:125:16
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:170:25
    |
-LL |         const ${concat(_foo, $literal)}: () = ();
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^
-...
 LL |     bad_literal_string!("-1");
-   |     ------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
+   |                         ^^^^
 
-error: `${concat(..)}` is not generating a valid identifier
-  --> $DIR/concat-usage-errors.rs:125:16
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:171:25
    |
-LL |         const ${concat(_foo, $literal)}: () = ();
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^
-...
 LL |     bad_literal_string!("1.0");
-   |     -------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
+   |                         ^^^^^
 
-error: `${concat(..)}` is not generating a valid identifier
-  --> $DIR/concat-usage-errors.rs:125:16
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:172:25
    |
-LL |         const ${concat(_foo, $literal)}: () = ();
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^
-...
 LL |     bad_literal_string!("'1'");
+   |                         ^^^^^
+
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:175:29
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ------- expanding this metavariable
+...
+LL |     bad_literal_non_string!(-1);
+   |                             ^^
+   |
+   = note: expanding something
+   = note: `${concat(..)}` can join metavariables of type `ident`, `literal`, and `tt`
+
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:176:29
+   |
+LL |     bad_literal_non_string!(1.0);
+   |                             ^^^
+   |
+   = note: float literals cannot be concatenated
+   = note: `concat` can join metavariables, identifiers, string literals, and integer literals
+
+error[E0428]: the name `_foo1` is defined multiple times
+  --> $DIR/concat-usage-errors.rs:131:9
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |         ^^^^^^^
+   |         |
+   |         `_foo1` redefined here
+   |         previous definition of the value `_foo1` here
+...
+LL |     bad_literal_non_string!(1);
    |     -------------------------- in this macro invocation
    |
-   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: `_foo1` must be defined only once in the value namespace of this block
+   = note: this error originates in the macro `bad_literal_non_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
-  --> $DIR/concat-usage-errors.rs:138:31
+error[E0428]: the name `_foo1` is defined multiple times
+  --> $DIR/concat-usage-errors.rs:142:9
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
-   |                               ^^^^^^^
-   |
-   = note: currently only string literals are supported
-
-error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
-  --> $DIR/concat-usage-errors.rs:138:31
-   |
-LL |         const ${concat(_foo, $literal)}: () = ();
-   |                               ^^^^^^^
-   |
-   = note: currently only string literals are supported
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
-  --> $DIR/concat-usage-errors.rs:138:31
-   |
-LL |         const ${concat(_foo, $literal)}: () = ();
-   |                               ^^^^^^^
-   |
-   = note: currently only string literals are supported
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
-  --> $DIR/concat-usage-errors.rs:138:31
-   |
-LL |         const ${concat(_foo, $literal)}: () = ();
-   |                               ^^^^^^^
-   |
-   = note: currently only string literals are supported
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
-  --> $DIR/concat-usage-errors.rs:138:31
-   |
-LL |         const ${concat(_foo, $literal)}: () = ();
-   |                               ^^^^^^^
-   |
-   = note: currently only string literals are supported
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
-  --> $DIR/concat-usage-errors.rs:149:31
-   |
+   |         ------- previous definition of the value `_foo1` here
+...
 LL |         const ${concat(_foo, $tt)}: () = ();
-   |                               ^^
+   |         ^^^^^^^ `_foo1` redefined here
+...
+LL |     bad_tt_literal!(1);
+   |     ------------------ in this macro invocation
    |
-   = note: currently only string literals are supported
+   = note: `_foo1` must be defined only once in the value namespace of this block
+   = note: this error originates in the macro `bad_tt_literal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
-  --> $DIR/concat-usage-errors.rs:149:31
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-usage-errors.rs:181:21
    |
+LL |     bad_tt_literal!(1.0);
+   |                     ^^^
+   |
+   = note: float literals cannot be concatenated
+   = note: `concat` can join metavariables, identifiers, string literals, and integer literals
+
+error[E0428]: the name `_foo1` is defined multiple times
+  --> $DIR/concat-usage-errors.rs:142:9
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |         ------- previous definition of the value `_foo1` here
+...
 LL |         const ${concat(_foo, $tt)}: () = ();
-   |                               ^^
+   |         ^^^^^^^ `_foo1` redefined here
+...
+LL |     bad_tt_literal!('1');
+   |     -------------------- in this macro invocation
    |
-   = note: currently only string literals are supported
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: `_foo1` must be defined only once in the value namespace of this block
+   = note: this error originates in the macro `bad_tt_literal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
-  --> $DIR/concat-usage-errors.rs:149:31
-   |
-LL |         const ${concat(_foo, $tt)}: () = ();
-   |                               ^^
-   |
-   = note: currently only string literals are supported
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+error: aborting due to 37 previous errors
 
-error: aborting due to 43 previous errors
-
+For more information about this error, try `rustc --explain E0428`.

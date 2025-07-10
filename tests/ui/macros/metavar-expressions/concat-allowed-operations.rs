@@ -38,7 +38,14 @@ macro_rules! without_dollar_sign_is_an_ident {
 }
 
 macro_rules! combinations {
-    ($ident:ident, $literal:literal, $tt_ident:tt, $tt_literal:tt) => {{
+    (
+        $ident:ident,
+        $literal:literal,
+        $char:literal,
+        $tt_ident:tt,
+        $tt_literal:tt,
+        $tt_char:tt
+    ) => {{
         // tt ident
         let ${concat($tt_ident, b)} = ();
         let ${concat($tt_ident, _b)} = ();
@@ -89,17 +96,39 @@ macro_rules! combinations {
         let ${concat($literal, $tt_literal)} = ();
         let ${concat($literal, $ident)} = ();
         let ${concat($literal, $literal)} = ();
+
+        // char literal (adhoc)
+        let ${concat('a', b)} = ();
+        let ${concat('a', _b)} = ();
+        let ${concat('a', 'b')} = ();
+        let ${concat('a', $tt_ident)} = ();
+        let ${concat('a', $tt_literal)} = ();
+        let ${concat('a', $ident)} = ();
+        let ${concat('a', $literal)} = ();
+        // char literal (param)
+        let ${concat($literal, b)} = ();
+        let ${concat($literal, _b)} = ();
+        let ${concat($literal, 'b')} = ();
+        let ${concat($literal, $tt_ident)} = ();
+        let ${concat($literal, $tt_literal)} = ();
+        let ${concat($literal, $ident)} = ();
+        let ${concat($literal, $literal)} = ();
     }};
+}
+
+macro_rules! stripped_suffixes {
+    ($x:literal) => {
+        assert_eq!(stringify!(${concat("a", 40u32)}), "a40");
+        // TODO
+        // assert_eq!(stringify!(${concat("a", $x)}), "a100");
+    };
 }
 
 fn main() {
     create_things!(behold);
     behold_separated_idents_in_a_fn();
     let _ = behold_separated_idents_in_a_module::FOO;
-    let _ = behold_separated_idents_in_a_struct {
-        foo: 1,
-        behold_separated_idents_in_a_field: 2,
-    };
+    let _ = behold_separated_idents_in_a_struct { foo: 1, behold_separated_idents_in_a_field: 2 };
 
     many_idents!(A, C);
     assert_eq!(ABCD, 1);
@@ -111,5 +140,7 @@ fn main() {
     assert_eq!(VARident, 1);
     assert_eq!(VAR_123, 2);
 
-    combinations!(_hello, "a", b, "b");
+    combinations!(_hello, "a", 'a', b, "b", 'b');
+
+    stripped_suffixes!(100u32);
 }

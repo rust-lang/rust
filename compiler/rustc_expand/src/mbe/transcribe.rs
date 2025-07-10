@@ -16,14 +16,17 @@ use rustc_span::{
 };
 use smallvec::{SmallVec, smallvec};
 
+use super::metavar_expr::parse_tok_for_concat;
 use crate::errors::{
-    CountRepetitionMisplaced, MetaVarsDifSeqMatchers, MustRepeatOnce, MveUnrecognizedVar,
+    self, CountRepetitionMisplaced, MetaVarsDifSeqMatchers, MustRepeatOnce, MveUnrecognizedVar,
     NoSyntaxVarsExprRepeat, VarStillRepeating,
 };
 use crate::mbe::macro_parser::NamedMatch;
 use crate::mbe::macro_parser::NamedMatch::*;
-use crate::mbe::metavar_expr::{MetaVarExprConcatElem, RAW_IDENT_ERR};
+use crate::mbe::metavar_expr::{MetaVarExprConcatElem, VALID_EXPR_CONCAT_TYPES};
 use crate::mbe::{self, KleeneOp, MetaVarExpr};
+
+const VALID_METAVAR_CONCAT_TYPES: &str = "`ident`, `literal`, and `tt`";
 
 /// Context needed to perform transcription of metavariable expressions.
 struct TranscrCtx<'psess, 'itp> {
@@ -545,9 +548,10 @@ fn metavar_expr_concat<'tx>(
     let dcx = tscx.psess.dcx();
     let mut concatenated = String::new();
     for element in elements.into_iter() {
-        let symbol = match element {
-            MetaVarExprConcatElem::Ident(elem) => elem.name,
-            MetaVarExprConcatElem::Literal(elem) => *elem,
+        let tmp_sym;
+        let sym_str = match element {
+            MetaVarExprConcatElem::Ident(elem) => elem.as_str(),
+            MetaVarExprConcatElem::Literal(elem) => elem.as_str(),
             MetaVarExprConcatElem::Var(ident) => {
                 match matched_from_ident(dcx, *ident, tscx.interp)? {
                     NamedMatch::MatchedSeq(named_matches) => {
@@ -557,16 +561,20 @@ fn metavar_expr_concat<'tx>(
                         match &named_matches[*curr_idx] {
                             // FIXME(c410-f3r) Nested repetitions are unimplemented
                             MatchedSeq(_) => unimplemented!(),
-                            MatchedSingle(pnr) => extract_symbol_from_pnr(dcx, pnr, ident.span)?,
+                            MatchedSingle(pnr) => {
+                                tmp_sym = extract_symbol_from_pnr(tscx, pnr, ident.span)?;
+                                tmp_sym.as_str()
+                            }
                         }
                     }
                     NamedMatch::MatchedSingle(pnr) => {
-                        extract_symbol_from_pnr(dcx, pnr, ident.span)?
+                        tmp_sym = extract_symbol_from_pnr(tscx, pnr, ident.span)?;
+                        tmp_sym.as_str()
                     }
                 }
             }
         };
-        concatenated.push_str(symbol.as_str());
+        concatenated.push_str(sym_str);
     }
     let symbol = nfc_normalize(&concatenated);
     let concatenated_span = tscx.visited_dspan(dspan);
@@ -900,46 +908,37 @@ fn out_of_bounds_err<'a>(dcx: DiagCtxtHandle<'a>, max: usize, span: Span, ty: &s
 }
 
 /// Extracts an metavariable symbol that can be an identifier, a token tree or a literal.
-fn extract_symbol_from_pnr<'a>(
-    dcx: DiagCtxtHandle<'a>,
+fn extract_symbol_from_pnr<'tx>(
+    tscx: &mut TranscrCtx<'tx, '_>,
     pnr: &ParseNtResult,
-    span_err: Span,
-) -> PResult<'a, Symbol> {
-    match pnr {
-        ParseNtResult::Ident(nt_ident, is_raw) => {
-            if let IdentIsRaw::Yes = is_raw {
-                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
-            } else {
-                Ok(nt_ident.name)
-            }
+    metavar_span: Span,
+) -> PResult<'tx, String> {
+    // Reconstruct a `Token` so we can share logic with expression parsing.
+    let token = match pnr {
+        ParseNtResult::Tt(TokenTree::Token(tok, _)) => *tok,
+        ParseNtResult::Ident(Ident { name, span }, ident_is_raw) => {
+            Token { kind: TokenKind::Ident(*name, *ident_is_raw), span: *span }
         }
-        ParseNtResult::Tt(TokenTree::Token(
-            Token { kind: TokenKind::Ident(symbol, is_raw), .. },
-            _,
-        )) => {
-            if let IdentIsRaw::Yes = is_raw {
-                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
-            } else {
-                Ok(*symbol)
-            }
+
+        ParseNtResult::Literal(l) if let ExprKind::Lit(lit) = l.kind => {
+            Token { kind: TokenKind::Literal(lit), span: l.span }
         }
-        ParseNtResult::Tt(TokenTree::Token(
-            Token {
-                kind: TokenKind::Literal(Lit { kind: LitKind::Str, symbol, suffix: None }),
-                ..
-            },
-            _,
-        )) => Ok(*symbol),
-        ParseNtResult::Literal(expr)
-            if let ExprKind::Lit(Lit { kind: LitKind::Str, symbol, suffix: None }) = &expr.kind =>
-        {
-            Ok(*symbol)
+        _ => {
+            let err = errors::MveConcatInvalidTy {
+                span: pnr.span(),
+                metavar_span: Some(metavar_span),
+                reason: errors::MveConcatInvalidTyReason::InvalidMetavarTy,
+                valid: VALID_METAVAR_CONCAT_TYPES,
+            };
+            return Err(tscx.psess.dcx().create_err(err));
         }
-        _ => Err(dcx
-            .struct_err(
-                "metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`",
-            )
-            .with_note("currently only string literals are supported")
-            .with_span(span_err)),
-    }
+    };
+
+    parse_tok_for_concat(tscx.psess, token)
+    //     _ => Err(dcx
+    //         .struct_err(
+    //             "metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`",
+    //         )
+    //         .with_note("currently only string literals are supported")
+    //         .with_span(span_err)),
 }
