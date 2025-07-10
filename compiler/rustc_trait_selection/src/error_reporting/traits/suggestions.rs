@@ -3697,6 +3697,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 suggest_remove_deref(err, &expr);
             }
+            ObligationCauseCode::UnsizedNonPlaceExpr(span) => {
+                err.span_note(
+                    span,
+                    "unsized values must be place expressions and cannot be put in temporaries",
+                );
+            }
         }
     }
 
