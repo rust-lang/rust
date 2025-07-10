@@ -10,7 +10,7 @@ impl Foo {
 
     fn two(&self) {}
 
-    // seperation between items
+    // separation between items
     // ...
     // ...
 
@@ -18,7 +18,7 @@ impl Foo {
 
     const CONSTANT: usize = 5;
 
-    // more seperation
+    // more separation
     // ...
     // ...
 
