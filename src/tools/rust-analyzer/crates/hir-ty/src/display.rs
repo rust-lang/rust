@@ -2328,6 +2328,7 @@ impl HirDisplayWithExpressionStore for TypeBound {
                 store[*path].hir_fmt(f, store)
             }
             TypeBound::Use(args) => {
+                write!(f, "use<")?;
                 let edition = f.edition();
                 let last = args.len().saturating_sub(1);
                 for (idx, arg) in args.iter().enumerate() {
