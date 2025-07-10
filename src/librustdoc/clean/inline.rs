@@ -152,8 +152,14 @@ pub(crate) fn try_inline(
     };
 
     cx.inlined.insert(did.into());
-    let mut item =
-        crate::clean::generate_item_with_correct_attrs(cx, kind, did, name, import_def_id, None);
+    let mut item = crate::clean::generate_item_with_correct_attrs(
+        cx,
+        kind,
+        did,
+        name,
+        import_def_id.as_slice(),
+        None,
+    );
     // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
     item.inner.inline_stmt_id = import_def_id;
     ret.push(item);
