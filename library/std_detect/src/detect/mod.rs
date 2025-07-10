@@ -29,7 +29,6 @@ mod arch;
 #[doc(hidden)]
 #[unstable(feature = "stdarch_internal", issue = "none")]
 pub use self::arch::__is_feature_detected;
-
 pub(crate) use self::arch::Feature;
 
 mod bit;

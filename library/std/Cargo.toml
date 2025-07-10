@@ -23,9 +23,7 @@ unwind = { path = "../unwind" }
 hashbrown = { version = "0.15", default-features = false, features = [
     'rustc-dep-of-std',
 ] }
-std_detect = { path = "../stdarch/crates/std_detect", default-features = false, features = [
-    'rustc-dep-of-std',
-] }
+std_detect = { path = "../std_detect" }
 
 # Dependencies of the `backtrace` crate
 rustc-demangle = { version = "0.1.24", features = ['rustc-dep-of-std'] }
@@ -115,8 +113,7 @@ optimize_for_size = ["core/optimize_for_size", "alloc/optimize_for_size"]
 debug_refcell = ["core/debug_refcell"]
 
 
-# Enable std_detect default features for stdarch/crates/std_detect:
-# https://github.com/rust-lang/stdarch/blob/master/crates/std_detect/Cargo.toml
+# Enable std_detect features:
 std_detect_file_io = ["std_detect/std_detect_file_io"]
 std_detect_dlsym_getauxval = ["std_detect/std_detect_dlsym_getauxval"]
 
