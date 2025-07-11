@@ -703,7 +703,6 @@ name = "stdarch-gen-arm"
 version = "0.1.0"
 dependencies = [
  "itertools",
- "lazy_static",
  "proc-macro2",
  "quote",
  "regex",

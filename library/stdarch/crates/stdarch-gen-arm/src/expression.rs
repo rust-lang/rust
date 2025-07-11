@@ -1,5 +1,4 @@
 use itertools::Itertools;
-use lazy_static::lazy_static;
 use proc_macro2::{Literal, Punct, Spacing, TokenStream};
 use quote::{ToTokens, TokenStreamExt, format_ident, quote};
 use regex::Regex;
@@ -7,6 +6,7 @@ use serde::de::{self, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 use std::str::FromStr;
+use std::sync::LazyLock;
 
 use crate::intrinsic::Intrinsic;
 use crate::wildstring::WildStringPart;
@@ -374,10 +374,8 @@ impl FromStr for Expression {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        lazy_static! {
-            static ref MACRO_RE: Regex =
-                Regex::new(r"^(?P<name>[\w\d_]+)!\((?P<ex>.*?)\);?$").unwrap();
-        }
+        static MACRO_RE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"^(?P<name>[\w\d_]+)!\((?P<ex>.*?)\);?$").unwrap());
 
         if s == "SvUndef" {
             Ok(Expression::SvUndef)
