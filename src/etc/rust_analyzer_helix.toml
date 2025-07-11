@@ -59,4 +59,5 @@ overrideCommand = [
     "--json-output",
     "--build-dir",
     "build/rust-analyzer",
+    "--compile-time-deps"
 ]

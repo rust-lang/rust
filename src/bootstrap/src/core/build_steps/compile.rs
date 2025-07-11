@@ -2542,6 +2542,11 @@ pub fn stream_cargo(
     }
     cmd.arg("--message-format").arg(message_format);
 
+    if builder.config.compile_time_deps {
+        cmd.arg("-Zunstable-options");
+        cmd.arg("--compile-time-deps");
+    }
+
     for arg in tail_args {
         cmd.arg(arg);
     }

@@ -132,6 +132,9 @@ pub struct Flags {
     #[arg(global = true, long)]
     /// use message-format=json
     pub json_output: bool,
+    #[arg(global = true, long)]
+    /// use --compile-time-deps
+    pub compile_time_deps: bool,
 
     #[arg(global = true, long, value_name = "STYLE")]
     #[arg(value_enum, default_value_t = Color::Auto)]
