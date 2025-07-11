@@ -31,8 +31,8 @@ use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
 
 use crate::{
-    CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstData, ConstScalar, FnDefId, Interner,
-    MemoryMap, Substitution, ToChalk, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
+    AliasTy, CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstData, ConstScalar, FnDefId,
+    Interner, MemoryMap, Substitution, ToChalk, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
     consteval::{ConstEvalError, intern_const_scalar, try_const_usize},
     db::{HirDatabase, InternedClosure},
     display::{ClosureStyle, DisplayTarget, HirDisplay},
@@ -2195,7 +2195,7 @@ impl Evaluator<'_> {
                         }
                     }
                 }
-                chalk_ir::TyKind::Array(inner, len) => {
+                TyKind::Array(inner, len) => {
                     let len = match try_const_usize(this.db, len) {
                         Some(it) => it as usize,
                         None => not_supported!("non evaluatable array len in patching addresses"),
@@ -2213,7 +2213,7 @@ impl Evaluator<'_> {
                         )?;
                     }
                 }
-                chalk_ir::TyKind::Tuple(_, subst) => {
+                TyKind::Tuple(_, subst) => {
                     let layout = this.layout(ty)?;
                     for (id, ty) in subst.iter(Interner).enumerate() {
                         let ty = ty.assert_ty_ref(Interner); // Tuple only has type argument
@@ -2229,7 +2229,7 @@ impl Evaluator<'_> {
                         )?;
                     }
                 }
-                chalk_ir::TyKind::Adt(adt, subst) => match adt.0 {
+                TyKind::Adt(adt, subst) => match adt.0 {
                     AdtId::StructId(s) => {
                         let data = s.fields(this.db);
                         let layout = this.layout(ty)?;
@@ -2280,6 +2280,10 @@ impl Evaluator<'_> {
                     }
                     AdtId::UnionId(_) => (),
                 },
+                TyKind::Alias(AliasTy::Projection(proj)) => {
+                    let ty = this.db.normalize_projection(proj.clone(), this.trait_env.clone());
+                    rec(this, bytes, &ty, locals, mm, stack_depth_limit - 1)?;
+                }
                 _ => (),
             }
             Ok(())
