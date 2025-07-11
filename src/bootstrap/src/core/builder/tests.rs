@@ -1439,6 +1439,30 @@ mod snapshot {
         ");
     }
 
+    /// Make sure that we don't check library when download-rustc is disabled
+    /// when `--skip-std-check-if-no-download-rustc` was passed.
+    #[test]
+    fn check_library_skip_without_download_rustc() {
+        let ctx = TestCtx::new();
+        let args = ["--set", "rust.download-rustc=false", "--skip-std-check-if-no-download-rustc"];
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .paths(&["library"])
+                .args(&args)
+                .render_steps(), @"");
+
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .paths(&["library", "compiler"])
+                .args(&args)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> cranelift 1 <host>
+        [check] rustc 0 <host> -> gcc 1 <host>
+        ");
+    }
+
     #[test]
     fn check_miri_no_explicit_stage() {
         let ctx = TestCtx::new();
