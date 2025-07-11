@@ -42,7 +42,7 @@ LL + type X = <CString as Deref>::Target;
 LL - type X = std::ops::Deref::Target;
 LL + type X = <IoSlice<'_> as Deref>::Target;
    |
-     and N other candidates
+   = and N other candidates
 
 error[E0223]: ambiguous associated type
   --> $DIR/associated-types-in-ambiguous-context.rs:13:23

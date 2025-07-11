@@ -1,5 +1,5 @@
 error[E0423]: expected function, tuple struct or tuple variant, found struct `std::collections::HashMap`
-  --> $DIR/suggest-box-new.rs:14:13
+  --> $DIR/multi-suggestion.rs:17:13
    |
 LL |     let _ = std::collections::HashMap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     let _ = <std::collections::HashMap as std::default::Default>::default()
    |             +                          ++++++++++++++++++++++++++++++++++
 
 error[E0423]: cannot initialize a tuple struct which contains private fields
-  --> $DIR/suggest-box-new.rs:8:19
+  --> $DIR/multi-suggestion.rs:11:19
    |
 LL |         wtf: Some(Box(U {
    |                   ^^^
@@ -71,7 +71,7 @@ LL +         wtf: Some(<Box as std::default::Default>::default()),
    |
 
 error: cannot construct `HashMap<_, _, _>` with struct literal syntax due to private fields
-  --> $DIR/suggest-box-new.rs:16:13
+  --> $DIR/multi-suggestion.rs:19:13
    |
 LL |     let _ = std::collections::HashMap {};
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -98,7 +98,7 @@ LL +     let _ = <std::collections::HashMap as std::default::Default>::default()
    |
 
 error: cannot construct `Box<_, _>` with struct literal syntax due to private fields
-  --> $DIR/suggest-box-new.rs:18:13
+  --> $DIR/multi-suggestion.rs:21:13
    |
 LL |     let _ = Box {};
    |             ^^^
