@@ -396,7 +396,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool EmitStackSizeSection, bool RelaxELFRelocations, bool UseInitArray,
     const char *SplitDwarfFile, const char *OutputObjFile,
     const char *DebugInfoCompression, bool UseEmulatedTls,
-    const char *ArgsCstrBuff, size_t ArgsCstrBuffLen) {
+    const char *ArgsCstrBuff, size_t ArgsCstrBuffLen, bool UseWasmEH) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
@@ -461,6 +461,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   if (Singlethread) {
     Options.ThreadModel = ThreadModel::Single;
   }
+
+  if (UseWasmEH)
+    Options.ExceptionModel = ExceptionHandling::Wasm;
 
   Options.EmitStackSizeSection = EmitStackSizeSection;
 
