@@ -6,9 +6,10 @@ use crate::ub_checks::assert_unsafe_precondition;
 use crate::{ops, range};
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, I> ops::Index<I> for [T]
+#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+impl<T, I> const ops::Index<I> for [T]
 where
-    I: SliceIndex<[T]>,
+    I: ~const SliceIndex<[T]>,
 {
     type Output = I::Output;
 
@@ -19,9 +20,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, I> ops::IndexMut<I> for [T]
+#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+impl<T, I> const ops::IndexMut<I> for [T]
 where
-    I: SliceIndex<[T]>,
+    I: ~const SliceIndex<[T]>,
 {
     #[inline(always)]
     fn index_mut(&mut self, index: I) -> &mut I::Output {

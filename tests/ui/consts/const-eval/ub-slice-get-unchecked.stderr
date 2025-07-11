@@ -15,9 +15,9 @@ error: `core::slice::<impl [T]>::get_unchecked` is not yet stable as a const fn
 LL | const B: &[()] = unsafe { A.get_unchecked(3..1) };
    |                           ^^^^^^^^^^^^^^^^^^^^^
    |
-help: add `#![feature(const_slice_index)]` to the crate attributes to enable
+help: add `#![feature(const_index)]` to the crate attributes to enable
    |
-LL + #![feature(const_slice_index)]
+LL + #![feature(const_index)]
    |
 
 error: aborting due to 2 previous errors
