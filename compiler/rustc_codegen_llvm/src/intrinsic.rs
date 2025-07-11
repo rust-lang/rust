@@ -1151,7 +1151,8 @@ fn codegen_enzyme_autodiff<'ll, 'tcx>(
         ty::FnDef(def_id, source_params) => (def_id, source_params),
         _ => bug!("invalid args"),
     };
-    let fn_source = Instance::new_raw(*source_id, source_args);
+    let fn_source =
+        Instance::try_resolve(tcx, bx.cx.typing_env(), *source_id, source_args).unwrap().unwrap();
     let source_symbol = symbol_name_for_instance_in_crate(tcx, fn_source.clone(), LOCAL_CRATE);
     let fn_to_diff: Option<&'ll llvm::Value> = bx.cx.get_function(&source_symbol);
     let Some(fn_to_diff) = fn_to_diff else { bug!("could not find source function") };
@@ -1160,10 +1161,11 @@ fn codegen_enzyme_autodiff<'ll, 'tcx>(
         ty::FnDef(def_id, diff_args) => (def_id, diff_args),
         _ => bug!("invalid args"),
     };
-    let fn_diff = Instance::new_raw(*diff_id, diff_args);
+    let fn_diff =
+        Instance::try_resolve(tcx, bx.cx.typing_env(), *diff_id, diff_args).unwrap().unwrap();
     let diff_symbol = symbol_name_for_instance_in_crate(tcx, fn_diff.clone(), LOCAL_CRATE);
 
-    let diff_attrs = autodiff_attrs(tcx, *diff_id);
+    let diff_attrs = autodiff_attrs(tcx, fn_diff.def_id());
     let Some(diff_attrs) = diff_attrs else { bug!("could not find autodiff attrs") };
 
     // Build body
