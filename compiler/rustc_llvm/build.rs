@@ -167,6 +167,11 @@ fn main() {
     let cxxflags = output(&mut cmd);
     let mut cfg = cc::Build::new();
     cfg.warnings(false);
+
+    // Prevent critical warnings when we're compiling from rust-lang/rust CI
+    if std::env::var_os("CI").is_some() {
+        cfg.warnings_into_errors(true);
+    }
     for flag in cxxflags.split_whitespace() {
         // Ignore flags like `-m64` when we're doing a cross build
         if is_crossed && flag.starts_with("-m") {
