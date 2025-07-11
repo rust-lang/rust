@@ -1,12 +1,26 @@
-error[E0015]: cannot match on `str` in constant functions
+error[E0658]: cannot match on `str` in constant functions
   --> $DIR/match-non-const-eq.rs:7:9
    |
-LL |         "a" => (), //FIXME [gated]~ ERROR can't compare `str` with `str` in const contexts
+LL |         "a" => (),
    |         ^^^
    |
    = note: `str` cannot be compared in compile-time, and therefore cannot be used in `match`es
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 1 previous error
+error: `PartialEq` is not yet stable as a const trait
+  --> $DIR/match-non-const-eq.rs:7:9
+   |
+LL |         "a" => (),
+   |         ^^^
+   |
+help: add `#![feature(const_cmp)]` to the crate attributes to enable
+   |
+LL + #![feature(const_cmp)]
+   |
 
-For more information about this error, try `rustc --explain E0015`.
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
