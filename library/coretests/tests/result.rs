@@ -472,7 +472,7 @@ const _: () = {
     let _inspected_ok: Result<u8, u8> = r_ok.inspect(noop_u8_ref);
     let _inspected_err: Result<u8, u8> = r_err.inspect_err(noop_u8_ref);
 
-    let _unwrapped: u8 = r_ok.unwrap();
+    // let _unwrapped: u8 = r_ok.unwrap();
     let _unwrapped_default: u8 = r_err.unwrap_or_default();
 
     let _and_then: Result<u8, u8> = r_ok.and_then(add1_result);

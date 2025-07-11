@@ -536,7 +536,6 @@
 use crate::iter::{self, FusedIterator, TrustedLen};
 use crate::marker::Destruct;
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
-use crate::panic::const_panic;
 use crate::{convert, fmt, hint};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
@@ -609,8 +608,9 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[stable(feature = "is_some_and", since = "1.70.0")]
     #[rustc_const_unstable(feature = "const_result_callback_methods", issue = "67792")]
-    pub const fn is_ok_and(self, f: impl ~const FnOnce(T) -> bool + ~const Destruct) -> bool
+    pub const fn is_ok_and<F>(self, f: F) -> bool
     where
+        F: ~const FnOnce(T) -> bool + ~const Destruct,
         T: ~const Destruct,
         E: ~const Destruct,
     {
@@ -663,8 +663,9 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[stable(feature = "is_some_and", since = "1.70.0")]
     #[rustc_const_unstable(feature = "const_result_callback_methods", issue = "67792")]
-    pub const fn is_err_and(self, f: impl ~const FnOnce(E) -> bool + ~const Destruct) -> bool
+    pub const fn is_err_and<F>(self, f: F) -> bool
     where
+        F: ~const FnOnce(E) -> bool + ~const Destruct,
         E: ~const Destruct,
         T: ~const Destruct,
     {
@@ -819,7 +820,10 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_result_callback_methods", issue = "67792")]
-    pub const fn map<U, F: ~const FnOnce(T) -> U + ~const Destruct>(self, op: F) -> Result<U, E> {
+    pub const fn map<U, F>(self, op: F) -> Result<U, E>
+    where
+        F: ~const FnOnce(T) -> U + ~const Destruct,
+    {
         match self {
             Ok(t) => Ok(op(t)),
             Err(e) => Err(e),
@@ -848,8 +852,9 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "result_map_or", since = "1.41.0")]
     #[rustc_const_unstable(feature = "const_result_callback_methods", issue = "67792")]
     #[must_use = "if you don't need the returned value, use `if let` instead"]
-    pub const fn map_or<U, F: ~const FnOnce(T) -> U + ~const Destruct>(self, default: U, f: F) -> U
+    pub const fn map_or<U, F>(self, default: U, f: F) -> U
     where
+        F: ~const FnOnce(T) -> U + ~const Destruct,
         T: ~const Destruct,
         E: ~const Destruct,
         U: ~const Destruct,
@@ -881,15 +886,11 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[stable(feature = "result_map_or_else", since = "1.41.0")]
     #[rustc_const_unstable(feature = "const_result_callback_methods", issue = "67792")]
-    pub const fn map_or_else<
-        U,
+    pub const fn map_or_else<U, D, F>(self, default: D, f: F) -> U
+    where
         D: ~const FnOnce(E) -> U + ~const Destruct,
         F: ~const FnOnce(T) -> U + ~const Destruct,
-    >(
-        self,
-        default: D,
-        f: F,
-    ) -> U {
+    {
         match self {
             Ok(t) => f(t),
             Err(e) => default(e),
@@ -918,8 +919,8 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_callback_methods", issue = "67792")]
     pub const fn map_or_default<U, F>(self, f: F) -> U
     where
-        U: ~const Default,
         F: ~const FnOnce(T) -> U + ~const Destruct,
+        U: ~const Default,
         T: ~const Destruct,
         E: ~const Destruct,
     {
@@ -950,10 +951,10 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_result_callback_methods", issue = "67792")]
-    pub const fn map_err<F, O: ~const FnOnce(E) -> F + ~const Destruct>(
-        self,
-        op: O,
-    ) -> Result<T, F> {
+    pub const fn map_err<F, O>(self, op: O) -> Result<T, F>
+    where
+        O: ~const FnOnce(E) -> F + ~const Destruct,
+    {
         match self {
             Ok(t) => Ok(t),
             Err(e) => Err(op(e)),
@@ -976,7 +977,10 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[stable(feature = "result_option_inspect", since = "1.76.0")]
     #[rustc_const_unstable(feature = "const_result_callback_methods", issue = "67792")]
-    pub const fn inspect<F: ~const FnOnce(&T) + ~const Destruct>(self, f: F) -> Self {
+    pub const fn inspect<F>(self, f: F) -> Self
+    where
+        F: ~const FnOnce(&T) + ~const Destruct,
+    {
         if let Ok(ref t) = self {
             f(t);
         }
@@ -1001,7 +1005,10 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[stable(feature = "result_option_inspect", since = "1.76.0")]
     #[rustc_const_unstable(feature = "const_result_callback_methods", issue = "67792")]
-    pub const fn inspect_err<F: ~const FnOnce(&E) + ~const Destruct>(self, f: F) -> Self {
+    pub const fn inspect_err<F>(self, f: F) -> Self
+    where
+        F: ~const FnOnce(&E) + ~const Destruct,
+    {
         if let Err(ref e) = self {
             f(e);
         }
@@ -1207,8 +1214,7 @@ impl<T, E> Result<T, E> {
     #[inline(always)]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_result_callback_methods", issue = "67792")]
-    pub const fn unwrap(self) -> T
+    pub fn unwrap(self) -> T
     where
         E: fmt::Debug,
     {
@@ -1465,10 +1471,10 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_result_callback_methods", issue = "67792")]
     #[rustc_confusables("flat_map", "flatmap")]
-    pub const fn and_then<U, F: ~const FnOnce(T) -> Result<U, E> + ~const Destruct>(
-        self,
-        op: F,
-    ) -> Result<U, E> {
+    pub const fn and_then<U, F>(self, op: F) -> Result<U, E>
+    where
+        F: ~const FnOnce(T) -> Result<U, E> + ~const Destruct,
+    {
         match self {
             Ok(t) => op(t),
             Err(e) => Err(e),
@@ -1536,10 +1542,10 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_result_callback_methods", issue = "67792")]
-    pub const fn or_else<F, O: ~const FnOnce(E) -> Result<T, F> + ~const Destruct>(
-        self,
-        op: O,
-    ) -> Result<T, F> {
+    pub const fn or_else<F, O>(self, op: O) -> Result<T, F>
+    where
+        O: ~const FnOnce(E) -> Result<T, F> + ~const Destruct,
+    {
         match self {
             Ok(t) => Ok(t),
             Err(e) => op(e),
@@ -1593,7 +1599,10 @@ impl<T, E> Result<T, E> {
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_result_callback_methods", issue = "67792")]
-    pub const fn unwrap_or_else<F: ~const FnOnce(E) -> T + ~const Destruct>(self, op: F) -> T {
+    pub const fn unwrap_or_else<F>(self, op: F) -> T
+    where
+        F: ~const FnOnce(E) -> T + ~const Destruct,
+    {
         match self {
             Ok(t) => t,
             Err(e) => op(e),
@@ -1835,8 +1844,8 @@ impl<T, E> Result<Result<T, E>, E> {
 #[inline(never)]
 #[cold]
 #[track_caller]
-const fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
-    const_panic!("Unwrap failed", "{msg}: {error:?}", msg: &str = msg, error: &dyn fmt::Debug = error);
+fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
+    panic!("{msg}: {error:?}");
 }
 
 // This is a separate function to avoid constructing a `dyn Debug`
