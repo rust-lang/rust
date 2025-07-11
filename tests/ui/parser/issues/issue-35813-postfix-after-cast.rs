@@ -1,6 +1,6 @@
 //@ edition:2018
 #![crate_type = "lib"]
-#![feature(type_ascription)]
+#![feature(type_ascription, const_index, const_trait_impl)]
 use std::future::Future;
 use std::pin::Pin;
 
@@ -129,7 +129,6 @@ pub fn inside_block() {
 
 static bar: &[i32] = &(&[1,2,3] as &[i32][0..1]);
 //~^ ERROR: cast cannot be followed by indexing
-//~| ERROR: cannot call non-const operator in statics
 
 static bar2: &[i32] = &(&[1i32,2,3]: &[i32; 3][0..1]);
 //~^ ERROR: expected one of
