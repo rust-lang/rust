@@ -38,9 +38,12 @@ error[E0308]: mismatched types
   --> $DIR/typo-in-repeat-expr-issue-80173.rs:32:29
    |
 LL |     let e = [String::new(), 10];
-   |                             ^^- help: try using a conversion method: `.to_string()`
-   |                             |
-   |                             expected `String`, found integer
+   |                             ^^ expected `String`, found integer
+   |
+help: try using a conversion method
+   |
+LL |     let e = [String::new(), 10.to_string()];
+   |                               ++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/typo-in-repeat-expr-issue-80173.rs:36:19

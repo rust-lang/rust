@@ -33248,7 +33248,7 @@ pub fn _mm512_reduce_add_ps(a: __m512) -> f32 {
         );
         let a = _mm_add_ps(_mm256_extractf128_ps::<0>(a), _mm256_extractf128_ps::<1>(a));
         let a = _mm_add_ps(a, simd_shuffle!(a, a, [2, 3, 0, 1]));
-        simd_extract::<_, f32>(a, 0) + simd_extract::<_, f32>(a, 1)
+        simd_extract!(a, 0, f32) + simd_extract!(a, 1, f32)
     }
 }
 
@@ -33275,7 +33275,7 @@ pub fn _mm512_reduce_add_pd(a: __m512d) -> f64 {
             _mm512_extractf64x4_pd::<1>(a),
         );
         let a = _mm_add_pd(_mm256_extractf128_pd::<0>(a), _mm256_extractf128_pd::<1>(a));
-        simd_extract::<_, f64>(a, 0) + simd_extract::<_, f64>(a, 1)
+        simd_extract!(a, 0, f64) + simd_extract!(a, 1, f64)
     }
 }
 
@@ -33356,7 +33356,7 @@ pub fn _mm512_reduce_mul_ps(a: __m512) -> f32 {
         );
         let a = _mm_mul_ps(_mm256_extractf128_ps::<0>(a), _mm256_extractf128_ps::<1>(a));
         let a = _mm_mul_ps(a, simd_shuffle!(a, a, [2, 3, 0, 1]));
-        simd_extract::<_, f32>(a, 0) * simd_extract::<_, f32>(a, 1)
+        simd_extract!(a, 0, f32) * simd_extract!(a, 1, f32)
     }
 }
 
@@ -33383,7 +33383,7 @@ pub fn _mm512_reduce_mul_pd(a: __m512d) -> f64 {
             _mm512_extractf64x4_pd::<1>(a),
         );
         let a = _mm_mul_pd(_mm256_extractf128_pd::<0>(a), _mm256_extractf128_pd::<1>(a));
-        simd_extract::<_, f64>(a, 0) * simd_extract::<_, f64>(a, 1)
+        simd_extract!(a, 0, f64) * simd_extract!(a, 1, f64)
     }
 }
 
