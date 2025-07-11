@@ -106,7 +106,7 @@ lsp-server = { version = "0.7.8" }
 anyhow = "1.0.98"
 arrayvec = "0.7.6"
 bitflags = "2.9.1"
-cargo_metadata = "0.20.0"
+cargo_metadata = "0.21.0"
 camino = "1.1.10"
 chalk-solve = { version = "0.103.0", default-features = false }
 chalk-ir = "0.103.0"
