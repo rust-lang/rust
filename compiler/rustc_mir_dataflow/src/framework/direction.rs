@@ -1,5 +1,6 @@
 use std::ops::RangeInclusive;
 
+use rustc_middle::bug;
 use rustc_middle::mir::{
     self, BasicBlock, CallReturnPlaces, Location, SwitchTargetValue, TerminatorEdges,
 };
@@ -112,15 +113,11 @@ impl Direction for Backward {
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::SwitchInt { ref targets, ref discr } => {
-                    if let Some(mut data) = analysis.get_switch_int_data(pred, discr) {
-                        let mut tmp = analysis.bottom_value(body);
-                        for &value in &body.basic_blocks.switch_sources()[&(block, pred)] {
-                            tmp.clone_from(exit_state);
-                            analysis
-                                .apply_switch_int_edge_effect(&mut data, &mut tmp, value, targets);
-                            propagate(pred, &tmp);
-                        }
+                mir::TerminatorKind::SwitchInt { ref discr, .. } => {
+                    if let Some(_data) = analysis.get_switch_int_data(pred, discr) {
+                        bug!(
+                            "SwitchInt edge effects are unsupported in backward dataflow analyses"
+                        );
                     } else {
                         propagate(pred, exit_state)
                     }
