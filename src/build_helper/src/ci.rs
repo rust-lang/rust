@@ -9,7 +9,7 @@ pub enum CiEnv {
 impl CiEnv {
     /// Obtains the current CI environment.
     pub fn current() -> CiEnv {
-        if std::env::var("GITHUB_ACTIONS").map_or(false, |e| e == "true") {
+        if std::env::var("GITHUB_ACTIONS").is_ok_and(|e| e == "true") {
             CiEnv::GitHubActions
         } else {
             CiEnv::None
