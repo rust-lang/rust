@@ -1,7 +1,7 @@
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::ops::Neg;
 use crate::os::windows::prelude::*;
-use crate::sys::api::utf16;
+use crate::sys::api::wide_str;
 use crate::sys::c;
 use crate::sys::handle::Handle;
 use crate::sys_common::{FromInner, IntoInner};
@@ -73,7 +73,8 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
         // Open a handle to the pipe filesystem (`\??\PIPE\`).
         // This will be used when creating a new annon pipe.
         let pipe_fs = {
-            let path = c::UNICODE_STRING::from_ref(utf16!(r"\??\PIPE\"));
+            static PIPE_PATH: [u16; 10] = *wide_str!(r"\??\PIPE\");
+            let path = c::UNICODE_STRING::from_ref(&PIPE_PATH[..PIPE_PATH.len() - 1]);
             object_attributes.ObjectName = &path;
             let mut pipe_fs = ptr::null_mut();
             let status = c::NtOpenFile(

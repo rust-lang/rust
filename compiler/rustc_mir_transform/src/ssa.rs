@@ -322,8 +322,8 @@ fn compute_copy_classes(ssa: &mut SsaLocals, body: &Body<'_>) {
         // visited before `local`, and we just have to copy the representing local.
         let head = copies[rhs];
 
-        // Do not unify two borrowed locals.
-        if borrowed_classes.contains(local) && borrowed_classes.contains(head) {
+        // Do not unify borrowed locals.
+        if borrowed_classes.contains(local) || borrowed_classes.contains(head) {
             continue;
         }
 

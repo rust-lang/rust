@@ -3261,7 +3261,7 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
                 diag.multipart_suggestion_with_style(
                     fluent::lint_mismatched_lifetime_syntaxes_suggestion_implicit,
                     suggestions,
-                    Applicability::MachineApplicable,
+                    Applicability::MaybeIncorrect,
                     style(tool_only),
                 );
             }
@@ -3276,7 +3276,7 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
                 diag.multipart_suggestion_with_style(
                     fluent::lint_mismatched_lifetime_syntaxes_suggestion_mixed,
                     suggestions,
-                    Applicability::MachineApplicable,
+                    Applicability::MaybeIncorrect,
                     style(tool_only),
                 );
             }
@@ -3291,7 +3291,7 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
                 diag.multipart_suggestion_with_style(
                     msg,
                     suggestions,
-                    Applicability::MachineApplicable,
+                    Applicability::MaybeIncorrect,
                     style(tool_only),
                 );
             }
