@@ -494,7 +494,8 @@ macro_rules! tool_check_step {
             // The part of this path after the final '/' is also used as a display name.
             path: $path:literal
             $(, alt_path: $alt_path:literal )*
-            , mode: $mode:path
+            // Closure that returns `Mode` based on the passed `&Builder<'_>`
+            , mode: $mode:expr
             $(, allow_features: $allow_features:expr )?
             $(, default: $default:literal )?
             $( , )?
@@ -518,10 +519,13 @@ macro_rules! tool_check_step {
 
             fn make_run(run: RunConfig<'_>) {
                 let target = run.target;
-                let build_compiler = prepare_compiler_for_check(run.builder, target, $mode);
+                let builder = run.builder;
+                let mode = $mode(builder);
+
+                let build_compiler = prepare_compiler_for_check(run.builder, target, mode);
 
                 // It doesn't make sense to cross-check bootstrap tools
-                if $mode == Mode::ToolBootstrap && target != run.builder.host_target {
+                if mode == Mode::ToolBootstrap && target != run.builder.host_target {
                     println!("WARNING: not checking bootstrap tool {} for target {target} as it is a bootstrap (host-only) tool", stringify!($path));
                     return;
                 };
@@ -536,7 +540,8 @@ macro_rules! tool_check_step {
                     $( _value = $allow_features; )?
                     _value
                 };
-                run_tool_check_step(builder, build_compiler, target, $path, $mode, allow_features);
+                let mode = $mode(builder);
+                run_tool_check_step(builder, build_compiler, target, $path, mode, allow_features);
             }
 
             fn metadata(&self) -> Option<StepMetadata> {
@@ -593,43 +598,47 @@ fn run_tool_check_step(
 tool_check_step!(Rustdoc {
     path: "src/tools/rustdoc",
     alt_path: "src/librustdoc",
-    mode: Mode::ToolRustc
+    mode: |_builder| Mode::ToolRustc
 });
 // Clippy, miri and Rustfmt are hybrids. They are external tools, but use a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
-tool_check_step!(Clippy { path: "src/tools/clippy", mode: Mode::ToolRustc });
-tool_check_step!(Miri { path: "src/tools/miri", mode: Mode::ToolRustc });
-tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: Mode::ToolRustc });
-tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: Mode::ToolRustc });
+tool_check_step!(Clippy { path: "src/tools/clippy", mode: |_builder| Mode::ToolRustc });
+tool_check_step!(Miri { path: "src/tools/miri", mode: |_builder| Mode::ToolRustc });
+tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: |_builder| Mode::ToolRustc });
+tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: |_builder| Mode::ToolRustc });
 tool_check_step!(MiroptTestTools {
     path: "src/tools/miropt-test-tools",
-    mode: Mode::ToolBootstrap
+    mode: |_builder| Mode::ToolBootstrap
 });
 // We want to test the local std
 tool_check_step!(TestFloatParse {
     path: "src/tools/test-float-parse",
-    mode: Mode::ToolStd,
+    mode: |_builder| Mode::ToolStd,
     allow_features: tool::TestFloatParse::ALLOW_FEATURES
 });
 tool_check_step!(FeaturesStatusDump {
     path: "src/tools/features-status-dump",
-    mode: Mode::ToolBootstrap
+    mode: |_builder| Mode::ToolBootstrap
 });
 
-tool_check_step!(Bootstrap { path: "src/bootstrap", mode: Mode::ToolBootstrap, default: false });
+tool_check_step!(Bootstrap {
+    path: "src/bootstrap",
+    mode: |_builder| Mode::ToolBootstrap,
+    default: false
+});
 
 // `run-make-support` will be built as part of suitable run-make compiletest test steps, but support
 // check to make it easier to work on.
 tool_check_step!(RunMakeSupport {
     path: "src/tools/run-make-support",
-    mode: Mode::ToolBootstrap,
+    mode: |_builder| Mode::ToolBootstrap,
     default: false
 });
 
 tool_check_step!(CoverageDump {
     path: "src/tools/coverage-dump",
-    mode: Mode::ToolBootstrap,
+    mode: |_builder| Mode::ToolBootstrap,
     default: false
 });
