@@ -133,7 +133,7 @@ pub struct Flags {
     /// use message-format=json
     pub json_output: bool,
     #[arg(global = true, long)]
-    /// use --compile-time-deps
+    /// only build proc-macros and build scripts (for rust-analyzer)
     pub compile_time_deps: bool,
 
     #[arg(global = true, long, value_name = "STYLE")]
