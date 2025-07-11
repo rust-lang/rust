@@ -57,7 +57,7 @@ pub fn simd_test(
         .unwrap_or_else(|| panic!("target triple contained no \"-\": {target}"))
     {
         "i686" | "x86_64" | "i586" => "is_x86_feature_detected",
-        "arm" | "armv7" => "is_arm_feature_detected",
+        "arm" | "armv7" | "thumbv7neon" => "is_arm_feature_detected",
         "aarch64" | "arm64ec" | "aarch64_be" => "is_aarch64_feature_detected",
         maybe_riscv if maybe_riscv.starts_with("riscv") => "is_riscv_feature_detected",
         "powerpc" | "powerpcle" => "is_powerpc_feature_detected",
