@@ -820,8 +820,7 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
-    pub const fn map<U, F: ~const FnOnce(T) -> U + ~const Destruct>(self, op: F) -> Result<U, E>
-    {
+    pub const fn map<U, F: ~const FnOnce(T) -> U + ~const Destruct>(self, op: F) -> Result<U, E> {
         match self {
             Ok(t) => Ok(op(t)),
             Err(e) => Err(e),
