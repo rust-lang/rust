@@ -21,7 +21,7 @@
 #![feature(const_eval_select)]
 #![feature(const_float_round_methods)]
 #![feature(const_ref_cell)]
-#![feature(const_result_callback_methods)]
+#![feature(const_result_trait_fn)]
 #![feature(const_trait_impl)]
 #![feature(core_float_math)]
 #![feature(core_intrinsics)]
