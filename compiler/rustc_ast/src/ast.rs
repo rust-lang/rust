@@ -3700,6 +3700,9 @@ pub struct TraitImplHeader {
 
 #[derive(Clone, Encodable, Decodable, Debug, Default, Walkable)]
 pub struct FnContract {
+    /// Declarations of variables accessible both in the `requires` and
+    /// `ensures` clauses.
+    pub declarations: ThinVec<Stmt>,
     pub requires: Option<Box<Expr>>,
     pub ensures: Option<Box<Expr>>,
 }
