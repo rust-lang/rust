@@ -232,7 +232,7 @@ pub enum AttributeKind {
     },
 
     /// Represents `#[rustc_const_stable_indirect]`.
-    ConstStabilityIndirect,
+    ConstStabilityIndirect(Span),
 
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
     Deprecation { deprecation: Deprecation, span: Span },
@@ -241,7 +241,7 @@ pub enum AttributeKind {
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
 
     /// Represents `#[rustc_dummy]`.
-    Dummy,
+    Dummy(Span),
 
     /// Represents [`#[export_name]`](https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute).
     ExportName {
@@ -252,7 +252,7 @@ pub enum AttributeKind {
     },
 
     /// Represents `#[export_stable]`.
-    ExportStable,
+    ExportStable(Span),
 
     /// Represents `#[ffi_const]`.
     FfiConst(Span),
@@ -280,7 +280,7 @@ pub enum AttributeKind {
     LoopMatch(Span),
 
     /// Represents `#[rustc_macro_transparency]`.
-    MacroTransparency(Transparency),
+    MacroTransparency(Transparency, Span),
 
     /// Represents [`#[may_dangle]`](https://std-dev-guide.rust-lang.org/tricky/may-dangle.html).
     MayDangle(Span),
@@ -326,7 +326,7 @@ pub enum AttributeKind {
     RustcLayoutScalarValidRangeStart(Box<u128>, Span),
 
     /// Represents `#[rustc_object_lifetime_default]`.
-    RustcObjectLifetimeDefault,
+    RustcObjectLifetimeDefault(Span),
 
     /// Represents `#[rustc_skip_during_method_dispatch]`.
     SkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },

@@ -64,7 +64,7 @@ pub(crate) struct ExportStableParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ExportStableParser {
     const PATH: &[Symbol] = &[sym::export_stable];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ExportStable;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::ExportStable;
 }
 
 pub(crate) struct FfiConstParser;

@@ -39,6 +39,6 @@ impl<S: Stage> SingleAttributeParser<S> for TransparencyParser {
             }
             None => None,
         }
-        .map(AttributeKind::MacroTransparency)
+        .map(|t| AttributeKind::MacroTransparency(t, cx.attr_span))
     }
 }

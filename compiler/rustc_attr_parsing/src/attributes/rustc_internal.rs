@@ -72,6 +72,6 @@ impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {
             return None;
         }
 
-        Some(AttributeKind::RustcObjectLifetimeDefault)
+        Some(AttributeKind::RustcObjectLifetimeDefault(cx.attr_span))
     }
 }
