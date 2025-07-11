@@ -141,7 +141,7 @@ impl BuildStep {
                 } => {
                     let full_name = format!("{parent_name}-{kind}");
                     let children: Vec<_> =
-                        children.into_iter().filter_map(|s| parse(s, &full_name)).collect();
+                        children.iter().filter_map(|s| parse(s, &full_name)).collect();
                     let children_duration = children.iter().map(|c| c.duration).sum::<Duration>();
                     Some(BuildStep {
                         r#type: kind.to_string(),
