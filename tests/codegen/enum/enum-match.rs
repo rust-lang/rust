@@ -41,7 +41,7 @@ pub enum Enum1 {
 // CHECK-NEXT: start:
 // CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
 // CHECK-NEXT: %[[REL_VAR_WIDE:.+]] = zext i8 %[[REL_VAR]] to i64
-// CHECK-NEXT: %[[IS_NICHE:.+]] = icmp ult i8 %[[REL_VAR]], 2
+// CHECK-NEXT: %[[IS_NICHE:.+]] = icmp{{( samesign)?}} ugt i8 %0, 1
 // CHECK-NEXT: %[[NICHE_DISCR:.+]] = add nuw nsw i64 %[[REL_VAR_WIDE]], 1
 // CHECK-NEXT: %[[DISCR:.+]] = select i1 %[[IS_NICHE]], i64 %[[NICHE_DISCR]], i64 0
 // CHECK-NEXT: switch i64 %[[DISCR]]
@@ -148,10 +148,10 @@ pub enum MiddleNiche {
 // CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 -?[0-9]+, -?[0-9]+\))?}} i8 @match4(i8{{.+}}%0)
 // CHECK-NEXT: start:
 // CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
-// CHECK-NEXT: %[[IS_NICHE:.+]] = icmp ult i8 %[[REL_VAR]], 5
 // CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i8 %[[REL_VAR]], 2
 // CHECK-NEXT: call void @llvm.assume(i1 %[[NOT_IMPOSSIBLE]])
-// CHECK-NEXT: %[[DISCR:.+]] = select i1 %[[IS_NICHE]], i8 %[[REL_VAR]], i8 2
+// CHECK-NEXT: %[[NOT_NICHE:.+]] = icmp{{( samesign)?}} ult i8 %0, 2
+// CHECK-NEXT: %[[DISCR:.+]] = select i1 %[[NOT_NICHE]], i8 2, i8 %[[REL_VAR]]
 // CHECK-NEXT: switch i8 %[[DISCR]]
 #[no_mangle]
 pub fn match4(e: MiddleNiche) -> u8 {
@@ -167,11 +167,10 @@ pub fn match4(e: MiddleNiche) -> u8 {
 
 // CHECK-LABEL: define{{.+}}i1 @match4_is_c(i8{{.+}}%e)
 // CHECK-NEXT: start
-// CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %e, -2
-// CHECK-NEXT: %[[NOT_NICHE:.+]] = icmp ugt i8 %[[REL_VAR]], 4
-// CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i8 %[[REL_VAR]], 2
+// CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i8 %e, 4
 // CHECK-NEXT: call void @llvm.assume(i1 %[[NOT_IMPOSSIBLE]])
-// CHECK-NEXT: ret i1 %[[NOT_NICHE]]
+// CHECK-NEXT: %[[IS_C:.+]] = icmp{{( samesign)?}} ult i8 %e, 2
+// CHECK-NEXT: ret i1 %[[IS_C]]
 #[no_mangle]
 pub fn match4_is_c(e: MiddleNiche) -> bool {
     // Before #139098, this couldn't optimize out the `select` because it looked
@@ -453,10 +452,10 @@ pub enum HugeVariantIndex {
 // CHECK-NEXT: start:
 // CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
 // CHECK-NEXT: %[[REL_VAR_WIDE:.+]] = zext i8 %[[REL_VAR]] to i64
-// CHECK-NEXT: %[[IS_NICHE:.+]] = icmp ult i8 %[[REL_VAR]], 3
-// CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i8 %[[REL_VAR]], 1
-// CHECK-NEXT: call void @llvm.assume(i1 %[[NOT_IMPOSSIBLE]])
+// CHECK-NEXT: %[[IS_NICHE:.+]] = icmp{{( samesign)?}} ugt i8 %0, 1
 // CHECK-NEXT: %[[NICHE_DISCR:.+]] = add nuw nsw i64 %[[REL_VAR_WIDE]], 257
+// CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i64 %[[NICHE_DISCR]], 258
+// CHECK-NEXT: call void @llvm.assume(i1 %[[NOT_IMPOSSIBLE]])
 // CHECK-NEXT: %[[DISCR:.+]] = select i1 %[[IS_NICHE]], i64 %[[NICHE_DISCR]], i64 258
 // CHECK-NEXT: switch i64 %[[DISCR]],
 // CHECK-NEXT:   i64 257,
