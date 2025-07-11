@@ -31,11 +31,11 @@ blockquote { font-size: 1em; }
 }
 
 .container > * {
-  margin-bottom: 20px;
-  border-radius: 4px;
-  background: var(--bg);
-  border: 1px solid var(--theme-popup-border);
-  box-shadow: 0 1px 1px rgba(0,0,0,.05);
+    margin-bottom: 20px;
+    border-radius: 4px;
+    background: var(--bg);
+    border: 1px solid var(--theme-popup-border);
+    box-shadow: 0 1px 1px rgba(0,0,0,.05);
 }
 
 div.panel-body button {
@@ -307,13 +307,13 @@ L4.75,12h2.5l0.5393066-2.1572876  c0.2276001-0.1062012,0.4459839-0.2269287,0.649
 -0.3701782l2.1323853,0.6099854l1.25-2.1650391L10.2133789,6.362915  C10.2238159,6.241333,\
 10.25,6.1243286,10.25,6z M6,7.5C5.1715698,7.5,4.5,6.8284302,4.5,6S5.1715698,4.5,6,4.5S7.5\
 ,5.1715698,7.5,6  S6.8284302,7.5,6,7.5z" fill="black"/></svg>');
-  width: 18px;
-  height: 18px;
-  display: block;
-  filter: invert(0.7);
-  position: absolute;
-  top: 4px;
-  left: 5px;
+    width: 18px;
+    height: 18px;
+    display: block;
+    filter: invert(0.7);
+    position: absolute;
+    top: 4px;
+    left: 5px;
 }
 
 .settings-menu * {
