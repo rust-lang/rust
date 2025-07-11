@@ -89,7 +89,7 @@ fn exec_or_status(command: &mut Command) -> io::Result<ExitStatus> {
 fn handle_result(result: io::Result<ExitStatus>, cmd: Command) {
     match result {
         Err(error) => {
-            eprintln!("Failed to invoke `{:?}`: {}", cmd, error);
+            eprintln!("Failed to invoke `{cmd:?}`: {error}");
         }
         Ok(status) => {
             process::exit(status.code().unwrap_or(1));
@@ -98,13 +98,10 @@ fn handle_result(result: io::Result<ExitStatus>, cmd: Command) {
 }
 
 fn main() {
-    match env::args().skip(1).next().as_deref() {
-        Some("--wrapper-version") => {
-            let version = env!("CARGO_PKG_VERSION");
-            println!("{}", version);
-            return;
-        }
-        _ => {}
+    if env::args().nth(1).is_some_and(|s| s == "--wrapper-version") {
+        let version = env!("CARGO_PKG_VERSION");
+        println!("{version}");
+        return;
     }
     let current = match env::current_dir() {
         Ok(dir) => dir,
