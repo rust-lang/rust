@@ -1,6 +1,8 @@
-//@ known-bug: #110395
+//@ run-pass
+// @ known-bug: #110395
 
 #![feature(const_trait_impl)]
+#![allow(dead_code)]
 
 #[const_trait]
 trait Convert<T> {

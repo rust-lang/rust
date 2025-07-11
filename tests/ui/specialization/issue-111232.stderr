@@ -1,11 +1,12 @@
-error[E0520]: `from` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/issue-111232.rs:6:5
+error[E0119]: conflicting implementations of trait `From<S>` for type `S`
+  --> $DIR/issue-111232.rs:5:1
    |
-LL |     fn from(s: S) -> S {
-   |     ^^^^^^^^^^^^^^^^^^
+LL | impl From<S> for S {
+   | ^^^^^^^^^^^^^^^^^^
    |
-   = note: parent implementation is in crate `core`
+   = note: conflicting implementation in crate `core`:
+           - impl<T> From<T> for T;
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0520`.
+For more information about this error, try `rustc --explain E0119`.
