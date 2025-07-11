@@ -1,7 +1,4 @@
 use itertools::Itertools;
-use rayon::prelude::*;
-use std::collections::BTreeMap;
-use std::fs::File;
 use std::process::Command;
 
 use super::argument::Argument;
@@ -12,32 +9,7 @@ use super::intrinsic_helpers::IntrinsicTypeDefinition;
 // The number of times each intrinsic will be called.
 const PASSES: u32 = 20;
 
-pub fn format_rust_main_template(
-    notices: &str,
-    definitions: &str,
-    configurations: &str,
-    arch_definition: &str,
-    arglists: &str,
-    passes: &str,
-) -> String {
-    format!(
-        r#"{notices}#![feature(simd_ffi)]
-#![feature(f16)]
-#![allow(unused)]
-{configurations}
-{definitions}
-
-use core_arch::arch::{arch_definition}::*;
-
-fn main() {{
-{arglists}
-{passes}
-}}
-"#,
-    )
-}
-
-fn write_cargo_toml(w: &mut impl std::io::Write, binaries: &[String]) -> std::io::Result<()> {
+pub fn write_cargo_toml(w: &mut impl std::io::Write, binaries: &[String]) -> std::io::Result<()> {
     writeln!(
         w,
         concat!(
@@ -73,25 +45,65 @@ fn write_cargo_toml(w: &mut impl std::io::Write, binaries: &[String]) -> std::io
     Ok(())
 }
 
-pub fn compile_rust_programs(
-    binaries: Vec<String>,
-    toolchain: Option<&str>,
-    target: &str,
-    linker: Option<&str>,
-) -> bool {
-    let mut cargo = File::create("rust_programs/Cargo.toml").unwrap();
-    write_cargo_toml(&mut cargo, &binaries).unwrap();
+pub fn write_main_rs<'a>(
+    w: &mut impl std::io::Write,
+    available_parallelism: usize,
+    architecture: &str,
+    cfg: &str,
+    definitions: &str,
+    intrinsics: impl Iterator<Item = &'a str> + Clone,
+) -> std::io::Result<()> {
+    writeln!(w, "#![feature(simd_ffi)]")?;
+    writeln!(w, "#![feature(f16)]")?;
+    writeln!(w, "#![allow(unused)]")?;
 
+    // Cargo will spam the logs if these warnings are not silenced.
+    writeln!(w, "#![allow(non_upper_case_globals)]")?;
+    writeln!(w, "#![allow(non_camel_case_types)]")?;
+    writeln!(w, "#![allow(non_snake_case)]")?;
+
+    writeln!(w, "{cfg}")?;
+    writeln!(w, "{definitions}")?;
+
+    writeln!(w, "use core_arch::arch::{architecture}::*;")?;
+
+    for module in 0..Ord::min(available_parallelism, intrinsics.clone().count()) {
+        writeln!(w, "mod mod_{module};")?;
+        writeln!(w, "use mod_{module}::*;")?;
+    }
+
+    writeln!(w, "fn main() {{")?;
+
+    writeln!(w, "    match std::env::args().nth(1).unwrap().as_str() {{")?;
+
+    for binary in intrinsics {
+        writeln!(w, "        \"{binary}\" => run_{binary}(),")?;
+    }
+
+    writeln!(
+        w,
+        "        other => panic!(\"unknown intrinsic `{{}}`\", other),"
+    )?;
+
+    writeln!(w, "    }}")?;
+    writeln!(w, "}}")?;
+
+    Ok(())
+}
+
+pub fn compile_rust_programs(toolchain: Option<&str>, target: &str, linker: Option<&str>) -> bool {
     /* If there has been a linker explicitly set from the command line then
      * we want to set it via setting it in the RUSTFLAGS*/
+
+    trace!("Building cargo command");
 
     let mut cargo_command = Command::new("cargo");
     cargo_command.current_dir("rust_programs");
 
-    if let Some(toolchain) = toolchain {
-        if !toolchain.is_empty() {
-            cargo_command.arg(toolchain);
-        }
+    if let Some(toolchain) = toolchain
+        && !toolchain.is_empty()
+    {
+        cargo_command.arg(toolchain);
     }
     cargo_command.args(["build", "--target", target, "--release"]);
 
@@ -105,7 +117,16 @@ pub fn compile_rust_programs(
     }
 
     cargo_command.env("RUSTFLAGS", rust_flags);
+
+    trace!("running cargo");
+
+    if log::log_enabled!(log::Level::Trace) {
+        cargo_command.stdout(std::process::Stdio::inherit());
+        cargo_command.stderr(std::process::Stdio::inherit());
+    }
+
     let output = cargo_command.output();
+    trace!("cargo is done");
 
     if let Ok(output) = output {
         if output.status.success() {
@@ -124,26 +145,13 @@ pub fn compile_rust_programs(
     }
 }
 
-// Creates directory structure and file path mappings
-pub fn setup_rust_file_paths(identifiers: &Vec<String>) -> BTreeMap<&String, String> {
-    identifiers
-        .par_iter()
-        .map(|identifier| {
-            let rust_dir = format!("rust_programs/{identifier}");
-            let _ = std::fs::create_dir_all(&rust_dir);
-            let rust_filename = format!("{rust_dir}/main.rs");
-
-            (identifier, rust_filename)
-        })
-        .collect::<BTreeMap<&String, String>>()
-}
-
 pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
+    w: &mut impl std::io::Write,
     intrinsic: &dyn IntrinsicDefinition<T>,
     indentation: Indentation,
     additional: &str,
     passes: u32,
-) -> String {
+) -> std::io::Result<()> {
     let constraints = intrinsic.arguments().as_constraint_parameters_rust();
     let constraints = if !constraints.is_empty() {
         format!("::<{constraints}>")
@@ -154,7 +162,8 @@ pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
     let return_value = format_f16_return_value(intrinsic);
     let indentation2 = indentation.nested();
     let indentation3 = indentation2.nested();
-    format!(
+    writeln!(
+        w,
         "{indentation}for i in 0..{passes} {{\n\
             {indentation2}unsafe {{\n\
                 {loaded_args}\
@@ -169,74 +178,63 @@ pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
     )
 }
 
-pub fn generate_rust_constraint_blocks<T: IntrinsicTypeDefinition>(
+fn generate_rust_constraint_blocks<'a, T: IntrinsicTypeDefinition + 'a>(
+    w: &mut impl std::io::Write,
     intrinsic: &dyn IntrinsicDefinition<T>,
     indentation: Indentation,
-    constraints: &[&Argument<T>],
+    constraints: &mut (impl Iterator<Item = &'a Argument<T>> + Clone),
     name: String,
-) -> String {
-    if let Some((current, constraints)) = constraints.split_last() {
-        let range = current
-            .constraint
-            .iter()
-            .map(|c| c.to_range())
-            .flat_map(|r| r.into_iter());
+) -> std::io::Result<()> {
+    let Some(current) = constraints.next() else {
+        return generate_rust_test_loop(w, intrinsic, indentation, &name, PASSES);
+    };
 
-        let body_indentation = indentation.nested();
-        range
-            .map(|i| {
-                format!(
-                    "{indentation}{{\n\
-                        {body_indentation}const {name}: {ty} = {val};\n\
-                        {pass}\n\
-                    {indentation}}}",
-                    name = current.name,
-                    ty = current.ty.rust_type(),
-                    val = i,
-                    pass = generate_rust_constraint_blocks(
-                        intrinsic,
-                        body_indentation,
-                        constraints,
-                        format!("{name}-{i}")
-                    )
-                )
-            })
-            .join("\n")
-    } else {
-        generate_rust_test_loop(intrinsic, indentation, &name, PASSES)
+    let body_indentation = indentation.nested();
+    for i in current.constraint.iter().flat_map(|c| c.to_range()) {
+        let ty = current.ty.rust_type();
+
+        writeln!(w, "{indentation}{{")?;
+
+        writeln!(w, "{body_indentation}const {}: {ty} = {i};", current.name)?;
+
+        generate_rust_constraint_blocks(
+            w,
+            intrinsic,
+            body_indentation,
+            &mut constraints.clone(),
+            format!("{name}-{i}"),
+        )?;
+
+        writeln!(w, "{indentation}}}")?;
     }
+
+    Ok(())
 }
 
 // Top-level function to create complete test program
-pub fn create_rust_test_program<T: IntrinsicTypeDefinition>(
+pub fn create_rust_test_module<T: IntrinsicTypeDefinition>(
+    w: &mut impl std::io::Write,
     intrinsic: &dyn IntrinsicDefinition<T>,
-    target: &str,
-    notice: &str,
-    definitions: &str,
-    cfg: &str,
-) -> String {
-    let arguments = intrinsic.arguments();
-    let constraints = arguments
-        .iter()
-        .filter(|i| i.has_constraint())
-        .collect_vec();
-
+) -> std::io::Result<()> {
+    trace!("generating `{}`", intrinsic.name());
     let indentation = Indentation::default();
-    format_rust_main_template(
-        notice,
-        definitions,
-        cfg,
-        target,
-        intrinsic
-            .arguments()
-            .gen_arglists_rust(indentation.nested(), PASSES)
-            .as_str(),
-        generate_rust_constraint_blocks(
-            intrinsic,
-            indentation.nested(),
-            &constraints,
-            Default::default(),
-        )
-        .as_str(),
-    )
+
+    writeln!(w, "pub fn run_{}() {{", intrinsic.name())?;
+
+    // Define the arrays of arguments.
+    let arguments = intrinsic.arguments();
+    arguments.gen_arglists_rust(w, indentation.nested(), PASSES)?;
+
+    // Define any const generics as `const` items, then generate the actual test loop.
+    generate_rust_constraint_blocks(
+        w,
+        intrinsic,
+        indentation.nested(),
+        &mut arguments.iter().rev().filter(|i| i.has_constraint()),
+        Default::default(),
+    )?;
+
+    writeln!(w, "}}")?;
+
+    Ok(())
 }

@@ -146,21 +146,25 @@ where
 
     /// Creates a line for each argument that initializes an array for Rust from which `loads` argument
     /// values can be loaded as a sliding window, e.g `const A_VALS: [u32; 20]  = [...];`
-    pub fn gen_arglists_rust(&self, indentation: Indentation, loads: u32) -> String {
-        self.iter()
-            .filter(|&arg| !arg.has_constraint())
-            .map(|arg| {
-                format!(
-                    "{indentation}{bind} {name}: [{ty}; {load_size}] = {values};",
-                    bind = arg.rust_vals_array_binding(),
-                    name = arg.rust_vals_array_name(),
-                    ty = arg.ty.rust_scalar_type(),
-                    load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
-                    values = arg.ty.populate_random(indentation, loads, &Language::Rust)
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
+    pub fn gen_arglists_rust(
+        &self,
+        w: &mut impl std::io::Write,
+        indentation: Indentation,
+        loads: u32,
+    ) -> std::io::Result<()> {
+        for arg in self.iter().filter(|&arg| !arg.has_constraint()) {
+            writeln!(
+                w,
+                "{indentation}{bind} {name}: [{ty}; {load_size}] = {values};",
+                bind = arg.rust_vals_array_binding(),
+                name = arg.rust_vals_array_name(),
+                ty = arg.ty.rust_scalar_type(),
+                load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
+                values = arg.ty.populate_random(indentation, loads, &Language::Rust)
+            )?
+        }
+
+        Ok(())
     }
 
     /// Creates a line for each argument that initializes the argument from an array `[arg]_vals` at

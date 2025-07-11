@@ -13,10 +13,9 @@ use crate::common::SupportedArchitectureTest;
 use crate::common::cli::ProcessedCli;
 use crate::common::compare::compare_outputs;
 use crate::common::gen_c::{write_main_cpp, write_mod_cpp};
-use crate::common::gen_rust::compile_rust_programs;
-use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
+use crate::common::gen_rust::{compile_rust_programs, write_cargo_toml, write_main_rs};
+use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
-use crate::common::write_file::write_rust_testfiles;
 use config::{AARCH_CONFIGURATIONS, F16_FORMATTING_DEF, build_notices};
 use intrinsic::ArmIntrinsicType;
 use json_parser::get_neon_intrinsics;
@@ -118,26 +117,61 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
     }
 
     fn build_rust_file(&self) -> bool {
-        let rust_target = if self.cli_options.target.contains("v7") {
+        std::fs::create_dir_all("rust_programs/src").unwrap();
+
+        let architecture = if self.cli_options.target.contains("v7") {
             "arm"
         } else {
             "aarch64"
         };
+
+        let available_parallelism = std::thread::available_parallelism().unwrap().get();
+        let chunk_size = self.intrinsics.len().div_ceil(available_parallelism);
+
+        let mut cargo = File::create("rust_programs/Cargo.toml").unwrap();
+        write_cargo_toml(&mut cargo, &[]).unwrap();
+
+        let mut main_rs = File::create("rust_programs/src/main.rs").unwrap();
+        write_main_rs(
+            &mut main_rs,
+            available_parallelism,
+            architecture,
+            AARCH_CONFIGURATIONS,
+            F16_FORMATTING_DEF,
+            self.intrinsics.iter().map(|i| i.name.as_str()),
+        )
+        .unwrap();
+
         let target = &self.cli_options.target;
         let toolchain = self.cli_options.toolchain.as_deref();
         let linker = self.cli_options.linker.as_deref();
-        let intrinsics_name_list = write_rust_testfiles(
-            self.intrinsics
-                .iter()
-                .map(|i| i as &dyn IntrinsicDefinition<_>)
-                .collect::<Vec<_>>(),
-            rust_target,
-            &build_notices("// "),
-            F16_FORMATTING_DEF,
-            AARCH_CONFIGURATIONS,
-        );
 
-        compile_rust_programs(intrinsics_name_list, toolchain, target, linker)
+        let notice = &build_notices("// ");
+        self.intrinsics
+            .par_chunks(chunk_size)
+            .enumerate()
+            .map(|(i, chunk)| {
+                use std::io::Write;
+
+                let rust_filename = format!("rust_programs/src/mod_{i}.rs");
+                trace!("generating `{rust_filename}`");
+                let mut file = File::create(rust_filename).unwrap();
+
+                write!(file, "{notice}")?;
+
+                writeln!(file, "use core_arch::arch::{architecture}::*;")?;
+                writeln!(file, "use crate::{{debug_simd_finish, debug_f16}};")?;
+
+                for intrinsic in chunk {
+                    crate::common::gen_rust::create_rust_test_module(&mut file, intrinsic)?;
+                }
+
+                Ok(())
+            })
+            .collect::<Result<(), std::io::Error>>()
+            .unwrap();
+
+        compile_rust_programs(toolchain, target, linker)
     }
 
     fn compare_outputs(&self) -> bool {

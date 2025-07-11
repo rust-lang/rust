@@ -11,7 +11,6 @@ pub mod indentation;
 pub mod intrinsic;
 pub mod intrinsic_helpers;
 pub mod values;
-pub mod write_file;
 
 /// Architectures must support this trait
 /// to be successfully tested.
