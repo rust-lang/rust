@@ -14,9 +14,11 @@ use std::fmt;
 use rustc_errors::{DiagInner, TRACK_DIAGNOSTIC};
 use rustc_middle::dep_graph::{DepNodeExt, TaskDepsRef};
 use rustc_middle::ty::tls;
+use rustc_middle::util::Providers;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::dep_graph::dep_node::default_dep_kind_debug;
 use rustc_query_system::dep_graph::{DepContext, DepKind, DepNode};
+use rustc_query_system::query::DefIdInfo;
 
 fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
     tls::with_context_opt(|icx| {
@@ -112,4 +114,15 @@ pub fn setup_callbacks() {
     rustc_query_system::dep_graph::dep_node::DEP_NODE_DEBUG
         .swap(&(dep_node_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
     TRACK_DIAGNOSTIC.swap(&(track_diagnostic as _));
+}
+
+pub fn provide(providers: &mut Providers) {
+    providers.create_def_raw = |tcx, (parent, data, disambiguator)| {
+        let (def_id, hash) =
+            tcx.untracked().definitions.write().create_def(parent, data, disambiguator);
+
+        tcx.dep_graph
+            .record_def(QueryCtxt::new(tcx), DefIdInfo { parent, data, hash, disambiguator });
+        def_id
+    }
 }
