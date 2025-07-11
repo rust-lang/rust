@@ -19,15 +19,14 @@ const PYTHON2: &str = "python2";
 const PYTHON3: &str = "python3";
 
 fn python() -> &'static str {
-    let val = match env::var_os("PATH") {
-        Some(val) => val,
-        None => return PYTHON,
+    let Some(path) = env::var_os("PATH") else {
+        return PYTHON;
     };
 
     let mut python2 = false;
     let mut python3 = false;
 
-    for dir in env::split_paths(&val) {
+    for dir in env::split_paths(&path) {
         // `python` should always take precedence over python2 / python3 if it exists
         if dir.join(PYTHON).with_extension(EXE_EXTENSION).exists() {
             return PYTHON;
@@ -103,6 +102,7 @@ fn main() {
         println!("{version}");
         return;
     }
+
     let current = match env::current_dir() {
         Ok(dir) => dir,
         Err(err) => {
@@ -110,7 +110,6 @@ fn main() {
             process::exit(1);
         }
     };
-
     for dir in current.ancestors() {
         let candidate = dir.join("x.py");
         if candidate.exists() {
