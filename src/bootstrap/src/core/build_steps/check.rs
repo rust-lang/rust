@@ -370,69 +370,6 @@ impl Step for CodegenBackend {
     }
 }
 
-/// Checks Rust analyzer that links to .rmetas from a checked rustc.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RustAnalyzer {
-    pub build_compiler: Compiler,
-    pub target: TargetSelection,
-}
-
-impl Step for RustAnalyzer {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/tools/rust-analyzer").default_condition(
-            builder
-                .config
-                .tools
-                .as_ref()
-                .is_none_or(|tools| tools.iter().any(|tool| tool == "rust-analyzer")),
-        )
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        let build_compiler = prepare_compiler_for_check(run.builder, run.target, Mode::ToolRustc);
-        run.builder.ensure(RustAnalyzer { build_compiler, target: run.target });
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        let build_compiler = self.build_compiler;
-        let target = self.target;
-
-        let mut cargo = prepare_tool_cargo(
-            builder,
-            build_compiler,
-            Mode::ToolRustc,
-            target,
-            builder.kind,
-            "src/tools/rust-analyzer",
-            SourceType::InTree,
-            &["in-rust-tree".to_owned()],
-        );
-
-        cargo.allow_features(crate::core::build_steps::tool::RustAnalyzer::ALLOW_FEATURES);
-
-        cargo.arg("--bins");
-        cargo.arg("--tests");
-        cargo.arg("--benches");
-
-        // Cargo's output path in a given stage, compiled by a particular
-        // compiler for the specified target.
-        let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, Mode::ToolRustc, target))
-            .with_prefix("rust-analyzer-check");
-
-        let _guard = builder.msg_check("rust-analyzer artifacts", target, None);
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
-    }
-
-    fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::check("rust-analyzer", self.target).built_by(self.build_compiler))
-    }
-}
-
 macro_rules! tool_check_step {
     (
         $name:ident {
@@ -441,7 +378,10 @@ macro_rules! tool_check_step {
             $(, alt_path: $alt_path:literal )*
             // Closure that returns `Mode` based on the passed `&Builder<'_>`
             , mode: $mode:expr
+            // Subset of nightly features that are allowed to be used when checking
             $(, allow_features: $allow_features:expr )?
+            // Features that should be enabled when checking
+            $(, enable_features: [$($enable_features:expr),*] )?
             $(, default: $default:literal )?
             $( , )?
         }
@@ -485,8 +425,9 @@ macro_rules! tool_check_step {
                     $( _value = $allow_features; )?
                     _value
                 };
+                let extra_features: &[&str] = &[$($($enable_features),*)?];
                 let mode = $mode(builder);
-                run_tool_check_step(builder, build_compiler, target, $path, mode, allow_features);
+                run_tool_check_step(builder, build_compiler, target, $path, mode, allow_features, extra_features);
             }
 
             fn metadata(&self) -> Option<StepMetadata> {
@@ -504,9 +445,11 @@ fn run_tool_check_step(
     path: &str,
     mode: Mode,
     allow_features: &str,
+    extra_features: &[&str],
 ) {
     let display_name = path.rsplit('/').next().unwrap();
 
+    let extra_features = extra_features.iter().map(|f| f.to_string()).collect::<Vec<String>>();
     let mut cargo = prepare_tool_cargo(
         builder,
         build_compiler,
@@ -519,12 +462,19 @@ fn run_tool_check_step(
         // steps should probably be marked non-default so that the default
         // checks aren't affected by toolstate being broken.
         SourceType::InTree,
-        &[],
+        &extra_features,
     );
     cargo.allow_features(allow_features);
 
-    // FIXME: check bootstrap doesn't currently work with --all-targets
-    cargo.arg("--all-targets");
+    // FIXME: check bootstrap doesn't currently work when multiple targets are checked
+    // FIXME: rust-analyzer does not work with --all-targets
+    if display_name == "rust-analyzer" {
+        cargo.arg("--bins");
+        cargo.arg("--tests");
+        cargo.arg("--benches");
+    } else {
+        cargo.arg("--all-targets");
+    }
 
     let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, mode, target))
         .with_prefix(&format!("{display_name}-check"));
@@ -553,6 +503,12 @@ tool_check_step!(Clippy { path: "src/tools/clippy", mode: |_builder| Mode::ToolR
 tool_check_step!(Miri { path: "src/tools/miri", mode: |_builder| Mode::ToolRustc });
 tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: |_builder| Mode::ToolRustc });
 tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: |_builder| Mode::ToolRustc });
+tool_check_step!(RustAnalyzer {
+    path: "src/tools/rust-analyzer",
+    mode: |_builder| Mode::ToolRustc,
+    allow_features: tool::RustAnalyzer::ALLOW_FEATURES,
+    enable_features: ["in-rust-tree"],
+});
 tool_check_step!(MiroptTestTools {
     path: "src/tools/miropt-test-tools",
     mode: |_builder| Mode::ToolBootstrap

@@ -1377,7 +1377,7 @@ mod snapshot {
         [check] rustc 1 <host> -> Miri 2 <target1>
         [check] rustc 1 <host> -> CargoMiri 2 <target1>
         [check] rustc 1 <host> -> Rustfmt 2 <target1>
-        [check] rustc 1 <host> -> rust-analyzer 2 <target1>
+        [check] rustc 1 <host> -> RustAnalyzer 2 <target1>
         [check] rustc 1 <host> -> TestFloatParse 2 <target1>
         [check] rustc 1 <host> -> std 1 <target1>
         ");
@@ -1569,7 +1569,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [check] rustc 0 <host> -> rustc 1 <host>
-        [check] rustc 0 <host> -> rust-analyzer 1 <host>
+        [check] rustc 0 <host> -> RustAnalyzer 1 <host>
         ");
     }
 
