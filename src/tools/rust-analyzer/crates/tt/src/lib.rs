@@ -579,7 +579,7 @@ where
 {
     use rustc_lexer::LiteralKind;
 
-    let token = rustc_lexer::tokenize(text).next_tuple();
+    let token = rustc_lexer::tokenize(text, rustc_lexer::FrontmatterAllowed::No).next_tuple();
     let Some((rustc_lexer::Token {
         kind: rustc_lexer::TokenKind::Literal { kind, suffix_start },
         ..
