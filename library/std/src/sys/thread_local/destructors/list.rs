@@ -1,20 +1,26 @@
-use crate::cell::RefCell;
+use crate::cell::{Cell, RefCell};
 use crate::sys::thread_local::guard;
+
+#[thread_local]
+static REENTRANT_DTOR: Cell<Option<(*mut u8, unsafe extern "C" fn(*mut u8))>> = Cell::new(None);
 
 #[thread_local]
 static DTORS: RefCell<Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>> = RefCell::new(Vec::new());
 
 pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
-    let Ok(mut dtors) = DTORS.try_borrow_mut() else {
-        // This point can only be reached if the global allocator calls this
-        // function again.
-        // FIXME: maybe use the system allocator instead?
-        rtabort!("the global allocator may not use TLS with destructors");
-    };
-
-    guard::enable();
-
-    dtors.push((t, dtor));
+    // Borrow DTORS can only fail if the global allocator calls this
+    // function again.
+    if let Ok(mut dtors) = DTORS.try_borrow_mut() {
+        guard::enable();
+        dtors.push((t, dtor));
+    } else if REENTRANT_DTOR.get().is_none() {
+        guard::enable();
+        REENTRANT_DTOR.set(Some((t, dtor)));
+    } else {
+        rtabort!(
+            "the global allocator may only create one thread-local variable with a destructor"
+        );
+    }
 }
 
 /// The [`guard`] module contains platform-specific functions which will run this
@@ -39,6 +45,12 @@ pub unsafe fn run() {
                 *dtors = Vec::new();
                 break;
             }
+        }
+    }
+
+    if let Some((t, dtor)) = REENTRANT_DTOR.replace(None) {
+        unsafe {
+            dtor(t);
         }
     }
 }
