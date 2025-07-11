@@ -42,7 +42,7 @@ use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
-use crate::attributes::test_attrs::IgnoreParser;
+use crate::attributes::test_attrs::{IgnoreParser, ShouldPanicParser};
 use crate::attributes::traits::{
     AllowIncoherentImplParser, CoherenceIsCoreParser, CoinductiveParser, ConstTraitParser,
     DenyExplicitImplParser, DoNotImplementViaObjectParser, FundamentalParser, MarkerParser,
@@ -149,6 +149,7 @@ attribute_parsers!(
         Single<RustcLayoutScalarValidRangeEnd>,
         Single<RustcLayoutScalarValidRangeStart>,
         Single<RustcObjectLifetimeDefaultParser>,
+        Single<ShouldPanicParser>,
         Single<SkipDuringMethodDispatchParser>,
         Single<TransparencyParser>,
         Single<WithoutArgs<AllowIncoherentImplParser>>,

@@ -1304,6 +1304,7 @@ impl AttributeExt for Attribute {
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::MayDangle(span)) => *span,
             Attribute::Parsed(AttributeKind::Ignore { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::ShouldPanic { span, .. }) => *span,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }
