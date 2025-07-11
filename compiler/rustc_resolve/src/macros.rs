@@ -834,7 +834,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 _ => None,
             },
-            None => self.get_macro(res).map(|macro_data| Arc::clone(&macro_data.ext)),
+            None => self.get_macro(res).map(|macro_data| match kind {
+                Some(MacroKind::Attr) if let Some(ref ext) = macro_data.attr_ext => ext.clone(),
+                _ => macro_data.ext.clone(),
+            }),
         };
         Ok((ext, res))
     }
@@ -1167,7 +1170,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         node_id: NodeId,
         edition: Edition,
     ) -> MacroData {
-        let (mut ext, mut nrules) = compile_declarative_macro(
+        let (mut ext, attr_ext, mut nrules) = compile_declarative_macro(
             self.tcx.sess,
             self.tcx.features(),
             macro_def,
@@ -1179,6 +1182,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         );
 
         if let Some(builtin_name) = ext.builtin_name {
+            if attr_ext.is_some() {
+                self.dcx().emit_err(errors::BuiltinMacroWithNonInvocationRules { span, ident });
+            }
             // The macro was marked with `#[rustc_builtin_macro]`.
             if let Some(builtin_ext_kind) = self.builtin_macros.get(&builtin_name) {
                 // The macro is a built-in, replace its expander function
@@ -1190,7 +1196,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        MacroData { ext: Arc::new(ext), nrules, macro_rules: macro_def.macro_rules }
+        MacroData { ext: Arc::new(ext), attr_ext, nrules, macro_rules: macro_def.macro_rules }
     }
 
     fn path_accessible(

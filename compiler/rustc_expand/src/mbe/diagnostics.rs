@@ -14,7 +14,7 @@ use super::macro_rules::{MacroRule, NoopTracker, parser_from_cx};
 use crate::expand::{AstFragmentKind, parse_ast_fragment};
 use crate::mbe::macro_parser::ParseResult::*;
 use crate::mbe::macro_parser::{MatcherLoc, NamedParseResult, TtParser};
-use crate::mbe::macro_rules::{Tracker, try_match_macro};
+use crate::mbe::macro_rules::{Tracker, try_match_macro, try_match_macro_attr};
 
 pub(super) fn failed_to_match_macro(
     psess: &ParseSess,
@@ -105,6 +105,70 @@ pub(super) fn failed_to_match_macro(
     (sp, guar)
 }
 
+pub(super) fn failed_to_match_macro_attr(
+    psess: &ParseSess,
+    sp: Span,
+    def_span: Span,
+    name: Ident,
+    args: TokenStream,
+    body: TokenStream,
+    rules: &[MacroRule],
+) -> ErrorGuaranteed {
+    // An error occurred, try the expansion again, tracking the expansion closely for better
+    // diagnostics.
+    let mut tracker = CollectTrackerAndEmitter::new(psess.dcx(), sp);
+
+    let result = try_match_macro_attr(psess, name, &args, &body, rules, &mut tracker);
+    if result.is_ok() {
+        // Nonterminal parser recovery might turn failed matches into successful ones,
+        // but for that it must have emitted an error already
+        assert!(
+            tracker.dcx.has_errors().is_some(),
+            "Macro matching returned a success on the second try"
+        );
+    }
+
+    if let Some((_, guar)) = tracker.result {
+        // An irrecoverable error occurred and has been emitted.
+        return guar;
+    }
+
+    let Some(BestFailure { token, msg: label, remaining_matcher, .. }) = tracker.best_failure
+    else {
+        return psess.dcx().span_delayed_bug(sp, "failed to match a macro attr");
+    };
+
+    let span = token.span.substitute_dummy(sp);
+
+    let mut err = psess.dcx().struct_span_err(span, parse_failure_msg(&token, None));
+    err.span_label(span, label);
+    if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
+        err.span_label(psess.source_map().guess_head_span(def_span), "when calling this macro");
+    }
+
+    annotate_doc_comment(&mut err, psess.source_map(), span);
+
+    if let Some(span) = remaining_matcher.span() {
+        err.span_note(span, format!("while trying to match {remaining_matcher}"));
+    } else {
+        err.note(format!("while trying to match {remaining_matcher}"));
+    }
+
+    if let MatcherLoc::Token { token: expected_token } = &remaining_matcher
+        && (matches!(expected_token.kind, token::OpenInvisible(_))
+            || matches!(token.kind, token::OpenInvisible(_)))
+    {
+        err.note("captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens");
+        err.note("see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information");
+
+        if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
+            err.help("try using `:tt` instead in the macro definition");
+        }
+    }
+
+    err.emit()
+}
+
 /// The tracker used for the slow error path that collects useful info for diagnostics.
 struct CollectTrackerAndEmitter<'dcx, 'matcher> {
     dcx: DiagCtxtHandle<'dcx>,
@@ -117,13 +181,13 @@ struct CollectTrackerAndEmitter<'dcx, 'matcher> {
 
 struct BestFailure {
     token: Token,
-    position_in_tokenstream: u32,
+    position_in_tokenstream: (bool, u32),
     msg: &'static str,
     remaining_matcher: MatcherLoc,
 }
 
 impl BestFailure {
-    fn is_better_position(&self, position: u32) -> bool {
+    fn is_better_position(&self, position: (bool, u32)) -> bool {
         position > self.position_in_tokenstream
     }
 }
@@ -143,7 +207,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         }
     }
 
-    fn after_arm(&mut self, result: &NamedParseResult<Self::Failure>) {
+    fn after_arm(&mut self, in_body: bool, result: &NamedParseResult<Self::Failure>) {
         match result {
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
@@ -156,14 +220,15 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             Failure((token, approx_position, msg)) => {
                 debug!(?token, ?msg, "a new failure of an arm");
 
+                let position_in_tokenstream = (in_body, *approx_position);
                 if self
                     .best_failure
                     .as_ref()
-                    .is_none_or(|failure| failure.is_better_position(*approx_position))
+                    .is_none_or(|failure| failure.is_better_position(position_in_tokenstream))
                 {
                     self.best_failure = Some(BestFailure {
                         token: *token,
-                        position_in_tokenstream: *approx_position,
+                        position_in_tokenstream,
                         msg,
                         remaining_matcher: self
                             .remaining_matcher

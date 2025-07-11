@@ -53,6 +53,9 @@ resolve_binding_shadows_something_unacceptable =
 resolve_binding_shadows_something_unacceptable_suggestion =
     try specify the pattern arguments
 
+resolve_builtin_macro_with_non_invocation_rules =
+    built-in macro `{$ident}` has non-invocation rules
+
 resolve_cannot_be_reexported_crate_public =
     `{$ident}` is only public within the crate, and cannot be re-exported outside
 
