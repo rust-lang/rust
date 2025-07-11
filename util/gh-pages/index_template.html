@@ -49,9 +49,7 @@ Otherwise, have a great day =^.^=
     <script src="theme.js"></script> {# #}
 
     <div class="container"> {# #}
-        <div class="page-header"> {# #}
-            <h1>Clippy Lints <span id="lint-count" class="badge"></span></h1> {# #}
-        </div> {# #}
+        <h1 class="page-header">Clippy Lints <span id="lint-count" class="badge"></span></h1> {# #}
 
         <noscript> {# #}
             <div class="alert alert-danger" role="alert"> {# #}
@@ -59,143 +57,141 @@ Otherwise, have a great day =^.^=
             </div> {# #}
         </noscript> {# #}
 
-        <div> {# #}
-            <div class="panel panel-default" id="menu-filters"> {# #}
-                <div class="panel-body row"> {# #}
-                    <div id="upper-filters" class="col-12 col-md-5"> {# #}
-                        <div class="btn-group" id="lint-levels" tabindex="-1"> {# #}
-                            <button type="button" class="btn btn-default dropdown-toggle"> {# #}
-                                Lint levels <span class="badge">4</span> <span class="caret"></span> {# #}
-                            </button> {# #}
-                            <ul class="dropdown-menu" id="lint-levels-selector"> {# #}
-                                <li class="checkbox"> {# #}
-                                    <button onclick="toggleElements('levels_filter', true)">All</button> {# #}
-                                </li> {# #}
-                                <li class="checkbox"> {# #}
-                                    <button onclick="toggleElements('levels_filter', false)">None</button> {# #}
-                                </li> {# #}
-                                <li role="separator" class="divider"></li> {# #}
-                            </ul> {# #}
-                        </div> {# #}
-                        <div class="btn-group" id="lint-groups" tabindex="-1"> {# #}
-                            <button type="button" class="btn btn-default dropdown-toggle"> {# #}
-                                Lint groups <span class="badge">9</span> <span class="caret"></span> {# #}
-                            </button> {# #}
-                            <ul class="dropdown-menu" id="lint-groups-selector"> {# #}
-                                <li class="checkbox"> {# #}
-                                    <button onclick="toggleElements('groups_filter', true)">All</button> {# #}
-                                </li> {# #}
-                                <li class="checkbox"> {# #}
-                                    <button onclick="resetGroupsToDefault()">Default</button> {# #}
-                                </li> {# #}
-                                <li class="checkbox"> {# #}
-                                    <button onclick="toggleElements('groups_filter', false)">None</button> {# #}
-                                </li> {# #}
-                                <li role="separator" class="divider"></li> {# #}
-                            </ul> {# #}
-                        </div> {# #}
-                        <div class="btn-group" id="version-filter" tabindex="-1"> {# #}
-                            <button type="button" class="btn btn-default dropdown-toggle"> {# #}
-                                Version {#+ #}
-                                <span id="version-filter-count" class="badge">0</span> {#+ #}
-                                <span class="caret"></span> {# #}
-                            </button> {# #}
-                            <ul id="version-filter-selector" class="dropdown-menu"> {# #}
-                                <li class="checkbox"> {# #}
-                                    <button onclick="clearVersionFilters()">Clear filters</button> {# #}
-                                </li> {# #}
-                                <li role="separator" class="divider"></li> {# #}
-                            </ul> {# #}
-                        </div> {# #}
-                        <div class="btn-group" id="lint-applicabilities" tabindex="-1"> {# #}
-                            <button type="button" class="btn btn-default dropdown-toggle"> {# #}
-                                Applicability {#+ #}
-                                <span class="badge">4</span> {#+ #}
-                                <span class="caret"></span> {# #}
-                            </button> {# #}
-                            <ul class="dropdown-menu" id="lint-applicabilities-selector"> {# #}
-                                <li class="checkbox"> {# #}
-                                    <button onclick="toggleElements('applicabilities_filter', true)">All</button> {# #}
-                                </li> {# #}
-                                <li class="checkbox"> {# #}
-                                    <button onclick="toggleElements('applicabilities_filter', false)">None</button> {# #}
-                                </li> {# #}
-                                <li role="separator" class="divider"></li> {# #}
-                            </ul> {# #}
-                        </div> {# #}
-                    </div> {# #}
-                    <div class="col-12 col-md-5 search-control"> {# #}
-                        <div class="input-group"> {# #}
-                            <label class="input-group-addon" id="filter-label" for="search-input">Filter:</label> {# #}
-                            <input type="text" class="form-control filter-input" placeholder="Keywords or search string (`S` or `/` to focus)" id="search-input" /> {# #}
-                            <span class="input-group-btn"> {# #}
-                                <button class="filter-clear btn" type="button" onclick="searchState.clearInput(event)"> {# #}
-                                    Clear {# #}
-                                </button> {# #}
-                            </span> {# #}
-                        </div> {# #}
-                    </div> {# #}
-                    <div class="col-12 col-md-2 btn-group expansion-group"> {# #}
-                        <button title="Collapse All" class="btn btn-default expansion-control" type="button" id="collapse-all"> {# #}
-                            <span class="glyphicon glyphicon-collapse-up"></span> {# #}
+        <div id="menu-filters"> {# #}
+            <div class="panel-body row"> {# #}
+                <div id="upper-filters" class="col-12 col-md-5"> {# #}
+                    <div class="btn-group" id="lint-levels" tabindex="-1"> {# #}
+                        <button type="button" class="btn btn-default dropdown-toggle"> {# #}
+                            Lint levels <span class="badge">4</span> <span class="caret"></span> {# #}
                         </button> {# #}
-                        <button title="Expand All" class="btn btn-default expansion-control" type="button" id="expand-all"> {# #}
-                            <span class="glyphicon glyphicon-collapse-down"></span> {# #}
+                        <ul class="dropdown-menu" id="lint-levels-selector"> {# #}
+                            <li class="checkbox"> {# #}
+                                <button onclick="toggleElements('levels_filter', true)">All</button> {# #}
+                            </li> {# #}
+                            <li class="checkbox"> {# #}
+                                <button onclick="toggleElements('levels_filter', false)">None</button> {# #}
+                            </li> {# #}
+                            <li role="separator" class="divider"></li> {# #}
+                        </ul> {# #}
+                    </div> {# #}
+                    <div class="btn-group" id="lint-groups" tabindex="-1"> {# #}
+                        <button type="button" class="btn btn-default dropdown-toggle"> {# #}
+                            Lint groups <span class="badge">9</span> <span class="caret"></span> {# #}
                         </button> {# #}
+                        <ul class="dropdown-menu" id="lint-groups-selector"> {# #}
+                            <li class="checkbox"> {# #}
+                                <button onclick="toggleElements('groups_filter', true)">All</button> {# #}
+                            </li> {# #}
+                            <li class="checkbox"> {# #}
+                                <button onclick="resetGroupsToDefault()">Default</button> {# #}
+                            </li> {# #}
+                            <li class="checkbox"> {# #}
+                                <button onclick="toggleElements('groups_filter', false)">None</button> {# #}
+                            </li> {# #}
+                            <li role="separator" class="divider"></li> {# #}
+                        </ul> {# #}
+                    </div> {# #}
+                    <div class="btn-group" id="version-filter" tabindex="-1"> {# #}
+                        <button type="button" class="btn btn-default dropdown-toggle"> {# #}
+                            Version {#+ #}
+                            <span id="version-filter-count" class="badge">0</span> {#+ #}
+                            <span class="caret"></span> {# #}
+                        </button> {# #}
+                        <ul id="version-filter-selector" class="dropdown-menu"> {# #}
+                            <li class="checkbox"> {# #}
+                                <button onclick="clearVersionFilters()">Clear filters</button> {# #}
+                            </li> {# #}
+                            <li role="separator" class="divider"></li> {# #}
+                        </ul> {# #}
+                    </div> {# #}
+                    <div class="btn-group" id="lint-applicabilities" tabindex="-1"> {# #}
+                        <button type="button" class="btn btn-default dropdown-toggle"> {# #}
+                            Applicability {#+ #}
+                            <span class="badge">4</span> {#+ #}
+                            <span class="caret"></span> {# #}
+                        </button> {# #}
+                        <ul class="dropdown-menu" id="lint-applicabilities-selector"> {# #}
+                            <li class="checkbox"> {# #}
+                                <button onclick="toggleElements('applicabilities_filter', true)">All</button> {# #}
+                            </li> {# #}
+                            <li class="checkbox"> {# #}
+                                <button onclick="toggleElements('applicabilities_filter', false)">None</button> {# #}
+                            </li> {# #}
+                            <li role="separator" class="divider"></li> {# #}
+                        </ul> {# #}
                     </div> {# #}
                 </div> {# #}
-            </div>
-            {% for lint in lints %}
-                <article class="panel panel-default" id="{{lint.id}}"> {# #}
-                    <input id="label-{{lint.id}}" type="checkbox"> {# #}
-                    <label for="label-{{lint.id}}"> {# #}
-                        <h2 class="lint-title"> {# #}
-                            <div class="panel-title-name" id="lint-{{lint.id}}"> {# #}
-                                {{lint.id +}}
-                                <a href="#{{lint.id}}" class="anchor label label-default">&para;</a> {#+ #}
-                                <a href="" class="copy-to-clipboard anchor label label-default"> {# #}
-                                    &#128203; {# #}
-                                </a> {# #}
-                            </div> {# #}
-
-                            <span class="label label-lint-group label-default label-group-{{lint.group}}">{{lint.group}}</span> {#+ #}
-
-                            <span class="label label-lint-level label-lint-level-{{lint.level}}">{{lint.level}}</span> {#+ #}
-
-                            <span class="label label-doc-folding"></span> {# #}
-                        </h2> {# #}
-                    </label> {# #}
-
-                    <div class="list-group lint-docs"> {# #}
-                        <div class="list-group-item lint-doc-md">{{Self::markdown(lint.docs)}}</div> {# #}
-                        <div class="lint-additional-info-container">
-                            {# Applicability #}
-                            <div> {# #}
-                                Applicability: {#+ #}
-                                <span class="label label-default label-applicability">{{ lint.applicability_str() }}</span> {# #}
-                                <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/enum.Applicability.html#variants">(?)</a> {# #}
-                            </div>
-                            {# Clippy version #}
-                            <div> {# #}
-                                {% if lint.group == "deprecated" %}Deprecated{% else %} Added{% endif +%} in: {#+ #}
-                                <span class="label label-default label-version">{{lint.version}}</span> {# #}
-                            </div>
-                            {# Open related issues #}
-                            <div> {# #}
-                                <a href="https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+{{lint.id}}">Related Issues</a> {# #}
-                            </div>
-
-                            {# Jump to source #}
-                            {% if let Some(id_location) = lint.id_location %}
-                                <div> {# #}
-                                    <a href="https://github.com/rust-lang/rust-clippy/blob/master/{{id_location}}">View Source</a> {# #}
-                                </div>
-                            {% endif %}
-                        </div> {# #}
+                <div class="col-12 col-md-5 search-control"> {# #}
+                    <div class="input-group"> {# #}
+                        <label class="input-group-addon" id="filter-label" for="search-input">Filter:</label> {# #}
+                        <input type="text" class="form-control filter-input" placeholder="Keywords or search string (`S` or `/` to focus)" id="search-input" /> {# #}
+                        <span class="input-group-btn"> {# #}
+                            <button class="filter-clear btn" type="button" onclick="searchState.clearInput(event)"> {# #}
+                                Clear {# #}
+                            </button> {# #}
+                        </span> {# #}
                     </div> {# #}
-                </article>
-            {% endfor %}
-        </div> {# #}
+                </div> {# #}
+                <div class="col-12 col-md-2 btn-group expansion-group"> {# #}
+                    <button title="Collapse All" class="btn btn-default expansion-control" type="button" id="collapse-all"> {# #}
+                        <span class="glyphicon glyphicon-collapse-up"></span> {# #}
+                    </button> {# #}
+                    <button title="Expand All" class="btn btn-default expansion-control" type="button" id="expand-all"> {# #}
+                        <span class="glyphicon glyphicon-collapse-down"></span> {# #}
+                    </button> {# #}
+                </div> {# #}
+            </div> {# #}
+        </div>
+        {% for lint in lints %}
+            <article id="{{lint.id}}"> {# #}
+                <input id="label-{{lint.id}}" type="checkbox"> {# #}
+                <label for="label-{{lint.id}}"> {# #}
+                    <h2 class="lint-title"> {# #}
+                        <div class="panel-title-name" id="lint-{{lint.id}}"> {# #}
+                            {{lint.id +}}
+                            <a href="#{{lint.id}}" class="anchor label label-default">&para;</a> {#+ #}
+                            <a href="" class="copy-to-clipboard anchor label label-default"> {# #}
+                                &#128203; {# #}
+                            </a> {# #}
+                        </div> {# #}
+
+                        <span class="label label-default lint-group group-{{lint.group}}">{{lint.group}}</span> {#+ #}
+
+                        <span class="label lint-level level-{{lint.level}}">{{lint.level}}</span> {#+ #}
+
+                        <span class="label doc-folding"></span> {# #}
+                    </h2> {# #}
+                </label> {# #}
+
+                <div class="lint-docs"> {# #}
+                    <div class="lint-doc-md">{{Self::markdown(lint.docs)}}</div> {# #}
+                    <div class="lint-additional-info">
+                        {# Applicability #}
+                        <div> {# #}
+                            Applicability: {#+ #}
+                            <span class="label label-default applicability">{{ lint.applicability_str() }}</span> {# #}
+                            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/enum.Applicability.html#variants">(?)</a> {# #}
+                        </div>
+                        {# Clippy version #}
+                        <div> {# #}
+                            {% if lint.group == "deprecated" %}Deprecated{% else %} Added{% endif +%} in: {#+ #}
+                            <span class="label label-default label-version">{{lint.version}}</span> {# #}
+                        </div>
+                        {# Open related issues #}
+                        <div> {# #}
+                            <a href="https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+{{lint.id}}">Related Issues</a> {# #}
+                        </div>
+
+                        {# Jump to source #}
+                        {% if let Some(id_location) = lint.id_location %}
+                            <div> {# #}
+                                <a href="https://github.com/rust-lang/rust-clippy/blob/master/{{id_location}}">View Source</a> {# #}
+                            </div>
+                        {% endif %}
+                    </div> {# #}
+                </div> {# #}
+            </article>
+        {% endfor %}
     </div> {# #}
 
     <a {#+ #}

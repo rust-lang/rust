@@ -250,10 +250,10 @@ window.filters = {
                 }
                 return {
                     elem: elem,
-                    group: elem.querySelector(".label-lint-group").innerText,
-                    level: elem.querySelector(".label-lint-level").innerText,
+                    group: elem.querySelector(".lint-group").innerText,
+                    level: elem.querySelector(".lint-level").innerText,
                     version: parseInt(version.split(".")[1]),
-                    applicability: elem.querySelector(".label-applicability").innerText,
+                    applicability: elem.querySelector(".applicability").innerText,
                     filteredOut: false,
                     searchFilteredOut: false,
                 };
@@ -594,19 +594,19 @@ disableShortcutsButton.checked = disableShortcuts;
 addListeners();
 highlightLazily();
 
+function updateLintCount() {
+    const allLints = filters.getAllLints().filter(lint => lint.group != "deprecated");
+    const totalLints = allLints.length;
+
+    const countElement = document.getElementById("lint-count");
+    if (countElement) {
+        countElement.innerText = `Total number: ${totalLints}`;
+    }
+}
+
 generateSettings();
 generateSearch();
 parseURLFilters();
 scrollToLintByURL();
 filters.filterLints();
 updateLintCount();
-
-function updateLintCount() {
-    const allLints = filters.getAllLints().filter(lint => lint.group != "deprecated");
-    const totalLints = allLints.length;
-    
-    const countElement = document.getElementById("lint-count");
-    if (countElement) {
-        countElement.innerText = `Total number: ${totalLints}`;
-    }
-}
