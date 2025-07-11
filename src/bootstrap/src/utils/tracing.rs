@@ -52,8 +52,6 @@ macro_rules! error {
 macro_rules! trace_cmd {
     ($cmd:expr) => {
         {
-            use $crate::utils::exec::FormatShortCmd;
-
             ::tracing::span!(
                 target: "COMMAND",
                 ::tracing::Level::TRACE,
