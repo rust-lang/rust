@@ -7874,9 +7874,9 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int16x8_t, int8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) }']
-      - [int32x4_t, int16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) }']
-      - [int64x2_t, int32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64, -N as i64]) }']
+      - [int16x8_t, int8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16; 8]) }']
+      - [int32x4_t, int16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N; 4]) }']
+      - [int64x2_t, int32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64; 2]) }']
     compose:
       - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
@@ -7929,9 +7929,9 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int16x8_t, uint8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) }']
-      - [int32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) }']
-      - [int64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64, -N as i64]) }']
+      - [int16x8_t, uint8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16; 8]) }']
+      - [int32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N; 4]) }']
+      - [int64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64; 2]) }']
     compose:
       - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
@@ -8105,9 +8105,9 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int16x8_t, int8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) }']
-      - [int32x4_t, int16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) }']
-      - [int64x2_t, int32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64, -N as i64]) }']
+      - [int16x8_t, int8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16; 8]) }']
+      - [int32x4_t, int16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N; 4]) }']
+      - [int64x2_t, int32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64; 2]) }']
     compose:
       - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
@@ -8215,9 +8215,9 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int16x8_t, uint8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) }']
-      - [int32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) }']
-      - [int64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64, -N as i64]) }']
+      - [int16x8_t, uint8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16; 8]) }']
+      - [int32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N; 4]) }']
+      - [int64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64; 2]) }']
     compose:
       - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
@@ -8939,9 +8939,9 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int16x8_t, int8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) }']
-      - [int32x4_t, int16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) }']
-      - [int64x2_t, int32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64, -N as i64]) }']
+      - [int16x8_t, int8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16; 8]) }']
+      - [int32x4_t, int16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N; 4]) }']
+      - [int64x2_t, int32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64; 2]) }']
     compose:
       - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
@@ -13862,8 +13862,8 @@ intrinsics:
       - [int8x16_t, '8',  '1 <= N && N <= 8',  'v16i8', 'int8x16_t::splat', '-N as i8']
       - [int16x4_t, '16', '1 <= N && N <= 16', 'v4i16', 'int16x4_t::splat', '-N as i16']
       - [int16x8_t, '16', '1 <= N && N <= 16', 'v8i16', 'int16x8_t::splat', '-N as i16']
-      - [int32x2_t, '32', '1 <= N && N <= 32', 'v2i32', 'int32x2_t::splat', '-N as i32']
-      - [int32x4_t, '32', '1 <= N && N <= 32', 'v4i32', 'int32x4_t::splat', '-N as i32']
+      - [int32x2_t, '32', '1 <= N && N <= 32', 'v2i32', 'int32x2_t::splat', '-N']
+      - [int32x4_t, '32', '1 <= N && N <= 32', 'v4i32', 'int32x4_t::splat', '-N']
       - [int64x1_t, '64', '1 <= N && N <= 64', 'v1i64', 'int64x1_t::splat', '-N as i64']
       - [int64x2_t, '64', '1 <= N && N <= 64', 'v2i64', 'int64x2_t::splat', '-N as i64']
     compose:
@@ -13891,8 +13891,8 @@ intrinsics:
       - [uint8x16_t, "neon,v7", '8',  'static_assert_uimm_bits!', 'N, 3',    'v16i8', 'int8x16_t::splat', 'N as i8']
       - [uint16x4_t, "neon,v7", '16', 'static_assert_uimm_bits!', 'N, 4',    'v4i16', 'int16x4_t::splat', 'N as i16']
       - [uint16x8_t, "neon,v7", '16', 'static_assert_uimm_bits!', 'N, 4',    'v8i16', 'int16x8_t::splat', 'N as i16']
-      - [uint32x2_t, "neon,v7", '32', 'static_assert!', 'N >= 0 && N <= 31', 'v2i32', 'int32x2_t::splat', 'N as i32']
-      - [uint32x4_t, "neon,v7", '32', 'static_assert!', 'N >= 0 && N <= 31', 'v4i32', 'int32x4_t::splat', 'N as i32']
+      - [uint32x2_t, "neon,v7", '32', 'static_assert!', 'N >= 0 && N <= 31', 'v2i32', 'int32x2_t::splat', 'N']
+      - [uint32x4_t, "neon,v7", '32', 'static_assert!', 'N >= 0 && N <= 31', 'v4i32', 'int32x4_t::splat', 'N']
       - [uint64x1_t, "neon,v7", '64', 'static_assert!', 'N >= 0 && N <= 63', 'v1i64', 'int64x1_t::splat', 'N as i64']
       - [uint64x2_t, "neon,v7", '64', 'static_assert!', 'N >= 0 && N <= 63', 'v2i64', 'int64x2_t::splat', 'N as i64']
       - [poly8x8_t,  "neon,v7", '8',  'static_assert_uimm_bits!', 'N, 3',     'v8i8', 'int8x8_t::splat',  'N as i8']
