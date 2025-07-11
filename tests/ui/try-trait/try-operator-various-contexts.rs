@@ -1,9 +1,11 @@
+//! Checks the functionality of the `?` operator in various syntactic contexts.
+
 //@ run-pass
 
 #![allow(dead_code)]
 
 use std::fs::File;
-use std::io::{Read, self};
+use std::io::{self, Read};
 use std::num::ParseIntError;
 use std::str::FromStr;
 
@@ -35,7 +37,9 @@ fn on_path() -> Result<i32, ParseIntError> {
 
 fn on_macro() -> Result<i32, ParseIntError> {
     macro_rules! id {
-        ($e:expr) => { $e }
+        ($e:expr) => {
+            $e
+        };
     }
 
     Ok(id!("7".parse::<i32>())?)
@@ -50,11 +54,14 @@ fn on_parens() -> Result<i32, ParseIntError> {
 fn on_block() -> Result<i32, ParseIntError> {
     let x = "9".parse::<i32>();
 
-    Ok({x}?)
+    Ok({ x }?)
 }
 
 fn on_field() -> Result<i32, ParseIntError> {
-    struct Pair<A, B> { a: A, b: B }
+    struct Pair<A, B> {
+        a: A,
+        b: B,
+    }
 
     let x = Pair { a: "10".parse::<i32>(), b: 0 };
 
@@ -89,7 +96,9 @@ fn on_index() -> Result<i32, ParseIntError> {
 }
 
 fn on_args() -> Result<i32, ParseIntError> {
-    fn sub(x: i32, y: i32) -> i32 { x - y }
+    fn sub(x: i32, y: i32) -> i32 {
+        x - y
+    }
 
     let x = "20".parse();
     let y = "21".parse();
@@ -98,19 +107,11 @@ fn on_args() -> Result<i32, ParseIntError> {
 }
 
 fn on_if() -> Result<i32, ParseIntError> {
-    Ok(if true {
-        "22".parse::<i32>()
-    } else {
-        "23".parse::<i32>()
-    }?)
+    Ok(if true { "22".parse::<i32>() } else { "23".parse::<i32>() }?)
 }
 
 fn on_if_let() -> Result<i32, ParseIntError> {
-    Ok(if let Ok(..) = "24".parse::<i32>() {
-        "25".parse::<i32>()
-    } else {
-        "26".parse::<i32>()
-    }?)
+    Ok(if let Ok(..) = "24".parse::<i32>() { "25".parse::<i32>() } else { "26".parse::<i32>() }?)
 }
 
 fn on_match() -> Result<i32, ParseIntError> {
@@ -121,7 +122,9 @@ fn on_match() -> Result<i32, ParseIntError> {
 }
 
 fn tight_binding() -> Result<bool, ()> {
-    fn ok<T>(x: T) -> Result<T, ()> { Ok(x) }
+    fn ok<T>(x: T) -> Result<T, ()> {
+        Ok(x)
+    }
 
     let x = ok(true);
     Ok(!x?)
