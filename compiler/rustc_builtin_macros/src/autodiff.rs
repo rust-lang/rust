@@ -583,7 +583,7 @@ mod llvm_enzyme {
 
         let segments = if is_impl {
             thin_vec![
-                PathSegment { ident: Ident::from_str("Foo"), id: ast::DUMMY_NODE_ID, args: None },
+                PathSegment { ident: Ident::from_str("Self"), id: ast::DUMMY_NODE_ID, args: None },
                 segment,
             ]
         } else {
@@ -630,7 +630,7 @@ mod llvm_enzyme {
 
         // This uses primal args which won't be available if we errored before
         if !errored {
-            body.stmts.push(ecx.stmt_semi(black_box_primal_call.clone()));
+            body.stmts.push(ecx.stmt_semi(primal_call.clone()));
         }
 
         (body, primal_call, black_box_primal_call, blackbox_call_expr)
