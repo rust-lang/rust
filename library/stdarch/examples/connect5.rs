@@ -558,7 +558,8 @@ fn search(pos: &Pos, alpha: i32, beta: i32, depth: i32, _ply: i32) -> i32 {
     assert_ne!(bm, MOVE_NONE);
     assert!(bs >= -EVAL_INF && bs <= EVAL_INF);
 
-    if _ply == 0 { bm } else { bs } //best move at the root node, best score elsewhere
+    // best move at the root node, best score elsewhere
+    if _ply == 0 { bm } else { bs }
 }
 
 /// Evaluation function: give different scores to different patterns after a fixed depth.
@@ -570,15 +571,11 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
         if check_x86_avx512_features() {
-            unsafe {
-                if check_patternlive4_avx512(pos, def) {
-                    return -4096;
-                }
-            }
-        } else {
-            if check_patternlive4(pos, def) {
+            if unsafe { check_patternlive4_avx512(pos, def) } {
                 return -4096;
             }
+        } else if check_patternlive4(pos, def) {
+            return -4096;
         }
     }
 
@@ -593,15 +590,11 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
         if check_x86_avx512_features() {
-            unsafe {
-                if check_patternlive4_avx512(pos, atk) {
-                    return 2560;
-                }
-            }
-        } else {
-            if check_patternlive4(pos, atk) {
+            if unsafe { check_patternlive4_avx512(pos, atk) } {
                 return 2560;
             }
+        } else if check_patternlive4(pos, atk) {
+            return 2560;
         }
     }
 
@@ -616,15 +609,11 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
         if check_x86_avx512_features() {
-            unsafe {
-                if check_patterndead4_avx512(pos, atk) > 0 {
-                    return 2560;
-                }
-            }
-        } else {
-            if check_patterndead4(pos, atk) > 0 {
+            if unsafe { check_patterndead4_avx512(pos, atk) > 0 } {
                 return 2560;
             }
+        } else if check_patterndead4(pos, atk) > 0 {
+            return 2560;
         }
     }
 
@@ -909,9 +898,7 @@ fn pos_is_winner_avx512(pos: &Pos) -> bool {
                                         0b00_10_10_10_10_11_10_10_10_10_11_11_11_11_11_10];
     let mut count_match: i32 = 0;
 
-    for dir in 0..2 {
-        // direction 0 and 1
-        let mut board0 = board0org[dir];
+    for mut board0 in board0org {
         let boardf = _mm512_and_si512(answer, board0);
         let temp_mask = _mm512_mask_cmpeq_epi16_mask(answer_mask[0], answer, boardf);
         count_match += _popcnt32(temp_mask as i32);
