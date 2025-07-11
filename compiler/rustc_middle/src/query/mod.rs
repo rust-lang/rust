@@ -1091,6 +1091,12 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query associated_types_for_impl_traits_in_trait(trait_id: DefId) -> &'tcx DefIdMap<&'tcx [DefId]> {
+        arena_cache
+        desc { |tcx| "creating associated items for trait `{}`", tcx.def_path_str(trait_id) }
+        separate_provide_extern
+    }
+
     /// Given an `impl_id`, return the trait it implements along with some header information.
     /// Return `None` if this is an inherent impl.
     query impl_trait_header(impl_id: DefId) -> Option<ty::ImplTraitHeader<'tcx>> {
