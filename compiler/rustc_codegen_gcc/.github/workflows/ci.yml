@@ -76,7 +76,7 @@ jobs:
     #- name: Cache rust repository
       ## We only clone the rust repository for rustc tests
       #if: ${{ contains(matrix.commands, 'rustc') }}
-      #uses: actions/cache@v3
+      #uses: actions/cache@v4
       #id: cache-rust-repository
       #with:
         #path: rust
