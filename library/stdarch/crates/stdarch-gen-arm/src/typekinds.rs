@@ -1,10 +1,10 @@
-use lazy_static::lazy_static;
 use proc_macro2::TokenStream;
 use quote::{ToTokens, TokenStreamExt, quote};
 use regex::Regex;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::fmt;
 use std::str::FromStr;
+use std::sync::LazyLock;
 
 use crate::context;
 use crate::expression::{Expression, FnCall};
@@ -496,9 +496,9 @@ impl FromStr for VectorType {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"^(?:(?:sv(?P<sv_ty>(?:uint|int|bool|float)(?:\d+)?))|(?:(?P<ty>(?:uint|int|bool|poly|float)(?:\d+)?)x(?P<lanes>(?:\d+)?)))(?:x(?P<tuple_size>2|3|4))?_t$").unwrap();
-        }
+        static RE: LazyLock<Regex> = LazyLock::new(|| {
+            Regex::new(r"^(?:(?:sv(?P<sv_ty>(?:uint|int|bool|float)(?:\d+)?))|(?:(?P<ty>(?:uint|int|bool|poly|float)(?:\d+)?)x(?P<lanes>(?:\d+)?)))(?:x(?P<tuple_size>2|3|4))?_t$").unwrap()
+        });
 
         if let Some(c) = RE.captures(s) {
             let (base_type, lanes) = Self::sanitise_lanes(
@@ -698,9 +698,8 @@ impl FromStr for BaseType {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"^(?P<kind>[a-zA-Z]+)(?P<size>\d+)?(_t)?$").unwrap();
-        }
+        static RE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"^(?P<kind>[a-zA-Z]+)(?P<size>\d+)?(_t)?$").unwrap());
 
         if let Some(c) = RE.captures(s) {
             let kind = c["kind"].parse()?;
