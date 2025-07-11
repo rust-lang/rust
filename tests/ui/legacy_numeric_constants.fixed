@@ -79,8 +79,30 @@ fn main() {
     f64::consts::E;
     b!();
 
+    std::primitive::i32::MAX;
+    //~^ ERROR: usage of a legacy numeric method
+    //~| HELP: use the associated constant instead
     [(0, "", i128::MAX)];
     //~^ ERROR: usage of a legacy numeric constant
+    //~| HELP: use the associated constant instead
+    i32::MAX;
+    //~^ ERROR: usage of a legacy numeric method
+    //~| HELP: use the associated constant instead
+    assert_eq!(0, -i32::MAX);
+    //~^ ERROR: usage of a legacy numeric method
+    //~| HELP: use the associated constant instead
+    i128::MAX;
+    //~^ ERROR: usage of a legacy numeric constant
+    //~| HELP: use the associated constant instead
+    u32::MAX;
+    //~^ ERROR: usage of a legacy numeric method
+    //~| HELP: use the associated constant instead
+    i32::MAX;
+    //~^ ERROR: usage of a legacy numeric method
+    //~| HELP: use the associated constant instead
+    type Ω = i32;
+    Ω::MAX;
+    //~^ ERROR: usage of a legacy numeric method
     //~| HELP: use the associated constant instead
 }
 
