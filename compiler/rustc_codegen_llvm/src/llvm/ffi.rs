@@ -2431,6 +2431,7 @@ unsafe extern "C" {
         UseEmulatedTls: bool,
         ArgsCstrBuff: *const c_char,
         ArgsCstrBuffLen: usize,
+        UseWasmEH: bool,
     ) -> *mut TargetMachine;
 
     pub(crate) fn LLVMRustDisposeTargetMachine(T: *mut TargetMachine);

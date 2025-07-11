@@ -2,7 +2,6 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: -C target-feature=+exception-handling
 //@ compile-flags: -C panic=unwind
-//@ compile-flags: -C llvm-args=-wasm-enable-eh
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
