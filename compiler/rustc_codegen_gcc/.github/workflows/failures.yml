@@ -74,7 +74,7 @@ jobs:
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
 
     #- name: Cache rust repository
-      #uses: actions/cache@v3
+      #uses: actions/cache@v4
       #id: cache-rust-repository
       #with:
         #path: rust
