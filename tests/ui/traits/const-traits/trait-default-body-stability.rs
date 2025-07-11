@@ -1,4 +1,5 @@
-//@ known-bug: #110395
+//@ run-pass
+// @ known-bug: #110395
 //@ compile-flags: -Znext-solver
 #![allow(incomplete_features)]
 #![feature(staged_api)]
