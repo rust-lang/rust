@@ -24,5 +24,37 @@ LL |     let _ = res.expect_err("");
    |
    = note: if this value is an `Ok`, it will panic
 
-error: aborting due to 3 previous errors
+error: used `expect()` on an `Option` value
+  --> tests/ui/expect.rs:23:5
+   |
+LL |     x.ok().expect("Huh");
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+
+error: used `expect()` on an `Option` value
+  --> tests/ui/expect.rs:26:5
+   |
+LL |     { x.ok() }.expect("...");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+
+error: used `expect()` on an `Option` value
+  --> tests/ui/expect.rs:30:5
+   |
+LL |     y.err().expect("Huh");
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+
+error: used `expect()` on an `Option` value
+  --> tests/ui/expect.rs:33:5
+   |
+LL |     { y.err() }.expect("...");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+
+error: aborting due to 7 previous errors
 
