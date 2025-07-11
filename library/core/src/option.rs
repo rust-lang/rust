@@ -2243,7 +2243,8 @@ impl<'a, T> From<&'a mut Option<T>> for Option<&'a mut T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> crate::marker::StructuralPartialEq for Option<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PartialEq> PartialEq for Option<T> {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T: ~const PartialEq> const PartialEq for Option<T> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         // Spelling out the cases explicitly optimizes better than
