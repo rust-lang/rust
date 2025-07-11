@@ -607,8 +607,8 @@ impl<T, E> Result<T, E> {
     /// ```
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
     #[stable(feature = "is_some_and", since = "1.70.0")]
+    #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
     pub const fn is_ok_and(self, f: impl ~const FnOnce(T) -> bool + ~const Destruct) -> bool
     where
         T: ~const Destruct,
@@ -661,8 +661,8 @@ impl<T, E> Result<T, E> {
     /// ```
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
     #[stable(feature = "is_some_and", since = "1.70.0")]
+    #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
     pub const fn is_err_and(self, f: impl ~const FnOnce(E) -> bool + ~const Destruct) -> bool
     where
         E: ~const Destruct,
@@ -819,7 +819,6 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
-    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn map<U, F: ~const FnOnce(T) -> U + ~const Destruct>(self, op: F) -> Result<U, E> {
         match self {
             Ok(t) => Ok(op(t)),
@@ -847,8 +846,8 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_map_or", since = "1.41.0")]
-    #[must_use = "if you don't need the returned value, use `if let` instead"]
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+    #[must_use = "if you don't need the returned value, use `if let` instead"]
     pub const fn map_or<U, F: ~const FnOnce(T) -> U + ~const Destruct>(self, default: U, f: F) -> U
     where
         T: ~const Destruct,
@@ -1464,8 +1463,8 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("flat_map", "flatmap")]
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+    #[rustc_confusables("flat_map", "flatmap")]
     pub const fn and_then<U, F: ~const FnOnce(T) -> Result<U, E> + ~const Destruct>(
         self,
         op: F,
