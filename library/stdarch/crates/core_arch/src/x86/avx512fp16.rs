@@ -11032,7 +11032,7 @@ pub fn _mm_reduce_add_ph(a: __m128h) -> f16 {
         let a = _mm_add_ph(a, b);
         let b = simd_shuffle!(a, a, [2, 3, 0, 1, 4, 5, 6, 7]);
         let a = _mm_add_ph(a, b);
-        simd_extract::<_, f16>(a, 0) + simd_extract::<_, f16>(a, 1)
+        simd_extract!(a, 0, f16) + simd_extract!(a, 1, f16)
     }
 }
 
@@ -11085,7 +11085,7 @@ pub fn _mm_reduce_mul_ph(a: __m128h) -> f16 {
         let a = _mm_mul_ph(a, b);
         let b = simd_shuffle!(a, a, [2, 3, 0, 1, 4, 5, 6, 7]);
         let a = _mm_mul_ph(a, b);
-        simd_extract::<_, f16>(a, 0) * simd_extract::<_, f16>(a, 1)
+        simd_extract!(a, 0, f16) * simd_extract!(a, 1, f16)
     }
 }
 

@@ -157,11 +157,11 @@ features! {
     /// AVX (Advanced Vector Extensions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx2: "avx2";
     /// AVX2 (Advanced Vector Extensions 2)
-    @FEATURE: #[stable(feature = "sha512_sm_x86", since = "CURRENT_RUSTC_VERSION")] sha512: "sha512";
+    @FEATURE: #[stable(feature = "sha512_sm_x86", since = "1.89.0")] sha512: "sha512";
     /// SHA512
-    @FEATURE: #[stable(feature = "sha512_sm_x86", since = "CURRENT_RUSTC_VERSION")] sm3: "sm3";
+    @FEATURE: #[stable(feature = "sha512_sm_x86", since = "1.89.0")] sm3: "sm3";
     /// SM3
-    @FEATURE: #[stable(feature = "sha512_sm_x86", since = "CURRENT_RUSTC_VERSION")] sm4: "sm4";
+    @FEATURE: #[stable(feature = "sha512_sm_x86", since = "1.89.0")] sm4: "sm4";
     /// SM4
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512f: "avx512f" ;
     /// AVX-512 F (Foundation)
@@ -259,9 +259,9 @@ features! {
     /// XSAVEC (Save Processor Extended States Compacted)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] cmpxchg16b: "cmpxchg16b";
     /// CMPXCH16B (16-byte compare-and-swap instruction)
-    @FEATURE: #[stable(feature = "keylocker_x86", since = "CURRENT_RUSTC_VERSION")] kl: "kl";
+    @FEATURE: #[stable(feature = "keylocker_x86", since = "1.89.0")] kl: "kl";
     /// Intel Key Locker
-    @FEATURE: #[stable(feature = "keylocker_x86", since = "CURRENT_RUSTC_VERSION")] widekl: "widekl";
+    @FEATURE: #[stable(feature = "keylocker_x86", since = "1.89.0")] widekl: "widekl";
     /// Intel Key Locker Wide
     @FEATURE: #[stable(feature = "simd_x86_adx", since = "1.33.0")] adx: "adx";
     /// ADX, Intel ADX (Multi-Precision Add-Carry Instruction Extensions)
