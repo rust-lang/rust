@@ -23,7 +23,8 @@ impl Ord for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl PartialEq for str {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const PartialEq for str {
     #[inline]
     fn eq(&self, other: &str) -> bool {
         self.as_bytes() == other.as_bytes()

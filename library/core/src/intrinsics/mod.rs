@@ -2208,6 +2208,7 @@ pub const unsafe fn raw_eq<T>(a: &T, b: &T) -> bool;
 /// [valid]: crate::ptr#safety
 #[rustc_nounwind]
 #[rustc_intrinsic]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 pub const unsafe fn compare_bytes(left: *const u8, right: *const u8, bytes: usize) -> i32;
 
 /// See documentation of [`std::hint::black_box`] for details.
