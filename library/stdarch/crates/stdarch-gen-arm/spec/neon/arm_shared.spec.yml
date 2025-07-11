@@ -7135,13 +7135,8 @@ intrinsics:
       - int32x2_t
       - int32x4_t
     compose:
-      - LLVMLink:
-          name: "smax.{neon_type}"
-          links:
-            - link: "llvm.arm.neon.vmaxs.{neon_type}"
-              arch: arm
-            - link: "llvm.aarch64.neon.smax.{neon_type}"
-              arch: aarch64,arm64ec
+      - Let: [mask, "{neon_type}", {FnCall: [simd_ge, [a, b]]}]
+      - FnCall: [simd_select, [mask, a, b]]
 
   - name: "vmax{neon_type.no}"
     doc: Maximum (vector)
@@ -7162,13 +7157,8 @@ intrinsics:
       - uint32x2_t
       - uint32x4_t
     compose:
-      - LLVMLink:
-          name: "smax.{neon_type}"
-          links:
-            - link: "llvm.arm.neon.vmaxu.{neon_type}"
-              arch: arm
-            - link: "llvm.aarch64.neon.umax.{neon_type}"
-              arch: aarch64,arm64ec
+      - Let: [mask, "{neon_type}", {FnCall: [simd_ge, [a, b]]}]
+      - FnCall: [simd_select, [mask, a, b]]
 
   - name: "vmax{neon_type.no}"
     doc: Maximum (vector)
@@ -7309,13 +7299,8 @@ intrinsics:
       - int32x2_t
       - int32x4_t
     compose:
-      - LLVMLink:
-          name: "smin.{neon_type}"
-          links:
-            - link: "llvm.arm.neon.vmins.{neon_type}"
-              arch: arm
-            - link: "llvm.aarch64.neon.smin.{neon_type}"
-              arch: aarch64,arm64ec
+      - Let: [mask, "{neon_type}", {FnCall: [simd_le, [a, b]]}]
+      - FnCall: [simd_select, [mask, a, b]]
 
   - name: "vmin{neon_type.no}"
     doc: "Minimum (vector)"
@@ -7336,13 +7321,8 @@ intrinsics:
       - uint32x2_t
       - uint32x4_t
     compose:
-      - LLVMLink:
-          name: "umin.{neon_type}"
-          links:
-            - link: "llvm.arm.neon.vminu.{neon_type}"
-              arch: arm
-            - link: "llvm.aarch64.neon.umin.{neon_type}"
-              arch: aarch64,arm64ec
+      - Let: [mask, "{neon_type}", {FnCall: [simd_le, [a, b]]}]
+      - FnCall: [simd_select, [mask, a, b]]
 
   - name: "vmin{neon_type.no}"
     doc: "Minimum (vector)"
