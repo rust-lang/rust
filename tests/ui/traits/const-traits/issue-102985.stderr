@@ -1,5 +1,5 @@
 error[E0015]: cannot call non-const closure in constants
-  --> $DIR/issue-102985.rs:6:14
+  --> $DIR/issue-102985.rs:5:14
    |
 LL |         n => n(),
    |              ^^^
