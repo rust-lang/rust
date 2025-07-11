@@ -10985,3 +10985,41 @@ fn has_docs$0() {}
         "#]],
     );
 }
+
+#[test]
+fn regression_20225() {
+    check(
+        r#"
+//- minicore: coerce_unsized
+trait Trait {
+    type Type<'a, T: ?Sized + 'a>;
+}
+
+enum Borrowed {}
+
+impl Trait for Borrowed {
+    type Type<'a, T: ?Sized + 'a> = &'a T;
+}
+
+enum Enum<'a, T: Trait + 'a> {
+    Variant1(T::Type<'a, [Enum<'a, T>]>),
+    Variant2,
+}
+
+impl Enum<'_, Borrowed> {
+    const CONSTANT$0: Self = Self::Variant1(&[Self::Variant2]);
+}
+    "#,
+        expect![[r#"
+            *CONSTANT*
+
+            ```rust
+            ra_test_fixture::Enum
+            ```
+
+            ```rust
+            const CONSTANT: Self = Variant1(&[Variant2])
+            ```
+        "#]],
+    );
+}
