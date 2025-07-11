@@ -1528,7 +1528,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("compiletest")
-                .render_steps(), @"[check] compiletest <host>");
+                .render_steps(), @"[check] rustc 0 <host> -> Compiletest 1 <host>");
     }
 
     #[test]
@@ -1542,7 +1542,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [check] compiletest <host>
+        [check] rustc 1 <host> -> Compiletest 2 <host>
         ");
     }
 

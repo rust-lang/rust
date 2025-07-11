@@ -433,61 +433,6 @@ impl Step for RustAnalyzer {
     }
 }
 
-/// Compiletest is implicitly "checked" when it gets built in order to run tests,
-/// so this is mainly for people working on compiletest to run locally.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Compiletest {
-    pub target: TargetSelection,
-}
-
-impl Step for Compiletest {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = false;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/compiletest")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Compiletest { target: run.target });
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        let mode = if builder.config.compiletest_use_stage0_libtest {
-            Mode::ToolBootstrap
-        } else {
-            Mode::ToolStd
-        };
-        let build_compiler = prepare_compiler_for_check(builder, self.target, mode);
-
-        let mut cargo = prepare_tool_cargo(
-            builder,
-            build_compiler,
-            mode,
-            self.target,
-            builder.kind,
-            "src/tools/compiletest",
-            SourceType::InTree,
-            &[],
-        );
-
-        cargo.allow_features(COMPILETEST_ALLOW_FEATURES);
-
-        cargo.arg("--all-targets");
-
-        let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, mode, self.target))
-            .with_prefix("compiletest-check");
-
-        let _guard = builder.msg_check("compiletest artifacts", self.target, None);
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
-    }
-
-    fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::check("compiletest", self.target))
-    }
-}
-
 macro_rules! tool_check_step {
     (
         $name:ident {
@@ -641,4 +586,17 @@ tool_check_step!(CoverageDump {
     path: "src/tools/coverage-dump",
     mode: |_builder| Mode::ToolBootstrap,
     default: false
+});
+
+// Compiletest is implicitly "checked" when it gets built in order to run tests,
+// so this is mainly for people working on compiletest to run locally.
+tool_check_step!(Compiletest {
+    path: "src/tools/compiletest",
+    mode: |builder: &Builder<'_>| if builder.config.compiletest_use_stage0_libtest {
+        Mode::ToolBootstrap
+    } else {
+        Mode::ToolStd
+    },
+    allow_features: COMPILETEST_ALLOW_FEATURES,
+    default: false,
 });
