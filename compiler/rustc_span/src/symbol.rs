@@ -839,6 +839,7 @@ symbols! {
         derive,
         derive_coerce_pointee,
         derive_const,
+        derive_const_issue: "118304",
         derive_default_enum,
         derive_smart_pointer,
         destruct,
