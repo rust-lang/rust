@@ -113,7 +113,7 @@ impl Direction for Backward {
                 }
 
                 mir::TerminatorKind::SwitchInt { ref targets, ref discr } => {
-                    if let Some(mut data) = analysis.get_switch_int_data(block, discr) {
+                    if let Some(mut data) = analysis.get_switch_int_data(pred, discr) {
                         let mut tmp = analysis.bottom_value(body);
                         for &value in &body.basic_blocks.switch_sources()[&(block, pred)] {
                             tmp.clone_from(exit_state);
