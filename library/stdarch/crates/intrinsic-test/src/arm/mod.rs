@@ -13,7 +13,9 @@ use crate::common::SupportedArchitectureTest;
 use crate::common::cli::ProcessedCli;
 use crate::common::compare::compare_outputs;
 use crate::common::gen_c::{write_main_cpp, write_mod_cpp};
-use crate::common::gen_rust::{compile_rust_programs, write_cargo_toml, write_main_rs};
+use crate::common::gen_rust::{
+    compile_rust_programs, write_bin_cargo_toml, write_lib_cargo_toml, write_lib_rs, write_main_rs,
+};
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
 use config::{AARCH_CONFIGURATIONS, F16_FORMATTING_DEF, build_notices};
@@ -125,19 +127,17 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             "aarch64"
         };
 
-        let available_parallelism = std::thread::available_parallelism().unwrap().get();
-        let chunk_size = self.intrinsics.len().div_ceil(available_parallelism);
+        let (chunk_size, chunk_count) = chunk_info(self.intrinsics.len());
 
         let mut cargo = File::create("rust_programs/Cargo.toml").unwrap();
-        write_cargo_toml(&mut cargo, &[]).unwrap();
+        write_bin_cargo_toml(&mut cargo, chunk_count).unwrap();
 
         let mut main_rs = File::create("rust_programs/src/main.rs").unwrap();
         write_main_rs(
             &mut main_rs,
-            available_parallelism,
-            architecture,
+            chunk_count,
             AARCH_CONFIGURATIONS,
-            F16_FORMATTING_DEF,
+            "",
             self.intrinsics.iter().map(|i| i.name.as_str()),
         )
         .unwrap();
@@ -151,20 +151,21 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             .par_chunks(chunk_size)
             .enumerate()
             .map(|(i, chunk)| {
-                use std::io::Write;
+                std::fs::create_dir_all(format!("rust_programs/mod_{i}/src"))?;
 
-                let rust_filename = format!("rust_programs/src/mod_{i}.rs");
+                let rust_filename = format!("rust_programs/mod_{i}/src/lib.rs");
                 trace!("generating `{rust_filename}`");
-                let mut file = File::create(rust_filename).unwrap();
+                let mut file = File::create(rust_filename)?;
 
-                write!(file, "{notice}")?;
+                let cfg = AARCH_CONFIGURATIONS;
+                let definitions = F16_FORMATTING_DEF;
+                write_lib_rs(&mut file, architecture, notice, cfg, definitions, chunk)?;
 
-                writeln!(file, "use core_arch::arch::{architecture}::*;")?;
-                writeln!(file, "use crate::{{debug_simd_finish, debug_f16}};")?;
+                let toml_filename = format!("rust_programs/mod_{i}/Cargo.toml");
+                trace!("generating `{toml_filename}`");
+                let mut file = File::create(toml_filename).unwrap();
 
-                for intrinsic in chunk {
-                    crate::common::gen_rust::create_rust_test_module(&mut file, intrinsic)?;
-                }
+                write_lib_cargo_toml(&mut file, &format!("mod_{i}"))?;
 
                 Ok(())
             })
