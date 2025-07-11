@@ -8,7 +8,7 @@ static REENTRANT_DTOR: Cell<Option<(*mut u8, unsafe extern "C" fn(*mut u8))>> = 
 static DTORS: RefCell<Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>> = RefCell::new(Vec::new());
 
 pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
-    // Borrow DTORS can only fail if the global allocator calls this
+    // Borrowing DTORS can only fail if the global allocator calls this
     // function again.
     if let Ok(mut dtors) = DTORS.try_borrow_mut() {
         guard::enable();
@@ -33,18 +33,21 @@ pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
 pub unsafe fn run() {
     loop {
         let mut dtors = DTORS.borrow_mut();
-        match dtors.pop() {
-            Some((t, dtor)) => {
-                drop(dtors);
-                unsafe {
-                    dtor(t);
-                }
-            }
-            None => {
-                // Free the list memory.
-                *dtors = Vec::new();
-                break;
-            }
+        let Some((t, dtor)) = dtors.pop() else { break };
+
+        // If the global allocator has allocated a thread-local variable
+        // it will always be the first in the dtors list (if an alloc came
+        // before the first regular register()), or be the REENTRANT_DTOR
+        // (if a register() came before the first alloc). In the former
+        // case we have to make sure not to touch the global (de)allocator again
+        // on this thread, so free dtors now, before calling the last dtor.
+        if dtors.is_empty() {
+            *dtors = Vec::new();
+        }
+
+        drop(dtors);
+        unsafe {
+            dtor(t);
         }
     }
 
