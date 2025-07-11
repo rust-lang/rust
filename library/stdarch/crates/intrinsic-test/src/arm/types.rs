@@ -33,25 +33,6 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
         }
     }
 
-    fn rust_type(&self) -> String {
-        let rust_prefix = self.0.kind.rust_prefix();
-        let c_prefix = self.0.kind.c_prefix();
-        if self.0.ptr_constant {
-            self.c_type()
-        } else if let (Some(bit_len), simd_len, vec_len) =
-            (self.0.bit_len, self.0.simd_len, self.0.vec_len)
-        {
-            match (simd_len, vec_len) {
-                (None, None) => format!("{rust_prefix}{bit_len}"),
-                (Some(simd), None) => format!("{c_prefix}{bit_len}x{simd}_t"),
-                (Some(simd), Some(vec)) => format!("{c_prefix}{bit_len}x{simd}x{vec}_t"),
-                (None, Some(_)) => todo!("{:#?}", self), // Likely an invalid case
-            }
-        } else {
-            todo!("{:#?}", self)
-        }
-    }
-
     /// Determines the load function for this type.
     fn get_load_function(&self, language: Language) -> String {
         if let IntrinsicType {

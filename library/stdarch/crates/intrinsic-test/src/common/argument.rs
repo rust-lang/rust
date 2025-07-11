@@ -114,14 +114,6 @@ where
             .join(", ")
     }
 
-    pub fn as_constraint_parameters_rust(&self) -> String {
-        self.iter()
-            .filter(|a| a.has_constraint())
-            .map(|arg| arg.name.clone())
-            .collect::<Vec<String>>()
-            .join(", ")
-    }
-
     /// Creates a line for each argument that initializes an array for C from which `loads` argument
     /// values can be loaded  as a sliding window.
     /// e.g `const int32x2_t a_vals = {0x3effffff, 0x3effffff, 0x3f7fffff}`, if loads=2.

@@ -1,7 +1,6 @@
 use itertools::Itertools;
 use std::process::Command;
 
-use super::argument::Argument;
 use super::indentation::Indentation;
 use super::intrinsic::{IntrinsicDefinition, format_f16_return_value};
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
@@ -188,66 +187,87 @@ pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
     w: &mut impl std::io::Write,
     intrinsic: &dyn IntrinsicDefinition<T>,
     indentation: Indentation,
-    additional: &str,
+    specializations: &[Vec<u8>],
     passes: u32,
 ) -> std::io::Result<()> {
-    let constraints = intrinsic.arguments().as_constraint_parameters_rust();
-    let constraints = if !constraints.is_empty() {
-        format!("::<{constraints}>")
-    } else {
-        constraints
-    };
+    let intrinsic_name = intrinsic.name();
+
+    // Each function (and each specialization) has its own type. Erase that type with a cast.
+    let mut coerce = String::from("unsafe fn(");
+    for _ in intrinsic.arguments().iter().filter(|a| !a.has_constraint()) {
+        coerce += "_, ";
+    }
+    coerce += ") -> _";
+
+    match specializations {
+        [] => {
+            writeln!(w, "    let specializations = [(\"\", {intrinsic_name})];")?;
+        }
+        [const_args] if const_args.is_empty() => {
+            writeln!(w, "    let specializations = [(\"\", {intrinsic_name})];")?;
+        }
+        _ => {
+            writeln!(w, "    let specializations = [")?;
+
+            for specialization in specializations {
+                let mut specialization: Vec<_> =
+                    specialization.iter().map(|d| d.to_string()).collect();
+
+                let const_args = specialization.join(",");
+
+                // The identifier is reversed.
+                specialization.reverse();
+                let id = specialization.join("-");
+
+                writeln!(
+                    w,
+                    "        (\"-{id}\", {intrinsic_name}::<{const_args}> as {coerce}),"
+                )?;
+            }
+
+            writeln!(w, "    ];")?;
+        }
+    }
 
     let return_value = format_f16_return_value(intrinsic);
     let indentation2 = indentation.nested();
     let indentation3 = indentation2.nested();
     writeln!(
         w,
-        "{indentation}for i in 0..{passes} {{\n\
-            {indentation2}unsafe {{\n\
-                {loaded_args}\
-                {indentation3}let __return_value = {intrinsic_call}{const}({args});\n\
-                {indentation3}println!(\"Result {additional}-{{}}: {{:?}}\", i + 1, {return_value});\n\
-            {indentation2}}}\n\
-        {indentation}}}",
+        "\
+            for (id, f) in specializations {{\n\
+                for i in 0..{passes} {{\n\
+                    unsafe {{\n\
+                        {loaded_args}\
+                        let __return_value = f({args});\n\
+                        println!(\"Result {{id}}-{{}}: {{:?}}\", i + 1, {return_value});\n\
+                    }}\n\
+                }}\n\
+            }}",
         loaded_args = intrinsic.arguments().load_values_rust(indentation3),
-        intrinsic_call = intrinsic.name(),
-        const = constraints,
         args = intrinsic.arguments().as_call_param_rust(),
     )
 }
 
-fn generate_rust_constraint_blocks<'a, T: IntrinsicTypeDefinition + 'a>(
-    w: &mut impl std::io::Write,
-    intrinsic: &dyn IntrinsicDefinition<T>,
-    indentation: Indentation,
-    constraints: &mut (impl Iterator<Item = &'a Argument<T>> + Clone),
-    name: String,
-) -> std::io::Result<()> {
-    let Some(current) = constraints.next() else {
-        return generate_rust_test_loop(w, intrinsic, indentation, &name, PASSES);
-    };
+/// Generate the specializations (unique sequences of const-generic arguments) for this intrinsic.
+fn generate_rust_specializations<'a>(
+    constraints: &mut impl Iterator<Item = std::ops::Range<i64>>,
+) -> Vec<Vec<u8>> {
+    let mut specializations = vec![vec![]];
 
-    let body_indentation = indentation.nested();
-    for i in current.constraint.iter().flat_map(|c| c.to_range()) {
-        let ty = current.ty.rust_type();
-
-        writeln!(w, "{indentation}{{")?;
-
-        writeln!(w, "{body_indentation}const {}: {ty} = {i};", current.name)?;
-
-        generate_rust_constraint_blocks(
-            w,
-            intrinsic,
-            body_indentation,
-            &mut constraints.clone(),
-            format!("{name}-{i}"),
-        )?;
-
-        writeln!(w, "{indentation}}}")?;
+    for constraint in constraints {
+        specializations = constraint
+            .flat_map(|right| {
+                specializations.iter().map(move |left| {
+                    let mut left = left.clone();
+                    left.push(u8::try_from(right).unwrap());
+                    left
+                })
+            })
+            .collect();
     }
 
-    Ok(())
+    specializations
 }
 
 // Top-level function to create complete test program
@@ -265,13 +285,13 @@ pub fn create_rust_test_module<T: IntrinsicTypeDefinition>(
     arguments.gen_arglists_rust(w, indentation.nested(), PASSES)?;
 
     // Define any const generics as `const` items, then generate the actual test loop.
-    generate_rust_constraint_blocks(
-        w,
-        intrinsic,
-        indentation.nested(),
-        &mut arguments.iter().rev().filter(|i| i.has_constraint()),
-        Default::default(),
-    )?;
+    let specializations = generate_rust_specializations(
+        &mut arguments
+            .iter()
+            .filter_map(|i| i.constraint.as_ref().map(|v| v.to_range())),
+    );
+
+    generate_rust_test_loop(w, intrinsic, indentation, &specializations, PASSES)?;
 
     writeln!(w, "}}")?;
 

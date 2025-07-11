@@ -332,7 +332,4 @@ pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
 
     /// can be directly defined in `impl` blocks
     fn c_single_vector_type(&self) -> String;
-
-    /// can be defined in `impl` blocks
-    fn rust_type(&self) -> String;
 }
