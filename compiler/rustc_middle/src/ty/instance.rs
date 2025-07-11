@@ -991,18 +991,16 @@ fn needs_fn_once_adapter_shim(
             Ok(false)
         }
         (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
-            // The closure fn `llfn` is a `fn(&self, ...)`. We want a
-            // `fn(&mut self, ...)`. In fact, at codegen time, these are
-            // basically the same thing, so we can just return llfn.
+            // The closure fn is a `fn(&self, ...)`, but we want a `fn(&mut self, ...)`.
+            // At codegen time, these are basically the same, so we can just return the closure.
             Ok(false)
         }
         (ty::ClosureKind::Fn | ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
-            // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
-            // self, ...)`. We want a `fn(self, ...)`. We can produce
-            // this by doing something like:
+            // The closure fn is a `fn(&self, ...)` or `fn(&mut self, ...)`, but
+            // we want a `fn(self, ...)`. We can produce this by doing something like:
             //
-            //     fn call_once(self, ...) { call_mut(&self, ...) }
-            //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
+            //     fn call_once(self, ...) { Fn::call(&self, ...) }
+            //     fn call_once(mut self, ...) { FnMut::call_mut(&mut self, ...) }
             //
             // These are both the same at codegen time.
             Ok(true)
