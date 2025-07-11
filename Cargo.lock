@@ -4349,6 +4349,7 @@ dependencies = [
  "rustc_ast_lowering",
  "rustc_ast_pretty",
  "rustc_attr_data_structures",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_expand",
