@@ -281,7 +281,7 @@ pub(crate) fn const_eval_discriminant_variant(
     let def = variant_id.into();
     let body = db.body(def);
     let loc = variant_id.lookup(db);
-    if body.exprs[body.body_expr] == Expr::Missing {
+    if matches!(body[body.body_expr], Expr::Missing) {
         let prev_idx = loc.index.checked_sub(1);
         let value = match prev_idx {
             Some(prev_idx) => {
@@ -334,7 +334,7 @@ pub(crate) fn eval_to_const(
         // Type checking clousres need an isolated body (See the above FIXME). Bail out early to prevent panic.
         return unknown_const(infer[expr].clone());
     }
-    if let Expr::Path(p) = &ctx.body.exprs[expr] {
+    if let Expr::Path(p) = &ctx.body[expr] {
         let resolver = &ctx.resolver;
         if let Some(c) =
             path_to_const(db, resolver, p, mode, || ctx.generics(), debruijn, infer[expr].clone())

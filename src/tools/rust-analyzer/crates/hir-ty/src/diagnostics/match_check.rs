@@ -150,7 +150,7 @@ impl<'a> PatCtxt<'a> {
             hir_def::hir::Pat::Bind { id, subpat, .. } => {
                 let bm = self.infer.binding_modes[pat];
                 ty = &self.infer[id];
-                let name = &self.body.bindings[id].name;
+                let name = &self.body[id].name;
                 match (bm, ty.kind(Interner)) {
                     (BindingMode::Ref(_), TyKind::Ref(.., rty)) => ty = rty,
                     (BindingMode::Ref(_), _) => {

@@ -282,7 +282,7 @@ impl ExprCollector<'_> {
             Expr::InlineAsm(InlineAsm { operands: operands.into_boxed_slice(), options, kind }),
             syntax_ptr,
         );
-        self.source_map
+        self.store
             .template_map
             .get_or_insert_with(Default::default)
             .asm_to_captures

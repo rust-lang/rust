@@ -226,11 +226,10 @@ impl<'a> DeclValidator<'a> {
         let body = self.db.body(func.into());
         let edition = self.edition(func);
         let mut pats_replacements = body
-            .pats
-            .iter()
+            .pats()
             .filter_map(|(pat_id, pat)| match pat {
                 Pat::Bind { id, .. } => {
-                    let bind_name = &body.bindings[*id].name;
+                    let bind_name = &body[*id].name;
                     let mut suggested_text = to_lower_snake_case(bind_name.as_str())?;
                     if is_raw_identifier(&suggested_text, edition) {
                         suggested_text.insert_str(0, "r#");
