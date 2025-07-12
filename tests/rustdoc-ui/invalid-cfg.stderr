@@ -2,7 +2,13 @@ error: `cfg` is not followed by parentheses
   --> $DIR/invalid-cfg.rs:2:7
    |
 LL | #[doc(cfg = "x")]
-   |       ^^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   |       ^^^^^^^^^
+   |
+help: expected syntax is
+   |
+LL - #[doc(cfg = "x")]
+LL + #[doc(cfg(/* predicate */))]
+   |
 
 error: multiple `cfg` predicates are specified
   --> $DIR/invalid-cfg.rs:3:14

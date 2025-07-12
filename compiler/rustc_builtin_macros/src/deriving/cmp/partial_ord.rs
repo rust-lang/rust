@@ -47,7 +47,7 @@ pub(crate) fn expand_deriving_partial_ord(
         explicit_self: true,
         nonself_args: vec![(self_ref(), sym::other)],
         ret_ty,
-        attributes: thin_vec![cx.attr_word(sym::inline, span)],
+        attributes: thin_vec![cx.attr_word(sym::inline, span, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
             cs_partial_cmp(cx, span, substr, discr_then_data)

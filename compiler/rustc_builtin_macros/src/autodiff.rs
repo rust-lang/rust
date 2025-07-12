@@ -362,6 +362,7 @@ mod llvm_enzyme {
             path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
             args: ast::AttrArgs::Delimited(never_arg),
             tokens: None,
+            span,
         };
         let inline_never_attr = P(ast::NormalAttr { item: inline_item, tokens: None });
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();

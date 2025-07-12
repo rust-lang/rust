@@ -2,19 +2,34 @@ error: `cfg` is not followed by parentheses
   --> $DIR/cfg-attr-syntax-validation.rs:1:1
    |
 LL | #[cfg]
-   | ^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   | ^^^^^^
+   |
+help: expected syntax is
+   |
+LL | #[cfg()]
+   |      ++
 
 error: `cfg` is not followed by parentheses
   --> $DIR/cfg-attr-syntax-validation.rs:4:1
    |
 LL | #[cfg = 10]
-   | ^^^^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   | ^^^^^^^^^^^
+   |
+help: expected syntax is
+   |
+LL | #[(cfg = 10)]
+   |   +        +
 
 error: `cfg` predicate is not specified
   --> $DIR/cfg-attr-syntax-validation.rs:7:1
    |
 LL | #[cfg()]
-   | ^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   | ^^^^^^^^
+   |
+help: expected syntax is
+   |
+LL | #[cfg(/* predicate */)]
+   |       +++++++++++++++
 
 error: multiple `cfg` predicates are specified
   --> $DIR/cfg-attr-syntax-validation.rs:10:10
@@ -54,8 +69,47 @@ LL | #[cfg(a = b"hi")]
    |           |
    |           help: consider removing the prefix
 
+error: attribute value must be a literal
+  --> $DIR/cfg-attr-syntax-validation.rs:28:9
+   |
+LL | #[cfg = a]
+   |         ^
+
+error: `cfg` is not followed by parentheses
+  --> $DIR/cfg-attr-syntax-validation.rs:45:5
+   |
+LL |     #![cfg]
+   |     ^^^^^^^
+   |
+help: expected syntax is
+   |
+LL |     #![cfg()]
+   |           ++
+
+error: `cfg` is not followed by parentheses
+  --> $DIR/cfg-attr-syntax-validation.rs:46:5
+   |
+LL |     #![cfg = 10]
+   |     ^^^^^^^^^^^^
+   |
+help: expected syntax is
+   |
+LL |     #![(cfg = 10)]
+   |        +        +
+
+error: `cfg` predicate is not specified
+  --> $DIR/cfg-attr-syntax-validation.rs:47:5
+   |
+LL |     #![cfg()]
+   |     ^^^^^^^^^
+   |
+help: expected syntax is
+   |
+LL |     #![cfg(/* predicate */)]
+   |            +++++++++++++++
+
 error: expected unsuffixed literal, found `expr` metavariable
-  --> $DIR/cfg-attr-syntax-validation.rs:30:25
+  --> $DIR/cfg-attr-syntax-validation.rs:36:25
    |
 LL |         #[cfg(feature = $expr)]
    |                         ^^^^^
@@ -65,7 +119,18 @@ LL | generate_s10!(concat!("nonexistent"));
    |
    = note: this error originates in the macro `generate_s10` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 10 previous errors
+warning: unexpected `cfg` condition name: `a`
+  --> $DIR/cfg-attr-syntax-validation.rs:31:7
+   |
+LL | #[cfg(a)]
+   |       ^ help: found config with similar value: `target_feature = "a"`
+   |
+   = help: expected names are: `FALSE` and `test` and 31 more
+   = help: to expect this configuration use `--check-cfg=cfg(a)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+error: aborting due to 14 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0537, E0565.
 For more information about an error, try `rustc --explain E0537`.
