@@ -19,10 +19,8 @@ use rustc_hir::{self as hir, AmbigArg, FieldDef, Item, ItemKind, TraitRef, Ty, T
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
-use rustc_middle::middle::stability::{
-    AllowUnstable, Deprecated, DeprecationEntry, EvalResult, Index,
-};
-use rustc_middle::query::Providers;
+use rustc_middle::middle::stability::{AllowUnstable, Deprecated, DeprecationEntry, EvalResult};
+use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint;
@@ -317,12 +315,12 @@ fn lookup_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ConstSt
 }
 
 /// A private tree-walker for producing an `Index`.
-struct Annotator<'a, 'tcx> {
+struct Annotator<'tcx> {
     tcx: TyCtxt<'tcx>,
-    index: &'a mut Index,
+    implications: UnordMap<Symbol, Symbol>,
 }
 
-impl<'a, 'tcx> Annotator<'a, 'tcx> {
+impl<'tcx> Annotator<'tcx> {
     /// Determine the stability for a node based on its attributes and inherited stability. The
     /// stability is recorded in the index and used as the parent. If the node is a function,
     /// `fn_sig` is its signature.
@@ -335,18 +333,18 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         if let Some(stability) = self.tcx.lookup_stability(def_id)
             && let StabilityLevel::Unstable { implied_by: Some(implied_by), .. } = stability.level
         {
-            self.index.implications.insert(implied_by, stability.feature);
+            self.implications.insert(implied_by, stability.feature);
         }
 
         if let Some(stability) = self.tcx.lookup_const_stability(def_id)
             && let StabilityLevel::Unstable { implied_by: Some(implied_by), .. } = stability.level
         {
-            self.index.implications.insert(implied_by, stability.feature);
+            self.implications.insert(implied_by, stability.feature);
         }
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for Annotator<'tcx> {
     /// Because stability levels are scoped lexically, we want to walk
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
@@ -610,12 +608,11 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 }
 
-fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
-    let mut index = Index { implications: Default::default() };
-    let mut annotator = Annotator { tcx, index: &mut index };
+fn stability_implications(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> UnordMap<Symbol, Symbol> {
+    let mut annotator = Annotator { tcx, implications: Default::default() };
     annotator.annotate(CRATE_DEF_ID);
     tcx.hir_walk_toplevel_module(&mut annotator);
-    index
+    annotator.implications
 }
 
 /// Cross-references the feature names of unstable APIs with enabled
@@ -627,8 +624,7 @@ fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         check_mod_unstable_api_usage,
-        stability_index,
-        stability_implications: |tcx, _| tcx.stability().implications.clone(),
+        stability_implications,
         lookup_stability,
         lookup_const_stability,
         lookup_default_body_stability,

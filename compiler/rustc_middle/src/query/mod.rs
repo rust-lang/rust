@@ -112,7 +112,7 @@ use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars, ResolvedArg};
-use crate::middle::stability::{self, DeprecationEntry};
+use crate::middle::stability::DeprecationEntry;
 use crate::mir::interpret::{
     EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
     EvalToValTreeResult, GlobalId, LitToConstInput,
@@ -2162,6 +2162,18 @@ rustc_queries! {
         separate_provide_extern
         arena_cache
     }
+    /// Mapping from feature name to feature name based on the `implied_by` field of `#[unstable]`
+    /// attributes. If a `#[unstable(feature = "implier", implied_by = "impliee")]` attribute
+    /// exists, then this map will have a `impliee -> implier` entry.
+    ///
+    /// This mapping is necessary unless both the `#[stable]` and `#[unstable]` attributes should
+    /// specify their implications (both `implies` and `implied_by`). If only one of the two
+    /// attributes do (as in the current implementation, `implied_by` in `#[unstable]`), then this
+    /// mapping is necessary for diagnostics. When a "unnecessary feature attribute" error is
+    /// reported, only the `#[stable]` attribute information is available, so the map is necessary
+    /// to know that the feature implies another feature. If it were reversed, and the `#[stable]`
+    /// attribute had an `implies` meta item, then a map would be necessary when avoiding a "use of
+    /// unstable feature" error for a feature that was implied.
     query stability_implications(_: CrateNum) -> &'tcx UnordMap<Symbol, Symbol> {
         arena_cache
         desc { "calculating the implications between `#[unstable]` features defined in a crate" }
@@ -2268,11 +2280,6 @@ rustc_queries! {
         desc { "fetching potentially unused trait imports" }
     }
 
-    query stability_index(_: ()) -> &'tcx stability::Index {
-        arena_cache
-        eval_always
-        desc { "calculating the stability index for the local crate" }
-    }
     /// All available crates in the graph, including those that should not be user-facing
     /// (such as private crates).
     query crates(_: ()) -> &'tcx [CrateNum] {

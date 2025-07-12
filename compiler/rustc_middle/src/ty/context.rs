@@ -65,7 +65,7 @@ use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind, Canonica
 use crate::lint::lint_level;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
-use crate::middle::{resolve_bound_vars, stability};
+use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::query::plumbing::QuerySystem;
@@ -1805,10 +1805,6 @@ impl<'tcx> TyCtxt<'tcx> {
             self.coroutine_kind(def_id),
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _))
         )
-    }
-
-    pub fn stability(self) -> &'tcx stability::Index {
-        self.stability_index(())
     }
 
     pub fn features(self) -> &'tcx rustc_feature::Features {
