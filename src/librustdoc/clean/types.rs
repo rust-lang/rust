@@ -6,6 +6,7 @@ use std::{fmt, iter};
 use arrayvec::ArrayVec;
 use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
+use rustc_ast::BoundPolarity;
 use rustc_attr_data_structures::{
     AttributeKind, ConstStability, Deprecation, Stability, StableSince, find_attr,
 };
@@ -1295,6 +1296,16 @@ impl GenericBound {
         matches!(self, Self::TraitBound(..))
     }
 
+    pub(crate) fn is_maybe_sized_bound(&self, tcx: TyCtxt<'_>) -> bool {
+        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, modifiers) = *self
+            && matches!(modifiers.polarity, BoundPolarity::Maybe(_))
+            && tcx.is_lang_item(trait_.def_id(), LangItem::Sized)
+        {
+            return true;
+        }
+        false
+    }
+
     pub(crate) fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
         self.is_bounded_by_lang_item(cx, LangItem::Sized)
     }
@@ -1371,10 +1382,21 @@ impl WherePredicate {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericParamDefKind {
-    Lifetime { outlives: ThinVec<Lifetime> },
-    Type { bounds: ThinVec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
+    Lifetime {
+        outlives: ThinVec<Lifetime>,
+    },
+    Type {
+        bounds: ThinVec<GenericBound>,
+        default: Option<Box<Type>>,
+        synthetic: bool,
+        allow_unsized: bool,
+    },
     // Option<Box<String>> makes this type smaller than `Option<String>` would.
-    Const { ty: Box<Type>, default: Option<Box<String>>, synthetic: bool },
+    Const {
+        ty: Box<Type>,
+        default: Option<Box<String>>,
+        synthetic: bool,
+    },
 }
 
 impl GenericParamDefKind {
@@ -1404,6 +1426,13 @@ impl GenericParamDef {
 
     pub(crate) fn is_type(&self) -> bool {
         self.kind.is_type()
+    }
+
+    pub(crate) fn allow_unsized(&self) -> bool {
+        match &self.kind {
+            GenericParamDefKind::Type { allow_unsized, .. } => *allow_unsized,
+            _ => false,
+        }
     }
 
     pub(crate) fn get_bounds(&self) -> Option<&[GenericBound]> {

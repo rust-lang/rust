@@ -546,12 +546,15 @@ fn clean_generic_param_def(
             } else {
                 None
             };
+            let param_ty = ty::ParamTy::for_def(def);
+            let allow_unsized = !param_ty.to_ty(cx.tcx).is_sized(cx.tcx, cx.typing_env());
             (
                 def.name,
                 GenericParamDefKind::Type {
                     bounds: ThinVec::new(), // These are filled in from the where-clauses.
                     default: default.map(Box::new),
                     synthetic,
+                    allow_unsized,
                 },
             )
         }
@@ -625,12 +628,35 @@ fn clean_generic_param<'tcx>(
             } else {
                 ThinVec::new()
             };
+
+            // If this ends up being slow, then optimize it by reading the local bounds
+            // (from all predicate origins) and check if a bound on `?Sized` is present.
+            // If there's no `?Sized` bound, then definitely `allow_unsized = false`.
+            let allow_unsized = {
+                let parent = cx.tcx.hir_ty_param_owner(param.def_id);
+                let index = cx
+                    .tcx
+                    .generics_of(parent)
+                    .param_def_id_to_index(cx.tcx, param.def_id.to_def_id());
+
+                if let Some(index) = index {
+                    let param_ty = ty::ParamTy::new(index, param.name.ident().name);
+                    !param_ty.to_ty(cx.tcx).is_sized(cx.tcx, cx.typing_env())
+                } else {
+                    // AFAIU this should never happen:
+                    // it would mean the generic parameter wasn't found.
+                    // Advice on how to handle this would be appreciated :)
+                    unreachable!()
+                }
+            };
+
             (
                 param.name.ident().name,
                 GenericParamDefKind::Type {
                     bounds,
                     default: default.map(|t| clean_ty(t, cx)).map(Box::new),
                     synthetic,
+                    allow_unsized,
                 },
             )
         }
@@ -3209,6 +3235,7 @@ fn clean_bound_vars<'tcx>(
                         bounds: ThinVec::new(),
                         default: None,
                         synthetic: false,
+                        allow_unsized: false, // If `for<T>` could support `T: ?Sized`, fix this.
                     },
                 })
             }
