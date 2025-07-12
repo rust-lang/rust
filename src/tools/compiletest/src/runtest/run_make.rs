@@ -225,6 +225,19 @@ impl TestCx<'_> {
             cmd.env("RUNNER", runner);
         }
 
+        // Guard against externally-set env vars.
+        cmd.env_remove("__RUSTC_DEBUG_ASSERTIONS_ENABLED");
+        if self.config.with_rustc_debug_assertions {
+            // Used for `run_make_support::env::rustc_debug_assertions_enabled`.
+            cmd.env("__RUSTC_DEBUG_ASSERTIONS_ENABLED", "1");
+        }
+
+        cmd.env_remove("__STD_DEBUG_ASSERTIONS_ENABLED");
+        if self.config.with_std_debug_assertions {
+            // Used for `run_make_support::env::std_debug_assertions_enabled`.
+            cmd.env("__STD_DEBUG_ASSERTIONS_ENABLED", "1");
+        }
+
         // We don't want RUSTFLAGS set from the outside to interfere with
         // compiler flags set in the test cases:
         cmd.env_remove("RUSTFLAGS");
