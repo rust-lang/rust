@@ -1,9 +1,10 @@
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{Decodable, Encodable, HashStable};
-use rustc_span::{Ident, Symbol, sym};
+use rustc_span::{Ident, Symbol};
 
 use super::{TyCtxt, Visibility};
 use crate::ty;
@@ -160,7 +161,7 @@ impl AssocItem {
             // Inherent impl but this attr is only applied to trait assoc items.
             (AssocItemContainer::Impl, None) => return true,
         };
-        tcx.has_attr(def_id, sym::type_const)
+        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_))
     }
 }
 

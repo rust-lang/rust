@@ -564,12 +564,33 @@ pub trait BuilderMethods<'a, 'tcx>:
     /// Called for `StorageDead`
     fn lifetime_end(&mut self, ptr: Self::Value, size: Size);
 
+    /// "Finally codegen the call"
+    ///
+    /// ## Arguments
+    ///
+    /// The `fn_attrs`, `fn_abi`, and `instance` arguments are Options because they are advisory.
+    /// They relate to optional codegen enhancements like LLVM CFI, and do not affect ABI per se.
+    /// Any ABI-related transformations should be handled by different, earlier stages of codegen.
+    /// For instance, in the caller of `BuilderMethods::call`.
+    ///
+    /// This means that a codegen backend which disregards `fn_attrs`, `fn_abi`, and `instance`
+    /// should still do correct codegen, and code should not be miscompiled if they are omitted.
+    /// It is not a miscompilation in this sense if it fails to run under CFI, other sanitizers, or
+    /// in the context of other compiler-enhanced security features.
+    ///
+    /// The typical case that they are None is during the codegen of intrinsics and lang-items,
+    /// as those are "fake functions" with only a trivial ABI if any, et cetera.
+    ///
+    /// ## Return
+    ///
+    /// Must return the value the function will return so it can be written to the destination,
+    /// assuming the function does not explicitly pass the destination as a pointer in `args`.
     fn call(
         &mut self,
         llty: Self::Type,
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
-        llfn: Self::Value,
+        fn_val: Self::Value,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
         instance: Option<Instance<'tcx>>,
