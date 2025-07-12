@@ -5,7 +5,7 @@
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
 #[cfg(not(no_global_oom_handling))]
-use core::intrinsics::const_allocate;
+use core::intrinsics::{const_allocate, const_make_global};
 use core::marker::PhantomData;
 #[cfg(not(no_global_oom_handling))]
 use core::marker::Unsize;
@@ -340,9 +340,10 @@ impl<H> WithHeader<H> {
                     alloc.add(metadata_offset).cast();
                 // SAFETY: `*metadata_ptr` is within the allocation.
                 metadata_ptr.write(ptr::metadata::<Dyn>(ptr::dangling::<T>() as *const Dyn));
-
+                // SAFETY: valid heap allocation
+                const_make_global(alloc);
                 // SAFETY: we have just written the metadata.
-                &*(metadata_ptr)
+                &*metadata_ptr
             }
         };
 

@@ -31,7 +31,7 @@ use super::{
 };
 use crate::const_eval;
 use crate::const_eval::DummyMachine;
-use crate::errors::NestedStaticInThreadLocal;
+use crate::errors::{ConstHeapPtrInFinal, NestedStaticInThreadLocal};
 
 pub trait CompileTimeMachine<'tcx, T> = Machine<
         'tcx,
@@ -55,6 +55,35 @@ impl HasStaticRootDefId for const_eval::CompileTimeMachine<'_> {
     }
 }
 
+pub enum DisallowInternReason {
+    ConstHeap,
+}
+
+/// A trait for controlling whether memory allocated in the interpreter can be interned.
+///
+/// This prevents us from interning `const_allocate` pointers that have not been made
+/// global through `const_make_global`.
+pub trait CanIntern {
+    fn disallows_intern(&self) -> Option<DisallowInternReason>;
+}
+
+impl CanIntern for const_eval::MemoryKind {
+    fn disallows_intern(&self) -> Option<DisallowInternReason> {
+        match self {
+            const_eval::MemoryKind::Heap { was_made_global: false } => {
+                Some(DisallowInternReason::ConstHeap)
+            }
+            const_eval::MemoryKind::Heap { was_made_global: true } => None,
+        }
+    }
+}
+
+impl CanIntern for ! {
+    fn disallows_intern(&self) -> Option<DisallowInternReason> {
+        *self
+    }
+}
+
 /// Intern an allocation. Returns `Err` if the allocation does not exist in the local memory.
 ///
 /// `mutability` can be used to force immutable interning: if it is `Mutability::Not`, the
@@ -62,7 +91,7 @@ impl HasStaticRootDefId for const_eval::CompileTimeMachine<'_> {
 /// already mutable (as a sanity check).
 ///
 /// Returns an iterator over all relocations referred to by this allocation.
-fn intern_shallow<'tcx, T, M: CompileTimeMachine<'tcx, T>>(
+fn intern_shallow<'tcx, T: CanIntern, M: CompileTimeMachine<'tcx, T>>(
     ecx: &mut InterpCx<'tcx, M>,
     alloc_id: AllocId,
     mutability: Mutability,
@@ -71,9 +100,26 @@ fn intern_shallow<'tcx, T, M: CompileTimeMachine<'tcx, T>>(
     trace!("intern_shallow {:?}", alloc_id);
     // remove allocation
     // FIXME(#120456) - is `swap_remove` correct?
-    let Some((_kind, mut alloc)) = ecx.memory.alloc_map.swap_remove(&alloc_id) else {
+    let Some((kind, mut alloc)) = ecx.memory.alloc_map.swap_remove(&alloc_id) else {
         return Err(());
     };
+
+    match kind {
+        MemoryKind::Machine(x) if let Some(reason) = x.disallows_intern() => match reason {
+            // attempting to intern a `const_allocate`d pointer that was not made global via
+            // `const_make_global`. We emit an error here but don't return an `Err`. The `Err`
+            // is for pointers that we can't intern at all (i.e. dangling pointers). We still
+            // (recursively) intern this pointer because we don't have to worry about the
+            // additional paperwork involved with _not_ interning it, such as storing it in
+            // the dead memory map and having to deal with additional "dangling pointer"
+            // messages if someone tries to store the non-made-global ptr in the final value.
+            DisallowInternReason::ConstHeap => {
+                ecx.tcx.dcx().emit_err(ConstHeapPtrInFinal { span: ecx.tcx.span });
+            }
+        },
+        MemoryKind::Machine(_) | MemoryKind::Stack | MemoryKind::CallerLocation => {}
+    }
+
     // Set allocation mutability as appropriate. This is used by LLVM to put things into
     // read-only memory, and also by Miri when evaluating other globals that
     // access this one.
@@ -99,7 +145,7 @@ fn intern_shallow<'tcx, T, M: CompileTimeMachine<'tcx, T>>(
     } else {
         ecx.tcx.set_alloc_id_memory(alloc_id, alloc);
     }
-    Ok(alloc.0.0.provenance().ptrs().iter().map(|&(_, prov)| prov))
+    Ok(alloc.inner().provenance().ptrs().iter().map(|&(_, prov)| prov))
 }
 
 /// Creates a new `DefId` and feeds all the right queries to make this `DefId`
@@ -181,7 +227,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
         }
         InternKind::Static(Mutability::Not) => {
             (
-                // Outermost allocation is mutable if `!Freeze`.
+                // Outermost allocation is mutable if `!Freeze` i.e. contains interior mutable types.
                 if ret.layout.ty.is_freeze(*ecx.tcx, ecx.typing_env) {
                     Mutability::Not
                 } else {
@@ -321,7 +367,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
 
 /// Intern `ret`. This function assumes that `ret` references no other allocation.
 #[instrument(level = "debug", skip(ecx))]
-pub fn intern_const_alloc_for_constprop<'tcx, T, M: CompileTimeMachine<'tcx, T>>(
+pub fn intern_const_alloc_for_constprop<'tcx, T: CanIntern, M: CompileTimeMachine<'tcx, T>>(
     ecx: &mut InterpCx<'tcx, M>,
     alloc_id: AllocId,
 ) -> InterpResult<'tcx, ()> {
