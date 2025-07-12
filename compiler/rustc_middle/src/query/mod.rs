@@ -1079,9 +1079,11 @@ rustc_queries! {
         desc { |tcx| "comparing impl items against trait for `{}`", tcx.def_path_str(impl_id) }
     }
 
-    query associated_types_for_impl_traits_in_trait_or_impl(did: DefId) -> &'tcx ty::AssocTyForImplTraitInTraitOrImpl {
+    /// Given the `item_def_id` of a trait or impl, return a mapping from associated fn def id
+    /// to its associated type items that correspond to the RPITITs in its signature.
+    query associated_types_for_impl_traits_in_trait_or_impl(item_def_id: DefId) -> &'tcx DefIdMap<Vec<DefId>> {
         arena_cache
-        desc { |tcx| "creating rpitit for `{}`", tcx.def_path_str(did) }
+        desc { |tcx| "synthesizing RPITIT items for the opaque types for methods in `{}`", tcx.def_path_str(item_def_id) }
         separate_provide_extern
     }
 

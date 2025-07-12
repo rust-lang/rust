@@ -40,7 +40,7 @@ use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
 use rustc_middle::ty::{
     self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt,
-    TypingMode, Upcast, associated_types_for_impl_traits_in_associated_fn, fold_regions,
+    TypingMode, Upcast, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
@@ -2602,7 +2602,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // do a linear search to map this to the synthetic associated type that
         // it will be lowered to.
         let def_id = if let Some(parent_def_id) = in_trait {
-            *associated_types_for_impl_traits_in_associated_fn(tcx, parent_def_id.to_def_id())
+            *tcx.associated_types_for_impl_traits_in_associated_fn(parent_def_id.to_def_id())
                 .iter()
                 .find(|rpitit| match tcx.opt_rpitit_info(**rpitit) {
                     Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {

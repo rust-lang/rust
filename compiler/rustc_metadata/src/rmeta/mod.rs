@@ -481,7 +481,7 @@ define_tables! {
     assumed_wf_types_for_rpitit: Table<DefIndex, LazyArray<(Ty<'static>, Span)>>,
     opaque_ty_origin: Table<DefIndex, LazyValue<hir::OpaqueTyOrigin<DefId>>>,
     anon_const_kind: Table<DefIndex, LazyValue<ty::AnonConstKind>>,
-    associated_types_for_impl_traits_in_trait_or_impl: Table<DefIndex, LazyValue<ty::AssocTyForImplTraitInTraitOrImpl>>,
+    associated_types_for_impl_traits_in_trait_or_impl: Table<DefIndex, LazyValue<DefIdMap<Vec<DefId>>>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]
