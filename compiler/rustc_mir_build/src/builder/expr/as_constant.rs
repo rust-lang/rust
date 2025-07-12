@@ -107,6 +107,7 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
 
     let lit_ty = match *ty.kind() {
         ty::Pat(base, _) => base,
+        ty::Adt(adt, args) if tcx.is_lang_item(adt.did(), LangItem::NonZero) => args.type_at(0),
         _ => ty,
     };
 
