@@ -604,6 +604,8 @@ pub struct StreamingCommand {
     pub stderr: Option<ChildStderr>,
     fingerprint: CommandFingerprint,
     start_time: Instant,
+    #[cfg(feature = "tracing")]
+    _span_guard: tracing::span::EnteredSpan,
 }
 
 #[must_use]
@@ -800,6 +802,10 @@ impl ExecutionContext {
         if !command.run_in_dry_run && self.dry_run() {
             return None;
         }
+
+        #[cfg(feature = "tracing")]
+        let span_guard = trace_cmd!(command);
+
         let start_time = Instant::now();
         let fingerprint = command.fingerprint();
         let cmd = &mut command.command;
@@ -813,7 +819,15 @@ impl ExecutionContext {
 
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();
-        Some(StreamingCommand { child, stdout, stderr, fingerprint, start_time })
+        Some(StreamingCommand {
+            child,
+            stdout,
+            stderr,
+            fingerprint,
+            start_time,
+            #[cfg(feature = "tracing")]
+            _span_guard: span_guard,
+        })
     }
 }
 
