@@ -1306,6 +1306,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.ok_or(0), Err(0));
     /// ```
     #[inline]
+    #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ok_or<E>(self, err: E) -> Result<T, E> {
         match self {
@@ -1331,6 +1332,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.ok_or_else(|| 0), Err(0));
     /// ```
     #[inline]
+    #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ok_or_else<E, F>(self, err: F) -> Result<T, E>
     where
