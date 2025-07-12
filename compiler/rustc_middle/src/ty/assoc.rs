@@ -285,3 +285,22 @@ impl AssocItems {
             .find(|item| tcx.hygienic_eq(ident, item.ident(tcx), parent_def_id))
     }
 }
+
+impl<'tcx> TyCtxt<'tcx> {
+    /// Given an `fn_def_id` of a trait or a trait implementation:
+    ///
+    /// if `fn_def_id` is a function defined inside a trait, then it synthesizes
+    /// a new def id corresponding to a new associated type for each return-
+    /// position `impl Trait` in the signature.
+    ///
+    /// if `fn_def_id` is a function inside of an impl, then for each synthetic
+    /// associated type generated for the corresponding trait function described
+    /// above, synthesize a corresponding associated type in the impl.
+    pub fn associated_types_for_impl_traits_in_associated_fn(
+        self,
+        fn_def_id: DefId,
+    ) -> &'tcx [DefId] {
+        let parent_def_id = self.parent(fn_def_id);
+        &self.associated_types_for_impl_traits_in_trait_or_impl(parent_def_id)[&fn_def_id]
+    }
+}

@@ -23,6 +23,10 @@ impl<A: ParameterizedOverTcx, B: ParameterizedOverTcx> ParameterizedOverTcx for 
     type Value<'tcx> = (A::Value<'tcx>, B::Value<'tcx>);
 }
 
+impl<T: ParameterizedOverTcx> ParameterizedOverTcx for Vec<T> {
+    type Value<'tcx> = Vec<T::Value<'tcx>>;
+}
+
 impl<I: Idx + 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for IndexVec<I, T> {
     type Value<'tcx> = IndexVec<I, T::Value<'tcx>>;
 }
