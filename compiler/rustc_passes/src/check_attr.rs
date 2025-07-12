@@ -227,6 +227,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::LinkSection { span: attr_span, .. }) => {
                     self.check_link_section(hir_id, *attr_span, span, target)
                 }
+                Attribute::Parsed(AttributeKind::MacroUse { span, .. }) => {
+                    self.check_macro_use(hir_id, sym::macro_use, *span, target)
+                }
+                Attribute::Parsed(AttributeKind::MacroEscape(span)) => {
+                    self.check_macro_use(hir_id, sym::macro_escape, *span, target)
+                }
                 Attribute::Parsed(AttributeKind::Naked(attr_span)) => {
                     self.check_naked(hir_id, *attr_span, span, target)
                 }
@@ -362,9 +368,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::ffi_pure, ..] => self.check_ffi_pure(attr.span(), attrs, target),
                         [sym::ffi_const, ..] => self.check_ffi_const(attr.span(), target),
                         [sym::link, ..] => self.check_link(hir_id, attr, span, target),
-                        [sym::macro_use, ..] | [sym::macro_escape, ..] => {
-                            self.check_macro_use(hir_id, attr, target)
-                        }
                         [sym::path, ..] => self.check_generic_attr_unparsed(hir_id, attr, target, Target::Mod),
                         [sym::macro_export, ..] => self.check_macro_export(hir_id, attr, target),
                         [sym::should_panic, ..] => {
@@ -2411,17 +2414,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_macro_use(&self, hir_id: HirId, attr: &Attribute, target: Target) {
-        let Some(name) = attr.name() else {
-            return;
-        };
+    fn check_macro_use(&self, hir_id: HirId, name: Symbol, attr_span: Span, target: Target) {
         match target {
             Target::ExternCrate | Target::Mod => {}
             _ => {
                 self.tcx.emit_node_span_lint(
                     UNUSED_ATTRIBUTES,
                     hir_id,
-                    attr.span(),
+                    attr_span,
                     errors::MacroUse { name },
                 );
             }
@@ -2474,7 +2474,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // Warn on useless empty attributes.
         // FIXME(jdonszelmann): this lint should be moved to attribute parsing, see `AcceptContext::warn_empty_attribute`
         let note = if attr.has_any_name(&[
-            sym::macro_use,
             sym::allow,
             sym::expect,
             sym::warn,
