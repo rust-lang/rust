@@ -5,6 +5,7 @@ pub mod drop_bomb;
 pub mod fs;
 pub mod git;
 pub mod metrics;
+pub mod npm;
 pub mod stage0_parser;
 pub mod targets;
 pub mod util;

@@ -46,12 +46,4 @@ ENV HOST_TARGET x86_64-unknown-linux-gnu
 
 COPY scripts/shared.sh /scripts/
 
-# For now, we need to use `--unsafe-perm=true` to go around an issue when npm tries
-# to create a new folder. For reference:
-# https://github.com/puppeteer/puppeteer/issues/375
-#
-# We also specify the version in case we need to update it to go around cache limitations.
-#
-# The `browser-ui-test.version` file is also used by bootstrap to emit warnings in case
-# the local version of the package is different than the one used by the CI.
 ENV SCRIPT /tmp/check-miri.sh ../x.py
