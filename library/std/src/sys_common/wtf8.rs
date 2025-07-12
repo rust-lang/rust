@@ -1049,6 +1049,23 @@ impl Iterator for EncodeWide<'_> {
 #[stable(feature = "encode_wide_fused_iterator", since = "1.62.0")]
 impl FusedIterator for EncodeWide<'_> {}
 
+#[stable(feature = "encode_wide_debug", since = "CURRENT_RUSTC_VERSION")]
+impl fmt::Debug for EncodeWide<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        struct CodeUnit(u16);
+        impl fmt::Debug for CodeUnit {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{:#06X}", self.0)
+            }
+        }
+
+        write!(f, "EncodeWide(")?;
+        f.debug_list().entries(self.clone().map(CodeUnit)).finish()?;
+        write!(f, ")")?;
+        Ok(())
+    }
+}
+
 impl Hash for CodePoint {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
