@@ -262,7 +262,6 @@ mod llvm_enzyme {
         };
 
         let has_ret = has_ret(&sig.decl.output);
-        let sig_span = ecx.with_call_site_ctxt(sig.span);
 
         // create TokenStream from vec elemtents:
         // meta_item doesn't have a .tokens field
@@ -331,24 +330,13 @@ mod llvm_enzyme {
         }
         let span = ecx.with_def_site_ctxt(expand_span);
 
-        let n_active: u32 = x
-            .input_activity
-            .iter()
-            .filter(|a| **a == DiffActivity::Active || **a == DiffActivity::ActiveOnly)
-            .count() as u32;
-        let (d_sig, new_args, idents, errored) = gen_enzyme_decl(ecx, &sig, &x, span);
+        let (d_sig, idents, errored) = gen_enzyme_decl(ecx, &sig, &x, span);
 
-        // TODO(Sa4dUs): Remove this and all the related logic
         let d_body = gen_enzyme_body(
             ecx,
-            &x,
-            n_active,
-            &sig,
             &d_sig,
             primal,
-            &new_args,
             span,
-            sig_span,
             idents,
             errored,
             first_ident(&meta_item_vec[0]),
@@ -361,7 +349,7 @@ mod llvm_enzyme {
             defaultness: ast::Defaultness::Final,
             sig: d_sig,
             ident: first_ident(&meta_item_vec[0]),
-            generics: generics.clone(),
+            generics,
             contract: None,
             body: Some(d_body),
             define_opaque: None,
@@ -542,7 +530,7 @@ mod llvm_enzyme {
             vec![
                 Ident::from_str("std"),
                 Ident::from_str("intrinsics"),
-                Ident::from_str("enzyme_autodiff"),
+                Ident::with_dummy_span(sym::enzyme_autodiff),
             ],
         );
         let call_expr = ecx.expr_call(
@@ -555,7 +543,7 @@ mod llvm_enzyme {
     }
 
     // Generate turbofish expression from fn name and generics
-    // Given `foo` and `<A, B, C>`, gen `foo::<A, B, C>`
+    // Given `foo` and `<A, B, C>` params, gen `foo::<A, B, C>`
     fn gen_turbofish_expr(
         ecx: &ExtCtxt<'_>,
         ident: Ident,
@@ -597,35 +585,19 @@ mod llvm_enzyme {
 
     // Will generate a body of the type:
     // ```
-    // {
-    //   unsafe {
-    //   asm!("NOP");
-    //   }
-    //   ::core::hint::black_box(primal(args));
-    //   ::core::hint::black_box((args, ret));
-    //   <This part remains to be done by following function>
+    //   primal(args);
+    //   std::intrinsics::enzyme_autodiff(primal, diff, (args))
     // }
     // ```
     fn init_body_helper(
         ecx: &ExtCtxt<'_>,
         span: Span,
         primal: Ident,
-        _new_names: &[String],
-        _sig_span: Span,
-        new_decl_span: Span,
         idents: &[Ident],
         errored: bool,
         generics: &Generics,
-    ) -> (P<ast::Block>, P<ast::Expr>, P<ast::Expr>, P<ast::Expr>) {
-        let blackbox_path = ecx.std_path(&[sym::hint, sym::black_box]);
-        let blackbox_call_expr = ecx.expr_path(ecx.path(span, blackbox_path));
+    ) -> P<ast::Block> {
         let primal_call = gen_primal_call(ecx, span, primal, idents, generics);
-        let black_box_primal_call = ecx.expr_call(
-            new_decl_span,
-            blackbox_call_expr.clone(),
-            thin_vec![primal_call.clone()],
-        );
-
         let mut body = ecx.block(span, ThinVec::new());
 
         // This uses primal args which won't be available if we errored before
@@ -633,7 +605,7 @@ mod llvm_enzyme {
             body.stmts.push(ecx.stmt_semi(primal_call.clone()));
         }
 
-        (body, primal_call, black_box_primal_call, blackbox_call_expr)
+        body
     }
 
     /// We only want this function to type-check, since we will replace the body
@@ -646,14 +618,9 @@ mod llvm_enzyme {
     /// from optimizing any arguments away.
     fn gen_enzyme_body(
         ecx: &ExtCtxt<'_>,
-        _x: &AutoDiffAttrs,
-        _n_active: u32,
-        _sig: &ast::FnSig,
         d_sig: &ast::FnSig,
         primal: Ident,
-        new_names: &[String],
         span: Span,
-        sig_span: Span,
         idents: Vec<Ident>,
         errored: bool,
         diff_ident: Ident,
@@ -664,17 +631,7 @@ mod llvm_enzyme {
 
         // Add a call to the primal function to prevent it from being inlined
         // and call `enzyme_autodiff` intrinsic (this also covers the return type)
-        let (mut body, _primal_call, _bb_primal_call, _bb_call_expr) = init_body_helper(
-            ecx,
-            span,
-            primal,
-            new_names,
-            sig_span,
-            new_decl_span,
-            &idents,
-            errored,
-            generics,
-        );
+        let mut body = init_body_helper(ecx, span, primal, &idents, errored, generics);
 
         body.stmts.push(call_enzyme_autodiff(
             ecx,
@@ -771,7 +728,7 @@ mod llvm_enzyme {
         sig: &ast::FnSig,
         x: &AutoDiffAttrs,
         span: Span,
-    ) -> (ast::FnSig, Vec<String>, Vec<Ident>, bool) {
+    ) -> (ast::FnSig, Vec<Ident>, bool) {
         let dcx = ecx.sess.dcx();
         let has_ret = has_ret(&sig.decl.output);
         let sig_args = sig.decl.inputs.len() + if has_ret { 1 } else { 0 };
@@ -783,7 +740,7 @@ mod llvm_enzyme {
                 found: num_activities,
             });
             // This is not the right signature, but we can continue parsing.
-            return (sig.clone(), vec![], vec![], true);
+            return (sig.clone(), vec![], true);
         }
         assert!(sig.decl.inputs.len() == x.input_activity.len());
         assert!(has_ret == x.has_ret_activity());
@@ -826,7 +783,7 @@ mod llvm_enzyme {
 
         if errors {
             // This is not the right signature, but we can continue parsing.
-            return (sig.clone(), new_inputs, idents, true);
+            return (sig.clone(), idents, true);
         }
 
         let unsafe_activities = x
@@ -1034,7 +991,7 @@ mod llvm_enzyme {
         }
         let d_sig = FnSig { header: d_header, decl: d_decl, span };
         trace!("Generated signature: {:?}", d_sig);
-        (d_sig, new_inputs, idents, false)
+        (d_sig, idents, false)
     }
 }
 

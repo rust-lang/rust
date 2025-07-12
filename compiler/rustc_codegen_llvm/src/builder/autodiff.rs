@@ -1,43 +1,18 @@
 use std::ptr;
 
-use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem, DiffActivity, DiffMode};
-use rustc_codegen_ssa::ModuleCodegen;
-use rustc_codegen_ssa::back::write::ModuleConfig;
+use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
-use rustc_errors::FatalError;
 use rustc_middle::bug;
-use tracing::{debug, trace};
+use tracing::debug;
 
-use crate::back::write::llvm_err;
 use crate::builder::{Builder, PlaceRef, UNNAMED};
 use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
-use crate::errors::{AutoDiffWithoutEnable, LlvmError};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{Metadata, True, Type};
 use crate::value::Value;
-use crate::{CodegenContext, LlvmCodegenBackend, ModuleLlvm, attributes, llvm};
-
-fn _get_params(fnc: &Value) -> Vec<&Value> {
-    let param_num = llvm::LLVMCountParams(fnc) as usize;
-    let mut fnc_args: Vec<&Value> = vec![];
-    fnc_args.reserve(param_num);
-    unsafe {
-        llvm::LLVMGetParams(fnc, fnc_args.as_mut_ptr());
-        fnc_args.set_len(param_num);
-    }
-    fnc_args
-}
-
-fn _has_sret(fnc: &Value) -> bool {
-    let num_args = llvm::LLVMCountParams(fnc) as usize;
-    if num_args == 0 {
-        false
-    } else {
-        unsafe { llvm::LLVMRustHasAttributeAtIndex(fnc, 0, llvm::AttributeKind::StructRet) }
-    }
-}
+use crate::{attributes, llvm};
 
 // When we call the `__enzyme_autodiff` or `__enzyme_fwddiff` function, we need to pass all the
 // original inputs, as well as metadata and the additional shadow arguments.
@@ -293,63 +268,4 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     let call = builder.call(enzyme_ty, None, None, ad_fn, &args, None, None);
 
     builder.store_to_place(call, dest.val);
-}
-
-pub(crate) fn differentiate<'ll>(
-    module: &'ll ModuleCodegen<ModuleLlvm>,
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diff_items: Vec<AutoDiffItem>,
-    _config: &ModuleConfig,
-) -> Result<(), FatalError> {
-    // TODO(Sa4dUs): delete all this logic
-    for item in &diff_items {
-        trace!("{}", item);
-    }
-
-    let diag_handler = cgcx.create_dcx();
-
-    let cx = SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx, cgcx.pointer_size);
-
-    // First of all, did the user try to use autodiff without using the -Zautodiff=Enable flag?
-    if !diff_items.is_empty()
-        && !cgcx.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable)
-    {
-        return Err(diag_handler.handle().emit_almost_fatal(AutoDiffWithoutEnable));
-    }
-
-    // Here we replace the placeholder code with the actual autodiff code, which calls Enzyme.
-    for item in diff_items.iter() {
-        let name = item.source.clone();
-        let fn_def: Option<&llvm::Value> = cx.get_function(&name);
-        let Some(_fn_def) = fn_def else {
-            return Err(llvm_err(
-                diag_handler.handle(),
-                LlvmError::PrepareAutoDiff {
-                    src: item.source.clone(),
-                    target: item.target.clone(),
-                    error: "could not find source function".to_owned(),
-                },
-            ));
-        };
-        debug!(?item.target);
-        let fn_target: Option<&llvm::Value> = cx.get_function(&item.target);
-        let Some(_fn_target) = fn_target else {
-            return Err(llvm_err(
-                diag_handler.handle(),
-                LlvmError::PrepareAutoDiff {
-                    src: item.source.clone(),
-                    target: item.target.clone(),
-                    error: "could not find target function".to_owned(),
-                },
-            ));
-        };
-
-        // generate_enzyme_call(&cx, fn_def, fn_target, item.attrs.clone());
-    }
-
-    // FIXME(ZuseZ4): support SanitizeHWAddress and prevent illegal/unsupported opts
-
-    trace!("done with differentiate()");
-
-    Ok(())
 }
