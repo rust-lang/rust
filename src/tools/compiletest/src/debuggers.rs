@@ -51,17 +51,6 @@ pub(crate) fn configure_gdb(config: &Config) -> Option<Arc<Config>> {
 pub(crate) fn configure_lldb(config: &Config) -> Option<Arc<Config>> {
     config.lldb_python_dir.as_ref()?;
 
-    // FIXME: this is super old
-    if let Some(350) = config.lldb_version {
-        println!(
-            "WARNING: The used version of LLDB (350) has a \
-             known issue that breaks debuginfo tests. See \
-             issue #32520 for more information. Skipping all \
-             LLDB-based tests!",
-        );
-        return None;
-    }
-
     Some(Arc::new(Config { debugger: Some(Debugger::Lldb), ..config.clone() }))
 }
 

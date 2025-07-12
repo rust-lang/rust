@@ -1318,7 +1318,7 @@ impl Build {
         if let Some(path) = configured {
             return Some(path.join("lib").join(target.to_string()));
         }
-        let mut env_root = PathBuf::from(std::env::var_os("WASI_SDK_PATH")?);
+        let mut env_root = self.wasi_sdk_path.clone()?;
         env_root.push("share");
         env_root.push("wasi-sysroot");
         env_root.push("lib");

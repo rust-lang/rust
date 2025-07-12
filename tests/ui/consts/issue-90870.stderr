@@ -19,9 +19,9 @@ error: `PartialEq` is not yet stable as a const trait
 LL |     a == b
    |     ^^^^^^
    |
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+help: add `#![feature(const_cmp)]` to the crate attributes to enable
    |
-LL + #![feature(const_trait_impl)]
+LL + #![feature(const_cmp)]
    |
 
 error[E0658]: cannot call conditionally-const operator in constant functions
@@ -45,9 +45,9 @@ error: `PartialEq` is not yet stable as a const trait
 LL |     a == b
    |     ^^^^^^
    |
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+help: add `#![feature(const_cmp)]` to the crate attributes to enable
    |
-LL + #![feature(const_trait_impl)]
+LL + #![feature(const_cmp)]
    |
 
 error[E0658]: cannot call conditionally-const operator in constant functions
@@ -71,9 +71,9 @@ error: `PartialEq` is not yet stable as a const trait
 LL |         if l == r {
    |            ^^^^^^
    |
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+help: add `#![feature(const_cmp)]` to the crate attributes to enable
    |
-LL + #![feature(const_trait_impl)]
+LL + #![feature(const_cmp)]
    |
 
 error: aborting due to 6 previous errors

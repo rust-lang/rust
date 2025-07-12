@@ -8,6 +8,7 @@
 #![feature(const_type_id)]
 #![feature(const_type_name)]
 #![feature(const_trait_impl)]
+#![feature(const_cmp)]
 
 use std::any::{self, TypeId};
 

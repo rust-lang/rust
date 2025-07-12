@@ -10,7 +10,7 @@ log = "0.4"
 anyhow = "1"
 humantime = "2"
 humansize = "2"
-sysinfo = { version = "0.35.0", default-features = false, features = ["disk"] }
+sysinfo = { version = "0.36.0", default-features = false, features = ["disk"] }
 fs_extra = "1"
 camino = "1"
 tar = "0.4"

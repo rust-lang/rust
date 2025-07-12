@@ -556,8 +556,13 @@ impl Step for Miri {
         // Miri has its own "target dir" for ui test dependencies. Make sure it gets cleared when
         // the sysroot gets rebuilt, to avoid "found possibly newer version of crate `std`" errors.
         if !builder.config.dry_run() {
-            let ui_test_dep_dir =
-                builder.stage_out(miri.build_compiler, Mode::ToolStd).join("miri_ui");
+            // This has to match `CARGO_TARGET_TMPDIR` in Miri's `ui.rs`.
+            // This means we need `host` here as that's the target `ui.rs` is built for.
+            let ui_test_dep_dir = builder
+                .stage_out(miri.build_compiler, Mode::ToolStd)
+                .join(host)
+                .join("tmp")
+                .join("miri_ui");
             // The mtime of `miri_sysroot` changes when the sysroot gets rebuilt (also see
             // <https://github.com/RalfJung/rustc-build-sysroot/commit/10ebcf60b80fe2c3dc765af0ff19fdc0da4b7466>).
             // We can hence use that directly as a signal to clear the ui test dir.

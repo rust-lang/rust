@@ -1,5 +1,5 @@
 use crate::mem::{MaybeUninit, SizedTypeProperties};
-use crate::{cmp, ptr};
+use crate::ptr;
 
 type BufType = [usize; 32];
 
@@ -11,7 +11,7 @@ type BufType = [usize; 32];
 ///
 /// The specified range must be valid for reading and writing.
 #[inline]
-pub(super) unsafe fn ptr_rotate<T>(left: usize, mid: *mut T, right: usize) {
+pub(super) const unsafe fn ptr_rotate<T>(left: usize, mid: *mut T, right: usize) {
     if T::IS_ZST {
         return;
     }
@@ -21,7 +21,8 @@ pub(super) unsafe fn ptr_rotate<T>(left: usize, mid: *mut T, right: usize) {
     }
     // `T` is not a zero-sized type, so it's okay to divide by its size.
     if !cfg!(feature = "optimize_for_size")
-        && cmp::min(left, right) <= size_of::<BufType>() / size_of::<T>()
+        // FIXME(const-hack): Use cmp::min when available in const
+        && const_min(left, right) <= size_of::<BufType>() / size_of::<T>()
     {
         // SAFETY: guaranteed by the caller
         unsafe { ptr_rotate_memmove(left, mid, right) };
@@ -45,7 +46,7 @@ pub(super) unsafe fn ptr_rotate<T>(left: usize, mid: *mut T, right: usize) {
 ///
 /// The specified range must be valid for reading and writing.
 #[inline]
-unsafe fn ptr_rotate_memmove<T>(left: usize, mid: *mut T, right: usize) {
+const unsafe fn ptr_rotate_memmove<T>(left: usize, mid: *mut T, right: usize) {
     // The `[T; 0]` here is to ensure this is appropriately aligned for T
     let mut rawarray = MaybeUninit::<(BufType, [T; 0])>::uninit();
     let buf = rawarray.as_mut_ptr() as *mut T;
@@ -117,7 +118,7 @@ unsafe fn ptr_rotate_memmove<T>(left: usize, mid: *mut T, right: usize) {
 ///
 /// The specified range must be valid for reading and writing.
 #[inline]
-unsafe fn ptr_rotate_gcd<T>(left: usize, mid: *mut T, right: usize) {
+const unsafe fn ptr_rotate_gcd<T>(left: usize, mid: *mut T, right: usize) {
     // Algorithm 2
     // Microbenchmarks indicate that the average performance for random shifts is better all
     // the way until about `left + right == 32`, but the worst case performance breaks even
@@ -175,7 +176,9 @@ unsafe fn ptr_rotate_gcd<T>(left: usize, mid: *mut T, right: usize) {
         }
     }
     // finish the chunk with more rounds
-    for start in 1..gcd {
+    // FIXME(const-hack): Use `for start in 1..gcd` when available in const
+    let mut start = 1;
+    while start < gcd {
         // SAFETY: `gcd` is at most equal to `right` so all values in `1..gcd` are valid for
         // reading and writing as per the function's safety contract, see [long-safety-expl]
         // above
@@ -201,6 +204,8 @@ unsafe fn ptr_rotate_gcd<T>(left: usize, mid: *mut T, right: usize) {
                 i += right;
             }
         }
+
+        start += 1;
     }
 }
 
@@ -222,7 +227,7 @@ unsafe fn ptr_rotate_gcd<T>(left: usize, mid: *mut T, right: usize) {
 ///
 /// The specified range must be valid for reading and writing.
 #[inline]
-unsafe fn ptr_rotate_swap<T>(mut left: usize, mut mid: *mut T, mut right: usize) {
+const unsafe fn ptr_rotate_swap<T>(mut left: usize, mut mid: *mut T, mut right: usize) {
     loop {
         if left >= right {
             // Algorithm 3
@@ -264,4 +269,9 @@ unsafe fn ptr_rotate_swap<T>(mut left: usize, mut mid: *mut T, mut right: usize)
             return;
         }
     }
+}
+
+// FIXME(const-hack): Use cmp::min when available in const
+const fn const_min(left: usize, right: usize) -> usize {
+    if right < left { right } else { left }
 }
