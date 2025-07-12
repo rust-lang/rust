@@ -120,6 +120,22 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         for attr in attrs {
             let mut style = None;
             match attr {
+                Attribute::Parsed(AttributeKind::ProcMacro(_)) => {
+                    self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
+                }
+                Attribute::Parsed(AttributeKind::ProcMacroAttribute(_)) => {
+                    self.check_proc_macro(hir_id, target, ProcMacroKind::Attribute);
+                }
+                Attribute::Parsed(AttributeKind::ProcMacroDerive { span: attr_span, .. }) => {
+                    self.check_generic_attr(
+                        hir_id,
+                        sym::proc_macro_derive,
+                        *attr_span,
+                        target,
+                        Target::Fn,
+                    );
+                    self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
+                }
                 Attribute::Parsed(AttributeKind::SkipDuringMethodDispatch {
                     span: attr_span,
                     ..
@@ -217,7 +233,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_)
-                    | AttributeKind::Dummy,
+                    | AttributeKind::Dummy
+                    | AttributeKind::RustcBuiltinMacro { .. },
                 ) => { /* do nothing  */ }
                 Attribute::Parsed(AttributeKind::AsPtr(attr_span)) => {
                     self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)
@@ -322,16 +339,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::automatically_derived, ..] => {
                             self.check_generic_attr_unparsed(hir_id, attr, target, Target::Impl)
-                        }
-                        [sym::proc_macro, ..] => {
-                            self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
-                        }
-                        [sym::proc_macro_attribute, ..] => {
-                            self.check_proc_macro(hir_id, target, ProcMacroKind::Attribute);
-                        }
-                        [sym::proc_macro_derive, ..] => {
-                            self.check_generic_attr_unparsed(hir_id, attr, target, Target::Fn);
-                            self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
                         }
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
