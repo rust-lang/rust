@@ -324,7 +324,6 @@
 //
 // Library features (core):
 // tidy-alphabetical-start
-#![feature(array_chunks)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(char_internals)]
