@@ -1,0 +1,30 @@
+error: used import from `std` instead of `core`
+  --> tests/ui/std_instead_of_core_unfixable.rs:9:43
+   |
+LL |     use std::{collections::HashMap, hash::Hash};
+   |                                           ^^^^
+   |
+   = help: consider importing the item from `core`
+   = note: `-D clippy::std-instead-of-core` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::std_instead_of_core)]`
+
+error: used import from `std` instead of `core`
+  --> tests/ui/std_instead_of_core_unfixable.rs:15:22
+   |
+LL |     use std::{error::Error, vec::Vec, fs::File};
+   |                      ^^^^^
+   |
+   = help: consider importing the item from `core`
+
+error: used import from `std` instead of `alloc`
+  --> tests/ui/std_instead_of_core_unfixable.rs:15:34
+   |
+LL |     use std::{error::Error, vec::Vec, fs::File};
+   |                                  ^^^
+   |
+   = help: consider importing the item from `alloc`
+   = note: `-D clippy::std-instead-of-alloc` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::std_instead_of_alloc)]`
+
+error: aborting due to 3 previous errors
+

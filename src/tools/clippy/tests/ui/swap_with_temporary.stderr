@@ -96,5 +96,41 @@ note: this expression returns a temporary value
 LL |     swap(mac!(refmut y), &mut func());
    |                               ^^^^^^
 
-error: aborting due to 8 previous errors
+error: swapping with a temporary value is inefficient
+  --> tests/ui/swap_with_temporary.rs:92:13
+   |
+LL |             swap(&mut vec![42], &mut self.thing.lock().unwrap());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `*self.thing.lock().unwrap() = vec![42]`
+   |
+note: this expression returns a temporary value
+  --> tests/ui/swap_with_temporary.rs:92:23
+   |
+LL |             swap(&mut vec![42], &mut self.thing.lock().unwrap());
+   |                       ^^^^^^^^
+
+error: swapping with a temporary value is inefficient
+  --> tests/ui/swap_with_temporary.rs:100:5
+   |
+LL |     swap(&mut ***v1, &mut vec![]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `***v1 = vec![]`
+   |
+note: this expression returns a temporary value
+  --> tests/ui/swap_with_temporary.rs:100:27
+   |
+LL |     swap(&mut ***v1, &mut vec![]);
+   |                           ^^^^^^
+
+error: swapping with a temporary value is inefficient
+  --> tests/ui/swap_with_temporary.rs:118:5
+   |
+LL |     swap(&mut vec![], &mut v1.lock().unwrap());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `***v1.lock().unwrap() = vec![]`
+   |
+note: this expression returns a temporary value
+  --> tests/ui/swap_with_temporary.rs:118:15
+   |
+LL |     swap(&mut vec![], &mut v1.lock().unwrap());
+   |               ^^^^^^
+
+error: aborting due to 11 previous errors
 

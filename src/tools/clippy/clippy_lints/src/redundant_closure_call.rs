@@ -5,9 +5,7 @@ use hir::Param;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor as HirVisitor, Visitor};
-use rustc_hir::{
-    ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, ExprKind, Node, intravisit as hir_visit,
-};
+use rustc_hir::{ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, ExprKind, intravisit as hir_visit};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty;
@@ -198,15 +196,15 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                             hint = hint.asyncify();
                         }
 
-                        let is_in_fn_call_arg = if let Node::Expr(expr) = cx.tcx.parent_hir_node(expr.hir_id) {
-                            matches!(expr.kind, ExprKind::Call(_, _))
-                        } else {
-                            false
-                        };
-
-                        // avoid clippy::double_parens
-                        if !is_in_fn_call_arg {
-                            hint = hint.maybe_paren();
+                        // If the closure body is a block with a single expression, suggest just the inner expression,
+                        // not the block. Example: `(|| { Some(true) })()` should suggest
+                        // `Some(true)`
+                        if let ExprKind::Block(block, _) = body.kind
+                            && block.stmts.is_empty()
+                            && let Some(expr) = block.expr
+                        {
+                            hint = Sugg::hir_with_context(cx, expr, full_expr.span.ctxt(), "..", &mut applicability)
+                                .maybe_paren();
                         }
 
                         diag.span_suggestion(full_expr.span, "try doing something like", hint, applicability);

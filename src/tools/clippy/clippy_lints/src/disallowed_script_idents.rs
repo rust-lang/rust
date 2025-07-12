@@ -89,6 +89,10 @@ impl EarlyLintPass for DisallowedScriptIdents {
             // Fast path for ascii-only idents.
             if !symbol_str.is_ascii()
                 && let Some(script) = symbol_str.chars().find_map(|c| {
+                    if c.is_ascii() {
+                        return None;
+                    }
+
                     c.script_extension()
                         .iter()
                         .find(|script| !self.whitelist.contains(script))

@@ -1,7 +1,11 @@
 name: Feature freeze check
 
 on:
-  pull_request:
+  pull_request_target:
+    types:
+      - opened
+    branches:
+      - master
     paths:
       - 'clippy_lints/src/declared_lints.rs'
 
@@ -9,6 +13,12 @@ jobs:
   auto-comment:
     runs-on: ubuntu-latest
 
+    permissions:
+      pull-requests: write
+
+    # Do not in any case add code that runs anything coming from the  the content
+    # of the pull request, as malicious code would be able to access the private
+    # GitHub token.
     steps:
     - name: Check PR Changes
       id: pr-changes
@@ -19,7 +29,7 @@ jobs:
       run: |
         # Use GitHub API to create a comment on the PR
         PR_NUMBER=${{ github.event.pull_request.number }}
-        COMMENT="**Seems that you are trying to add a new lint!**\nWe are currently in a [feature freeze](https://doc.rust-lang.org/nightly/clippy/development/feature_freeze.html), so we are delaying all lint-adding PRs to August 1st and focusing on bugfixes.\nThanks a lot for your contribution, and sorry for the inconvenience.\nWith ❤ from the Clippy team"
+        COMMENT="**Seems that you are trying to add a new lint!**\nWe are currently in a [feature freeze](https://doc.rust-lang.org/nightly/clippy/development/feature_freeze.html), so we are delaying all lint-adding PRs to September 18 and focusing on bugfixes.\nThanks a lot for your contribution, and sorry for the inconvenience.\nWith ❤ from the Clippy team\n\n@rustbot note Feature-freeze\n@rustbot blocked\n@rustbot label +A-lint\n"
         GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
         COMMENT_URL="https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUMBER}/comments"
         curl -s -H "Authorization: token ${GITHUB_TOKEN}" -X POST $COMMENT_URL -d "{\"body\":\"$COMMENT\"}"

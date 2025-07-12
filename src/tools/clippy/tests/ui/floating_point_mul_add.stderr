@@ -79,5 +79,35 @@ error: multiply and add expressions can be calculated more efficiently and accur
 LL |     let _ = a - (b * u as f64);
    |             ^^^^^^^^^^^^^^^^^^ help: consider using: `b.mul_add(-(u as f64), a)`
 
-error: aborting due to 13 previous errors
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_mul_add.rs:102:13
+   |
+LL |     let _ = 0.5 + 2.0 * x;
+   |             ^^^^^^^^^^^^^ help: consider using: `2.0f64.mul_add(x, 0.5)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_mul_add.rs:104:13
+   |
+LL |     let _ = 2.0 * x + 0.5;
+   |             ^^^^^^^^^^^^^ help: consider using: `2.0f64.mul_add(x, 0.5)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_mul_add.rs:107:13
+   |
+LL |     let _ = x + 2.0 * 4.0;
+   |             ^^^^^^^^^^^^^ help: consider using: `2.0f64.mul_add(4.0, x)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_mul_add.rs:111:13
+   |
+LL |     let _ = y * 2.0 + 0.5;
+   |             ^^^^^^^^^^^^^ help: consider using: `y.mul_add(2.0, 0.5)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_mul_add.rs:113:13
+   |
+LL |     let _ = 1.0 * 2.0 + 0.5;
+   |             ^^^^^^^^^^^^^^^ help: consider using: `1.0f64.mul_add(2.0, 0.5)`
+
+error: aborting due to 18 previous errors
 

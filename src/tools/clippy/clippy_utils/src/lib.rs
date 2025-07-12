@@ -77,7 +77,8 @@ pub mod visitors;
 pub use self::attrs::*;
 pub use self::check_proc_macro::{is_from_proc_macro, is_span_if, is_span_match};
 pub use self::hir_utils::{
-    HirEqInterExpr, SpanlessEq, SpanlessHash, both, count_eq, eq_expr_value, hash_expr, hash_stmt, is_bool, over,
+    HirEqInterExpr, SpanlessEq, SpanlessHash, both, count_eq, eq_expr_value, has_ambiguous_literal_in_expr, hash_expr,
+    hash_stmt, is_bool, over,
 };
 
 use core::mem;
@@ -3496,4 +3497,65 @@ pub fn is_expr_default<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> 
     } else {
         false
     }
+}
+
+/// Checks if `expr` may be directly used as the return value of its enclosing body.
+/// The following cases are covered:
+/// - `expr` as the last expression of the body, or of a block that can be used as the return value
+/// - `return expr`
+/// - then or else part of a `if` in return position
+/// - arm body of a `match` in a return position
+/// - `break expr` or `break 'label expr` if the loop or block being exited is used as a return
+///   value
+///
+/// Contrary to [`TyCtxt::hir_get_fn_id_for_return_block()`], if `expr` is part of a
+/// larger expression, for example a field expression of a `struct`, it will not be
+/// considered as matching the condition and will return `false`.
+///
+/// Also, even if `expr` is assigned to a variable which is later returned, this function
+/// will still return `false` because `expr` is not used *directly* as the return value
+/// as it goes through the intermediate variable.
+pub fn potential_return_of_enclosing_body(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    let enclosing_body_owner = cx
+        .tcx
+        .local_def_id_to_hir_id(cx.tcx.hir_enclosing_body_owner(expr.hir_id));
+    let mut prev_id = expr.hir_id;
+    let mut skip_until_id = None;
+    for (hir_id, node) in cx.tcx.hir_parent_iter(expr.hir_id) {
+        if hir_id == enclosing_body_owner {
+            return true;
+        }
+        if let Some(id) = skip_until_id {
+            prev_id = hir_id;
+            if id == hir_id {
+                skip_until_id = None;
+            }
+            continue;
+        }
+        match node {
+            Node::Block(Block { expr, .. }) if expr.is_some_and(|expr| expr.hir_id == prev_id) => {},
+            Node::Arm(arm) if arm.body.hir_id == prev_id => {},
+            Node::Expr(expr) => match expr.kind {
+                ExprKind::Ret(_) => return true,
+                ExprKind::If(_, then, opt_else)
+                    if then.hir_id == prev_id || opt_else.is_some_and(|els| els.hir_id == prev_id) => {},
+                ExprKind::Match(_, arms, _) if arms.iter().any(|arm| arm.hir_id == prev_id) => {},
+                ExprKind::Block(block, _) if block.hir_id == prev_id => {},
+                ExprKind::Break(
+                    Destination {
+                        target_id: Ok(target_id),
+                        ..
+                    },
+                    _,
+                ) => skip_until_id = Some(target_id),
+                _ => break,
+            },
+            _ => break,
+        }
+        prev_id = hir_id;
+    }
+
+    // `expr` is used as part of "something" and is not returned directly from its
+    // enclosing body.
+    false
 }

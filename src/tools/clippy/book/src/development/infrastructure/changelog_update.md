@@ -38,7 +38,7 @@ Usually you want to write the changelog of the **upcoming stable release**. Make
 sure though, that `beta` was already branched in the Rust repository.
 
 To find the commit hash, issue the following command when in a `rust-lang/rust`
-checkout:
+checkout (most of the time on the `upstream/beta` branch):
 ```
 git log --oneline -- src/tools/clippy/ | grep -o "Merge commit '[a-f0-9]*' into .*" | head -1 | sed -e "s/Merge commit '\([a-f0-9]*\)' into .*/\1/g"
 ```
@@ -48,15 +48,12 @@ git log --oneline -- src/tools/clippy/ | grep -o "Merge commit '[a-f0-9]*' into 
 Once you've got the correct commit range, run
 
 ```
-util/fetch_prs_between.sh commit1 commit2 > changes.txt
+util/fetch_prs_between.sh start_commit end_commit > changes.txt
 ```
 
-where `commit2` is the commit hash from the previous command and `commit1`
-is the commit hash from the current CHANGELOG file.
+where `end_commit` is the commit hash from the previous command and `start_commit`
+is [the commit hash][beta_section] from the current CHANGELOG file.
 Open `changes.txt` file in your editor of choice.
-
-When updating the changelog it's also a good idea to make sure that `commit1` is
-already correct in the current changelog.
 
 ### 3. Authoring the final changelog
 
@@ -70,17 +67,7 @@ With the PRs filtered, you can start to take each PR and move the `changelog: `
 content to `CHANGELOG.md`. Adapt the wording as you see fit but try to keep it
 somewhat coherent.
 
-The order should roughly be:
-
-1. New lints
-2. Moves or deprecations of lints
-3. Changes that expand what code existing lints cover
-4. False positive fixes
-5. ICE fixes
-6. Documentation improvements
-7. Others
-
-As section headers, we use:
+The sections order should roughly be:
 
 ```
 ### New Lints
@@ -97,10 +84,10 @@ As section headers, we use:
 ### Others
 ```
 
-Please also be sure to update the Beta/Unreleased sections at the top with the
-relevant commit ranges.
+Please also be sure to update [the `Unreleased/Beta/In Rust Nightly` section][beta_section] at the top with the
+relevant commits ranges and to add the `Rust <version>` section with release date and PR ranges.
 
-#### 3.1 Include `beta-accepted` PRs
+### 4. Include `beta-accepted` PRs
 
 Look for the [`beta-accepted`] label and make sure to also include the PRs with
 that label in the changelog. If you can, remove the `beta-accepted` labels
@@ -109,7 +96,7 @@ that label in the changelog. If you can, remove the `beta-accepted` labels
 > _Note:_ Some of those PRs might even get backported to the previous `beta`.
 > Those have to be included in the changelog of the _previous_ release.
 
-### 4. Update `clippy::version` attributes
+### 5. Update `clippy::version` attributes
 
 Next, make sure to check that the `#[clippy::version]` attributes for the added
 lints contain the correct version. 
@@ -129,3 +116,4 @@ written for. If not, update the version to the changelog version.
 [rust_beta_tools]: https://github.com/rust-lang/rust/tree/beta/src/tools/clippy
 [rust_stable_tools]: https://github.com/rust-lang/rust/releases
 [`beta-accepted`]: https://github.com/rust-lang/rust-clippy/issues?q=label%3Abeta-accepted+
+[beta_section]: https://github.com/rust-lang/rust-clippy/blob/master/CHANGELOG.md#unreleased--beta--in-rust-nightly

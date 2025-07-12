@@ -65,3 +65,9 @@ fn main() {
     //~[32bit]^^ ERROR: literal out of range for `usize`
     // 999_999_999_999_999_999_999_999_999_999u128 as f128;
 }
+
+fn issue15163() {
+    const M: usize = 100;
+    const N: u16 = M as u16;
+    //~^ cast_possible_truncation
+}

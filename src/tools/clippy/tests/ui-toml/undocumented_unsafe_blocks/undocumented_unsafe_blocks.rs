@@ -723,4 +723,15 @@ fn issue_13039() {
     _ = unsafe { foo() }
 }
 
+fn rfl_issue15034() -> i32 {
+    unsafe fn h() -> i32 {
+        1i32
+    }
+    // This shouldn't lint with accept-comment-above-attributes! Thus fixing a false positive!
+    // SAFETY: My safety comment!
+    #[allow(clippy::unnecessary_cast)]
+    return unsafe { h() };
+    //~[disabled]^ ERROR: unsafe block missing a safety comment
+}
+
 fn main() {}

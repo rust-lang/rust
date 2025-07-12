@@ -19,5 +19,17 @@ error: coercing `&std::boxed::Box<dyn std::any::Any>` to `&dyn Any`
 LL |     let _: &dyn Any = &x;
    |                       ^^ help: consider dereferencing: `&*x`
 
-error: aborting due to 3 previous errors
+error: coercing `&mut std::boxed::Box<dyn std::any::Any>` to `&dyn Any`
+  --> tests/ui/coerce_container_to_any.rs:18:23
+   |
+LL |     let _: &dyn Any = &mut x;
+   |                       ^^^^^^ help: consider dereferencing: `&*x`
+
+error: coercing `&mut std::boxed::Box<dyn std::any::Any>` to `&mut dyn Any`
+  --> tests/ui/coerce_container_to_any.rs:21:27
+   |
+LL |     let _: &mut dyn Any = &mut x;
+   |                           ^^^^^^ help: consider dereferencing: `&mut *x`
+
+error: aborting due to 5 previous errors
 

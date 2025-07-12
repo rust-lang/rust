@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::ty::has_drop;
+use clippy_utils::ty::{expr_type_is_certain, has_drop};
 use clippy_utils::{
     in_automatically_derived, is_inside_always_const_context, is_lint_allowed, path_to_local, peel_blocks,
 };
@@ -340,11 +340,13 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
         },
         ExprKind::Array(v) | ExprKind::Tup(v) => Some(v.iter().collect()),
         ExprKind::Repeat(inner, _)
-        | ExprKind::Cast(inner, _)
         | ExprKind::Type(inner, _)
         | ExprKind::Unary(_, inner)
         | ExprKind::Field(inner, _)
         | ExprKind::AddrOf(_, _, inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
+        ExprKind::Cast(inner, _) if expr_type_is_certain(cx, inner) => {
+            reduce_expression(cx, inner).or_else(|| Some(vec![inner]))
+        },
         ExprKind::Struct(_, fields, ref base) => {
             if has_drop(cx, cx.typeck_results().expr_ty(expr)) {
                 None

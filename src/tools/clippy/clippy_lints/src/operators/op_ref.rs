@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_enclosing_block;
-use clippy_utils::source::snippet;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -61,12 +61,13 @@ pub(crate) fn check<'tcx>(
                         e.span,
                         "needlessly taken reference of both operands",
                         |diag| {
-                            let lsnip = snippet(cx, l.span, "...").to_string();
-                            let rsnip = snippet(cx, r.span, "...").to_string();
+                            let mut applicability = Applicability::MachineApplicable;
+                            let (lsnip, _) = snippet_with_context(cx, l.span, e.span.ctxt(), "...", &mut applicability);
+                            let (rsnip, _) = snippet_with_context(cx, r.span, e.span.ctxt(), "...", &mut applicability);
                             diag.multipart_suggestion(
                                 "use the values directly",
-                                vec![(left.span, lsnip), (right.span, rsnip)],
-                                Applicability::MachineApplicable,
+                                vec![(left.span, lsnip.to_string()), (right.span, rsnip.to_string())],
+                                applicability,
                             );
                         },
                     );
@@ -80,13 +81,9 @@ pub(crate) fn check<'tcx>(
                         e.span,
                         "needlessly taken reference of left operand",
                         |diag| {
-                            let lsnip = snippet(cx, l.span, "...").to_string();
-                            diag.span_suggestion(
-                                left.span,
-                                "use the left value directly",
-                                lsnip,
-                                Applicability::MachineApplicable,
-                            );
+                            let mut applicability = Applicability::MachineApplicable;
+                            let (lsnip, _) = snippet_with_context(cx, l.span, e.span.ctxt(), "...", &mut applicability);
+                            diag.span_suggestion(left.span, "use the left value directly", lsnip, applicability);
                         },
                     );
                 } else if !lcpy
@@ -99,7 +96,8 @@ pub(crate) fn check<'tcx>(
                         e.span,
                         "needlessly taken reference of right operand",
                         |diag| {
-                            let rsnip = snippet(cx, r.span, "...").to_string();
+                            let mut applicability = Applicability::MachineApplicable;
+                            let (rsnip, _) = snippet_with_context(cx, r.span, e.span.ctxt(), "...", &mut applicability);
                             diag.span_suggestion(
                                 right.span,
                                 "use the right value directly",
@@ -131,7 +129,8 @@ pub(crate) fn check<'tcx>(
                         e.span,
                         "needlessly taken reference of left operand",
                         |diag| {
-                            let lsnip = snippet(cx, l.span, "...").to_string();
+                            let mut applicability = Applicability::MachineApplicable;
+                            let (lsnip, _) = snippet_with_context(cx, l.span, e.span.ctxt(), "...", &mut applicability);
                             diag.span_suggestion(
                                 left.span,
                                 "use the left value directly",
@@ -158,7 +157,8 @@ pub(crate) fn check<'tcx>(
                     && implements_trait(cx, cx.typeck_results().expr_ty(left), trait_id, &[rty.into()])
                 {
                     span_lint_and_then(cx, OP_REF, e.span, "taken reference of right operand", |diag| {
-                        let rsnip = snippet(cx, r.span, "...").to_string();
+                        let mut applicability = Applicability::MachineApplicable;
+                        let (rsnip, _) = snippet_with_context(cx, r.span, e.span.ctxt(), "...", &mut applicability);
                         diag.span_suggestion(
                             right.span,
                             "use the right value directly",

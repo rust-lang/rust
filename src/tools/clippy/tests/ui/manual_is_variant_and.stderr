@@ -54,7 +54,7 @@ error: called `.map() != Some()`
   --> tests/ui/manual_is_variant_and.rs:70:13
    |
 LL |     let _ = Some(2).map(|x| x % 2 == 0) != Some(true);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `Some(2).is_none_or(|x| x % 2 == 0)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `Some(2).is_none_or(|x| x % 2 != 0)`
 
 error: called `.map() == Some()`
   --> tests/ui/manual_is_variant_and.rs:72:13
@@ -126,5 +126,101 @@ error: called `map(<f>).unwrap_or_default()` on a `Result` value
 LL |     let _ = res2.map(char::is_alphanumeric).unwrap_or_default(); // should lint
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `is_ok_and(char::is_alphanumeric)`
 
-error: aborting due to 15 previous errors
+error: called `.map() != Some()`
+  --> tests/ui/manual_is_variant_and.rs:132:18
+   |
+LL |         let a1 = x.map(|b| b.is_ascii_digit()) != Some(true);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `x.is_none_or(|b| !b.is_ascii_digit())`
+
+error: called `.map() != Some()`
+  --> tests/ui/manual_is_variant_and.rs:139:18
+   |
+LL |         let a1 = x.map(|b| b.is_ascii_digit()) != Some(false);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `x.is_none_or(|b| b.is_ascii_digit())`
+
+error: called `.map() == Some()`
+  --> tests/ui/manual_is_variant_and.rs:146:18
+   |
+LL |         let a1 = x.map(|b| b.is_ascii_digit()) == Some(true);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `x.is_some_and(|b| b.is_ascii_digit())`
+
+error: called `.map() == Some()`
+  --> tests/ui/manual_is_variant_and.rs:153:18
+   |
+LL |         let a1 = x.map(|b| b.is_ascii_digit()) == Some(false);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `x.is_some_and(|b| !b.is_ascii_digit())`
+
+error: called `.map() != Ok()`
+  --> tests/ui/manual_is_variant_and.rs:161:18
+   |
+LL |         let a1 = x.map(|b| b.is_ascii_digit()) != Ok(true);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `!x.is_ok_and(|b| b.is_ascii_digit())`
+
+error: called `.map() != Ok()`
+  --> tests/ui/manual_is_variant_and.rs:168:18
+   |
+LL |         let a1 = x.map(|b| b.is_ascii_digit()) != Ok(false);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `!x.is_ok_and(|b| !b.is_ascii_digit())`
+
+error: called `.map() == Ok()`
+  --> tests/ui/manual_is_variant_and.rs:175:18
+   |
+LL |         let a1 = x.map(|b| b.is_ascii_digit()) == Ok(true);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `x.is_ok_and(|b| b.is_ascii_digit())`
+
+error: called `.map() == Ok()`
+  --> tests/ui/manual_is_variant_and.rs:182:18
+   |
+LL |         let a1 = x.map(|b| b.is_ascii_digit()) == Ok(false);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `x.is_ok_and(|b| !b.is_ascii_digit())`
+
+error: called `.map() == Some()`
+  --> tests/ui/manual_is_variant_and.rs:195:18
+   |
+LL |         let a1 = b.map(iad) == Some(true);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `b.is_some_and(iad)`
+
+error: called `.map() == Some()`
+  --> tests/ui/manual_is_variant_and.rs:200:18
+   |
+LL |         let a1 = b.map(iad) == Some(false);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `b.is_some_and(|x| !iad(x))`
+
+error: called `.map() != Some()`
+  --> tests/ui/manual_is_variant_and.rs:205:18
+   |
+LL |         let a1 = b.map(iad) != Some(true);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `b.is_none_or(|x| !iad(x))`
+
+error: called `.map() != Some()`
+  --> tests/ui/manual_is_variant_and.rs:210:18
+   |
+LL |         let a1 = b.map(iad) != Some(false);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `b.is_none_or(iad)`
+
+error: called `.map() == Ok()`
+  --> tests/ui/manual_is_variant_and.rs:217:18
+   |
+LL |         let a1 = b.map(iad) == Ok(true);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^ help: use: `b.is_ok_and(iad)`
+
+error: called `.map() == Ok()`
+  --> tests/ui/manual_is_variant_and.rs:222:18
+   |
+LL |         let a1 = b.map(iad) == Ok(false);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ help: use: `b.is_ok_and(|x| !iad(x))`
+
+error: called `.map() != Ok()`
+  --> tests/ui/manual_is_variant_and.rs:227:18
+   |
+LL |         let a1 = b.map(iad) != Ok(true);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^ help: use: `!b.is_ok_and(iad)`
+
+error: called `.map() != Ok()`
+  --> tests/ui/manual_is_variant_and.rs:232:18
+   |
+LL |         let a1 = b.map(iad) != Ok(false);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ help: use: `!b.is_ok_and(|x| !iad(x))`
+
+error: aborting due to 31 previous errors
 

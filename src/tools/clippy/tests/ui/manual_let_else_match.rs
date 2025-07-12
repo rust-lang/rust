@@ -177,3 +177,76 @@ fn issue11579() {
         _ => unreachable!("can't happen"),
     };
 }
+
+#[derive(Clone, Copy)]
+struct Issue9939<T> {
+    avalanche: T,
+}
+
+fn issue9939() {
+    let issue = Some(Issue9939 { avalanche: 1 });
+    let tornado = match issue {
+        //~^ manual_let_else
+        Some(Issue9939 { avalanche }) => avalanche,
+        _ => unreachable!("can't happen"),
+    };
+    let issue = Some(Issue9939 { avalanche: true });
+    let acid_rain = match issue {
+        //~^ manual_let_else
+        Some(Issue9939 { avalanche: tornado }) => tornado,
+        _ => unreachable!("can't happen"),
+    };
+    assert_eq!(tornado, 1);
+    assert!(acid_rain);
+
+    // without shadowing
+    let _y = match issue {
+        //~^ manual_let_else
+        _x @ Some(Issue9939 { avalanche }) => avalanche,
+        None => unreachable!("can't happen"),
+    };
+
+    // with shadowing
+    let _x = match issue {
+        //~^ manual_let_else
+        _x @ Some(Issue9939 { avalanche }) => avalanche,
+        None => unreachable!("can't happen"),
+    };
+}
+
+#[derive(Clone, Copy)]
+struct Issue9939b<T, U> {
+    earthquake: T,
+    hurricane: U,
+}
+
+fn issue9939b() {
+    let issue = Some(Issue9939b {
+        earthquake: true,
+        hurricane: 1,
+    });
+    let (issue, drought, flood) = match issue {
+        //~^ manual_let_else
+        flood @ Some(Issue9939b { earthquake, hurricane }) => (flood, hurricane, earthquake),
+        None => unreachable!("can't happen"),
+    };
+    assert_eq!(drought, 1);
+    assert!(flood);
+    assert!(issue.is_some());
+
+    // without shadowing
+    let (_y, erosion) = match issue {
+        //~^ manual_let_else
+        _x @ Some(Issue9939b { earthquake, hurricane }) => (hurricane, earthquake),
+        None => unreachable!("can't happen"),
+    };
+    assert!(erosion);
+
+    // with shadowing
+    let (_x, erosion) = match issue {
+        //~^ manual_let_else
+        _x @ Some(Issue9939b { earthquake, hurricane }) => (hurricane, earthquake),
+        None => unreachable!("can't happen"),
+    };
+    assert!(erosion);
+}

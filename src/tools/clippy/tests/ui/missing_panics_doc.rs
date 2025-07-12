@@ -250,3 +250,31 @@ pub fn issue_12760<const N: usize>() {
         }
     }
 }
+
+/// This needs documenting
+pub fn unwrap_expect_etc_in_const() {
+    let a = const { std::num::NonZeroUsize::new(1).unwrap() };
+    // This should still pass the lint even if it is guaranteed to panic at compile-time
+    let b = const { std::num::NonZeroUsize::new(0).unwrap() };
+}
+
+/// This needs documenting
+pub const fn unwrap_expect_etc_in_const_fn_fails() {
+    //~^ missing_panics_doc
+    let a = std::num::NonZeroUsize::new(1).unwrap();
+}
+
+/// This needs documenting
+pub const fn assert_in_const_fn_fails() {
+    //~^ missing_panics_doc
+    let x = 0;
+    if x == 0 {
+        panic!();
+    }
+}
+
+/// This needs documenting
+pub const fn in_const_fn<const N: usize>(n: usize) {
+    //~^ missing_panics_doc
+    assert!(N > n);
+}

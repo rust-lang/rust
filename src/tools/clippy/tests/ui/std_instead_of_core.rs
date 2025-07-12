@@ -8,7 +8,6 @@ extern crate alloc;
 #[macro_use]
 extern crate proc_macro_derive;
 
-#[warn(clippy::std_instead_of_core)]
 fn std_instead_of_core() {
     // Regular import
     use std::hash::Hasher;
@@ -90,9 +89,3 @@ fn msrv_1_76(_: std::net::IpAddr) {}
 #[clippy::msrv = "1.77"]
 fn msrv_1_77(_: std::net::IpAddr) {}
 //~^ std_instead_of_core
-
-#[warn(clippy::std_instead_of_core)]
-#[rustfmt::skip]
-fn issue14982() {
-    use std::{collections::HashMap, hash::Hash};
-}

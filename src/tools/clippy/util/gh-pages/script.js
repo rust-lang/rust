@@ -554,10 +554,10 @@ function addListeners() {
             return;
         }
 
-        if (event.target.classList.contains("lint-anchor")) {
-            lintAnchor(event);
-        } else if (event.target.classList.contains("copy-to-clipboard")) {
+        if (event.target.classList.contains("copy-to-clipboard")) {
             copyToClipboard(event);
+        } else if (event.target.classList.contains("anchor")) {
+            lintAnchor(event);
         }
     });
 
