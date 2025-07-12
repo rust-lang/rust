@@ -1,10 +1,10 @@
 
 running 1 test
-test $DIR/failed-doctest-test-crate.rs - m (line 14) ... FAILED
+test $DIR/failed-doctest-test-crate.rs:14 - m ... FAILED
 
 failures:
 
----- $DIR/failed-doctest-test-crate.rs - m (line 14) stdout ----
+---- $DIR/failed-doctest-test-crate.rs:14 - m stdout ----
 error[E0432]: unresolved import `test`
   --> $DIR/failed-doctest-test-crate.rs:15:5
    |
@@ -19,7 +19,7 @@ For more information about this error, try `rustc --explain E0432`.
 Couldn't compile the test.
 
 failures:
-    $DIR/failed-doctest-test-crate.rs - m (line 14)
+    $DIR/failed-doctest-test-crate.rs:14 - m
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

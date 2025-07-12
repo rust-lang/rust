@@ -1,12 +1,12 @@
 
 running 3 tests
-test $DIR/comment-in-attr-134221.rs - (line 11) ... FAILED
-test $DIR/comment-in-attr-134221.rs - (line 17) ... FAILED
-test $DIR/comment-in-attr-134221.rs - (line 23) ... FAILED
+test $DIR/comment-in-attr-134221.rs:11 ... FAILED
+test $DIR/comment-in-attr-134221.rs:17 ... FAILED
+test $DIR/comment-in-attr-134221.rs:23 ... FAILED
 
 failures:
 
----- $DIR/comment-in-attr-134221.rs - (line 11) stdout ----
+---- $DIR/comment-in-attr-134221.rs:11 stdout ----
 error[E0635]: unknown feature `foo`
   --> $DIR/comment-in-attr-134221.rs:$LINE:$COL
    |
@@ -17,7 +17,7 @@ error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0635`.
 Couldn't compile the test.
----- $DIR/comment-in-attr-134221.rs - (line 17) stdout ----
+---- $DIR/comment-in-attr-134221.rs:17 stdout ----
 error[E0635]: unknown feature `foo`
   --> $DIR/comment-in-attr-134221.rs:$LINE:$COL
    |
@@ -28,7 +28,7 @@ error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0635`.
 Couldn't compile the test.
----- $DIR/comment-in-attr-134221.rs - (line 23) stdout ----
+---- $DIR/comment-in-attr-134221.rs:23 stdout ----
 error: this file contains an unclosed delimiter
   --> $DIR/comment-in-attr-134221.rs:$LINE:$COL
    |
@@ -42,9 +42,9 @@ error: aborting due to 1 previous error
 Couldn't compile the test.
 
 failures:
-    $DIR/comment-in-attr-134221.rs - (line 11)
-    $DIR/comment-in-attr-134221.rs - (line 17)
-    $DIR/comment-in-attr-134221.rs - (line 23)
+    $DIR/comment-in-attr-134221.rs:11
+    $DIR/comment-in-attr-134221.rs:17
+    $DIR/comment-in-attr-134221.rs:23
 
 test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

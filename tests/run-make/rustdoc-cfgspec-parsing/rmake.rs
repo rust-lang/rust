@@ -17,5 +17,5 @@ fn main() {
         .library_search_path(cwd())
         .input("foo.rs")
         .run()
-        .assert_stdout_contains("foo.rs - foo (line 1) ... ok");
+        .assert_stdout_contains("foo.rs:1 - foo ... ok");
 }

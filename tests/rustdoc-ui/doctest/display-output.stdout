@@ -1,10 +1,10 @@
 
 running 1 test
-test $DIR/display-output.rs - foo (line 9) ... ok
+test $DIR/display-output.rs:9 - foo ... ok
 
 successes:
 
----- $DIR/display-output.rs - foo (line 9) stdout ----
+---- $DIR/display-output.rs:9 - foo stdout ----
 warning: unused variable: `x`
   --> $DIR/display-output.rs:12:5
    |
@@ -37,7 +37,7 @@ warning: 3 warnings emitted
 
 
 successes:
-    $DIR/display-output.rs - foo (line 9)
+    $DIR/display-output.rs:9 - foo
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

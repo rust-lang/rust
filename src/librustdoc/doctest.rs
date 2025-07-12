@@ -853,12 +853,10 @@ impl ScrapedDocTest {
         global_crate_attrs: Vec<String>,
     ) -> Self {
         let mut item_path = logical_path.join("::");
-        item_path.retain(|c| c != ' ');
         if !item_path.is_empty() {
-            item_path.push(' ');
+            item_path.insert_str(0, " - ");
         }
-        let name =
-            format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionally());
+        let name = format!("{}:{line}{item_path}", filename.prefer_remapped_unconditionally());
 
         Self { filename, line, langstr, text, name, span, global_crate_attrs }
     }
