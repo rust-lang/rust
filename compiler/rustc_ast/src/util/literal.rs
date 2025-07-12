@@ -126,11 +126,11 @@ impl LitKind {
             token::CStr => {
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
-                unescape_c_str(s, |_span, c| match c {
+                unescape_c_str(s, |_span, res| match res {
                     Ok(MixedUnit::Char(c)) => {
-                        buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
+                        buf.extend_from_slice(c.get().encode_utf8(&mut [0; 4]).as_bytes())
                     }
-                    Ok(MixedUnit::HighByte(b)) => buf.push(b),
+                    Ok(MixedUnit::HighByte(b)) => buf.push(b.get()),
                     Err(err) => {
                         assert!(!err.is_fatal(), "failed to unescape C string literal")
                     }
