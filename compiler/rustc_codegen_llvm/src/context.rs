@@ -451,6 +451,15 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
+    if sess.opts.unstable_opts.indirect_branch_cs_prefix {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Override,
+            "indirect_branch_cs_prefix",
+            1,
+        );
+    }
+
     match (sess.opts.unstable_opts.small_data_threshold, sess.target.small_data_threshold_support())
     {
         // Set up the small-data optimization limit for architectures that use
