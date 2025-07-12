@@ -2,16 +2,16 @@ use std::mem;
 
 use rustc_errors::{Diag, DiagArgName, DiagArgValue, DiagMessage, IntoDiagArg};
 use rustc_middle::mir::AssertKind;
-use rustc_middle::mir::interpret::{Provenance, ReportedErrorInfo};
+use rustc_middle::mir::interpret::{Provenance, ReportedErrorInfo, UndefinedBehaviorInfo};
 use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty::ConstInt;
 use rustc_middle::ty::layout::LayoutError;
-use rustc_middle::ty::{ConstInt, TyCtxt};
 use rustc_span::{Span, Symbol};
 
 use super::CompileTimeMachine;
 use crate::errors::{self, FrameNote, ReportErrorExt};
 use crate::interpret::{
-    ErrorHandled, Frame, InterpErrorInfo, InterpErrorKind, MachineStopType, err_inval,
+    ErrorHandled, Frame, InterpCx, InterpErrorInfo, InterpErrorKind, MachineStopType, err_inval,
     err_machine_stop,
 };
 
@@ -135,7 +135,7 @@ pub fn get_span_and_frames<'tcx>(
 /// You can use it to add a stacktrace of current execution according to
 /// `get_span_and_frames` or just give context on where the const eval error happened.
 pub(super) fn report<'tcx, C, F>(
-    tcx: TyCtxt<'tcx>,
+    ecx: &InterpCx<'tcx, CompileTimeMachine<'tcx>>,
     error: InterpErrorKind<'tcx>,
     span: Span,
     get_span_and_frames: C,
@@ -145,6 +145,7 @@ where
     C: FnOnce() -> (Span, Vec<FrameNote>),
     F: FnOnce(&mut Diag<'_>, Span, Vec<FrameNote>),
 {
+    let tcx = ecx.tcx.tcx;
     // Special handling for certain errors
     match error {
         // Don't emit a new diagnostic for these errors, they are already reported elsewhere or
@@ -170,9 +171,24 @@ where
                 InterpErrorKind::ResourceExhaustion(_) | InterpErrorKind::InvalidProgram(_)
             );
 
+            if let InterpErrorKind::UndefinedBehavior(UndefinedBehaviorInfo::InvalidUninitBytes(
+                Some((alloc_id, _access)),
+            )) = error
+            {
+                let bytes = ecx.print_alloc_bytes_for_diagnostics(alloc_id);
+                let info = ecx.get_alloc_info(alloc_id);
+                let raw_bytes = errors::RawBytesNote {
+                    size: info.size.bytes(),
+                    align: info.align.bytes(),
+                    bytes,
+                };
+                err.subdiagnostic(raw_bytes);
+            }
+
             error.add_args(&mut err);
 
             mk(&mut err, span, frames);
+
             let g = err.emit();
             let reported = if allowed_in_infallible {
                 ReportedErrorInfo::allowed_in_infallible(g)

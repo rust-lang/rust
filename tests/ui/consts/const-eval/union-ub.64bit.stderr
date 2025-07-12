@@ -9,11 +9,15 @@ LL | const BAD_BOOL: bool = unsafe { DummyUnion { u8: 42 }.bool };
                2a                                              │ *
            }
 
-error[E0080]: using uninitialized data, but this operation requires initialized memory
+error[E0080]: reading memory at ALLOC0[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
   --> $DIR/union-ub.rs:35:36
    |
 LL | const UNINIT_BOOL: bool = unsafe { DummyUnion { unit: () }.bool };
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNINIT_BOOL` failed here
+   |
+   = note: the raw bytes of the constant (size: 1, align: 1) {
+               __                                              │ ░
+           }
 
 error: aborting due to 2 previous errors
 

@@ -9,11 +9,15 @@ LL | const BAD: pattern_type!(u32 is 1..) = unsafe { std::mem::transmute(0) };
                HEX_DUMP
            }
 
-error[E0080]: using uninitialized data, but this operation requires initialized memory
+error[E0080]: reading memory at ALLOC0[0x0..0x4], but memory is uninitialized at [0x0..0x4], and this operation requires initialized memory
   --> $DIR/validity.rs:13:1
    |
 LL | const BAD_UNINIT: pattern_type!(u32 is 1..) =
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_UNINIT` failed here
+   |
+   = note: the raw bytes of the constant (size: 4, align: 4) {
+               __ __ __ __                                     │ ░░░░
+           }
 
 error[E0080]: unable to turn pointer into integer
   --> $DIR/validity.rs:17:1
@@ -46,11 +50,15 @@ LL | const BAD_FOO: Foo = Foo(Bar(unsafe { std::mem::transmute(0) }));
                HEX_DUMP
            }
 
-error[E0080]: using uninitialized data, but this operation requires initialized memory
+error[E0080]: reading memory at ALLOC1[0x0..0x4], but memory is uninitialized at [0x0..0x4], and this operation requires initialized memory
   --> $DIR/validity.rs:29:1
    |
 LL | const CHAR_UNINIT: pattern_type!(char is 'A'..'Z') =
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `CHAR_UNINIT` failed here
+   |
+   = note: the raw bytes of the constant (size: 4, align: 4) {
+               __ __ __ __                                     │ ░░░░
+           }
 
 error[E0080]: constructing invalid value: encountered 97, but expected something in the range 65..=89
   --> $DIR/validity.rs:33:1

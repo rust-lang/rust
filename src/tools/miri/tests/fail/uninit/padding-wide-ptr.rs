@@ -1,3 +1,8 @@
+//@ normalize-stderr-test: ".*│.*\n" -> ""
+//@ normalize-stderr-test: "size: [0-9]+" -> "size: SIZE"
+//@ normalize-stderr-test: "align: [0-9]+" -> "align: ALIGN"
+//@ normalize-stderr-test: "\[0x[0-9a-z]..0x[0-9a-z]\]" -> "[0xX..0xY]"
+
 use std::mem;
 
 // If this is `None`, the metadata becomes padding.
