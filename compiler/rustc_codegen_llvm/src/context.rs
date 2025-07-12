@@ -208,7 +208,12 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
-    // Ensure the data-layout values hardcoded remain the defaults.
+    if sess.target.os == "aix" {
+        // See https://github.com/llvm/llvm-project/issues/133599
+        target_data_layout = target_data_layout.replace("-f64:32:64", "");
+    }
+
+    // Ensure our hardcoded data-layout values remain the defaults.
     {
         let tm = crate::back::write::create_informational_target_machine(tcx.sess, false);
         unsafe {
