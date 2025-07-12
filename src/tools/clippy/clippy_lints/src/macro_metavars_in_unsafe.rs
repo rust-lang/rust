@@ -8,7 +8,8 @@ use rustc_hir::{BlockCheckMode, Expr, ExprKind, HirId, Stmt, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass, Level, LintContext};
 use rustc_middle::lint::LevelAndSource;
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, SyntaxContext, sym};
+use rustc_span::{Span, SyntaxContext};
+use rustc_attr_data_structures::{find_attr, AttributeKind};
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 
@@ -146,7 +147,8 @@ struct BodyVisitor<'a, 'tcx> {
 }
 
 fn is_public_macro(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
-    (cx.effective_visibilities.is_exported(def_id) || cx.tcx.has_attr(def_id, sym::macro_export))
+    ( cx.effective_visibilities.is_exported(def_id) ||
+        find_attr!(cx.tcx.get_all_attrs(def_id), AttributeKind::MacroExport{..}) )
         && !cx.tcx.is_doc_hidden(def_id)
 }
 

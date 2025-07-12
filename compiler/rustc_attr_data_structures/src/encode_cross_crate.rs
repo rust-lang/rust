@@ -42,6 +42,7 @@ impl AttributeKind {
             LinkName { .. } => Yes,
             LinkSection { .. } => No,
             LoopMatch(..) => No,
+            MacroExport { .. } => Yes,
             MacroTransparency(..) => Yes,
             Marker(..) => No,
             MayDangle(..) => No,

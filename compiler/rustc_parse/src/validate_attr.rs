@@ -302,6 +302,7 @@ pub fn check_builtin_meta_item(
                 | sym::cold
                 | sym::target_feature
                 | sym::rustc_allow_const_fn_unstable
+                | sym::macro_export
                 | sym::naked
                 | sym::no_mangle
                 | sym::non_exhaustive
