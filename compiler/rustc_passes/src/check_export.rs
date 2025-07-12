@@ -45,7 +45,7 @@ impl<'tcx> ExportableItemCollector<'tcx> {
     }
 
     fn item_is_exportable(&self, def_id: LocalDefId) -> bool {
-        let has_attr = find_attr!(self.tcx.get_all_attrs(def_id), AttributeKind::ExportStable);
+        let has_attr = find_attr!(self.tcx.get_all_attrs(def_id), AttributeKind::ExportStable(..));
         if !self.in_exportable_mod && !has_attr {
             return false;
         }
@@ -81,7 +81,7 @@ impl<'tcx> ExportableItemCollector<'tcx> {
     fn walk_item_with_mod(&mut self, item: &'tcx hir::Item<'tcx>) {
         let def_id = item.hir_id().owner.def_id;
         let old_exportable_mod = self.in_exportable_mod;
-        if find_attr!(self.tcx.get_all_attrs(def_id), AttributeKind::ExportStable) {
+        if find_attr!(self.tcx.get_all_attrs(def_id), AttributeKind::ExportStable(..)) {
             self.in_exportable_mod = true;
         }
         let old_seen_exportable_in_mod = std::mem::replace(&mut self.seen_exportable_in_mod, false);

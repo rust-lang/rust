@@ -5,6 +5,7 @@
 #![feature(custom_test_frameworks)]
 #![feature(derive_const)]
 #![feature(where_clause_attrs)]
+#![feature(stmt_expr_attributes)]
 #![allow(soft_unstable)]
 
 trait Trait {}
@@ -33,4 +34,15 @@ where
     //~| ERROR expected non-macro attribute, found attribute macro `derive`
     #[rustfmt::skip] T: Trait, //~ ERROR most attributes are not supported in `where` clauses
     #[rustfmt::skip] 'a: 'static, //~ ERROR most attributes are not supported in `where` clauses
+    #[must_use] T: Trait, //~ ERROR most attributes are not supported in `where` clauses
+    #[must_use] 'a: 'static, //~ ERROR most attributes are not supported in `where` clauses
+    #[cold] T: Trait, //~ ERROR most attributes are not supported in `where` clauses
+    #[cold] 'a: 'static, //~ ERROR most attributes are not supported in `where` clauses
+    #[repr()] T: Trait, //~ ERROR most attributes are not supported in `where` clauses
+    #[repr()] 'a: 'static, //~ ERROR most attributes are not supported in `where` clauses
 {}
+
+fn another_one() {
+    // Regression test for https://github.com/rust-lang/rust/issues/143787
+    let _: String = #[repr()] std::string::String::new();
+}

@@ -1299,12 +1299,51 @@ impl AttributeExt for Attribute {
     fn span(&self) -> Span {
         match &self {
             Attribute::Unparsed(u) => u.span,
-            // FIXME: should not be needed anymore when all attrs are parsed
-            Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::MayDangle(span)) => *span,
-            Attribute::Parsed(AttributeKind::Ignore { span, .. }) => *span,
-            a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
+            Attribute::Parsed(kind) => match kind {
+                AttributeKind::Align { span, .. }
+                | AttributeKind::AllowConstFnUnstable(_, span)
+                | AttributeKind::AllowInternalUnstable(_, span)
+                | AttributeKind::AsPtr(span)
+                | AttributeKind::BodyStability { span, .. }
+                | AttributeKind::Cold(span)
+                | AttributeKind::Confusables { first_span: span, .. }
+                | AttributeKind::ConstContinue(span)
+                | AttributeKind::ConstStability { span, .. }
+                | AttributeKind::ConstStabilityIndirect(span)
+                | AttributeKind::Deprecation { span, .. }
+                | AttributeKind::DocComment { span, .. }
+                | AttributeKind::Dummy(span)
+                | AttributeKind::ExportName { span, .. }
+                | AttributeKind::ExportStable(span)
+                | AttributeKind::FfiConst(span)
+                | AttributeKind::FfiPure(span)
+                | AttributeKind::Ignore { span, .. }
+                | AttributeKind::Inline(_, span)
+                | AttributeKind::LinkName { span, .. }
+                | AttributeKind::LinkSection { span, .. }
+                | AttributeKind::LoopMatch(span)
+                | AttributeKind::MacroTransparency(.., span)
+                | AttributeKind::MayDangle(span)
+                | AttributeKind::MustUse { span, .. }
+                | AttributeKind::Naked(span)
+                | AttributeKind::NoImplicitPrelude(span)
+                | AttributeKind::NoMangle(span)
+                | AttributeKind::NonExhaustive(span)
+                | AttributeKind::Optimize(_, span)
+                | AttributeKind::PassByValue(span)
+                | AttributeKind::Path(_, span)
+                | AttributeKind::PubTransparent(span)
+                | AttributeKind::Repr { first_span: span, .. }
+                | AttributeKind::RustcLayoutScalarValidRangeEnd(_, span)
+                | AttributeKind::RustcLayoutScalarValidRangeStart(_, span)
+                | AttributeKind::RustcObjectLifetimeDefault(span)
+                | AttributeKind::SkipDuringMethodDispatch { span, .. }
+                | AttributeKind::Stability { span, .. }
+                | AttributeKind::StdInternalSymbol(span)
+                | AttributeKind::TargetFeature(_, span)
+                | AttributeKind::TrackCaller(span)
+                | AttributeKind::Used { span, .. } => *span,
+            },
         }
     }
 

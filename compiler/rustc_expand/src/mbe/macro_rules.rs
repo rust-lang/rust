@@ -429,7 +429,7 @@ pub fn compile_declarative_macro(
         return dummy_syn_ext(guar);
     }
 
-    let transparency = find_attr!(attrs, AttributeKind::MacroTransparency(x) => *x)
+    let transparency = find_attr!(attrs, AttributeKind::MacroTransparency(x, _) => *x)
         .unwrap_or(Transparency::fallback(macro_rules));
 
     if let Some(guar) = guar {

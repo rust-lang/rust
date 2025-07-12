@@ -162,7 +162,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 Attribute::Parsed(AttributeKind::Repr { .. }) => { /* handled below this loop and elsewhere */
                 }
-                Attribute::Parsed(AttributeKind::RustcObjectLifetimeDefault) => {
+                Attribute::Parsed(AttributeKind::RustcObjectLifetimeDefault(..)) => {
                     self.check_object_lifetime_default(hir_id);
                 }
                 &Attribute::Parsed(AttributeKind::PubTransparent(attr_span)) => {
@@ -204,7 +204,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     AttributeKind::RustcLayoutScalarValidRangeStart(_num, attr_span)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(_num, attr_span),
                 ) => self.check_rustc_layout_scalar_valid_range(*attr_span, span, target),
-                Attribute::Parsed(AttributeKind::ExportStable) => {
+                Attribute::Parsed(AttributeKind::ExportStable(..)) => {
                     // handled in `check_export`
                 }
                 &Attribute::Parsed(AttributeKind::FfiConst(attr_span)) => {
@@ -215,9 +215,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
-                    | AttributeKind::ConstStabilityIndirect
-                    | AttributeKind::MacroTransparency(_)
-                    | AttributeKind::Dummy,
+                    | AttributeKind::ConstStabilityIndirect(..)
+                    | AttributeKind::MacroTransparency(..)
+                    | AttributeKind::Dummy(..),
                 ) => { /* do nothing  */ }
                 Attribute::Parsed(AttributeKind::AsPtr(attr_span)) => {
                     self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)
