@@ -1,5 +1,3 @@
-//@ only-x86_64
-
 //@ is "$.index[?(@.name=='test1')].attrs" '["#[target_feature(enable=\"avx\")]"]'
 //@ is "$.index[?(@.name=='test1')].inner.function.header.is_unsafe" false
 #[target_feature(enable = "avx")]
