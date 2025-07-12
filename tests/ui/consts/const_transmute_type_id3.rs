@@ -10,7 +10,7 @@ const _: () = {
         std::ptr::write(ptr.offset(1), 999);
     }
     assert!(a == b);
-    //~^ ERROR: one of the TypeId arguments is invalid, the hash does not match the type it represents
+    //~^ ERROR: pointer must point to some allocation
 };
 
 fn main() {}
