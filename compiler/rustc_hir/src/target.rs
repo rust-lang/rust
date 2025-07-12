@@ -51,7 +51,7 @@ pub enum Target {
     ForeignFn,
     ForeignStatic,
     ForeignTy,
-    GenericParam(GenericParamKind),
+    GenericParam { kind: GenericParamKind, has_default: bool },
     MacroDef,
     Param,
     PatField,
@@ -93,7 +93,7 @@ impl Target {
             | Target::ForeignFn
             | Target::ForeignStatic
             | Target::ForeignTy
-            | Target::GenericParam(_)
+            | Target::GenericParam { .. }
             | Target::MacroDef
             | Target::Param
             | Target::PatField
@@ -169,11 +169,17 @@ impl Target {
 
     pub fn from_generic_param(generic_param: &hir::GenericParam<'_>) -> Target {
         match generic_param.kind {
-            hir::GenericParamKind::Type { .. } => Target::GenericParam(GenericParamKind::Type),
+            hir::GenericParamKind::Type { default, .. } => Target::GenericParam {
+                kind: GenericParamKind::Type,
+                has_default: default.is_some(),
+            },
             hir::GenericParamKind::Lifetime { .. } => {
-                Target::GenericParam(GenericParamKind::Lifetime)
+                Target::GenericParam { kind: GenericParamKind::Lifetime, has_default: false }
             }
-            hir::GenericParamKind::Const { .. } => Target::GenericParam(GenericParamKind::Const),
+            hir::GenericParamKind::Const { default, .. } => Target::GenericParam {
+                kind: GenericParamKind::Const,
+                has_default: default.is_some(),
+            },
         }
     }
 
@@ -211,7 +217,7 @@ impl Target {
             Target::ForeignFn => "foreign function",
             Target::ForeignStatic => "foreign static item",
             Target::ForeignTy => "foreign type",
-            Target::GenericParam(kind) => match kind {
+            Target::GenericParam { kind, has_default: _ } => match kind {
                 GenericParamKind::Type => "type parameter",
                 GenericParamKind::Lifetime => "lifetime parameter",
                 GenericParamKind::Const => "const parameter",

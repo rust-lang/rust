@@ -27,9 +27,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint;
-use rustc_session::lint::builtin::{
-    DEPRECATED, INEFFECTIVE_UNSTABLE_TRAIT_IMPL, USELESS_DEPRECATED,
-};
+use rustc_session::lint::builtin::{DEPRECATED, INEFFECTIVE_UNSTABLE_TRAIT_IMPL};
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, info};
 
@@ -125,18 +123,8 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         let const_stability_indirect = find_attr!(attrs, AttributeKind::ConstStabilityIndirect);
 
         let mut is_deprecated = false;
-        if let Some((depr, span)) = &depr {
+        if let Some((depr, _)) = &depr {
             is_deprecated = true;
-
-            if matches!(kind, AnnotationKind::Prohibited | AnnotationKind::DeprecationProhibited) {
-                let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
-                self.tcx.emit_node_span_lint(
-                    USELESS_DEPRECATED,
-                    hir_id,
-                    *span,
-                    errors::DeprecatedAnnotationHasNoEffect { span: *span },
-                );
-            }
 
             // `Deprecation` is just two pointers, no need to intern it
             let depr_entry = DeprecationEntry::local(*depr, def_id);
