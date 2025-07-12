@@ -28,6 +28,9 @@ use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
+use rustc_ast::expand::typetree::{FncTree, TypeTree};
+use crate::typetree::to_enzyme_typetree;
+
 use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
 use crate::common::Funclet;
@@ -548,13 +551,17 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn load(&mut self, ty: &'ll Type, ptr: &'ll Value, align: Align) -> &'ll Value {
-        unsafe {
+    fn load(&mut self, ty: &'ll Type, ptr: &'ll Value, align: Align, tt: Option<FncTree>) -> &'ll Value {
+        let load = unsafe {
             let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
             let align = align.min(self.cx().tcx.sess.target.max_reliable_alignment());
             llvm::LLVMSetAlignment(load, align.bytes() as c_uint);
             load
+        };
+        if let Some(tt) = tt {
+            add_tt(self.cx().llmod, self.cx().llcx, load, tt);
         }
+        load
     }
 
     fn volatile_load(&mut self, ty: &'ll Type, ptr: &'ll Value) -> &'ll Value {
@@ -659,7 +666,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
             let llval = const_llval.unwrap_or_else(|| {
-                let load = self.load(llty, place.val.llval, place.val.align);
+                let load = self.load(llty, place.val.llval, place.val.align, None);
                 if let abi::BackendRepr::Scalar(scalar) = place.layout.backend_repr {
                     scalar_load_metadata(self, load, scalar, place.layout, Size::ZERO);
                     self.to_immediate_scalar(load, scalar)
@@ -678,7 +685,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                     self.inbounds_ptradd(place.val.llval, self.const_usize(b_offset.bytes()))
                 };
                 let llty = place.layout.scalar_pair_element_llvm_type(self, i, false);
-                let load = self.load(llty, llptr, align);
+                let load = self.load(llty, llptr, align, None);
                 scalar_load_metadata(self, load, scalar, layout, offset);
                 self.to_immediate_scalar(load, scalar)
             };
@@ -750,8 +757,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: Align) -> &'ll Value {
-        self.store_with_flags(val, ptr, align, MemFlags::empty())
+    fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: Align, tt: Option<FncTree>) -> &'ll Value {
+        let store = self.store_with_flags(val, ptr, align, MemFlags::empty());
+        if let Some(tt) = tt {
+            add_tt(self.cx().llmod, self.cx().llcx, store, tt);
+        }
+        store
     }
 
     fn store_with_flags(
@@ -1050,11 +1061,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         src_align: Align,
         size: &'ll Value,
         flags: MemFlags,
+        tt: Option<FncTree>,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memcpy not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        unsafe {
+        let memcpy = unsafe {
             llvm::LLVMRustBuildMemCpy(
                 self.llbuilder,
                 dst,
@@ -1063,7 +1075,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 src_align.bytes() as c_uint,
                 size,
                 is_volatile,
-            );
+            )
+        };
+        if let Some(tt) = tt {
+            add_tt(self.cx().llmod, self.cx().llcx, memcpy, tt);
         }
     }
 
@@ -1075,11 +1090,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         src_align: Align,
         size: &'ll Value,
         flags: MemFlags,
+        tt: Option<FncTree>,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memmove not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        unsafe {
+        let memmove = unsafe {
             llvm::LLVMRustBuildMemMove(
                 self.llbuilder,
                 dst,
@@ -1088,7 +1104,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 src_align.bytes() as c_uint,
                 size,
                 is_volatile,
-            );
+            )
+        };
+        if let Some(tt) = tt {
+            add_tt(self.cx().llmod, self.cx().llcx, memmove, tt);
         }
     }
 
@@ -1099,10 +1118,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         size: &'ll Value,
         align: Align,
         flags: MemFlags,
+        tt: Option<FncTree>,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memset not supported");
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        unsafe {
+        let memset = unsafe {
             llvm::LLVMRustBuildMemSet(
                 self.llbuilder,
                 ptr,
@@ -1110,7 +1130,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 fill_byte,
                 size,
                 is_volatile,
-            );
+            )
+        };
+        if let Some(tt) = tt {
+            add_tt(self.cx().llmod, self.cx().llcx, memset, tt);
         }
     }
 
@@ -1842,14 +1865,86 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn mcdc_condbitmap_reset(&mut self, mcdc_temp: &'ll Value) {
-        self.store(self.const_i32(0), mcdc_temp, self.tcx.data_layout.i32_align.abi);
+        self.store(self.const_i32(0), mcdc_temp, self.tcx.data_layout.i32_align.abi, None);
     }
 
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn mcdc_condbitmap_update(&mut self, cond_index: &'ll Value, mcdc_temp: &'ll Value) {
         let align = self.tcx.data_layout.i32_align.abi;
-        let current_tv_index = self.load(self.cx.type_i32(), mcdc_temp, align);
+        let current_tv_index = self.load(self.cx.type_i32(), mcdc_temp, align, None);
         let new_tv_index = self.add(current_tv_index, cond_index);
-        self.store(new_tv_index, mcdc_temp, align);
+        self.store(new_tv_index, mcdc_temp, align, None);
+    }
+}
+
+// Type tree helper functions for autodiff support
+fn add_tt<'ll>(llmod: &'ll llvm::Module, llcx: &'ll llvm::Context, val: &'ll Value, tt: FncTree) {
+    let inputs = tt.inputs;
+    let _ret: TypeTree = tt.output;
+    let llvm_data_layout: *const c_char = unsafe { llvm::LLVMGetDataLayoutStr(&*llmod) };
+    let llvm_data_layout =
+        std::str::from_utf8(unsafe { std::ffi::CStr::from_ptr(llvm_data_layout) }.to_bytes())
+            .expect("got a non-UTF8 data-layout from LLVM");
+    let attr_name = "enzyme_type";
+    let c_attr_name = std::ffi::CString::new(attr_name).unwrap();
+    for (i, &ref input) in inputs.iter().enumerate() {
+        let c_tt = to_enzyme_typetree(input.clone(), llvm_data_layout, llcx);
+        let c_str = unsafe { llvm::EnzymeTypeTreeToString(c_tt.inner) };
+        let c_str = unsafe { std::ffi::CStr::from_ptr(c_str) };
+        unsafe {
+            let attr = llvm::LLVMCreateStringAttribute(
+                llcx,
+                c_attr_name.as_ptr(),
+                c_attr_name.as_bytes().len() as c_uint,
+                c_str.as_ptr(),
+                c_str.to_bytes().len() as c_uint,
+            );
+            llvm::LLVMRustAddParamAttr(val, i as u32, attr);
+        }
+        unsafe { llvm::EnzymeTypeTreeToStringFree(c_str.as_ptr()) };
+    }
+}
+
+fn add_tt2<'ll>(llmod: &'ll llvm::Module, llcx: &'ll llvm::Context, fn_def: &'ll Value, tt: FncTree) {
+    let inputs = tt.inputs;
+    let ret_tt: TypeTree = tt.output;
+    let llvm_data_layout: *const c_char = unsafe { llvm::LLVMGetDataLayoutStr(&*llmod) };
+    let llvm_data_layout =
+        std::str::from_utf8(unsafe { std::ffi::CStr::from_ptr(llvm_data_layout) }.to_bytes())
+            .expect("got a non-UTF8 data-layout from LLVM");
+    let attr_name = "enzyme_type";
+    let c_attr_name = std::ffi::CString::new(attr_name).unwrap();
+    for (i, &ref input) in inputs.iter().enumerate() {
+        let c_tt = to_enzyme_typetree(input.clone(), llvm_data_layout, llcx);
+        let c_str = unsafe { llvm::EnzymeTypeTreeToString(c_tt.inner) };
+        let c_str = unsafe { std::ffi::CStr::from_ptr(c_str) };
+        unsafe {
+            let attr = llvm::LLVMCreateStringAttribute(
+                llcx,
+                c_attr_name.as_ptr(),
+                c_attr_name.as_bytes().len() as c_uint,
+                c_str.as_ptr(),
+                c_str.to_bytes().len() as c_uint,
+            );
+            llvm::LLVMRustAddFncParamAttr(fn_def, i as u32, attr);
+        }
+        unsafe { llvm::EnzymeTypeTreeToStringFree(c_str.as_ptr()) };
+    }
+    let ret_attr = unsafe {
+        let c_tt = to_enzyme_typetree(ret_tt, llvm_data_layout, llcx);
+        let c_str = llvm::EnzymeTypeTreeToString(c_tt.inner);
+        let c_str = std::ffi::CStr::from_ptr(c_str);
+        let attr = llvm::LLVMCreateStringAttribute(
+            llcx,
+            c_attr_name.as_ptr(),
+            c_attr_name.as_bytes().len() as c_uint,
+            c_str.as_ptr(),
+            c_str.to_bytes().len() as c_uint,
+        );
+        llvm::EnzymeTypeTreeToStringFree(c_str.as_ptr());
+        attr
+    };
+    unsafe {
+        llvm::LLVMRustAddRetFncAttr(fn_def, ret_attr);
     }
 }

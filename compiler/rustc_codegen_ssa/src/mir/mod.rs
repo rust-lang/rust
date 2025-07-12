@@ -509,7 +509,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     let indirect_operand = OperandValue::Pair(llarg, llextra);
 
                     let tmp = PlaceRef::alloca_unsized_indirect(bx, arg.layout);
-                    indirect_operand.store(bx, tmp);
+                    indirect_operand.store(bx, tmp, None);
                     LocalRef::UnsizedPlace(tmp)
                 }
                 _ => {

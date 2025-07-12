@@ -365,14 +365,7 @@ fn generate_enzyme_call<'ll>(
         let attr = llvm::AttributeKind::NoInline.create_attr(cx.llcx);
         attributes::apply_to_llfn(ad_fn, Function, &[attr]);
 
-        // TODO(KMJ-007): Add type tree metadata if available
-        // This requires adding CreateTypeTreeAttribute to LLVM bindings
-        // if let Some(tree) = fnc_tree {
-        //     let data_layout = cx.data_layout();
-        //     let enzyme_tree = to_enzyme_typetree(tree, data_layout, cx.llcx);
-        //     let tt_attr = llvm::CreateTypeTreeAttribute(cx.llcx, enzyme_tree);
-        //     attributes::apply_to_llfn(ad_fn, Function, &[tt_attr]);
-        // }
+
 
         // We add a made-up attribute just such that we can recognize it after AD to update
         // (no)-inline attributes. We'll then also remove this attribute.

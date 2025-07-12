@@ -2,6 +2,7 @@ use std::assert_matches::assert_matches;
 use std::ops::Deref;
 
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
+use rustc_ast::expand::typetree::FncTree;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{AtomicOrdering, Instance, Ty};
@@ -226,7 +227,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn alloca(&mut self, size: Size, align: Align) -> Self::Value;
     fn dynamic_alloca(&mut self, size: Self::Value, align: Align) -> Self::Value;
 
-    fn load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align) -> Self::Value;
+    fn load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align, tt: Option<FncTree>) -> Self::Value;
     fn volatile_load(&mut self, ty: Self::Type, ptr: Self::Value) -> Self::Value;
     fn atomic_load(
         &mut self,
@@ -237,7 +238,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     ) -> Self::Value;
     fn load_from_place(&mut self, ty: Self::Type, place: PlaceValue<Self::Value>) -> Self::Value {
         assert_eq!(place.llextra, None);
-        self.load(ty, place.llval, place.align)
+        self.load(ty, place.llval, place.align, None)
     }
     fn load_operand(&mut self, place: PlaceRef<'tcx, Self::Value>)
     -> OperandRef<'tcx, Self::Value>;
@@ -287,10 +288,10 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn range_metadata(&mut self, load: Self::Value, range: WrappingRange);
     fn nonnull_metadata(&mut self, load: Self::Value);
 
-    fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align) -> Self::Value;
+    fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align, tt: Option<FncTree>) -> Self::Value;
     fn store_to_place(&mut self, val: Self::Value, place: PlaceValue<Self::Value>) -> Self::Value {
         assert_eq!(place.llextra, None);
-        self.store(val, place.llval, place.align)
+        self.store(val, place.llval, place.align, None)
     }
     fn store_with_flags(
         &mut self,
@@ -415,6 +416,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         src_align: Align,
         size: Self::Value,
         flags: MemFlags,
+        tt: Option<FncTree>,
     );
     fn memmove(
         &mut self,
@@ -424,6 +426,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         src_align: Align,
         size: Self::Value,
         flags: MemFlags,
+        tt: Option<FncTree>,
     );
     fn memset(
         &mut self,
@@ -432,6 +435,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         size: Self::Value,
         align: Align,
         flags: MemFlags,
+        tt: Option<FncTree>,
     );
 
     /// *Typed* copy for non-overlapping places.
@@ -471,7 +475,7 @@ pub trait BuilderMethods<'a, 'tcx>:
             temp.val.store_with_flags(self, dst.with_type(layout), flags);
         } else if !layout.is_zst() {
             let bytes = self.const_usize(layout.size.bytes());
-            self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags);
+            self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags, None);
         }
     }
 

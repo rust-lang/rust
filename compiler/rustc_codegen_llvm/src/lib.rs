@@ -38,7 +38,7 @@ use rustc_codegen_ssa::back::write::{
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen, TargetConfig};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_errors::{DiagCtxtHandle, FatalError};
+use rustc_errors::{DiagCtxt, FatalError};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
@@ -46,6 +46,12 @@ use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{Lto, OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_span::Symbol;
+
+#[derive(Clone)]
+pub struct DiffTypeTree {
+    pub ret_tt: TypeTree,
+    pub input_tt: Vec<TypeTree>,
+}
 
 mod back {
     pub(crate) mod archive;
@@ -162,17 +168,9 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     type ThinData = back::lto::ThinData;
     type ThinBuffer = back::lto::ThinBuffer;
     type TypeTree = DiffTypeTree;
-    fn print_pass_timings(&self) {
-        let timings = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintPassTimings(s) }).unwrap();
-        print!("{timings}");
-    }
-    fn print_statistics(&self) {
-        let stats = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
-        print!("{stats}");
-    }
     fn run_link(
         cgcx: &CodegenContext<Self>,
-        dcx: DiagCtxtHandle<'_>,
+        dcx: &DiagCtxt,
         modules: Vec<ModuleCodegen<Self::Module>>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::write::link(cgcx, dcx, modules)
@@ -191,44 +189,47 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
         back::lto::run_thin(cgcx, modules, cached_modules)
     }
-    fn optimize(
+    fn print_pass_timings(&self) {
+        let timings = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintPassTimings(s) }).unwrap();
+        print!("{timings}");
+    }
+    fn print_statistics(&self) {
+        let stats = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
+        print!("{stats}");
+    }
+    unsafe fn optimize(
         cgcx: &CodegenContext<Self>,
-        dcx: DiagCtxtHandle<'_>,
-        module: &mut ModuleCodegen<Self::Module>,
+        dcx: &DiagCtxt,
+        module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
         back::write::optimize(cgcx, dcx, module, config)
     }
     fn optimize_fat(
         cgcx: &CodegenContext<Self>,
-        module: &mut ModuleCodegen<Self::Module>,
+        llmod: &mut ModuleCodegen<Self::Module>,
     ) -> Result<(), FatalError> {
-        let dcx = cgcx.create_dcx();
-        let dcx = dcx.handle();
-        back::lto::run_pass_manager(cgcx, dcx, module, false)
+        back::write::optimize_fat(cgcx, llmod)
     }
-    fn optimize_thin(
+    unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,
         thin: ThinModule<Self>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        back::lto::optimize_thin_module(thin, cgcx)
+        back::lto::optimize_thin(cgcx, thin)
     }
-    fn codegen(
+    unsafe fn codegen(
         cgcx: &CodegenContext<Self>,
-        dcx: DiagCtxtHandle<'_>,
+        dcx: &DiagCtxt,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError> {
         back::write::codegen(cgcx, dcx, module, config)
     }
-    fn prepare_thin(
-        module: ModuleCodegen<Self::Module>,
-        emit_summary: bool,
-    ) -> (String, Self::ThinBuffer) {
-        back::lto::prepare_thin(module, emit_summary)
+    fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
+        back::lto::prepare_thin(module)
     }
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
-        (module.name, back::lto::ModuleBuffer::new(module.module_llvm.llmod()))
+        back::lto::serialize_module(module)
     }
     /// Generate autodiff rules
     fn autodiff(
@@ -238,17 +239,10 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         typetrees: FxHashMap<String, Self::TypeTree>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
-        if cgcx.lto != Lto::Fat {
-            let dcx = cgcx.create_dcx();
-            return Err(dcx.handle().emit_almost_fatal(AutoDiffWithoutLTO));
-        }
         builder::autodiff::differentiate(module, cgcx, diff_fncs, typetrees, config)
     }
-
-    // The typetrees contain all information, their order therefore is irrelevant.
-    #[allow(rustc::potential_query_instability)]
     fn typetrees(module: &mut Self::Module) -> FxHashMap<String, Self::TypeTree> {
-        module.typetrees.drain().collect()
+        module.typetrees.clone()
     }
 }
 
@@ -396,12 +390,6 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct DiffTypeTree {
-    pub ret_tt: TypeTree,
-    pub input_tt: Vec<TypeTree>,
-}
-
 #[allow(dead_code)]
 pub struct ModuleLlvm {
     llcx: &'static mut llvm::Context,
@@ -447,7 +435,7 @@ impl ModuleLlvm {
         cgcx: &CodegenContext<LlvmCodegenBackend>,
         name: &CStr,
         buffer: &[u8],
-        dcx: DiagCtxtHandle<'_>,
+        dcx: DiagCtxt<'_>,
     ) -> Result<Self, FatalError> {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);

@@ -336,7 +336,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 // This is being deprecated, but for now stdarch still needs it for
                 // Newtype vector of array, e.g. #[repr(simd)] struct S([i32; 4]);
                 let place = PlaceRef::alloca(bx, field);
-                self.val.store(bx, place.val.with_type(self.layout));
+                self.val.store(bx, place.val.with_type(self.layout), None);
                 return bx.load_operand(place);
             } else {
                 // Part of https://github.com/rust-lang/compiler-team/issues/838
@@ -694,8 +694,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         self,
         bx: &mut Bx,
         dest: PlaceRef<'tcx, V>,
+        tt: Option<FncTree>,
     ) {
-        self.store_with_flags(bx, dest, MemFlags::empty());
+        self.store_with_flags(bx, dest, MemFlags::empty(), tt);
     }
 
     pub fn volatile_store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
@@ -703,7 +704,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         bx: &mut Bx,
         dest: PlaceRef<'tcx, V>,
     ) {
-        self.store_with_flags(bx, dest, MemFlags::VOLATILE);
+        self.store_with_flags(bx, dest, MemFlags::VOLATILE, None);
     }
 
     pub fn unaligned_volatile_store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
@@ -711,7 +712,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         bx: &mut Bx,
         dest: PlaceRef<'tcx, V>,
     ) {
-        self.store_with_flags(bx, dest, MemFlags::VOLATILE | MemFlags::UNALIGNED);
+        self.store_with_flags(bx, dest, MemFlags::VOLATILE | MemFlags::UNALIGNED, None);
     }
 
     pub fn nontemporal_store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
@@ -719,7 +720,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         bx: &mut Bx,
         dest: PlaceRef<'tcx, V>,
     ) {
-        self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
+        self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL, None);
     }
 
     pub(crate) fn store_with_flags<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
@@ -727,6 +728,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         bx: &mut Bx,
         dest: PlaceRef<'tcx, V>,
         flags: MemFlags,
+        tt: Option<FncTree>,
     ) {
         debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
         match self {
@@ -743,7 +745,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             }
             OperandValue::Immediate(s) => {
                 let val = bx.from_immediate(s);
-                bx.store_with_flags(val, dest.val.llval, dest.val.align, flags);
+                bx.store(val, dest.val.llval, dest.val.align, tt);
             }
             OperandValue::Pair(a, b) => {
                 let BackendRepr::ScalarPair(a_scalar, b_scalar) = dest.layout.backend_repr else {
@@ -753,12 +755,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
 
                 let val = bx.from_immediate(a);
                 let align = dest.val.align;
-                bx.store_with_flags(val, dest.val.llval, align, flags);
+                bx.store(val, dest.val.llval, align, tt);
 
                 let llptr = bx.inbounds_ptradd(dest.val.llval, bx.const_usize(b_offset.bytes()));
                 let val = bx.from_immediate(b);
                 let align = dest.val.align.restrict_for_offset(b_offset);
-                bx.store_with_flags(val, llptr, align, flags);
+                bx.store(val, llptr, align, tt);
             }
         }
     }
@@ -798,7 +800,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
 
         // Store the allocated region and the extra to the indirect place.
         let indirect_operand = OperandValue::Pair(dst, llextra);
-        indirect_operand.store(bx, indirect_dest);
+        indirect_operand.store(bx, indirect_dest, None);
     }
 }
 

@@ -1552,7 +1552,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     MemFlags::empty(),
                 );
                 // ...and then load it with the ABI type.
-                llval = load_cast(bx, cast, llscratch, scratch_align);
+                llval = bx.load(bx.backend_type(arg.layout), llval, align, None);
                 bx.lifetime_end(llscratch, scratch_size);
             } else {
                 // We can't use `PlaceRef::load` here because the argument
@@ -1560,7 +1560,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // used for this call is passing it by-value. In that case,
                 // the load would just produce `OperandValue::Ref` instead
                 // of the `OperandValue::Immediate` we need for the call.
-                llval = bx.load(bx.backend_type(arg.layout), llval, align);
+                llval = bx.load(bx.backend_type(arg.layout), llval, align, None);
                 if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
                     if scalar.is_bool() {
                         bx.range_metadata(llval, WrappingRange { start: 0, end: 1 });
@@ -1915,9 +1915,9 @@ fn load_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         assert_eq!(cast.rest.unit.size, cast.rest.total);
         let first_ty = bx.reg_backend_type(&cast.prefix[0].unwrap());
         let second_ty = bx.reg_backend_type(&cast.rest.unit);
-        let first = bx.load(first_ty, ptr, align);
+        let first = bx.load(first_ty, ptr, align, None);
         let second_ptr = bx.inbounds_ptradd(ptr, bx.const_usize(offset_from_start.bytes()));
-        let second = bx.load(second_ty, second_ptr, align.restrict_for_offset(offset_from_start));
+        let second = bx.load(second_ty, second_ptr, align.restrict_for_offset(offset_from_start), None);
         let res = bx.cx().const_poison(cast_ty);
         let res = bx.insert_value(res, first, 0);
         bx.insert_value(res, second, 1)

@@ -283,7 +283,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                         scalar,
                         niche_llty,
                     );
-                    OperandValue::Immediate(niche_llval).store(bx, niche);
+                    OperandValue::Immediate(niche_llval).store(bx, niche, None);
                 }
             }
         }

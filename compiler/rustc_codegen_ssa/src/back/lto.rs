@@ -2,7 +2,7 @@ use std::ffi::CString;
 use std::sync::Arc;
 
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
-use rustc_data_structures::memmap::Mmap;
+use rustc_data_structures::{fx::FxHashMap, memmap::Mmap};
 use rustc_errors::FatalError;
 
 use super::write::CodegenContext;
@@ -84,11 +84,12 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
         self,
         cgcx: &CodegenContext<B>,
         diff_fncs: Vec<AutoDiffItem>,
+        typetrees: FxHashMap<String, B::TypeTree>,
         config: &ModuleConfig,
     ) -> Result<LtoModuleCodegen<B>, FatalError> {
         match &self {
             LtoModuleCodegen::Fat(module) => {
-                B::autodiff(cgcx, &module, diff_fncs, config)?;
+                B::autodiff(cgcx, &module, diff_fncs, typetrees, config)?;
             }
             _ => panic!("autodiff called with non-fat LTO module"),
         }

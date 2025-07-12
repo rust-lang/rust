@@ -2673,4 +2673,289 @@ unsafe extern "C" {
 
     // Type Tree Attribute Functions
     pub fn CreateTypeTreeAttribute<'a>(llcx: &'a Context, typetree: &'a TypeTree) -> &'a Attribute;
+
+    // Enzyme Type Tree Functions
+    pub fn EnzymeNewTypeTree() -> CTypeTreeRef;
+    pub fn EnzymeFreeTypeTree(CTT: CTypeTreeRef);
+    pub fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef;
+    pub fn EnzymeNewTypeTreeTR(arg1: CTypeTreeRef) -> CTypeTreeRef;
+    pub fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef) -> bool;
+    pub fn EnzymeTypeTreeOnlyEq(arg1: CTypeTreeRef, pos: i64);
+    pub fn EnzymeTypeTreeData0Eq(arg1: CTypeTreeRef);
+    pub fn EnzymeTypeTreeShiftIndiciesEq(
+        arg1: CTypeTreeRef,
+        data_layout: *const c_char,
+        offset: i64,
+        max_size: i64,
+        add_offset: u64,
+    );
+    pub fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
+    pub fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
+
+    // Enzyme Configuration Functions
+    pub fn EnzymeSetCLBool(arg1: *mut c_void, arg2: u8);
+    pub fn EnzymeSetCLInteger(arg1: *mut c_void, arg2: i64);
+
+    // Enzyme Autodiff Functions
+    pub fn EnzymeCreatePrimalAndGradient<'a>(
+        arg1: EnzymeLogicRef,
+        _builderCtx: *const u8,
+        _callerCtx: *const u8,
+        todiff: &'a Value,
+        retType: CDIFFE_TYPE,
+        constant_args: *const CDIFFE_TYPE,
+        constant_args_size: size_t,
+        TA: EnzymeTypeAnalysisRef,
+        returnValue: u8,
+        dretUsed: u8,
+        mode: CDerivativeMode,
+        width: c_uint,
+        freeMemory: u8,
+        additionalArg: Option<&Type>,
+        forceAnonymousTape: u8,
+        typeInfo: CFnTypeInfo,
+        _uncacheable_args: *const u8,
+        uncacheable_args_size: size_t,
+        augmented: EnzymeAugmentedReturnPtr,
+        AtomicAdd: u8,
+    ) -> &'a Value;
+
+    pub fn EnzymeCreateForwardDiff<'a>(
+        arg1: EnzymeLogicRef,
+        _builderCtx: *const u8,
+        _callerCtx: *const u8,
+        todiff: &'a Value,
+        retType: CDIFFE_TYPE,
+        constant_args: *const CDIFFE_TYPE,
+        constant_args_size: size_t,
+        TA: EnzymeTypeAnalysisRef,
+        returnValue: u8,
+        mode: CDerivativeMode,
+        freeMemory: u8,
+        width: c_uint,
+        additionalArg: Option<&Type>,
+        typeInfo: CFnTypeInfo,
+        _uncacheable_args: *const u8,
+        uncacheable_args_size: size_t,
+        augmented: EnzymeAugmentedReturnPtr,
+    ) -> &'a Value;
+
+    pub fn CreateTypeAnalysis(
+        Log: EnzymeLogicRef,
+        customRuleNames: *mut *mut c_char,
+        customRules: *mut CustomRuleType,
+        numRules: size_t,
+    ) -> EnzymeTypeAnalysisRef;
+
+    pub fn FreeTypeAnalysis(arg1: EnzymeTypeAnalysisRef);
+    pub fn CreateEnzymeLogic(PostOpt: u8) -> EnzymeLogicRef;
+    pub fn ClearEnzymeLogic(arg1: EnzymeLogicRef);
+    pub fn FreeEnzymeLogic(arg1: EnzymeLogicRef);
+}
+
+// Type Tree Support for Autodiff
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum CDIFFE_TYPE {
+    DFT_OUT_DIFF = 0,
+    DFT_DUP_ARG = 1,
+    DFT_CONSTANT = 2,
+    DFT_DUP_NONEED = 3,
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum CDerivativeMode {
+    DEM_ForwardMode = 0,
+    DEM_ReverseModePrimal = 1,
+    DEM_ReverseModeGradient = 2,
+    DEM_ReverseModeCombined = 3,
+    DEM_ForwardModeSplit = 4,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct EnzymeOpaqueTypeAnalysis {
+    _unused: [u8; 0],
+}
+pub type EnzymeTypeAnalysisRef = *mut EnzymeOpaqueTypeAnalysis;
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct EnzymeOpaqueLogic {
+    _unused: [u8; 0],
+}
+pub type EnzymeLogicRef = *mut EnzymeOpaqueLogic;
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct EnzymeOpaqueAugmentedReturn {
+    _unused: [u8; 0],
+}
+pub type EnzymeAugmentedReturnPtr = *mut EnzymeOpaqueAugmentedReturn;
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IntList {
+    pub data: *mut i64,
+    pub size: size_t,
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum CConcreteType {
+    DT_Anything = 0,
+    DT_Integer = 1,
+    DT_Pointer = 2,
+    DT_Half = 3,
+    DT_Float = 4,
+    DT_Double = 5,
+    DT_Unknown = 6,
+}
+
+pub type CTypeTreeRef = *mut EnzymeTypeTree;
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct EnzymeTypeTree {
+    _unused: [u8; 0],
+}
+
+pub struct TypeTree {
+    pub inner: CTypeTreeRef,
+}
+
+impl TypeTree {
+    pub fn new() -> TypeTree {
+        let inner = unsafe { EnzymeNewTypeTree() };
+        TypeTree { inner }
+    }
+
+    #[must_use]
+    pub fn from_type(t: CConcreteType, ctx: &Context) -> TypeTree {
+        let inner = unsafe { EnzymeNewTypeTreeCT(t, ctx) };
+        TypeTree { inner }
+    }
+
+    #[must_use]
+    pub fn only(self, idx: isize) -> TypeTree {
+        unsafe {
+            EnzymeTypeTreeOnlyEq(self.inner, idx as i64);
+        }
+        self
+    }
+
+    #[must_use]
+    pub fn data0(self) -> TypeTree {
+        unsafe {
+            EnzymeTypeTreeData0Eq(self.inner);
+        }
+        self
+    }
+
+    pub fn merge(self, other: Self) -> Self {
+        unsafe {
+            EnzymeMergeTypeTree(self.inner, other.inner);
+        }
+        drop(other);
+        self
+    }
+
+    #[must_use]
+    pub fn shift(self, layout: &str, offset: isize, max_size: isize, add_offset: usize) -> Self {
+        let layout = std::ffi::CString::new(layout).unwrap();
+
+        unsafe {
+            EnzymeTypeTreeShiftIndiciesEq(
+                self.inner,
+                layout.as_ptr(),
+                offset as i64,
+                max_size as i64,
+                add_offset as u64,
+            )
+        }
+
+        self
+    }
+}
+
+impl Clone for TypeTree {
+    fn clone(&self) -> Self {
+        let inner = unsafe { EnzymeNewTypeTreeTR(self.inner) };
+        TypeTree { inner }
+    }
+}
+
+impl std::fmt::Display for TypeTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let ptr = unsafe { EnzymeTypeTreeToString(self.inner) };
+        let cstr = unsafe { std::ffi::CStr::from_ptr(ptr) };
+        match cstr.to_str() {
+            Ok(x) => write!(f, "{}", x)?,
+            Err(err) => write!(f, "could not parse: {}", err)?,
+        }
+
+        // delete C string pointer
+        unsafe { EnzymeTypeTreeToStringFree(ptr) }
+
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for TypeTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <Self as std::fmt::Display>::fmt(self, f)
+    }
+}
+
+impl Drop for TypeTree {
+    fn drop(&mut self) {
+        unsafe { EnzymeFreeTypeTree(self.inner) }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct CFnTypeInfo {
+    pub Arguments: *mut CTypeTreeRef,
+    pub Return: CTypeTreeRef,
+    pub KnownValues: *mut IntList,
+}
+
+pub type CustomRuleType = Option<
+    unsafe extern "C" fn(
+        direction: c_int,
+        ret: CTypeTreeRef,
+        args: *mut CTypeTreeRef,
+        known_values: *mut IntList,
+        num_args: size_t,
+        fnc: &Value,
+        ta: *const c_void,
+    ) -> u8,
+>;
+
+// Helper functions for type tree support
+pub fn cdiffe_from(act: DiffActivity) -> CDIFFE_TYPE {
+    match act {
+        DiffActivity::None => CDIFFE_TYPE::DFT_CONSTANT,
+        DiffActivity::Const => CDIFFE_TYPE::DFT_CONSTANT,
+        DiffActivity::Active => CDIFFE_TYPE::DFT_OUT_DIFF,
+        DiffActivity::ActiveOnly => CDIFFE_TYPE::DFT_OUT_DIFF,
+        DiffActivity::Dual => CDIFFE_TYPE::DFT_DUP_ARG,
+        DiffActivity::DualOnly => CDIFFE_TYPE::DFT_DUP_NONEED,
+        DiffActivity::Duplicated => CDIFFE_TYPE::DFT_DUP_ARG,
+        DiffActivity::DuplicatedOnly => CDIFFE_TYPE::DFT_DUP_NONEED,
+        DiffActivity::FakeActivitySize(_) => panic!("Implementation error"),
+    }
+}
+
+pub fn is_size(act: DiffActivity) -> bool {
+    matches!(act, DiffActivity::FakeActivitySize(_))
+}
+
+#[repr(C)]
+pub enum LLVMVerifierFailureAction {
+    LLVMAbortProcessAction,
+    LLVMPrintMessageAction,
+    LLVMReturnStatusAction,
 }
