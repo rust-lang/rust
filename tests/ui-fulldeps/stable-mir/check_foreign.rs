@@ -14,9 +14,9 @@ extern crate rustc_middle;
 extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate rustc_span;
-extern crate stable_mir;
+extern crate rustc_public;
 
-use stable_mir::{
+use rustc_public::{
     ty::{Abi, ForeignItemKind},
     *,
 };

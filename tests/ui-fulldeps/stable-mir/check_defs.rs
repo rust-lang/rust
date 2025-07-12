@@ -13,13 +13,13 @@ extern crate rustc_middle;
 
 extern crate rustc_driver;
 extern crate rustc_interface;
-extern crate stable_mir;
+extern crate rustc_public;
 
 use std::assert_matches::assert_matches;
 use mir::{mono::Instance, TerminatorKind::*};
-use stable_mir::mir::mono::InstanceKind;
-use stable_mir::ty::{RigidTy, TyKind, Ty, UintTy};
-use stable_mir::*;
+use rustc_public::mir::mono::InstanceKind;
+use rustc_public::ty::{RigidTy, TyKind, Ty, UintTy};
+use rustc_public::*;
 use std::io::Write;
 use std::ops::ControlFlow;
 
@@ -27,7 +27,7 @@ const CRATE_NAME: &str = "input";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_stable_mir() -> ControlFlow<()> {
-    let entry = stable_mir::entry_fn().unwrap();
+    let entry = rustc_public::entry_fn().unwrap();
     let main_fn = Instance::try_from(entry).unwrap();
     assert_eq!(main_fn.name(), "main");
     assert_eq!(main_fn.trimmed_name(), "main");

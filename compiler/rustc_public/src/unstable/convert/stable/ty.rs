@@ -2,8 +2,8 @@
 
 use rustc_middle::ty::Ty;
 use rustc_middle::{bug, mir, ty};
-use rustc_smir::Tables;
-use rustc_smir::context::SmirCtxt;
+use rustc_public_shim::Tables;
+use rustc_public_shim::context::SmirCtxt;
 
 use crate::alloc;
 use crate::compiler_interface::BridgeTys;

@@ -14,7 +14,7 @@ extern crate rustc_middle;
 extern crate rustc_driver;
 extern crate rustc_interface;
 #[macro_use]
-extern crate stable_mir;
+extern crate rustc_public;
 
 use std::io::Write;
 
@@ -40,7 +40,7 @@ fn test_continue(args: &[String]) {
 
 fn test_break(args: &[String]) {
     let result = run!(args, || ControlFlow::Break::<bool, i32>(false));
-    assert_eq!(result, Err(stable_mir::CompilerError::Interrupted(false)));
+    assert_eq!(result, Err(rustc_public::CompilerError::Interrupted(false)));
 }
 
 #[allow(unreachable_code)]
@@ -48,7 +48,7 @@ fn test_skipped(args: &[String]) {
     let mut args = args.to_vec();
     args.push("--version".to_string());
     let result = run!(&args, || unreachable!() as ControlFlow<()>);
-    assert_eq!(result, Err(stable_mir::CompilerError::Skipped));
+    assert_eq!(result, Err(rustc_public::CompilerError::Skipped));
 }
 
 #[allow(unreachable_code)]
@@ -56,7 +56,7 @@ fn test_failed(args: &[String]) {
     let mut args = args.to_vec();
     args.push("--cfg=broken".to_string());
     let result = run!(&args, || unreachable!() as ControlFlow<()>);
-    assert_eq!(result, Err(stable_mir::CompilerError::Failed));
+    assert_eq!(result, Err(rustc_public::CompilerError::Failed));
 }
 
 /// Test that we are able to pass a closure and set the return according to the captured value.

@@ -2402,10 +2402,10 @@ pub fn run_cargo(
                 keep = true;
             } else if rlib_only_metadata {
                 if filename.contains("jemalloc_sys")
-                    || filename.contains("rustc_smir")
-                    || filename.contains("stable_mir")
+                    || filename.contains("rustc_public_shim")
+                    || filename.contains("rustc_public")
                 {
-                    // jemalloc_sys and rustc_smir are not linked into librustc_driver.so,
+                    // jemalloc_sys and rustc_public_shim are not linked into librustc_driver.so,
                     // so we need to distribute them as rlib to be able to use them.
                     keep |= filename.ends_with(".rlib");
                 } else {

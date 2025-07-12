@@ -14,9 +14,9 @@ extern crate rustc_middle;
 extern crate rustc_driver;
 extern crate rustc_interface;
 #[macro_use]
-extern crate stable_mir;
+extern crate rustc_public;
 
-use stable_mir::CrateDef;
+use rustc_public::CrateDef;
 use std::collections::HashSet;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -25,7 +25,7 @@ const CRATE_NAME: &str = "trait_test";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_traits() -> ControlFlow<()> {
-    let local_crate = stable_mir::local_crate();
+    let local_crate = rustc_public::local_crate();
     let local_traits = local_crate.trait_decls();
     assert_eq!(local_traits.len(), 1, "Expected `Max` trait, but found {:?}", local_traits);
     assert_eq!(&local_traits[0].name(), "Max");
@@ -42,14 +42,14 @@ fn test_traits() -> ControlFlow<()> {
     assert_impl(&impl_names, "<u64 as Max>");
     assert_impl(&impl_names, "<impl std::convert::From<Positive> for u64>");
 
-    let all_traits = stable_mir::all_trait_decls();
+    let all_traits = rustc_public::all_trait_decls();
     assert!(all_traits.len() > local_traits.len());
     assert!(
         local_traits.iter().all(|t| all_traits.contains(t)),
         "Local: {local_traits:#?}, All: {all_traits:#?}"
     );
 
-    let all_impls = stable_mir::all_trait_impls();
+    let all_impls = rustc_public::all_trait_impls();
     assert!(all_impls.len() > local_impls.len());
     assert!(
         local_impls.iter().all(|t| all_impls.contains(t)),

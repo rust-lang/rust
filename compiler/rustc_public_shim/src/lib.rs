@@ -3,7 +3,7 @@
 //! This crate is responsible for building Stable MIR components from internal components.
 //!
 //! This crate is not intended to be invoked directly by users.
-//! This crate is the public API of rustc that will be invoked by the `stable_mir` crate.
+//! This crate is the public API of rustc that will be invoked by the `rustc_public` crate.
 //!
 //! For more information see <https://github.com/rust-lang/project-stable-mir>
 //!
@@ -42,7 +42,7 @@ pub mod bridge;
 mod builder;
 pub mod context;
 
-#[deprecated(note = "please use `stable_mir::rustc_internal` instead")]
+#[deprecated(note = "please use `rustc_public::rustc_internal` instead")]
 pub mod rustc_internal {}
 
 /// A container which is used for TLS.
@@ -211,7 +211,7 @@ impl<'tcx, B: Bridge> Tables<'tcx, B> {
 }
 
 /// A trait defining types that are used to emulate StableMIR components, which is really
-/// useful when programming in stable_mir-agnostic settings.
+/// useful when programming in rustc_public-agnostic settings.
 pub trait Bridge: Sized {
     type DefId: Copy + Debug + PartialEq + IndexedVal;
     type AllocId: Copy + Debug + PartialEq + IndexedVal;
