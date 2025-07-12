@@ -1,0 +1,28 @@
+error: invalid signature for `extern "avr-interrupt"` function
+  --> $DIR/interrupt-invalid-signature.rs:44:35
+   |
+LL | extern "avr-interrupt" fn avr_arg(_byte: u8) {}
+   |                                   ^^^^^^^^^
+   |
+   = note: functions with the "avr-interrupt" ABI cannot have any parameters or return type
+help: remove the parameters and return type
+   |
+LL - extern "avr-interrupt" fn avr_arg(_byte: u8) {}
+LL + extern "avr-interrupt" fn avr_arg() {}
+   |
+
+error: invalid signature for `extern "avr-interrupt"` function
+  --> $DIR/interrupt-invalid-signature.rs:59:40
+   |
+LL | extern "avr-interrupt" fn avr_ret() -> u8 {
+   |                                        ^^
+   |
+   = note: functions with the "avr-interrupt" ABI cannot have any parameters or return type
+help: remove the parameters and return type
+   |
+LL - extern "avr-interrupt" fn avr_ret() -> u8 {
+LL + extern "avr-interrupt" fn avr_ret() {
+   |
+
+error: aborting due to 2 previous errors
+
