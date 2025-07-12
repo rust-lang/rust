@@ -42,7 +42,7 @@ use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
-use crate::attributes::test_attrs::IgnoreParser;
+use crate::attributes::test_attrs::{IgnoreParser, ShouldPanicParser};
 use crate::attributes::traits::{
     AllowIncoherentImplParser, CoherenceIsCoreParser, CoinductiveParser, ConstTraitParser,
     DenyExplicitImplParser, DoNotImplementViaObjectParser, FundamentalParser, MarkerParser,
@@ -149,6 +149,7 @@ attribute_parsers!(
         Single<RustcLayoutScalarValidRangeEnd>,
         Single<RustcLayoutScalarValidRangeStart>,
         Single<RustcObjectLifetimeDefaultParser>,
+        Single<ShouldPanicParser>,
         Single<SkipDuringMethodDispatchParser>,
         Single<TransparencyParser>,
         Single<WithoutArgs<AllowIncoherentImplParser>>,
@@ -733,6 +734,11 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         attributes.extend(parsed_attributes);
 
         attributes
+    }
+
+    /// Returns whether there is a parser for an attribute with this name
+    pub fn is_parsed_attribute(path: &[Symbol]) -> bool {
+        Late::parsers().0.contains_key(path)
     }
 
     fn lower_attr_args(&self, args: &ast::AttrArgs, lower_span: impl Fn(Span) -> Span) -> AttrArgs {
