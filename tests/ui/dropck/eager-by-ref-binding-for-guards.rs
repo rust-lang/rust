@@ -17,15 +17,15 @@ fn main() {
         (mut long2, ref short2) if true => long2.0 = &short2,
         _ => unreachable!(),
     }
-    // This depends on the binding modes of the final or-pattern alternatives (see #142163):
+    // This depends on the binding modes of the first or-pattern alternatives:
     let res: &Result<u8, &u8> = &Ok(1);
     match (Struct(&&0), res) {
         (mut long3, Ok(short3) | &Err(short3)) if true => long3.0 = &short3,
-        //~^ ERROR `short3` does not live long enough
         _ => unreachable!(),
     }
     match (Struct(&&0), res) {
         (mut long4, &Err(short4) | Ok(short4)) if true => long4.0 = &short4,
+        //~^ ERROR `short4` does not live long enough
         _ => unreachable!(),
     }
 }
