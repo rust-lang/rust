@@ -2,6 +2,7 @@ use r_efi::efi::{self, Status};
 use r_efi::protocols::tcp4;
 
 use crate::io;
+use crate::mem::MaybeUninit;
 use crate::net::SocketAddrV4;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicBool, Ordering};
@@ -65,6 +66,29 @@ impl Tcp4 {
 
         let r = unsafe { ((*protocol).configure)(protocol, &mut config_data) };
         if r.is_error() { Err(crate::io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
+    }
+
+    pub(crate) fn get_mode_data(&self) -> io::Result<tcp4::ConfigData> {
+        // Using MaybeUninit::uninit() generates a Page Fault Here
+        let mut config_data: MaybeUninit<tcp4::ConfigData> = MaybeUninit::zeroed();
+        let protocol = self.protocol.as_ptr();
+
+        let r = unsafe {
+            ((*protocol).get_mode_data)(
+                protocol,
+                crate::ptr::null_mut(),
+                config_data.as_mut_ptr(),
+                crate::ptr::null_mut(),
+                crate::ptr::null_mut(),
+                crate::ptr::null_mut(),
+            )
+        };
+
+        if r.is_error() {
+            return Err(io::Error::from_raw_os_error(r.as_usize()));
+        } else {
+            Ok(unsafe { config_data.assume_init() })
+        }
     }
 
     pub(crate) fn connect(&self, timeout: Option<Duration>) -> io::Result<()> {
