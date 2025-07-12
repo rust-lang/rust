@@ -216,7 +216,6 @@ trigger_files = [
 exclude_labels = [
     "T-*",
 ]
-
 trigger_labels = [
     "A-rustdoc-json",
     "A-rustdoc-type-layout",
@@ -265,7 +264,6 @@ trigger_labels = [
     "A-rustdoc-ui",
     "A-rustdoc-js",
 ]
-
 trigger_files = [
     "src/librustdoc/html/",
     "tests/rustdoc/",
@@ -281,7 +279,6 @@ trigger_files = [
     "tests/rustdoc-js/",
     "tests/rustdoc-js-std",
 ]
-
 trigger_labels = [
     "A-type-based-search",
 ]
@@ -311,20 +308,17 @@ trigger_files = [
 exclude_labels = [
     "T-*",
 ]
-
 trigger_labels = [
     "D-*",
     "A-diagnostics",
 ]
 
 [autolabel."A-diagnostics"]
-
 trigger_labels = [
     "D-*",
 ]
 
 [autolabel."A-lints"]
-
 trigger_labels = [
     "L-*",
 ]
