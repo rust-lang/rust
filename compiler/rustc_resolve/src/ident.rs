@@ -1090,14 +1090,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let Some(module) = single_import.imported_module.get() else {
                 return true;
             };
-            let ImportKind::Single { source, target, target_bindings, .. } = &single_import.kind
-            else {
+            let ImportKind::Single { source, target, bindings, .. } = &single_import.kind else {
                 unreachable!();
             };
             if source != target {
-                if target_bindings.iter().all(|binding| binding.get().is_none()) {
+                if bindings.iter().all(|binding| binding.get().binding().is_none()) {
                     return true;
-                } else if target_bindings[ns].get().is_none() && binding.is_some() {
+                } else if bindings[ns].get().binding().is_none() && binding.is_some() {
                     return true;
                 }
             }

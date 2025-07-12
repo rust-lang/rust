@@ -24,7 +24,6 @@ use rustc_span::{Ident, Span, Symbol, kw, sym};
 use smallvec::SmallVec;
 use tracing::debug;
 
-use crate::Determinacy::{self, *};
 use crate::Namespace::*;
 use crate::diagnostics::{DiagMode, Suggestion, import_candidates};
 use crate::errors::{
@@ -33,12 +32,29 @@ use crate::errors::{
     ConsiderAddingMacroExport, ConsiderMarkingAsPub,
 };
 use crate::{
-    AmbiguityError, AmbiguityKind, BindingKey, Finalize, ImportSuggestion, Module,
+    AmbiguityError, AmbiguityKind, BindingKey, Determinacy, Finalize, ImportSuggestion, Module,
     ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult,
     PerNS, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string, names_to_string,
 };
 
 type Res = def::Res<NodeId>;
+
+/// A [`NameBinding`] in the process of being resolved.
+#[derive(Clone, Copy, Default, PartialEq)]
+pub(crate) enum PendingBinding<'ra> {
+    Ready(Option<NameBinding<'ra>>),
+    #[default]
+    Pending,
+}
+
+impl<'ra> PendingBinding<'ra> {
+    pub(crate) fn binding(self) -> Option<NameBinding<'ra>> {
+        match self {
+            PendingBinding::Ready(binding) => binding,
+            PendingBinding::Pending => None,
+        }
+    }
+}
 
 /// Contains data for specific kinds of imports.
 #[derive(Clone)]
@@ -49,10 +65,8 @@ pub(crate) enum ImportKind<'ra> {
         /// `target` in `use prefix::source as target`.
         /// It will directly use `source` when the format is `use prefix::source`.
         target: Ident,
-        /// Bindings to which `source` refers to.
-        source_bindings: PerNS<Cell<Result<NameBinding<'ra>, Determinacy>>>,
-        /// Bindings introduced by `target`.
-        target_bindings: PerNS<Cell<Option<NameBinding<'ra>>>>,
+        /// Bindings introduced by the import.
+        bindings: PerNS<Cell<PendingBinding<'ra>>>,
         /// `true` for `...::{self [as target]}` imports, `false` otherwise.
         type_ns_only: bool,
         /// Did this import result from a nested import? ie. `use foo::{bar, baz};`
@@ -96,26 +110,14 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use ImportKind::*;
         match self {
-            Single {
-                source,
-                target,
-                source_bindings,
-                target_bindings,
-                type_ns_only,
-                nested,
-                id,
-            } => f
+            Single { source, target, bindings, type_ns_only, nested, id, .. } => f
                 .debug_struct("Single")
                 .field("source", source)
                 .field("target", target)
                 // Ignore the nested bindings to avoid an infinite loop while printing.
                 .field(
-                    "source_bindings",
-                    &source_bindings.clone().map(|b| b.into_inner().map(|_| format_args!(".."))),
-                )
-                .field(
-                    "target_bindings",
-                    &target_bindings.clone().map(|b| b.into_inner().map(|_| format_args!(".."))),
+                    "bindings",
+                    &bindings.clone().map(|b| b.into_inner().binding().map(|_| format_args!(".."))),
                 )
                 .field("type_ns_only", type_ns_only)
                 .field("nested", nested)
@@ -491,8 +493,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     // Define a dummy resolution containing a `Res::Err` as a placeholder for a failed
     // or indeterminate resolution, also mark such failed imports as used to avoid duplicate diagnostics.
     fn import_dummy_binding(&mut self, import: Import<'ra>, is_indeterminate: bool) {
-        if let ImportKind::Single { target, ref target_bindings, .. } = import.kind {
-            if !(is_indeterminate || target_bindings.iter().all(|binding| binding.get().is_none()))
+        if let ImportKind::Single { target, ref bindings, .. } = import.kind {
+            if !(is_indeterminate
+                || bindings.iter().all(|binding| binding.get().binding().is_none()))
             {
                 return; // Has resolution, do not create the dummy binding
             }
@@ -567,10 +570,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             glob_error |= import.is_glob();
 
-            if let ImportKind::Single { source, ref source_bindings, .. } = import.kind
+            if let ImportKind::Single { source, ref bindings, .. } = import.kind
                 && source.name == kw::SelfLower
                 // Silence `unresolved import` error if E0429 is already emitted
-                && let Err(Determined) = source_bindings.value_ns.get()
+                && let PendingBinding::Ready(None) = bindings.value_ns.get()
             {
                 continue;
             }
@@ -819,15 +822,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         import.imported_module.set(Some(module));
-        let (source, target, source_bindings, target_bindings, type_ns_only) = match import.kind {
-            ImportKind::Single {
-                source,
-                target,
-                ref source_bindings,
-                ref target_bindings,
-                type_ns_only,
-                ..
-            } => (source, target, source_bindings, target_bindings, type_ns_only),
+        let (source, target, bindings, type_ns_only) = match import.kind {
+            ImportKind::Single { source, target, ref bindings, type_ns_only, .. } => {
+                (source, target, bindings, type_ns_only)
+            }
             ImportKind::Glob { .. } => {
                 self.resolve_glob_import(import);
                 return 0;
@@ -838,21 +836,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut indeterminate_count = 0;
         self.per_ns(|this, ns| {
             if !type_ns_only || ns == TypeNS {
-                if let Err(Undetermined) = source_bindings[ns].get() {
-                    let binding = this.maybe_resolve_ident_in_module(
-                        module,
-                        source,
-                        ns,
-                        &import.parent_scope,
-                        Some(import),
-                    );
-                    source_bindings[ns].set(binding);
-                } else {
+                if bindings[ns].get() != PendingBinding::Pending {
                     return;
                 };
-
+                let binding_result = this.maybe_resolve_ident_in_module(
+                    module,
+                    source,
+                    ns,
+                    &import.parent_scope,
+                    Some(import),
+                );
                 let parent = import.parent_scope.module;
-                match source_bindings[ns].get() {
+                let binding = match binding_result {
                     Ok(binding) => {
                         if binding.is_assoc_item()
                             && !this.tcx.features().import_trait_associated_functions()
@@ -865,12 +860,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             )
                             .emit();
                         }
-
+                        // We need the `target`, `source` can be extracted.
                         let imported_binding = this.import(binding, import);
-                        target_bindings[ns].set(Some(imported_binding));
                         this.define(parent, target, ns, imported_binding);
+                        PendingBinding::Ready(Some(imported_binding))
                     }
-                    Err(Determined) => {
+                    Err(Determinacy::Determined) => {
                         // Don't update the resolution for underscores, because it was never added.
                         if target.name != kw::Underscore {
                             let key = BindingKey::new(target, ns);
@@ -878,9 +873,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 resolution.single_imports.swap_remove(&import);
                             });
                         }
+                        PendingBinding::Ready(None)
                     }
-                    Err(Undetermined) => indeterminate_count += 1,
-                }
+                    Err(Determinacy::Undetermined) => {
+                        indeterminate_count += 1;
+                        PendingBinding::Pending
+                    }
+                };
+                bindings[ns].set(binding);
             }
         });
 
@@ -893,7 +893,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// consolidate multiple unresolved import errors into a single diagnostic.
     fn finalize_import(&mut self, import: Import<'ra>) -> Option<UnresolvedImportError> {
         let ignore_binding = match &import.kind {
-            ImportKind::Single { target_bindings, .. } => target_bindings[TypeNS].get(),
+            ImportKind::Single { bindings, .. } => bindings[TypeNS].get().binding(),
             _ => None,
         };
         let ambiguity_errors_len =
@@ -1011,60 +1011,53 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             PathResult::Indeterminate => unreachable!(),
         };
 
-        let (ident, target, source_bindings, target_bindings, type_ns_only, import_id) =
-            match import.kind {
-                ImportKind::Single {
-                    source,
-                    target,
-                    ref source_bindings,
-                    ref target_bindings,
-                    type_ns_only,
-                    id,
-                    ..
-                } => (source, target, source_bindings, target_bindings, type_ns_only, id),
-                ImportKind::Glob { is_prelude, ref max_vis, id } => {
-                    if import.module_path.len() <= 1 {
-                        // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
-                        // 2 segments, so the `resolve_path` above won't trigger it.
-                        let mut full_path = import.module_path.clone();
-                        full_path.push(Segment::from_ident(Ident::dummy()));
-                        self.lint_if_path_starts_with_module(Some(finalize), &full_path, None);
-                    }
-
-                    if let ModuleOrUniformRoot::Module(module) = module
-                        && module == import.parent_scope.module
-                    {
-                        // Importing a module into itself is not allowed.
-                        return Some(UnresolvedImportError {
-                            span: import.span,
-                            label: Some(String::from("cannot glob-import a module into itself")),
-                            note: None,
-                            suggestion: None,
-                            candidates: None,
-                            segment: None,
-                            module: None,
-                        });
-                    }
-                    if !is_prelude
-                        && let Some(max_vis) = max_vis.get()
-                        && !max_vis.is_at_least(import.vis, self.tcx)
-                    {
-                        let def_id = self.local_def_id(id);
-                        self.lint_buffer.buffer_lint(
-                            UNUSED_IMPORTS,
-                            id,
-                            import.span,
-                            BuiltinLintDiag::RedundantImportVisibility {
-                                max_vis: max_vis.to_string(def_id, self.tcx),
-                                import_vis: import.vis.to_string(def_id, self.tcx),
-                                span: import.span,
-                            },
-                        );
-                    }
-                    return None;
+        let (ident, target, bindings, type_ns_only, import_id) = match import.kind {
+            ImportKind::Single { source, target, ref bindings, type_ns_only, id, .. } => {
+                (source, target, bindings, type_ns_only, id)
+            }
+            ImportKind::Glob { is_prelude, ref max_vis, id } => {
+                if import.module_path.len() <= 1 {
+                    // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
+                    // 2 segments, so the `resolve_path` above won't trigger it.
+                    let mut full_path = import.module_path.clone();
+                    full_path.push(Segment::from_ident(Ident::dummy()));
+                    self.lint_if_path_starts_with_module(Some(finalize), &full_path, None);
                 }
-                _ => unreachable!(),
-            };
+
+                if let ModuleOrUniformRoot::Module(module) = module
+                    && module == import.parent_scope.module
+                {
+                    // Importing a module into itself is not allowed.
+                    return Some(UnresolvedImportError {
+                        span: import.span,
+                        label: Some(String::from("cannot glob-import a module into itself")),
+                        note: None,
+                        suggestion: None,
+                        candidates: None,
+                        segment: None,
+                        module: None,
+                    });
+                }
+                if !is_prelude
+                    && let Some(max_vis) = max_vis.get()
+                    && !max_vis.is_at_least(import.vis, self.tcx)
+                {
+                    let def_id = self.local_def_id(id);
+                    self.lint_buffer.buffer_lint(
+                        UNUSED_IMPORTS,
+                        id,
+                        import.span,
+                        BuiltinLintDiag::RedundantImportVisibility {
+                            max_vis: max_vis.to_string(def_id, self.tcx),
+                            import_vis: import.vis.to_string(def_id, self.tcx),
+                            span: import.span,
+                        },
+                    );
+                }
+                return None;
+            }
+            _ => unreachable!(),
+        };
 
         if self.privacy_errors.len() != privacy_errors_len {
             // Get the Res for the last element, so that we can point to alternative ways of
@@ -1095,17 +1088,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ns,
                     &import.parent_scope,
                     Some(Finalize { report_private: false, ..finalize }),
-                    target_bindings[ns].get(),
+                    bindings[ns].get().binding(),
                     Some(import),
                 );
 
                 match binding {
                     Ok(binding) => {
                         // Consistency checks, analogous to `finalize_macro_resolutions`.
-                        let initial_res = source_bindings[ns].get().map(|initial_binding| {
+                        let initial_res = bindings[ns].get().binding().map(|binding| {
+                            let initial_binding = binding.import_source();
                             all_ns_err = false;
-                            if let Some(target_binding) = target_bindings[ns].get()
-                                && target.name == kw::Underscore
+                            if target.name == kw::Underscore
                                 && initial_binding.is_extern_crate()
                                 && !initial_binding.is_import()
                             {
@@ -1114,7 +1107,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 } else {
                                     Used::Other
                                 };
-                                this.record_use(ident, target_binding, used);
+                                this.record_use(ident, binding, used);
                             }
                             initial_binding.res()
                         });
@@ -1126,7 +1119,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 .span_delayed_bug(import.span, "some error happened for an import");
                             return;
                         }
-                        if let Ok(initial_res) = initial_res {
+                        if let Some(initial_res) = initial_res {
                             if res != initial_res {
                                 span_bug!(import.span, "inconsistent resolution for an import");
                             }
@@ -1269,7 +1262,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut any_successful_reexport = false;
         let mut crate_private_reexport = false;
         self.per_ns(|this, ns| {
-            let Ok(binding) = source_bindings[ns].get() else {
+            let Some(binding) = bindings[ns].get().binding().map(|b| b.import_source()) else {
                 return;
             };
 
@@ -1340,7 +1333,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let mut full_path = import.module_path.clone();
             full_path.push(Segment::from_ident(ident));
             self.per_ns(|this, ns| {
-                if let Ok(binding) = source_bindings[ns].get() {
+                if let Some(binding) = bindings[ns].get().binding().map(|b| b.import_source()) {
                     this.lint_if_path_starts_with_module(Some(finalize), &full_path, Some(binding));
                 }
             });
@@ -1350,7 +1343,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
         self.per_ns(|this, ns| {
-            if let Ok(binding) = source_bindings[ns].get() {
+            if let Some(binding) = bindings[ns].get().binding().map(|b| b.import_source()) {
                 this.import_res_map.entry(import_id).or_default()[ns] = Some(binding.res());
             }
         });
@@ -1361,10 +1354,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     pub(crate) fn check_for_redundant_imports(&mut self, import: Import<'ra>) -> bool {
         // This function is only called for single imports.
-        let ImportKind::Single {
-            source, target, ref source_bindings, ref target_bindings, id, ..
-        } = import.kind
-        else {
+        let ImportKind::Single { source, target, ref bindings, id, .. } = import.kind else {
             unreachable!()
         };
 
@@ -1391,7 +1381,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut is_redundant = true;
         let mut redundant_span = PerNS { value_ns: None, type_ns: None, macro_ns: None };
         self.per_ns(|this, ns| {
-            if is_redundant && let Ok(binding) = source_bindings[ns].get() {
+            let binding = bindings[ns].get().binding().map(|b| b.import_source());
+            if is_redundant && let Some(binding) = binding {
                 if binding.res() == Res::Err {
                     return;
                 }
@@ -1402,7 +1393,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     &import.parent_scope,
                     None,
                     false,
-                    target_bindings[ns].get(),
+                    bindings[ns].get().binding(),
                     None,
                 ) {
                     Ok(other_binding) => {
