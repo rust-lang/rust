@@ -97,6 +97,8 @@ fn miri_config(
     let mut config = Config {
         target: Some(target.to_owned()),
         program,
+        // When changing this, remember to also adjust the logic in bootstrap, in Miri's test step,
+        // that deletes the `miri_ui` dir when it needs a rebuild.
         out_dir: PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("miri_ui"),
         threads: std::env::var("MIRI_TEST_THREADS")
             .ok()
