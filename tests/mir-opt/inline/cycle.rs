@@ -13,7 +13,7 @@ fn f(g: impl Fn()) {
 #[inline(always)]
 fn g() {
     // CHECK-LABEL: fn g(
-    // CHECK-NOT: (inlined f::<fn() {main}>)
+    // CHECK-NOT: inlined
     f(main);
 }
 
