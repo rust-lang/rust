@@ -6635,11 +6635,7 @@ intrinsics:
       - [float32x2_t, f32]
       - [float64x2_t, f64]
     compose:
-      - LLVMLink:
-          name: "fmaxnmv.{neon_type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.fmaxnmv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_max, [a]]
 
   - name: "vmaxnmv{neon_type[0].no}"
     doc: Floating-point maximum number across vector
@@ -6651,11 +6647,7 @@ intrinsics:
     types:
       - [float32x4_t, f32]
     compose:
-      - LLVMLink:
-          name: "fmaxnmv.{neon_type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.fmaxnmv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_max, [a]]
 
 
   - name: "vmaxnmv{neon_type[0].no}"
@@ -6671,11 +6663,7 @@ intrinsics:
       - [float16x4_t, f16]
       - [float16x8_t, f16]
     compose:
-      - LLVMLink:
-          name: "fmaxnmv.{neon_type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.fmaxnmv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_max, [a]]
 
 
   - name: "vminnmv{neon_type[0].no}"
@@ -6691,11 +6679,7 @@ intrinsics:
       - [float16x4_t, f16]
       - [float16x8_t, f16]
     compose:
-      - LLVMLink:
-          name: "fminnmv.{neon_type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.fminnmv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_min, [a]]
 
 
   - name: "vmaxv{neon_type[0].no}"
@@ -6815,11 +6799,7 @@ intrinsics:
       - [float32x2_t, "f32"]
       - [float64x2_t, "f64"]
     compose:
-      - LLVMLink:
-          name: "vminnmv.{neon_type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.fminnmv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_min, [a]]
 
   - name: "vminnmv{neon_type[0].no}"
     doc: "Floating-point minimum number across vector"
@@ -6832,11 +6812,7 @@ intrinsics:
     types:
       - [float32x4_t, "f32"]
     compose:
-      - LLVMLink:
-          name: "vminnmv.{neon_type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.fminnmv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_min, [a]]
 
   - name: "vmovl_high{neon_type[0].noq}"
     doc: Vector move
