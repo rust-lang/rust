@@ -1392,7 +1392,7 @@ impl String {
 
     /// Appends the given [`char`] to the end of this `String`.
     ///
-    /// Note: When pushing a char, it is automatically converted to its UTF-8 byte representation since Rust strings are UTF-8 encoded.
+    ///  Since Rust strings are UTF-8 encoded, the pushed char will automatically converted to its UTF-8 byte representation.
     ///
     /// # Examples
     ///
