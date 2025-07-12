@@ -1380,7 +1380,12 @@ where
                 .map(|c| c.result)
                 .collect();
             return if let Some(response) = self.try_merge_responses(&where_bounds) {
-                Ok((response, Some(TraitGoalProvenVia::ParamEnv)))
+                let proven_via = if response.value.certainty == Certainty::Yes {
+                    Some(TraitGoalProvenVia::ParamEnv)
+                } else {
+                    None
+                };
+                Ok((response, proven_via))
             } else {
                 Ok((self.bail_with_ambiguity(&where_bounds), None))
             };
@@ -1393,7 +1398,12 @@ where
                 .map(|c| c.result)
                 .collect();
             return if let Some(response) = self.try_merge_responses(&alias_bounds) {
-                Ok((response, Some(TraitGoalProvenVia::AliasBound)))
+                let proven_via = if response.value.certainty == Certainty::Yes {
+                    Some(TraitGoalProvenVia::AliasBound)
+                } else {
+                    None
+                };
+                Ok((response, proven_via))
             } else {
                 Ok((self.bail_with_ambiguity(&alias_bounds), None))
             };
