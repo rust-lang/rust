@@ -171,6 +171,19 @@ adjusting release notes. Could you take a look if available? Thanks <3
 [prioritize]
 label = "I-prioritize"
 
+[autolabel."S-waiting-on-review"]
+new_pr = true
+
+[autolabel."S-waiting-on-author"]
+new_draft = true
+
+[autolabel."needs-triage"]
+new_issue = true
+exclude_labels = [
+    "C-tracking-issue",
+    "A-diagnostics",
+]
+
 [autolabel."I-prioritize"]
 trigger_labels = [
     "regression-untriaged",
@@ -524,19 +537,6 @@ trigger_files = [
     "RELEASES.md",
     "src/stage0",
     "src/version"
-]
-
-[autolabel."S-waiting-on-review"]
-new_pr = true
-
-[autolabel."S-waiting-on-author"]
-new_draft = true
-
-[autolabel."needs-triage"]
-new_issue = true
-exclude_labels = [
-    "C-tracking-issue",
-    "A-diagnostics",
 ]
 
 [autolabel."WG-trait-system-refactor"]
