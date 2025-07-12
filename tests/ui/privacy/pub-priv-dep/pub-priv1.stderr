@@ -1,3 +1,39 @@
+warning: crate `priv_dep` from private dependency 'priv_dep' is reexported
+  --> $DIR/pub-priv1.rs:12:18
+   |
+LL | pub extern crate priv_dep;
+   |                  ^^^^^^^^
+
+warning: macro `m` from private dependency 'priv_dep' is reexported
+  --> $DIR/pub-priv1.rs:94:19
+   |
+LL | pub use priv_dep::m;
+   |                   ^
+
+warning: macro `fn_like` from private dependency 'pm' is reexported
+  --> $DIR/pub-priv1.rs:96:13
+   |
+LL | pub use pm::fn_like;
+   |             ^^^^^^^
+
+warning: derive macro `PmDerive` from private dependency 'pm' is reexported
+  --> $DIR/pub-priv1.rs:98:13
+   |
+LL | pub use pm::PmDerive;
+   |             ^^^^^^^^
+
+warning: attribute macro `pm_attr` from private dependency 'pm' is reexported
+  --> $DIR/pub-priv1.rs:100:13
+   |
+LL | pub use pm::pm_attr;
+   |             ^^^^^^^
+
+warning: variant `V1` from private dependency 'priv_dep' is reexported
+  --> $DIR/pub-priv1.rs:103:22
+   |
+LL | pub use priv_dep::E::V1;
+   |                      ^^
+
 error: type `OtherType` from private dependency 'priv_dep' in public interface
   --> $DIR/pub-priv1.rs:29:5
    |
@@ -90,5 +126,5 @@ LL | impl PubTraitOnPrivate for OtherType {}
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 14 previous errors
+error: aborting due to 14 previous errors; 6 warnings emitted
 

@@ -9,10 +9,10 @@
 #![deny(exported_private_dependencies)]
 
 // This crate is a private dependency
-// FIXME: This should trigger.
 pub extern crate priv_dep;
+//~^ WARN crate `priv_dep` from private dependency 'priv_dep' is reexported
 // This crate is a public dependency
-extern crate pub_dep;
+pub extern crate pub_dep;
 // This crate is a private dependency
 extern crate pm;
 
@@ -91,16 +91,16 @@ pub struct AllowedPrivType {
     pub allowed: OtherType,
 }
 
-// FIXME: This should trigger.
 pub use priv_dep::m;
-// FIXME: This should trigger.
+//~^ WARN macro `m` from private dependency 'priv_dep' is reexported
 pub use pm::fn_like;
-// FIXME: This should trigger.
+//~^ WARN macro `fn_like` from private dependency 'pm' is reexported
 pub use pm::PmDerive;
-// FIXME: This should trigger.
+//~^ WARN macro `PmDerive` from private dependency 'pm' is reexported
 pub use pm::pm_attr;
+//~^ WARN macro `pm_attr` from private dependency 'pm' is reexported
 
-// FIXME: This should trigger.
 pub use priv_dep::E::V1;
+//~^ WARN variant `V1` from private dependency 'priv_dep' is reexported
 
 fn main() {}

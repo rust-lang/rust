@@ -160,6 +160,8 @@ resolve_forward_declared_generic_param =
 resolve_found_an_item_configured_out =
     found an item that was configured out
 
+resolve_from_private_dep_in_public_reexport =
+    {$kind} `{$descr}` from private dependency '{$krate}' is reexported
 resolve_generic_arguments_in_macro_path =
     generic arguments in macro path
 
