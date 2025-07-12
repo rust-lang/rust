@@ -35,7 +35,9 @@
 //! pre-"runtime" MIR!
 
 use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{
+    MutVisitor, MutatingUseContext, NonUseContext, PlaceContext, Visitor,
+};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::DUMMY_SP;
@@ -141,7 +143,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         // statements itself to avoid moving the (relatively) large statements twice.
         // We do not push the statements directly into the target block (`bb`) as that is slower
         // due to additional reallocations
-        let mut merged_blocks = Vec::new();
+        let mut merged_blocks: Vec<BasicBlock> = Vec::new();
         let mut outer_changed = false;
         loop {
             let mut changed = false;
@@ -155,9 +157,19 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
                 let mut terminator =
                     self.basic_blocks[bb].terminator.take().expect("invalid terminator state");
-
-                terminator
-                    .successors_mut(|successor| self.collapse_goto_chain(successor, &mut changed));
+                let mut debuginfos = if let Some(first_succ) = terminator.successors().next()
+                    && terminator.successors().all(|s| s == first_succ)
+                {
+                    Some(Vec::new())
+                } else {
+                    None
+                };
+                terminator.successors_mut(|successor| {
+                    self.collapse_goto_chain(successor, &mut changed, debuginfos.as_mut())
+                });
+                if let Some(mut debuginfos) = debuginfos {
+                    self.basic_blocks[bb].after_last_stmt_debuginfos.append(&mut debuginfos);
+                }
 
                 let mut inner_changed = true;
                 merged_blocks.clear();
@@ -174,10 +186,19 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 if statements_to_merge > 0 {
                     let mut statements = std::mem::take(&mut self.basic_blocks[bb].statements);
                     statements.reserve(statements_to_merge);
+                    let mut parent_bb_last_debuginfos =
+                        std::mem::take(&mut self.basic_blocks[bb].after_last_stmt_debuginfos);
                     for &from in &merged_blocks {
+                        if let Some(stmt) = self.basic_blocks[from].statements.first_mut() {
+                            parent_bb_last_debuginfos.append(&mut stmt.debuginfos);
+                            std::mem::swap(&mut parent_bb_last_debuginfos, &mut stmt.debuginfos);
+                        }
                         statements.append(&mut self.basic_blocks[from].statements);
+                        parent_bb_last_debuginfos
+                            .append(&mut self.basic_blocks[from].after_last_stmt_debuginfos);
                     }
                     self.basic_blocks[bb].statements = statements;
+                    self.basic_blocks[bb].after_last_stmt_debuginfos = parent_bb_last_debuginfos;
                 }
 
                 self.basic_blocks[bb].terminator = Some(terminator);
@@ -212,7 +233,12 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     }
 
     /// Collapse a goto chain starting from `start`
-    fn collapse_goto_chain(&mut self, start: &mut BasicBlock, changed: &mut bool) {
+    fn collapse_goto_chain(
+        &mut self,
+        start: &mut BasicBlock,
+        changed: &mut bool,
+        pred_debuginfos: Option<&mut Vec<StmtDebugInfo<'tcx>>>,
+    ) {
         // Using `SmallVec` here, because in some logs on libcore oli-obk saw many single-element
         // goto chains. We should probably benchmark different sizes.
         let mut terminators: SmallVec<[_; 1]> = Default::default();
@@ -226,11 +252,18 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         }
         let last = current;
         *start = last;
+        let mut debuginfos = Vec::new();
         while let Some((current, mut terminator)) = terminators.pop() {
             let Terminator { kind: TerminatorKind::Goto { ref mut target }, .. } = terminator
             else {
                 unreachable!();
             };
+            if *target != last {
+                self.basic_blocks[current]
+                    .after_last_stmt_debuginfos
+                    .extend_from_slice(&debuginfos);
+            }
+            debuginfos.extend_from_slice(&self.basic_blocks[current].after_last_stmt_debuginfos);
             *changed |= *target != last;
             *target = last;
             debug!("collapsing goto chain from {:?} to {:?}", current, target);
@@ -244,6 +277,9 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 self.pred_count[current] -= 1;
             }
             self.basic_blocks[current].terminator = Some(terminator);
+        }
+        if let Some(parent_debuginfos) = pred_debuginfos {
+            parent_debuginfos.append(&mut debuginfos);
         }
     }
 
@@ -308,7 +344,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
     fn strip_nops(&mut self) {
         for blk in self.basic_blocks.iter_mut() {
-            blk.statements.retain(|stmt| !matches!(stmt.kind, StatementKind::Nop))
+            blk.strip_nops();
         }
     }
 }
@@ -414,7 +450,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
         trace!("running SimplifyLocals on {:?}", body.source);
 
         // First, we're going to get a count of *actual* uses for every `Local`.
-        let mut used_locals = UsedLocals::new(body);
+        let mut used_locals = UsedLocals::new(body, false);
 
         // Next, we're going to remove any `Local` with zero actual uses. When we remove those
         // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
@@ -442,9 +478,9 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
     }
 }
 
-pub(super) fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>) {
+pub(super) fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>, allow_debuginfo: bool) {
     // First, we're going to get a count of *actual* uses for every `Local`.
-    let mut used_locals = UsedLocals::new(body);
+    let mut used_locals = UsedLocals::new(body, allow_debuginfo);
 
     // Next, we're going to remove any `Local` with zero actual uses. When we remove those
     // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
@@ -483,15 +519,19 @@ struct UsedLocals {
     increment: bool,
     arg_count: u32,
     use_count: IndexVec<Local, u32>,
+    debuginfo_use: IndexVec<Local, bool>,
+    allow_debuginfo: bool,
 }
 
 impl UsedLocals {
     /// Determines which locals are used & unused in the given body.
-    fn new(body: &Body<'_>) -> Self {
+    fn new(body: &Body<'_>, allow_debuginfo: bool) -> Self {
         let mut this = Self {
             increment: true,
             arg_count: body.arg_count.try_into().unwrap(),
             use_count: IndexVec::from_elem(0, &body.local_decls),
+            debuginfo_use: IndexVec::from_elem(false, &body.local_decls),
+            allow_debuginfo,
         };
         this.visit_body(body);
         this
@@ -501,8 +541,22 @@ impl UsedLocals {
     ///
     /// Return place and arguments are always considered used.
     fn is_used(&self, local: Local) -> bool {
-        trace!("is_used({:?}): use_count: {:?}", local, self.use_count[local]);
-        local.as_u32() <= self.arg_count || self.use_count[local] != 0
+        trace!(
+            "is_used({:?}): use_count: {:?}, debuginfo_use: {}",
+            local, self.use_count[local], self.debuginfo_use[local]
+        );
+        local.as_u32() <= self.arg_count || self.use_count[local] != 0 || self.debuginfo_use[local]
+    }
+
+    fn is_only_debuginfo_used(&self, local: Local) -> bool {
+        self.allow_debuginfo
+            && local.as_u32() > self.arg_count
+            && self.use_count[local] == 0
+            && self.debuginfo_use[local]
+    }
+
+    fn is_debuginfo_used(&self, local: Local) -> bool {
+        self.debuginfo_use[local]
     }
 
     /// Updates the use counts to reflect the removal of given statement.
@@ -512,6 +566,12 @@ impl UsedLocals {
         // The location of the statement is irrelevant.
         let location = Location::START;
         self.visit_statement(statement, location);
+    }
+
+    fn statement_debuginfo_updated(&mut self, statement: &Statement<'_>) {
+        // The location of the statement is irrelevant.
+        let location = Location::START;
+        self.visit_statement_debuginfos(&statement.debuginfos, location);
     }
 
     /// Visits a left-hand side of an assignment.
@@ -544,12 +604,16 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
                 self.super_statement(statement, location);
             }
 
-            StatementKind::ConstEvalCounter | StatementKind::Nop => {}
-
-            StatementKind::StorageLive(_local) | StatementKind::StorageDead(_local) => {}
+            StatementKind::ConstEvalCounter
+            | StatementKind::Nop
+            | StatementKind::StorageLive(..)
+            | StatementKind::StorageDead(..) => {
+                self.visit_statement_debuginfos(&statement.debuginfos, location);
+            }
 
             StatementKind::Assign(box (ref place, ref rvalue)) => {
                 if rvalue.is_safe_to_remove() {
+                    self.visit_statement_debuginfos(&statement.debuginfos, location);
                     self.visit_lhs(place, location);
                     self.visit_rvalue(rvalue, location);
                 } else {
@@ -560,18 +624,22 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             StatementKind::SetDiscriminant { ref place, variant_index: _ }
             | StatementKind::Deinit(ref place)
             | StatementKind::BackwardIncompatibleDropHint { ref place, reason: _ } => {
+                self.visit_statement_debuginfos(&statement.debuginfos, location);
                 self.visit_lhs(place, location);
             }
         }
     }
 
-    fn visit_local(&mut self, local: Local, _ctx: PlaceContext, _location: Location) {
+    fn visit_local(&mut self, local: Local, ctx: PlaceContext, _location: Location) {
+        if ctx == PlaceContext::NonUse(NonUseContext::VarDebugInfo) {
+            self.debuginfo_use[local] = true;
+            return;
+        }
         if self.increment {
             self.use_count[local] += 1;
         } else {
-            assert_ne!(self.use_count[local], 0);
             self.use_count[local] -= 1;
-        }
+        };
     }
 }
 
@@ -588,30 +656,40 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
 
         for data in body.basic_blocks.as_mut_preserves_cfg() {
             // Remove unnecessary StorageLive and StorageDead annotations.
-            data.statements.retain(|statement| {
-                let keep = match &statement.kind {
+            for statement in data.statements.iter_mut() {
+                let drop_debuginfo = match &statement.kind {
                     StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                        used_locals.is_used(*local)
+                        if used_locals.is_used(*local)
+                            && !used_locals.is_only_debuginfo_used(*local)
+                        {
+                            continue;
+                        }
+                        true
                     }
-                    StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
-
-                    StatementKind::SetDiscriminant { place, .. }
-                    | StatementKind::BackwardIncompatibleDropHint { place, reason: _ }
-                    | StatementKind::Deinit(place) => used_locals.is_used(place.local),
-                    StatementKind::Nop => false,
-                    _ => true,
+                    StatementKind::Assign(box (place, _))
+                    | StatementKind::SetDiscriminant { box place, .. }
+                    | StatementKind::BackwardIncompatibleDropHint { box place, .. }
+                    | StatementKind::Deinit(box place) => {
+                        if used_locals.is_used(place.local)
+                            && !(used_locals.is_only_debuginfo_used(place.local)
+                                && statement.kind.as_debuginfo().is_some())
+                        {
+                            continue;
+                        }
+                        !used_locals.is_debuginfo_used(place.local)
+                    }
+                    _ => continue,
                 };
-
-                if !keep {
-                    trace!("removing statement {:?}", statement);
-                    modified = true;
-                    used_locals.statement_removed(statement);
-                }
-
-                keep
-            });
+                trace!("removing statement {:?}", statement);
+                modified = true;
+                used_locals.statement_removed(statement);
+                statement.make_nop(drop_debuginfo);
+                used_locals.statement_debuginfo_updated(statement);
+            }
+            data.strip_nops();
         }
     }
+    // cleanup unused local
 }
 
 struct LocalUpdater<'tcx> {

@@ -1,0 +1,125 @@
+//@ test-mir-pass: SimplifyCfg-final
+//@ compile-flags: -Zmir-enable-passes=+DeadStoreElimination-initial,+SimplifyConstCondition-final
+
+#![feature(core_intrinsics, custom_mir)]
+#![crate_type = "lib"]
+
+use std::intrinsics::mir::*;
+
+pub struct Foo {
+    a: i32,
+    b: i64,
+    c: i32,
+}
+
+// EMIT_MIR simplifycfg.drop_debuginfo.SimplifyCfg-final.diff
+#[custom_mir(dialect = "runtime")]
+pub fn drop_debuginfo(foo: &Foo, c: bool) -> i32 {
+    // CHECK-LABEL: fn drop_debuginfo
+    // CHECK: debug foo_b => [[foo_b:_[0-9]+]];
+    // CHECK: bb0: {
+    // CHECK-NEXT: DBG: AssignRef([[foo_b]], ((*_1).1: i64))
+    // CHECK-NEXT: _0 = copy ((*_1).2: i32);
+    // CHECK-NEXT: return;
+    mir! {
+        let _foo_a: &i32;
+        let _foo_b: &i64;
+        debug foo_a => _foo_a;
+        debug foo_b => _foo_b;
+        {
+            match c {
+                true => tmp,
+                _ => ret,
+            }
+        }
+        tmp = {
+            _foo_a = &(*foo).a;
+            Goto(ret)
+        }
+        ret = {
+            _foo_b = &(*foo).b;
+            RET = (*foo).c;
+            Return()
+        }
+    }
+}
+
+// EMIT_MIR simplifycfg.preserve_debuginfo_1.SimplifyCfg-final.diff
+#[custom_mir(dialect = "runtime")]
+pub fn preserve_debuginfo_1(foo: &Foo, v: &mut bool) -> i32 {
+    // CHECK-LABEL: fn preserve_debuginfo_1
+    // CHECK: debug foo_a => [[foo_a:_[0-9]+]];
+    // CHECK: debug foo_b => [[foo_b:_[0-9]+]];
+    // CHECK: debug foo_c => [[foo_c:_[0-9]+]];
+    // CHECK: bb0: {
+    // CHECK-NEXT: (*_2) = const true;
+    // CHECK-NEXT: DBG: AssignRef([[foo_a]], ((*_1).0: i32))
+    // CHECK-NEXT: DBG: AssignRef([[foo_b]], ((*_1).1: i64))
+    // CHECK-NEXT: _0 = copy ((*_1).2: i32);
+    // CHECK-NEXT: DBG: AssignRef([[foo_c]], ((*_1).2: i32))
+    // CHECK-NEXT: return;
+    mir! {
+        let _foo_a: &i32;
+        let _foo_b: &i64;
+        let _foo_c: &i32;
+        debug foo_a => _foo_a;
+        debug foo_b => _foo_b;
+        debug foo_c => _foo_c;
+        {
+            match true {
+                true => tmp,
+                _ => ret,
+            }
+        }
+        tmp = {
+            *v = true;
+            _foo_a = &(*foo).a;
+            Goto(ret)
+        }
+        ret = {
+            _foo_b = &(*foo).b;
+            RET = (*foo).c;
+            _foo_c = &(*foo).c;
+            Return()
+        }
+    }
+}
+
+// EMIT_MIR simplifycfg.preserve_debuginfo_2.SimplifyCfg-final.diff
+#[custom_mir(dialect = "runtime")]
+pub fn preserve_debuginfo_2(foo: &Foo) -> i32 {
+    // CHECK-LABEL: fn preserve_debuginfo_2
+    // CHECK: debug foo_a => [[foo_a:_[0-9]+]];
+    // CHECK: debug foo_b => [[foo_b:_[0-9]+]];
+    // CHECK: debug foo_c => [[foo_c:_[0-9]+]];
+    // CHECK: bb0: {
+    // CHECK-NEXT: DBG: AssignRef([[foo_a]], ((*_1).0: i32))
+    // CHECK-NEXT: DBG: AssignRef([[foo_b]], ((*_1).1: i64))
+    // CHECK-NEXT: _0 = copy ((*_1).2: i32);
+    // CHECK-NEXT: DBG: AssignRef([[foo_c]], ((*_1).2: i32))
+    // CHECK-NEXT: return;
+    mir! {
+        let _foo_a: &i32;
+        let _foo_b: &i64;
+        let _foo_c: &i32;
+        debug foo_a => _foo_a;
+        debug foo_b => _foo_b;
+        debug foo_c => _foo_c;
+        {
+            match true {
+                true => tmp,
+                _ => ret,
+            }
+        }
+        tmp = {
+            _foo_a = &(*foo).a;
+            Goto(ret)
+        }
+        ret = {
+            _foo_b = &(*foo).b;
+            RET = (*foo).c;
+            _foo_c = &(*foo).c;
+            Return()
+        }
+    }
+}

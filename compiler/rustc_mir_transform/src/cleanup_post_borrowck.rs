@@ -36,7 +36,9 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
                         CoverageKind::BlockMarker { .. } | CoverageKind::SpanMarker { .. },
                     )
                     | StatementKind::FakeRead(..)
-                    | StatementKind::BackwardIncompatibleDropHint { .. } => statement.make_nop(),
+                    | StatementKind::BackwardIncompatibleDropHint { .. } => {
+                        statement.make_nop(true)
+                    }
                     StatementKind::Assign(box (
                         _,
                         Rvalue::Cast(

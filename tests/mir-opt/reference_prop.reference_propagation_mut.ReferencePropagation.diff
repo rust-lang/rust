@@ -188,10 +188,11 @@
 -         StorageLive(_3);
           StorageLive(_4);
           _4 = const 5_usize;
-          StorageLive(_5);
-          _5 = &mut _4;
-          StorageLive(_6);
+-         StorageLive(_5);
+-         _5 = &mut _4;
+-         StorageLive(_6);
 -         _6 = copy (*_5);
++         // DBG: AssignRef(_5, _4)
 +         _6 = copy _4;
           StorageLive(_7);
           StorageLive(_8);
@@ -203,8 +204,8 @@
           StorageDead(_8);
           StorageDead(_7);
 -         _3 = const ();
-          StorageDead(_6);
-          StorageDead(_5);
+-         StorageDead(_6);
+-         StorageDead(_5);
           StorageDead(_4);
 -         StorageDead(_3);
 -         StorageLive(_9);
@@ -222,7 +223,7 @@
           _12 = move _13;
           StorageDead(_13);
 -         StorageDead(_14);
-          StorageLive(_15);
+-         StorageLive(_15);
           _15 = copy (*_12);
           StorageLive(_16);
           StorageLive(_17);
@@ -234,7 +235,7 @@
           StorageDead(_17);
           StorageDead(_16);
 -         _9 = const ();
-          StorageDead(_15);
+-         StorageDead(_15);
           StorageDead(_12);
           StorageDead(_11);
           StorageDead(_10);
@@ -246,7 +247,7 @@
           _20 = &mut _19;
           StorageLive(_21);
           _21 = &_20;
-          StorageLive(_22);
+-         StorageLive(_22);
           _22 = copy (*_20);
           StorageLive(_23);
           StorageLive(_24);
@@ -258,7 +259,7 @@
           StorageDead(_24);
           StorageDead(_23);
 -         _18 = const ();
-          StorageDead(_22);
+-         StorageDead(_22);
           StorageDead(_21);
           StorageDead(_20);
           StorageDead(_19);
@@ -270,7 +271,7 @@
           _27 = &mut _26;
           StorageLive(_28);
           _28 = &raw mut _27;
-          StorageLive(_29);
+-         StorageLive(_29);
           _29 = copy (*_27);
           StorageLive(_30);
           StorageLive(_31);
@@ -282,7 +283,7 @@
           StorageDead(_31);
           StorageDead(_30);
 -         _25 = const ();
-          StorageDead(_29);
+-         StorageDead(_29);
           StorageDead(_28);
           StorageDead(_27);
           StorageDead(_26);
@@ -292,7 +293,7 @@
           _33 = const 7_usize;
           StorageLive(_34);
           _34 = &mut _33;
-          StorageLive(_35);
+-         StorageLive(_35);
           _35 = copy (*_34);
           StorageLive(_36);
           StorageLive(_37);
@@ -304,7 +305,7 @@
           StorageDead(_37);
           StorageDead(_36);
 -         _32 = const ();
-          StorageDead(_35);
+-         StorageDead(_35);
           StorageDead(_34);
           StorageDead(_33);
 -         StorageDead(_32);
@@ -313,11 +314,11 @@
           _39 = const 7_usize;
           StorageLive(_40);
           _40 = &mut _39;
-          StorageLive(_41);
+-         StorageLive(_41);
           _41 = copy (*_40);
           StorageLive(_42);
           _42 = move _40;
-          StorageLive(_43);
+-         StorageLive(_43);
           _43 = copy (*_42);
           StorageLive(_44);
           _44 = move _42;
@@ -332,16 +333,16 @@
           StorageDead(_45);
 -         _38 = const ();
           StorageDead(_44);
-          StorageDead(_43);
+-         StorageDead(_43);
           StorageDead(_42);
-          StorageDead(_41);
+-         StorageDead(_41);
           StorageDead(_40);
           StorageDead(_39);
 -         StorageDead(_38);
 -         StorageLive(_47);
 -         StorageLive(_48);
 -         _48 = &mut (*_1);
-          StorageLive(_49);
+-         StorageLive(_49);
 -         _49 = copy (*_48);
 +         _49 = copy (*_1);
           StorageLive(_50);
@@ -354,7 +355,7 @@
           StorageDead(_51);
           StorageDead(_50);
 -         _47 = const ();
-          StorageDead(_49);
+-         StorageDead(_49);
 -         StorageDead(_48);
 -         StorageDead(_47);
 -         StorageLive(_52);
@@ -368,7 +369,7 @@
           _2 = move _54;
           StorageDead(_54);
 -         StorageDead(_55);
-          StorageLive(_56);
+-         StorageLive(_56);
           _56 = copy (*_53);
           StorageLive(_57);
           StorageLive(_58);
@@ -380,18 +381,21 @@
           StorageDead(_58);
           StorageDead(_57);
 -         _52 = const ();
-          StorageDead(_56);
+-         StorageDead(_56);
           StorageDead(_53);
 -         StorageDead(_52);
 -         StorageLive(_59);
           StorageLive(_60);
           _60 = const 5_usize;
-          StorageLive(_61);
-          _61 = &mut _60;
-          StorageLive(_62);
-          _62 = &_61;
-          StorageLive(_63);
-          _63 = copy (*_61);
+-         StorageLive(_61);
+-         _61 = &mut _60;
+-         StorageLive(_62);
+-         _62 = &_61;
+-         StorageLive(_63);
+-         _63 = copy (*_61);
++         // DBG: AssignRef(_61, _60)
++         // DBG: AssignRef(_62, _61)
++         _63 = copy _60;
           StorageLive(_64);
           StorageLive(_65);
           _65 = ();
@@ -402,19 +406,22 @@
           StorageDead(_65);
           StorageDead(_64);
 -         _59 = const ();
-          StorageDead(_63);
-          StorageDead(_62);
-          StorageDead(_61);
+-         StorageDead(_63);
+-         StorageDead(_62);
+-         StorageDead(_61);
           StorageDead(_60);
 -         StorageDead(_59);
           StorageLive(_66);
           _66 = const 5_usize;
-          StorageLive(_67);
-          _67 = &mut _66;
-          StorageLive(_68);
-          _68 = &mut _67;
-          StorageLive(_69);
-          _69 = copy (*_67);
+-         StorageLive(_67);
+-         _67 = &mut _66;
+-         StorageLive(_68);
+-         _68 = &mut _67;
+-         StorageLive(_69);
+-         _69 = copy (*_67);
++         // DBG: AssignRef(_67, _66)
++         // DBG: AssignRef(_68, _67)
++         _69 = copy _66;
           StorageLive(_70);
           StorageLive(_71);
           _71 = ();
@@ -425,9 +432,9 @@
           StorageDead(_71);
           StorageDead(_70);
           _0 = const ();
-          StorageDead(_69);
-          StorageDead(_68);
-          StorageDead(_67);
+-         StorageDead(_69);
+-         StorageDead(_68);
+-         StorageDead(_67);
           StorageDead(_66);
           return;
       }
