@@ -40,11 +40,11 @@ error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer 
 LL | pub const UNDERFLOW_ADDRESS_SPACE: *const u8 = unsafe { (1 as *const u8).offset(-2) };
    |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNDERFLOW_ADDRESS_SPACE` failed here
 
-error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by -$BYTES bytes, but got ALLOC3-0x2 which is only $BYTES bytes from the beginning of the allocation
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by -$BYTES bytes, but got ALLOC3-0x2 which points to before the beginning of the allocation
   --> $DIR/offset_ub.rs:16:49
    |
-LL | pub const NEGATIVE_OFFSET: *const u8 = unsafe { [0u8; 1].as_ptr().wrapping_offset(-2).offset(-2) };
-   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NEGATIVE_OFFSET` failed here
+LL | ...*const u8 = unsafe { [0u8; 1].as_ptr().wrapping_offset(-2).offset(-2) };
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NEGATIVE_OFFSET` failed here
 
 error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 1 byte, but got ALLOC4 which is at or beyond the end of the allocation of size $BYTES bytes
   --> $DIR/offset_ub.rs:18:50
