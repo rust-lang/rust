@@ -5,6 +5,7 @@ use crate::ops::{
     Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div, DivAssign,
     Mul, MulAssign, Neg, Not, Rem, RemAssign, Sub, SubAssign,
 };
+use crate::random::{Random, RandomSource};
 
 /// Provides intentionally-saturating arithmetic on `T`.
 ///
@@ -76,6 +77,13 @@ impl<T: fmt::LowerHex> fmt::LowerHex for Saturating<T> {
 impl<T: fmt::UpperHex> fmt::UpperHex for Saturating<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+#[unstable(feature = "random", issue = "130703")]
+impl<T: Random> Random for Saturating<T> {
+    fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
+        Self(T::random(source))
     }
 }
 
