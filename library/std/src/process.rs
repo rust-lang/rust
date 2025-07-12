@@ -1195,6 +1195,22 @@ impl Command {
     pub fn get_current_dir(&self) -> Option<&Path> {
         self.inner.get_current_dir()
     }
+
+    /// Resolve the program given in [`new`](Self::new) using the parent's PATH.
+    ///
+    /// Usually when a `env` is used to set `PATH` on a child process,
+    /// that new `PATH` will be used to discover the process.
+    /// With `resolve_in_parent_path` to `true`, the parent's `PATH` will be used instead.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// On Unix the process is executed after fork and after setting up the rest of the new environment.
+    /// So if `chroot`, `uid`, `gid` or `groups` are used then the way `PATH` is interpreted may be changed.
+    #[unstable(feature = "command_resolve", issue = "none")]
+    pub fn resolve_in_parent_path(&mut self, use_parent: bool) -> &mut Self {
+        self.inner.resolve_in_parent_path(use_parent);
+        self
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
