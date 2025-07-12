@@ -12,7 +12,6 @@
 #![feature(if_let_guard)]
 #[prelude_import]
 use std::prelude::rust_2024::*;
-#[macro_use]
 extern crate std;
 
 macro_rules! expr { ($expr:expr) => { $expr }; }

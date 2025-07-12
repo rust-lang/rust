@@ -6,7 +6,6 @@
 #![feature(fn_delegation)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
-#[macro_use]
 extern crate std;
 
 fn b<C>(e: C) { }

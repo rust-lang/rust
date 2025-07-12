@@ -7,7 +7,6 @@
 #![feature(core_intrinsics, generic_assert)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
-#[macro_use]
 extern crate std;
 
 fn arbitrary_consuming_method_for_demonstration_purposes() {
