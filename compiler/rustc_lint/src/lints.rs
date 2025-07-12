@@ -3081,6 +3081,14 @@ pub(crate) struct HiddenGlobReexports {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_reexport_private_dependency)]
+pub(crate) struct ReexportPrivateDependency {
+    pub name: String,
+    pub kind: String,
+    pub krate: Symbol,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_unnecessary_qualification)]
 pub(crate) struct UnusedQualifications {
     #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]

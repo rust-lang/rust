@@ -744,6 +744,9 @@ lint_redundant_semicolons_suggestion = remove {$multiple_semicolons ->
         *[false] this semicolon
     }
 
+lint_reexport_private_dependency =
+    {$kind} `{$name}` from private dependency '{$krate}' is re-exported
+
 lint_remove_mut_from_pattern = remove `mut` from the parameter
 
 lint_removed_lint = lint `{$name}` has been removed: {$reason}

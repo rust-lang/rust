@@ -739,6 +739,11 @@ pub enum BuiltinLintDiag {
         /// The local binding that shadows the glob reexport.
         private_item_span: Span,
     },
+    ReexportPrivateDependency {
+        name: String,
+        kind: String,
+        krate: Symbol,
+    },
     UnusedQualifications {
         /// The span of the unnecessarily-qualified path to remove.
         removal_span: Span,

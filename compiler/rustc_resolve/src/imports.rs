@@ -14,8 +14,8 @@ use rustc_middle::metadata::{ModChild, Reexport};
 use rustc_middle::{span_bug, ty};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
-    AMBIGUOUS_GLOB_REEXPORTS, HIDDEN_GLOB_REEXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-    REDUNDANT_IMPORTS, UNUSED_IMPORTS,
+    AMBIGUOUS_GLOB_REEXPORTS, EXPORTED_PRIVATE_DEPENDENCIES, HIDDEN_GLOB_REEXPORTS,
+    PUB_USE_OF_PRIVATE_EXTERN_CRATE, REDUNDANT_IMPORTS, UNUSED_IMPORTS,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -695,6 +695,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             );
                         }
                     }
+                }
+
+                if let NameBindingKind::Import { import, .. } = binding.kind
+                    && let Some(binding_id) = import.id()
+                    && let import_def_id = self.local_def_id(binding_id)
+                    && self.effective_visibilities.is_exported(import_def_id)
+                    && let Res::Def(reexported_kind, reexported_def_id) = binding.res()
+                    && !matches!(reexported_kind, DefKind::Ctor(..))
+                    && !reexported_def_id.is_local()
+                    && self.tcx.is_private_dep(reexported_def_id.krate)
+                {
+                    self.lint_buffer.buffer_lint(
+                        EXPORTED_PRIVATE_DEPENDENCIES,
+                        binding_id,
+                        binding.span,
+                        BuiltinLintDiag::ReexportPrivateDependency {
+                            kind: binding.res().descr().to_string(),
+                            name: key.ident.name.to_string(),
+                            krate: self.tcx.crate_name(reexported_def_id.krate),
+                        },
+                    );
                 }
             }
         }
