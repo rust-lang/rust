@@ -1,10 +1,14 @@
 use rustc_errors::DiagArgValue;
 use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
+use rustc_hir::lints::AttributeLintKind;
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 
-use crate::attributes::{AcceptMapping, AttributeParser, NoArgsAttributeParser, OnDuplicate};
+use crate::attributes::{
+    AcceptMapping, AttributeOrder, AttributeParser, NoArgsAttributeParser, OnDuplicate,
+    SingleAttributeParser,
+};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics;
@@ -111,5 +115,60 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         Some(AttributeKind::MacroUse { span: self.first_span?, arguments: self.state })
+    }
+}
+
+pub(crate) struct MacroExportParser;
+
+impl<S: Stage> SingleAttributeParser<S> for crate::attributes::macro_attrs::MacroExportParser {
+    const PATH: &[Symbol] = &[sym::macro_export];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const TEMPLATE: AttributeTemplate = template!(Word, List: "local_inner_macros");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let suggestions =
+            || <Self as SingleAttributeParser<S>>::TEMPLATE.suggestions(false, "macro_export");
+        let local_inner_macros = match args {
+            ArgParser::NoArgs => false,
+            ArgParser::List(list) => {
+                let Some(l) = list.single() else {
+                    let span = cx.attr_span;
+                    cx.emit_lint(
+                        AttributeLintKind::InvalidMacroExportArguments {
+                            suggestions: suggestions(),
+                        },
+                        span,
+                    );
+                    return None;
+                };
+                match l.meta_item().and_then(|i| i.path().word_sym()) {
+                    Some(sym::local_inner_macros) => true,
+                    _ => {
+                        let span = cx.attr_span;
+                        cx.emit_lint(
+                            AttributeLintKind::InvalidMacroExportArguments {
+                                suggestions: suggestions(),
+                            },
+                            span,
+                        );
+                        return None;
+                    }
+                }
+            }
+            ArgParser::NameValue(_) => {
+                let span = cx.attr_span;
+                let suggestions = suggestions();
+                cx.emit_err(session_diagnostics::IllFormedAttributeInputLint {
+                    num_suggestions: suggestions.len(),
+                    suggestions: DiagArgValue::StrListSepByAnd(
+                        suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
+                    ),
+                    span,
+                });
+                return None;
+            }
+        };
+        Some(AttributeKind::MacroExport { span: cx.attr_span, local_inner_macros })
     }
 }
