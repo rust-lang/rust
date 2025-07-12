@@ -33,7 +33,7 @@ use rustc_session::config::CrateType;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, INVALID_MACRO_EXPORT_ARGUMENTS,
-    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES, USELESS_DEPRECATED,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
@@ -1001,7 +1001,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::ForeignFn
             | Target::ForeignStatic
             | Target::ForeignTy
-            | Target::GenericParam(..)
+            | Target::GenericParam { .. }
             | Target::MacroDef
             | Target::PatField
             | Target::ExprField => None,
@@ -2262,6 +2262,28 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     hir_id,
                     attr.span(),
                     errors::Deprecated,
+                );
+            }
+            Target::Impl { of_trait: true }
+            | Target::GenericParam { has_default: false, kind: _ } => {
+                self.tcx.emit_node_span_lint(
+                    USELESS_DEPRECATED,
+                    hir_id,
+                    attr.span(),
+                    errors::DeprecatedAnnotationHasNoEffect { span: attr.span() },
+                );
+            }
+            Target::AssocConst | Target::Method(..) | Target::AssocTy
+                if matches!(
+                    self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id)),
+                    DefKind::Impl { of_trait: true }
+                ) =>
+            {
+                self.tcx.emit_node_span_lint(
+                    USELESS_DEPRECATED,
+                    hir_id,
+                    attr.span(),
+                    errors::DeprecatedAnnotationHasNoEffect { span: attr.span() },
                 );
             }
             _ => {}
