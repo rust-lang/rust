@@ -5,10 +5,10 @@ LL | fn main() { |b: [str; _]| {}; }
    |                       ^ not allowed in type signatures
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/missing-body.rs:5:17
+  --> $DIR/missing-body.rs:5:18
    |
 LL | fn main() { |b: [str; _]| {}; }
-   |                 ^^^^^^^^ doesn't have a size known at compile-time
+   |                  ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
    = note: slice and array elements must have `Sized` type

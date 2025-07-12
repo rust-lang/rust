@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `B` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:2:30
+  --> $DIR/unsized-bound.rs:2:34
    |
 LL | impl<A, B> Trait<(A, B)> for (A, B) where A: ?Sized, B: ?Sized, {}
-   |         -                    ^^^^^^ doesn't have a size known at compile-time
+   |         -                        ^ doesn't have a size known at compile-time
    |         |
    |         this type parameter needs to be `Sized`
    |
@@ -23,10 +23,10 @@ LL | trait Trait<A: ?Sized> {}
    |              ++++++++
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:2:30
+  --> $DIR/unsized-bound.rs:2:31
    |
 LL | impl<A, B> Trait<(A, B)> for (A, B) where A: ?Sized, B: ?Sized, {}
-   |      -                       ^^^^^^ doesn't have a size known at compile-time
+   |      -                        ^ doesn't have a size known at compile-time
    |      |
    |      this type parameter needs to be `Sized`
    |
@@ -38,10 +38,10 @@ LL + impl<A, B> Trait<(A, B)> for (A, B) where B: ?Sized, {}
    |
 
 error[E0277]: the size for values of type `C` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:5:52
+  --> $DIR/unsized-bound.rs:5:59
    |
 LL | impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
-   |                    -                               ^^^^^^^^^ doesn't have a size known at compile-time
+   |                    -                                      ^ doesn't have a size known at compile-time
    |                    |
    |                    this type parameter needs to be `Sized`
    |
@@ -62,10 +62,10 @@ LL | trait Trait<A: ?Sized> {}
    |              ++++++++
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:5:52
+  --> $DIR/unsized-bound.rs:5:53
    |
 LL | impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
-   |      - this type parameter needs to be `Sized`     ^^^^^^^^^ doesn't have a size known at compile-time
+   |      - this type parameter needs to be `Sized`      ^ doesn't have a size known at compile-time
    |
    = note: only the last element of a tuple may have a dynamically sized type
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
@@ -75,10 +75,10 @@ LL + impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C)  {}
    |
 
 error[E0277]: the size for values of type `B` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:5:52
+  --> $DIR/unsized-bound.rs:5:56
    |
 LL | impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
-   |         - this type parameter needs to be `Sized`  ^^^^^^^^^ doesn't have a size known at compile-time
+   |         - this type parameter needs to be `Sized`      ^ doesn't have a size known at compile-time
    |
    = note: only the last element of a tuple may have a dynamically sized type
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
@@ -88,10 +88,10 @@ LL + impl<A, B, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
    |
 
 error[E0277]: the size for values of type `B` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:10:47
+  --> $DIR/unsized-bound.rs:10:51
    |
 LL | impl<A: ?Sized, B: ?Sized> Trait2<(A, B)> for (A, B) {}
-   |                 -                             ^^^^^^ doesn't have a size known at compile-time
+   |                 -                                 ^ doesn't have a size known at compile-time
    |                 |
    |                 this type parameter needs to be `Sized`
    |
@@ -112,12 +112,10 @@ LL | trait Trait2<A: ?Sized> {}
    |               ++++++++
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:10:47
+  --> $DIR/unsized-bound.rs:10:48
    |
 LL | impl<A: ?Sized, B: ?Sized> Trait2<(A, B)> for (A, B) {}
-   |      -                                        ^^^^^^ doesn't have a size known at compile-time
-   |      |
-   |      this type parameter needs to be `Sized`
+   |      - this type parameter needs to be `Sized` ^ doesn't have a size known at compile-time
    |
    = note: only the last element of a tuple may have a dynamically sized type
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
@@ -219,10 +217,10 @@ LL | trait Trait6<A: ?Sized, B> {}
    |               ++++++++
 
 error[E0277]: the size for values of type `Y` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:26:12
+  --> $DIR/unsized-bound.rs:26:22
    |
 LL | impl<X, Y> Trait7<X, Y> for X where Y: ?Sized {}
-   |         -  ^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |         -            ^ doesn't have a size known at compile-time
    |         |
    |         this type parameter needs to be `Sized`
    |
@@ -242,10 +240,10 @@ LL | trait Trait7<A, B: ?Sized> {}
    |                  ++++++++
 
 error[E0277]: the size for values of type `Y` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:29:20
+  --> $DIR/unsized-bound.rs:29:30
    |
 LL | impl<X, Y: ?Sized> Trait8<X, Y> for X {}
-   |         -          ^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |         -                    ^ doesn't have a size known at compile-time
    |         |
    |         this type parameter needs to be `Sized`
    |

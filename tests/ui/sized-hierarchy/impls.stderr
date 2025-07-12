@@ -172,28 +172,28 @@ LL | fn needs_metasized<T: MetaSized>() { }
    |                       ^^^^^^^^^ required by this bound in `needs_metasized`
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/impls.rs:193:19
+  --> $DIR/impls.rs:193:20
    |
 LL |     needs_sized::<([u8], [u8])>();
-   |                   ^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                    ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
    = note: only the last element of a tuple may have a dynamically sized type
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/impls.rs:195:23
+  --> $DIR/impls.rs:195:24
    |
 LL |     needs_metasized::<([u8], [u8])>();
-   |                       ^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                        ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
    = note: only the last element of a tuple may have a dynamically sized type
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/impls.rs:197:26
+  --> $DIR/impls.rs:197:27
    |
 LL |     needs_pointeesized::<([u8], [u8])>();
-   |                          ^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                           ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
    = note: only the last element of a tuple may have a dynamically sized type
@@ -240,10 +240,10 @@ LL |     needs_pointeesized::<(Foo, Foo)>();
    = note: only the last element of a tuple may have a dynamically sized type
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/impls.rs:210:19
+  --> $DIR/impls.rs:210:25
    |
 LL |     needs_sized::<(u32, [u8])>();
-   |                   ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                         ^^^^ doesn't have a size known at compile-time
    |
    = help: within `(u32, [u8])`, the trait `Sized` is not implemented for `[u8]`
    = note: required because it appears within the type `(u32, [u8])`

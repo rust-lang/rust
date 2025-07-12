@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/supertrait-mentions-Self.rs:8:13
+  --> $DIR/supertrait-mentions-Self.rs:8:17
    |
 LL | trait Baz : Bar<Self> {
-   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |                 ^^^^ doesn't have a size known at compile-time
    |
 note: required by an implicit `Sized` bound in `Bar`
   --> $DIR/supertrait-mentions-Self.rs:4:11
