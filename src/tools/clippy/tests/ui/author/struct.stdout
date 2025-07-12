@@ -2,8 +2,7 @@ if let ExprKind::Struct(qpath, fields, None) = expr.kind
     && fields.len() == 1
     && fields[0].ident.as_str() == "field"
     && let ExprKind::If(cond, then, Some(else_expr)) = fields[0].expr.kind
-    && let ExprKind::DropTemps(expr1) = cond.kind
-    && let ExprKind::Lit(ref lit) = expr1.kind
+    && let ExprKind::Lit(ref lit) = cond.kind
     && let LitKind::Bool(true) = lit.node
     && let ExprKind::Block(block, None) = then.kind
     && block.stmts.is_empty()
