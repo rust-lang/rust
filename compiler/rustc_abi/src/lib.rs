@@ -43,7 +43,7 @@ use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
 use std::num::{NonZeroUsize, ParseIntError};
-use std::ops::{Add, AddAssign, Deref, Mul, RangeInclusive, Sub};
+use std::ops::{Add, AddAssign, Deref, Mul, RangeFull, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use bitflags::bitflags;
@@ -1391,11 +1391,44 @@ impl WrappingRange {
     }
 
     /// Returns `true` if `size` completely fills the range.
+    ///
+    /// Note that this is *not* the same as `self == WrappingRange::full(size)`.
+    /// Niche calculations can produce full ranges which are not the canonical one;
+    /// for example `Option<NonZero<u16>>` gets `valid_range: (..=0) | (1..)`.
     #[inline]
     fn is_full_for(&self, size: Size) -> bool {
         let max_value = size.unsigned_int_max();
         debug_assert!(self.start <= max_value && self.end <= max_value);
         self.start == (self.end.wrapping_add(1) & max_value)
+    }
+
+    /// Checks whether this range is considered non-wrapping when the values are
+    /// interpreted as *unsigned* numbers of width `size`.
+    ///
+    /// Returns `Ok(true)` if there's no wrap-around, `Ok(false)` if there is,
+    /// and `Err(..)` if the range is full so it depends how you think about it.
+    #[inline]
+    pub fn no_unsigned_wraparound(&self, size: Size) -> Result<bool, RangeFull> {
+        if self.is_full_for(size) { Err(..) } else { Ok(self.start <= self.end) }
+    }
+
+    /// Checks whether this range is considered non-wrapping when the values are
+    /// interpreted as *signed* numbers of width `size`.
+    ///
+    /// This is heavily dependent on the `size`, as `100..=200` does wrap when
+    /// interpreted as `i8`, but doesn't when interpreted as `i16`.
+    ///
+    /// Returns `Ok(true)` if there's no wrap-around, `Ok(false)` if there is,
+    /// and `Err(..)` if the range is full so it depends how you think about it.
+    #[inline]
+    pub fn no_signed_wraparound(&self, size: Size) -> Result<bool, RangeFull> {
+        if self.is_full_for(size) {
+            Err(..)
+        } else {
+            let start: i128 = size.sign_extend(self.start);
+            let end: i128 = size.sign_extend(self.end);
+            Ok(start <= end)
+        }
     }
 }
 
