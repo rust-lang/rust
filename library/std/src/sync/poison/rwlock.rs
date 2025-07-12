@@ -1073,52 +1073,63 @@ impl<'a, T: ?Sized> RwLockWriteGuard<'a, T> {
 
     /// Downgrades a write-locked `RwLockWriteGuard` into a read-locked [`RwLockReadGuard`].
     ///
-    /// This method will atomically change the state of the [`RwLock`] from exclusive mode into
-    /// shared mode. This means that it is impossible for a writing thread to get in between a
-    /// thread calling `downgrade` and the same thread reading whatever it wrote while it had the
-    /// [`RwLock`] in write mode.
+    /// Since we have the `RwLockWriteGuard`, the [`RwLock`] must already be locked for writing, so
+    /// this method cannot fail.
     ///
-    /// Note that since we have the `RwLockWriteGuard`, we know that the [`RwLock`] is already
-    /// locked for writing, so this method cannot fail.
+    /// Aftering downgrading, other readers will be allowed to read the protected data.
     ///
-    /// # Example
+    /// # Examples
+    ///
+    /// `downgrade` takes ownership of the `RwLockWriteGuard` and returns a [`RwLockReadGuard`].
     ///
     /// ```
-    /// #![feature(rwlock_downgrade)]
+    /// use std::sync::{RwLock, RwLockWriteGuard};
+    ///
+    /// let rw = RwLock::new(0);
+    ///
+    /// let mut write_guard = rw.write().unwrap();
+    /// *write_guard = 42;
+    ///
+    /// let read_guard = RwLockWriteGuard::downgrade(write_guard);
+    /// assert_eq!(42, *read_guard);
+    /// ```
+    ///
+    /// `downgrade` will _atomically_ change the state of the [`RwLock`] from exclusive mode into
+    /// shared mode. This means that it is impossible for another writing thread to get in between a
+    /// thread calling `downgrade` and any reads it performs after downgrading.
+    ///
+    /// ```
     /// use std::sync::{Arc, RwLock, RwLockWriteGuard};
     ///
-    /// // The inner value starts as 0.
-    /// let rw = Arc::new(RwLock::new(0));
+    /// let rw = Arc::new(RwLock::new(1));
     ///
     /// // Put the lock in write mode.
     /// let mut main_write_guard = rw.write().unwrap();
     ///
-    /// let evil = rw.clone();
-    /// let handle = std::thread::spawn(move || {
+    /// let rw_clone = rw.clone();
+    /// let evil_handle = std::thread::spawn(move || {
     ///     // This will not return until the main thread drops the `main_read_guard`.
-    ///     let mut evil_guard = evil.write().unwrap();
+    ///     let mut evil_guard = rw_clone.write().unwrap();
     ///
-    ///     assert_eq!(*evil_guard, 1);
-    ///     *evil_guard = 2;
+    ///     assert_eq!(*evil_guard, 2);
+    ///     *evil_guard = 3;
     /// });
     ///
-    /// // After spawning the writer thread, set the inner value to 1.
-    /// *main_write_guard = 1;
+    /// *main_write_guard = 2;
     ///
     /// // Atomically downgrade the write guard into a read guard.
     /// let main_read_guard = RwLockWriteGuard::downgrade(main_write_guard);
     ///
-    /// // Since `downgrade` is atomic, the writer thread cannot have set the inner value to 2.
-    /// assert_eq!(*main_read_guard, 1, "`downgrade` was not atomic");
-    ///
-    /// // Clean up everything now
-    /// drop(main_read_guard);
-    /// handle.join().unwrap();
-    ///
-    /// let final_check = rw.read().unwrap();
-    /// assert_eq!(*final_check, 2);
+    /// // Since `downgrade` is atomic, the writer thread cannot have changed the protected data.
+    /// assert_eq!(*main_read_guard, 2, "`downgrade` was not atomic");
+    /// #
+    /// # drop(main_read_guard);
+    /// # evil_handle.join().unwrap();
+    /// #
+    /// # let final_check = rw.read().unwrap();
+    /// # assert_eq!(*final_check, 3);
     /// ```
-    #[unstable(feature = "rwlock_downgrade", issue = "128203")]
+    #[stable(feature = "rwlock_downgrade", since = "CURRENT_RUSTC_VERSION")]
     pub fn downgrade(s: Self) -> RwLockReadGuard<'a, T> {
         let lock = s.lock;
 
