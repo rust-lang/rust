@@ -32,6 +32,7 @@ use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::{DiagCtxtHandle, FatalError};
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_log::tracing::info;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};

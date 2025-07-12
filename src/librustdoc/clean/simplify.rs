@@ -12,9 +12,9 @@
 //! bounds by special casing scenarios such as these. Fun!
 
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::DefId;
-use thin_vec::ThinVec;
 
 use crate::clean;
 use crate::clean::{GenericArgs as PP, WherePredicate as WP};

@@ -4,6 +4,7 @@
 #![recursion_limit = "256"]
 #![allow(clippy::match_like_matches_macro)]
 #![allow(unreachable_pub)]
+#![cfg_attr(not(bootstrap), allow(dangerous_extern_crate))]
 
 // N.B. these crates are loaded from the sysroot, so they need extern crate.
 extern crate rustc_ast;

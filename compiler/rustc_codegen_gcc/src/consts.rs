@@ -6,6 +6,7 @@ use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
 use rustc_hir::def::DefKind;
+use rustc_log::tracing::trace;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
     self, ConstAllocation, ErrorHandled, Scalar as InterpScalar, read_target_uint,
