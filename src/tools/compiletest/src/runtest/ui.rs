@@ -127,8 +127,8 @@ impl TestCx<'_> {
             );
         }
 
-        let output_to_check = if let WillExecute::Yes = should_run {
-            let proc_res = self.exec_compiled_test();
+        let (output_to_check, proc_res_to_report) = if let WillExecute::Yes = should_run {
+            let new_proc_res = self.exec_compiled_test();
             let run_output_errors = if self.props.check_run_results {
                 self.load_compare_outputs(&proc_res, TestOutput::Run, explicit)
             } else {
@@ -137,26 +137,29 @@ impl TestCx<'_> {
             if run_output_errors > 0 {
                 self.fatal_proc_rec(
                     &format!("{} errors occurred comparing run output.", run_output_errors),
-                    &proc_res,
+                    &new_proc_res,
                 );
             }
             if self.should_run_successfully(pm) {
                 if !proc_res.status.success() {
-                    self.fatal_proc_rec("test run failed!", &proc_res);
+                    self.fatal_proc_rec("test run failed!", &new_proc_res);
                 }
             } else if proc_res.status.success() {
-                self.fatal_proc_rec("test run succeeded!", &proc_res);
+                self.fatal_proc_rec("test run succeeded!", &new_proc_res);
             }
 
-            self.get_output(&proc_res)
+            (self.get_output(&new_proc_res), new_proc_res.clone())
         } else {
-            self.get_output(&proc_res)
+            (self.get_output(&proc_res), proc_res.clone())
         };
 
         debug!(
             "run_ui_test: explicit={:?} config.compare_mode={:?} \
                proc_res.status={:?} props.error_patterns={:?}",
-            explicit, self.config.compare_mode, proc_res.status, self.props.error_patterns
+            explicit,
+            self.config.compare_mode,
+            proc_res_to_report.status,
+            self.props.error_patterns
         );
 
         self.check_expected_errors(&proc_res);
