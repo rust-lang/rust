@@ -8,7 +8,7 @@
 
 
 #![macro_export]
-//~^ ERROR: `macro_export` attribute cannot be used at crate level
+//~^ ERROR:  `#[macro_export]` attribute cannot be used on crates
 #![rustc_main]
 //~^ ERROR: `rustc_main` attribute cannot be used at crate level
 //~| ERROR: use of an internal attribute [E0658]
@@ -31,7 +31,6 @@
 //~^ ERROR attribute cannot be used on
 mod inline {
     //~^ NOTE the inner attribute doesn't annotate this module
-    //~| NOTE the inner attribute doesn't annotate this module
     //~| NOTE the inner attribute doesn't annotate this module
 
     mod inner { #![inline] }

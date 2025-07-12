@@ -55,5 +55,17 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<HirId>, lint_emi
                     only,
                 },
             ),
+        AttributeLintKind::InvalidMacroExportArguments { suggestions } => lint_emitter
+            .emit_node_span_lint(
+                rustc_session::lint::builtin::INVALID_MACRO_EXPORT_ARGUMENTS,
+                *id,
+                *span,
+                session_diagnostics::IllFormedAttributeInput {
+                    num_suggestions: suggestions.len(),
+                    suggestions: DiagArgValue::StrListSepByAnd(
+                        suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
+                    ),
+                },
+            ),
     }
 }
