@@ -1,0 +1,56 @@
+error: unexpected `...`
+  --> $DIR/parse-errors.rs:9:28
+   |
+LL |     unsafe extern "C" fn f(...) {
+   |                            ^^^ not a valid pattern
+   |
+help: for a rest pattern, use `..` instead of `...`
+   |
+LL -     unsafe extern "C" fn f(...) {
+LL +     unsafe extern "C" fn f(..) {
+   |
+
+error: expected one of `:` or `|`, found `)`
+  --> $DIR/parse-errors.rs:9:31
+   |
+LL |     unsafe extern "C" fn f(...) {
+   |                               ^ expected one of `:` or `|`
+
+error: unexpected `...`
+  --> $DIR/parse-errors.rs:12:32
+   |
+LL |         unsafe extern "C" fn f(...) {}
+   |                                ^^^ not a valid pattern
+   |
+help: for a rest pattern, use `..` instead of `...`
+   |
+LL -         unsafe extern "C" fn f(...) {}
+LL +         unsafe extern "C" fn f(..) {}
+   |
+
+error: expected one of `:` or `|`, found `)`
+  --> $DIR/parse-errors.rs:12:35
+   |
+LL |         unsafe extern "C" fn f(...) {}
+   |                                   ^ expected one of `:` or `|`
+
+error: unexpected `...`
+  --> $DIR/parse-errors.rs:18:32
+   |
+LL |         unsafe extern "C" fn f(...) {}
+   |                                ^^^ not a valid pattern
+   |
+help: for a rest pattern, use `..` instead of `...`
+   |
+LL -         unsafe extern "C" fn f(...) {}
+LL +         unsafe extern "C" fn f(..) {}
+   |
+
+error: expected one of `:` or `|`, found `)`
+  --> $DIR/parse-errors.rs:18:35
+   |
+LL |         unsafe extern "C" fn f(...) {}
+   |                                   ^ expected one of `:` or `|`
+
+error: aborting due to 6 previous errors
+
