@@ -55,6 +55,9 @@ Similar to shell commands,
 directives can extend across multiple lines if their last char is `\`.
 In this case, the start of the next line should be `//`, with no `@`.
 
+Similar to compiletest directives, besides a space you can also use a colon `:` to separate
+the directive name and the arguments, however a space is preferred for HtmlDocCk directives.
+
 Use the special string `{{channel}}` in XPaths, `PATTERN` arguments and [snapshot files](#snapshot)
 if you'd like to refer to the URL `https://doc.rust-lang.org/CHANNEL` where `CHANNEL` refers to the
 current release channel (e.g, `stable` or `nightly`).
