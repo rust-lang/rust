@@ -2,5 +2,6 @@
 
 #![feature(coroutines)]
 
+//~vv ERROR mismatched closing delimiter: `)`
 //~v ERROR this file contains an unclosed delimiter
 fn f(){||yield(((){),

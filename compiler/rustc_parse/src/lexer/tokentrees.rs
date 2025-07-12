@@ -3,7 +3,7 @@ use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, Toke
 use rustc_ast_pretty::pprust::token_to_string;
 use rustc_errors::Diag;
 
-use super::diagnostics::{report_suspicious_mismatch_block, same_indentation_level};
+use super::diagnostics::{report_missing_open_delim, report_suspicious_mismatch_block, same_indentation_level};
 use super::{Lexer, UnmatchedDelim};
 
 impl<'psess, 'src> Lexer<'psess, 'src> {
@@ -244,13 +244,19 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let msg = format!("unexpected closing delimiter: `{token_str}`");
         let mut err = self.dcx().struct_span_err(self.token.span, msg);
 
+        err.span_label(self.token.span, "unexpected closing delimiter");
+
+        if report_missing_open_delim(&mut err, &mut self.diag_info.unmatched_delims) {
+            return err;
+        }
+
         report_suspicious_mismatch_block(
             &mut err,
             &mut self.diag_info,
             self.psess.source_map(),
             close_delim,
         );
-        err.span_label(self.token.span, "unexpected closing delimiter");
+
         err
     }
 }

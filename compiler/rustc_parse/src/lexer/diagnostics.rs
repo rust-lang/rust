@@ -34,7 +34,7 @@ pub(super) fn same_indentation_level(sm: &SourceMap, open_sp: Span, close_sp: Sp
 
 // When we get a `)` or `]` for `{`, we should emit help message here
 // it's more friendly compared to report `unmatched error` in later phase
-fn report_missing_open_delim(
+pub(super) fn report_missing_open_delim(
     err: &mut Diag<'_>,
     unmatched_delims: &mut Vec<UnmatchedDelim>,
 ) -> bool {
@@ -71,9 +71,7 @@ pub(super) fn report_suspicious_mismatch_block(
     sm: &SourceMap,
     delim: Delimiter,
 ) {
-    if report_missing_open_delim(err, &mut diag_info.unmatched_delims) {
-        return;
-    }
+
 
     let mut matched_spans: Vec<(Span, bool)> = diag_info
         .matching_block_spans

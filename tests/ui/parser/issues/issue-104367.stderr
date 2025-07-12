@@ -1,3 +1,11 @@
+error: mismatched closing delimiter: `)`
+  --> $DIR/issue-104367.rs:5:15
+   |
+LL |             #![w,)
+   |               ^  ^ mismatched closing delimiter
+   |               |
+   |               unclosed delimiter
+
 error: this file contains an unclosed delimiter
   --> $DIR/issue-104367.rs:6:71
    |
@@ -10,11 +18,8 @@ LL |     d: [u32; {
 LL |         #![cfg] {
    |                 - unclosed delimiter
 LL |             #![w,)
-   |               -  - missing open `(` for this delimiter
-   |               |
-   |               unclosed delimiter before unmatched delimiter
 LL |
    |                                                                      ^
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
