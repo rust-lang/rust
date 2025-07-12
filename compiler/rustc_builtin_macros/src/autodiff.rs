@@ -11,7 +11,9 @@ mod llvm_enzyme {
         AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ret_activity,
         valid_ty_for_activity,
     };
+    use rustc_ast::expand::typetree::{TypeTree, Type, Kind};
     use rustc_ast::ptr::P;
+    use crate::typetree::construct_typetree_from_fnsig;
     use rustc_ast::token::{Lit, LitKind, Token, TokenKind};
     use rustc_ast::tokenstream::*;
     use rustc_ast::visit::AssocCtxt::*;
@@ -323,6 +325,17 @@ mod llvm_enzyme {
             return vec![item];
         }
         let span = ecx.with_def_site_ctxt(expand_span);
+
+        // Construct real type trees from function signature
+        let (inputs, output) = construct_typetree_from_fnsig(&sig);
+        
+        // Use the new into_item method to construct the AutoDiffItem
+        let autodiff_item = x.clone().into_item(
+            primal.to_string(),
+            first_ident(&meta_item_vec[0]).to_string(),
+            inputs,
+            output,
+        );
 
         let n_active: u32 = x
             .input_activity
@@ -1045,5 +1058,3 @@ mod llvm_enzyme {
         (d_sig, new_inputs, idents, false)
     }
 }
-
-pub(crate) use llvm_enzyme::{expand_forward, expand_reverse};
