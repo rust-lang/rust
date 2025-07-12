@@ -489,7 +489,7 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
             }
         };
 
-        let unfilled_but_initialized = cursor.init_ref().len();
+        let unfilled_but_initialized = cursor.init_mut().len();
         let bytes_read = cursor.written();
         let was_fully_initialized = read_buf.init_len() == buf_len;
 
@@ -3053,7 +3053,7 @@ impl<T: Read> Read for Take<T> {
             // The condition above guarantees that `self.limit` fits in `usize`.
             let limit = self.limit as usize;
 
-            let extra_init = cmp::min(limit, buf.init_ref().len());
+            let extra_init = cmp::min(limit, buf.init_mut().len());
 
             // SAFETY: no uninit data is written to ibuf
             let ibuf = unsafe { &mut buf.as_mut()[..limit] };
@@ -3068,7 +3068,7 @@ impl<T: Read> Read for Take<T> {
             let mut cursor = sliced_buf.unfilled();
             let result = self.inner.read_buf(cursor.reborrow());
 
-            let new_init = cursor.init_ref().len();
+            let new_init = cursor.init_mut().len();
             let filled = sliced_buf.len();
 
             // cursor / sliced_buf / ibuf must drop here
