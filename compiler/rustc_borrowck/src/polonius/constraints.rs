@@ -7,9 +7,7 @@ use rustc_mir_dataflow::points::PointIndex;
 ///
 /// This models two sources of constraints:
 /// - constraints that traverse the subsets between regions at a given point, `a@p: b@p`. These
-///   depend on typeck constraints generated via assignments, calls, etc. (In practice there are
-///   subtleties where a statement's effect only starts being visible at the successor point, via
-///   the "result" of that statement).
+///   depend on typeck constraints generated via assignments, calls, etc.
 /// - constraints that traverse the CFG via the same region, `a@p: a@q`, where `p` is a predecessor
 ///   of `q`. These depend on the liveness of the regions at these points, as well as their
 ///   variance.
