@@ -1299,7 +1299,7 @@ tool_extended!(Miri {
     tool_name: "miri",
     stable: false,
     add_bins_to_sysroot: ["miri"],
-    // Avoid costly rebuilds by always including the tests.
+    // Always compile also tests when building miri. Otherwise feature unification can cause rebuilds between building and testing miri.
     cargo_args: &["--all-targets"],
 });
 tool_extended!(CargoMiri {
