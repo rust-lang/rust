@@ -356,7 +356,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::Operand(operand) => {
                 // Don't spill operands onto the stack in naked functions.
                 // See: https://github.com/rust-lang/rust/issues/42779
-                let attrs = bx.tcx().codegen_fn_attrs(self.instance.def_id());
+                let attrs = bx.tcx().codegen_instance_attrs(self.instance.def);
                 if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
                     return;
                 }

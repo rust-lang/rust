@@ -1086,7 +1086,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx: &MiriInterpCx<'tcx>,
         instance: ty::Instance<'tcx>,
     ) -> InterpResult<'tcx> {
-        let attrs = ecx.tcx.codegen_fn_attrs(instance.def_id());
+        let attrs = ecx.tcx.codegen_instance_attrs(instance.def);
         if attrs
             .target_features
             .iter()
@@ -1790,7 +1790,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 ecx.tcx.sess.opts.unstable_opts.cross_crate_inline_threshold,
                 InliningThreshold::Always
             ) || !matches!(
-                ecx.tcx.codegen_fn_attrs(instance.def_id()).inline,
+                ecx.tcx.codegen_instance_attrs(instance.def).inline,
                 InlineAttr::Never
             );
             !is_generic && !can_be_inlined

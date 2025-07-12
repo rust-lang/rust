@@ -611,11 +611,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
                     let fn_ty = bx.fn_decl_backend_type(fn_abi);
                     let fn_attrs = if bx.tcx().def_kind(instance.def_id()).has_codegen_attrs() {
-                        Some(bx.tcx().codegen_fn_attrs(instance.def_id()))
+                        Some(bx.tcx().codegen_instance_attrs(instance.def))
                     } else {
                         None
                     };
-                    bx.call(fn_ty, fn_attrs, Some(fn_abi), fn_ptr, &[], None, Some(instance))
+                    bx.call(
+                        fn_ty,
+                        fn_attrs.as_deref(),
+                        Some(fn_abi),
+                        fn_ptr,
+                        &[],
+                        None,
+                        Some(instance),
+                    )
                 } else {
                     bx.get_static(def_id)
                 };

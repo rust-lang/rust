@@ -390,9 +390,8 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let mut num_untupled = None;
 
-    let codegen_fn_attrs = bx.tcx().codegen_fn_attrs(fx.instance.def_id());
-    let naked = codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED);
-    if naked {
+    let codegen_fn_attrs = bx.tcx().codegen_instance_attrs(fx.instance.def);
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         return vec![];
     }
 

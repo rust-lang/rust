@@ -53,7 +53,7 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         self.linkage.set(base::linkage_to_gcc(linkage));
         let decl = self.declare_fn(symbol_name, fn_abi);
-        //let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
+        //let attrs = self.tcx.codegen_instance_attrs(instance.def);
 
         attributes::from_fn_attrs(self, decl, instance);
 
