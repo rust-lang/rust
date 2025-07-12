@@ -9,7 +9,9 @@ use crate::{error, fmt};
 #[must_use]
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
-    let (tx, rx) = mpmc::channel();
+    // Using a `sync_channel` with capacity 1 means that the internal implementation will use the
+    // `Array`-flavored channel implementtion.
+    let (tx, rx) = mpmc::sync_channel(1);
     (Sender { inner: tx }, Receiver { inner: rx })
 }
 
@@ -18,15 +20,35 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// The sending half of a oneshot channel.
+///
+/// # Examples
+///
+/// (more examples to come)
+///
+/// ```compile_fail
+/// # #![feature(oneshot_channel)]
+/// # use std::sync::oneshot;
+/// #
+/// let (sender, receiver) = oneshot::channel();
+///
+/// struct NotSend(*mut ());
+/// std::thread::spawn(move || {
+///     sender.send(NotSend(std::ptr::null_mut()));
+/// });
+///
+/// let reply = receiver.try_recv().unwrap();
+/// ```
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 pub struct Sender<T> {
     /// The `oneshot` channel is simply a wrapper around a `mpmc` channel.
     inner: mpmc::Sender<T>,
 }
 
-/// SAFETY: Since the only methods in which synchronization must occur take full ownership of the
-/// [`Sender`], it is perfectly safe to share a &[`Sender`] between threads (as it is effectively
-/// useless without full ownership).
+/// # Safety
+///
+/// Since the only methods in which synchronization must occur take full ownership of the
+/// [`Sender`], it is perfectly safe to share a `&Sender` between threads (as it is effectively
+/// useless without ownership).
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 unsafe impl<T> Sync for Sender<T> {}
 
@@ -53,15 +75,35 @@ impl<T> fmt::Debug for Sender<T> {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// The receiving half of a oneshot channel.
+///
+/// # Examples
+///
+/// (more examples to come)
+///
+/// ```compile_fail
+/// # #![feature(oneshot_channel)]
+/// # use std::sync::oneshot;
+/// #
+/// let (sender, receiver) = oneshot::channel();
+///
+/// struct NotSend(*mut ());
+/// sender.send(NotSend(std::ptr::null_mut()));
+///
+/// std::thread::spawn(move || {
+///     let reply = receiver.try_recv().unwrap();
+/// });
+/// ```
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 pub struct Receiver<T> {
     /// The `oneshot` channel is simply a wrapper around a `mpmc` channel.
     inner: mpmc::Receiver<T>,
 }
 
-/// SAFETY: Since the only methods in which synchronization must occur take full ownership of the
-/// [`Receiver`], it is perfectly safe to share a &[`Receiver`] between threads (as it is unable to
-/// receive any values without full ownership).
+/// # Safety
+///
+/// Since the only methods in which synchronization must occur take full ownership of the
+/// [`Receiver`], it is perfectly safe to share a `&Receiver` between threads (as it is unable to
+/// receive any values without ownership).
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 unsafe impl<T> Sync for Receiver<T> {}
 
