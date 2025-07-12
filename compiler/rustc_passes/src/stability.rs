@@ -430,6 +430,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                 kind = AnnotationKind::DeprecationProhibited;
                 const_stab_inherit = InheritConstStability::Yes;
             }
+            hir::ItemKind::Use(_, _) => {
+                kind = AnnotationKind::DeprecationProhibited;
+            }
             hir::ItemKind::Struct(_, _, ref sd) => {
                 if let Some(ctor_def_id) = sd.ctor_def_id() {
                     self.annotate(
