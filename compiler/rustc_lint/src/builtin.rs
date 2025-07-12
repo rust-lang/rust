@@ -2874,7 +2874,7 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
         if let hir::Expr {
             kind:
                 hir::ExprKind::InlineAsm(hir::InlineAsm {
-                    asm_macro: AsmMacro::Asm | AsmMacro::NakedAsm,
+                    asm_macro: asm_macro @ (AsmMacro::Asm | AsmMacro::NakedAsm),
                     template_strs,
                     options,
                     ..
@@ -2882,6 +2882,20 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
             ..
         } = expr
         {
+            // Non-generic naked functions are allowed to define arbitrary
+            // labels.
+            if *asm_macro == AsmMacro::NakedAsm {
+                let mono = cx.generics.is_none_or(|generics| {
+                    generics
+                        .params
+                        .iter()
+                        .all(|param| matches!(param.kind, GenericParamKind::Lifetime { .. }))
+                });
+                if mono {
+                    return;
+                }
+            }
+
             // asm with `options(raw)` does not do replacement with `{` and `}`.
             let raw = options.contains(InlineAsmOptions::RAW);
 
