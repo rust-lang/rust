@@ -7,7 +7,7 @@ use super::{
     DirectivesCache, EarlyProps, extract_llvm_version, extract_version_range, iter_directives,
     parse_normalize_rule,
 };
-use crate::common::{Config, Debugger, Mode};
+use crate::common::{Config, Debugger, TestMode};
 use crate::executor::{CollectedTestDesc, ShouldPanic};
 
 fn make_test_description<R: Read>(
@@ -785,7 +785,7 @@ fn threads_support() {
 
 fn run_path(poisoned: &mut bool, path: &Utf8Path, buf: &[u8]) {
     let rdr = std::io::Cursor::new(&buf);
-    iter_directives(Mode::Ui, "ui", poisoned, path, rdr, &mut |_| {});
+    iter_directives(TestMode::Ui, "ui", poisoned, path, rdr, &mut |_| {});
 }
 
 #[test]

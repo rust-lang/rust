@@ -67,11 +67,7 @@ fn is_test_test() {
 
 #[test]
 fn string_enums() {
-    // These imports are needed for the macro-generated code
-    use std::fmt;
-    use std::str::FromStr;
-
-    crate::common::string_enum! {
+    crate::util::string_enum! {
         #[derive(Clone, Copy, Debug, PartialEq)]
         enum Animal {
             Cat => "meow",

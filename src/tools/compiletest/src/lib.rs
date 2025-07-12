@@ -39,8 +39,8 @@ use walkdir::WalkDir;
 
 use self::directives::{EarlyProps, make_test_description};
 use crate::common::{
-    CompareMode, Config, Debugger, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path,
-    output_base_dir, output_relative_path,
+    CompareMode, Config, Debugger, PassMode, TestMode, TestPaths, UI_EXTENSIONS,
+    expected_output_path, output_base_dir, output_relative_path,
 };
 use crate::directives::DirectivesCache;
 use crate::executor::{CollectedTest, ColorConfig, OutputFormat};
@@ -268,7 +268,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
     let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
-    let has_html_tidy = if mode == Mode::Rustdoc {
+    let has_html_tidy = if mode == TestMode::Rustdoc {
         Command::new("tidy")
             .arg("--version")
             .stdout(Stdio::null())
@@ -279,7 +279,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         false
     };
     let has_enzyme = matches.opt_present("has-enzyme");
-    let filters = if mode == Mode::RunMake {
+    let filters = if mode == TestMode::RunMake {
         matches
             .free
             .iter()
@@ -545,7 +545,7 @@ pub fn run_tests(config: Arc<Config>) {
     unsafe { env::set_var("TARGET", &config.target) };
 
     let mut configs = Vec::new();
-    if let Mode::DebugInfo = config.mode {
+    if let TestMode::DebugInfo = config.mode {
         // Debugging emscripten code doesn't make sense today
         if !config.target.contains("emscripten") {
             match config.debugger {
@@ -783,7 +783,7 @@ fn collect_tests_from_dir(
     }
 
     // For run-make tests, a "test file" is actually a directory that contains an `rmake.rs`.
-    if cx.config.mode == Mode::RunMake {
+    if cx.config.mode == TestMode::RunMake {
         let mut collector = TestCollector::new();
         if dir.join("rmake.rs").exists() {
             let paths = TestPaths {
@@ -869,7 +869,7 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     // For run-make tests, each "test file" is actually a _directory_ containing an `rmake.rs`. But
     // for the purposes of directive parsing, we want to look at that recipe file, not the directory
     // itself.
-    let test_path = if cx.config.mode == Mode::RunMake {
+    let test_path = if cx.config.mode == TestMode::RunMake {
         testpaths.file.join("rmake.rs")
     } else {
         testpaths.file.clone()
@@ -884,7 +884,7 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     // - Incremental tests inherently can't run their revisions in parallel, so
     //   we treat them like non-revisioned tests here. Incremental revisions are
     //   handled internally by `runtest::run` instead.
-    let revisions = if early_props.revisions.is_empty() || cx.config.mode == Mode::Incremental {
+    let revisions = if early_props.revisions.is_empty() || cx.config.mode == TestMode::Incremental {
         vec![None]
     } else {
         early_props.revisions.iter().map(|r| Some(r.as_str())).collect()
@@ -1116,11 +1116,11 @@ fn check_for_overlapping_test_paths(found_path_stems: &HashSet<Utf8PathBuf>) {
 }
 
 pub fn early_config_check(config: &Config) {
-    if !config.has_html_tidy && config.mode == Mode::Rustdoc {
+    if !config.has_html_tidy && config.mode == TestMode::Rustdoc {
         warning!("`tidy` (html-tidy.org) is not installed; diffs will not be generated");
     }
 
-    if !config.profiler_runtime && config.mode == Mode::CoverageRun {
+    if !config.profiler_runtime && config.mode == TestMode::CoverageRun {
         let actioned = if config.bless { "blessed" } else { "checked" };
         warning!("profiler runtime is not available, so `.coverage` files won't be {actioned}");
         help!("try setting `profiler = true` in the `[build]` section of `bootstrap.toml`");

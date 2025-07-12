@@ -1,63 +1,20 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::iter;
 use std::process::Command;
-use std::str::FromStr;
 use std::sync::OnceLock;
-use std::{fmt, iter};
 
 use build_helper::git::GitConfig;
 use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 use serde::de::{Deserialize, Deserializer, Error as _};
 
-pub use self::Mode::*;
 use crate::executor::{ColorConfig, OutputFormat};
 use crate::fatal;
-use crate::util::{Utf8PathBufExt, add_dylib_path};
-
-macro_rules! string_enum {
-    ($(#[$meta:meta])* $vis:vis enum $name:ident { $($variant:ident => $repr:expr,)* }) => {
-        $(#[$meta])*
-        $vis enum $name {
-            $($variant,)*
-        }
-
-        impl $name {
-            $vis const VARIANTS: &'static [Self] = &[$(Self::$variant,)*];
-            $vis const STR_VARIANTS: &'static [&'static str] = &[$(Self::$variant.to_str(),)*];
-
-            $vis const fn to_str(&self) -> &'static str {
-                match self {
-                    $(Self::$variant => $repr,)*
-                }
-            }
-        }
-
-        impl fmt::Display for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Display::fmt(self.to_str(), f)
-            }
-        }
-
-        impl FromStr for $name {
-            type Err = String;
-
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                match s {
-                    $($repr => Ok(Self::$variant),)*
-                    _ => Err(format!(concat!("unknown `", stringify!($name), "` variant: `{}`"), s)),
-                }
-            }
-        }
-    }
-}
-
-// Make the macro visible outside of this module, for tests.
-#[cfg(test)]
-pub(crate) use string_enum;
+use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
 
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
-    pub enum Mode {
+    pub enum TestMode {
         Pretty => "pretty",
         DebugInfo => "debuginfo",
         Codegen => "codegen",
@@ -76,18 +33,12 @@ string_enum! {
     }
 }
 
-impl Default for Mode {
-    fn default() -> Self {
-        Mode::Ui
-    }
-}
-
-impl Mode {
+impl TestMode {
     pub fn aux_dir_disambiguator(self) -> &'static str {
         // Pretty-printing tests could run concurrently, and if they do,
         // they need to keep their output segregated.
         match self {
-            Pretty => ".pretty",
+            TestMode::Pretty => ".pretty",
             _ => "",
         }
     }
@@ -96,7 +47,7 @@ impl Mode {
         // Coverage tests use the same test files for multiple test modes,
         // so each mode should have a separate output directory.
         match self {
-            CoverageMap | CoverageRun => self.to_str(),
+            TestMode::CoverageMap | TestMode::CoverageRun => self.to_str(),
             _ => "",
         }
     }
@@ -193,9 +144,9 @@ pub enum Sanitizer {
 ///
 /// FIXME: audit these options to make sure we are not hashing less than necessary for build stamp
 /// (for changed test detection).
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct Config {
-    /// Some test [`Mode`]s support [snapshot testing], where a *reference snapshot* of outputs (of
+    /// Some [`TestMode`]s support [snapshot testing], where a *reference snapshot* of outputs (of
     /// `stdout`, `stderr`, or other form of artifacts) can be compared to the *actual output*.
     ///
     /// This option can be set to `true` to update the *reference snapshots* in-place, otherwise
@@ -317,20 +268,20 @@ pub struct Config {
     /// FIXME: reconsider this string; this is hashed for test build stamp.
     pub stage_id: String,
 
-    /// The test [`Mode`]. E.g. [`Mode::Ui`]. Each test mode can correspond to one or more test
+    /// The [`TestMode`]. E.g. [`TestMode::Ui`]. Each test mode can correspond to one or more test
     /// suites.
     ///
     /// FIXME: stop using stringly-typed test suites!
-    pub mode: Mode,
+    pub mode: TestMode,
 
     /// The test suite.
     ///
-    /// Example: `tests/ui/` is the "UI" test *suite*, which happens to also be of the [`Mode::Ui`]
-    /// test *mode*.
+    /// Example: `tests/ui/` is the "UI" test *suite*, which happens to also be of the
+    /// [`TestMode::Ui`] test *mode*.
     ///
     /// Note that the same test directory (e.g. `tests/coverage/`) may correspond to multiple test
-    /// modes, e.g. `tests/coverage/` can be run under both [`Mode::CoverageRun`] and
-    /// [`Mode::CoverageMap`].
+    /// modes, e.g. `tests/coverage/` can be run under both [`TestMode::CoverageRun`] and
+    /// [`TestMode::CoverageMap`].
     ///
     /// FIXME: stop using stringly-typed test suites!
     pub suite: String,
@@ -586,8 +537,8 @@ pub struct Config {
     // Configuration for various run-make tests frobbing things like C compilers or querying about
     // various LLVM component information.
     //
-    // FIXME: this really should be better packaged together.
-    // FIXME: these need better docs, e.g. for *host*, or for *target*?
+    // FIXME: this really should be better packaged together. FIXME: these need better docs, e.g.
+    // for *host*, or for *target*?
     pub cc: String,
     pub cxx: String,
     pub cflags: String,
@@ -653,6 +604,107 @@ pub struct Config {
 }
 
 impl Config {
+    /// Incomplete config intended for `src/tools/rustdoc-gui-test` **only** as
+    /// `src/tools/rustdoc-gui-test` wants to reuse `compiletest`'s directive -> test property
+    /// handling for `//@ {compile,run}-flags`, do not use for any other purpose.
+    ///
+    /// FIXME(#143827): this setup feels very hacky. It so happens that `tests/rustdoc-gui/`
+    /// **only** uses `//@ {compile,run}-flags` for now and not any directives that actually rely on
+    /// info that is assumed available in a fully populated [`Config`].
+    pub fn incomplete_for_rustdoc_gui_test() -> Config {
+        // FIXME(#143827): spelling this out intentionally, because this is questionable.
+        //
+        // For instance, `//@ ignore-stage1` will not work at all.
+        Config {
+            mode: TestMode::Rustdoc,
+
+            // Dummy values.
+            edition: Default::default(),
+            bless: Default::default(),
+            fail_fast: Default::default(),
+            compile_lib_path: Utf8PathBuf::default(),
+            run_lib_path: Utf8PathBuf::default(),
+            rustc_path: Utf8PathBuf::default(),
+            cargo_path: Default::default(),
+            stage0_rustc_path: Default::default(),
+            rustdoc_path: Default::default(),
+            coverage_dump_path: Default::default(),
+            python: Default::default(),
+            jsondocck_path: Default::default(),
+            jsondoclint_path: Default::default(),
+            llvm_filecheck: Default::default(),
+            llvm_bin_dir: Default::default(),
+            run_clang_based_tests_with: Default::default(),
+            src_root: Utf8PathBuf::default(),
+            src_test_suite_root: Utf8PathBuf::default(),
+            build_root: Utf8PathBuf::default(),
+            build_test_suite_root: Utf8PathBuf::default(),
+            sysroot_base: Utf8PathBuf::default(),
+            stage: Default::default(),
+            stage_id: String::default(),
+            suite: Default::default(),
+            debugger: Default::default(),
+            run_ignored: Default::default(),
+            with_rustc_debug_assertions: Default::default(),
+            with_std_debug_assertions: Default::default(),
+            filters: Default::default(),
+            skip: Default::default(),
+            filter_exact: Default::default(),
+            force_pass_mode: Default::default(),
+            run: Default::default(),
+            runner: Default::default(),
+            host_rustcflags: Default::default(),
+            target_rustcflags: Default::default(),
+            rust_randomized_layout: Default::default(),
+            optimize_tests: Default::default(),
+            target: Default::default(),
+            host: Default::default(),
+            cdb: Default::default(),
+            cdb_version: Default::default(),
+            gdb: Default::default(),
+            gdb_version: Default::default(),
+            lldb_version: Default::default(),
+            llvm_version: Default::default(),
+            system_llvm: Default::default(),
+            android_cross_path: Default::default(),
+            adb_path: Default::default(),
+            adb_test_dir: Default::default(),
+            adb_device_status: Default::default(),
+            lldb_python_dir: Default::default(),
+            verbose: Default::default(),
+            format: Default::default(),
+            color: Default::default(),
+            remote_test_client: Default::default(),
+            compare_mode: Default::default(),
+            rustfix_coverage: Default::default(),
+            has_html_tidy: Default::default(),
+            has_enzyme: Default::default(),
+            channel: Default::default(),
+            git_hash: Default::default(),
+            cc: Default::default(),
+            cxx: Default::default(),
+            cflags: Default::default(),
+            cxxflags: Default::default(),
+            ar: Default::default(),
+            target_linker: Default::default(),
+            host_linker: Default::default(),
+            llvm_components: Default::default(),
+            nodejs: Default::default(),
+            npm: Default::default(),
+            force_rerun: Default::default(),
+            only_modified: Default::default(),
+            target_cfgs: Default::default(),
+            builtin_cfg_names: Default::default(),
+            supported_crate_types: Default::default(),
+            nocapture: Default::default(),
+            nightly_branch: Default::default(),
+            git_merge_commit_email: Default::default(),
+            profiler_runtime: Default::default(),
+            diff_command: Default::default(),
+            minicore_path: Default::default(),
+        }
+    }
+
     /// FIXME: this run scheme is... confusing.
     pub fn run_enabled(&self) -> bool {
         self.run.unwrap_or_else(|| {
