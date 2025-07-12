@@ -362,7 +362,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         && self.tcx.trait_of_item(*item_id) == Some(*trait_id)
                         && let None = self.tainted_by_errors()
                     {
-                        let (verb, noun) = match self.tcx.associated_item(item_id).kind {
+                        let assoc_item = self.tcx.associated_item(item_id);
+                        let (verb, noun) = match assoc_item.kind {
                             ty::AssocKind::Const { .. } => ("refer to the", "constant"),
                             ty::AssocKind::Fn { .. } => ("call", "function"),
                             // This is already covered by E0223, but this following single match
@@ -381,17 +382,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         );
                         err.code(E0790);
 
-                        if let Some(local_def_id) = data.trait_ref.def_id.as_local()
-                            && let hir::Node::Item(hir::Item {
-                                kind: hir::ItemKind::Trait(_, _, trait_ident, _, _, trait_item_refs),
-                                ..
-                            }) = self.tcx.hir_node_by_def_id(local_def_id)
-                            && let Some(method_ref) = trait_item_refs
-                                .iter()
-                                .find(|item_ref| item_ref.ident == *assoc_item_ident)
-                        {
+                        if item_id.is_local() {
+                            let trait_ident = self.tcx.item_name(*trait_id);
                             err.span_label(
-                                method_ref.span,
+                                self.tcx.def_span(*item_id),
                                 format!("`{trait_ident}::{assoc_item_ident}` defined here"),
                             );
                         }

@@ -10,14 +10,11 @@ LL |     const fn const_val<T: Sized>() -> usize {
 error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
   --> $DIR/issue-54954.rs:1:24
    |
-LL |   const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot call associated function of trait
+LL | const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot call associated function of trait
 ...
-LL | /     const fn const_val<T: Sized>() -> usize {
-LL | |
-LL | |         core::mem::size_of::<T>()
-LL | |     }
-   | |_____- `Tt::const_val` defined here
+LL |     const fn const_val<T: Sized>() -> usize {
+   |     --------------------------------------- `Tt::const_val` defined here
 
 error: aborting due to 2 previous errors
 

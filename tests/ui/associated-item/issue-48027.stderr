@@ -18,7 +18,7 @@ error[E0790]: cannot refer to the associated constant on trait without specifyin
   --> $DIR/issue-48027.rs:3:32
    |
 LL |     const X: usize;
-   |     --------------- `Bar::X` defined here
+   |     -------------- `Bar::X` defined here
 LL |     fn return_n(&self) -> [u8; Bar::X];
    |                                ^^^^^^ cannot refer to the associated constant of trait
 

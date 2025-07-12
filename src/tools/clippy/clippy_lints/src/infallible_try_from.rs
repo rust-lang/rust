@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::sym;
 use rustc_errors::MultiSpan;
-use rustc_hir::{AssocItemKind, Item, ItemKind};
+use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::AssocTag;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -51,25 +52,23 @@ impl<'tcx> LateLintPass<'tcx> for InfallibleTryFrom {
         if !cx.tcx.is_diagnostic_item(sym::TryFrom, trait_def_id) {
             return;
         }
-        for ii in imp.items {
-            if ii.kind == AssocItemKind::Type {
-                let ii = cx.tcx.hir_impl_item(ii.id);
-                if ii.ident.name != sym::Error {
-                    continue;
-                }
-                let ii_ty = ii.expect_type();
-                let ii_ty_span = ii_ty.span;
-                let ii_ty = clippy_utils::ty::ty_from_hir_ty(cx, ii_ty);
-                if !ii_ty.is_inhabited_from(cx.tcx, ii.owner_id.to_def_id(), cx.typing_env()) {
-                    let mut span = MultiSpan::from_span(cx.tcx.def_span(item.owner_id.to_def_id()));
-                    span.push_span_label(ii_ty_span, "infallible error type");
-                    span_lint(
-                        cx,
-                        INFALLIBLE_TRY_FROM,
-                        span,
-                        "infallible TryFrom impl; consider implementing From, instead",
-                    );
-                }
+        for ii in cx.tcx.associated_items(item.owner_id.def_id)
+            .filter_by_name_unhygienic_and_kind(sym::Error, AssocTag::Type)
+        {
+            let ii_ty = cx.tcx.type_of(ii.def_id).instantiate_identity();
+            if !ii_ty.is_inhabited_from(cx.tcx, ii.def_id, cx.typing_env()) {
+                let mut span = MultiSpan::from_span(cx.tcx.def_span(item.owner_id.to_def_id()));
+                let ii_ty_span = cx.tcx.hir_node_by_def_id(ii.def_id.expect_local())
+                    .expect_impl_item()
+                    .expect_type()
+                    .span;
+                span.push_span_label(ii_ty_span, "infallible error type");
+                span_lint(
+                    cx,
+                    INFALLIBLE_TRY_FROM,
+                    span,
+                    "infallible TryFrom impl; consider implementing From, instead",
+                );
             }
         }
     }

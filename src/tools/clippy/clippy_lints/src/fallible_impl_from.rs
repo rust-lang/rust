@@ -52,20 +52,20 @@ declare_lint_pass!(FallibleImplFrom => [FALLIBLE_IMPL_FROM]);
 impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         // check for `impl From<???> for ..`
-        if let hir::ItemKind::Impl(impl_) = &item.kind
+        if let hir::ItemKind::Impl(_) = &item.kind
             && let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
             && cx
                 .tcx
                 .is_diagnostic_item(sym::From, impl_trait_ref.skip_binder().def_id)
         {
-            lint_impl_body(cx, item.span, impl_.items);
+            lint_impl_body(cx, item.owner_id, item.span);
         }
     }
 }
 
-fn lint_impl_body(cx: &LateContext<'_>, impl_span: Span, impl_items: &[hir::ImplItemRef]) {
+fn lint_impl_body(cx: &LateContext<'_>, item_def_id: hir::OwnerId, impl_span: Span) {
     use rustc_hir::intravisit::{self, Visitor};
-    use rustc_hir::{Expr, ImplItemKind};
+    use rustc_hir::Expr;
 
     struct FindPanicUnwrap<'a, 'tcx> {
         lcx: &'a LateContext<'tcx>,
@@ -96,35 +96,35 @@ fn lint_impl_body(cx: &LateContext<'_>, impl_span: Span, impl_items: &[hir::Impl
         }
     }
 
-    for impl_item in impl_items {
-        if impl_item.ident.name == sym::from
-            && let ImplItemKind::Fn(_, body_id) = cx.tcx.hir_impl_item(impl_item.id).kind
-        {
-            // check the body for `begin_panic` or `unwrap`
-            let body = cx.tcx.hir_body(body_id);
-            let mut fpu = FindPanicUnwrap {
-                lcx: cx,
-                typeck_results: cx.tcx.typeck(impl_item.id.owner_id.def_id),
-                result: Vec::new(),
-            };
-            fpu.visit_expr(body.value);
+    for impl_item in cx.tcx.associated_items(item_def_id)
+        .filter_by_name_unhygienic_and_kind(sym::from, ty::AssocTag::Fn)
+    {
+        let impl_item_def_id= impl_item.def_id.expect_local();
 
-            // if we've found one, lint
-            if !fpu.result.is_empty() {
-                span_lint_and_then(
-                    cx,
-                    FALLIBLE_IMPL_FROM,
-                    impl_span,
-                    "consider implementing `TryFrom` instead",
-                    move |diag| {
-                        diag.help(
-                            "`From` is intended for infallible conversions only. \
-                            Use `TryFrom` if there's a possibility for the conversion to fail",
-                        );
-                        diag.span_note(fpu.result, "potential failure(s)");
-                    },
-                );
-            }
+        // check the body for `begin_panic` or `unwrap`
+        let body = cx.tcx.hir_body_owned_by(impl_item_def_id);
+        let mut fpu = FindPanicUnwrap {
+            lcx: cx,
+            typeck_results: cx.tcx.typeck(impl_item_def_id),
+            result: Vec::new(),
+        };
+        fpu.visit_expr(body.value);
+
+        // if we've found one, lint
+        if !fpu.result.is_empty() {
+            span_lint_and_then(
+                cx,
+                FALLIBLE_IMPL_FROM,
+                impl_span,
+                "consider implementing `TryFrom` instead",
+                move |diag| {
+                    diag.help(
+                        "`From` is intended for infallible conversions only. \
+                        Use `TryFrom` if there's a possibility for the conversion to fail",
+                    );
+                    diag.span_note(fpu.result, "potential failure(s)");
+                },
+            );
         }
     }
 }

@@ -65,7 +65,7 @@ LL | #[no_mangle]
    | ------------ help: remove this attribute
 LL |
 LL | pub fn defiant<T>(_t: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(no_mangle_generic_items)]` on by default
 
@@ -89,7 +89,7 @@ warning: functions generic over types or consts must be mangled
   --> $DIR/suggestions.rs:26:18
    |
 LL |     #[no_mangle] pub fn val_jean<T>() {}
-   |     ------------ ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ------------ ^^^^^^^^^^^^^^^^^^^^
    |     |
    |     help: remove this attribute
 
@@ -105,7 +105,7 @@ warning: functions generic over types or consts must be mangled
   --> $DIR/suggestions.rs:35:18
    |
 LL |     #[no_mangle] pub(crate) fn crossfield<T>() {}
-   |     ------------ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ------------ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |     |
    |     help: remove this attribute
 

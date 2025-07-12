@@ -139,13 +139,12 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                 // We can't check inherent impls for slices, but we know that they have an `iter(_mut)` method
                 ty.peel_refs().is_slice() || get_adt_inherent_method(cx, ty, expected_method_name).is_some()
             })
-            && let Some(iter_assoc_span) = imp.items.iter().find_map(|item| {
-                if item.ident.name == sym::IntoIter {
-                    Some(cx.tcx.hir_impl_item(item.id).expect_type().span)
-                } else {
-                    None
-                }
-            })
+            && let Some(iter_assoc_span) = cx.tcx.associated_items(item.owner_id)
+                .filter_by_name_unhygienic_and_kind(sym::IntoIter, ty::AssocTag::Type)
+                .next()
+                .map(|assoc_item| {
+                    cx.tcx.hir_node_by_def_id(assoc_item.def_id.expect_local()).expect_impl_item().expect_type().span
+                })
             && is_ty_exported(cx, ty)
         {
             span_lint_and_then(

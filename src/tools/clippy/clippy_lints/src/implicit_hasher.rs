@@ -130,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                     });
 
                     let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);
-                    for item in impl_.items.iter().map(|item| cx.tcx.hir_impl_item(item.id)) {
+                    for item in impl_.items.iter().map(|&item| cx.tcx.hir_impl_item(item)) {
                         ctr_vis.visit_impl_item(item);
                     }
 

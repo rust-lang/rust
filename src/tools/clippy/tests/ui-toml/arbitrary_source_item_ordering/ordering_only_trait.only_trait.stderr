@@ -28,13 +28,13 @@ error: incorrect ordering of trait items (defined order: [Const, Type, Fn])
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:45:5
    |
 LL |     const A: bool;
-   |     ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
    |
 note: should be placed before `SomeType`
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:43:5
    |
 LL |     type SomeType;
-   |     ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

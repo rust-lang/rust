@@ -1,7 +1,8 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir;
 use rustc_abi::ExternAbi;
-use rustc_hir::{AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind, intravisit};
+use rustc_hir::{Body, FnDecl, HirId, HirIdSet, Node, Pat, PatKind, intravisit};
+use rustc_hir::def::DefKind;
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
@@ -84,23 +85,18 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
             .def_id;
 
         let mut trait_self_ty = None;
-        if let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent_id) {
+        match cx.tcx.def_kind(parent_id) {
             // If the method is an impl for a trait, don't warn.
-            if let ItemKind::Impl(Impl { of_trait: Some(_), .. }) = item.kind {
-                return;
+            DefKind::Impl { of_trait: true } => {
+                return
             }
 
             // find `self` ty for this trait if relevant
-            if let ItemKind::Trait(_, _, _, _, _, items) = item.kind {
-                for trait_item in items {
-                    if trait_item.id.owner_id.def_id == fn_def_id
-                        // be sure we have `self` parameter in this function
-                        && trait_item.kind == (AssocItemKind::Fn { has_self: true })
-                    {
-                        trait_self_ty = Some(TraitRef::identity(cx.tcx, trait_item.id.owner_id.to_def_id()).self_ty());
-                    }
-                }
+            DefKind::Trait => {
+                trait_self_ty = Some(TraitRef::identity(cx.tcx, parent_id.to_def_id()).self_ty());
             }
+
+            _ => {}
         }
 
         let mut v = EscapeDelegate {

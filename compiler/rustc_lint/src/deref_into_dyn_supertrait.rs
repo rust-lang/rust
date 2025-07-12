@@ -1,7 +1,7 @@
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::sym;
+use rustc_span::{Ident, sym};
 use rustc_trait_selection::traits::supertraits;
 
 use crate::lints::{SupertraitAsDerefTarget, SupertraitAsDerefTargetLabel};
@@ -79,11 +79,15 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
             // erase regions in self type for better diagnostic presentation
             let (self_ty, target_principal, supertrait_principal) =
                 tcx.erase_regions((self_ty, target_principal, supertrait_principal));
-            let label2 = impl_
-                .items
-                .iter()
-                .find_map(|i| (i.ident.name == sym::Target).then_some(i.span))
-                .map(|label| SupertraitAsDerefTargetLabel { label });
+            let label2 = tcx
+                .associated_items(item.owner_id)
+                .find_by_ident_and_kind(
+                    tcx,
+                    Ident::with_dummy_span(sym::Target),
+                    ty::AssocTag::Type,
+                    item.owner_id.to_def_id(),
+                )
+                .map(|label| SupertraitAsDerefTargetLabel { label: tcx.def_span(label.def_id) });
             let span = tcx.def_span(item.owner_id.def_id);
             cx.emit_span_lint(
                 DEREF_INTO_DYN_SUPERTRAIT,
