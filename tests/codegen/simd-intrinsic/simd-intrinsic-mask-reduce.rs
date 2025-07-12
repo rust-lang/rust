@@ -4,15 +4,14 @@
 #![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
 
+#[path = "../../auxiliary/minisimd.rs"]
+mod minisimd;
+use minisimd::*;
+
 use std::intrinsics::simd::{simd_reduce_all, simd_reduce_any};
 
-#[repr(simd)]
-#[derive(Copy, Clone)]
-pub struct mask32x2([i32; 2]);
-
-#[repr(simd)]
-#[derive(Copy, Clone)]
-pub struct mask8x16([i8; 16]);
+pub type mask32x2 = Simd<i32, 2>;
+pub type mask8x16 = Simd<i8, 16>;
 
 // NOTE(eddyb) `%{{x|1}}` is used because on some targets (e.g. WASM)
 // SIMD vectors are passed directly, resulting in `%x` being a vector,

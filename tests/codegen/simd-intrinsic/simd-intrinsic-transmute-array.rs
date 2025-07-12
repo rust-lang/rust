@@ -8,13 +8,12 @@
 #![allow(non_camel_case_types)]
 #![feature(repr_simd, core_intrinsics)]
 
-#[repr(simd)]
-#[derive(Copy, Clone)]
-pub struct S<const N: usize>([f32; N]);
+#[path = "../../auxiliary/minisimd.rs"]
+mod minisimd;
+use minisimd::*;
 
-#[repr(simd)]
-#[derive(Copy, Clone)]
-pub struct T([f32; 4]);
+pub type S<const N: usize> = Simd<f32, N>;
+pub type T = Simd<f32, 4>;
 
 // CHECK-LABEL: @array_align(
 #[no_mangle]
@@ -34,7 +33,7 @@ pub fn vector_align() -> usize {
 #[no_mangle]
 pub fn build_array_s(x: [f32; 4]) -> S<4> {
     // CHECK: call void @llvm.memcpy.{{.+}}({{.*}} align [[VECTOR_ALIGN]] {{.*}} align [[ARRAY_ALIGN]] {{.*}}, [[USIZE]] 16, i1 false)
-    S::<4>(x)
+    Simd(x)
 }
 
 // CHECK-LABEL: @build_array_transmute_s
@@ -48,7 +47,7 @@ pub fn build_array_transmute_s(x: [f32; 4]) -> S<4> {
 #[no_mangle]
 pub fn build_array_t(x: [f32; 4]) -> T {
     // CHECK: call void @llvm.memcpy.{{.+}}({{.*}} align [[VECTOR_ALIGN]] {{.*}} align [[ARRAY_ALIGN]] {{.*}}, [[USIZE]] 16, i1 false)
-    T(x)
+    Simd(x)
 }
 
 // CHECK-LABEL: @build_array_transmute_t

@@ -10,7 +10,9 @@ struct i32x4([i32; 4]);
 
 #[inline(always)]
 fn to_array(a: i32x4) -> [i32; 4] {
-    a.0
+    // This was originally just `a.0`, but that ended up being annoying enough
+    // that it was banned by <https://github.com/rust-lang/compiler-team/issues/838>
+    unsafe { std::mem::transmute(a) }
 }
 
 fn main() {
