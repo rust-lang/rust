@@ -1045,16 +1045,11 @@ impl<'a> Parser<'a> {
         Ok(Some(stmt))
     }
 
-    pub(super) fn mk_block(
-        &self,
-        stmts: ThinVec<Stmt>,
-        rules: BlockCheckMode,
-        span: Span,
-    ) -> P<Block> {
+    pub fn mk_block(&self, stmts: ThinVec<Stmt>, rules: BlockCheckMode, span: Span) -> P<Block> {
         P(Block { stmts, id: DUMMY_NODE_ID, rules, span, tokens: None })
     }
 
-    pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {
+    pub fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {
         Stmt { id: DUMMY_NODE_ID, kind, span }
     }
 
