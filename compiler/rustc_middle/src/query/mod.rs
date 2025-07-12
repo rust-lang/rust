@@ -69,8 +69,8 @@ use std::sync::Arc;
 
 use rustc_abi::Align;
 use rustc_arena::TypedArena;
-use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_attr_data_structures::StrippedCfgItem;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;

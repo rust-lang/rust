@@ -1,11 +1,10 @@
-use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
-use rustc_ast::{
-    self as ast, CRATE_NODE_ID, Crate, ItemKind, MetaItemInner, MetaItemKind, ModKind, NodeId, Path,
-};
+use rustc_ast::{self as ast, CRATE_NODE_ID, Crate, ItemKind, ModKind, NodeId, Path};
 use rustc_ast_pretty::pprust;
-use rustc_attr_data_structures::{self as attr, AttributeKind, Stability, find_attr};
+use rustc_attr_data_structures::{
+    self as attr, AttributeKind, CfgEntry, Stability, StrippedCfgItem, find_attr,
+};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
@@ -2860,17 +2859,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let note = errors::FoundItemConfigureOut { span: ident.span };
             err.subdiagnostic(note);
 
-            if let MetaItemKind::List(nested) = &cfg.kind
-                && let MetaItemInner::MetaItem(meta_item) = &nested[0]
-                && let MetaItemKind::NameValue(feature_name) = &meta_item.kind
-            {
-                let note = errors::ItemWasBehindFeature {
-                    feature: feature_name.symbol,
-                    span: meta_item.span,
-                };
+            if let CfgEntry::NameValue { value: Some((feature, _)), .. } = cfg.0 {
+                let note = errors::ItemWasBehindFeature { feature, span: cfg.1 };
                 err.subdiagnostic(note);
             } else {
-                let note = errors::ItemWasCfgOut { span: cfg.span };
+                let note = errors::ItemWasCfgOut { span: cfg.1 };
                 err.subdiagnostic(note);
             }
         }
