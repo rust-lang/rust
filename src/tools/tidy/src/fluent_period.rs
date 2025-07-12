@@ -37,7 +37,7 @@ fn check_period(filename: &str, contents: &str, bad: &mut bool) {
                 if let Some(PatternElement::TextElement { value }) = pat.elements.last() {
                     // We don't care about ellipses.
                     if value.ends_with(".") && !value.ends_with("...") {
-                        let ll = find_line(contents, *value);
+                        let ll = find_line(contents, value);
                         let name = m.id.name;
                         tidy_error!(bad, "{filename}:{ll}: message `{name}` ends in a period");
                     }
@@ -52,7 +52,7 @@ fn check_period(filename: &str, contents: &str, bad: &mut bool) {
 
                 if let Some(PatternElement::TextElement { value }) = attr.value.elements.last() {
                     if value.ends_with(".") && !value.ends_with("...") {
-                        let ll = find_line(contents, *value);
+                        let ll = find_line(contents, value);
                         let name = attr.id.name;
                         tidy_error!(bad, "{filename}:{ll}: attr `{name}` ends in a period");
                     }

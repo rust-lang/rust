@@ -13,8 +13,8 @@ fn filter_used_messages(
     // we don't just check messages never appear in Rust files,
     // because messages can be used as parts of other fluent messages in Fluent files,
     // so we do checking messages appear only once in all Rust and Fluent files.
-    let mut matches = static_regex!(r"\w+").find_iter(contents);
-    while let Some(name) = matches.next() {
+    let matches = static_regex!(r"\w+").find_iter(contents);
+    for name in matches {
         if let Some((name, filename)) = msgs_not_appeared_yet.remove_entry(name.as_str()) {
             // if one msg appears for the first time,
             // remove it from `msgs_not_appeared_yet` and insert it into `msgs_appeared_only_once`.

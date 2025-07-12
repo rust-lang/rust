@@ -38,7 +38,7 @@ pub fn check(tests_path: impl AsRef<Path>, bad: &mut bool) {
 
             let sibling_path = sibling.path();
 
-            let Some(ext) = sibling_path.extension().map(OsStr::to_str).flatten() else {
+            let Some(ext) = sibling_path.extension().and_then(OsStr::to_str) else {
                 continue;
             };
 
@@ -84,7 +84,7 @@ pub fn check(tests_path: impl AsRef<Path>, bad: &mut bool) {
                 }
             });
 
-            let Some(test_name) = test.file_stem().map(OsStr::to_str).flatten() else {
+            let Some(test_name) = test.file_stem().and_then(OsStr::to_str) else {
                 continue;
             };
 
@@ -102,9 +102,9 @@ pub fn check(tests_path: impl AsRef<Path>, bad: &mut bool) {
         // of the form: `test-name.revision.compare_mode.extension`, but our only concern is
         // `test-name.revision` and `extension`.
         for sibling in files_under_inspection.iter().filter(|f| {
-            f.extension().map(OsStr::to_str).flatten().is_some_and(|ext| EXTENSIONS.contains(&ext))
+            f.extension().and_then(OsStr::to_str).is_some_and(|ext| EXTENSIONS.contains(&ext))
         }) {
-            let Some(filename) = sibling.file_name().map(OsStr::to_str).flatten() else {
+            let Some(filename) = sibling.file_name().and_then(OsStr::to_str) else {
                 continue;
             };
 
@@ -131,10 +131,10 @@ pub fn check(tests_path: impl AsRef<Path>, bad: &mut bool) {
                 }
                 [_, _] => return,
                 [_, found_revision, .., extension] => {
-                    if !IGNORES.contains(&found_revision)
+                    if !IGNORES.contains(found_revision)
                         && !expected_revisions.contains(*found_revision)
                         // This is from `//@ stderr-per-bitwidth`
-                        && !(*extension == "stderr" && ["32bit", "64bit"].contains(&found_revision))
+                        && !(*extension == "stderr" && ["32bit", "64bit"].contains(found_revision))
                     {
                         // Found some unexpected revision-esque component that is not a known
                         // compare-mode or expected revision.

@@ -26,7 +26,7 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
                     // Check this is the rust-lang/rust x tool installation since it should be
                     // installed at a path containing `src/tools/x`.
                     if let Some(path) = iter.next() {
-                        if path.contains(&"src/tools/x") {
+                        if path.contains("src/tools/x") {
                             let version = version.strip_prefix("v").unwrap();
                             installed = Some(Version::parse(version).unwrap());
                             break;
@@ -42,15 +42,15 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
 
         if let Some(expected) = get_x_wrapper_version(root, cargo) {
             if installed < expected {
-                return println!(
+                println!(
                     "Current version of x is {installed}, but the latest version is {expected}\nConsider updating to the newer version of x by running `cargo install --path src/tools/x`"
-                );
+                )
             }
         } else {
-            return tidy_error!(
+            tidy_error!(
                 bad,
                 "Unable to parse the latest version of `x` at `src/tools/x/Cargo.toml`"
-            );
+            )
         }
     } else {
         tidy_error!(bad, "failed to check version of `x`: {}", cargo_list.status)

@@ -15,11 +15,12 @@ use std::{env, process};
 use tidy::*;
 
 fn main() {
-    // Running Cargo will read the libstd Cargo.toml
+    // Enable nightly, because Cargo will read the libstd Cargo.toml
     // which uses the unstable `public-dependency` feature.
-    //
-    // `setenv` might not be thread safe, so run it before using multiple threads.
-    env::set_var("RUSTC_BOOTSTRAP", "1");
+    // SAFETY: no other threads have been spawned
+    unsafe {
+        env::set_var("RUSTC_BOOTSTRAP", "1");
+    }
 
     let root_path: PathBuf = env::args_os().nth(1).expect("need path to root of repo").into();
     let cargo: PathBuf = env::args_os().nth(2).expect("need path to cargo").into();

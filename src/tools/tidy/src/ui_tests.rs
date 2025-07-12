@@ -57,11 +57,9 @@ const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
 fn check_entries(tests_path: &Path, bad: &mut bool) {
     let mut directories: HashMap<PathBuf, u32> = HashMap::new();
 
-    for dir in Walk::new(&tests_path.join("ui")) {
-        if let Ok(entry) = dir {
-            let parent = entry.path().parent().unwrap().to_path_buf();
-            *directories.entry(parent).or_default() += 1;
-        }
+    for entry in Walk::new(tests_path.join("ui")).flatten() {
+        let parent = entry.path().parent().unwrap().to_path_buf();
+        *directories.entry(parent).or_default() += 1;
     }
 
     let (mut max, mut max_issues) = (0, 0);
@@ -99,7 +97,7 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
 "#;
 
     let path = &root_path.join("tests");
-    check_entries(&path, bad);
+    check_entries(path, bad);
 
     // the list of files in ui tests that are allowed to start with `issue-XXXX`
     // BTreeSet because we would like a stable ordering so --bless works
@@ -109,13 +107,12 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
         .strip_prefix(issues_txt_header)
         .unwrap()
         .lines()
-        .map(|line| {
+        .inspect(|&line| {
             if prev_line > line {
                 is_sorted = false;
             }
 
             prev_line = line;
-            line
         })
         .collect();
 
@@ -203,7 +200,7 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
         // so we don't bork things on panic or a contributor using Ctrl+C
         let blessed_issues_path = tidy_src.join("issues_blessed.txt");
         let mut blessed_issues_txt = fs::File::create(&blessed_issues_path).unwrap();
-        blessed_issues_txt.write(issues_txt_header.as_bytes()).unwrap();
+        blessed_issues_txt.write_all(issues_txt_header.as_bytes()).unwrap();
         // If we changed paths to use the OS separator, reassert Unix chauvinism for blessing.
         for filename in allowed_issue_names.difference(&remaining_issue_names) {
             writeln!(blessed_issues_txt, "{filename}").unwrap();

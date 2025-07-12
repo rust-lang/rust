@@ -7,7 +7,9 @@ use std::process::Command;
 pub fn check(root_path: &Path, compiler_path: &Path, bad: &mut bool) {
     let cg_gcc_version_path = compiler_path.join("rustc_codegen_gcc/libgccjit.version");
     let cg_gcc_version = std::fs::read_to_string(&cg_gcc_version_path)
-        .expect(&format!("Cannot read GCC version from {}", cg_gcc_version_path.display()))
+        .unwrap_or_else(|_| {
+            panic!("Cannot read GCC version from {}", cg_gcc_version_path.display())
+        })
         .trim()
         .to_string();
 
@@ -27,14 +29,13 @@ pub fn check(root_path: &Path, compiler_path: &Path, bad: &mut bool) {
     //  e607be166673a8de9fc07f6f02c60426e556c5f2 src/gcc (master-e607be166673a8de9fc07f6f02c60426e556c5f2.e607be)
     // +e607be166673a8de9fc07f6f02c60426e556c5f2 src/gcc (master-e607be166673a8de9fc07f6f02c60426e556c5f2.e607be)
     let git_output = String::from_utf8_lossy(&git_output.stdout)
-        .trim()
         .split_whitespace()
         .next()
         .unwrap_or_default()
         .to_string();
 
     // The SHA can start with + if the submodule is modified or - if it is not checked out.
-    let gcc_submodule_sha = git_output.trim_start_matches(&['+', '-']);
+    let gcc_submodule_sha = git_output.trim_start_matches(['+', '-']);
     if gcc_submodule_sha != cg_gcc_version {
         *bad = true;
         eprintln!(

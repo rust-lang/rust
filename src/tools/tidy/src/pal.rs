@@ -86,7 +86,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             return;
         }
 
-        check_cfgs(contents, &file, bad, &mut saw_target_arch, &mut saw_cfg_bang);
+        check_cfgs(contents, file, bad, &mut saw_target_arch, &mut saw_cfg_bang);
     });
 
     assert!(saw_target_arch);
