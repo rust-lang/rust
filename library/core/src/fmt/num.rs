@@ -1,6 +1,6 @@
 //! Integer and floating-point number formatting
 
-use crate::fmt::NumBuffer;
+use crate::fmt::{NumBuffer, NumBufferTrait};
 use crate::mem::MaybeUninit;
 use crate::num::fmt as numfmt;
 use crate::ops::{Div, Rem, Sub};
@@ -338,7 +338,7 @@ macro_rules! impl_Display {
             /// use core::fmt::NumBuffer;
             ///
             #[doc = concat!("let n = 0", stringify!($signed), ";")]
-            /// let mut buf = NumBuffer::new();
+            #[doc = concat!("let mut buf = NumBuffer::<", stringify!($signed), ">::new();")]
             /// assert_eq!(n.format_into(&mut buf), "0");
             ///
             #[doc = concat!("let n1 = 32", stringify!($signed), ";")]
@@ -347,8 +347,23 @@ macro_rules! impl_Display {
             #[doc = concat!("let n2 = ", stringify!($signed::MAX), ";")]
             #[doc = concat!("assert_eq!(n2.format_into(&mut buf), ", stringify!($signed::MAX), ".to_string());")]
             /// ```
+            ///
+            /// You can also use a [`NumBuffer`] used to store a bigger integer:
+            ///
+            /// ```
+            /// #![feature(int_format_into)]
+            /// use core::fmt::NumBuffer;
+            ///
+            #[doc = concat!("let n = 32", stringify!($signed), ";")]
+            /// // We use a `NumBuffer` used to store a bigger integer.
+            /// let mut buf = NumBuffer::<u128>::new();
+            /// assert_eq!(n.format_into(&mut buf), "32");
+            /// ```
             #[unstable(feature = "int_format_into", issue = "138215")]
-            pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
+            pub fn format_into<T: NumBufferTrait>(self, buf: &mut NumBuffer<T>) -> &str {
+                const {
+                    assert!(Self::BUF_SIZE <= T::BUF_SIZE, "buffer is not big enough");
+                }
                 let mut offset;
 
                 #[cfg(not(feature = "optimize_for_size"))]
@@ -381,7 +396,7 @@ macro_rules! impl_Display {
             /// use core::fmt::NumBuffer;
             ///
             #[doc = concat!("let n = 0", stringify!($unsigned), ";")]
-            /// let mut buf = NumBuffer::new();
+            #[doc = concat!("let mut buf = NumBuffer::<", stringify!($unsigned), ">::new();")]
             /// assert_eq!(n.format_into(&mut buf), "0");
             ///
             #[doc = concat!("let n1 = 32", stringify!($unsigned), ";")]
@@ -390,8 +405,23 @@ macro_rules! impl_Display {
             #[doc = concat!("let n2 = ", stringify!($unsigned::MAX), ";")]
             #[doc = concat!("assert_eq!(n2.format_into(&mut buf), ", stringify!($unsigned::MAX), ".to_string());")]
             /// ```
+            ///
+            /// You can also use a [`NumBuffer`] used to store a bigger integer:
+            ///
+            /// ```
+            /// #![feature(int_format_into)]
+            /// use core::fmt::NumBuffer;
+            ///
+            #[doc = concat!("let n = 32", stringify!($unsigned), ";")]
+            /// // We use a `NumBuffer` used to store `u128`.
+            /// let mut buf = NumBuffer::<u128>::new();
+            /// assert_eq!(n.format_into(&mut buf), "32");
+            /// ```
             #[unstable(feature = "int_format_into", issue = "138215")]
-            pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
+            pub fn format_into<T: NumBufferTrait>(self, buf: &mut NumBuffer<T>) -> &str {
+                const {
+                    assert!(Self::BUF_SIZE <= T::BUF_SIZE, "buffer is not big enough");
+                }
                 let offset;
 
                 #[cfg(not(feature = "optimize_for_size"))]
@@ -790,19 +820,20 @@ impl u128 {
     /// use core::fmt::NumBuffer;
     ///
     /// let n = 0u128;
-    /// let mut buf = NumBuffer::new();
+    /// let mut buf = NumBuffer::<u128>::new();
     /// assert_eq!(n.format_into(&mut buf), "0");
     ///
     /// let n1 = 32u128;
-    /// let mut buf1 = NumBuffer::new();
-    /// assert_eq!(n1.format_into(&mut buf1), "32");
+    /// assert_eq!(n1.format_into(&mut buf), "32");
     ///
     /// let n2 = u128::MAX;
-    /// let mut buf2 = NumBuffer::new();
-    /// assert_eq!(n2.format_into(&mut buf2), u128::MAX.to_string());
+    /// assert_eq!(n2.format_into(&mut buf), u128::MAX.to_string());
     /// ```
     #[unstable(feature = "int_format_into", issue = "138215")]
-    pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
+    pub fn format_into<T: NumBufferTrait>(self, buf: &mut NumBuffer<T>) -> &str {
+        const {
+            assert!(Self::BUF_SIZE <= T::BUF_SIZE, "buffer is not big enough");
+        }
         let diff = buf.capacity() - U128_MAX_DEC_N;
         // FIXME: Once const generics are better, use `NumberBufferTrait::BUF_SIZE` as generic const
         // for `fmt_u128_inner`.
@@ -825,7 +856,7 @@ impl i128 {
     /// use core::fmt::NumBuffer;
     ///
     /// let n = 0i128;
-    /// let mut buf = NumBuffer::new();
+    /// let mut buf = NumBuffer::<i128>::new();
     /// assert_eq!(n.format_into(&mut buf), "0");
     ///
     /// let n1 = i128::MIN;
@@ -835,7 +866,10 @@ impl i128 {
     /// assert_eq!(n2.format_into(&mut buf), i128::MAX.to_string());
     /// ```
     #[unstable(feature = "int_format_into", issue = "138215")]
-    pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
+    pub fn format_into<T: NumBufferTrait>(self, buf: &mut NumBuffer<T>) -> &str {
+        const {
+            assert!(Self::BUF_SIZE <= T::BUF_SIZE, "buffer is not big enough");
+        }
         let diff = buf.capacity() - U128_MAX_DEC_N;
         // FIXME: Once const generics are better, use `NumberBufferTrait::BUF_SIZE` as generic const
         // for `fmt_u128_inner`.
