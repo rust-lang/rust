@@ -40,6 +40,11 @@ pub fn symbols(input: TokenStream) -> TokenStream {
     symbols::symbols(input.into()).into()
 }
 
+#[proc_macro]
+pub fn extra_symbols_impl(input: TokenStream) -> TokenStream {
+    symbols::extra_symbols(input.into()).into()
+}
+
 /// Derive an extension trait for a given impl block. The trait name
 /// goes into the parenthesized args of the macro, for greppability.
 /// For example:

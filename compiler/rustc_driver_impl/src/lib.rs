@@ -264,7 +264,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         hash_untracked_state: None,
         register_lints: None,
         override_queries: None,
-        extra_symbols: Vec::new(),
+        preinterned_symbols: None,
         make_codegen_backend: None,
         registry: diagnostics_registry(),
         using_internal_features: &USING_INTERNAL_FEATURES,
