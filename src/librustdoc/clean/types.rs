@@ -767,15 +767,15 @@ impl Item {
             .iter()
             .filter_map(|attr| {
                 if let hir::Attribute::Parsed(AttributeKind::LinkSection { name, .. }) = attr {
-                    Some(format!("#[link_section = \"{name}\"]"))
+                    Some(format!("#[unsafe(link_section = \"{name}\")]"))
                 }
                 // NoMangle is special cased, as it appears in HTML output, and we want to show it in source form, not HIR printing.
                 // It is also used by cargo-semver-checks.
                 else if let hir::Attribute::Parsed(AttributeKind::NoMangle(..)) = attr {
-                    Some("#[no_mangle]".to_string())
+                    Some("#[unsafe(no_mangle)]".to_string())
                 } else if let hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) = attr
                 {
-                    Some(format!("#[export_name = \"{name}\"]"))
+                    Some(format!("#[unsafe(export_name = \"{name}\")]"))
                 } else if let hir::Attribute::Parsed(AttributeKind::NonExhaustive(..)) = attr {
                     Some("#[non_exhaustive]".to_string())
                 } else if is_json {
