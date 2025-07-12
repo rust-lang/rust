@@ -9,6 +9,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/BinaryFormat/Magic.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/IR/AutoUpgrade.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DiagnosticHandler.h"
@@ -1899,6 +1900,25 @@ extern "C" void LLVMRustGetMangledName(LLVMValueRef V, RustStringRef Str) {
   auto OS = RawRustStringOstream(Str);
   GlobalValue *GV = unwrap<GlobalValue>(V);
   Mangler().getNameWithPrefix(OS, GV, true);
+}
+
+extern "C" bool
+LLVMRustUpgradeIntrinsicFunction(LLVMValueRef Fn, LLVMValueRef *NewFn,
+                                 bool canUpgradeDebugIntrinsicsToRecords) {
+  Function *F = unwrap<Function>(Fn);
+  Function *NewF = nullptr;
+  bool CanUpgrade =
+      UpgradeIntrinsicFunction(F, NewF, canUpgradeDebugIntrinsicsToRecords);
+  *NewFn = wrap(NewF);
+  return CanUpgrade;
+}
+
+extern "C" bool LLVMRustIsTargetIntrinsic(unsigned ID) {
+#if LLVM_VERSION_GE(20, 1)
+  return Intrinsic::isTargetIntrinsic(ID);
+#else
+  return Function::isTargetIntrinsic(ID);
+#endif
 }
 
 extern "C" int32_t LLVMRustGetElementTypeArgIndex(LLVMValueRef CallSite) {

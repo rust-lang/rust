@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use gccjit::{Struct, Type};
+use gccjit::{RValue, Struct, Type};
 use rustc_abi as abi;
 use rustc_abi::Primitive::*;
 use rustc_abi::{
@@ -373,7 +373,11 @@ impl<'gcc, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Type<'gcc> {
+    fn fn_decl_backend_type(
+        &self,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        _fn_ptr: RValue<'gcc>,
+    ) -> Type<'gcc> {
         // FIXME(antoyo): Should we do something with `FnAbiGcc::fn_attributes`?
         let FnAbiGcc { return_type, arguments_type, is_c_variadic, .. } = fn_abi.gcc_type(self);
         self.context.new_function_pointer_type(None, return_type, &arguments_type, is_c_variadic)
