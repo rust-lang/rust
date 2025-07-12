@@ -543,7 +543,8 @@ mod impls {
         ($($t:ty)*) => {
             $(
                 #[stable(feature = "rust1", since = "1.0.0")]
-                impl Clone for $t {
+                #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+                impl const Clone for $t {
                     #[inline(always)]
                     fn clone(&self) -> Self {
                         *self
@@ -561,7 +562,8 @@ mod impls {
     }
 
     #[unstable(feature = "never_type", issue = "35121")]
-    impl Clone for ! {
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    impl const Clone for ! {
         #[inline]
         fn clone(&self) -> Self {
             *self
