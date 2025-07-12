@@ -1,6 +1,6 @@
 #![feature(const_type_id)]
 #![feature(generic_const_exprs)]
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, const_cmp)]
 #![feature(core_intrinsics)]
 #![allow(incomplete_features)]
 

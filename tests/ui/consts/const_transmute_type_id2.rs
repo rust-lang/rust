@@ -1,6 +1,6 @@
 //@ normalize-stderr: "0x(ff)+" -> "<u128::MAX>"
 
-#![feature(const_type_id, const_trait_impl)]
+#![feature(const_type_id, const_trait_impl, const_cmp)]
 
 use std::any::TypeId;
 
