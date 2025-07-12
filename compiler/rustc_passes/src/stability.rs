@@ -150,6 +150,78 @@ fn lookup_deprecation_entry(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Depre
     Some(DeprecationEntry::local(depr, def_id))
 }
 
+fn inherit_stability(def_kind: DefKind) -> InheritStability {
+    match def_kind {
+        DefKind::Field | DefKind::Variant | DefKind::Ctor(..) => InheritStability::Yes,
+        _ => InheritStability::No,
+    }
+}
+
+/// If the `-Z force-unstable-if-unmarked` flag is passed then we provide
+/// a parent stability annotation which indicates that this is private
+/// with the `rustc_private` feature. This is intended for use when
+/// compiling `librustc_*` crates themselves so we can leverage crates.io
+/// while maintaining the invariant that all sysroot crates are unstable
+/// by default and are unable to be used.
+const FORCE_UNSTABLE: Stability = Stability {
+    level: attrs::StabilityLevel::Unstable {
+        reason: UnstableReason::Default,
+        issue: NonZero::new(27812),
+        is_soft: false,
+        implied_by: None,
+        old_name: None,
+    },
+    feature: sym::rustc_private,
+};
+
+#[instrument(level = "debug", skip(tcx))]
+fn lookup_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Stability> {
+    // Propagate unstability. This can happen even for non-staged-api crates in case
+    // -Zforce-unstable-if-unmarked is set.
+    if !tcx.features().staged_api() {
+        if !tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
+            return None;
+        }
+
+        let Some(parent) = tcx.opt_local_parent(def_id) else { return Some(FORCE_UNSTABLE) };
+
+        if inherit_deprecation(tcx.def_kind(def_id)).yes() {
+            let parent = tcx.lookup_stability(parent)?;
+            if parent.is_unstable() {
+                return Some(parent);
+            }
+        }
+
+        return None;
+    }
+
+    // # Regular stability
+    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
+    let stab =
+        attrs::find_attr!(attrs, AttributeKind::Stability { stability, span: _ } => *stability);
+
+    if let Some(stab) = stab {
+        return Some(stab);
+    }
+
+    if inherit_deprecation(tcx.def_kind(def_id)).yes() {
+        let Some(parent) = tcx.opt_local_parent(def_id) else {
+            return tcx
+                .sess
+                .opts
+                .unstable_opts
+                .force_unstable_if_unmarked
+                .then_some(FORCE_UNSTABLE);
+        };
+        let parent = tcx.lookup_stability(parent)?;
+        if parent.is_unstable() || inherit_stability(tcx.def_kind(def_id)).yes() {
+            return Some(parent);
+        }
+    }
+
+    None
+}
+
 #[instrument(level = "debug", skip(tcx))]
 fn lookup_default_body_stability(
     tcx: TyCtxt<'_>,
@@ -168,7 +240,6 @@ fn lookup_default_body_stability(
 struct Annotator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     index: &'a mut Index,
-    parent_stab: Option<Stability>,
     parent_const_stab: Option<ConstStability>,
 }
 
@@ -182,7 +253,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         fn_sig: Option<&'tcx hir::FnSig<'tcx>>,
         inherit_deprecation: InheritDeprecation,
         inherit_const_stability: InheritConstStability,
-        inherit_from_parent: InheritStability,
         visit_children: F,
     ) where
         F: FnOnce(&mut Self),
@@ -190,14 +260,16 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         let attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
         debug!("annotate(id = {:?}, attrs = {:?})", def_id, attrs);
 
+        let stab = self.tcx.lookup_stability(def_id);
         let const_stability_indirect = find_attr!(attrs, AttributeKind::ConstStabilityIndirect);
 
         if !self.tcx.features().staged_api() {
             // Propagate unstability. This can happen even for non-staged-api crates in case
             // -Zforce-unstable-if-unmarked is set.
-            if let Some(stab) = self.parent_stab {
+            if let Some(parent_def_id) = self.tcx.opt_local_parent(def_id)
+                && let Some(stab) = self.tcx.lookup_stability(parent_def_id)
+            {
                 if inherit_deprecation.yes() && stab.is_unstable() {
-                    self.index.stab_map.insert(def_id, stab);
                     if fn_sig.is_some_and(|s| s.header.is_const()) {
                         self.index.const_stab_map.insert(
                             def_id,
@@ -207,38 +279,17 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 }
             }
 
-            self.recurse_with_stability_attrs(None, None, visit_children);
+            self.recurse_with_stability_attrs(None, visit_children);
             return;
         }
 
-        // # Regular stability
-        let stab =
-            attrs::find_attr!(attrs, AttributeKind::Stability { stability, span: _ } => *stability);
-
-        if let Some(stab) = stab {
-            debug!("annotate: found {:?}", stab);
-
-            if let Stability {
-                level: StabilityLevel::Unstable { implied_by: Some(implied_by), .. },
-                feature,
-            } = stab
-            {
-                self.index.implications.insert(implied_by, feature);
-            }
-
-            self.index.stab_map.insert(def_id, stab);
+        if let Some(Stability {
+            level: StabilityLevel::Unstable { implied_by: Some(implied_by), .. },
+            feature,
+        }) = stab
+        {
+            self.index.implications.insert(implied_by, feature);
         }
-
-        if stab.is_none() {
-            debug!("annotate: stab not found, parent = {:?}", self.parent_stab);
-            if let Some(stab) = self.parent_stab {
-                if inherit_deprecation.yes() && stab.is_unstable() || inherit_from_parent.yes() {
-                    self.index.stab_map.insert(def_id, stab);
-                }
-            }
-        }
-
-        let final_stab = self.index.stab_map.get(&def_id);
 
         // # Const stability
 
@@ -253,7 +304,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         if fn_sig.is_some_and(|s| s.header.is_const()) && const_stab.is_none() &&
             // We only ever inherit unstable features.
             let Some(inherit_regular_stab) =
-                final_stab.filter(|s| s.is_unstable())
+                stab.filter(|s| s.is_unstable())
         {
             const_stab = Some(ConstStability {
                 // We subject these implicitly-const functions to recursive const stability.
@@ -292,7 +343,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }
 
         self.recurse_with_stability_attrs(
-            stab,
             inherit_const_stability.yes().then_some(const_stab).flatten(),
             visit_children,
         );
@@ -300,17 +350,12 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
     fn recurse_with_stability_attrs(
         &mut self,
-        stab: Option<Stability>,
         const_stab: Option<ConstStability>,
         f: impl FnOnce(&mut Self),
     ) {
         // These will be `Some` if this item changes the corresponding stability attribute.
-        let mut replaced_parent_stab = None;
         let mut replaced_parent_const_stab = None;
 
-        if let Some(stab) = stab {
-            replaced_parent_stab = Some(replace(&mut self.parent_stab, Some(stab)));
-        }
         if let Some(const_stab) = const_stab {
             replaced_parent_const_stab =
                 Some(replace(&mut self.parent_const_stab, Some(const_stab)));
@@ -318,9 +363,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
         f(self);
 
-        if let Some(orig_parent_stab) = replaced_parent_stab {
-            self.parent_stab = orig_parent_stab;
-        }
         if let Some(orig_parent_const_stab) = replaced_parent_const_stab {
             self.parent_const_stab = orig_parent_const_stab;
         }
@@ -352,7 +394,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                         None,
                         InheritDeprecation::Yes,
                         InheritConstStability::No,
-                        InheritStability::Yes,
                         |_| {},
                     )
                 }
@@ -368,7 +409,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             fn_sig,
             InheritDeprecation::Yes,
             const_stab_inherit,
-            InheritStability::No,
             |v| intravisit::walk_item(v, i),
         );
     }
@@ -384,7 +424,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             fn_sig,
             InheritDeprecation::Yes,
             InheritConstStability::No,
-            InheritStability::No,
             |v| {
                 intravisit::walk_trait_item(v, ti);
             },
@@ -402,7 +441,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             fn_sig,
             InheritDeprecation::Yes,
             InheritConstStability::No,
-            InheritStability::No,
             |v| {
                 intravisit::walk_impl_item(v, ii);
             },
@@ -410,40 +448,25 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant<'tcx>) {
-        self.annotate(
-            var.def_id,
-            None,
-            InheritDeprecation::Yes,
-            InheritConstStability::No,
-            InheritStability::Yes,
-            |v| {
-                if let Some(ctor_def_id) = var.data.ctor_def_id() {
-                    v.annotate(
-                        ctor_def_id,
-                        None,
-                        InheritDeprecation::Yes,
-                        InheritConstStability::No,
-                        InheritStability::Yes,
-                        |_| {},
-                    );
-                }
+        self.annotate(var.def_id, None, InheritDeprecation::Yes, InheritConstStability::No, |v| {
+            if let Some(ctor_def_id) = var.data.ctor_def_id() {
+                v.annotate(
+                    ctor_def_id,
+                    None,
+                    InheritDeprecation::Yes,
+                    InheritConstStability::No,
+                    |_| {},
+                );
+            }
 
-                intravisit::walk_variant(v, var)
-            },
-        )
+            intravisit::walk_variant(v, var)
+        })
     }
 
     fn visit_field_def(&mut self, s: &'tcx FieldDef<'tcx>) {
-        self.annotate(
-            s.def_id,
-            None,
-            InheritDeprecation::Yes,
-            InheritConstStability::No,
-            InheritStability::Yes,
-            |v| {
-                intravisit::walk_field_def(v, s);
-            },
-        );
+        self.annotate(s.def_id, None, InheritDeprecation::Yes, InheritConstStability::No, |v| {
+            intravisit::walk_field_def(v, s);
+        });
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
@@ -456,7 +479,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             fn_sig,
             InheritDeprecation::Yes,
             InheritConstStability::No,
-            InheritStability::No,
             |v| {
                 intravisit::walk_foreign_item(v, i);
             },
@@ -464,16 +486,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     }
 
     fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
-        self.annotate(
-            p.def_id,
-            None,
-            InheritDeprecation::No,
-            InheritConstStability::No,
-            InheritStability::No,
-            |v| {
-                intravisit::walk_generic_param(v, p);
-            },
-        );
+        self.annotate(p.def_id, None, InheritDeprecation::No, InheritConstStability::No, |v| {
+            intravisit::walk_generic_param(v, p);
+        });
     }
 }
 
@@ -580,7 +595,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
     }
 
     fn check_missing_stability(&self, def_id: LocalDefId, span: Span) {
-        let stab = self.tcx.stability().local_stability(def_id);
+        let stab = self.tcx.lookup_stability(def_id);
         if !self.tcx.sess.is_test_crate()
             && stab.is_none()
             && self.effective_visibilities.is_reachable(def_id)
@@ -681,42 +696,16 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
 }
 
 fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
-    let mut index = Index {
-        stab_map: Default::default(),
-        const_stab_map: Default::default(),
-        implications: Default::default(),
-    };
+    let mut index = Index { const_stab_map: Default::default(), implications: Default::default() };
 
     {
-        let mut annotator =
-            Annotator { tcx, index: &mut index, parent_stab: None, parent_const_stab: None };
-
-        // If the `-Z force-unstable-if-unmarked` flag is passed then we provide
-        // a parent stability annotation which indicates that this is private
-        // with the `rustc_private` feature. This is intended for use when
-        // compiling `librustc_*` crates themselves so we can leverage crates.io
-        // while maintaining the invariant that all sysroot crates are unstable
-        // by default and are unable to be used.
-        if tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
-            let stability = Stability {
-                level: attrs::StabilityLevel::Unstable {
-                    reason: UnstableReason::Default,
-                    issue: NonZero::new(27812),
-                    is_soft: false,
-                    implied_by: None,
-                    old_name: None,
-                },
-                feature: sym::rustc_private,
-            };
-            annotator.parent_stab = Some(stability);
-        }
+        let mut annotator = Annotator { tcx, index: &mut index, parent_const_stab: None };
 
         annotator.annotate(
             CRATE_DEF_ID,
             None,
             InheritDeprecation::Yes,
             InheritConstStability::No,
-            InheritStability::No,
             |v| tcx.hir_walk_toplevel_module(v),
         );
     }
@@ -734,7 +723,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         check_mod_unstable_api_usage,
         stability_index,
         stability_implications: |tcx, _| tcx.stability().implications.clone(),
-        lookup_stability: |tcx, id| tcx.stability().local_stability(id),
+        lookup_stability,
         lookup_const_stability: |tcx, id| tcx.stability().local_const_stability(id),
         lookup_default_body_stability,
         lookup_deprecation_entry,
@@ -1042,7 +1031,7 @@ fn is_unstable_reexport(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     };
     let def_id = owner.def_id;
 
-    let Some(stab) = tcx.stability().local_stability(def_id) else {
+    let Some(stab) = tcx.lookup_stability(def_id) else {
         return false;
     };
 
