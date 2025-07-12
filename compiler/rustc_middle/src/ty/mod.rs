@@ -1782,21 +1782,18 @@ impl<'tcx> TyCtxt<'tcx> {
         did: impl Into<DefId>,
         attr: Symbol,
     ) -> impl Iterator<Item = &'tcx hir::Attribute> {
-        self.get_all_attrs(did).filter(move |a: &&hir::Attribute| a.has_name(attr))
+        self.get_all_attrs(did).iter().filter(move |a: &&hir::Attribute| a.has_name(attr))
     }
 
     /// Gets all attributes.
     ///
     /// To see if an item has a specific attribute, you should use [`rustc_attr_data_structures::find_attr!`] so you can use matching.
-    pub fn get_all_attrs(
-        self,
-        did: impl Into<DefId>,
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
+    pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [hir::Attribute] {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {
-            self.hir_attrs(self.local_def_id_to_hir_id(did)).iter()
+            self.hir_attrs(self.local_def_id_to_hir_id(did))
         } else {
-            self.attrs_for_def(did).iter()
+            self.attrs_for_def(did)
         }
     }
 
