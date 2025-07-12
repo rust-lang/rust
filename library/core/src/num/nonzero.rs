@@ -296,7 +296,8 @@ where
 }
 
 #[stable(feature = "from_nonzero", since = "1.31.0")]
-impl<T> From<NonZero<T>> for T
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+impl<T> const From<NonZero<T>> for T
 where
     T: ZeroablePrimitive,
 {

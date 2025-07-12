@@ -1,4 +1,5 @@
-//@ compile-flags: -Znext-solver
+//@ run-pass
+// @ compile-flags: -Znext-solver
 
 // Regression test for #69615.
 
@@ -12,8 +13,6 @@ pub trait MyTrait {
 impl const MyTrait for () {
     fn method(&self) -> Option<()> {
         Some(())?;
-        //~^ ERROR `?` is not allowed on
-        //~| ERROR `?` is not allowed on
         None
     }
 }

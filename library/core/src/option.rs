@@ -577,6 +577,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FusedIterator, TrustedLen};
+use crate::marker::Destruct;
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::panicking::{panic, panic_display};
 use crate::pin::Pin;
@@ -2087,9 +2088,10 @@ const fn expect_failed(msg: &str) -> ! {
 /////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Clone for Option<T>
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+impl<T> const Clone for Option<T>
 where
-    T: Clone,
+    T: ~const Clone + ~const Destruct,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -2173,7 +2175,8 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
 }
 
 #[stable(since = "1.12.0", feature = "option_from")]
-impl<T> From<T> for Option<T> {
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+impl<T> const From<T> for Option<T> {
     /// Moves `val` into a new [`Some`].
     ///
     /// # Examples
@@ -2189,7 +2192,8 @@ impl<T> From<T> for Option<T> {
 }
 
 #[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
-impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+impl<'a, T> const From<&'a Option<T>> for Option<&'a T> {
     /// Converts from `&Option<T>` to `Option<&T>`.
     ///
     /// # Examples
@@ -2216,7 +2220,8 @@ impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
 }
 
 #[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
-impl<'a, T> From<&'a mut Option<T>> for Option<&'a mut T> {
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+impl<'a, T> const From<&'a mut Option<T>> for Option<&'a mut T> {
     /// Converts from `&mut Option<T>` to `Option<&mut T>`
     ///
     /// # Examples
@@ -2535,7 +2540,8 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-impl<T> ops::Try for Option<T> {
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+impl<T> const ops::Try for Option<T> {
     type Output = T;
     type Residual = Option<convert::Infallible>;
 
@@ -2554,9 +2560,10 @@ impl<T> ops::Try for Option<T> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
 // Note: manually specifying the residual type instead of using the default to work around
 // https://github.com/rust-lang/rust/issues/99940
-impl<T> ops::FromResidual<Option<convert::Infallible>> for Option<T> {
+impl<T> const ops::FromResidual<Option<convert::Infallible>> for Option<T> {
     #[inline]
     fn from_residual(residual: Option<convert::Infallible>) -> Self {
         match residual {
@@ -2567,7 +2574,8 @@ impl<T> ops::FromResidual<Option<convert::Infallible>> for Option<T> {
 
 #[diagnostic::do_not_recommend]
 #[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
-impl<T> ops::FromResidual<ops::Yeet<()>> for Option<T> {
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+impl<T> const ops::FromResidual<ops::Yeet<()>> for Option<T> {
     #[inline]
     fn from_residual(ops::Yeet(()): ops::Yeet<()>) -> Self {
         None
@@ -2575,7 +2583,8 @@ impl<T> ops::FromResidual<ops::Yeet<()>> for Option<T> {
 }
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-impl<T> ops::Residual<T> for Option<convert::Infallible> {
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+impl<T> const ops::Residual<T> for Option<convert::Infallible> {
     type TryType = Option<T>;
 }
 
