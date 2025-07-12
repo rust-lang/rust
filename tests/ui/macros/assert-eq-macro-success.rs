@@ -1,4 +1,5 @@
 //@ run-pass
+#![allow(dead_code)]
 #[derive(PartialEq, Debug)]
 struct Point { x : isize }
 

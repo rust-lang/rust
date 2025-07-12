@@ -1,5 +1,6 @@
 //@ run-pass
 #![allow(improper_ctypes)]
+#![allow(dead_code)]
 
 // Test a foreign function that accepts and returns a struct by value.
 

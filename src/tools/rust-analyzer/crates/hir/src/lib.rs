@@ -4634,9 +4634,11 @@ impl Closure {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct ClosureCapture {
     owner: DefWithBodyId,
+    // FIXME(#143487): is it okay that the field is never read?
+    #[allow(dead_code)]
     closure: ClosureId,
     capture: hir_ty::CapturedItem,
 }

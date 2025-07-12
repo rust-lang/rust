@@ -1,11 +1,11 @@
 error[E0063]: missing fields `b` and `d` in initializer of `A`
-  --> $DIR/struct-record-suggestion.rs:10:13
+  --> $DIR/struct-record-suggestion.rs:12:13
    |
 LL |     let q = A { c: 5..Default::default() };
    |             ^ missing `b` and `d`
    |
 note: this expression may have been misinterpreted as a `..` range expression
-  --> $DIR/struct-record-suggestion.rs:10:20
+  --> $DIR/struct-record-suggestion.rs:12:20
    |
 LL |     let q = A { c: 5..Default::default() };
    |                    ^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     let q = A { c: 5, ..Default::default() };
    |                     +
 
 error[E0308]: mismatched types
-  --> $DIR/struct-record-suggestion.rs:23:20
+  --> $DIR/struct-record-suggestion.rs:25:20
    |
 LL |     let q = B { b: 1..Default::default() };
    |                    ^^^^^^^^^^^^^^^^^^^^^ expected `u32`, found `Range<{integer}>`
@@ -23,7 +23,7 @@ LL |     let q = B { b: 1..Default::default() };
    = note: expected type `u32`
             found struct `std::ops::Range<{integer}>`
 note: this expression may have been misinterpreted as a `..` range expression
-  --> $DIR/struct-record-suggestion.rs:23:20
+  --> $DIR/struct-record-suggestion.rs:25:20
    |
 LL |     let q = B { b: 1..Default::default() };
    |                    ^^^^^^^^^^^^^^^^^^^^^

@@ -1,6 +1,7 @@
 //@ run-pass
 
 #![allow(non_camel_case_types)]
+#![allow(dead_code)]
 // Binop corner cases
 
 fn test_nil() {

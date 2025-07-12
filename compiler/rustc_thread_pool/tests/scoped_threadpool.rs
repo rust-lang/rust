@@ -4,7 +4,7 @@ use crossbeam_utils::thread;
 use rustc_thread_pool::ThreadPoolBuilder;
 
 #[derive(PartialEq, Eq, Debug)]
-struct Local(i32);
+struct Local(#[allow(dead_code, reason = "Only used for equality comparisons")] i32);
 
 scoped_tls::scoped_thread_local!(static LOCAL: Local);
 

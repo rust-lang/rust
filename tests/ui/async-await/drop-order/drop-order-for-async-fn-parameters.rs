@@ -6,6 +6,7 @@
 //@[nomiropt]compile-flags: -Z mir-opt-level=0
 
 #![allow(unused_variables)]
+#![allow(dead_code)]
 
 // Test that the drop order for parameters in a fn and async fn matches up. Also test that
 // parameters (used or unused) are not dropped until the async fn completes execution.

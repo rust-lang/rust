@@ -1,4 +1,6 @@
 //@ run-rustfix
+#![allow(dead_code)]
+
 #[derive(Debug, Default, Eq, PartialEq)]
 struct A {
     b: u32,

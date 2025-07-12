@@ -3,6 +3,7 @@
 //
 //@ run-pass
 //@ compile-flags: -Zmir-opt-level=3
+#![allow(dead_code)]
 
 #[derive(Debug, PartialEq, Eq)]
 enum SpecialsRes { Res(u64) }

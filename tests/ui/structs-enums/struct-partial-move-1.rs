@@ -1,4 +1,6 @@
 //@ run-pass
+#![allow(dead_code)]
+
 #[derive(PartialEq, Debug)]
 pub struct Partial<T> { x: T, y: T }
 

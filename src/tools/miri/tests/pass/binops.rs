@@ -50,6 +50,7 @@ fn test_ptr() {
 }
 
 #[derive(PartialEq, Debug)]
+#[allow(dead_code)]
 struct P {
     x: isize,
     y: isize,

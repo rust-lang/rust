@@ -362,7 +362,10 @@ enum PointerKind {
     // slice
     Length,
     OfAlias,
-    OfParam(PlaceholderIndex),
+    OfParam(
+        // FIXME(#143487): is it okay that the field is never read?
+        #[allow(dead_code)] PlaceholderIndex,
+    ),
     Error,
 }
 

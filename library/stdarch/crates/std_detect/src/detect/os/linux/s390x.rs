@@ -10,6 +10,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
     cache(opt_hwcap, facilities)
 }
 
+// FIXME(#143487): is it okay that the fields are never read?
+#[expect(dead_code)]
 #[derive(Debug, Default, PartialEq)]
 struct AtHwcap {
     esan3: bool,
