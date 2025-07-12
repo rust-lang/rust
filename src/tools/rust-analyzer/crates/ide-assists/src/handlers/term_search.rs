@@ -111,7 +111,7 @@ fn f() { let a: u128 = 1; let b: u128 = todo$0!("asd") }"#,
         check_assist(
             term_search,
             r#"//- minicore: todo, unimplemented
-fn f() { let a: u128 = 1; let b: u128 = todo$0!("asd") }"#,
+fn f() { let a: u128 = 1; let b: u128 = unimplemented$0!("asd") }"#,
             r#"fn f() { let a: u128 = 1; let b: u128 = a }"#,
         )
     }
@@ -121,7 +121,7 @@ fn f() { let a: u128 = 1; let b: u128 = todo$0!("asd") }"#,
         check_assist(
             term_search,
             r#"//- minicore: todo, unimplemented
-fn f() { let a: u128 = 1; let b: u128 = todo$0!("asd") }"#,
+fn f() { let a: u128 = 1; let b: u128 = unimplemented$0!() }"#,
             r#"fn f() { let a: u128 = 1; let b: u128 = a }"#,
         )
     }

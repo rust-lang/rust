@@ -178,14 +178,14 @@ fn main() {
 }
 
 #[test]
-fn desugar_builtin_format_args() {
+fn desugar_builtin_format_args_before_1_89_0() {
     let (db, body, def) = lower(
         r#"
-//- minicore: fmt
+//- minicore: fmt_before_1_89_0
 fn main() {
     let are = "are";
     let count = 10;
-    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
+    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
 }
 "#,
     );
@@ -249,10 +249,96 @@ fn main() {
                         builtin#lang(Count::Implied),
                     ),
                 ],
-                unsafe {
-                    builtin#lang(UnsafeArg::new)()
+                {
+                    ();
+                    unsafe {
+                        builtin#lang(UnsafeArg::new)()
+                    }
                 },
             );
+        }"#]]
+    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+}
+
+#[test]
+fn desugar_builtin_format_args() {
+    let (db, body, def) = lower(
+        r#"
+//- minicore: fmt
+fn main() {
+    let are = "are";
+    let count = 10;
+    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
+}
+"#,
+    );
+
+    expect![[r#"
+        fn main() {
+            let are = "are";
+            let count = 10;
+            {
+                let args = (&"fancy", &(), &"!", &count, &are, );
+                let args = [
+                    builtin#lang(Argument::new_display)(
+                        args.3,
+                    ), builtin#lang(Argument::new_display)(
+                        args.0,
+                    ), builtin#lang(Argument::new_debug)(
+                        args.4,
+                    ), builtin#lang(Argument::new_display)(
+                        args.2,
+                    ),
+                ];
+                unsafe {
+                    builtin#lang(Arguments::new_v1_formatted)(
+                        &[
+                            "\u{1b}hello ", " ", " friends, we ", " ", "",
+                        ],
+                        &args,
+                        &[
+                            builtin#lang(Placeholder::new)(
+                                0usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                8u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Is)(
+                                    2,
+                                ),
+                            ), builtin#lang(Placeholder::new)(
+                                1usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                0u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Implied),
+                            ), builtin#lang(Placeholder::new)(
+                                2usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                0u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Implied),
+                            ), builtin#lang(Placeholder::new)(
+                                1usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                0u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Implied),
+                            ), builtin#lang(Placeholder::new)(
+                                3usize,
+                                ' ',
+                                builtin#lang(Alignment::Unknown),
+                                0u32,
+                                builtin#lang(Count::Implied),
+                                builtin#lang(Count::Implied),
+                            ),
+                        ],
+                    )
+                }
+            };
         }"#]]
     .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
 }
@@ -295,29 +381,31 @@ impl SsrError {
     expect![[r#"
         fn main() {
             _ = ra_test_fixture::error::SsrError::new(
-                builtin#lang(Arguments::new_v1_formatted)(
-                    &[
-                        "Failed to resolve path `", "`",
-                    ],
-                    &[
+                {
+                    let args = [
                         builtin#lang(Argument::new_display)(
                             &node.text(),
                         ),
-                    ],
-                    &[
-                        builtin#lang(Placeholder::new)(
-                            0usize,
-                            ' ',
-                            builtin#lang(Alignment::Unknown),
-                            0u32,
-                            builtin#lang(Count::Implied),
-                            builtin#lang(Count::Implied),
-                        ),
-                    ],
+                    ];
                     unsafe {
-                        builtin#lang(UnsafeArg::new)()
-                    },
-                ),
+                        builtin#lang(Arguments::new_v1_formatted)(
+                            &[
+                                "Failed to resolve path `", "`",
+                            ],
+                            &args,
+                            &[
+                                builtin#lang(Placeholder::new)(
+                                    0usize,
+                                    ' ',
+                                    builtin#lang(Alignment::Unknown),
+                                    0u32,
+                                    builtin#lang(Count::Implied),
+                                    builtin#lang(Count::Implied),
+                                ),
+                            ],
+                        )
+                    }
+                },
             );
         }"#]]
     .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
@@ -327,7 +415,7 @@ impl SsrError {
 fn regression_10300() {
     let (db, body, def) = lower(
         r#"
-//- minicore: concat, panic
+//- minicore: concat, panic, fmt_before_1_89_0
 mod private {
     pub use core::concat;
 }
