@@ -1,8 +1,7 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::iter;
 use std::process::Command;
-use std::str::FromStr;
 use std::sync::OnceLock;
-use std::{fmt, iter};
 
 use build_helper::git::GitConfig;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -12,48 +11,7 @@ use serde::de::{Deserialize, Deserializer, Error as _};
 pub use self::Mode::*;
 use crate::executor::{ColorConfig, OutputFormat};
 use crate::fatal;
-use crate::util::{Utf8PathBufExt, add_dylib_path};
-
-macro_rules! string_enum {
-    ($(#[$meta:meta])* $vis:vis enum $name:ident { $($variant:ident => $repr:expr,)* }) => {
-        $(#[$meta])*
-        $vis enum $name {
-            $($variant,)*
-        }
-
-        impl $name {
-            $vis const VARIANTS: &'static [Self] = &[$(Self::$variant,)*];
-            $vis const STR_VARIANTS: &'static [&'static str] = &[$(Self::$variant.to_str(),)*];
-
-            $vis const fn to_str(&self) -> &'static str {
-                match self {
-                    $(Self::$variant => $repr,)*
-                }
-            }
-        }
-
-        impl fmt::Display for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Display::fmt(self.to_str(), f)
-            }
-        }
-
-        impl FromStr for $name {
-            type Err = String;
-
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                match s {
-                    $($repr => Ok(Self::$variant),)*
-                    _ => Err(format!(concat!("unknown `", stringify!($name), "` variant: `{}`"), s)),
-                }
-            }
-        }
-    }
-}
-
-// Make the macro visible outside of this module, for tests.
-#[cfg(test)]
-pub(crate) use string_enum;
+use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
 
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
