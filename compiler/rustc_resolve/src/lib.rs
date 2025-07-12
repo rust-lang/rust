@@ -1228,6 +1228,10 @@ pub struct Resolver<'ra, 'tcx> {
 
     mods_with_parse_errors: FxHashSet<DefId>,
 
+    /// Whether `Resolver::register_macros_for_all_crates` has been called once already, as we
+    /// don't need to run it more than once.
+    all_crate_macros_already_registered: bool,
+
     // Stores pre-expansion and pre-placeholder-fragment-insertion names for `impl Trait` types
     // that were encountered during resolution. These names are used to generate item names
     // for APITs, so we don't want to leak details of resolution into these names.
@@ -1589,6 +1593,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             all_macro_rules: Default::default(),
             delegation_fn_sigs: Default::default(),
             glob_delegation_invoc_ids: Default::default(),
+            all_crate_macros_already_registered: false,
             impl_unexpanded_invocations: Default::default(),
             impl_binding_keys: Default::default(),
             current_crate_outer_attr_insert_span,

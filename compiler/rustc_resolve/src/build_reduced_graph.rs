@@ -191,6 +191,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Add every proc macro accessible from the current crate to the `macro_map` so diagnostics can
     /// find them for suggestions.
     pub(crate) fn register_macros_for_all_crates(&mut self) {
+        if self.all_crate_macros_already_registered {
+            return;
+        }
+        self.all_crate_macros_already_registered = true;
         let def_ids = self.cstore().all_proc_macro_def_ids();
         for def_id in def_ids {
             self.get_macro_by_def_id(def_id);
