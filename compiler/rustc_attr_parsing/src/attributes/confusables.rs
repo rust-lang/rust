@@ -42,7 +42,7 @@ impl<S: Stage> AttributeParser<S> for ConfusablesParser {
         },
     )];
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if self.confusables.is_empty() {
             return None;
         }
