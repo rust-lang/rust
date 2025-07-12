@@ -4,20 +4,28 @@
 // symbol.
 // See https://github.com/rust-lang/rust/pull/85673
 
-//@ only-unix
-// Reason: the export-executable-symbols flag only works on Unix
-// due to hardcoded platform-specific implementation
-// (See #85673)
-//@ ignore-cross-compile
 //@ ignore-wasm
 
-use run_make_support::{bin_name, llvm_readobj, rustc};
+use run_make_support::{assert_contains, bin_name, llvm_nm, llvm_readobj, rustc, target};
 
 fn main() {
-    rustc().arg("-Zexport-executable-symbols").input("main.rs").crate_type("bin").run();
-    llvm_readobj()
-        .symbols()
-        .input(bin_name("main"))
-        .run()
-        .assert_stdout_contains("exported_symbol");
+    let target = target();
+    rustc()
+        .arg("-Ctarget-feature=-crt-static")
+        .arg("-Zexport-executable-symbols")
+        .input("main.rs")
+        .crate_type("bin")
+        .run();
+    if target.contains("linux") {
+        let output = llvm_nm()
+            .arg("--dynamic")
+            .arg("--defined-only")
+            .input(bin_name("main"))
+            .run()
+            .invalid_stdout_utf8();
+        assert_contains(&output, "exported_symbol");
+    } else {
+        let output = llvm_readobj().symbols().input(bin_name("main")).run().invalid_stdout_utf8();
+        assert_contains(&output, "exported_symbol");
+    }
 }
