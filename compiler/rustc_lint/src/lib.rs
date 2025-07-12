@@ -167,7 +167,7 @@ early_lint_methods!(
         pub BuiltinCombinedEarlyLintPass,
         [
             UnusedParens: UnusedParens::default(),
-            UnusedBraces: UnusedBraces,
+            UnusedBraces: UnusedBraces::default(),
             UnusedImportBraces: UnusedImportBraces,
             UnsafeCode: UnsafeCode,
             SpecialModuleName: SpecialModuleName,
