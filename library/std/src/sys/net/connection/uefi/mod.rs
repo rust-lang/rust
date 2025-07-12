@@ -86,11 +86,11 @@ impl TcpStream {
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        unsupported()
+        self.inner.peer_addr()
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        unsupported()
+        self.inner.socket_addr()
     }
 
     pub fn shutdown(&self, _: Shutdown) -> io::Result<()> {
@@ -114,7 +114,7 @@ impl TcpStream {
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        unsupported()
+        self.inner.nodelay()
     }
 
     pub fn set_ttl(&self, _: u32) -> io::Result<()> {
@@ -122,7 +122,7 @@ impl TcpStream {
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        unsupported()
+        self.inner.ttl()
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
@@ -140,7 +140,9 @@ impl fmt::Debug for TcpStream {
     }
 }
 
-pub struct TcpListener(!);
+pub struct TcpListener {
+    inner: tcp::Tcp,
+}
 
 impl TcpListener {
     pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
@@ -148,45 +150,45 @@ impl TcpListener {
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        self.0
+        unsupported()
     }
 
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
-        self.0
+        unsupported()
     }
 
     pub fn duplicate(&self) -> io::Result<TcpListener> {
-        self.0
+        unsupported()
     }
 
     pub fn set_ttl(&self, _: u32) -> io::Result<()> {
-        self.0
+        unsupported()
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        self.0
+        self.inner.ttl()
     }
 
     pub fn set_only_v6(&self, _: bool) -> io::Result<()> {
-        self.0
+        unsupported()
     }
 
     pub fn only_v6(&self) -> io::Result<bool> {
-        self.0
+        unsupported()
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        self.0
+        unsupported()
     }
 
     pub fn set_nonblocking(&self, _: bool) -> io::Result<()> {
-        self.0
+        unsupported()
     }
 }
 
 impl fmt::Debug for TcpListener {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0
+        todo!()
     }
 }
 
