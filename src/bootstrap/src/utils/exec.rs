@@ -593,6 +593,8 @@ enum CommandState<'a> {
         executed_at: &'a Location<'a>,
         fingerprint: CommandFingerprint,
         start_time: Instant,
+        #[cfg(feature = "tracing")]
+        _span_guard: tracing::span::EnteredSpan,
     },
 }
 
@@ -693,6 +695,9 @@ impl ExecutionContext {
     ) -> DeferredCommand<'a> {
         let fingerprint = command.fingerprint();
 
+        #[cfg(feature = "tracing")]
+        let span_guard = trace_cmd!(command);
+
         if let Some(cached_output) = self.command_cache.get(&fingerprint) {
             command.mark_as_executed();
             self.verbose(|| println!("Cache hit: {command:?}"));
@@ -713,12 +718,11 @@ impl ExecutionContext {
                     executed_at,
                     fingerprint,
                     start_time: Instant::now(),
+                    #[cfg(feature = "tracing")]
+                    _span_guard: span_guard,
                 },
             };
         }
-
-        #[cfg(feature = "tracing")]
-        let _run_span = trace_cmd!(command);
 
         self.verbose(|| {
             println!("running: {command:?} (created at {created_at}, executed at {executed_at})")
@@ -741,6 +745,8 @@ impl ExecutionContext {
                 executed_at,
                 fingerprint,
                 start_time,
+                #[cfg(feature = "tracing")]
+                _span_guard: span_guard,
             },
         }
     }
@@ -841,6 +847,7 @@ impl<'a> DeferredCommand<'a> {
                 executed_at,
                 fingerprint,
                 start_time,
+                ..
             } => {
                 let exec_ctx = exec_ctx.as_ref();
 
