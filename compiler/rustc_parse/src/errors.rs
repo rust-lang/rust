@@ -1490,10 +1490,11 @@ pub(crate) struct AttributeOnParamType {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_pattern_method_param_without_body, code = E0642)]
-pub(crate) struct PatternMethodParamWithoutBody {
+#[diag(parse_pattern_in_trait_fn_in_2015)]
+#[note]
+pub(crate) struct PatternInTraitFnIn2015 {
     #[primary_span]
-    #[suggestion(code = "_", applicability = "machine-applicable", style = "verbose")]
+    #[suggestion(code = "_", style = "verbose")]
     pub span: Span,
 }
 

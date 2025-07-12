@@ -38,7 +38,7 @@ use crate::errors::{
     DocCommentOnParamType, DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
-    IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, PatternMethodParamWithoutBody,
+    IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, PatternInTraitFnIn2015,
     QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
     StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma,
     TernaryOperator, TernaryOperatorSuggestion, UnexpectedConstInGenericParam,
@@ -2346,16 +2346,28 @@ impl<'a> Parser<'a> {
         None
     }
 
-    pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
-        let pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName), None)?;
+    pub(super) fn recover_arg_parse(
+        &mut self,
+        emit_error: bool,
+    ) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
+        let mut pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName), None)?;
         self.expect(exp!(Colon))?;
         let ty = self.parse_ty()?;
 
-        self.dcx().emit_err(PatternMethodParamWithoutBody { span: pat.span });
+        // Don't emit an error if we can emit a better one during AST passes (i.e., with patterns in
+        // bare fn ptrs). This branch is only missed if are guaranteed to emit an error later.
+        if emit_error {
+            self.dcx().emit_err(PatternInTraitFnIn2015 { span: pat.span });
 
-        // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
-        let pat =
-            P(Pat { kind: PatKind::Wild, span: pat.span, id: ast::DUMMY_NODE_ID, tokens: None });
+            // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
+            pat = P(Pat {
+                kind: PatKind::Wild,
+                span: pat.span,
+                id: ast::DUMMY_NODE_ID,
+                tokens: None,
+            });
+        }
+
         Ok((pat, ty))
     }
 

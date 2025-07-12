@@ -1,3 +1,4 @@
+//@ edition:2024
 //@ run-rustfix
 
 #![allow(unused)] // for rustfix
@@ -6,11 +7,10 @@
 struct S;
 
 trait T {
-    fn foo((x, y): (i32, i32)); //~ ERROR patterns aren't allowed in methods without bodies
+    fn foo((x, y): (i32, i32)); //~ ERROR patterns aren't allowed in functions without bodies [E0642]
 
-    fn bar((x, y): (i32, i32)) {} //~ ERROR patterns aren't allowed in methods without bodies
-
-    fn method(S { .. }: S) {} //~ ERROR patterns aren't allowed in methods without bodies
+    fn bar((x, y): (i32, i32)) {} // ok
+    fn method(S { .. }: S) {} // ok
 
     fn f(&ident: &S) {} // ok
     fn g(&&ident: &&S) {} // ok

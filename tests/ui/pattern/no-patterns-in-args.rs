@@ -7,8 +7,16 @@ extern "C" {
 // fn g3(u8); // Not yet
 }
 
-type A1 = fn(mut arg: u8); //~ ERROR patterns aren't allowed in function pointer types
-type A2 = fn(&arg: u8); //~ ERROR patterns aren't allowed in function pointer types
+struct Foo {
+    bar: u32
+}
+
+type A1 = fn(mut arg: u8); //~ ERROR patterns aren't allowed in function pointer types [E0561]
+type A2 = fn(&arg: u8); //~ ERROR patterns aren't allowed in function pointer types [E0561]
+type A3 = fn(&_: ()); //~ ERROR patterns aren't allowed in function pointer types [E0561]
+type A4 = fn((): ()); //~ ERROR patterns aren't allowed in function pointer types [E0561]
+type A5 = fn(Foo { bar }: Foo); //~ ERROR patterns aren't allowed in function pointer types [E0561]
+
 type B1 = fn(arg: u8); // OK
 type B2 = fn(_: u8); // OK
 type B3 = fn(u8); // OK
