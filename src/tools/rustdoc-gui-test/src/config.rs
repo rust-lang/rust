@@ -5,7 +5,6 @@ use getopts::Options;
 
 pub(crate) struct Config {
     pub(crate) nodejs: PathBuf,
-    pub(crate) npm: PathBuf,
     pub(crate) rust_src: PathBuf,
     pub(crate) out_dir: PathBuf,
     pub(crate) initial_cargo: PathBuf,
