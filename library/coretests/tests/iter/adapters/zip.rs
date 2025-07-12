@@ -107,9 +107,19 @@ fn test_zip_next_back_side_effects_exhausted() {
     iter.next();
     iter.next();
     iter.next();
-    iter.next();
+    assert_eq!(iter.next(), None);
     assert_eq!(iter.next_back(), None);
-    assert_eq!(a, vec![1, 2, 3, 4, 6, 5]);
+
+    assert!(a.starts_with(&[1, 2, 3]));
+    let a_len = a.len();
+    // Tail-side-effects of forward-iteration are "at most one" per next().
+    // And for reverse iteration we don't guarantee much either.
+    // But we can put some bounds on the possible behaviors.
+    assert!(a_len <= 6);
+    assert!(a_len >= 3);
+    a.sort();
+    assert_eq!(a, &[1, 2, 3, 4, 5, 6][..a.len()]);
+
     assert_eq!(b, vec![200, 300, 400]);
 }
 
@@ -120,7 +130,8 @@ fn test_zip_cloned_sideffectful() {
 
     for _ in xs.iter().cloned().zip(ys.iter().cloned()) {}
 
-    assert_eq!(&xs, &[1, 1, 1, 0][..]);
+    // Zip documentation permits either case.
+    assert!([&[1, 1, 1, 0], &[1, 1, 0, 0]].iter().any(|v| &xs == *v));
     assert_eq!(&ys, &[1, 1][..]);
 
     let xs = [CountClone::new(), CountClone::new()];
@@ -139,7 +150,8 @@ fn test_zip_map_sideffectful() {
 
     for _ in xs.iter_mut().map(|x| *x += 1).zip(ys.iter_mut().map(|y| *y += 1)) {}
 
-    assert_eq!(&xs, &[1, 1, 1, 1, 1, 0]);
+    // Zip documentation permits either case.
+    assert!([&[1, 1, 1, 1, 1, 0], &[1, 1, 1, 1, 0, 0]].iter().any(|v| &xs == *v));
     assert_eq!(&ys, &[1, 1, 1, 1]);
 
     let mut xs = [0; 4];
@@ -168,7 +180,8 @@ fn test_zip_map_rev_sideffectful() {
 
     {
         let mut it = xs.iter_mut().map(|x| *x += 1).zip(ys.iter_mut().map(|y| *y += 1));
-        (&mut it).take(5).count();
+        // the current impl only trims the tails if the iterator isn't exhausted
+        (&mut it).take(3).count();
         it.next_back();
     }
     assert_eq!(&xs, &[1, 1, 1, 1, 1, 1]);
@@ -211,9 +224,18 @@ fn test_zip_nth_back_side_effects_exhausted() {
     iter.next();
     iter.next();
     iter.next();
-    iter.next();
+    assert_eq!(iter.next(), None);
     assert_eq!(iter.nth_back(0), None);
-    assert_eq!(a, vec![1, 2, 3, 4, 6, 5]);
+    assert!(a.starts_with(&[1, 2, 3]));
+    let a_len = a.len();
+    // Tail-side-effects of forward-iteration are "at most one" per next().
+    // And for reverse iteration we don't guarantee much either.
+    // But we can put some bounds on the possible behaviors.
+    assert!(a_len <= 6);
+    assert!(a_len >= 3);
+    a.sort();
+    assert_eq!(a, &[1, 2, 3, 4, 5, 6][..a.len()]);
+
     assert_eq!(b, vec![200, 300, 400]);
 }
 
@@ -238,32 +260,6 @@ fn test_zip_trusted_random_access_composition() {
 }
 
 #[test]
-#[cfg(panic = "unwind")]
-fn test_zip_trusted_random_access_next_back_drop() {
-    use std::panic::{AssertUnwindSafe, catch_unwind};
-
-    let mut counter = 0;
-
-    let it = [42].iter().map(|e| {
-        let c = counter;
-        counter += 1;
-        if c == 0 {
-            panic!("bomb");
-        }
-
-        e
-    });
-    let it2 = [(); 0].iter();
-    let mut zip = it.zip(it2);
-    catch_unwind(AssertUnwindSafe(|| {
-        zip.next_back();
-    }))
-    .unwrap_err();
-    assert!(zip.next().is_none());
-    assert_eq!(counter, 1);
-}
-
-#[test]
 fn test_double_ended_zip() {
     let xs = [1, 2, 3, 4, 5, 6];
     let ys = [1, 2, 3, 7];
@@ -273,6 +269,63 @@ fn test_double_ended_zip() {
     assert_eq!(it.next_back(), Some((4, 7)));
     assert_eq!(it.next_back(), Some((3, 3)));
     assert_eq!(it.next(), None);
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+/// Regresion test for #137255
+/// A previous implementation of Zip TrustedRandomAccess specializations tried to do a lot of work
+/// to preserve side-effects of equalizing the iterator lengths during backwards iteration.
+/// This lead to several cases of unsoundness, twice due to being left in an inconsistent state
+/// after panics.
+/// The new implementation does not try as hard, but we still need panic-safety.
+fn test_nested_zip_panic_safety() {
+    use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let mut panic = true;
+    // keeps track of how often element get visited, must be at most once each
+    let witness = [8, 9, 10, 11, 12].map(|i| (i, AtomicUsize::new(0)));
+    let a = witness.as_slice().iter().map(|e| {
+        e.1.fetch_add(1, Ordering::Relaxed);
+        if panic {
+            panic = false;
+            resume_unwind(Box::new(()))
+        }
+        e.0
+    });
+    // shorter than `a`, so `a` will get trimmed
+    let b = [1, 2, 3, 4].as_slice().iter().copied();
+    // shorter still, so `ab` will get trimmed.`
+    let c = [5, 6, 7].as_slice().iter().copied();
+
+    // This will panic during backwards trimming.
+    let ab = zip(a, b);
+    // This being Zip + TrustedRandomAccess means it will only call `next_back``
+    // during trimming and otherwise do calls `__iterator_get_unchecked` on `ab`.
+    let mut abc = zip(ab, c);
+
+    assert_eq!(abc.len(), 3);
+    // This will first trigger backwards trimming before it would normally obtain the
+    // actual element if it weren't for the panic.
+    // This used to corrupt the internal state of `abc`, which then lead to
+    // TrustedRandomAccess safety contract violations in calls to  `ab`,
+    // which ultimately lead to UB.
+    catch_unwind(AssertUnwindSafe(|| abc.next_back())).ok();
+    // check for sane outward behavior after the panic, which indicates a sane internal state.
+    // Technically these outcomes are not required because a panic frees us from correctness obligations.
+    assert_eq!(abc.len(), 2);
+    assert_eq!(abc.next(), Some(((8, 1), 5)));
+    assert_eq!(abc.next_back(), Some(((9, 2), 6)));
+    for (i, (_, w)) in witness.iter().enumerate() {
+        let v = w.load(Ordering::Relaxed);
+        // required by TRA contract
+        assert!(v <= 1, "expected idx {i} to be visited at most once, actual: {v}");
+    }
+    // Trimming panicked and should only run once, so this one won't be visited.
+    // Implementation detail, but not trying to run it again is what keeps
+    // things simple.
+    assert_eq!(witness[3].1.load(Ordering::Relaxed), 0);
 }
 
 #[test]
