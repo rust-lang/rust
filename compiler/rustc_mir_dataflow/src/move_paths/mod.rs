@@ -324,7 +324,7 @@ impl<'tcx> MovePathLookup<'tcx> {
         };
 
         for (_, elem) in self.un_derefer.iter_projections(place) {
-            if let Some(&subpath) = self.projections.get(&(result, elem.lift())) {
+            if let Some(subpath) = self.project(result, elem.lift()) {
                 result = subpath;
             } else {
                 return LookupResult::Parent(Some(result));
@@ -345,6 +345,10 @@ impl<'tcx> MovePathLookup<'tcx> {
         &self,
     ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> {
         self.locals.iter_enumerated().filter_map(|(l, &idx)| Some((l, idx?)))
+    }
+
+    pub fn project(&self, mpi: MovePathIndex, elem: ProjectionKind) -> Option<MovePathIndex> {
+        self.projections.get(&(mpi, elem)).copied()
     }
 }
 
