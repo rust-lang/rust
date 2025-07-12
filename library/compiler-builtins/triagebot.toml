@@ -19,3 +19,6 @@ check-commits = false
 # Enable issue transfers within the org
 # Documentation at: https://forge.rust-lang.org/triagebot/transfer.html
 [transfer]
+
+# Automatically close and reopen PRs made by bots to run CI on them
+[bot-pull-requests]
