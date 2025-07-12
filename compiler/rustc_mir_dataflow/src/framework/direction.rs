@@ -113,8 +113,8 @@ impl Direction for Backward {
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::SwitchInt { ref discr, .. } => {
-                    if let Some(_data) = analysis.get_switch_int_data(pred, discr) {
+                mir::TerminatorKind::SwitchInt { ref targets, ref discr } => {
+                    if let Some(_data) = analysis.get_switch_int_data(pred, discr, targets) {
                         bug!(
                             "SwitchInt edge effects are unsupported in backward dataflow analyses"
                         );
@@ -283,23 +283,22 @@ impl Direction for Forward {
                 }
             }
             TerminatorEdges::SwitchInt { targets, discr } => {
-                if let Some(mut data) = analysis.get_switch_int_data(block, discr) {
+                if let Some(data) = analysis.get_switch_int_data(block, discr, targets) {
                     let mut tmp = analysis.bottom_value(body);
-                    for (value, target) in targets.iter() {
+                    for (variant_idx, target) in A::switch_int_target_variants(&data) {
                         tmp.clone_from(exit_state);
-                        let value = SwitchTargetValue::Normal(value);
-                        analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, value, targets);
-                        propagate(target, &tmp);
+                        let value = SwitchTargetValue::Normal(*variant_idx);
+                        analysis.apply_switch_int_edge_effect(&data, &mut tmp, value);
+                        propagate(*target, &tmp);
                     }
 
                     // Once we get to the final, "otherwise" branch, there is no need to preserve
                     // `exit_state`, so pass it directly to `apply_switch_int_edge_effect` to save
                     // a clone of the dataflow state.
                     analysis.apply_switch_int_edge_effect(
-                        &mut data,
+                        &data,
                         exit_state,
                         SwitchTargetValue::Otherwise,
-                        targets,
                     );
                     propagate(targets.otherwise(), exit_state);
                 } else {

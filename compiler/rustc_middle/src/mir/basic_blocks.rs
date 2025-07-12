@@ -1,5 +1,6 @@
 use std::sync::OnceLock;
 
+use rustc_abi::VariantIdx;
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::dominators::{Dominators, dominators};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -23,7 +24,7 @@ type Predecessors = IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>;
 #[derive(Debug, Clone, Copy)]
 pub enum SwitchTargetValue {
     // A normal switch value.
-    Normal(u128),
+    Normal(VariantIdx),
     // The final "otherwise" fallback value.
     Otherwise,
 }
