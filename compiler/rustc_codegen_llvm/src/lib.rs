@@ -75,7 +75,6 @@ mod mono_item;
 mod type_;
 mod type_of;
 mod va_arg;
-mod value;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

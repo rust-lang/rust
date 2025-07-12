@@ -1,6 +1,4 @@
 use std::borrow::Borrow;
-use std::hash::{Hash, Hasher};
-use std::{fmt, ptr};
 
 use libc::{c_char, c_uint};
 use rustc_abi::{AddressSpace, Align, Integer, Reg, Size};
@@ -15,35 +13,9 @@ use rustc_target::callconv::{CastTarget, FnAbi};
 use crate::abi::{FnAbiLlvmExt, LlvmType};
 use crate::context::{CodegenCx, GenericCx, SCx};
 pub(crate) use crate::llvm::Type;
-use crate::llvm::{Bool, False, Metadata, True};
+use crate::llvm::{Bool, False, Metadata, True, Value};
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
 use crate::{common, llvm};
-
-impl PartialEq for Type {
-    fn eq(&self, other: &Self) -> bool {
-        ptr::eq(self, other)
-    }
-}
-
-impl Eq for Type {}
-
-impl Hash for Type {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        ptr::hash(self, state);
-    }
-}
-
-impl fmt::Debug for Type {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(
-            &llvm::build_string(|s| unsafe {
-                llvm::LLVMRustWriteTypeToString(self, s);
-            })
-            .expect("non-UTF8 type description from LLVM"),
-        )
-    }
-}
 
 impl<'ll> CodegenCx<'ll, '_> {}
 impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
@@ -204,7 +176,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
     }
 
     fn type_kind(&self, ty: &'ll Type) -> TypeKind {
-        unsafe { llvm::LLVMRustGetTypeKind(ty).to_generic() }
+        unsafe { llvm::type_kind_to_generic(llvm::LLVMRustGetTypeKind(ty)) }
     }
 
     fn type_ptr(&self) -> &'ll Type {
@@ -251,15 +223,13 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
     }
 }
 
-impl Type {
-    /// Creates an integer type with the given number of bits, e.g., i24
-    pub(crate) fn ix_llcx(llcx: &llvm::Context, num_bits: u64) -> &Type {
-        unsafe { llvm::LLVMIntTypeInContext(llcx, num_bits as c_uint) }
-    }
+/// Creates an integer type with the given number of bits, e.g., i24
+pub(crate) fn type_ix_llcx(llcx: &llvm::Context, num_bits: u64) -> &Type {
+    unsafe { llvm::LLVMIntTypeInContext(llcx, num_bits as c_uint) }
+}
 
-    pub(crate) fn ptr_llcx(llcx: &llvm::Context) -> &Type {
-        unsafe { llvm::LLVMPointerTypeInContext(llcx, AddressSpace::ZERO.0) }
-    }
+pub(crate) fn type_ptr_llcx(llcx: &llvm::Context) -> &Type {
+    unsafe { llvm::LLVMPointerTypeInContext(llcx, AddressSpace::ZERO.0) }
 }
 
 impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {

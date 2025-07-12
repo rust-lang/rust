@@ -1,6 +1,5 @@
 use std::borrow::Cow;
-use std::fmt::{self, Write};
-use std::hash::{Hash, Hasher};
+use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{iter, ptr};
@@ -38,31 +37,11 @@ use crate::debuginfo::dwarf_const;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
 use crate::debuginfo::utils::{WidePtrKind, wide_pointer_kind};
 use crate::llvm;
+use crate::llvm::Value;
 use crate::llvm::debuginfo::{
     DIBasicType, DIBuilder, DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock,
-    DIScope, DIType, DebugEmissionKind, DebugNameTableKind,
+    DIScope, DIType, DebugNameTableKind,
 };
-use crate::value::Value;
-
-impl PartialEq for llvm::Metadata {
-    fn eq(&self, other: &Self) -> bool {
-        ptr::eq(self, other)
-    }
-}
-
-impl Eq for llvm::Metadata {}
-
-impl Hash for llvm::Metadata {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        (self as *const Self).hash(hasher);
-    }
-}
-
-impl fmt::Debug for llvm::Metadata {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (self as *const Self).fmt(f)
-    }
-}
 
 pub(super) const UNKNOWN_LINE_NUMBER: c_uint = 0;
 pub(super) const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
@@ -926,7 +905,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
         .as_ref()
         .map(|f| f.for_scope(tcx.sess, RemapPathScopeComponents::DEBUGINFO).to_string_lossy())
         .unwrap_or_default();
-    let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
+    let kind = llvm::debug_emission_kind_from_generic(tcx.sess.opts.debuginfo);
 
     let dwarf_version = tcx.sess.dwarf_version();
     let is_dwarf_kind =

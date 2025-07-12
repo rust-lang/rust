@@ -256,7 +256,7 @@ trigger_files = [
     "compiler/rustc_ast/src/expand/autodiff_attrs.rs",
     "compiler/rustc_monomorphize/src/partitioning/autodiff.rs",
     "compiler/rustc_codegen_llvm/src/builder/autodiff.rs",
-    "compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs",
+    "compiler/rustc_llvm/src/ffi/enzyme.rs",
 ]
 
 [autolabel."T-rustdoc-frontend"]
@@ -1258,7 +1258,7 @@ cc = ["@ZuseZ4"]
 cc = ["@ZuseZ4"]
 [mentions."compiler/rustc_codegen_llvm/src/builder/autodiff.rs"]
 cc = ["@ZuseZ4"]
-[mentions."compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs"]
+[mentions."compiler/rustc_llvm/src/ffi/enzyme.rs"]
 cc = ["@ZuseZ4"]
 
 [mentions."library/core/src/fmt/rt.rs"]

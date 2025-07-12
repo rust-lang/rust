@@ -114,7 +114,7 @@ fn create_const_value_function(
         name,
         llvm::CallConv::CCallConv,
         llvm::UnnamedAddr::Global,
-        llvm::Visibility::from_generic(tcx.sess.default_visibility()),
+        llvm::visibility_from_generic(tcx.sess.default_visibility()),
         ty,
     );
 
@@ -144,7 +144,7 @@ fn create_wrapper_function(
         from_name,
         llvm::CallConv::CCallConv,
         llvm::UnnamedAddr::Global,
-        llvm::Visibility::from_generic(tcx.sess.default_visibility()),
+        llvm::visibility_from_generic(tcx.sess.default_visibility()),
         ty,
     );
     let no_return = if no_return {
