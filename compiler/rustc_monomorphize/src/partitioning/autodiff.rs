@@ -1,3 +1,4 @@
+use rustc_abi::HasDataLayout;
 use rustc_ast::expand::autodiff_attrs::{AutoDiffItem, DiffActivity};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
@@ -16,6 +17,7 @@ fn adjust_activity_to_abi<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec
     // We don't actually pass the types back into the type system.
     // All we do is decide how to handle the arguments.
     let sig = fn_ty.fn_sig(tcx).skip_binder();
+    let pointer_size = tcx.data_layout().pointer_size;
 
     let mut new_activities = vec![];
     let mut new_positions = vec![];
@@ -70,6 +72,29 @@ fn adjust_activity_to_abi<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec
                 continue;
             }
         }
+
+        let pci = PseudoCanonicalInput { typing_env: TypingEnv::fully_monomorphized(), value: *ty };
+
+        let layout = match tcx.layout_of(pci) {
+            Ok(layout) => layout.layout,
+            Err(_) => {
+                bug!("failed to compute layout for type {:?}", ty);
+            }
+        };
+
+        let is_product = |t: Ty<'tcx>| matches!(t.kind(), ty::Tuple(_) | ty::Adt(_, _));
+
+        // NOTE: When an ADT (Algebraic Data Type) has fewer than two fields and a total size less than pointer_size * 2,
+        // LLVM will pass its fields separately instead of as a single aggregate.
+        if layout.size() <= pointer_size * 2 && is_product(*ty) {
+            let n_scalars = count_leaf_fields(tcx, *ty);
+            if n_scalars <= 2 {
+                for _ in 0..n_scalars.saturating_sub(1) {
+                    new_activities.push(da[i].clone());
+                    new_positions.push(i + 1);
+                }
+            }
+        }
     }
     // now add the extra activities coming from slices
     // Reverse order to not invalidate the indices
@@ -77,6 +102,29 @@ fn adjust_activity_to_abi<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec
         let pos = new_positions.pop().unwrap();
         let activity = new_activities.pop().unwrap();
         da.insert(pos, activity);
+    }
+}
+
+fn count_leaf_fields<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> usize {
+    match ty.kind() {
+        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::FnPtr(_, _) => 1,
+        ty::RawPtr(ty, _) => count_leaf_fields(tcx, *ty),
+        ty::Ref(_, ty, _) => count_leaf_fields(tcx, *ty),
+        ty::Array(ty, len) => {
+            if let Some(len) = len.try_to_target_usize(tcx) {
+                count_leaf_fields(tcx, *ty) * len as usize
+            } else {
+                1 // Not sure about how to handle this case
+            }
+        }
+        ty::Adt(def, substs) if def.is_struct() => def
+            .non_enum_variant()
+            .fields
+            .iter()
+            .map(|f| count_leaf_fields(tcx, f.ty(tcx, substs)))
+            .sum(),
+        ty::Tuple(substs) => substs.iter().map(|t| count_leaf_fields(tcx, t)).sum(),
+        _ => 0,
     }
 }
 
