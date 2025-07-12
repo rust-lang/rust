@@ -2012,6 +2012,9 @@ fn _assert_sync_and_send() {
 ///   which may take time on systems with large numbers of mountpoints.
 ///   (This does not apply to cgroup v2, or to processes not in a
 ///   cgroup.)
+/// - If was set _ulimit_ restrictions for maximum number of processes that can be
+///   created for the real user ID (`ulimit -u`), then result will be arithmetic difference
+///   of _soft-limit_ and number working threads at the moment
 ///
 /// On all targets:
 /// - It may overcount the amount of parallelism available when running in a VM
