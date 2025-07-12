@@ -3,7 +3,7 @@ use rustc_ast::token::CommentKind;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::hygiene::Transparency;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 use thin_vec::ThinVec;
 
 use crate::{DefaultBodyStability, PartialConstStability, PrintAttribute, RustcVersion, Stability};
@@ -138,6 +138,13 @@ impl Deprecation {
 pub enum UsedBy {
     Compiler,
     Linker,
+}
+
+#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum MacroUseArgs {
+    UseAll,
+    UseSpecific(ThinVec<Ident>),
 }
 
 /// Represents parsed *built-in* inert attributes.
@@ -300,8 +307,14 @@ pub enum AttributeKind {
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
 
+    /// Represents `#[macro_escape]`.
+    MacroEscape(Span),
+
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
+
+    /// Represents `#[macro_use]`.
+    MacroUse { span: Span, arguments: MacroUseArgs },
 
     /// Represents `#[marker]`.
     Marker(Span),
