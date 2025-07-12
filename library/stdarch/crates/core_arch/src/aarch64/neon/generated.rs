@@ -13261,14 +13261,7 @@ pub fn vmaxnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(fmaxnm))]
 pub fn vmaxnmh_f16(a: f16, b: f16) -> f16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.fmaxnm.f16"
-        )]
-        fn _vmaxnmh_f16(a: f16, b: f16) -> f16;
-    }
-    unsafe { _vmaxnmh_f16(a, b) }
+    f16::max(a, b)
 }
 #[doc = "Floating-point maximum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmv_f16)"]
@@ -13709,14 +13702,7 @@ pub fn vminnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(fminnm))]
 pub fn vminnmh_f16(a: f16, b: f16) -> f16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.fminnm.f16"
-        )]
-        fn _vminnmh_f16(a: f16, b: f16) -> f16;
-    }
-    unsafe { _vminnmh_f16(a, b) }
+    f16::min(a, b)
 }
 #[doc = "Floating-point minimum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmv_f16)"]

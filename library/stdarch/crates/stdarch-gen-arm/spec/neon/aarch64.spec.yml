@@ -6611,11 +6611,7 @@ intrinsics:
     types:
       - f16
     compose:
-      - LLVMLink:
-          name: "vmaxh.{neon_type}"
-          links:
-            - link: "llvm.aarch64.neon.fmaxnm.{type}"
-              arch: aarch64,arm64ec
+      - FnCall: ["f16::max", [a, b]]
 
 
   - name: "vminnmh_{type}"
@@ -6630,11 +6626,7 @@ intrinsics:
     types:
       - f16
     compose:
-      - LLVMLink:
-          name: "vminh.{neon_type}"
-          links:
-            - link: "llvm.aarch64.neon.fminnm.{type}"
-              arch: aarch64,arm64ec
+      - FnCall: ["f16::min", [a, b]]
 
 
   - name: "vmaxnmv{neon_type[0].no}"
