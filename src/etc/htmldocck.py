@@ -564,10 +564,14 @@ def check_command(c, cache):
             # hasraw/matchesraw <path> <pat> = string test
             elif len(c.args) == 2 and "raw" in c.cmd:
                 cerr = "`PATTERN` did not match"
+                if c.negated:
+                    cerr = "`PATTERN` unexpectedly matched"
                 ret = check_string(cache.get_file(c.args[0]), c.args[1], regexp)
             # has/matches <path> <pat> <match> = XML tree test
             elif len(c.args) == 3 and "raw" not in c.cmd:
                 cerr = "`XPATH PATTERN` did not match"
+                if c.negated:
+                    cerr = "`XPATH PATTERN` unexpectedly matched"
                 ret = get_nb_matching_elements(cache, c, regexp, True) != 0
             else:
                 raise InvalidCheck("Invalid number of {} arguments".format(c.cmd))
