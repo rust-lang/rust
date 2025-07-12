@@ -16,18 +16,9 @@
 #![feature(mips_target_feature)]
 #![allow(non_camel_case_types)]
 
-// Setting up structs that can be used as const vectors
-#[repr(simd)]
-#[derive(Clone)]
-pub struct i8x2([i8; 2]);
-
-#[repr(simd)]
-#[derive(Clone)]
-pub struct f32x2([f32; 2]);
-
-#[repr(simd, packed)]
-#[derive(Copy, Clone)]
-pub struct Simd<T, const N: usize>([T; N]);
+#[path = "../auxiliary/minisimd.rs"]
+mod minisimd;
+use minisimd::{PackedSimd as Simd, f32x2, i8x2};
 
 // The following functions are required for the tests to ensure
 // that they are called with a const vector
@@ -45,7 +36,7 @@ extern "unadjusted" {
 
 // Ensure the packed variant of the simd struct does not become a const vector
 // if the size is not a power of 2
-// CHECK: %"Simd<i32, 3>" = type { [3 x i32] }
+// CHECK: %"minisimd::PackedSimd<i32, 3>" = type { [3 x i32] }
 
 #[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "neon"))]
@@ -74,7 +65,7 @@ pub fn do_call() {
         // CHECK: call void @test_simd(<4 x i32> <i32 2, i32 4, i32 6, i32 8>
         test_simd(const { Simd::<i32, 4>([2, 4, 6, 8]) });
 
-        // CHECK: call void @test_simd_unaligned(%"Simd<i32, 3>" %1
+        // CHECK: call void @test_simd_unaligned(%"minisimd::PackedSimd<i32, 3>" %1
         test_simd_unaligned(const { Simd::<i32, 3>([2, 4, 6]) });
     }
 }

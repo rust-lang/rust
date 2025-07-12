@@ -6,15 +6,14 @@
 #![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
 
+#[path = "../../auxiliary/minisimd.rs"]
+mod minisimd;
+use minisimd::*;
+
 use std::intrinsics::simd::simd_scatter;
 
-#[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub struct Vec2<T>(pub [T; 2]);
-
-#[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub struct Vec4<T>(pub [T; 4]);
+pub type Vec2<T> = Simd<T, 2>;
+pub type Vec4<T> = Simd<T, 4>;
 
 // CHECK-LABEL: @scatter_f32x2
 #[no_mangle]
