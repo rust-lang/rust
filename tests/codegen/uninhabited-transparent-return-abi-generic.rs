@@ -1,4 +1,5 @@
 //@ compile-flags: -Copt-level=3
+//@ ignore-riscv64
 
 // See https://github.com/rust-lang/rust/issues/135802
 
