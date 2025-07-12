@@ -67,7 +67,6 @@ pub fn fill_compilers(build: &mut Build) {
         // We don't need to check cross targets for these commands.
         crate::Subcommand::Clean { .. }
         | crate::Subcommand::Check { .. }
-        | crate::Subcommand::Suggest { .. }
         | crate::Subcommand::Format { .. }
         | crate::Subcommand::Setup { .. } => {
             build.hosts.iter().cloned().chain(iter::once(build.host_target)).collect()
