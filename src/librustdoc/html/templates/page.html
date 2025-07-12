@@ -62,6 +62,9 @@
         <link rel="icon" type="image/svg+xml" {#+ #}
             href="{{static_root_path|safe}}{{files.rust_favicon_svg}}">
     {% endif %}
+    {% if layout.link_canonical.is_some() && page.relative_url.is_some() %}
+        <link rel="canonical" href="{{layout.link_canonical.as_ref().unwrap()|safe}}{{page.relative_url.as_ref().unwrap()|safe}}">
+    {% endif %}
     {{ layout.external_html.in_header|safe }}
 </head> {# #}
 <body class="rustdoc {{+page.css_class}}"> {# #}

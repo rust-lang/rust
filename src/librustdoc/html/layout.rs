@@ -20,9 +20,13 @@ pub(crate) struct Layout {
     pub(crate) css_file_extension: Option<PathBuf>,
     /// If true, then scrape-examples.js will be included in the output HTML file
     pub(crate) scrape_examples_extension: bool,
+    /// if present, insert a rel="canonical" link with this prefix.
+    pub(crate) link_canonical: Option<String>,
 }
 
 pub(crate) struct Page<'a> {
+    /// url relative to documentation bundle root.
+    pub(crate) relative_url: Option<String>,
     pub(crate) title: &'a str,
     pub(crate) css_class: &'a str,
     pub(crate) root_path: &'a str,
@@ -47,7 +51,6 @@ struct PageLayout<'a> {
     static_root_path: String,
     page: &'a Page<'a>,
     layout: &'a Layout,
-
     files: &'static StaticFiles,
 
     themes: Vec<String>,
