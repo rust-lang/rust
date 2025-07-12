@@ -1,12 +1,22 @@
 
 running 3 tests
-test $DIR/wrong-ast.rs - one (line 6) ... FAILED
-test $DIR/wrong-ast.rs - three (line 16) ... ok
-test $DIR/wrong-ast.rs - two (line 11) ... FAILED
+test $DIR/wrong-ast.rs:11 - two ... FAILED
+test $DIR/wrong-ast.rs:16 - three ... ok
+test $DIR/wrong-ast.rs:6 - one ... FAILED
 
 failures:
 
----- $DIR/wrong-ast.rs - one (line 6) stdout ----
+---- $DIR/wrong-ast.rs:11 - two stdout ----
+error: unexpected closing delimiter: `}`
+  --> $DIR/wrong-ast.rs:12:1
+   |
+LL | } mod __doctest_1 { fn main() {
+   | ^ unexpected closing delimiter
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+---- $DIR/wrong-ast.rs:6 - one stdout ----
 error[E0758]: unterminated block comment
   --> $DIR/wrong-ast.rs:7:1
    |
@@ -17,20 +27,10 @@ error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0758`.
 Couldn't compile the test.
----- $DIR/wrong-ast.rs - two (line 11) stdout ----
-error: unexpected closing delimiter: `}`
-  --> $DIR/wrong-ast.rs:12:1
-   |
-LL | } mod __doctest_1 { fn main() {
-   | ^ unexpected closing delimiter
-
-error: aborting due to 1 previous error
-
-Couldn't compile the test.
 
 failures:
-    $DIR/wrong-ast.rs - one (line 6)
-    $DIR/wrong-ast.rs - two (line 11)
+    $DIR/wrong-ast.rs:11 - two
+    $DIR/wrong-ast.rs:6 - one
 
 test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

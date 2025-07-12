@@ -9,11 +9,11 @@ fn main() {
     let output = rustdoc().input("input.rs").arg("--test").run_fail().stdout_utf8();
 
     let should_contain = &[
-        "input.rs - foo (line 5)",
+        "input.rs:5 - foo",
         "input.rs:8:15",
-        "input.rs - bar (line 13)",
+        "input.rs:13 - bar",
         "input.rs:16:15",
-        "input.rs - bar (line 22)",
+        "input.rs:22 - bar",
         "input.rs:25:15",
     ];
     for text in should_contain {

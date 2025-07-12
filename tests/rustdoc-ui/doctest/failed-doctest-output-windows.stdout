@@ -1,11 +1,11 @@
 
 running 2 tests
-test $DIR/failed-doctest-output-windows.rs - OtherStruct (line 25) ... FAILED
-test $DIR/failed-doctest-output-windows.rs - SomeStruct (line 15) ... FAILED
+test $DIR/failed-doctest-output-windows.rs:25 - OtherStruct ... FAILED
+test $DIR/failed-doctest-output-windows.rs:15 - SomeStruct ... FAILED
 
 failures:
 
----- $DIR/failed-doctest-output-windows.rs - OtherStruct (line 25) stdout ----
+---- $DIR/failed-doctest-output-windows.rs:25 - OtherStruct stdout ----
 error[E0425]: cannot find value `no` in this scope
   --> $DIR/failed-doctest-output-windows.rs:26:1
    |
@@ -16,7 +16,7 @@ error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0425`.
 Couldn't compile the test.
----- $DIR/failed-doctest-output-windows.rs - SomeStruct (line 15) stdout ----
+---- $DIR/failed-doctest-output-windows.rs:15 - SomeStruct stdout ----
 Test executable failed (exit code: 101).
 
 stdout:
@@ -34,8 +34,8 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
 
 failures:
-    $DIR/failed-doctest-output-windows.rs - OtherStruct (line 25)
-    $DIR/failed-doctest-output-windows.rs - SomeStruct (line 15)
+    $DIR/failed-doctest-output-windows.rs:25 - OtherStruct
+    $DIR/failed-doctest-output-windows.rs:15 - SomeStruct
 
 test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

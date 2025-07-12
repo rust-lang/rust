@@ -1,10 +1,10 @@
 
 running 1 test
-test $DIR/dead-code.rs - f (line 12) - compile ... FAILED
+test $DIR/dead-code.rs:12 - f - compile ... FAILED
 
 failures:
 
----- $DIR/dead-code.rs - f (line 12) stdout ----
+---- $DIR/dead-code.rs:12 - f stdout ----
 error: trait `T` is never used
   --> $DIR/dead-code.rs:13:7
    |
@@ -23,7 +23,7 @@ error: aborting due to 1 previous error
 Couldn't compile the test.
 
 failures:
-    $DIR/dead-code.rs - f (line 12)
+    $DIR/dead-code.rs:12 - f
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 
