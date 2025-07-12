@@ -1,9 +1,7 @@
 // FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
 #![cfg(target_has_reliable_f128)]
 
-use core::ops::{Add, Div, Mul, Sub};
 use std::f128::consts;
-use std::num::FpCategory as Fp;
 
 use super::{assert_approx_eq, assert_biteq};
 
@@ -38,159 +36,8 @@ const NAN_MASK1: u128 = 0x0000aaaaaaaaaaaaaaaaaaaaaaaaaaaa;
 /// Second pattern over the mantissa
 const NAN_MASK2: u128 = 0x00005555555555555555555555555555;
 
-#[test]
-fn test_num_f128() {
-    // FIXME(f16_f128): replace with a `test_num` call once the required `fmodl`/`fmodf128`
-    // function is available on all platforms.
-    let ten = 10f128;
-    let two = 2f128;
-    assert_biteq!(ten.add(two), ten + two);
-    assert_biteq!(ten.sub(two), ten - two);
-    assert_biteq!(ten.mul(two), ten * two);
-    assert_biteq!(ten.div(two), ten / two);
-    #[cfg(any(miri, target_has_reliable_f128_math))]
-    assert_biteq!(core::ops::Rem::rem(ten, two), ten % two);
-}
-
 // FIXME(f16_f128,miri): many of these have to be disabled since miri does not yet support
 // the intrinsics.
-
-#[test]
-fn test_infinity() {
-    let inf: f128 = f128::INFINITY;
-    assert!(inf.is_infinite());
-    assert!(!inf.is_finite());
-    assert!(inf.is_sign_positive());
-    assert!(!inf.is_sign_negative());
-    assert!(!inf.is_nan());
-    assert!(!inf.is_normal());
-    assert_eq!(Fp::Infinite, inf.classify());
-}
-
-#[test]
-fn test_neg_infinity() {
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert!(neg_inf.is_infinite());
-    assert!(!neg_inf.is_finite());
-    assert!(!neg_inf.is_sign_positive());
-    assert!(neg_inf.is_sign_negative());
-    assert!(!neg_inf.is_nan());
-    assert!(!neg_inf.is_normal());
-    assert_eq!(Fp::Infinite, neg_inf.classify());
-}
-
-#[test]
-fn test_zero() {
-    let zero: f128 = 0.0f128;
-    assert_biteq!(0.0, zero);
-    assert!(!zero.is_infinite());
-    assert!(zero.is_finite());
-    assert!(zero.is_sign_positive());
-    assert!(!zero.is_sign_negative());
-    assert!(!zero.is_nan());
-    assert!(!zero.is_normal());
-    assert_eq!(Fp::Zero, zero.classify());
-}
-
-#[test]
-fn test_neg_zero() {
-    let neg_zero: f128 = -0.0;
-    assert_eq!(0.0, neg_zero);
-    assert_biteq!(-0.0, neg_zero);
-    assert!(!neg_zero.is_infinite());
-    assert!(neg_zero.is_finite());
-    assert!(!neg_zero.is_sign_positive());
-    assert!(neg_zero.is_sign_negative());
-    assert!(!neg_zero.is_nan());
-    assert!(!neg_zero.is_normal());
-    assert_eq!(Fp::Zero, neg_zero.classify());
-}
-
-#[test]
-fn test_one() {
-    let one: f128 = 1.0f128;
-    assert_biteq!(1.0, one);
-    assert!(!one.is_infinite());
-    assert!(one.is_finite());
-    assert!(one.is_sign_positive());
-    assert!(!one.is_sign_negative());
-    assert!(!one.is_nan());
-    assert!(one.is_normal());
-    assert_eq!(Fp::Normal, one.classify());
-}
-
-#[test]
-fn test_is_nan() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert!(nan.is_nan());
-    assert!(!0.0f128.is_nan());
-    assert!(!5.3f128.is_nan());
-    assert!(!(-10.732f128).is_nan());
-    assert!(!inf.is_nan());
-    assert!(!neg_inf.is_nan());
-}
-
-#[test]
-fn test_is_infinite() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert!(!nan.is_infinite());
-    assert!(inf.is_infinite());
-    assert!(neg_inf.is_infinite());
-    assert!(!0.0f128.is_infinite());
-    assert!(!42.8f128.is_infinite());
-    assert!(!(-109.2f128).is_infinite());
-}
-
-#[test]
-fn test_is_finite() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert!(!nan.is_finite());
-    assert!(!inf.is_finite());
-    assert!(!neg_inf.is_finite());
-    assert!(0.0f128.is_finite());
-    assert!(42.8f128.is_finite());
-    assert!((-109.2f128).is_finite());
-}
-
-#[test]
-fn test_is_normal() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    let zero: f128 = 0.0f128;
-    let neg_zero: f128 = -0.0;
-    assert!(!nan.is_normal());
-    assert!(!inf.is_normal());
-    assert!(!neg_inf.is_normal());
-    assert!(!zero.is_normal());
-    assert!(!neg_zero.is_normal());
-    assert!(1f128.is_normal());
-    assert!(1e-4931f128.is_normal());
-    assert!(!1e-4932f128.is_normal());
-}
-
-#[test]
-fn test_classify() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    let zero: f128 = 0.0f128;
-    let neg_zero: f128 = -0.0;
-    assert_eq!(nan.classify(), Fp::Nan);
-    assert_eq!(inf.classify(), Fp::Infinite);
-    assert_eq!(neg_inf.classify(), Fp::Infinite);
-    assert_eq!(zero.classify(), Fp::Zero);
-    assert_eq!(neg_zero.classify(), Fp::Zero);
-    assert_eq!(1f128.classify(), Fp::Normal);
-    assert_eq!(1e-4931f128.classify(), Fp::Normal);
-    assert_eq!(1e-4932f128.classify(), Fp::Subnormal);
-}
 
 #[test]
 #[cfg(any(miri, target_has_reliable_f128_math))]
