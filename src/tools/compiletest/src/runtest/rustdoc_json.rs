@@ -6,7 +6,7 @@ impl TestCx<'_> {
     pub(super) fn run_rustdoc_json_test(&self) {
         //FIXME: Add bless option.
 
-        assert!(self.revision.is_none(), "revisions not relevant here");
+        assert!(self.revision.is_none(), "revisions not supported in this test suite");
 
         let out_dir = self.output_base_dir();
         remove_and_create_dir_all(&out_dir).unwrap_or_else(|e| {
