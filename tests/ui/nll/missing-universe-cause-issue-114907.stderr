@@ -38,16 +38,16 @@ LL |     accept(callback);
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: higher-ranked subtype error
-  --> $DIR/missing-universe-cause-issue-114907.rs:33:21
+  --> $DIR/missing-universe-cause-issue-114907.rs:33:5
    |
 LL |     accept(callback);
-   |                     ^
+   |     ^^^^^^^^^^^^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/missing-universe-cause-issue-114907.rs:33:21
+  --> $DIR/missing-universe-cause-issue-114907.rs:33:5
    |
 LL |     accept(callback);
-   |                     ^
+   |     ^^^^^^^^^^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
