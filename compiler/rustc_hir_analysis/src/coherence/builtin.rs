@@ -37,6 +37,7 @@ pub(super) fn check_trait<'tcx>(
     let lang_items = tcx.lang_items();
     let checker = Checker { tcx, trait_def_id, impl_def_id, impl_header };
     checker.check(lang_items.drop_trait(), visit_implementation_of_drop)?;
+    checker.check(lang_items.async_drop_trait(), visit_implementation_of_drop)?;
     checker.check(lang_items.copy_trait(), visit_implementation_of_copy)?;
     checker.check(lang_items.const_param_ty_trait(), |checker| {
         visit_implementation_of_const_param_ty(checker, LangItem::ConstParamTy)
@@ -83,7 +84,10 @@ fn visit_implementation_of_drop(checker: &Checker<'_>) -> Result<(), ErrorGuaran
 
     let impl_ = tcx.hir_expect_item(impl_did).expect_impl();
 
-    Err(tcx.dcx().emit_err(errors::DropImplOnWrongItem { span: impl_.self_ty.span }))
+    Err(tcx.dcx().emit_err(errors::DropImplOnWrongItem {
+        span: impl_.self_ty.span,
+        trait_: tcx.item_name(checker.impl_header.trait_ref.skip_binder().def_id),
+    }))
 }
 
 fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {

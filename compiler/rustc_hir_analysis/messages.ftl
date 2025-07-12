@@ -158,7 +158,7 @@ hir_analysis_dispatch_from_dyn_zst = the trait `DispatchFromDyn` may only be imp
 hir_analysis_drop_impl_negative = negative `Drop` impls are not supported
 
 hir_analysis_drop_impl_on_wrong_item =
-    the `Drop` trait may only be implemented for local structs, enums, and unions
+    the `{$trait_}` trait may only be implemented for local structs, enums, and unions
     .label = must be a struct, enum, or union in the current crate
 
 hir_analysis_drop_impl_reservation = reservation `Drop` impls are not supported
