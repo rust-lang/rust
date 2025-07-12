@@ -2542,12 +2542,9 @@ fn add_order_independent_options(
         // sections to ensure we have all the data for PGO.
         let keep_metadata =
             crate_type == CrateType::Dylib || sess.opts.cg.profile_generate.enabled();
-        if crate_type != CrateType::Executable || !sess.opts.unstable_opts.export_executable_symbols
-        {
-            cmd.gc_sections(keep_metadata);
-        } else {
-            cmd.no_gc_sections();
-        }
+        cmd.gc_sections(keep_metadata);
+    } else {
+        cmd.no_gc_sections();
     }
 
     cmd.set_output_kind(link_output_kind, crate_type, out_filename);

@@ -4,20 +4,21 @@
 // symbol.
 // See https://github.com/rust-lang/rust/pull/85673
 
-//@ only-unix
-// Reason: the export-executable-symbols flag only works on Unix
-// due to hardcoded platform-specific implementation
-// (See #85673)
-//@ ignore-cross-compile
 //@ ignore-wasm
 
-use run_make_support::{bin_name, llvm_readobj, rustc};
+use run_make_support::object::Object;
+use run_make_support::{bin_name, is_darwin, object, rustc};
 
 fn main() {
-    rustc().arg("-Zexport-executable-symbols").input("main.rs").crate_type("bin").run();
-    llvm_readobj()
-        .symbols()
-        .input(bin_name("main"))
-        .run()
-        .assert_stdout_contains("exported_symbol");
+    rustc()
+        .arg("-Ctarget-feature=-crt-static")
+        .arg("-Zexport-executable-symbols")
+        .input("main.rs")
+        .crate_type("bin")
+        .run();
+    let name: &[u8] = if is_darwin() { b"_exported_symbol" } else { b"exported_symbol" };
+    let contents = std::fs::read(bin_name("main")).unwrap();
+    let object = object::File::parse(contents.as_slice()).unwrap();
+    let found = object.exports().unwrap().iter().any(|x| x.name() == name);
+    assert!(found);
 }
