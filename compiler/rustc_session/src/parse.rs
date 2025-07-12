@@ -334,6 +334,7 @@ impl ParseSess {
         self.proc_macro_quoted_spans.iter_enumerated()
     }
 
+    #[inline]
     pub fn dcx(&self) -> DiagCtxtHandle<'_> {
         self.dcx.handle()
     }
