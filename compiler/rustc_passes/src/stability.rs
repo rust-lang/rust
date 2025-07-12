@@ -28,7 +28,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{DEPRECATED, INEFFECTIVE_UNSTABLE_TRAIT_IMPL};
 use rustc_span::{Span, Symbol, sym};
-use tracing::{debug, info, instrument};
+use tracing::{info, instrument};
 
 use crate::errors;
 
@@ -326,43 +326,23 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
     /// Determine the stability for a node based on its attributes and inherited stability. The
     /// stability is recorded in the index and used as the parent. If the node is a function,
     /// `fn_sig` is its signature.
-    #[instrument(level = "trace", skip(self, visit_children))]
-    fn annotate<F>(&mut self, def_id: LocalDefId, visit_children: F)
-    where
-        F: FnOnce(&mut Self),
-    {
-        let attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
-        debug!("annotate(id = {:?}, attrs = {:?})", def_id, attrs);
-
-        let stab = self.tcx.lookup_stability(def_id);
-
+    #[instrument(level = "trace", skip(self))]
+    fn annotate(&mut self, def_id: LocalDefId) {
         if !self.tcx.features().staged_api() {
-            visit_children(self);
             return;
         }
 
-        if let Some(Stability {
-            level: StabilityLevel::Unstable { implied_by: Some(implied_by), .. },
-            feature,
-        }) = stab
+        if let Some(stability) = self.tcx.lookup_stability(def_id)
+            && let StabilityLevel::Unstable { implied_by: Some(implied_by), .. } = stability.level
         {
-            self.index.implications.insert(implied_by, feature);
+            self.index.implications.insert(implied_by, stability.feature);
         }
 
-        // # Const stability
-
-        let const_stab = self.tcx.lookup_const_stability(def_id);
-
-        if let Some(ConstStability {
-            level: StabilityLevel::Unstable { implied_by: Some(implied_by), .. },
-            feature,
-            ..
-        }) = const_stab
+        if let Some(stability) = self.tcx.lookup_const_stability(def_id)
+            && let StabilityLevel::Unstable { implied_by: Some(implied_by), .. } = stability.level
         {
-            self.index.implications.insert(implied_by, feature);
+            self.index.implications.insert(implied_by, stability.feature);
         }
-
-        visit_children(self)
     }
 }
 
@@ -380,53 +360,48 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         match i.kind {
             hir::ItemKind::Struct(_, _, ref sd) => {
                 if let Some(ctor_def_id) = sd.ctor_def_id() {
-                    self.annotate(ctor_def_id, |_| {})
+                    self.annotate(ctor_def_id);
                 }
             }
             _ => {}
         }
 
-        self.annotate(i.owner_id.def_id, |v| intravisit::walk_item(v, i));
+        self.annotate(i.owner_id.def_id);
+        intravisit::walk_item(self, i)
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
-        self.annotate(ti.owner_id.def_id, |v| {
-            intravisit::walk_trait_item(v, ti);
-        });
+        self.annotate(ti.owner_id.def_id);
+        intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
-        self.annotate(ii.owner_id.def_id, |v| {
-            intravisit::walk_impl_item(v, ii);
-        });
+        self.annotate(ii.owner_id.def_id);
+        intravisit::walk_impl_item(self, ii);
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant<'tcx>) {
-        self.annotate(var.def_id, |v| {
-            if let Some(ctor_def_id) = var.data.ctor_def_id() {
-                v.annotate(ctor_def_id, |_| {});
-            }
+        self.annotate(var.def_id);
+        if let Some(ctor_def_id) = var.data.ctor_def_id() {
+            self.annotate(ctor_def_id);
+        }
 
-            intravisit::walk_variant(v, var)
-        })
+        intravisit::walk_variant(self, var)
     }
 
     fn visit_field_def(&mut self, s: &'tcx FieldDef<'tcx>) {
-        self.annotate(s.def_id, |v| {
-            intravisit::walk_field_def(v, s);
-        });
+        self.annotate(s.def_id);
+        intravisit::walk_field_def(self, s);
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
-        self.annotate(i.owner_id.def_id, |v| {
-            intravisit::walk_foreign_item(v, i);
-        });
+        self.annotate(i.owner_id.def_id);
+        intravisit::walk_foreign_item(self, i);
     }
 
     fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
-        self.annotate(p.def_id, |v| {
-            intravisit::walk_generic_param(v, p);
-        });
+        self.annotate(p.def_id);
+        intravisit::walk_generic_param(self, p);
     }
 }
 
@@ -637,12 +612,9 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
 
 fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
     let mut index = Index { implications: Default::default() };
-
-    {
-        let mut annotator = Annotator { tcx, index: &mut index };
-
-        annotator.annotate(CRATE_DEF_ID, |v| tcx.hir_walk_toplevel_module(v));
-    }
+    let mut annotator = Annotator { tcx, index: &mut index };
+    annotator.annotate(CRATE_DEF_ID);
+    tcx.hir_walk_toplevel_module(&mut annotator);
     index
 }
 
