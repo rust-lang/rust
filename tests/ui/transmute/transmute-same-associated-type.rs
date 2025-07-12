@@ -1,3 +1,5 @@
+//! Verify transmuting is allowed when `Src` and `Dst` are the same associated type.
+
 //@ check-pass
 
 trait Foo {

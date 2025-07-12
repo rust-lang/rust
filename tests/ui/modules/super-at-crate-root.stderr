@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: there are too many leading `super` keywords
-  --> $DIR/super-at-top-level.rs:1:5
+  --> $DIR/super-at-crate-root.rs:4:5
    |
 LL | use super::f;
    |     ^^^^^ there are too many leading `super` keywords
