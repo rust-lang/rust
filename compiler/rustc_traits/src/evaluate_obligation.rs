@@ -24,7 +24,7 @@ fn evaluate_obligation<'tcx>(
     debug!("evaluate_obligation: goal={:#?}", goal);
     let ParamEnvAnd { param_env, value: predicate } = goal;
 
-    if sizedness_fast_path(tcx, predicate) {
+    if sizedness_fast_path(tcx, predicate, param_env) {
         return Ok(EvaluationResult::EvaluatedToOk);
     }
 
