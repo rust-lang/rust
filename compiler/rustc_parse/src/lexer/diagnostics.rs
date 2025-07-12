@@ -71,8 +71,6 @@ pub(super) fn report_suspicious_mismatch_block(
     sm: &SourceMap,
     delim: Delimiter,
 ) {
-
-
     let mut matched_spans: Vec<(Span, bool)> = diag_info
         .matching_block_spans
         .iter()

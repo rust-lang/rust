@@ -3,7 +3,9 @@ use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, Toke
 use rustc_ast_pretty::pprust::token_to_string;
 use rustc_errors::Diag;
 
-use super::diagnostics::{report_missing_open_delim, report_suspicious_mismatch_block, same_indentation_level};
+use super::diagnostics::{
+    report_missing_open_delim, report_suspicious_mismatch_block, same_indentation_level,
+};
 use super::{Lexer, UnmatchedDelim};
 
 impl<'psess, 'src> Lexer<'psess, 'src> {
