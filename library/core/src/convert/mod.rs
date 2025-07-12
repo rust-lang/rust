@@ -574,6 +574,7 @@ pub trait Into<T>: Sized {
 /// [`from`]: From::from
 /// [book]: ../../book/ch09-00-error-handling.html
 #[rustc_diagnostic_item = "From"]
+#[lang = "From"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(on(
     all(Self = "&str", T = "alloc::string::String"),
