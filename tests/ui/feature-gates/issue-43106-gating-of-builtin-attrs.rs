@@ -269,7 +269,13 @@ mod automatically_derived {
     #[automatically_derived] type T = S;
     //~^ WARN `#[automatically_derived]
 
+    #[automatically_derived] trait W { }
+    //~^ WARN `#[automatically_derived]
+
     #[automatically_derived] impl S { }
+    //~^ WARN `#[automatically_derived]
+
+    #[automatically_derived] impl W for S { }
 }
 
 #[no_mangle]
