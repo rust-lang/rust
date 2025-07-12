@@ -23,7 +23,7 @@ unwind = { path = "../unwind" }
 hashbrown = { version = "0.15", default-features = false, features = [
     'rustc-dep-of-std',
 ] }
-std_detect = { path = "../stdarch/crates/std_detect", default-features = false, features = [
+std_detect = { path = "../stdarch/crates/std_detect", public = true, default-features = false, features = [
     'rustc-dep-of-std',
 ] }
 
