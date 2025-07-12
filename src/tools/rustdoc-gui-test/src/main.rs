@@ -114,7 +114,7 @@ If you want to install the `browser-ui-test` dependency, run `npm install browse
             if let Some(librs) = find_librs(entry.path()) {
                 let compiletest_c = compiletest::common::Config {
                     edition: None,
-                    mode: compiletest::common::Mode::Rustdoc,
+                    mode: compiletest::common::TestMode::Rustdoc,
                     ..Default::default()
                 };
 

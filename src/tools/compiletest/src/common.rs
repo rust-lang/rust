@@ -8,14 +8,14 @@ use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 use serde::de::{Deserialize, Deserializer, Error as _};
 
-pub use self::Mode::*;
+pub use self::TestMode::*;
 use crate::executor::{ColorConfig, OutputFormat};
 use crate::fatal;
 use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
 
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
-    pub enum Mode {
+    pub enum TestMode {
         Pretty => "pretty",
         DebugInfo => "debuginfo",
         Codegen => "codegen",
@@ -34,7 +34,7 @@ string_enum! {
     }
 }
 
-impl Mode {
+impl TestMode {
     pub fn aux_dir_disambiguator(self) -> &'static str {
         // Pretty-printing tests could run concurrently, and if they do,
         // they need to keep their output segregated.
@@ -147,7 +147,7 @@ pub enum Sanitizer {
 /// (for changed test detection).
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// Some test [`Mode`]s support [snapshot testing], where a *reference snapshot* of outputs (of
+    /// Some [`TestMode`]s support [snapshot testing], where a *reference snapshot* of outputs (of
     /// `stdout`, `stderr`, or other form of artifacts) can be compared to the *actual output*.
     ///
     /// This option can be set to `true` to update the *reference snapshots* in-place, otherwise
@@ -269,20 +269,20 @@ pub struct Config {
     /// FIXME: reconsider this string; this is hashed for test build stamp.
     pub stage_id: String,
 
-    /// The test [`Mode`]. E.g. [`Mode::Ui`]. Each test mode can correspond to one or more test
+    /// The [`TestMode`]. E.g. [`TestMode::Ui`]. Each test mode can correspond to one or more test
     /// suites.
     ///
     /// FIXME: stop using stringly-typed test suites!
-    pub mode: Mode,
+    pub mode: TestMode,
 
     /// The test suite.
     ///
-    /// Example: `tests/ui/` is the "UI" test *suite*, which happens to also be of the [`Mode::Ui`]
-    /// test *mode*.
+    /// Example: `tests/ui/` is the "UI" test *suite*, which happens to also be of the
+    /// [`TestMode::Ui`] test *mode*.
     ///
     /// Note that the same test directory (e.g. `tests/coverage/`) may correspond to multiple test
-    /// modes, e.g. `tests/coverage/` can be run under both [`Mode::CoverageRun`] and
-    /// [`Mode::CoverageMap`].
+    /// modes, e.g. `tests/coverage/` can be run under both [`TestMode::CoverageRun`] and
+    /// [`TestMode::CoverageMap`].
     ///
     /// FIXME: stop using stringly-typed test suites!
     pub suite: String,
@@ -538,8 +538,8 @@ pub struct Config {
     // Configuration for various run-make tests frobbing things like C compilers or querying about
     // various LLVM component information.
     //
-    // FIXME: this really should be better packaged together.
-    // FIXME: these need better docs, e.g. for *host*, or for *target*?
+    // FIXME: this really should be better packaged together. FIXME: these need better docs, e.g.
+    // for *host*, or for *target*?
     pub cc: String,
     pub cxx: String,
     pub cflags: String,
