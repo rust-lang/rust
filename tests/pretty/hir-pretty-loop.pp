@@ -1,6 +1,6 @@
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
-#[macro_use]
+#[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 //@ pretty-compare-only
 //@ pretty-mode:hir
