@@ -2648,7 +2648,6 @@ impl str {
     /// you're trying to parse into.
     ///
     /// `parse` can parse into any type that implements the [`FromStr`] trait.
-
     ///
     /// # Errors
     ///

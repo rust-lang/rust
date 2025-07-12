@@ -787,7 +787,6 @@ impl Ipv4Addr {
     /// [IANA IPv4 Special-Purpose Address Registry]: https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
     /// [unspecified address]: Ipv4Addr::UNSPECIFIED
     /// [broadcast address]: Ipv4Addr::BROADCAST
-
     ///
     /// # Examples
     ///
