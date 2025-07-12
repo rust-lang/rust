@@ -37,8 +37,8 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
 // are deliberately not in a doc comment, because they need not be in public docs.)
 //
-// Latest feature: Pretty printing of no_mangle attributes changed
-pub const FORMAT_VERSION: u32 = 53;
+// Latest feature: Add `ItemKind::Attribute`.
+pub const FORMAT_VERSION: u32 = 54;
 
 /// The root of the emitted JSON blob.
 ///
@@ -468,6 +468,11 @@ pub enum ItemKind {
     /// [`Item`]s of this kind only come from the come library and exist solely
     /// to carry documentation for the respective keywords.
     Keyword,
+    /// An attribute declaration.
+    ///
+    /// [`Item`]s of this kind only come from the core library and exist solely
+    /// to carry documentation for the respective builtin attributes.
+    Attribute,
 }
 
 /// Specific fields of an item.

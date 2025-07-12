@@ -26,6 +26,7 @@ pub(crate) enum Kind {
     AssocType,
     Primitive,
     Keyword,
+    Attribute,
     // Not in ItemKind
     ProcMacro,
 }
@@ -53,6 +54,7 @@ impl Kind {
             ExternType => true,
 
             // FIXME(adotinthevoid): I'm not sure if these are correct
+            Attribute => false,
             Keyword => false,
             ProcAttribute => false,
             ProcDerive => false,
@@ -109,6 +111,7 @@ impl Kind {
             Kind::Primitive => false,
             Kind::Keyword => false,
             Kind::ProcMacro => false,
+            Kind::Attribute => false,
         }
     }
 
@@ -163,6 +166,7 @@ impl Kind {
         match s.kind {
             ItemKind::AssocConst => AssocConst,
             ItemKind::AssocType => AssocType,
+            ItemKind::Attribute => Attribute,
             ItemKind::Constant => Constant,
             ItemKind::Enum => Enum,
             ItemKind::ExternCrate => ExternCrate,
