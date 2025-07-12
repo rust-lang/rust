@@ -523,7 +523,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn add_module_candidates(
-        &mut self,
+        &self,
         module: Module<'ra>,
         names: &mut Vec<TypoSuggestion>,
         filter_fn: &impl Fn(Res) -> bool,
@@ -1150,7 +1150,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn lookup_import_candidates_from_module<FilterFn>(
-        &mut self,
+        &self,
         lookup_ident: Ident,
         namespace: Namespace,
         parent_scope: &ParentScope<'ra>,
