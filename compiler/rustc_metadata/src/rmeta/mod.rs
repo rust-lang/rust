@@ -260,6 +260,7 @@ pub(crate) struct CrateRoot {
     has_alloc_error_handler: bool,
     has_panic_handler: bool,
     has_default_lib_allocator: bool,
+    has_rmeta_extras: bool,
 
     crate_deps: LazyArray<CrateDep>,
     dylib_dependency_formats: LazyArray<Option<LinkagePreference>>,
