@@ -10,6 +10,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_hir::def_id::DefId;
+use rustc_macros::Diagnostic;
 use rustc_middle::metadata::{ModChild, Reexport};
 use rustc_middle::{span_bug, ty};
 use rustc_session::lint::BuiltinLintDiag;
@@ -39,6 +40,14 @@ use crate::{
 };
 
 type Res = def::Res<NodeId>;
+
+#[derive(Diagnostic)]
+#[diag(resolve_from_private_dep_in_public_reexport)]
+struct FromPrivateDependencyInPublicInterface<'a> {
+    pub kind: &'a str,
+    pub descr: &'a str,
+    pub krate: Symbol,
+}
 
 /// Contains data for specific kinds of imports.
 #[derive(Clone)]
@@ -544,6 +553,41 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn finalize_imports(&mut self) {
         for module in self.arenas.local_modules().iter() {
             self.finalize_resolutions_in(*module);
+        }
+
+        for (_module_def_id, module_children) in
+            self.tcx.with_stable_hashing_context(|hcx| self.module_children.to_sorted(&hcx, false))
+        {
+            for import in module_children {
+                if !import.vis.is_public() {
+                    continue;
+                }
+
+                let def::Res::<_>::Def(reexported_kind, reexported_def_id) = import.res else {
+                    continue;
+                };
+
+                if let DefKind::Ctor(..) = reexported_kind {
+                    continue;
+                }
+
+                if reexported_def_id.is_local() {
+                    continue;
+                }
+
+                if !self.tcx.is_private_dep(reexported_def_id.krate) {
+                    continue;
+                }
+
+                self.dcx()
+                    .create_warn(FromPrivateDependencyInPublicInterface {
+                        kind: import.res.descr(),
+                        descr: import.ident.as_str(),
+                        krate: self.tcx.crate_name(reexported_def_id.krate),
+                    })
+                    .with_span(import.ident.span)
+                    .emit();
+            }
         }
 
         let mut seen_spans = FxHashSet::default();
