@@ -966,6 +966,7 @@ impl<'a> Builder<'a> {
                 tool::RemoteTestServer,
                 tool::RemoteTestClient,
                 tool::RustInstaller,
+                tool::FeaturesStatusDump,
                 tool::Cargo,
                 tool::RustAnalyzer,
                 tool::RustAnalyzerProcMacroSrv,
@@ -987,6 +988,8 @@ impl<'a> Builder<'a> {
                 tool::CoverageDump,
                 tool::LlvmBitcodeLinker,
                 tool::RustcPerf,
+                tool::WasmComponentLd,
+                tool::LldWrapper
             ),
             Kind::Clippy => describe!(
                 clippy::Std,
