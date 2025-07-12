@@ -593,6 +593,8 @@ enum CommandState<'a> {
         executed_at: &'a Location<'a>,
         fingerprint: CommandFingerprint,
         start_time: Instant,
+        #[cfg(feature = "tracing")]
+        _span_guard: tracing::span::EnteredSpan,
     },
 }
 
@@ -602,6 +604,8 @@ pub struct StreamingCommand {
     pub stderr: Option<ChildStderr>,
     fingerprint: CommandFingerprint,
     start_time: Instant,
+    #[cfg(feature = "tracing")]
+    _span_guard: tracing::span::EnteredSpan,
 }
 
 #[must_use]
@@ -693,6 +697,9 @@ impl ExecutionContext {
     ) -> DeferredCommand<'a> {
         let fingerprint = command.fingerprint();
 
+        #[cfg(feature = "tracing")]
+        let span_guard = trace_cmd!(command);
+
         if let Some(cached_output) = self.command_cache.get(&fingerprint) {
             command.mark_as_executed();
             self.verbose(|| println!("Cache hit: {command:?}"));
@@ -713,12 +720,11 @@ impl ExecutionContext {
                     executed_at,
                     fingerprint,
                     start_time: Instant::now(),
+                    #[cfg(feature = "tracing")]
+                    _span_guard: span_guard,
                 },
             };
         }
-
-        #[cfg(feature = "tracing")]
-        let _run_span = trace_cmd!(command);
 
         self.verbose(|| {
             println!("running: {command:?} (created at {created_at}, executed at {executed_at})")
@@ -741,6 +747,8 @@ impl ExecutionContext {
                 executed_at,
                 fingerprint,
                 start_time,
+                #[cfg(feature = "tracing")]
+                _span_guard: span_guard,
             },
         }
     }
@@ -794,6 +802,10 @@ impl ExecutionContext {
         if !command.run_in_dry_run && self.dry_run() {
             return None;
         }
+
+        #[cfg(feature = "tracing")]
+        let span_guard = trace_cmd!(command);
+
         let start_time = Instant::now();
         let fingerprint = command.fingerprint();
         let cmd = &mut command.command;
@@ -807,7 +819,15 @@ impl ExecutionContext {
 
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();
-        Some(StreamingCommand { child, stdout, stderr, fingerprint, start_time })
+        Some(StreamingCommand {
+            child,
+            stdout,
+            stderr,
+            fingerprint,
+            start_time,
+            #[cfg(feature = "tracing")]
+            _span_guard: span_guard,
+        })
     }
 }
 
@@ -841,11 +861,16 @@ impl<'a> DeferredCommand<'a> {
                 executed_at,
                 fingerprint,
                 start_time,
+                #[cfg(feature = "tracing")]
+                _span_guard,
             } => {
                 let exec_ctx = exec_ctx.as_ref();
 
                 let output =
                     Self::finish_process(process, command, stdout, stderr, executed_at, exec_ctx);
+
+                #[cfg(feature = "tracing")]
+                drop(_span_guard);
 
                 if (!exec_ctx.dry_run() || command.run_in_dry_run)
                     && output.status().is_some()
