@@ -13023,6 +13023,26 @@ intrinsics:
             - link: "llvm.aarch64.crc32cx"
               arch: aarch64,arm64ec
 
+  - name: "vabsd_s64"
+    doc: "Absolute Value (wrapping)."
+    arguments: ["a: {type[1]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: [abs]
+    safety: safe
+    types:
+      - [i64, i64]
+    compose:
+      # This is behaviorally equivalent to `i64::wrapping_abs`, but keeps the value in a SIMD
+      # register. That can be beneficial when combined with other instructions. This LLVM
+      # issue provides some extra context https://github.com/llvm/llvm-project/issues/148388.
+      - LLVMLink:
+          name: "vabsd_s64"
+          links:
+             - link: "llvm.aarch64.neon.abs.i64"
+               arch: aarch64,arm64ec
+
   - name: "{type[0]}"
     doc: "Absolute Value (wrapping)."
     arguments: ["a: {type[1]}"]
@@ -13032,15 +13052,18 @@ intrinsics:
     assert_instr: [abs]
     safety: safe
     types:
-      - ['vabsd_s64', i64, i64]
       - ['vabs_s64', int64x1_t, v1i64]
       - ['vabsq_s64', int64x2_t, v2i64]
     compose:
-      - LLVMLink:
-          name: "{type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.abs.{type[2]}"
-              arch: aarch64,arm64ec
+      - Let:
+          - neg
+          - "{type[1]}"
+          - FnCall: [simd_neg, [a]]
+      - Let:
+          - mask
+          - "{type[1]}"
+          - FnCall: [simd_ge, [a, neg]]
+      - FnCall: [simd_select, [mask, a, neg]]
 
   - name: "vuqadd{neon_type[0].no}"
     doc: "Signed saturating Accumulate of Unsigned value."

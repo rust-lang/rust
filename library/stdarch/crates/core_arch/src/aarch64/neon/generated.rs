@@ -298,14 +298,24 @@ pub fn vabsq_f64(a: float64x2_t) -> float64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(abs))]
 pub fn vabs_s64(a: int64x1_t) -> int64x1_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.abs.v1i64"
-        )]
-        fn _vabs_s64(a: int64x1_t) -> int64x1_t;
+    unsafe {
+        let neg: int64x1_t = simd_neg(a);
+        let mask: int64x1_t = simd_ge(a, neg);
+        simd_select(mask, a, neg)
     }
-    unsafe { _vabs_s64(a) }
+}
+#[doc = "Absolute Value (wrapping)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabsq_s64)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+#[cfg_attr(test, assert_instr(abs))]
+pub fn vabsq_s64(a: int64x2_t) -> int64x2_t {
+    unsafe {
+        let neg: int64x2_t = simd_neg(a);
+        let mask: int64x2_t = simd_ge(a, neg);
+        simd_select(mask, a, neg)
+    }
 }
 #[doc = "Absolute Value (wrapping)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabsd_s64)"]
@@ -322,22 +332,6 @@ pub fn vabsd_s64(a: i64) -> i64 {
         fn _vabsd_s64(a: i64) -> i64;
     }
     unsafe { _vabsd_s64(a) }
-}
-#[doc = "Absolute Value (wrapping)."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabsq_s64)"]
-#[inline]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(abs))]
-pub fn vabsq_s64(a: int64x2_t) -> int64x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.abs.v2i64"
-        )]
-        fn _vabsq_s64(a: int64x2_t) -> int64x2_t;
-    }
-    unsafe { _vabsq_s64(a) }
 }
 #[doc = "Add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddd_s64)"]
