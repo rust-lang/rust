@@ -185,10 +185,11 @@ fn dont_emit_ICE() {
         "tests/target/issue-6105.rs",
     ];
 
+    let panic_re = regex::Regex::new("thread.*panicked").unwrap();
     for file in files {
         let args = [file];
         let (_stdout, stderr) = rustfmt(&args);
-        assert!(!stderr.contains("thread 'main' panicked"));
+        assert!(!panic_re.is_match(&stderr));
     }
 }
 

@@ -1,4 +1,4 @@
-use super::{Thread, ThreadId};
+use super::{Thread, ThreadId, imp};
 use crate::mem::ManuallyDrop;
 use crate::ptr;
 use crate::sys::thread_local::local_pointer;
@@ -146,6 +146,17 @@ pub(crate) fn current_id() -> ThreadId {
     }
 
     id::get_or_init()
+}
+
+/// Gets the OS thread ID of the thread that invokes it, if available. If not, return the Rust
+/// thread ID.
+///
+/// We use a `u64` to all possible platform IDs without excess `cfg`; most use `int`, some use a
+/// pointer, and Apple uses `uint64_t`. This is a "best effort" approach for diagnostics and is
+/// allowed to fall back to a non-OS ID (such as the Rust thread ID) or a non-unique ID (such as a
+/// PID) if the thread ID cannot be retrieved.
+pub(crate) fn current_os_id() -> u64 {
+    imp::current_os_id().unwrap_or_else(|| current_id().as_u64().get())
 }
 
 /// Gets a reference to the handle of the thread that invokes it, if the handle
