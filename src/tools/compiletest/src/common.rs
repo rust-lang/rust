@@ -34,12 +34,6 @@ string_enum! {
     }
 }
 
-impl Default for Mode {
-    fn default() -> Self {
-        Mode::Ui
-    }
-}
-
 impl Mode {
     pub fn aux_dir_disambiguator(self) -> &'static str {
         // Pretty-printing tests could run concurrently, and if they do,
@@ -151,7 +145,7 @@ pub enum Sanitizer {
 ///
 /// FIXME: audit these options to make sure we are not hashing less than necessary for build stamp
 /// (for changed test detection).
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct Config {
     /// Some test [`Mode`]s support [snapshot testing], where a *reference snapshot* of outputs (of
     /// `stdout`, `stderr`, or other form of artifacts) can be compared to the *actual output*.
