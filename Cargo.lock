@@ -3536,7 +3536,6 @@ dependencies = [
  "rustc_errors",
  "rustc_fluent_macro",
  "rustc_fs_util",
- "rustc_hashes",
  "rustc_hir",
  "rustc_index",
  "rustc_llvm",
