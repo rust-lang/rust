@@ -11,7 +11,7 @@ import sys
 import tarfile
 import tempfile
 
-from time import time
+from time import time, sleep
 from multiprocessing import Pool, cpu_count
 
 try:
@@ -1262,6 +1262,17 @@ def parse_stage0_file(path):
     return result
 
 
+def acquire_lockfile(build_dir):
+    lock_path = os.path.join(build_dir, "py-lock")
+    while True:
+        try:
+            open(lock_path, "x")
+            return lock_path
+        except FileExistsError:
+            print("bootstrap.py: waiting for lockfile...")
+            sleep(2)
+
+
 def bootstrap(args):
     """Configure, fetch, build and run the initial bootstrap"""
     rust_root = os.path.abspath(os.path.join(__file__, "../../.."))
@@ -1333,18 +1344,24 @@ def bootstrap(args):
     if not os.path.exists(build.build_dir):
         os.makedirs(os.path.realpath(build.build_dir))
 
-    # Fetch/build the bootstrap
-    build.download_toolchain()
-    sys.stdout.flush()
-    build.build_bootstrap()
-    sys.stdout.flush()
+    lock_path = acquire_lockfile(build.build_dir)
 
-    # Run the bootstrap
-    args = [build.bootstrap_binary()]
-    args.extend(sys.argv[1:])
-    env = os.environ.copy()
-    env["BOOTSTRAP_PYTHON"] = sys.executable
-    run(args, env=env, verbose=build.verbose, is_bootstrap=True)
+    try:
+        # Fetch/build the bootstrap
+        build.download_toolchain()
+        sys.stdout.flush()
+        build.build_bootstrap()
+        sys.stdout.flush()
+
+        # Run the bootstrap
+        args = [build.bootstrap_binary()]
+        args.extend(sys.argv[1:])
+        env = os.environ.copy()
+        env["BOOTSTRAP_PYTHON"] = sys.executable
+        run(args, env=env, verbose=build.verbose, is_bootstrap=True)
+    finally:
+        # always remove the lockfile
+        os.remove(lock_path)
 
 
 def main():
