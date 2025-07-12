@@ -867,6 +867,16 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             // are effectively living in their parent modules.
             DefPathData::ForeignMod => return print_prefix(self),
 
+            // Global asm are handled similar to shims.
+            DefPathData::GlobalAsm => {
+                return self.path_append_ns(
+                    print_prefix,
+                    'S',
+                    disambiguated_data.disambiguator as u64,
+                    "global_asm",
+                );
+            }
+
             // Uppercase categories are more stable than lowercase ones.
             DefPathData::TypeNs(_) => 't',
             DefPathData::ValueNs(_) => 'v',
@@ -880,7 +890,6 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             // These should never show up as `path_append` arguments.
             DefPathData::CrateRoot
             | DefPathData::Use
-            | DefPathData::GlobalAsm
             | DefPathData::Impl
             | DefPathData::MacroNs(_)
             | DefPathData::LifetimeNs(_)

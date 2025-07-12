@@ -121,7 +121,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => tcx.symbol_name(Instance::mono(tcx, def_id)),
             MonoItem::GlobalAsm(item_id) => {
-                SymbolName::new(tcx, &format!("global_asm_{:?}", item_id.owner_id))
+                tcx.symbol_name(Instance::mono(tcx, item_id.owner_id.to_def_id()))
             }
         }
     }
