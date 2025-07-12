@@ -101,6 +101,8 @@ pub struct Allocation<Prov: Provenance = CtfeProvenance, Extra = (), Bytes = Box
     /// at the given offset.
     provenance: ProvenanceMap<Prov>,
     /// Denotes which part of this allocation is initialized.
+    ///
+    /// Invariant: the uninitialized parts have no provenance.
     init_mask: InitMask,
     /// The alignment of the allocation to detect unaligned reads.
     /// (`Align` guarantees that this is a power of two.)
@@ -796,24 +798,19 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         Ok(())
     }
 
-    /// Initialize all previously uninitialized bytes in the entire allocation, and set
-    /// provenance of everything to `Wildcard`. Before calling this, make sure all
-    /// provenance in this allocation is exposed!
-    pub fn prepare_for_native_access(&mut self) {
-        let full_range = AllocRange { start: Size::ZERO, size: Size::from_bytes(self.len()) };
-        // Overwrite uninitialized bytes with 0, to ensure we don't leak whatever their value happens to be.
-        for chunk in self.init_mask.range_as_init_chunks(full_range) {
-            if !chunk.is_init() {
-                let uninit_bytes = &mut self.bytes
-                    [chunk.range().start.bytes_usize()..chunk.range().end.bytes_usize()];
-                uninit_bytes.fill(0);
-            }
-        }
-        // Mark everything as initialized now.
-        self.mark_init(full_range, true);
-
-        // Set provenance of all bytes to wildcard.
-        self.provenance.write_wildcards(self.len());
+    /// Mark all bytes in the given range as initialised and reset the provenance
+    /// to wildcards. This entirely breaks the normal mechanisms for tracking
+    /// initialisation and is only provided for Miri operating in native-lib
+    /// mode. UB will be missed if the underlying bytes were not actually written to.
+    ///
+    /// If `range` is `None`, defaults to performing this on the whole allocation.
+    pub fn process_native_write(&mut self, cx: &impl HasDataLayout, range: Option<AllocRange>) {
+        let range = range.unwrap_or_else(|| AllocRange {
+            start: Size::ZERO,
+            size: Size::from_bytes(self.len()),
+        });
+        self.mark_init(range, true);
+        self.provenance.write_wildcards(cx, range);
     }
 
     /// Remove all provenance in the given memory range.
