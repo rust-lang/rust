@@ -769,11 +769,11 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> LldWrapper 1 <host>
-        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
+        [build] rustc 0 <host> -> LlvmBitcodeLinker 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> LldWrapper 2 <host>
-        [build] rustc 2 <host> -> LlvmBitcodeLinker 3 <host>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustdoc 1 <host>
         "
@@ -793,17 +793,17 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> LldWrapper 1 <host>
-        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
+        [build] rustc 0 <host> -> LlvmBitcodeLinker 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> LldWrapper 2 <host>
-        [build] rustc 2 <host> -> LlvmBitcodeLinker 3 <host>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
         [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 2 <host> -> std 2 <target1>
         [build] llvm <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustc 1 <host> -> LldWrapper 2 <target1>
-        [build] rustc 2 <target1> -> LlvmBitcodeLinker 3 <target1>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
         [build] rustdoc 1 <target1>
         "
         );
@@ -1062,18 +1062,28 @@ mod snapshot {
     fn dist_extended() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
-            ctx
-                .config("dist")
-                .args(&["--set", "build.extended=true"])
-                .render_steps(), @r"
+            ctx.config("dist")
+            .args(&[
+                "--set",
+                "build.extended=true",
+                "--set",
+                "rust.llvm-bitcode-linker=true",
+                "--set",
+                "rust.lld=true",
+            ])
+            .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> LldWrapper 1 <host>
         [build] rustc 0 <host> -> WasmComponentLd 1 <host>
+        [build] rustc 0 <host> -> LlvmBitcodeLinker 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> LldWrapper 2 <host>
         [build] rustc 1 <host> -> WasmComponentLd 2 <host>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
         [build] rustdoc 1 <host>
         [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
@@ -1092,7 +1102,6 @@ mod snapshot {
         [build] rustc 0 <host> -> cargo-clippy 1 <host>
         [build] rustc 0 <host> -> miri 1 <host>
         [build] rustc 0 <host> -> cargo-miri 1 <host>
-        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
         ");
     }
 
@@ -1284,6 +1293,7 @@ mod snapshot {
         [build] rustc 0 <host> -> miri 1 <target1>
         [build] rustc 0 <host> -> cargo-miri 1 <target1>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
+        [build] rustc 0 <host> -> LlvmBitcodeLinker 1 <host>
         ");
     }
 
@@ -1368,7 +1378,7 @@ mod snapshot {
         [check] rustc 1 <host> -> Miri 2 <target1>
         [check] rustc 1 <host> -> CargoMiri 2 <target1>
         [check] rustc 1 <host> -> Rustfmt 2 <target1>
-        [check] rustc 1 <host> -> rust-analyzer 2 <target1>
+        [check] rustc 1 <host> -> RustAnalyzer 2 <target1>
         [check] rustc 1 <host> -> TestFloatParse 2 <target1>
         [check] rustc 1 <host> -> std 1 <target1>
         ");
@@ -1519,7 +1529,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("compiletest")
-                .render_steps(), @"[check] compiletest <host>");
+                .render_steps(), @"[check] rustc 0 <host> -> Compiletest 1 <host>");
     }
 
     #[test]
@@ -1533,7 +1543,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [check] compiletest <host>
+        [check] rustc 1 <host> -> Compiletest 2 <host>
         ");
     }
 
@@ -1560,7 +1570,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [check] rustc 0 <host> -> rustc 1 <host>
-        [check] rustc 0 <host> -> rust-analyzer 1 <host>
+        [check] rustc 0 <host> -> RustAnalyzer 1 <host>
         ");
     }
 
