@@ -230,32 +230,16 @@ pub macro assert_matches {
 /// ```
 /// #![feature(cfg_select)]
 ///
-/// let _some_string = cfg_select! {{
+/// let _some_string = cfg_select! {
 ///     unix => { "With great power comes great electricity bills" }
 ///     _ => { "Behind every successful diet is an unwatched pizza" }
-/// }};
+/// };
 /// ```
 #[unstable(feature = "cfg_select", issue = "115585")]
 #[rustc_diagnostic_item = "cfg_select"]
-#[rustc_macro_transparency = "semitransparent"]
-pub macro cfg_select {
-    ({ $($tt:tt)* }) => {{
-        $crate::cfg_select! { $($tt)* }
-    }},
-    (_ => { $($output:tt)* }) => {
-        $($output)*
-    },
-    (
-        $cfg:meta => $output:tt
-        $($( $rest:tt )+)?
-    ) => {
-        #[cfg($cfg)]
-        $crate::cfg_select! { _ => $output }
-        $(
-            #[cfg(not($cfg))]
-            $crate::cfg_select! { $($rest)+ }
-        )?
-    },
+#[rustc_builtin_macro]
+pub macro cfg_select($($tt:tt)*) {
+    /* compiler built-in */
 }
 
 /// Asserts that a boolean expression is `true` at runtime.

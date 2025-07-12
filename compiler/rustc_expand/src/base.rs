@@ -34,6 +34,7 @@ use thin_vec::ThinVec;
 use crate::base::ast::MetaItemInner;
 use crate::errors;
 use crate::expand::{self, AstFragment, Invocation};
+use crate::mbe::macro_rules::ParserAnyMacro;
 use crate::module::DirOwnership;
 use crate::stats::MacroStat;
 
@@ -259,6 +260,25 @@ impl<T, U> ExpandResult<T, U> {
             ExpandResult::Ready(t) => ExpandResult::Ready(f(t)),
             ExpandResult::Retry(u) => ExpandResult::Retry(u),
         }
+    }
+}
+
+impl<'cx> MacroExpanderResult<'cx> {
+    /// Creates a [`MacroExpanderResult::Ready`] from a [`TokenStream`].
+    ///
+    /// The `TokenStream` is forwarded without any expansion.
+    pub fn from_tts(
+        cx: &'cx mut ExtCtxt<'_>,
+        tts: TokenStream,
+        site_span: Span,
+        arm_span: Span,
+        macro_ident: Ident,
+    ) -> Self {
+        // Emit the SEMICOLON_IN_EXPRESSIONS_FROM_MACROS deprecation lint.
+        let is_local = true;
+
+        let parser = ParserAnyMacro::from_tts(cx, tts, site_span, arm_span, is_local, macro_ident);
+        ExpandResult::Ready(Box::new(parser))
     }
 }
 
