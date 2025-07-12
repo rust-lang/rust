@@ -93,7 +93,7 @@ use gccjit::{CType, Context, OptimizationLevel};
 use gccjit::{TargetInfo, Version};
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
-use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
+use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn,
 };
@@ -353,11 +353,16 @@ impl WriteBackendMethods for GccCodegenBackend {
     type ThinData = ThinData;
     type ThinBuffer = ThinBuffer;
 
-    fn run_fat_lto(
+    fn run_and_optimize_fat_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<FatLtoInput<Self>>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-    ) -> Result<LtoModuleCodegen<Self>, FatalError> {
+        diff_fncs: Vec<AutoDiffItem>,
+    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+        if !diff_fncs.is_empty() {
+            unimplemented!();
+        }
+
         back::lto::run_fat(cgcx, modules, cached_modules)
     }
 
@@ -365,7 +370,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         cgcx: &CodegenContext<Self>,
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-    ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
+    ) -> Result<(Vec<ThinModule<Self>>, Vec<WorkProduct>), FatalError> {
         back::lto::run_thin(cgcx, modules, cached_modules)
     }
 
@@ -387,14 +392,6 @@ impl WriteBackendMethods for GccCodegenBackend {
         Ok(())
     }
 
-    fn optimize_fat(
-        _cgcx: &CodegenContext<Self>,
-        _module: &mut ModuleCodegen<Self::Module>,
-    ) -> Result<(), FatalError> {
-        // TODO(antoyo)
-        Ok(())
-    }
-
     fn optimize_thin(
         cgcx: &CodegenContext<Self>,
         thin: ThinModule<Self>,
@@ -404,11 +401,10 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn codegen(
         cgcx: &CodegenContext<Self>,
-        dcx: DiagCtxtHandle<'_>,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError> {
-        back::write::codegen(cgcx, dcx, module, config)
+        back::write::codegen(cgcx, module, config)
     }
 
     fn prepare_thin(
@@ -428,15 +424,6 @@ impl WriteBackendMethods for GccCodegenBackend {
         modules: Vec<ModuleCodegen<Self::Module>>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::write::link(cgcx, dcx, modules)
-    }
-
-    fn autodiff(
-        _cgcx: &CodegenContext<Self>,
-        _module: &ModuleCodegen<Self::Module>,
-        _diff_functions: Vec<AutoDiffItem>,
-        _config: &ModuleConfig,
-    ) -> Result<(), FatalError> {
-        unimplemented!()
     }
 }
 
