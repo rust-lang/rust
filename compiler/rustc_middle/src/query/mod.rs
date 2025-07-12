@@ -1079,21 +1079,9 @@ rustc_queries! {
         desc { |tcx| "comparing impl items against trait for `{}`", tcx.def_path_str(impl_id) }
     }
 
-    /// Given `fn_def_id` of a trait or of an impl that implements a given trait:
-    /// if `fn_def_id` is the def id of a function defined inside a trait, then it creates and returns
-    /// the associated items that correspond to each impl trait in return position for that trait.
-    /// if `fn_def_id` is the def id of a function defined inside an impl that implements a trait, then it
-    /// creates and returns the associated items that correspond to each impl trait in return position
-    /// of the implemented trait.
-    query associated_types_for_impl_traits_in_associated_fn(fn_def_id: DefId) -> &'tcx [DefId] {
-        desc { |tcx| "creating associated items for opaque types returned by `{}`", tcx.def_path_str(fn_def_id) }
-        cache_on_disk_if { fn_def_id.is_local() }
-        separate_provide_extern
-    }
-
-    query associated_types_for_impl_traits_in_trait(trait_id: DefId) -> &'tcx DefIdMap<&'tcx [DefId]> {
+    query associated_types_for_impl_traits_in_trait_or_impl(did: DefId) -> &'tcx ty::AssocTyForImplTraitInTraitOrImpl {
         arena_cache
-        desc { |tcx| "creating associated items for trait `{}`", tcx.def_path_str(trait_id) }
+        desc { |tcx| "creating rpitit for `{}`", tcx.def_path_str(did) }
         separate_provide_extern
     }
 

@@ -15,6 +15,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BottomUpFolder, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
+    associated_types_for_impl_traits_in_associated_fn,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Span};
@@ -757,7 +758,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // returning `-> Missing<impl Sized>`, that gets converted to `-> {type error}`,
     // and when walking through the signature we end up never collecting the def id
     // of the `impl Sized`. Insert that here, so we don't ICE later.
-    for assoc_item in tcx.associated_types_for_impl_traits_in_associated_fn(trait_m.def_id) {
+    for assoc_item in associated_types_for_impl_traits_in_associated_fn(tcx, trait_m.def_id) {
         if !remapped_types.contains_key(assoc_item) {
             remapped_types.insert(
                 *assoc_item,
@@ -2448,8 +2449,7 @@ fn param_env_with_gat_bounds<'tcx>(
                     ty::ImplTraitInTraitData::Impl { fn_def_id }
                     | ty::ImplTraitInTraitData::Trait { fn_def_id, .. },
                 ),
-        } => tcx
-            .associated_types_for_impl_traits_in_associated_fn(fn_def_id)
+        } => associated_types_for_impl_traits_in_associated_fn(tcx, fn_def_id)
             .iter()
             .map(|def_id| tcx.associated_item(*def_id))
             .collect(),

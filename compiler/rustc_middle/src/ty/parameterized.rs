@@ -67,6 +67,7 @@ trivially_parameterized_over_tcx! {
     crate::mir::ConstQualifs,
     ty::AsyncDestructor,
     ty::AssocItemContainer,
+    ty::AssocTyForImplTraitInTraitOrImpl,
     ty::Asyncness,
     ty::AnonConstKind,
     ty::DeducedParamAttrs,

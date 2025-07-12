@@ -2194,8 +2194,7 @@ impl<'tcx> TyCtxt<'tcx> {
             return false;
         };
 
-        return !self
-            .associated_types_for_impl_traits_in_associated_fn(trait_item_def_id)
+        return !associated_types_for_impl_traits_in_associated_fn(self, trait_item_def_id)
             .is_empty();
     }
 }

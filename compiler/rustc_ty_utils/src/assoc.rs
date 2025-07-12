@@ -1,13 +1,13 @@
 use std::collections::hash_map::Entry;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatorState};
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{self as hir, ItemKind};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
+use rustc_middle::ty::{self, AssocTyForImplTraitInTraitOrImpl, ImplTraitInTraitData, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Symbol;
 
@@ -16,8 +16,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         associated_item,
         associated_item_def_ids,
         associated_items,
-        associated_types_for_impl_traits_in_trait,
-        associated_types_for_impl_traits_in_associated_fn,
+        associated_types_for_impl_traits_in_trait_or_impl,
         impl_item_implementor_ids,
         ..*providers
     };
@@ -28,24 +27,17 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
     match item.kind {
         hir::ItemKind::Trait(.., trait_item_refs) => {
             // We collect RPITITs for each trait method's return type and create a
-            // corresponding associated item using associated_types_for_impl_traits_in_associated_fn
+            // corresponding associated item using associated_types_for_impl_traits_in_trait_or_impl
             // query.
             tcx.arena.alloc_from_iter(
                 trait_item_refs
                     .iter()
                     .map(|trait_item_ref| trait_item_ref.id.owner_id.to_def_id())
                     .chain(
-                        trait_item_refs
-                            .iter()
-                            .filter(|trait_item_ref| {
-                                matches!(trait_item_ref.kind, hir::AssocItemKind::Fn { .. })
-                            })
-                            .flat_map(|trait_item_ref| {
-                                let trait_fn_def_id = trait_item_ref.id.owner_id.def_id.to_def_id();
-                                tcx.associated_types_for_impl_traits_in_associated_fn(
-                                    trait_fn_def_id,
-                                )
-                            })
+                        tcx.associated_types_for_impl_traits_in_trait_or_impl(def_id)
+                            .0
+                            .values()
+                            .flatten()
                             .copied(),
                     ),
             )
@@ -53,25 +45,17 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
         hir::ItemKind::Impl(impl_) => {
             // We collect RPITITs for each trait method's return type, on the impl side too and
             // create a corresponding associated item using
-            // associated_types_for_impl_traits_in_associated_fn query.
+            // associated_types_for_impl_traits_in_trait_or_impl query.
             tcx.arena.alloc_from_iter(
                 impl_
                     .items
                     .iter()
                     .map(|impl_item_ref| impl_item_ref.id.owner_id.to_def_id())
                     .chain(impl_.of_trait.iter().flat_map(|_| {
-                        impl_
-                            .items
-                            .iter()
-                            .filter(|impl_item_ref| {
-                                matches!(impl_item_ref.kind, hir::AssocItemKind::Fn { .. })
-                            })
-                            .flat_map(|impl_item_ref| {
-                                let impl_fn_def_id = impl_item_ref.id.owner_id.def_id.to_def_id();
-                                tcx.associated_types_for_impl_traits_in_associated_fn(
-                                    impl_fn_def_id,
-                                )
-                            })
+                        tcx.associated_types_for_impl_traits_in_trait_or_impl(def_id)
+                            .0
+                            .values()
+                            .flatten()
                             .copied()
                     })),
             )
@@ -184,94 +168,102 @@ impl<'tcx> Visitor<'tcx> for RPITVisitor<'tcx> {
     }
 }
 
-/// Given an `fn_def_id` of a trait or a trait implementation:
-///
-/// if `fn_def_id` is a function defined inside a trait, then it synthesizes
-/// a new def id corresponding to a new associated type for each return-
-/// position `impl Trait` in the signature.
-///
-/// if `fn_def_id` is a function inside of an impl, then for each synthetic
-/// associated type generated for the corresponding trait function described
-/// above, synthesize a corresponding associated type in the impl.
-fn associated_types_for_impl_traits_in_associated_fn(
-    tcx: TyCtxt<'_>,
-    fn_def_id: LocalDefId,
-) -> &'_ [DefId] {
-    let parent_def_id = tcx.local_parent(fn_def_id);
-
-    match tcx.def_kind(parent_def_id) {
-        DefKind::Trait => {
-            tcx.associated_types_for_impl_traits_in_trait(parent_def_id)[&fn_def_id.to_def_id()]
-        }
-
-        DefKind::Impl { .. } => {
-            let Some(trait_fn_def_id) = tcx.associated_item(fn_def_id).trait_item_def_id else {
-                return &[];
+fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> AssocTyForImplTraitInTraitOrImpl {
+    let item = tcx.hir_expect_item(def_id);
+    match item.kind {
+        ItemKind::Trait(.., trait_item_refs) => {
+            let mut disambiguator_idx_map = FxHashMap::default();
+            let find_disambiguator_idx =
+                |map: &mut FxHashMap<Symbol, u32>, name| match map.entry(name) {
+                    Entry::Occupied(occ) => *occ.get() + 1,
+                    Entry::Vacant(vac) => {
+                        vac.insert(0);
+                        0
+                    }
+                };
+            let update_disambiguator_idx = |map: &mut FxHashMap<Symbol, u32>, name, offset: u32| {
+                *map.get_mut(&name).unwrap() += offset
             };
-            tcx.arena.alloc_from_iter(
-                tcx.associated_types_for_impl_traits_in_associated_fn(trait_fn_def_id).iter().map(
-                    move |&trait_assoc_def_id| {
-                        associated_type_for_impl_trait_in_impl(tcx, trait_assoc_def_id, fn_def_id)
-                            .to_def_id()
-                    },
-                ),
+
+            ty::AssocTyForImplTraitInTraitOrImpl(
+                trait_item_refs
+                    .iter()
+                    .filter_map(move |item| {
+                        if !matches!(item.kind, hir::AssocItemKind::Fn { .. }) {
+                            return None;
+                        }
+                        let fn_def_id = item.id.owner_id.def_id;
+                        let Some(output) = tcx.hir_get_fn_output(fn_def_id) else {
+                            return Some((fn_def_id.to_def_id(), vec![]));
+                        };
+                        let def_name = tcx.item_name(fn_def_id.to_def_id());
+                        let disambiguator_idx =
+                            find_disambiguator_idx(&mut disambiguator_idx_map, def_name);
+                        let data = DefPathData::AnonAssocTy(def_name);
+                        let mut visitor = RPITVisitor {
+                            tcx,
+                            synthetics: vec![],
+                            data,
+                            depth: 0,
+                            disambiguator: DisambiguatorState::with(
+                                def_id,
+                                data,
+                                disambiguator_idx,
+                            ),
+                        };
+                        visitor.visit_fn_ret_ty(output);
+                        update_disambiguator_idx(
+                            &mut disambiguator_idx_map,
+                            def_name,
+                            visitor.depth,
+                        );
+                        let defs = visitor
+                            .synthetics
+                            .into_iter()
+                            .map(|def_id| def_id.to_def_id())
+                            .collect::<Vec<_>>();
+                        Some((fn_def_id.to_def_id(), defs))
+                    })
+                    .collect::<FxIndexMap<_, _>>(),
             )
         }
-
-        def_kind => bug!(
-            "associated_types_for_impl_traits_in_associated_fn: {:?} should be Trait or Impl but is {:?}",
-            parent_def_id,
-            def_kind
-        ),
-    }
-}
-
-fn associated_types_for_impl_traits_in_trait<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_id: LocalDefId,
-) -> DefIdMap<&'tcx [DefId]> {
-    let (.., trait_item_refs) = tcx.hir_expect_item(trait_id).expect_trait();
-
-    let mut disambiguator_idx_map = FxHashMap::default();
-    let find_disambiguator_idx = |map: &mut FxHashMap<Symbol, u32>, name| match map.entry(name) {
-        Entry::Occupied(occ) => *occ.get() + 1,
-        Entry::Vacant(vac) => {
-            vac.insert(0);
-            0
+        ItemKind::Impl(impl_) => {
+            let Some(trait_did) = tcx.impl_trait_ref(def_id).map(|t| t.skip_binder().def_id) else {
+                return ty::AssocTyForImplTraitInTraitOrImpl(Default::default());
+            };
+            let in_trait_def = tcx.associated_types_for_impl_traits_in_trait_or_impl(trait_did);
+            ty::AssocTyForImplTraitInTraitOrImpl(
+                impl_
+                    .items
+                    .iter()
+                    .filter_map(|item| {
+                        if !matches!(item.kind, hir::AssocItemKind::Fn { .. }) {
+                            return None;
+                        }
+                        let did = item.id.owner_id.def_id.to_def_id();
+                        let Some(trait_item_def_id) = item.trait_item_def_id else {
+                            return Some((did, vec![]));
+                        };
+                        let iter = in_trait_def.0[&trait_item_def_id].iter().map(|&id| {
+                            associated_type_for_impl_trait_in_impl(tcx, id, item.id.owner_id.def_id)
+                                .to_def_id()
+                        });
+                        Some((did, iter.collect()))
+                    })
+                    .collect::<FxIndexMap<_, _>>(),
+            )
         }
-    };
-    let update_disambiguator_idx = |map: &mut FxHashMap<Symbol, u32>, name, offset: u32| {
-        *map.get_mut(&name).unwrap() += offset
-    };
-
-    trait_item_refs
-        .iter()
-        .filter_map(move |item| {
-            if !matches!(item.kind, hir::AssocItemKind::Fn { .. }) {
-                return None;
-            }
-            let fn_def_id = item.id.owner_id.def_id;
-            let Some(output) = tcx.hir_get_fn_output(fn_def_id) else {
-                return Some((fn_def_id.to_def_id(), &[] as &[DefId]));
-            };
-            let def_name = tcx.item_name(fn_def_id.to_def_id());
-            let disambiguator_idx = find_disambiguator_idx(&mut disambiguator_idx_map, def_name);
-            let data = DefPathData::AnonAssocTy(def_name);
-            let mut visitor = RPITVisitor {
-                tcx,
-                synthetics: vec![],
-                data,
-                depth: 0,
-                disambiguator: DisambiguatorState::with(trait_id, data, disambiguator_idx),
-            };
-            visitor.visit_fn_ret_ty(output);
-            update_disambiguator_idx(&mut disambiguator_idx_map, def_name, visitor.depth);
-            let defs = tcx
-                .arena
-                .alloc_from_iter(visitor.synthetics.into_iter().map(|def_id| def_id.to_def_id()));
-            Some((fn_def_id.to_def_id(), defs))
-        })
-        .collect()
+        _ => {
+            bug!(
+                "associated_types_for_impl_traits_in_trait_or_impl: {:?} should be Trait or Impl but is {:?}",
+                def_id,
+                tcx.def_kind(def_id)
+            )
+        }
+    }
 }
 
 /// Given an `opaque_ty_def_id` corresponding to an `impl Trait` in an associated

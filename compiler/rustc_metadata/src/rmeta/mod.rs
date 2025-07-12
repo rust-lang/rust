@@ -403,7 +403,6 @@ define_tables! {
     explicit_implied_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     explicit_implied_const_bounds: Table<DefIndex, LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
-    associated_types_for_impl_traits_in_associated_fn: Table<DefIndex, LazyArray<DefId>>,
     opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
     // Reexported names are not associated with individual `DefId`s,
     // e.g. a glob import can introduce a lot of names, all with the same `DefId`.
@@ -482,6 +481,7 @@ define_tables! {
     assumed_wf_types_for_rpitit: Table<DefIndex, LazyArray<(Ty<'static>, Span)>>,
     opaque_ty_origin: Table<DefIndex, LazyValue<hir::OpaqueTyOrigin<DefId>>>,
     anon_const_kind: Table<DefIndex, LazyValue<ty::AnonConstKind>>,
+    associated_types_for_impl_traits_in_trait_or_impl: Table<DefIndex, LazyValue<ty::AssocTyForImplTraitInTraitOrImpl>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]

@@ -20,7 +20,7 @@ use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
     self, AdtKind, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFlags,
     TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
-    Upcast,
+    Upcast, associated_types_for_impl_traits_in_associated_fn,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -326,7 +326,9 @@ pub(crate) fn check_trait_item<'tcx>(
     let mut res = Ok(());
 
     if matches!(tcx.def_kind(def_id), DefKind::AssocFn) {
-        for &assoc_ty_def_id in tcx.associated_types_for_impl_traits_in_associated_fn(def_id) {
+        for &assoc_ty_def_id in
+            associated_types_for_impl_traits_in_associated_fn(tcx, def_id.to_def_id())
+        {
             res = res.and(check_associated_item(tcx, assoc_ty_def_id.expect_local()));
         }
     }
