@@ -95,8 +95,6 @@ fn cleanup_sysroot_previous_build(library_dir: &Path) {
         &mut |_| Ok(()),
         false,
     );
-
-    let _ = fs::remove_file(library_dir.join("Cargo.lock"));
 }
 
 pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Result<(), String> {
