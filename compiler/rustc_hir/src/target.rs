@@ -41,7 +41,7 @@ pub enum Target {
     Union,
     Trait,
     TraitAlias,
-    Impl,
+    Impl { of_trait: bool },
     Expression,
     Statement,
     Arm,
@@ -86,7 +86,7 @@ impl Target {
             | Target::Union
             | Target::Trait
             | Target::TraitAlias
-            | Target::Impl
+            | Target::Impl { .. }
             | Target::Expression
             | Target::Statement
             | Target::Arm
@@ -119,7 +119,7 @@ impl Target {
             ItemKind::Union(..) => Target::Union,
             ItemKind::Trait(..) => Target::Trait,
             ItemKind::TraitAlias(..) => Target::TraitAlias,
-            ItemKind::Impl { .. } => Target::Impl,
+            ItemKind::Impl(imp_) => Target::Impl { of_trait: imp_.of_trait.is_some() },
         }
     }
 
@@ -141,7 +141,7 @@ impl Target {
             DefKind::Union => Target::Union,
             DefKind::Trait => Target::Trait,
             DefKind::TraitAlias => Target::TraitAlias,
-            DefKind::Impl { .. } => Target::Impl,
+            DefKind::Impl { of_trait } => Target::Impl { of_trait },
             _ => panic!("impossible case reached"),
         }
     }
@@ -196,7 +196,8 @@ impl Target {
             Target::Union => "union",
             Target::Trait => "trait",
             Target::TraitAlias => "trait alias",
-            Target::Impl => "implementation block",
+            Target::Impl { of_trait: false } => "inherent implementation block",
+            Target::Impl { of_trait: true } => "trait implementation block",
             Target::Expression => "expression",
             Target::Statement => "statement",
             Target::Arm => "match arm",

@@ -161,7 +161,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         sym::automatically_derived,
                         *attr_span,
                         target,
-                        Target::Impl,
+                        Target::Impl { of_trait: true },
                     ),
                 Attribute::Parsed(
                     AttributeKind::Stability { span, .. }
@@ -492,7 +492,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         attr: &Attribute,
         item: Option<ItemLike<'_>>,
     ) {
-        if !matches!(target, Target::Impl)
+        if !matches!(target, Target::Impl { .. })
             || matches!(
                 item,
                 Some(ItemLike::Item(hir::Item {  kind: hir::ItemKind::Impl(_impl),.. }))
@@ -596,7 +596,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::Fn
             | Target::Closure
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
-            | Target::Impl
+            | Target::Impl { .. }
             | Target::Mod => return,
 
             // These are "functions", but they aren't allowed because they don't
@@ -985,9 +985,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let span = meta.span();
         if let Some(location) = match target {
             Target::AssocTy => {
-                let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id;
-                let containing_item = self.tcx.hir_expect_item(parent_def_id);
-                if Target::from_item(containing_item) == Target::Impl {
+                if let DefKind::Impl { .. } =
+                    self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id))
+                {
                     Some("type alias in implementation block")
                 } else {
                     None
@@ -1010,7 +1010,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::Arm
             | Target::ForeignMod
             | Target::Closure
-            | Target::Impl
+            | Target::Impl { .. }
             | Target::WherePredicate => Some(target.name()),
             Target::ExternCrate
             | Target::Use
@@ -1588,7 +1588,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let article = match target {
             Target::ExternCrate
             | Target::Enum
-            | Target::Impl
+            | Target::Impl { .. }
             | Target::Expression
             | Target::Arm
             | Target::AssocConst
@@ -2272,7 +2272,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             // FIXME(staged_api): There's no reason we can't support more targets here. We're just
             // being conservative to begin with.
-            Target::Fn | Target::Impl => {}
+            Target::Fn | Target::Impl { .. } => {}
             Target::ExternCrate
             | Target::Use
             | Target::Static
