@@ -418,7 +418,9 @@ class RustdocToolbarElement extends HTMLElement {
         <div id="help-button" tabindex="-1">
             <a href="${rootPath}help.html"><span class="label">Help</span></a>
         </div>
-        <button id="toggle-all-docs"><span class="label">Summary</span></button>`;
+        <button id="toggle-all-docs"
+title="Collapse sections (shift-click to also collapse impl blocks)"><span
+class="label">Summary</span></button>`;
     }
 }
 window.customElements.define("rustdoc-toolbar", RustdocToolbarElement);
