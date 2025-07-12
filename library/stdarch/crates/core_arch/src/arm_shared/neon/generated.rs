@@ -1483,15 +1483,11 @@ pub fn vabsq_f32(a: float32x4_t) -> float32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabs_s8(a: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.abs.v8i8"
-        )]
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v8i8")]
-        fn _vabs_s8(a: int8x8_t) -> int8x8_t;
+    unsafe {
+        let neg: int8x8_t = simd_neg(a);
+        let mask: int8x8_t = simd_ge(a, neg);
+        simd_select(mask, a, neg)
     }
-    unsafe { _vabs_s8(a) }
 }
 #[doc = "Absolute value (wrapping)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabsq_s8)"]
@@ -1512,15 +1508,11 @@ pub fn vabs_s8(a: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabsq_s8(a: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.abs.v16i8"
-        )]
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v16i8")]
-        fn _vabsq_s8(a: int8x16_t) -> int8x16_t;
+    unsafe {
+        let neg: int8x16_t = simd_neg(a);
+        let mask: int8x16_t = simd_ge(a, neg);
+        simd_select(mask, a, neg)
     }
-    unsafe { _vabsq_s8(a) }
 }
 #[doc = "Absolute value (wrapping)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabs_s16)"]
@@ -1541,15 +1533,11 @@ pub fn vabsq_s8(a: int8x16_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabs_s16(a: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.abs.v4i16"
-        )]
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v4i16")]
-        fn _vabs_s16(a: int16x4_t) -> int16x4_t;
+    unsafe {
+        let neg: int16x4_t = simd_neg(a);
+        let mask: int16x4_t = simd_ge(a, neg);
+        simd_select(mask, a, neg)
     }
-    unsafe { _vabs_s16(a) }
 }
 #[doc = "Absolute value (wrapping)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabsq_s16)"]
@@ -1570,15 +1558,11 @@ pub fn vabs_s16(a: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabsq_s16(a: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.abs.v8i16"
-        )]
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v8i16")]
-        fn _vabsq_s16(a: int16x8_t) -> int16x8_t;
+    unsafe {
+        let neg: int16x8_t = simd_neg(a);
+        let mask: int16x8_t = simd_ge(a, neg);
+        simd_select(mask, a, neg)
     }
-    unsafe { _vabsq_s16(a) }
 }
 #[doc = "Absolute value (wrapping)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabs_s32)"]
@@ -1599,15 +1583,11 @@ pub fn vabsq_s16(a: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabs_s32(a: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.abs.v2i32"
-        )]
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v2i32")]
-        fn _vabs_s32(a: int32x2_t) -> int32x2_t;
+    unsafe {
+        let neg: int32x2_t = simd_neg(a);
+        let mask: int32x2_t = simd_ge(a, neg);
+        simd_select(mask, a, neg)
     }
-    unsafe { _vabs_s32(a) }
 }
 #[doc = "Absolute value (wrapping)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabsq_s32)"]
@@ -1628,15 +1608,11 @@ pub fn vabs_s32(a: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabsq_s32(a: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.abs.v4i32"
-        )]
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v4i32")]
-        fn _vabsq_s32(a: int32x4_t) -> int32x4_t;
+    unsafe {
+        let neg: int32x4_t = simd_neg(a);
+        let mask: int32x4_t = simd_ge(a, neg);
+        simd_select(mask, a, neg)
     }
-    unsafe { _vabsq_s32(a) }
 }
 #[doc = "Floating-point absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabsh_f16)"]

@@ -12861,13 +12861,16 @@ intrinsics:
       - int16x8_t
       - int32x4_t
     compose:
-      - LLVMLink:
-          name: "vabs{neon_type.no}"
-          links:
-            - link: "llvm.aarch64.neon.abs.{neon_type}"
-              arch: aarch64,arm64ec
-            - link: "llvm.arm.neon.vabs.{neon_type}"
-              arch: arm
+      - Let:
+          - neg
+          - "{neon_type}"
+          - FnCall: [simd_neg, [a]]
+      - Let:
+          - mask
+          - "{neon_type}"
+          - FnCall: [simd_ge, [a, neg]]
+      - FnCall: [simd_select, [mask, a, neg]]
+
 
   - name: "vpmin{neon_type.no}"
     doc: "Folding minimum of adjacent pairs"

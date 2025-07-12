@@ -13142,11 +13142,7 @@ intrinsics:
     types:
       - [int64x2_t, i64]
     compose:
-      - FnCall:
-          - transmute
-          - - FnCall:
-                - "vaddvq_u64"
-                - - FnCall: [transmute, [a]]
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vpaddd_u64"
     doc: "Add pairwise"
@@ -13159,7 +13155,7 @@ intrinsics:
     types:
       - [uint64x2_t, u64]
     compose:
-      - FnCall: [vaddvq_u64, [a]]
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13176,11 +13172,7 @@ intrinsics:
       - [int16x8_t, i16]
       - [int32x4_t, i32]
     compose:
-      - LLVMLink:
-          name: "vaddv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.saddv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13193,11 +13185,7 @@ intrinsics:
     types:
       - [int32x2_t, i32]
     compose:
-      - LLVMLink:
-          name: "vaddv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.saddv.i32.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13210,11 +13198,7 @@ intrinsics:
     types:
       - [int64x2_t, i64]
     compose:
-      - LLVMLink:
-          name: "vaddv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.saddv.i64.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13231,11 +13215,7 @@ intrinsics:
       - [uint16x8_t, u16]
       - [uint32x4_t, u32]
     compose:
-      - LLVMLink:
-          name: "vaddv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.uaddv.{type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13248,11 +13228,7 @@ intrinsics:
     types:
       - [uint32x2_t, u32, i32]
     compose:
-      - LLVMLink:
-          name: "vaddv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.uaddv.{type[2]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vaddv{neon_type[0].no}"
     doc: "Add across vector"
@@ -13265,11 +13241,7 @@ intrinsics:
     types:
       - [uint64x2_t, u64, i64]
     compose:
-      - LLVMLink:
-          name: "vaddv{neon_type[0].no}"
-          links:
-            - link: "llvm.aarch64.neon.uaddv.{type[2]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_reduce_add_unordered, [a]]
 
   - name: "vaddlv{neon_type[0].no}"
     doc: "Signed Add Long across Vector"
