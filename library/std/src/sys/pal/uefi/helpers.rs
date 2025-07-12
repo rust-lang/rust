@@ -761,3 +761,7 @@ impl Drop for OwnedEvent {
 pub(crate) const fn ipv4_to_r_efi(addr: crate::net::Ipv4Addr) -> efi::Ipv4Address {
     efi::Ipv4Address { addr: addr.octets() }
 }
+
+pub(crate) const fn ipv4_from_r_efi(ip: efi::Ipv4Address) -> crate::net::Ipv4Addr {
+    crate::net::Ipv4Addr::new(ip.addr[0], ip.addr[1], ip.addr[2], ip.addr[3])
+}
