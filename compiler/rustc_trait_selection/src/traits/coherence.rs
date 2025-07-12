@@ -461,6 +461,7 @@ fn impl_intersection_has_negative_obligation(
     // requirements, when proving the negated where clauses below.
     drop(equate_obligations);
     drop(infcx.take_registered_region_obligations());
+    drop(infcx.take_registered_region_assumptions());
     drop(infcx.take_and_reset_region_constraints());
 
     plug_infer_with_placeholders(

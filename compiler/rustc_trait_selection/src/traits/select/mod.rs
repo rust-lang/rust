@@ -20,6 +20,7 @@ use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::relate::TypeRelation;
 use rustc_infer::traits::{PredicateObligations, TraitObligation};
+use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{DepNodeIndex, dep_kinds};
 pub use rustc_middle::traits::select::*;
@@ -2247,10 +2248,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
     /// ```
     #[instrument(level = "debug", skip(self), ret)]
-    fn constituent_types_for_ty(
+    fn constituent_types_for_auto_trait(
         &self,
         t: Ty<'tcx>,
-    ) -> Result<ty::Binder<'tcx, Vec<Ty<'tcx>>>, SelectionError<'tcx>> {
+    ) -> Result<ty::Binder<'tcx, AutoImplConstituents<'tcx>>, SelectionError<'tcx>> {
         Ok(match *t.kind() {
             ty::Uint(_)
             | ty::Int(_)
@@ -2261,17 +2262,26 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Error(_)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Never
-            | ty::Char => ty::Binder::dummy(Vec::new()),
+            | ty::Char => {
+                ty::Binder::dummy(AutoImplConstituents { types: vec![], assumptions: vec![] })
+            }
 
             // This branch is only for `experimental_default_bounds`.
             // Other foreign types were rejected earlier in
             // `assemble_candidates_from_auto_impls`.
-            ty::Foreign(..) => ty::Binder::dummy(Vec::new()),
+            ty::Foreign(..) => {
+                ty::Binder::dummy(AutoImplConstituents { types: vec![], assumptions: vec![] })
+            }
 
-            ty::UnsafeBinder(ty) => ty.map_bound(|ty| vec![ty]),
+            ty::UnsafeBinder(ty) => {
+                ty.map_bound(|ty| AutoImplConstituents { types: vec![ty], assumptions: vec![] })
+            }
 
             // Treat this like `struct str([u8]);`
-            ty::Str => ty::Binder::dummy(vec![Ty::new_slice(self.tcx(), self.tcx().types.u8)]),
+            ty::Str => ty::Binder::dummy(AutoImplConstituents {
+                types: vec![Ty::new_slice(self.tcx(), self.tcx().types.u8)],
+                assumptions: vec![],
+            }),
 
             ty::Placeholder(..)
             | ty::Dynamic(..)
@@ -2283,30 +2293,41 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             ty::RawPtr(element_ty, _) | ty::Ref(_, element_ty, _) => {
-                ty::Binder::dummy(vec![element_ty])
+                ty::Binder::dummy(AutoImplConstituents {
+                    types: vec![element_ty],
+                    assumptions: vec![],
+                })
             }
 
-            ty::Pat(ty, _) | ty::Array(ty, _) | ty::Slice(ty) => ty::Binder::dummy(vec![ty]),
+            ty::Pat(ty, _) | ty::Array(ty, _) | ty::Slice(ty) => {
+                ty::Binder::dummy(AutoImplConstituents { types: vec![ty], assumptions: vec![] })
+            }
 
             ty::Tuple(tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-                ty::Binder::dummy(tys.iter().collect())
+                ty::Binder::dummy(AutoImplConstituents {
+                    types: tys.iter().collect(),
+                    assumptions: vec![],
+                })
             }
 
             ty::Closure(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_closure().tupled_upvars_ty());
-                ty::Binder::dummy(vec![ty])
+                ty::Binder::dummy(AutoImplConstituents { types: vec![ty], assumptions: vec![] })
             }
 
             ty::CoroutineClosure(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine_closure().tupled_upvars_ty());
-                ty::Binder::dummy(vec![ty])
+                ty::Binder::dummy(AutoImplConstituents { types: vec![ty], assumptions: vec![] })
             }
 
             ty::Coroutine(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
                 let witness = args.as_coroutine().witness();
-                ty::Binder::dummy([ty].into_iter().chain(iter::once(witness)).collect())
+                ty::Binder::dummy(AutoImplConstituents {
+                    types: [ty].into_iter().chain(iter::once(witness)).collect(),
+                    assumptions: vec![],
+                })
             }
 
             ty::CoroutineWitness(def_id, args) => self
@@ -2314,16 +2335,23 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 .tcx
                 .coroutine_hidden_types(def_id)
                 .instantiate(self.infcx.tcx, args)
-                .map_bound(|witness| witness.types.to_vec()),
+                .map_bound(|witness| AutoImplConstituents {
+                    types: witness.types.to_vec(),
+                    assumptions: witness.assumptions.to_vec(),
+                }),
 
             // For `PhantomData<T>`, we pass `T`.
             ty::Adt(def, args) if def.is_phantom_data() => {
-                ty::Binder::dummy(args.types().collect())
+                ty::Binder::dummy(AutoImplConstituents {
+                    types: args.types().collect(),
+                    assumptions: vec![],
+                })
             }
 
-            ty::Adt(def, args) => {
-                ty::Binder::dummy(def.all_fields().map(|f| f.ty(self.tcx(), args)).collect())
-            }
+            ty::Adt(def, args) => ty::Binder::dummy(AutoImplConstituents {
+                types: def.all_fields().map(|f| f.ty(self.tcx(), args)).collect(),
+                assumptions: vec![],
+            }),
 
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
                 if self.infcx.can_define_opaque_ty(def_id) {
@@ -2333,7 +2361,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // which enforces a DAG between the functions requiring
                     // the auto trait bounds in question.
                     match self.tcx().type_of_opaque(def_id) {
-                        Ok(ty) => ty::Binder::dummy(vec![ty.instantiate(self.tcx(), args)]),
+                        Ok(ty) => ty::Binder::dummy(AutoImplConstituents {
+                            types: vec![ty.instantiate(self.tcx(), args)],
+                            assumptions: vec![],
+                        }),
                         Err(_) => {
                             return Err(SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id));
                         }
@@ -3112,4 +3143,10 @@ pub(crate) enum ProjectionMatchesProjection {
     Yes,
     Ambiguous,
     No,
+}
+
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
+pub(crate) struct AutoImplConstituents<'tcx> {
+    pub types: Vec<Ty<'tcx>>,
+    pub assumptions: Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>>,
 }

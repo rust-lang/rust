@@ -149,6 +149,9 @@ pub struct InferCtxtInner<'tcx> {
     /// that all type inference variables have been bound and so forth.
     region_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
 
+    /// UwU
+    region_assumptions: Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>>,
+
     /// Caches for opaque type inference.
     opaque_type_storage: OpaqueTypeStorage<'tcx>,
 }
@@ -164,7 +167,8 @@ impl<'tcx> InferCtxtInner<'tcx> {
             int_unification_storage: Default::default(),
             float_unification_storage: Default::default(),
             region_constraint_storage: Some(Default::default()),
-            region_obligations: vec![],
+            region_obligations: Default::default(),
+            region_assumptions: Default::default(),
             opaque_type_storage: Default::default(),
         }
     }
@@ -172,6 +176,11 @@ impl<'tcx> InferCtxtInner<'tcx> {
     #[inline]
     pub fn region_obligations(&self) -> &[TypeOutlivesConstraint<'tcx>] {
         &self.region_obligations
+    }
+
+    #[inline]
+    pub fn region_assumptions(&self) -> &[ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>] {
+        &self.region_assumptions
     }
 
     #[inline]

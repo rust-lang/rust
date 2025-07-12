@@ -411,8 +411,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligation.predicate.self_ty().map_bound(|ty| self.infcx.shallow_resolve(ty));
             let self_ty = self.infcx.enter_forall_and_leak_universe(self_ty);
 
-            let types = self.constituent_types_for_ty(self_ty)?;
-            let types = self.infcx.enter_forall_and_leak_universe(types);
+            let constituents = self.constituent_types_for_auto_trait(self_ty)?;
+            let constituents = self.infcx.enter_forall_and_leak_universe(constituents);
+
+            for assumption in constituents.assumptions {
+                self.infcx.register_region_assumption(assumption);
+            }
 
             let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
             let obligations = self.collect_predicates_for_types(
@@ -420,7 +424,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 cause,
                 obligation.recursion_depth + 1,
                 obligation.predicate.def_id(),
-                types,
+                constituents.types,
             );
 
             Ok(obligations)

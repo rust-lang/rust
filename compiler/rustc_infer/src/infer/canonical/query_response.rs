@@ -115,6 +115,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         let region_obligations = self.take_registered_region_obligations();
+        let region_assumptions = self.take_registered_region_assumptions();
         debug!(?region_obligations);
         let region_constraints = self.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
@@ -123,6 +124,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     .iter()
                     .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())),
                 region_constraints,
+                region_assumptions,
             )
         });
         debug!(?region_constraints);
@@ -172,6 +174,11 @@ impl<'tcx> InferCtxt<'tcx> {
         for (predicate, _category) in &query_response.value.region_constraints.outlives {
             let predicate = instantiate_value(self.tcx, &result_args, *predicate);
             self.register_outlives_constraint(predicate, cause);
+        }
+
+        for assumption in &query_response.value.region_constraints.assumptions {
+            let assumption = instantiate_value(self.tcx, &result_args, *assumption);
+            self.register_region_assumption(assumption);
         }
 
         let user_result: R =
@@ -295,6 +302,16 @@ impl<'tcx> InferCtxt<'tcx> {
                 let ty::OutlivesPredicate(k1, r2) = r_c.0;
                 if k1 != r2.into() { Some(r_c) } else { None }
             }),
+        );
+
+        // FIXME(higher_ranked_auto): Optimize?
+        output_query_region_constraints.assumptions.extend(
+            query_response
+                .value
+                .region_constraints
+                .assumptions
+                .iter()
+                .map(|&r_c| instantiate_value(self.tcx, &result_args, r_c)),
         );
 
         let user_result: R =
@@ -572,6 +589,7 @@ pub fn make_query_region_constraints<'tcx>(
     tcx: TyCtxt<'tcx>,
     outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>, ConstraintCategory<'tcx>)>,
     region_constraints: &RegionConstraintData<'tcx>,
+    assumptions: Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>>,
 ) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData { constraints, verifys } = region_constraints;
 
@@ -604,5 +622,5 @@ pub fn make_query_region_constraints<'tcx>(
         }))
         .collect();
 
-    QueryRegionConstraints { outlives }
+    QueryRegionConstraints { outlives, assumptions }
 }

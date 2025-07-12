@@ -70,9 +70,13 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     pub(super) fn convert_all(&mut self, query_constraints: &QueryRegionConstraints<'tcx>) {
-        let QueryRegionConstraints { outlives } = query_constraints;
+        let QueryRegionConstraints { outlives, assumptions } = query_constraints;
 
         for &(predicate, constraint_category) in outlives {
+            if assumptions.contains(&predicate) {
+                continue;
+            }
+
             self.convert(predicate, constraint_category);
         }
     }
@@ -270,7 +274,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         match self.param_env.and(DeeplyNormalize { value: ty }).fully_perform(self.infcx, self.span)
         {
             Ok(TypeOpOutput { output: ty, constraints, .. }) => {
-                if let Some(QueryRegionConstraints { outlives }) = constraints {
+                // FIXME(higher_ranked_auto): WTF
+                if let Some(QueryRegionConstraints { outlives, assumptions: _ }) = constraints {
                     next_outlives_predicates.extend(outlives.iter().copied());
                 }
                 ty

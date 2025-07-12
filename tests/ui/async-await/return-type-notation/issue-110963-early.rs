@@ -1,5 +1,5 @@
 //@ edition: 2021
-//@ known-bug: #110963
+//@ check-pass
 
 #![feature(return_type_notation)]
 

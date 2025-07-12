@@ -169,6 +169,21 @@ impl<'tcx> InferCtxt<'tcx> {
         std::mem::take(&mut self.inner.borrow_mut().region_obligations)
     }
 
+    pub fn register_region_assumption(
+        &self,
+        assumption: ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
+    ) {
+        let mut inner = self.inner.borrow_mut();
+        inner.undo_log.push(UndoLog::PushRegionAssumption);
+        inner.region_assumptions.push(assumption);
+    }
+
+    pub fn take_registered_region_assumptions(
+        &self,
+    ) -> Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>> {
+        std::mem::take(&mut self.inner.borrow_mut().region_assumptions)
+    }
+
     /// Process the region obligations that must be proven (during
     /// `regionck`) for the given `body_id`, given information about
     /// the region bounds in scope and so forth.
@@ -189,6 +204,7 @@ impl<'tcx> InferCtxt<'tcx> {
             -> Result<PolyTypeOutlivesPredicate<'tcx>, NoSolution>,
     ) -> Result<(), (PolyTypeOutlivesPredicate<'tcx>, SubregionOrigin<'tcx>)> {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
+        let assumptions = self.take_registered_region_assumptions();
 
         // Must loop since the process of normalizing may itself register region obligations.
         for iteration in 0.. {
@@ -207,6 +223,10 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             for TypeOutlivesConstraint { sup_type, sub_region, origin } in my_region_obligations {
+                if assumptions.contains(&ty::OutlivesPredicate(sup_type.into(), sub_region)) {
+                    continue;
+                }
+
                 let outlives = ty::Binder::dummy(ty::OutlivesPredicate(sup_type, sub_region));
                 let ty::OutlivesPredicate(sup_type, sub_region) =
                     deeply_normalize_ty(outlives, origin.clone())
