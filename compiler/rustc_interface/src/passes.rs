@@ -1065,7 +1065,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 // This marks the corresponding crate-level attributes
                 // as used, and ensures that their values are valid.
                 tcx.ensure_ok().limits(());
-                tcx.ensure_ok().stability_index(());
             }
         );
     });

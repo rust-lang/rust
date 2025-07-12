@@ -7,7 +7,6 @@ use rustc_ast::NodeId;
 use rustc_attr_data_structures::{
     self as attrs, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
 };
-use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_feature::GateIssue;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -63,24 +62,6 @@ impl DeprecationEntry {
             _ => false,
         }
     }
-}
-
-/// A stability index, giving the stability level for items and methods.
-#[derive(HashStable, Debug)]
-pub struct Index {
-    /// Mapping from feature name to feature name based on the `implied_by` field of `#[unstable]`
-    /// attributes. If a `#[unstable(feature = "implier", implied_by = "impliee")]` attribute
-    /// exists, then this map will have a `impliee -> implier` entry.
-    ///
-    /// This mapping is necessary unless both the `#[stable]` and `#[unstable]` attributes should
-    /// specify their implications (both `implies` and `implied_by`). If only one of the two
-    /// attributes do (as in the current implementation, `implied_by` in `#[unstable]`), then this
-    /// mapping is necessary for diagnostics. When a "unnecessary feature attribute" error is
-    /// reported, only the `#[stable]` attribute information is available, so the map is necessary
-    /// to know that the feature implies another feature. If it were reversed, and the `#[stable]`
-    /// attribute had an `implies` meta item, then a map would be necessary when avoiding a "use of
-    /// unstable feature" error for a feature that was implied.
-    pub implications: UnordMap<Symbol, Symbol>,
 }
 
 pub fn report_unstable(
