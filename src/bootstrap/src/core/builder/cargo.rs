@@ -747,6 +747,12 @@ impl Builder<'_> {
         // Make cargo emit diagnostics relative to the rustc src dir.
         cargo.arg(format!("-Zroot-dir={}", self.src.display()));
 
+        if self.config.compile_time_deps {
+            // Build only build scripts and proc-macros for rust-analyzer when requested.
+            cargo.arg("-Zunstable-options");
+            cargo.arg("--compile-time-deps");
+        }
+
         // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
         // Force cargo to output binaries with disambiguating hashes in the name
         let mut metadata = if compiler.stage == 0 {

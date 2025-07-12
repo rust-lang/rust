@@ -27,6 +27,7 @@ features = ['unprefixed_malloc_on_supported_platforms']
 
 [features]
 # tidy-alphabetical-start
+check_only = ['rustc_driver_impl/check_only']
 jemalloc = ['dep:tikv-jemalloc-sys']
 llvm = ['rustc_driver_impl/llvm']
 max_level_info = ['rustc_driver_impl/max_level_info']

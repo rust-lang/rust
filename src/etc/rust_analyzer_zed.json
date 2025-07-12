@@ -7,7 +7,7 @@
             "enable": true,
             "invocationLocation": "root",
             "invocationStrategy": "once",
-            "overrideCommand": ["python3", "x.py", "check", "--json-output"]
+            "overrideCommand": ["python3", "x.py", "check", "--json-output", "--compile-time-deps"]
           },
           "extraEnv": {
             "RUSTC_BOOTSTRAP": "1"

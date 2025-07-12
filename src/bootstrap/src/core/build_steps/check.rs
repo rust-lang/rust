@@ -54,6 +54,11 @@ impl Step for Std {
             return;
         }
 
+        if run.builder.config.compile_time_deps {
+            // libstd doesn't have any important build scripts and can't have any proc macros
+            return;
+        }
+
         let crates = std_crates_for_run_make(&run);
         run.builder.ensure(Std {
             build_compiler: prepare_compiler_for_check(run.builder, run.target, Mode::Std),
@@ -250,6 +255,13 @@ fn prepare_compiler_for_check(
     match mode {
         Mode::ToolBootstrap => builder.compiler(0, host),
         Mode::ToolStd => {
+            if builder.config.compile_time_deps {
+                // When --compile-time-deps is passed, we can't use any rustc
+                // other than the bootstrap compiler. Luckily build scripts and
+                // proc macros for tools are unlikely to need nightly.
+                return builder.compiler(0, host);
+            }
+
             // These tools require the local standard library to be checked
             let build_compiler = builder.compiler(builder.top_stage, host);
 
