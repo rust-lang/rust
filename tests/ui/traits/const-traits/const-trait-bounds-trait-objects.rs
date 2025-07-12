@@ -14,5 +14,7 @@ fn main() {
 trait NonConst {}
 const fn handle(_: &dyn const NonConst) {}
 //~^ ERROR const trait bounds are not allowed in trait object types
+//~| ERROR `const` can only be applied to `#[const_trait]` traits
 const fn take(_: &dyn [const] NonConst) {}
 //~^ ERROR `[const]` is not allowed here
+//~| ERROR `[const]` can only be applied to `#[const_trait]` traits

@@ -1,10 +1,10 @@
-error: `PointeeSized` cannot be used with trait objects
+error[E0224]: at least one trait is required for an object type
   --> $DIR/reject-dyn-pointeesized.rs:5:12
    |
 LL | type Foo = dyn PointeeSized;
    |            ^^^^^^^^^^^^^^^^
 
-error: `PointeeSized` cannot be used with trait objects
+error[E0224]: at least one trait is required for an object type
   --> $DIR/reject-dyn-pointeesized.rs:14:16
    |
 LL |     let y: Box<dyn PointeeSized> = x;
@@ -12,3 +12,4 @@ LL |     let y: Box<dyn PointeeSized> = x;
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0224`.

@@ -3,7 +3,7 @@
 use std::marker::PointeeSized;
 
 type Foo = dyn PointeeSized;
-//~^ ERROR `PointeeSized` cannot be used with trait objects
+//~^ ERROR at least one trait is required for an object type
 
 fn foo(f: &Foo) {}
 
@@ -12,5 +12,5 @@ fn main() {
 
     let x = main;
     let y: Box<dyn PointeeSized> = x;
-//~^ ERROR `PointeeSized` cannot be used with trait objects
+//~^ ERROR at least one trait is required for an object type
 }

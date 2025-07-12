@@ -1,10 +1,10 @@
-error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: bound modifier `?` can only be applied to `Sized`
   --> $DIR/opt-out-bound-not-satisfied.rs:5:18
    |
 LL | fn foo() -> impl ?Future<Output = impl Send> {
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: bound modifier `?` can only be applied to `Sized`
   --> $DIR/opt-out-bound-not-satisfied.rs:5:18
    |
 LL | fn foo() -> impl ?Future<Output = impl Send> {

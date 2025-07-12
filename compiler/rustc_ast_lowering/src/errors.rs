@@ -325,13 +325,6 @@ pub(crate) struct MisplacedDoubleDot {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_misplaced_relax_trait_bound)]
-pub(crate) struct MisplacedRelaxTraitBound {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_lowering_match_arm_with_no_body)]
 pub(crate) struct MatchArmWithNoBody {
     #[primary_span]

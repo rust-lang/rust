@@ -18,6 +18,27 @@ note: required by a bound in `Trait::leak_foo`
 LL |     fn leak_foo(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Trait::leak_foo`
 
-error: aborting due to 2 previous errors
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:68:25
+   |
+LL |     let _: dyn Trait + ?Leak<(), Undefined = ()>;
+   |                         ^^^^-------------------- help: remove the unnecessary generics
+   |                         |
+   |                         expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:44:12
+   |
+LL | auto trait Leak {}
+   |            ^^^^
 
-For more information about this error, try `rustc --explain E0277`.
+error[E0220]: associated type `Undefined` not found for `Leak`
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:68:34
+   |
+LL |     let _: dyn Trait + ?Leak<(), Undefined = ()>;
+   |                                  ^^^^^^^^^ associated type `Undefined` not found
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0107, E0220, E0277.
+For more information about an error, try `rustc --explain E0107`.
