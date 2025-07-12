@@ -644,6 +644,27 @@ fn item_function(cx: &Context<'_>, it: &clean::Item, f: &clean::Function) -> imp
     })
 }
 
+/// Struct used to handle insertion of "negative impl" marker in the generated DOM.
+///
+/// This marker appears once in all trait impl lists to divide negative impls from positive impls.
+struct NegativeMarker {
+    inserted_negative_marker: bool,
+}
+
+impl NegativeMarker {
+    fn new() -> Self {
+        Self { inserted_negative_marker: false }
+    }
+
+    fn insert_if_needed(&mut self, w: &mut fmt::Formatter<'_>, implementor: &Impl) -> fmt::Result {
+        if !self.inserted_negative_marker && !implementor.is_negative_trait_impl() {
+            write!(w, "<div class=\"negative-marker\"></div>")?;
+            self.inserted_negative_marker = true;
+        }
+        Ok(())
+    }
+}
+
 fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt::Display {
     fmt::from_fn(|w| {
         let tcx = cx.tcx();
@@ -1070,7 +1091,9 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                     "<div id=\"implementors-list\">",
                 )
             )?;
+            let mut negative_marker = NegativeMarker::new();
             for implementor in concrete {
+                negative_marker.insert_if_needed(w, implementor)?;
                 write!(w, "{}", render_implementor(cx, implementor, it, &implementor_dups, &[]))?;
             }
             w.write_str("</div>")?;
@@ -1086,7 +1109,9 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                         "<div id=\"synthetic-implementors-list\">",
                     )
                 )?;
+                let mut negative_marker = NegativeMarker::new();
                 for implementor in synthetic {
+                    negative_marker.insert_if_needed(w, implementor)?;
                     write!(
                         w,
                         "{}",
@@ -2304,11 +2329,18 @@ where
 }
 
 #[derive(PartialEq, Eq)]
-struct ImplString(String);
+struct ImplString {
+    rendered: String,
+    is_negative: bool,
+}
 
 impl ImplString {
     fn new(i: &Impl, cx: &Context<'_>) -> ImplString {
-        ImplString(format!("{}", i.inner_impl().print(false, cx)))
+        let impl_ = i.inner_impl();
+        ImplString {
+            is_negative: impl_.is_negative_trait_impl(),
+            rendered: format!("{}", impl_.print(false, cx)),
+        }
     }
 }
 
@@ -2320,7 +2352,12 @@ impl PartialOrd for ImplString {
 
 impl Ord for ImplString {
     fn cmp(&self, other: &Self) -> Ordering {
-        compare_names(&self.0, &other.0)
+        // We sort negative impls first.
+        match (self.is_negative, other.is_negative) {
+            (false, true) => Ordering::Greater,
+            (true, false) => Ordering::Less,
+            _ => compare_names(&self.rendered, &other.rendered),
+        }
     }
 }
 
