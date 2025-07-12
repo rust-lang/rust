@@ -15,6 +15,7 @@ use rustc_codegen_ssa::back::write::{
     BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
     TargetMachineFactoryFn,
 };
+use rustc_codegen_ssa::base::wants_wasm_eh;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -285,6 +286,8 @@ pub(crate) fn target_machine_factory(
     let file_name_display_preference =
         sess.filename_display_preference(RemapPathScopeComponents::DEBUGINFO);
 
+    let use_wasm_eh = wants_wasm_eh(sess);
+
     Arc::new(move |config: TargetMachineFactoryConfig| {
         let path_to_cstring_helper = |path: Option<PathBuf>| -> CString {
             let path = path.unwrap_or_default();
@@ -321,6 +324,7 @@ pub(crate) fn target_machine_factory(
             &debuginfo_compression,
             use_emulated_tls,
             &args_cstr_buff,
+            use_wasm_eh,
         )
     })
 }
