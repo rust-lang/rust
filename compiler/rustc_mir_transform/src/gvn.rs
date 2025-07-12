@@ -746,7 +746,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
-        if projection.is_owned() {
+        if Cow::is_owned(&projection) {
             place.projection = self.tcx.mk_place_elems(&projection);
         }
 
