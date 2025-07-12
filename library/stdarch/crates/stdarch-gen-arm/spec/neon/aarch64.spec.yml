@@ -6580,7 +6580,6 @@ intrinsics:
               arch: aarch64,arm64ec
 
 
-
   - name: "vmaxnm{neon_type.no}"
     doc: Floating-point Maximum Number (vector)
     arguments: ["a: {neon_type}", "b: {neon_type}"]
@@ -6592,11 +6591,7 @@ intrinsics:
       - float64x1_t
       - float64x2_t
     compose:
-      - LLVMLink:
-          name: "fmaxnm.{neon_type}"
-          links:
-            - link: "llvm.aarch64.neon.fmaxnm.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_fmax, [a, b]]
 
 
   - name: "vmaxnmh_{type}"
@@ -6806,11 +6801,7 @@ intrinsics:
       - float64x1_t
       - float64x2_t
     compose:
-      - LLVMLink:
-          name: "fminnm.{neon_type}"
-          links:
-            - link: "llvm.aarch64.neon.fminnm.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_fmin, [a, b]]
 
   - name: "vminnmv{neon_type[0].no}"
     doc: "Floating-point minimum number across vector"
