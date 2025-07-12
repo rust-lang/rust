@@ -644,7 +644,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     ) {
         let sess = self.sess;
         for (attr_index, attr) in attrs.iter().enumerate() {
-            if attr.has_name(sym::automatically_derived) {
+            if attr.is_automatically_derived_attr() {
                 self.insert(
                     LintId::of(SINGLE_USE_LIFETIMES),
                     LevelAndSource {

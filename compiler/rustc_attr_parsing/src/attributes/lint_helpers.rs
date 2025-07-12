@@ -24,3 +24,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for PassByValueParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::PassByValue;
 }
+
+pub(crate) struct AutomaticallyDerivedParser;
+impl<S: Stage> NoArgsAttributeParser<S> for AutomaticallyDerivedParser {
+    const PATH: &[Symbol] = &[sym::automatically_derived];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::AutomaticallyDerived;
+}

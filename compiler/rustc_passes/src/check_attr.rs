@@ -152,6 +152,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Confusables { first_span, .. }) => {
                     self.check_confusables(*first_span, target);
                 }
+                Attribute::Parsed(AttributeKind::AutomaticallyDerived(attr_span)) => self
+                    .check_generic_attr(
+                        hir_id,
+                        sym::automatically_derived,
+                        *attr_span,
+                        target,
+                        Target::Impl,
+                    ),
                 Attribute::Parsed(
                     AttributeKind::Stability { span, .. }
                     | AttributeKind::ConstStability { span, .. },
@@ -334,9 +342,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::macro_export, ..] => self.check_macro_export(hir_id, attr, target),
                         [sym::should_panic, ..] => {
                             self.check_generic_attr_unparsed(hir_id, attr, target, Target::Fn)
-                        }
-                        [sym::automatically_derived, ..] => {
-                            self.check_generic_attr_unparsed(hir_id, attr, target, Target::Impl)
                         }
                         [sym::proc_macro, ..] => {
                             self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
@@ -2814,7 +2819,6 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
     // resolution for the attribute macro error.
     const ATTRS_TO_CHECK: &[Symbol] = &[
         sym::macro_export,
-        sym::automatically_derived,
         sym::rustc_main,
         sym::derive,
         sym::test,
@@ -2837,6 +2841,8 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
             (*first_attr_span, sym::repr)
         } else if let Attribute::Parsed(AttributeKind::Path(.., span)) = attr {
             (*span, sym::path)
+        } else if let Attribute::Parsed(AttributeKind::AutomaticallyDerived(span)) = attr {
+            (*span, sym::automatically_derived)
         } else {
             continue;
         };
