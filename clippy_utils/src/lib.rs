@@ -1896,6 +1896,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// * `|x| { return x }`
 /// * `|x| { return x; }`
 /// * `|(x, y)| (x, y)`
+/// * `|[x, y]| [x, y]`
 ///
 /// Consider calling [`is_expr_untyped_identity_function`] or [`is_expr_identity_function`] instead.
 fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
@@ -1906,9 +1907,9 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
             .get(pat.hir_id)
             .is_some_and(|mode| matches!(mode.0, ByRef::Yes(_)))
         {
-            // If a tuple `(x, y)` is of type `&(i32, i32)`, then due to match ergonomics,
-            // the inner patterns become references. Don't consider this the identity function
-            // as that changes types.
+            // If the parameter is `(x, y)` of type `&(T, T)`, or `[x, y]` of type `&[T; 2]`, then
+            // due to match ergonomics, the inner patterns become references. Don't consider this
+            // the identity function as that changes types.
             return false;
         }
 
@@ -1920,6 +1921,13 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
                 if dotdot.as_opt_usize().is_none() && pats.len() == tup.len() =>
             {
                 pats.iter().zip(tup).all(|(pat, expr)| check_pat(cx, pat, expr))
+            },
+            (PatKind::Slice(before, slice, after), ExprKind::Array(arr))
+                if slice.is_none() && before.len() + after.len() == arr.len() =>
+            {
+                (before.iter().chain(after))
+                    .zip(arr)
+                    .all(|(pat, expr)| check_pat(cx, pat, expr))
             },
             _ => false,
         }

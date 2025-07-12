@@ -87,3 +87,15 @@ fn issue13904() {
     let _ = { it }.next();
     //~^ map_identity
 }
+
+// same as `issue11764`, but for arrays
+fn issue15198() {
+    let x = [[1, 2], [3, 4]];
+    // don't lint: `&[i32; 2]` becomes `[&i32; 2]`
+    let _ = x.iter().map(|[x, y]| [x, y]);
+    let _ = x.iter().map(|x| [x[0]]).map(|[x]| x);
+
+    // no match ergonomics for `[i32, i32]`
+    let _ = x.iter().copied();
+    //~^ map_identity
+}
