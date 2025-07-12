@@ -511,7 +511,7 @@ impl Resolver<'_, '_> {
             for (_key, resolution) in self.resolutions(*module).borrow().iter() {
                 let resolution = resolution.borrow();
 
-                if let Some(binding) = resolution.binding
+                if let Some(binding) = resolution.best_binding()
                     && let NameBindingKind::Import { import, .. } = binding.kind
                     && let ImportKind::Single { id, .. } = import.kind
                 {

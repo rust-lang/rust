@@ -875,7 +875,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // binding if it exists. What we really want here is having two separate scopes in
         // a module - one for non-globs and one for globs, but until that's done use this
         // hack to avoid inconsistent resolution ICEs during import validation.
-        let binding = [resolution.binding, resolution.shadowed_glob]
+        let binding = [resolution.non_glob_binding, resolution.glob_binding]
             .into_iter()
             .find_map(|binding| if binding == ignore_binding { None } else { binding });
 
@@ -883,7 +883,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return self.finalize_module_binding(
                 ident,
                 binding,
-                resolution.shadowed_glob,
+                if resolution.non_glob_binding.is_some() { resolution.glob_binding } else { None },
                 parent_scope,
                 finalize,
                 shadowing,
