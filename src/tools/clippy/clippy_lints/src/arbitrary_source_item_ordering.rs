@@ -8,11 +8,13 @@ use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::is_cfg_test;
 use rustc_attr_data_structures::AttributeKind;
 use rustc_hir::{
-    AssocItemKind, Attribute, FieldDef, HirId, ImplItemRef, IsAuto, Item, ItemKind, Mod, QPath, TraitItemRef, TyKind,
+    Attribute, FieldDef, HirId, IsAuto, ImplItemId, Item, ItemKind, Mod, OwnerId, QPath, TraitItemId, TyKind,
     Variant, VariantData,
 };
+use rustc_middle::ty::AssocKind;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
+use rustc_span::Ident;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -194,22 +196,22 @@ impl ArbitrarySourceItemOrdering {
     }
 
     /// Produces a linting warning for incorrectly ordered impl items.
-    fn lint_impl_item<T: LintContext>(&self, cx: &T, item: &ImplItemRef, before_item: &ImplItemRef) {
+    fn lint_impl_item(&self, cx: &LateContext<'_>, item: ImplItemId, before_item: ImplItemId) {
         span_lint_and_note(
             cx,
             ARBITRARY_SOURCE_ITEM_ORDERING,
-            item.span,
+            cx.tcx.def_span(item.owner_id),
             format!(
                 "incorrect ordering of impl items (defined order: {:?})",
                 self.assoc_types_order
             ),
-            Some(before_item.span),
-            format!("should be placed before `{}`", before_item.ident.name),
+            Some(cx.tcx.def_span(before_item.owner_id)),
+            format!("should be placed before `{}`", cx.tcx.item_name(before_item.owner_id)),
         );
     }
 
     /// Produces a linting warning for incorrectly ordered item members.
-    fn lint_member_name<T: LintContext>(cx: &T, ident: &rustc_span::Ident, before_ident: &rustc_span::Ident) {
+    fn lint_member_name<T: LintContext>(cx: &T, ident: Ident, before_ident: Ident) {
         span_lint_and_note(
             cx,
             ARBITRARY_SOURCE_ITEM_ORDERING,
@@ -220,7 +222,7 @@ impl ArbitrarySourceItemOrdering {
         );
     }
 
-    fn lint_member_item<T: LintContext>(cx: &T, item: &Item<'_>, before_item: &Item<'_>, msg: &'static str) {
+    fn lint_member_item(cx: &LateContext<'_>, item: &Item<'_>, before_item: &Item<'_>, msg: &'static str) {
         let span = if let Some(ident) = item.kind.ident() {
             ident.span
         } else {
@@ -245,17 +247,17 @@ impl ArbitrarySourceItemOrdering {
     }
 
     /// Produces a linting warning for incorrectly ordered trait items.
-    fn lint_trait_item<T: LintContext>(&self, cx: &T, item: &TraitItemRef, before_item: &TraitItemRef) {
+    fn lint_trait_item(&self, cx: &LateContext<'_>, item: TraitItemId, before_item: TraitItemId) {
         span_lint_and_note(
             cx,
             ARBITRARY_SOURCE_ITEM_ORDERING,
-            item.span,
+            cx.tcx.def_span(item.owner_id),
             format!(
                 "incorrect ordering of trait items (defined order: {:?})",
                 self.assoc_types_order
             ),
-            Some(before_item.span),
-            format!("should be placed before `{}`", before_item.ident.name),
+            Some(cx.tcx.def_span(before_item.owner_id)),
+            format!("should be placed before `{}`", cx.tcx.item_name(before_item.owner_id)),
         );
     }
 }
@@ -283,7 +285,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                         && cur_v.ident.name.as_str() > variant.ident.name.as_str()
                         && cur_v.span != variant.span
                     {
-                        Self::lint_member_name(cx, &variant.ident, &cur_v.ident);
+                        Self::lint_member_name(cx, variant.ident, cur_v.ident);
                     }
                     cur_v = Some(variant);
                 }
@@ -299,7 +301,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                         && cur_f.ident.name.as_str() > field.ident.name.as_str()
                         && cur_f.span != field.span
                     {
-                        Self::lint_member_name(cx, &field.ident, &cur_f.ident);
+                        Self::lint_member_name(cx, field.ident, cur_f.ident);
                     }
                     cur_f = Some(field);
                 }
@@ -307,49 +309,53 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
             ItemKind::Trait(is_auto, _safety, _ident, _generics, _generic_bounds, item_ref)
                 if self.enable_ordering_for_trait && *is_auto == IsAuto::No =>
             {
-                let mut cur_t: Option<&TraitItemRef> = None;
+                let mut cur_t: Option<(TraitItemId, Ident)> = None;
 
-                for item in *item_ref {
-                    if item.span.in_external_macro(cx.sess().source_map()) {
+                for &item in *item_ref {
+                    let span = cx.tcx.def_span(item.owner_id);
+                    let ident = cx.tcx.item_ident(item.owner_id);
+                    if span.in_external_macro(cx.sess().source_map()) {
                         continue;
                     }
 
-                    if let Some(cur_t) = cur_t {
-                        let cur_t_kind = convert_assoc_item_kind(cur_t.kind);
+                    if let Some((cur_t, cur_ident)) = cur_t {
+                        let cur_t_kind = convert_assoc_item_kind(cx, cur_t.owner_id);
                         let cur_t_kind_index = self.assoc_types_order.index_of(&cur_t_kind);
-                        let item_kind = convert_assoc_item_kind(item.kind);
+                        let item_kind = convert_assoc_item_kind(cx, item.owner_id);
                         let item_kind_index = self.assoc_types_order.index_of(&item_kind);
 
-                        if cur_t_kind == item_kind && cur_t.ident.name.as_str() > item.ident.name.as_str() {
-                            Self::lint_member_name(cx, &item.ident, &cur_t.ident);
+                        if cur_t_kind == item_kind && cur_ident.name.as_str() > ident.name.as_str() {
+                            Self::lint_member_name(cx, ident, cur_ident);
                         } else if cur_t_kind_index > item_kind_index {
                             self.lint_trait_item(cx, item, cur_t);
                         }
                     }
-                    cur_t = Some(item);
+                    cur_t = Some((item, ident));
                 }
             },
             ItemKind::Impl(trait_impl) if self.enable_ordering_for_impl => {
-                let mut cur_t: Option<&ImplItemRef> = None;
+                let mut cur_t: Option<(ImplItemId, Ident)> = None;
 
-                for item in trait_impl.items {
-                    if item.span.in_external_macro(cx.sess().source_map()) {
+                for &item in trait_impl.items {
+                    let span = cx.tcx.def_span(item.owner_id);
+                    let ident = cx.tcx.item_ident(item.owner_id);
+                    if span.in_external_macro(cx.sess().source_map()) {
                         continue;
                     }
 
-                    if let Some(cur_t) = cur_t {
-                        let cur_t_kind = convert_assoc_item_kind(cur_t.kind);
+                    if let Some((cur_t, cur_ident)) = cur_t {
+                        let cur_t_kind = convert_assoc_item_kind(cx, cur_t.owner_id);
                         let cur_t_kind_index = self.assoc_types_order.index_of(&cur_t_kind);
-                        let item_kind = convert_assoc_item_kind(item.kind);
+                        let item_kind = convert_assoc_item_kind(cx, item.owner_id);
                         let item_kind_index = self.assoc_types_order.index_of(&item_kind);
 
-                        if cur_t_kind == item_kind && cur_t.ident.name.as_str() > item.ident.name.as_str() {
-                            Self::lint_member_name(cx, &item.ident, &cur_t.ident);
+                        if cur_t_kind == item_kind && cur_ident.name.as_str() > ident.name.as_str() {
+                            Self::lint_member_name(cx, ident, cur_ident);
                         } else if cur_t_kind_index > item_kind_index {
                             self.lint_impl_item(cx, item, cur_t);
                         }
                     }
-                    cur_t = Some(item);
+                    cur_t = Some((item, ident));
                 }
             },
             _ => {}, // Catch-all for `ItemKinds` that don't have fields.
@@ -458,18 +464,19 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
     }
 }
 
-/// Converts a [`rustc_hir::AssocItemKind`] to a
-/// [`SourceItemOrderingTraitAssocItemKind`].
+/// Converts a [`ty::AssocKind`] to a [`SourceItemOrderingTraitAssocItemKind`].
 ///
 /// This is implemented here because `rustc_hir` is not a dependency of
 /// `clippy_config`.
-fn convert_assoc_item_kind(value: AssocItemKind) -> SourceItemOrderingTraitAssocItemKind {
+fn convert_assoc_item_kind(cx: &LateContext<'_>, owner_id: OwnerId) -> SourceItemOrderingTraitAssocItemKind {
+    let kind = cx.tcx.associated_item(owner_id.def_id).kind;
+
     #[allow(clippy::enum_glob_use)] // Very local glob use for legibility.
     use SourceItemOrderingTraitAssocItemKind::*;
-    match value {
-        AssocItemKind::Const => Const,
-        AssocItemKind::Type => Type,
-        AssocItemKind::Fn { .. } => Fn,
+    match kind {
+        AssocKind::Const{..} => Const,
+        AssocKind::Type {..}=> Type,
+        AssocKind::Fn { .. } => Fn,
     }
 }
 

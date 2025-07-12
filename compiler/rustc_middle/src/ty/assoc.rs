@@ -258,6 +258,16 @@ impl AssocItems {
     }
 
     /// Returns the associated item with the given identifier and `AssocKind`, if one exists.
+    /// The identifier is ignoring hygiene. This is meant to be used for lints and diagnostics.
+    pub fn filter_by_name_unhygienic_and_kind(
+        &self,
+        name: Symbol,
+        assoc_tag: AssocTag,
+    ) -> impl '_ + Iterator<Item = &ty::AssocItem> {
+        self.filter_by_name_unhygienic(name).filter(move |item| item.as_tag() == assoc_tag)
+    }
+
+    /// Returns the associated item with the given identifier and `AssocKind`, if one exists.
     /// The identifier is matched hygienically.
     pub fn find_by_ident_and_kind(
         &self,

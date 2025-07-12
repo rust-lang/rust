@@ -16,7 +16,7 @@ error[E0790]: cannot refer to the associated constant on trait without specifyin
   --> $DIR/issue-58022.rs:4:25
    |
 LL |     const SIZE: usize;
-   |     ------------------ `Foo::SIZE` defined here
+   |     ----------------- `Foo::SIZE` defined here
 LL |
 LL |     fn new(slice: &[u8; Foo::SIZE]) -> Self;
    |                         ^^^^^^^^^ cannot refer to the associated constant of trait

@@ -930,8 +930,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
 
             check_abi(tcx, it.hir_id(), it.span, abi);
 
-            for item in items {
-                let def_id = item.id.owner_id.def_id;
+            for &item in items {
+                let def_id = item.owner_id.def_id;
 
                 let generics = tcx.generics_of(def_id);
                 let own_counts = generics.own_counts();
@@ -943,13 +943,14 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                         (0, _) => ("const", "consts", None),
                         _ => ("type or const", "types or consts", None),
                     };
+                    let span = tcx.def_span(def_id);
                     struct_span_code_err!(
                         tcx.dcx(),
-                        item.span,
+                        span,
                         E0044,
                         "foreign items may not have {kinds} parameters",
                     )
-                    .with_span_label(item.span, format!("can't have {kinds} parameters"))
+                    .with_span_label(span, format!("can't have {kinds} parameters"))
                     .with_help(
                         // FIXME: once we start storing spans for type arguments, turn this
                         // into a suggestion.
@@ -963,22 +964,23 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     .emit();
                 }
 
-                let item = tcx.hir_foreign_item(item.id);
-                tcx.ensure_ok().generics_of(item.owner_id);
-                tcx.ensure_ok().type_of(item.owner_id);
-                tcx.ensure_ok().predicates_of(item.owner_id);
+                tcx.ensure_ok().generics_of(def_id);
+                tcx.ensure_ok().type_of(def_id);
+                tcx.ensure_ok().predicates_of(def_id);
                 if tcx.is_conditionally_const(def_id) {
                     tcx.ensure_ok().explicit_implied_const_bounds(def_id);
                     tcx.ensure_ok().const_conditions(def_id);
                 }
-                match item.kind {
-                    hir::ForeignItemKind::Fn(sig, ..) => {
-                        tcx.ensure_ok().codegen_fn_attrs(item.owner_id);
-                        tcx.ensure_ok().fn_sig(item.owner_id);
+                match tcx.def_kind(def_id) {
+                    DefKind::Fn => {
+                        tcx.ensure_ok().codegen_fn_attrs(def_id);
+                        tcx.ensure_ok().fn_sig(def_id);
+                        let item = tcx.hir_foreign_item(item);
+                        let hir::ForeignItemKind::Fn(sig, ..) = item.kind else { bug!() };
                         require_c_abi_if_c_variadic(tcx, sig.decl, abi, item.span);
                     }
-                    hir::ForeignItemKind::Static(..) => {
-                        tcx.ensure_ok().codegen_fn_attrs(item.owner_id);
+                    DefKind::Static { .. } => {
+                        tcx.ensure_ok().codegen_fn_attrs(def_id);
                     }
                     _ => (),
                 }

@@ -844,11 +844,9 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let item = tcx.hir_expect_item(def_id);
 
-    let (is_alias, is_auto, safety, items) = match item.kind {
-        hir::ItemKind::Trait(is_auto, safety, .., items) => {
-            (false, is_auto == hir::IsAuto::Yes, safety, items)
-        }
-        hir::ItemKind::TraitAlias(..) => (true, false, hir::Safety::Safe, &[][..]),
+    let (is_alias, is_auto, safety) = match item.kind {
+        hir::ItemKind::Trait(is_auto, safety, ..) => (false, is_auto == hir::IsAuto::Yes, safety),
+        hir::ItemKind::TraitAlias(..) => (true, false, hir::Safety::Safe),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
@@ -911,13 +909,16 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         // functions in the trait with default implementations
         .and_then(|(list, attr_span)| {
             let errors = list.iter().filter_map(|ident| {
-                let item = items.iter().find(|item| item.ident == *ident);
+                let item = tcx
+                    .associated_items(def_id)
+                    .filter_by_name_unhygienic(ident.name)
+                    .find(|item| item.ident(tcx) == *ident);
 
                 match item {
-                    Some(item) if matches!(item.kind, hir::AssocItemKind::Fn { .. }) => {
-                        if !tcx.defaultness(item.id.owner_id).has_value() {
+                    Some(item) if matches!(item.kind, ty::AssocKind::Fn { .. }) => {
+                        if !item.defaultness(tcx).has_value() {
                             tcx.dcx().emit_err(errors::FunctionNotHaveDefaultImplementation {
-                                span: item.span,
+                                span: tcx.def_span(item.def_id),
                                 note_span: attr_span,
                             });
 
@@ -928,7 +929,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                     }
                     Some(item) => {
                         tcx.dcx().emit_err(errors::MustImplementNotFunction {
-                            span: item.span,
+                            span: tcx.def_span(item.def_id),
                             span_note: errors::MustImplementNotFunctionSpanNote { span: attr_span },
                             note: errors::MustImplementNotFunctionNote {},
                         });

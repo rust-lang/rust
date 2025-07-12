@@ -1084,7 +1084,7 @@ fn find_fallback_pattern_typo<'tcx>(
                 && infcx.can_eq(param_env, ty, cx.tcx.type_of(item.owner_id).instantiate_identity())
             {
                 // Look for local consts.
-                let item_name = cx.tcx.item_name(item.owner_id.into());
+                let item_name = cx.tcx.item_name(item.owner_id);
                 let vis = cx.tcx.visibility(item.owner_id);
                 if vis.is_accessible_from(parent, cx.tcx) {
                     accessible.push(item_name);

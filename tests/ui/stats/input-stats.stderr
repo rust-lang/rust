@@ -107,17 +107,17 @@ hir-stats WherePredicate            72 (NN.N%)             3            24
 hir-stats - BoundPredicate            72 (NN.N%)             3
 hir-stats Local                     72 (NN.N%)             1            72
 hir-stats InlineAsm                 72 (NN.N%)             1            72
-hir-stats ImplItemRef               72 (NN.N%)             2            36
 hir-stats Body                      72 (NN.N%)             3            24
 hir-stats Param                     64 (NN.N%)             2            32
 hir-stats GenericArg                64 (NN.N%)             4            16
 hir-stats - Type                      16 (NN.N%)             1
 hir-stats - Lifetime                  48 (NN.N%)             3
-hir-stats TraitItemRef              56 (NN.N%)             2            28
 hir-stats ExprField                 40 (NN.N%)             1            40
 hir-stats Mod                       32 (NN.N%)             1            32
 hir-stats Lifetime                  28 (NN.N%)             1            28
-hir-stats ForeignItemRef            24 (NN.N%)             1            24
+hir-stats TraitItemId                8 (NN.N%)             2             4
+hir-stats ImplItemId                 8 (NN.N%)             2             4
+hir-stats ForeignItemId              4 (NN.N%)             1             4
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_716                   173
+hir-stats Total                  8_584                   173
 hir-stats ================================================================

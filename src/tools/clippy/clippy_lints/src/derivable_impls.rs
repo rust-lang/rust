@@ -192,7 +192,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             && !item.span.from_expansion()
             && let Some(def_id) = trait_ref.trait_def_id()
             && cx.tcx.is_diagnostic_item(sym::Default, def_id)
-            && let impl_item_hir = child.id.hir_id()
+            && let impl_item_hir = child.hir_id()
             && let Node::ImplItem(impl_item) = cx.tcx.hir_node(impl_item_hir)
             && let ImplItemKind::Fn(_, b) = &impl_item.kind
             && let Body { value: func_expr, .. } = cx.tcx.hir_body(*b)
