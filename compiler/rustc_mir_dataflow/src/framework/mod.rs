@@ -34,6 +34,7 @@
 
 use std::cmp::Ordering;
 
+use rustc_abi::VariantIdx;
 use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
@@ -214,17 +215,24 @@ pub trait Analysis<'tcx> {
         &mut self,
         _block: mir::BasicBlock,
         _discr: &mir::Operand<'tcx>,
+        _targets: &mir::SwitchTargets,
     ) -> Option<Self::SwitchIntData> {
         None
+    }
+
+    /// Returns an iterator over `SwitchInt` target variants stored in `Self::SwitchIntData`.
+    fn switch_int_target_variants(
+        _data: &Self::SwitchIntData,
+    ) -> impl Iterator<Item = &(VariantIdx, mir::BasicBlock)> {
+        [].iter()
     }
 
     /// See comments on `get_switch_int_data`.
     fn apply_switch_int_edge_effect(
         &mut self,
-        _data: &mut Self::SwitchIntData,
+        _data: &Self::SwitchIntData,
         _state: &mut Self::Domain,
         _value: SwitchTargetValue,
-        _targets: &mir::SwitchTargets,
     ) {
         unreachable!();
     }
