@@ -861,12 +861,16 @@ impl<'a> DeferredCommand<'a> {
                 executed_at,
                 fingerprint,
                 start_time,
-                ..
+                #[cfg(feature = "tracing")]
+                _span_guard,
             } => {
                 let exec_ctx = exec_ctx.as_ref();
 
                 let output =
                     Self::finish_process(process, command, stdout, stderr, executed_at, exec_ctx);
+
+                #[cfg(feature = "tracing")]
+                drop(_span_guard);
 
                 if (!exec_ctx.dry_run() || command.run_in_dry_run)
                     && output.status().is_some()
