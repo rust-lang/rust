@@ -321,7 +321,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_generic_attr_unparsed(hir_id, attr, target, Target::Fn)
                         }
                         [sym::automatically_derived, ..] => {
-                            self.check_generic_attr_unparsed(hir_id, attr, target, Target::Impl)
+                            self.check_generic_attr_unparsed(hir_id, attr, target, Target::Impl{of_trait:true})
                         }
                         [sym::proc_macro, ..] => {
                             self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
@@ -458,7 +458,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         attr: &Attribute,
         item: Option<ItemLike<'_>>,
     ) {
-        if !matches!(target, Target::Impl)
+        if !matches!(target, Target::Impl { .. })
             || matches!(
                 item,
                 Some(ItemLike::Item(hir::Item {  kind: hir::ItemKind::Impl(_impl),.. }))
@@ -562,7 +562,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::Fn
             | Target::Closure
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
-            | Target::Impl
+            | Target::Impl { .. }
             | Target::Mod => return,
 
             // These are "functions", but they aren't allowed because they don't
@@ -955,9 +955,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let span = meta.span();
         if let Some(location) = match target {
             Target::AssocTy => {
-                let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id;
-                let containing_item = self.tcx.hir_expect_item(parent_def_id);
-                if Target::from_item(containing_item) == Target::Impl {
+                if let DefKind::Impl { .. } =
+                    self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id))
+                {
                     Some("type alias in implementation block")
                 } else {
                     None
@@ -980,7 +980,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::Arm
             | Target::ForeignMod
             | Target::Closure
-            | Target::Impl
+            | Target::Impl { .. }
             | Target::WherePredicate => Some(target.name()),
             Target::ExternCrate
             | Target::Use
@@ -1556,7 +1556,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let article = match target {
             Target::ExternCrate
             | Target::Enum
-            | Target::Impl
+            | Target::Impl { .. }
             | Target::Expression
             | Target::Arm
             | Target::AssocConst

@@ -66,9 +66,11 @@ fn t1() {}
 #[non_exhaustive] //~ ERROR unused attribute
 pub struct X;
 
+trait Trait {}
+
 #[automatically_derived]
 #[automatically_derived] //~ ERROR unused attribute
-impl X {}
+impl Trait for X {}
 
 #[inline(always)]
 #[inline(never)] //~ ERROR unused attribute

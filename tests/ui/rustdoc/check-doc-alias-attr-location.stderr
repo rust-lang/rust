@@ -10,13 +10,13 @@ error: `#[doc(alias = "...")]` isn't allowed on foreign module
 LL | #[doc(alias = "foo")]
    |       ^^^^^^^^^^^^^
 
-error: `#[doc(alias = "...")]` isn't allowed on implementation block
+error: `#[doc(alias = "...")]` isn't allowed on inherent implementation block
   --> $DIR/check-doc-alias-attr-location.rs:12:7
    |
 LL | #[doc(alias = "bar")]
    |       ^^^^^^^^^^^^^
 
-error: `#[doc(alias = "...")]` isn't allowed on implementation block
+error: `#[doc(alias = "...")]` isn't allowed on trait implementation block
   --> $DIR/check-doc-alias-attr-location.rs:18:7
    |
 LL | #[doc(alias = "foobar")]
