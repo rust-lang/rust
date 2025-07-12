@@ -9,7 +9,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 use tracing::*;
 
-use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
+use crate::common::{Config, Debugger, FailMode, PassMode, TestMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
 use crate::directives::auxiliary::{AuxProps, parse_and_update_aux};
 use crate::directives::needs::CachedNeedsConditions;
@@ -328,7 +328,7 @@ impl TestProps {
         props.exec_env.push(("RUSTC".to_string(), config.rustc_path.to_string()));
 
         match (props.pass_mode, props.fail_mode) {
-            (None, None) if config.mode == Mode::Ui => props.fail_mode = Some(FailMode::Check),
+            (None, None) if config.mode == TestMode::Ui => props.fail_mode = Some(FailMode::Check),
             (Some(_), Some(_)) => panic!("cannot use a *-fail and *-pass mode together"),
             _ => {}
         }
@@ -609,11 +609,11 @@ impl TestProps {
             self.failure_status = Some(101);
         }
 
-        if config.mode == Mode::Incremental {
+        if config.mode == TestMode::Incremental {
             self.incremental = true;
         }
 
-        if config.mode == Mode::Crashes {
+        if config.mode == TestMode::Crashes {
             // we don't want to pollute anything with backtrace-files
             // also turn off backtraces in order to save some execution
             // time on the tests; we only need to know IF it crashes
@@ -641,11 +641,11 @@ impl TestProps {
     fn update_fail_mode(&mut self, ln: &str, config: &Config) {
         let check_ui = |mode: &str| {
             // Mode::Crashes may need build-fail in order to trigger llvm errors or stack overflows
-            if config.mode != Mode::Ui && config.mode != Mode::Crashes {
+            if config.mode != TestMode::Ui && config.mode != TestMode::Crashes {
                 panic!("`{}-fail` directive is only supported in UI tests", mode);
             }
         };
-        if config.mode == Mode::Ui && config.parse_name_directive(ln, "compile-fail") {
+        if config.mode == TestMode::Ui && config.parse_name_directive(ln, "compile-fail") {
             panic!("`compile-fail` directive is useless in UI tests");
         }
         let fail_mode = if config.parse_name_directive(ln, "check-fail") {
@@ -669,10 +669,10 @@ impl TestProps {
 
     fn update_pass_mode(&mut self, ln: &str, revision: Option<&str>, config: &Config) {
         let check_no_run = |s| match (config.mode, s) {
-            (Mode::Ui, _) => (),
-            (Mode::Crashes, _) => (),
-            (Mode::Codegen, "build-pass") => (),
-            (Mode::Incremental, _) => {
+            (TestMode::Ui, _) => (),
+            (TestMode::Crashes, _) => (),
+            (TestMode::Codegen, "build-pass") => (),
+            (TestMode::Incremental, _) => {
                 if revision.is_some() && !self.revisions.iter().all(|r| r.starts_with("cfail")) {
                     panic!("`{s}` directive is only supported in `cfail` incremental tests")
                 }
@@ -715,7 +715,7 @@ impl TestProps {
     pub fn update_add_core_stubs(&mut self, ln: &str, config: &Config) {
         let add_core_stubs = config.parse_name_directive(ln, directives::ADD_CORE_STUBS);
         if add_core_stubs {
-            if !matches!(config.mode, Mode::Ui | Mode::Codegen | Mode::Assembly) {
+            if !matches!(config.mode, TestMode::Ui | TestMode::Codegen | TestMode::Assembly) {
                 panic!(
                     "`add-core-stubs` is currently only supported for ui, codegen and assembly test modes"
                 );
@@ -833,7 +833,7 @@ pub(crate) struct CheckDirectiveResult<'ln> {
 
 pub(crate) fn check_directive<'a>(
     directive_ln: &'a str,
-    mode: Mode,
+    mode: TestMode,
     original_line: &str,
 ) -> CheckDirectiveResult<'a> {
     let (directive_name, post) = directive_ln.split_once([':', ' ']).unwrap_or((directive_ln, ""));
@@ -842,11 +842,11 @@ pub(crate) fn check_directive<'a>(
     let is_known = |s: &str| {
         KNOWN_DIRECTIVE_NAMES.contains(&s)
             || match mode {
-                Mode::Rustdoc | Mode::RustdocJson => {
+                TestMode::Rustdoc | TestMode::RustdocJson => {
                     original_line.starts_with("//@")
                         && match mode {
-                            Mode::Rustdoc => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES,
-                            Mode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
+                            TestMode::Rustdoc => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES,
+                            TestMode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
                             _ => unreachable!(),
                         }
                         .contains(&s)
@@ -868,7 +868,7 @@ pub(crate) fn check_directive<'a>(
 const COMPILETEST_DIRECTIVE_PREFIX: &str = "//@";
 
 fn iter_directives(
-    mode: Mode,
+    mode: TestMode,
     _suite: &str,
     poisoned: &mut bool,
     testfile: &Utf8Path,
@@ -883,7 +883,7 @@ fn iter_directives(
     // specify them manually in every test file.
     //
     // FIXME(jieyouxu): I feel like there's a better way to do this, leaving for later.
-    if mode == Mode::CoverageRun {
+    if mode == TestMode::CoverageRun {
         let extra_directives: &[&str] = &[
             "needs-profiler-runtime",
             // FIXME(pietroalbini): this test currently does not work on cross-compiled targets
@@ -964,7 +964,7 @@ impl Config {
             ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
 
         if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
-            if self.mode == Mode::RunMake {
+            if self.mode == TestMode::RunMake {
                 panic!("`run-make` tests do not support revisions: {}", testfile);
             }
 
@@ -981,7 +981,7 @@ impl Config {
                     );
                 }
 
-                if matches!(self.mode, Mode::Assembly | Mode::Codegen | Mode::MirOpt)
+                if matches!(self.mode, TestMode::Assembly | TestMode::Codegen | TestMode::MirOpt)
                     && FILECHECK_FORBIDDEN_REVISION_NAMES.contains(&revision)
                 {
                     panic!(
@@ -1443,7 +1443,7 @@ pub(crate) fn make_test_description<R: Read>(
     // since we run the pretty printer across all tests by default.
     // If desired, we could add a `should-fail-pretty` annotation.
     let should_panic = match config.mode {
-        crate::common::Pretty => ShouldPanic::No,
+        TestMode::Pretty => ShouldPanic::No,
         _ if should_fail => ShouldPanic::Yes,
         _ => ShouldPanic::No,
     };

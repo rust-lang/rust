@@ -20,6 +20,7 @@ cfg_if::cfg_if! {
         target_os = "rtems",
         target_os = "solaris",
         target_os = "vita",
+        target_os = "nuttx",
     ))] {
         mod arc4random;
         pub use arc4random::fill_bytes;
@@ -44,7 +45,6 @@ cfg_if::cfg_if! {
         target_os = "hurd",
         target_os = "l4re",
         target_os = "nto",
-        target_os = "nuttx",
     ))] {
         mod unix_legacy;
         pub use unix_legacy::fill_bytes;
