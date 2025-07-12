@@ -594,6 +594,10 @@ trigger_files = [
     "compiler/rustc_codegen_llvm",
 ]
 
+[autolabel."T-clippy"]
+trigger_files = [
+    "src/tools/clippy",
+]
 
 # ------------------------------------------------------------------------------
 # Prioritization and team nominations
