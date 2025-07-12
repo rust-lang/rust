@@ -64,7 +64,7 @@ pub enum ReprAttr {
     ReprRust,
     ReprC,
     ReprPacked(Align),
-    ReprSimd,
+    ReprSimd(Option<u16>),
     ReprTransparent,
     ReprAlign(Align),
 }

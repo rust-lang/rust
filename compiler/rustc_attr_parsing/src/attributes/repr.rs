@@ -143,11 +143,26 @@ fn parse_repr<S: Stage>(
 
         (Some(sym::Rust), ArgParser::NoArgs) => Some(ReprRust),
         (Some(sym::C), ArgParser::NoArgs) => Some(ReprC),
-        (Some(sym::simd), ArgParser::NoArgs) => Some(ReprSimd),
+        (Some(sym::simd), ArgParser::NoArgs) => Some(ReprSimd(None)),
         (Some(sym::transparent), ArgParser::NoArgs) => Some(ReprTransparent),
         (Some(name @ int_pat!()), ArgParser::NoArgs) => {
             // int_pat!() should make sure it always parses
             Some(ReprInt(int_type_of_word(name).unwrap()))
+        }
+
+        (Some(sym::simd), ArgParser::List(x)) => {
+            let Some(item) = x.single() else {
+                todo!("Handle incorrect syntax");
+            };
+            let Some(lit) = item.lit() else {
+                todo!("Handle invalid lit");
+            };
+            match lit.kind {
+                LitKind::Int(v, _) => {
+                    Some(ReprSimd(Some(v.0 as u16)))
+                }
+                _ => todo!("Handle invalid lit kind"),
+            }
         }
 
         (
@@ -167,7 +182,7 @@ fn parse_repr<S: Stage>(
             Some(
                 name @ sym::Rust
                 | name @ sym::C
-                | name @ sym::simd
+                // | name @ sym::simd
                 | name @ sym::transparent
                 | name @ int_pat!(),
             ),

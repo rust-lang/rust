@@ -1513,6 +1513,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut size = None;
         let mut max_align: Option<Align> = None;
         let mut min_pack: Option<Align> = None;
+        let mut target_feature: Option<u16> = None;
 
         // Generate a deterministically-derived seed from the item's path hash
         // to allow for cross-crate compilation to actually work
@@ -1541,7 +1542,10 @@ impl<'tcx> TyCtxt<'tcx> {
                         ReprFlags::empty()
                     }
                     attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
-                    attr::ReprSimd => ReprFlags::IS_SIMD,
+                    attr::ReprSimd(feature) => {
+                        target_feature = feature;
+                        ReprFlags::IS_SIMD
+                    }
                     attr::ReprInt(i) => {
                         size = Some(match i {
                             attr::IntType::SignedInt(x) => match x {
@@ -1586,7 +1590,14 @@ impl<'tcx> TyCtxt<'tcx> {
             flags.insert(ReprFlags::IS_LINEAR);
         }
 
-        ReprOptions { int: size, align: max_align, pack: min_pack, flags, field_shuffle_seed }
+        ReprOptions {
+            int: size,
+            align: max_align,
+            pack: min_pack,
+            flags,
+            field_shuffle_seed,
+            target_feature,
+        }
     }
 
     /// Look up the name of a definition across crates. This does not look at HIR.

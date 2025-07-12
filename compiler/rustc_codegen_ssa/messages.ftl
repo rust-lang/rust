@@ -349,6 +349,8 @@ codegen_ssa_thorin_unit_not_in_index = unit {$unit} from input package is not in
 
 codegen_ssa_thorin_unsupported_relocation = unsupported relocation for section {$section} at offset {$offset}
 
+codegen_ssa_type_depends_target_feature = The `{$ty}` type depends on the target feature `{$target_feature}` being enabled
+
 codegen_ssa_unable_to_exe_linker = could not exec the linker `{$linker_path}`
     .note = {$error}
     .command_note = {$command_formatted}

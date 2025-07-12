@@ -1202,6 +1202,24 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    pub fn abi_target_feature(self) -> Option<String> {
+        self.ty_adt_def()
+            .map(|adt| {
+                adt.repr().target_feature.map(|id| {
+                    String::from(match id {
+                        0 => "neon",
+                        1 => "sse",
+                        2 => "sse2",
+                        3 => "avx",
+                        4 => "avx512f",
+                        5 => "amx-avx512",
+                        _ => panic!("Unknown ID: {id}"),
+                    })
+                })
+            })
+            .flatten()
+    }
+
     pub fn simd_size_and_type(self, tcx: TyCtxt<'tcx>) -> (u64, Ty<'tcx>) {
         let Adt(def, args) = self.kind() else {
             bug!("`simd_size_and_type` called on invalid type")
