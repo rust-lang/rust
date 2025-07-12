@@ -1443,7 +1443,7 @@ pub(crate) fn make_test_description<R: Read>(
     // since we run the pretty printer across all tests by default.
     // If desired, we could add a `should-fail-pretty` annotation.
     let should_panic = match config.mode {
-        crate::common::Pretty => ShouldPanic::No,
+        TestMode::Pretty => ShouldPanic::No,
         _ if should_fail => ShouldPanic::Yes,
         _ => ShouldPanic::No,
     };

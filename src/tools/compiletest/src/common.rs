@@ -8,7 +8,6 @@ use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 use serde::de::{Deserialize, Deserializer, Error as _};
 
-pub use self::TestMode::*;
 use crate::executor::{ColorConfig, OutputFormat};
 use crate::fatal;
 use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
@@ -39,7 +38,7 @@ impl TestMode {
         // Pretty-printing tests could run concurrently, and if they do,
         // they need to keep their output segregated.
         match self {
-            Pretty => ".pretty",
+            TestMode::Pretty => ".pretty",
             _ => "",
         }
     }
@@ -48,7 +47,7 @@ impl TestMode {
         // Coverage tests use the same test files for multiple test modes,
         // so each mode should have a separate output directory.
         match self {
-            CoverageMap | CoverageRun => self.to_str(),
+            TestMode::CoverageMap | TestMode::CoverageRun => self.to_str(),
             _ => "",
         }
     }
