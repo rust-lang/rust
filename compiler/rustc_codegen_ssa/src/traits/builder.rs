@@ -136,6 +136,16 @@ pub trait BuilderMethods<'a, 'tcx>:
     ) -> Self::Value;
     fn unreachable(&mut self);
 
+    /// Like [`Self::unreachable`], but for use in the middle of a basic block.
+    fn unreachable_nonterminator(&mut self) {
+        // This is the preferred LLVM incantation for this per
+        // https://llvm.org/docs/Frontend/PerformanceTips.html#other-things-to-consider
+        // Other backends may override if they have a better way.
+        let const_true = self.cx().const_bool(true);
+        let poison_ptr = self.const_poison(self.cx().type_ptr());
+        self.store(const_true, poison_ptr, Align::ONE);
+    }
+
     fn add(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fadd_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
