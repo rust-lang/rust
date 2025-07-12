@@ -13,7 +13,7 @@
 #![feature(pointer_is_aligned_to)]
 #![feature(ptr_metadata)]
 #![feature(unqualified_local_imports)]
-#![feature(derive_coerce_pointee)]
+#![cfg_attr(bootstrap, feature(derive_coerce_pointee))]
 #![feature(arbitrary_self_types)]
 // Configure clippy and other lints
 #![allow(
