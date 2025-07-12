@@ -367,6 +367,8 @@ pub(crate) enum HrefError {
     Private,
     // Not in external cache, href link should be in same page
     NotInExternalCache,
+    /// Refers to an unnamable item, such as one defined within a function or const block.
+    UnnamableItem,
 }
 
 // Panics if `syms` is empty.
@@ -509,7 +511,13 @@ fn url_parts(
             builder.extend(module_fqp.iter().copied());
             Ok(builder)
         }
-        ExternalLocation::Local => Ok(href_relative_parts(module_fqp, relative_to)),
+        ExternalLocation::Local => {
+            if module_fqp.iter().any(|sym| sym.as_str() == "_") {
+                Err(HrefError::UnnamableItem)
+            } else {
+                Ok(href_relative_parts(module_fqp, relative_to))
+            }
+        }
         ExternalLocation::Unknown => Err(HrefError::DocumentationNotBuilt),
     }
 }
