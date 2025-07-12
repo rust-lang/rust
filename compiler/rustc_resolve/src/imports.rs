@@ -333,9 +333,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         })
     }
 
+    // pub(crate) fn try_define(
+    //     &mut self,
+    //     module: Module<'ra>,
+    //     key: BindingKey,
+    //     binding: NameBinding<'ra>,
+    //     warn_ambiguity: bool,
+    // ) -> Result<(), NameBinding<'ra>> {
+    //     if module.is_local_module() {
+    //         self.try_define_local(module, key, binding, warn_ambiguity)
+    //     } else {
+    //         self.define_extern(module, key, binding);
+    //         Ok(())
+    //     }
+    // }
+
     /// Define the name or return the existing binding if there is a collision.
     /// `update` indicates if the definition is a redefinition of an existing binding.
-    pub(crate) fn try_define(
+    pub(crate) fn try_define_local(
         &mut self,
         module: Module<'ra>,
         ident: Ident,
@@ -496,7 +511,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             if self.is_accessible_from(binding.vis, scope) {
                 let imported_binding = self.import(binding, *import);
-                let _ = self.try_define(
+                let _ = self.try_define_local(
                     import.parent_scope.module,
                     ident,
                     key.ns,
@@ -522,7 +537,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let dummy_binding = self.import(dummy_binding, import);
             self.per_ns(|this, ns| {
                 let module = import.parent_scope.module;
-                let _ = this.try_define(module, target, ns, dummy_binding, false);
+                let _ = this.try_define_local(module, target, ns, dummy_binding, false);
                 // Don't remove underscores from `single_imports`, they were never added.
                 if target.name != kw::Underscore {
                     let key = BindingKey::new(target, ns);
@@ -902,7 +917,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         // We need the `target`, `source` can be extracted.
                         let imported_binding = this.import(binding, import);
-                        this.define_binding(parent, target, ns, imported_binding);
+                        this.define_binding_local(parent, target, ns, imported_binding);
                         PendingBinding::Ready(Some(imported_binding))
                     }
                     Err(Determinacy::Determined) => {
@@ -1519,7 +1534,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .borrow()
                     .binding()
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
-                let _ = self.try_define(
+                let _ = self.try_define_local(
                     import.parent_scope.module,
                     key.ident,
                     key.ns,

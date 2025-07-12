@@ -1895,7 +1895,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         import_ids
     }
 
-    fn resolutions(&mut self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
+    fn resolutions(&self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
         if module.populate_on_access.get() {
             module.populate_on_access.set(false);
             self.build_reduced_graph_external(module);
@@ -1904,7 +1904,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn resolution(
-        &mut self,
+        &self,
         module: Module<'ra>,
         key: BindingKey,
     ) -> &'ra RefCell<NameResolution<'ra>> {
