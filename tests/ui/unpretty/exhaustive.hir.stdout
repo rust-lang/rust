@@ -30,7 +30,7 @@
 #![allow(incomplete_features)]
 #[prelude_import]
 use std::prelude::rust_2024::*;
-#[macro_use]
+#[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 
 #[prelude_import]

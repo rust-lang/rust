@@ -29,6 +29,7 @@ use crate::attributes::link_attrs::{
 };
 use crate::attributes::lint_helpers::{AsPtrParser, PassByValueParser, PubTransparentParser};
 use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
+use crate::attributes::macro_attrs::{MacroEscapeParser, MacroUseParser};
 use crate::attributes::must_use::MustUseParser;
 use crate::attributes::no_implicit_prelude::NoImplicitPreludeParser;
 use crate::attributes::non_exhaustive::NonExhaustiveParser;
@@ -122,6 +123,7 @@ attribute_parsers!(
         BodyStabilityParser,
         ConfusablesParser,
         ConstStabilityParser,
+        MacroUseParser,
         NakedParser,
         StabilityParser,
         UsedParser,
@@ -166,6 +168,7 @@ attribute_parsers!(
         Single<WithoutArgs<FfiPureParser>>,
         Single<WithoutArgs<FundamentalParser>>,
         Single<WithoutArgs<LoopMatchParser>>,
+        Single<WithoutArgs<MacroEscapeParser>>,
         Single<WithoutArgs<MarkerParser>>,
         Single<WithoutArgs<MayDangleParser>>,
         Single<WithoutArgs<NoImplicitPreludeParser>>,
@@ -352,6 +355,17 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedNoArgs,
+        })
+    }
+
+    /// emit an error that a `name` was expected here
+    pub(crate) fn expected_identifier(&self, span: Span) -> ErrorGuaranteed {
+        self.emit_err(AttributeParseError {
+            span,
+            attr_span: self.attr_span,
+            template: self.template.clone(),
+            attribute: self.attr_path.clone(),
+            reason: AttributeParseErrorReason::ExpectedIdentifier,
         })
     }
 
@@ -733,6 +747,11 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         attributes.extend(parsed_attributes);
 
         attributes
+    }
+
+    /// Returns whether there is a parser for an attribute with this name
+    pub fn is_parsed_attribute(path: &[Symbol]) -> bool {
+        Late::parsers().0.contains_key(path)
     }
 
     fn lower_attr_args(&self, args: &ast::AttrArgs, lower_span: impl Fn(Span) -> Span) -> AttrArgs {

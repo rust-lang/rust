@@ -316,6 +316,8 @@ pub fn check_builtin_meta_item(
                 | sym::rustc_layout_scalar_valid_range_start
                 | sym::rustc_layout_scalar_valid_range_end
                 | sym::no_implicit_prelude
+                | sym::macro_use
+                | sym::macro_escape
         ) {
             return;
         }

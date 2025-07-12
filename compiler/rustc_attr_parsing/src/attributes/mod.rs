@@ -35,6 +35,7 @@ pub(crate) mod inline;
 pub(crate) mod link_attrs;
 pub(crate) mod lint_helpers;
 pub(crate) mod loop_match;
+pub(crate) mod macro_attrs;
 pub(crate) mod must_use;
 pub(crate) mod no_implicit_prelude;
 pub(crate) mod non_exhaustive;
@@ -84,7 +85,7 @@ pub(crate) trait AttributeParser<S: Stage>: Default + 'static {
     /// that'd be equivalent to unconditionally applying an attribute to
     /// every single syntax item that could have attributes applied to it.
     /// Your accept mappings should determine whether this returns something.
-    fn finalize(self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind>;
+    fn finalize(self, cx: &mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind>;
 }
 
 /// Alternative to [`AttributeParser`] that automatically handles state management.
@@ -160,7 +161,7 @@ impl<T: SingleAttributeParser<S>, S: Stage> AttributeParser<S> for Single<T, S> 
         },
     )];
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         Some(self.1?.0)
     }
 }
@@ -330,7 +331,7 @@ impl<T: CombineAttributeParser<S>, S: Stage> AttributeParser<S> for Combine<T, S
         },
     )];
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if let Some(first_span) = self.first_span {
             Some(T::CONVERT(self.items, first_span))
         } else {

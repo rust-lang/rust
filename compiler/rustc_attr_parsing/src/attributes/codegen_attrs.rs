@@ -100,7 +100,7 @@ impl<S: Stage> AttributeParser<S> for NakedParser {
             }
         })];
 
-    fn finalize(self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, cx: &mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         // FIXME(jdonszelmann): upgrade this list to *parsed* attributes
         // once all of these have parsed forms. That'd make the check much nicer...
         //
@@ -271,7 +271,7 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
         },
     )];
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         // Ratcheting behaviour, if both `linker` and `compiler` are specified, use `linker`
         Some(match (self.first_compiler, self.first_linker) {
             (_, Some(span)) => AttributeKind::Used { used_by: UsedBy::Linker, span },

@@ -438,7 +438,7 @@ pub(crate) struct IllFormedAttributeInput {
 
 #[derive(Diagnostic)]
 #[diag(attr_parsing_ill_formed_attribute_input)]
-pub(crate) struct MustUseIllFormedAttributeInput {
+pub(crate) struct IllFormedAttributeInputLint {
     #[primary_span]
     pub span: Span,
     pub num_suggestions: usize,
@@ -525,6 +525,7 @@ pub(crate) enum AttributeParseErrorReason {
     ExpectedNameValue(Option<Symbol>),
     DuplicateKey(Symbol),
     ExpectedSpecificArgument { possibilities: Vec<&'static str>, strings: bool },
+    ExpectedIdentifier,
 }
 
 pub(crate) struct AttributeParseError {
@@ -576,11 +577,11 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                 diag.code(E0538);
             }
             AttributeParseErrorReason::UnexpectedLiteral => {
-                diag.span_label(self.span, format!("didn't expect a literal here"));
+                diag.span_label(self.span, "didn't expect a literal here");
                 diag.code(E0565);
             }
             AttributeParseErrorReason::ExpectedNoArgs => {
-                diag.span_label(self.span, format!("didn't expect any arguments here"));
+                diag.span_label(self.span, "didn't expect any arguments here");
                 diag.code(E0565);
             }
             AttributeParseErrorReason::ExpectedNameValue(None) => {
@@ -617,6 +618,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                         diag.span_label(self.span, format!("valid arguments are {res}"));
                     }
                 }
+            }
+            AttributeParseErrorReason::ExpectedIdentifier => {
+                diag.span_label(self.span, "expected a valid identifier here");
             }
         }
 

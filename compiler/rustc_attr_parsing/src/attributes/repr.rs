@@ -317,7 +317,7 @@ impl AlignParser {
 impl<S: Stage> AttributeParser<S> for AlignParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         let (align, span) = self.0?;
         Some(AttributeKind::Align { align, span })
     }

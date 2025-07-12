@@ -7,10 +7,12 @@
 
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
+use std::slice;
 
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, ast};
 use rustc_attr_data_structures::{AttributeKind, InlineAttr, ReprAttr, find_attr};
+use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
@@ -203,6 +205,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::LinkSection { span: attr_span, .. }) => {
                     self.check_link_section(hir_id, *attr_span, span, target)
                 }
+                Attribute::Parsed(AttributeKind::MacroUse { span, .. }) => {
+                    self.check_macro_use(hir_id, sym::macro_use, *span, target)
+                }
+                Attribute::Parsed(AttributeKind::MacroEscape(span)) => {
+                    self.check_macro_use(hir_id, sym::macro_escape, *span, target)
+                }
                 Attribute::Parsed(AttributeKind::Naked(attr_span)) => {
                     self.check_naked(hir_id, *attr_span, span, target)
                 }
@@ -327,9 +335,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::link_ordinal, ..] => self.check_link_ordinal(attr, span, target),
                         [sym::link, ..] => self.check_link(hir_id, attr, span, target),
-                        [sym::macro_use, ..] | [sym::macro_escape, ..] => {
-                            self.check_macro_use(hir_id, attr, target)
-                        }
                         [sym::path, ..] => self.check_generic_attr_unparsed(hir_id, attr, target, Target::Mod),
                         [sym::macro_export, ..] => self.check_macro_export(hir_id, attr, target),
                         [sym::should_panic, ..] => {
@@ -384,11 +389,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::custom_mir,
                             ..
                         ] => {}
-                        [name, ..] => {
+                        [name, rest@..] => {
                             match BUILTIN_ATTRIBUTE_MAP.get(name) {
                                 // checked below
                                 Some(BuiltinAttribute { type_: AttributeType::CrateLevel, .. }) => {}
                                 Some(_) => {
+                                    if rest.len() > 0 && AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(name)) {
+                                        // Check if we tried to use a builtin attribute as an attribute namespace, like `#[must_use::skip]`.
+                                        // This check is here to solve https://github.com/rust-lang/rust/issues/137590
+                                        // An error is already produced for this case elsewhere
+                                        continue
+                                    }
+
                                     // FIXME: differentiate between unstable and internal attributes just
                                     // like we do with features instead of just accepting `rustc_`
                                     // attributes by name. That should allow trimming the above list, too.
@@ -2277,17 +2289,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_macro_use(&self, hir_id: HirId, attr: &Attribute, target: Target) {
-        let Some(name) = attr.name() else {
-            return;
-        };
+    fn check_macro_use(&self, hir_id: HirId, name: Symbol, attr_span: Span, target: Target) {
         match target {
             Target::ExternCrate | Target::Mod => {}
             _ => {
                 self.tcx.emit_node_span_lint(
                     UNUSED_ATTRIBUTES,
                     hir_id,
-                    attr.span(),
+                    attr_span,
                     errors::MacroUse { name },
                 );
             }
@@ -2340,7 +2349,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // Warn on useless empty attributes.
         // FIXME(jdonszelmann): this lint should be moved to attribute parsing, see `AcceptContext::warn_empty_attribute`
         let note = if attr.has_any_name(&[
-            sym::macro_use,
             sym::allow,
             sym::expect,
             sym::warn,
