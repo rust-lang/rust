@@ -7,10 +7,12 @@
 
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
+use std::slice;
 
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, ast};
 use rustc_attr_data_structures::{AttributeKind, InlineAttr, ReprAttr, find_attr};
+use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
@@ -384,11 +386,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::custom_mir,
                             ..
                         ] => {}
-                        [name, ..] => {
+                        [name, rest@..] => {
                             match BUILTIN_ATTRIBUTE_MAP.get(name) {
                                 // checked below
                                 Some(BuiltinAttribute { type_: AttributeType::CrateLevel, .. }) => {}
                                 Some(_) => {
+                                    if rest.len() > 0 && AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(name)) {
+                                        // Check if we tried to use a builtin attribute as an attribute namespace, like `#[must_use::skip]`.
+                                        // This check is here to solve https://github.com/rust-lang/rust/issues/137590
+                                        // An error is already produced for this case elsewhere
+                                        continue
+                                    }
+
                                     // FIXME: differentiate between unstable and internal attributes just
                                     // like we do with features instead of just accepting `rustc_`
                                     // attributes by name. That should allow trimming the above list, too.
