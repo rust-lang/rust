@@ -223,7 +223,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
             }
             // Skips type aliases, as they are meant to be transparent.
             // FIXME(type_alias_impl_trait): can we require mentioning nested type aliases explicitly?
-            ty::Alias(ty::Free, alias_ty) if alias_ty.def_id.is_local() => {
+            ty::Alias(ty::Free, alias_ty) if let Some(def_id) = alias_ty.def_id.as_local() => {
+                if !self.seen.insert(def_id) {
+                    return;
+                }
                 self.tcx
                     .type_of(alias_ty.def_id)
                     .instantiate(self.tcx, alias_ty.args)
@@ -256,16 +259,16 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                                 return;
                             }
 
-                            let impl_args = alias_ty.args.rebase_onto(
+                            let alias_args = alias_ty.args.rebase_onto(
                                 self.tcx,
                                 impl_trait_ref.def_id,
                                 ty::GenericArgs::identity_for_item(self.tcx, parent),
                             );
 
-                            if self.tcx.check_args_compatible(assoc.def_id, impl_args) {
+                            if self.tcx.check_args_compatible(assoc.def_id, alias_args) {
                                 self.tcx
                                     .type_of(assoc.def_id)
-                                    .instantiate(self.tcx, impl_args)
+                                    .instantiate(self.tcx, alias_args)
                                     .visit_with(self);
                                 return;
                             } else {
