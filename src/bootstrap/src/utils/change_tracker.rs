@@ -466,4 +466,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "The --extra-checks flag now supports prefixing any check with `auto:` to only run it if relevant files are modified",
     },
+    ChangeInfo {
+        change_id: 143733,
+        severity: ChangeSeverity::Info,
+        summary: "Option `tool.TOOL_NAME.features` now works on any subcommand, not just `build`.",
+    },
 ];

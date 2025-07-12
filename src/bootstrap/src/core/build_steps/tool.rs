@@ -136,19 +136,6 @@ impl Step for ToolBuild {
             _ => panic!("unexpected Mode for tool build"),
         }
 
-        // build.tool.TOOL_NAME.features in bootstrap.toml allows specifying which features to
-        // enable for a specific tool. `extra_features` instead is not controlled by the toml and
-        // provides features that are always enabled for a specific tool (e.g. "in-rust-tree" for
-        // rust-analyzer). Finally, `prepare_tool_cargo` might add more features to adapt the build
-        // to the chosen flags (e.g. "all-static" for cargo if `cargo_native_static` is true).
-        let mut features = builder
-            .config
-            .tool
-            .get(self.tool)
-            .and_then(|tool| tool.features.clone())
-            .unwrap_or_default();
-        features.extend(self.extra_features.clone());
-
         let mut cargo = prepare_tool_cargo(
             builder,
             self.compiler,
@@ -157,7 +144,7 @@ impl Step for ToolBuild {
             Kind::Build,
             path,
             self.source_type,
-            &features,
+            &self.extra_features,
         );
 
         // The stage0 compiler changes infrequently and does not directly depend on code
@@ -244,7 +231,8 @@ pub fn prepare_tool_cargo(
 ) -> CargoCommand {
     let mut cargo = builder::Cargo::new(builder, compiler, mode, source_type, target, cmd_kind);
 
-    let dir = builder.src.join(path);
+    let path = PathBuf::from(path);
+    let dir = builder.src.join(&path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
     let mut features = extra_features.to_vec();
@@ -260,6 +248,18 @@ pub fn prepare_tool_cargo(
             features.push("all-static".to_string());
         }
     }
+
+    // build.tool.TOOL_NAME.features in bootstrap.toml allows specifying which features to enable
+    // for a specific tool. `extra_features` instead is not controlled by the toml and provides
+    // features that are always enabled for a specific tool (e.g. "in-rust-tree" for rust-analyzer).
+    // Finally, `prepare_tool_cargo` above here might add more features to adapt the build
+    // to the chosen flags (e.g. "all-static" for cargo if `cargo_native_static` is true).
+    builder
+        .config
+        .tool
+        .iter()
+        .filter(|(tool_name, _)| path.ends_with(tool_name))
+        .for_each(|(_, tool)| features.extend(tool.features.clone().unwrap_or_default()));
 
     // clippy tests need to know about the stage sysroot. Set them consistently while building to
     // avoid rebuilding when running tests.
