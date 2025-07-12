@@ -2,9 +2,9 @@
 
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::{bug, mir};
-use rustc_smir::Tables;
-use rustc_smir::bridge::SmirError;
-use rustc_smir::context::SmirCtxt;
+use rustc_public_bridge::Tables;
+use rustc_public_bridge::bridge::SmirError;
+use rustc_public_bridge::context::SmirCtxt;
 
 use crate::compiler_interface::BridgeTys;
 use crate::mir::alloc::GlobalAlloc;
@@ -821,7 +821,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        use rustc_smir::context::SmirAllocRange;
+        use rustc_public_bridge::context::SmirAllocRange;
         alloc::allocation_filter(
             self,
             cx.alloc_range(rustc_abi::Size::ZERO, self.size()),

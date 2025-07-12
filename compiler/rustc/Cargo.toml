@@ -13,11 +13,11 @@ rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 rustc_driver = { path = "../rustc_driver" }
 rustc_driver_impl = { path = "../rustc_driver_impl" }
 
-# Make sure rustc_smir ends up in the sysroot, because this
-# crate is intended to be used by stable MIR consumers, which are not in-tree.
-rustc_smir = { path = "../rustc_smir" }
+rustc_public = { path = "../rustc_public" }
 
-stable_mir = { path = "../stable_mir" }
+# Make sure rustc_public_bridge ends up in the sysroot, because this
+# crate is intended to be used by stable MIR consumers, which are not in-tree.
+rustc_public_bridge = { path = "../rustc_public_bridge" }
 # tidy-alphabetical-end
 
 [dependencies.tikv-jemalloc-sys]

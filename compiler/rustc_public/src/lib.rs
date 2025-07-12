@@ -1,4 +1,4 @@
-//! The WIP stable interface to rustc internals.
+//! The WIP public interface to rustc internals.
 //!
 //! For more information see <https://github.com/rust-lang/project-stable-mir>
 //!
@@ -22,9 +22,9 @@
 use std::fmt::Debug;
 use std::{fmt, io};
 
-pub(crate) use rustc_smir::IndexedVal;
-use rustc_smir::Tables;
-use rustc_smir::context::SmirCtxt;
+pub(crate) use rustc_public_bridge::IndexedVal;
+use rustc_public_bridge::Tables;
+use rustc_public_bridge::context::SmirCtxt;
 /// Export the rustc_internal APIs. Note that this module has no stability
 /// guarantees and it is not taken into account for semver.
 #[cfg(feature = "rustc_internal")]
@@ -244,7 +244,7 @@ pub fn opaque<T: Debug>(value: &T) -> Opaque {
 
 macro_rules! bridge_impl {
     ($name: ident, $ty: ty) => {
-        impl rustc_smir::bridge::$name<compiler_interface::BridgeTys> for $ty {
+        impl rustc_public_bridge::bridge::$name<compiler_interface::BridgeTys> for $ty {
             fn new(def: crate::DefId) -> Self {
                 Self(def)
             }
@@ -273,13 +273,15 @@ bridge_impl!(AssocDef, crate::ty::AssocDef);
 bridge_impl!(OpaqueDef, crate::ty::OpaqueDef);
 bridge_impl!(StaticDef, crate::mir::mono::StaticDef);
 
-impl rustc_smir::bridge::Prov<compiler_interface::BridgeTys> for crate::ty::Prov {
+impl rustc_public_bridge::bridge::Prov<compiler_interface::BridgeTys> for crate::ty::Prov {
     fn new(aid: crate::mir::alloc::AllocId) -> Self {
         Self(aid)
     }
 }
 
-impl rustc_smir::bridge::Allocation<compiler_interface::BridgeTys> for crate::ty::Allocation {
+impl rustc_public_bridge::bridge::Allocation<compiler_interface::BridgeTys>
+    for crate::ty::Allocation
+{
     fn new<'tcx>(
         bytes: Vec<Option<u8>>,
         ptrs: Vec<(usize, rustc_middle::mir::interpret::AllocId)>,
