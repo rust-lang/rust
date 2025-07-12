@@ -10,7 +10,7 @@ use rustc_attr_data_structures::{
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_feature::GateIssue;
-use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId};
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
 use rustc_session::Session;
@@ -68,9 +68,6 @@ impl DeprecationEntry {
 /// A stability index, giving the stability level for items and methods.
 #[derive(HashStable, Debug)]
 pub struct Index {
-    /// This is mostly a cache, except the stabilities of local items
-    /// are filled by the annotator.
-    pub const_stab_map: LocalDefIdMap<ConstStability>,
     /// Mapping from feature name to feature name based on the `implied_by` field of `#[unstable]`
     /// attributes. If a `#[unstable(feature = "implier", implied_by = "impliee")]` attribute
     /// exists, then this map will have a `impliee -> implier` entry.
@@ -84,12 +81,6 @@ pub struct Index {
     /// attribute had an `implies` meta item, then a map would be necessary when avoiding a "use of
     /// unstable feature" error for a feature that was implied.
     pub implications: UnordMap<Symbol, Symbol>,
-}
-
-impl Index {
-    pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<ConstStability> {
-        self.const_stab_map.get(&def_id).copied()
-    }
 }
 
 pub fn report_unstable(
