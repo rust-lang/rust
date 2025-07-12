@@ -1029,7 +1029,9 @@
 # sources are available.
 #
 # Setting this to `false` generates slower code, but removes the requirement for a C toolchain in
-# order to run `x check`.
+# order to run `x check`. This may also be given a path to an existing build of the builtins
+# runtime library from LLVM's compiler-rt. This option will override the same option under [build]
+# section.
 #optimized-compiler-builtins = build.optimized-compiler-builtins (bool)
 
 # Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
