@@ -1304,6 +1304,7 @@ impl AttributeExt for Attribute {
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::MayDangle(span)) => *span,
             Attribute::Parsed(AttributeKind::Ignore { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::AutomaticallyDerived(span)) => *span,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }
@@ -1334,6 +1335,11 @@ impl AttributeExt for Attribute {
             _ => None,
         }
     }
+
+    fn is_automatically_derived_attr(&self) -> bool {
+        matches!(self, Attribute::Parsed(AttributeKind::AutomaticallyDerived(..)))
+    }
+
     #[inline]
     fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         match &self {

@@ -41,18 +41,6 @@ LL | #[should_panic]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:70:1
-   |
-LL | #[automatically_derived]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:69:1
-   |
-LL | #[automatically_derived]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:14:1
    |
 LL | #![crate_name = "unused_attr_duplicate2"]
@@ -189,6 +177,18 @@ note: attribute also specified here
    |
 LL | #[non_exhaustive]
    | ^^^^^^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:70:1
+   |
+LL | #[automatically_derived]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:69:1
+   |
+LL | #[automatically_derived]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:74:1

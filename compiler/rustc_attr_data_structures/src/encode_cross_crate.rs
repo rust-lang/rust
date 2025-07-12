@@ -18,6 +18,7 @@ impl AttributeKind {
             AllowIncoherentImpl(..) => No,
             AllowInternalUnstable(..) => Yes,
             AsPtr(..) => Yes,
+            AutomaticallyDerived(..) => Yes,
             BodyStability { .. } => No,
             CoherenceIsCore => No,
             Coinductive(..) => No,

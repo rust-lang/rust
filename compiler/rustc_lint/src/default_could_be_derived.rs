@@ -1,3 +1,4 @@
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
@@ -62,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
         let hir::ImplItemKind::Fn(_sig, body_id) = impl_item.kind else { return };
         let assoc = cx.tcx.associated_item(impl_item.owner_id);
         let parent = assoc.container_id(cx.tcx);
-        if cx.tcx.has_attr(parent, sym::automatically_derived) {
+        if find_attr!(cx.tcx.get_all_attrs(parent), AttributeKind::AutomaticallyDerived(..)) {
             // We don't care about what `#[derive(Default)]` produces in this lint.
             return;
         }

@@ -1784,9 +1784,9 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
     tcx.hir_parent_owner_iter(id)
         .filter(|(_, node)| matches!(node, OwnerNode::Item(item) if matches!(item.kind, ItemKind::Impl(_))))
         .any(|(id, _)| {
-            has_attr(
+            find_attr!(
                 tcx.hir_attrs(tcx.local_def_id_to_hir_id(id.def_id)),
-                sym::automatically_derived,
+                AttributeKind::AutomaticallyDerived(..)
             )
         })
 }

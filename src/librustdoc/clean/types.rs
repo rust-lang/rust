@@ -796,6 +796,9 @@ impl Item {
                             }
                             Some(format!("#[target_feature({output})]"))
                         }
+                        hir::Attribute::Parsed(AttributeKind::AutomaticallyDerived(..)) => {
+                            Some("#[automatically_derived]".to_string())
+                        }
                         _ => Some({
                             let mut s = rustc_hir_pretty::attribute_to_string(&tcx, attr);
                             assert_eq!(s.pop(), Some('\n'));

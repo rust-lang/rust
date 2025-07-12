@@ -97,7 +97,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
-use rustc_span::{BytePos, Span, Symbol, sym};
+use rustc_span::{BytePos, Span, Symbol};
 use tracing::{debug, instrument};
 
 use self::LiveNodeKind::*;
@@ -140,7 +140,7 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // Don't run unused pass for #[derive()]
     let parent = tcx.local_parent(def_id);
     if let DefKind::Impl { .. } = tcx.def_kind(parent)
-        && tcx.has_attr(parent, sym::automatically_derived)
+        && find_attr!(tcx.get_all_attrs(parent), AttributeKind::AutomaticallyDerived(..))
     {
         return;
     }

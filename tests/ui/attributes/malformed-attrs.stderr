@@ -164,12 +164,6 @@ error: malformed `debugger_visualizer` attribute input
 LL | #[debugger_visualizer]
    | ^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[debugger_visualizer(natvis_file = "...", gdb_script_file = "...")]`
 
-error: malformed `automatically_derived` attribute input
-  --> $DIR/malformed-attrs.rs:191:1
-   |
-LL | #[automatically_derived = 18]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[automatically_derived]`
-
 error: malformed `thread_local` attribute input
   --> $DIR/malformed-attrs.rs:203:1
    |
@@ -545,6 +539,15 @@ LL |     #[unsafe(ffi_const = 1)]
    |     |                  |
    |     |                  didn't expect any arguments here
    |     help: must be of the form: `#[ffi_const]`
+
+error[E0565]: malformed `automatically_derived` attribute input
+  --> $DIR/malformed-attrs.rs:191:1
+   |
+LL | #[automatically_derived = 18]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^----^
+   | |                       |
+   | |                       didn't expect any arguments here
+   | help: must be of the form: `#[automatically_derived]`
 
 error[E0565]: malformed `non_exhaustive` attribute input
   --> $DIR/malformed-attrs.rs:197:1
