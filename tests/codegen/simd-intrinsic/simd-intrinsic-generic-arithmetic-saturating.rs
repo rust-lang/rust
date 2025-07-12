@@ -5,66 +5,11 @@
 #![allow(non_camel_case_types)]
 #![deny(unused)]
 
+#[path = "../../auxiliary/minisimd.rs"]
+mod minisimd;
+use minisimd::*;
+
 use std::intrinsics::simd::{simd_saturating_add, simd_saturating_sub};
-
-#[rustfmt::skip]
-mod types {
-    // signed integer types
-
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i8x2([i8; 2]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i8x4([i8; 4]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i8x8([i8; 8]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i8x16([i8; 16]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i8x32([i8; 32]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i8x64([i8; 64]);
-
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i16x2([i16; 2]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i16x4([i16; 4]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i16x8([i16; 8]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i16x16([i16; 16]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i16x32([i16; 32]);
-
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i32x2([i32; 2]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i32x4([i32; 4]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i32x8([i32; 8]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i32x16([i32; 16]);
-
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i64x2([i64; 2]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i64x4([i64; 4]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i64x8([i64; 8]);
-
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i128x2([i128; 2]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct i128x4([i128; 4]);
-
-    // unsigned integer types
-
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u8x2([u8; 2]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u8x4([u8; 4]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u8x8([u8; 8]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u8x16([u8; 16]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u8x32([u8; 32]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u8x64([u8; 64]);
-
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u16x2([u16; 2]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u16x4([u16; 4]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u16x8([u16; 8]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u16x16([u16; 16]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u16x32([u16; 32]);
-
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u32x2([u32; 2]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u32x4([u32; 4]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u32x8([u32; 8]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u32x16([u32; 16]);
-
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u64x2([u64; 2]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u64x4([u64; 4]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u64x8([u64; 8]);
-
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u128x2([u128; 2]);
-    #[repr(simd)] #[derive(Copy, Clone)] pub struct u128x4([u128; 4]);
-}
-
-use types::*;
 
 // NOTE(eddyb) `%{{x|0}}` is used because on some targets (e.g. WASM)
 // SIMD vectors are passed directly, resulting in `%x` being a vector,

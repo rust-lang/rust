@@ -5,16 +5,14 @@
 #![crate_type = "lib"]
 #![feature(repr_simd, core_intrinsics)]
 
+#[path = "../../auxiliary/minisimd.rs"]
+mod minisimd;
 use std::intrinsics::simd::simd_arith_offset;
 
-/// A vector of *const T.
-#[derive(Debug, Copy, Clone)]
-#[repr(simd)]
-pub struct SimdConstPtr<T, const LANES: usize>([*const T; LANES]);
+use minisimd::*;
 
-#[derive(Debug, Copy, Clone)]
-#[repr(simd)]
-pub struct Simd<T, const LANES: usize>([T; LANES]);
+/// A vector of *const T.
+pub type SimdConstPtr<T, const LANES: usize> = Simd<*const T, LANES>;
 
 // CHECK-LABEL: smoke
 #[no_mangle]

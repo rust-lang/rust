@@ -4,21 +4,23 @@
 //@ ignore-endian-big
 #![feature(repr_simd, core_intrinsics)]
 
+#[path = "../../auxiliary/minisimd.rs"]
+mod minisimd;
+use minisimd::*;
+
 use std::intrinsics::simd::{simd_bitmask, simd_select_bitmask};
 
 fn main() {
     // Non-power-of-2 multi-byte mask.
-    #[repr(simd, packed)]
     #[allow(non_camel_case_types)]
-    #[derive(Copy, Clone, Debug, PartialEq)]
-    struct i32x10([i32; 10]);
+    type i32x10 = PackedSimd<i32, 10>;
     impl i32x10 {
         fn splat(x: i32) -> Self {
             Self([x; 10])
         }
     }
     unsafe {
-        let mask = i32x10([!0, !0, 0, !0, 0, 0, !0, 0, !0, 0]);
+        let mask = i32x10::from_array([!0, !0, 0, !0, 0, 0, !0, 0, !0, 0]);
         let mask_bits = if cfg!(target_endian = "little") { 0b0101001011 } else { 0b1101001010 };
         let mask_bytes =
             if cfg!(target_endian = "little") { [0b01001011, 0b01] } else { [0b11, 0b01001010] };
@@ -43,17 +45,20 @@ fn main() {
     }
 
     // Test for a mask where the next multiple of 8 is not a power of two.
-    #[repr(simd, packed)]
     #[allow(non_camel_case_types)]
-    #[derive(Copy, Clone, Debug, PartialEq)]
-    struct i32x20([i32; 20]);
+    type i32x20 = PackedSimd<i32, 20>;
     impl i32x20 {
         fn splat(x: i32) -> Self {
             Self([x; 20])
         }
     }
     unsafe {
-        let mask = i32x20([!0, !0, 0, !0, 0, 0, !0, 0, !0, 0, 0, 0, 0, !0, !0, !0, !0, !0, !0, !0]);
+        let mask = i32x20::from_array([
+            !0, !0,  0, !0,  0,
+             0, !0,  0, !0,  0,
+             0,  0,  0, !0, !0,
+            !0, !0, !0, !0, !0,
+        ]);
         let mask_bits = if cfg!(target_endian = "little") {
             0b11111110000101001011
         } else {

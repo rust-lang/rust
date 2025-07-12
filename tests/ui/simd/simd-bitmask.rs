@@ -1,11 +1,11 @@
 //@run-pass
 #![feature(repr_simd, core_intrinsics)]
 
-use std::intrinsics::simd::{simd_bitmask, simd_select_bitmask};
+#[path = "../../auxiliary/minisimd.rs"]
+mod minisimd;
+use minisimd::*;
 
-#[derive(Copy, Clone)]
-#[repr(simd)]
-struct Simd<T, const N: usize>([T; N]);
+use std::intrinsics::simd::{simd_bitmask, simd_select_bitmask};
 
 fn main() {
     unsafe {
@@ -41,11 +41,11 @@ fn main() {
 
         let mask = if cfg!(target_endian = "little") { 0b0101u8 } else { 0b1010u8 };
         let r = simd_select_bitmask(mask, a, b);
-        assert_eq!(r.0, e);
+        assert_eq!(r.into_array(), e);
 
         let mask = if cfg!(target_endian = "little") { [0b0101u8] } else { [0b1010u8] };
         let r = simd_select_bitmask(mask, a, b);
-        assert_eq!(r.0, e);
+        assert_eq!(r.into_array(), e);
 
         let a = Simd::<i32, 16>([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
         let b = Simd::<i32, 16>([16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
@@ -57,7 +57,7 @@ fn main() {
             0b0011000000001010u16
         };
         let r = simd_select_bitmask(mask, a, b);
-        assert_eq!(r.0, e);
+        assert_eq!(r.into_array(), e);
 
         let mask = if cfg!(target_endian = "little") {
             [0b00001100u8, 0b01010000u8]
@@ -65,6 +65,6 @@ fn main() {
             [0b00110000u8, 0b00001010u8]
         };
         let r = simd_select_bitmask(mask, a, b);
-        assert_eq!(r.0, e);
+        assert_eq!(r.into_array(), e);
     }
 }
