@@ -5,7 +5,7 @@ use std::path::Path;
 
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
-    copy_file, create_dir, get_sysroot_dir, run_command, run_command_with_output_and_env, walk_dir,
+    create_dir, get_sysroot_dir, run_command, run_command_with_output_and_env, walk_dir,
 };
 
 #[derive(Default)]
@@ -53,11 +53,11 @@ impl BuildArg {
     }
 }
 
-fn cleanup_sysroot_previous_build(start_dir: &Path) {
+fn cleanup_sysroot_previous_build(library_dir: &Path) {
     // Cleanup for previous run
     // Clean target dir except for build scripts and incremental cache
     let _ = walk_dir(
-        start_dir.join("target"),
+        library_dir.join("target"),
         &mut |dir: &Path| {
             for top in &["debug", "release"] {
                 let _ = fs::remove_dir_all(dir.join(top).join("build"));
@@ -96,30 +96,14 @@ fn cleanup_sysroot_previous_build(start_dir: &Path) {
         false,
     );
 
-    let _ = fs::remove_file(start_dir.join("Cargo.lock"));
-    let _ = fs::remove_file(start_dir.join("test_target/Cargo.lock"));
-    let _ = fs::remove_dir_all(start_dir.join("sysroot"));
-}
-
-pub fn create_build_sysroot_content(start_dir: &Path) -> Result<(), String> {
-    if !start_dir.is_dir() {
-        create_dir(start_dir)?;
-    }
-    copy_file("build_system/build_sysroot/Cargo.toml", start_dir.join("Cargo.toml"))?;
-    copy_file("build_system/build_sysroot/Cargo.lock", start_dir.join("Cargo.lock"))?;
-
-    let src_dir = start_dir.join("src");
-    if !src_dir.is_dir() {
-        create_dir(&src_dir)?;
-    }
-    copy_file("build_system/build_sysroot/lib.rs", start_dir.join("src/lib.rs"))
+    let _ = fs::remove_file(library_dir.join("Cargo.lock"));
 }
 
 pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Result<(), String> {
     let start_dir = get_sysroot_dir();
 
-    cleanup_sysroot_previous_build(&start_dir);
-    create_build_sysroot_content(&start_dir)?;
+    let library_dir = start_dir.join("sysroot_src").join("library");
+    cleanup_sysroot_previous_build(&library_dir);
 
     // Builds libs
     let mut rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
@@ -159,7 +143,8 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
 
     let mut env = env.clone();
     env.insert("RUSTFLAGS".to_string(), rustflags);
-    run_command_with_output_and_env(&args, Some(&start_dir), Some(&env))?;
+    let sysroot_dir = library_dir.join("sysroot");
+    run_command_with_output_and_env(&args, Some(&sysroot_dir), Some(&env))?;
 
     // Copy files to sysroot
     let sysroot_path = start_dir.join(format!("sysroot/lib/rustlib/{}/lib/", config.target_triple));
@@ -169,7 +154,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         run_command(&[&"cp", &"-r", &dir_to_copy, &sysroot_path], None).map(|_| ())
     };
     walk_dir(
-        start_dir.join(format!("target/{}/{}/deps", config.target_triple, channel)),
+        library_dir.join(format!("target/{}/{}/deps", config.target_triple, channel)),
         &mut copier.clone(),
         &mut copier,
         false,
@@ -178,7 +163,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     // Copy the source files to the sysroot (Rust for Linux needs this).
     let sysroot_src_path = start_dir.join("sysroot/lib/rustlib/src/rust");
     create_dir(&sysroot_src_path)?;
-    run_command(&[&"cp", &"-r", &start_dir.join("sysroot_src/library/"), &sysroot_src_path], None)?;
+    run_command(&[&"cp", &"-r", &library_dir, &sysroot_src_path], None)?;
 
     Ok(())
 }
