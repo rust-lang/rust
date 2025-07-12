@@ -339,7 +339,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.set_binding_parent_module(binding, module);
         self.update_resolution(module, key, warn_ambiguity, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
-                if res == Res::Err && old_binding.res() != Res::Err {
+                let old_res = old_binding.res();
+                if res == Res::Err && old_res != Res::Err {
                     // Do not override real bindings with `Res::Err`s from error recovery.
                     return Ok(());
                 }
@@ -356,7 +357,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             // of whether they has same resolution or not when they are
                             // imported from the same glob-import statement.
                             resolution.binding = Some(binding);
-                        } else if res != old_binding.res() {
+                        } else if res != old_res {
                             resolution.binding = Some(this.new_ambiguity_binding(
                                 AmbiguityKind::GlobVsGlob,
                                 old_binding,
@@ -404,7 +405,43 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                     }
                     (false, false) => {
-                        return Err(old_binding);
+                        // So long as two bindings resolve to the same item, it's semantically
+                        // unproblematic for them to have the same name, but still perhaps a code
+                        // smell — surely, duplicate imports of the same item with the same name
+                        // should be consolidated, right? In one common pattern in the ecosystem,
+                        // forbidding duplicate bindings creates a build hazard that is awkward to
+                        // resolve.
+                        //
+                        // Consider a crate that depends on both `serde` (without the `derive`
+                        // feature) and `serde_derive`, and imports `serde::Serialize` (a trait) and
+                        // `serde_derive::Serialize` (a macro). Then, imagine some other crate in a
+                        // build graph depends on `serde` *with* the `derive` feature; they import
+                        // both the macro and trait simultaneously with `use serde::Serialize`. If
+                        // duplicate imports of the same item are always forbidden, these crates
+                        // cannot co-exist in the same build-graph; the former crate will fail to
+                        // build, as its first import (which will now also import the `Serialize`
+                        // macro) conflicts with its second import.
+                        //
+                        // This build hazard is confusing — the author of the second crate had no
+                        // idea that their dependence on the `derive` feature might be problematic
+                        // for other crates. The author of the first crate can mitigate the hazard
+                        // by only glob-importing from proc-macro crates, but glob imports run
+                        // against many's personal preference and tooling affordances (e.g.,
+                        // `rust-analyzer`'s auto-import feature).
+                        //
+                        // We mitigate this hazard across the ecosystem by permitting duplicate
+                        // imports of macros. We don't limit this exception to proc macros, as it
+                        // should not be a breaking change to rewrite a proc macro into a by-example
+                        // macro. Although it would be semantically unproblematic to permit *all*
+                        // duplicate imports (not just those of macros), other kinds of imports have
+                        // not, in practice, posed the same hazard, and there might be cases we'd
+                        // like to warn-by-default against. For now, we only permit duplicate macro
+                        // imports.
+                        if res == old_res && res.macro_kind().is_some() {
+                            return Ok(());
+                        } else {
+                            return Err(old_binding);
+                        }
                     }
                 }
             } else {
