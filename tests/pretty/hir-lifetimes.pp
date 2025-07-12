@@ -7,7 +7,7 @@
 #![allow(unused)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
-#[macro_use]
+#[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 
 struct Foo<'a> {
