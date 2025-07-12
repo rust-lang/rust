@@ -326,7 +326,7 @@ provide! { tcx, def_id, other, cdata,
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
     }
 
-    associated_types_for_impl_traits_in_associated_fn => { table_defaulted_array }
+    associated_types_for_impl_traits_in_trait_or_impl => { table }
 
     visibility => { cdata.get_visibility(def_id.index) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }

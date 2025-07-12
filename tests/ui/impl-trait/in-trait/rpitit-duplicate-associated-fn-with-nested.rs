@@ -43,4 +43,17 @@ trait Qux {
     //~^^^^ ERROR: the name `foo` is defined multiple times
 }
 
+trait T0<T> {
+    type Target;
+}
+trait T1<T> {}
+
+trait X {
+    fn a() -> impl T0<(), Target = impl T1<()>>;
+    fn a() -> impl T0<(), Target = impl T1<()>>;
+    //~^ ERROR the name `a` is defined multiple times
+    fn a() -> impl T0<(), Target = impl T1<()>>;
+    //~^ ERROR the name `a` is defined multiple times
+}
+
 fn main() {}

@@ -1079,15 +1079,11 @@ rustc_queries! {
         desc { |tcx| "comparing impl items against trait for `{}`", tcx.def_path_str(impl_id) }
     }
 
-    /// Given `fn_def_id` of a trait or of an impl that implements a given trait:
-    /// if `fn_def_id` is the def id of a function defined inside a trait, then it creates and returns
-    /// the associated items that correspond to each impl trait in return position for that trait.
-    /// if `fn_def_id` is the def id of a function defined inside an impl that implements a trait, then it
-    /// creates and returns the associated items that correspond to each impl trait in return position
-    /// of the implemented trait.
-    query associated_types_for_impl_traits_in_associated_fn(fn_def_id: DefId) -> &'tcx [DefId] {
-        desc { |tcx| "creating associated items for opaque types returned by `{}`", tcx.def_path_str(fn_def_id) }
-        cache_on_disk_if { fn_def_id.is_local() }
+    /// Given the `item_def_id` of a trait or impl, return a mapping from associated fn def id
+    /// to its associated type items that correspond to the RPITITs in its signature.
+    query associated_types_for_impl_traits_in_trait_or_impl(item_def_id: DefId) -> &'tcx DefIdMap<Vec<DefId>> {
+        arena_cache
+        desc { |tcx| "synthesizing RPITIT items for the opaque types for methods in `{}`", tcx.def_path_str(item_def_id) }
         separate_provide_extern
     }
 

@@ -2602,7 +2602,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // do a linear search to map this to the synthetic associated type that
         // it will be lowered to.
         let def_id = if let Some(parent_def_id) = in_trait {
-            *tcx.associated_types_for_impl_traits_in_associated_fn(parent_def_id)
+            *tcx.associated_types_for_impl_traits_in_associated_fn(parent_def_id.to_def_id())
                 .iter()
                 .find(|rpitit| match tcx.opt_rpitit_info(**rpitit) {
                     Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
