@@ -1,5 +1,3 @@
-#![feature(if_let_guard)]
-
 enum VecWrapper { A(Vec<i32>) }
 
 fn if_guard(x: VecWrapper) -> usize {
