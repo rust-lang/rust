@@ -183,7 +183,7 @@ pub(crate) use SubstructureFields::*;
 use rustc_ast::ptr::P;
 use rustc_ast::{
     self as ast, AnonConst, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind,
-    Generics, Mutability, PatKind, VariantData,
+    Generics, Mutability, PatKind, QSelf, VariantData,
 };
 use rustc_attr_data_structures::{AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
@@ -411,6 +411,22 @@ fn find_type_parameters(
         type_params: Vec<TypeParameter>,
     }
 
+    impl Visitor<'_, '_> {
+        fn is_path_from_ty_param(&self, qself: &Option<P<QSelf>>, path: &ast::Path) -> bool {
+            if let Some(qself) = qself
+                && let ast::TyKind::Path(qself, path) = &qself.ty.kind
+            {
+                self.is_path_from_ty_param(&qself, &path)
+            } else if let Some(segment) = path.segments.first()
+                && self.ty_param_names.contains(&segment.ident.name)
+            {
+                true
+            } else {
+                false
+            }
+        }
+    }
+
     impl<'a, 'b> visit::Visitor<'a> for Visitor<'a, 'b> {
         fn visit_ty(&mut self, ty: &'a ast::Ty) {
             let stack_len = self.bound_generic_params_stack.len();
@@ -422,14 +438,13 @@ fn find_type_parameters(
                 self.bound_generic_params_stack.extend(fn_ptr.generic_params.iter().cloned());
             }
 
-            if let ast::TyKind::Path(_, path) = &ty.kind
-                && let Some(segment) = path.segments.first()
-                && self.ty_param_names.contains(&segment.ident.name)
-            {
-                self.type_params.push(TypeParameter {
-                    bound_generic_params: self.bound_generic_params_stack.clone(),
-                    ty: P(ty.clone()),
-                });
+            if let ast::TyKind::Path(qself, path) = &ty.kind {
+                if self.is_path_from_ty_param(qself, path) {
+                    self.type_params.push(TypeParameter {
+                        bound_generic_params: self.bound_generic_params_stack.clone(),
+                        ty: P(ty.clone()),
+                    });
+                }
             }
 
             visit::walk_ty(self, ty);
