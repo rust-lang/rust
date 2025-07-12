@@ -1380,7 +1380,7 @@ where
 }
 
 /// The internal representation of a `Thread` handle
-/// 
+///
 /// We explicitly set the alignment for our guarantee in Thread::into_raw. This
 /// allows applications to stuff extra metadata bits into the alignment, which
 /// can be rather useful when working with atomics.
