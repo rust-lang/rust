@@ -64,8 +64,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         self.add_default_traits(&mut user_written_bounds, dummy_self, &ast_bounds, None, span);
 
-        let (elaborated_trait_bounds, elaborated_projection_bounds) =
+        let (mut elaborated_trait_bounds, elaborated_projection_bounds) =
             traits::expand_trait_aliases(tcx, user_written_bounds.iter().copied());
+
+        // FIXME(sized-hierarchy): https://github.com/rust-lang/rust/pull/142712#issuecomment-3013231794
+        let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, span);
+        elaborated_trait_bounds.retain(|(pred, _)| pred.def_id() != meta_sized_did);
+
         let (regular_traits, mut auto_traits): (Vec<_>, Vec<_>) = elaborated_trait_bounds
             .into_iter()
             .partition(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()));

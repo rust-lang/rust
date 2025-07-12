@@ -1,5 +1,4 @@
 //@ revisions: no yes
-//@[yes] check-pass
 
 // Issue 110557
 
@@ -15,6 +14,8 @@ struct Bar<T>(T) where T: Foo;
 struct Bar<T>(T) where for<H> H: Foo;
 
 impl<T> Drop for Bar<T>
+//[yes]~^ ERROR type annotations needed
+//[no]~^^ ERROR type annotations needed
 where
     for<H> H: Foo,
 //[no]~^ ERROR `Drop` impl requires `H: Foo` but the struct it is implemented for does not
