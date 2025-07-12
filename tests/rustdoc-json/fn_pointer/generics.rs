@@ -1,8 +1,5 @@
-//@ count "$.index[?(@.name=='WithHigherRankTraitBounds')].inner.type_alias.type.function_pointer.sig.inputs[*]" 1
-//@ is "$.index[?(@.name=='WithHigherRankTraitBounds')].inner.type_alias.type.function_pointer.sig.inputs[0][0]" '"val"'
-//@ is "$.index[?(@.name=='WithHigherRankTraitBounds')].inner.type_alias.type.function_pointer.sig.inputs[0][1].borrowed_ref.lifetime" \"\'c\"
-//@ is "$.index[?(@.name=='WithHigherRankTraitBounds')].inner.type_alias.type.function_pointer.sig.output.primitive" \"i32\"
-//@ count "$.index[?(@.name=='WithHigherRankTraitBounds')].inner.type_alias.type.function_pointer.generic_params[*]" 1
-//@ is "$.index[?(@.name=='WithHigherRankTraitBounds')].inner.type_alias.type.function_pointer.generic_params[0].name" \"\'c\"
-//@ is "$.index[?(@.name=='WithHigherRankTraitBounds')].inner.type_alias.type.function_pointer.generic_params[0].kind" '{ "lifetime": { "outlives": [] } }'
+//@ arg with_higher_rank_trait_bounds .index[] | select(.name == "WithHigherRankTraitBounds").inner.type_alias.type?.function_pointer
+//@ jq $with_higher_rank_trait_bounds.sig?.inputs[] | .[0] == "val" and .[1].borrowed_ref.lifetime? == "'c"
+//@ jq $with_higher_rank_trait_bounds.sig?.output.primitive == "i32"
+//@ jq $with_higher_rank_trait_bounds.generic_params[]? | .name == "'c" and .kind == {"lifetime": {"outlives": []}}
 pub type WithHigherRankTraitBounds = for<'c> fn(val: &'c i32) -> i32;

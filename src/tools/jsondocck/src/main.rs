@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::process::ExitCode;
 use std::sync::LazyLock;
 use std::{env, fs};
@@ -7,84 +8,81 @@ use regex::{Regex, RegexBuilder};
 mod cache;
 mod config;
 mod directive;
-mod error;
 
 use cache::Cache;
-use config::parse_config;
-use directive::{Directive, DirectiveKind};
-use error::CkError;
+use config::Config;
 
-fn main() -> ExitCode {
-    let config = parse_config(env::args().collect());
-
-    let mut failed = Vec::new();
-    let mut cache = Cache::new(&config);
-    let Ok(directives) = get_directives(&config.template) else {
-        eprintln!("Jsondocck failed for {}", &config.template);
-        return ExitCode::FAILURE;
-    };
-
-    for directive in directives {
-        if let Err(message) = directive.check(&mut cache) {
-            failed.push(CkError { directive, message });
-        }
-    }
-
-    if failed.is_empty() {
-        ExitCode::SUCCESS
-    } else {
-        for i in failed {
-            eprintln!("{}:{}, directive failed", config.template, i.directive.lineno);
-            eprintln!("{}", i.message)
-        }
-        ExitCode::FAILURE
-    }
-}
+use crate::directive::Directive;
 
 static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     RegexBuilder::new(
-        r#"
-        ^\s*
-        //@\s+
-        (?P<negated>!?)
-        (?P<directive>[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)
-        (?P<args>.*)$
-    "#,
+        r"
+            # Any number of whitespaces.
+            \s*
+            # The directive prefix (`//@`) and 1 or more whitespaces after.
+            //@\s+
+            # The directive itself (1 or more word or `-` characters).
+            (?P<directive>[\w-]+)
+            # The optional remainder (1 non-word character and 0 or more of any characters after).
+            (?P<args>\W.*)?
+        ",
     )
     .ignore_whitespace(true)
-    .unicode(true)
     .build()
     .unwrap()
 });
 
-static DEPRECATED_LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    RegexBuilder::new(
-        r#"
-        //\s+@
-    "#,
-    )
-    .ignore_whitespace(true)
-    .unicode(true)
-    .build()
-    .unwrap()
-});
+static DEPRECATED_LINE_PATTERN: LazyLock<Regex> =
+    LazyLock::new(|| RegexBuilder::new(r"//\s+@").build().unwrap());
 
-fn print_err(msg: &str, lineno: usize) {
-    eprintln!("Invalid directive: {} on line {}", msg, lineno)
+/// ```
+/// // Directive on its own line
+/// //@ correct-directive
+///
+/// // Directive on a line after code
+/// struct S; //@ ignored-directive
+/// ```
+static MIXED_LINE: LazyLock<Regex> =
+    LazyLock::new(|| RegexBuilder::new(r".*\S.*//@").build().unwrap());
+
+struct ErrorReporter<'a> {
+    /// See [`Config::template`].
+    template: &'a str,
+    errors: bool,
 }
 
-/// Get a list of directives from a file.
-fn get_directives(template: &str) -> Result<Vec<Directive>, ()> {
-    let mut directives = Vec::new();
-    let mut errors = false;
+impl ErrorReporter<'_> {
+    fn print(&mut self, lineno: usize, msg: impl Display) {
+        self.errors = true;
+
+        eprintln!("{}:{lineno}: {msg}", self.template);
+    }
+}
+
+fn main() -> ExitCode {
+    let Some(config @ Config { template, .. }) = &Config::parse(env::args()) else {
+        return ExitCode::FAILURE;
+    };
+
+    let mut cache = Cache::new(config);
+    let mut error_reporter = ErrorReporter { errors: false, template };
     let file = fs::read_to_string(template).unwrap();
 
-    for (lineno, line) in file.split('\n').enumerate() {
-        let lineno = lineno + 1;
+    for (mut lineno, line) in file.split('\n').enumerate() {
+        lineno += 1;
 
         if DEPRECATED_LINE_PATTERN.is_match(line) {
-            print_err("Deprecated directive syntax, replace `// @` with `//@ `", lineno);
-            errors = true;
+            error_reporter.print(lineno, "deprecated directive syntax, replace `// @` with `//@ `");
+
+            continue;
+        }
+
+        if MIXED_LINE.is_match(line) {
+            error_reporter.print(
+                lineno,
+                "directives must be on their own line, directives after code are ignored",
+            );
+
             continue;
         }
 
@@ -92,19 +90,23 @@ fn get_directives(template: &str) -> Result<Vec<Directive>, ()> {
             continue;
         };
 
-        let negated = &cap["negated"] == "!";
+        let mut args = cap.name("args").map(|m| m.as_str()).unwrap_or_default();
 
-        let args_str = &cap["args"];
-        let Some(args) = shlex::split(args_str) else {
-            print_err(&format!("Invalid arguments to shlex::split: `{args_str}`",), lineno);
-            errors = true;
-            continue;
+        let directive = match Directive::parse(&cap["directive"], &mut args) {
+            Ok(Some(directive)) => directive,
+            Ok(None) => continue,
+            Err(message) => {
+                error_reporter
+                    .print(lineno, format_args!("failed to parse a directive: {message}"));
+
+                continue;
+            }
         };
 
-        if let Some((kind, path)) = DirectiveKind::parse(&cap["directive"], negated, &args) {
-            directives.push(Directive { kind, lineno, path: path.to_owned() })
+        if let Err(message) = directive.process(&mut cache, args) {
+            error_reporter.print(lineno, format_args!("directive failed: {message}"));
         }
     }
 
-    if !errors { Ok(directives) } else { Err(()) }
+    if error_reporter.errors { ExitCode::FAILURE } else { ExitCode::SUCCESS }
 }

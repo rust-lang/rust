@@ -1,12 +1,18 @@
 [package]
 name = "jsondocck"
-version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-jsonpath-rust = "1.0.0"
 getopts = "0.2"
-regex = "1.4"
-shlex = "1.0"
-serde_json = "1.0"
-fs-err = "2.5.0"
+regex = "1"
+serde_json = "1"
+fs-err = "3"
+jaq-core = "2"
+# FIXME: Depends on `jaq-std` with default features (a ton of unused by `jsondocck` stuff). Consider
+# disabling them when it'll be possible.
+jaq-json = { version = "1", default-features = false, features = [
+    "serde_json",
+] }
+jaq-std = { version = "2", default-features = false }
+indexmap = "2"
+foldhash = "0.1"

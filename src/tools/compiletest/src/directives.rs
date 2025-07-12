@@ -790,8 +790,7 @@ const KNOWN_HTMLDOCCK_DIRECTIVE_NAMES: &[&str] = &[
     "!snapshot",
 ];
 
-const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] =
-    &["count", "!count", "has", "!has", "is", "!is", "ismany", "!ismany", "set", "!set"];
+const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] = &["jq", "arg", "eq", "ne"];
 
 /// The (partly) broken-down contents of a line containing a test directive,
 /// which [`iter_directives`] passes to its callback function.
