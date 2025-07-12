@@ -1,0 +1,40 @@
+error[E0412]: cannot find type `c` in this scope
+  --> $DIR/elided-lifetime-in-const-param-type.rs:6:23
+   |
+LL | type A = for<const B: c(&())> D;
+   |                       ^ not found in this scope
+
+error[E0405]: cannot find trait `D` in this scope
+  --> $DIR/elided-lifetime-in-const-param-type.rs:6:31
+   |
+LL | type A = for<const B: c(&())> D;
+   |                               ^ not found in this scope
+
+error[E0658]: only lifetime parameters can be used in this context
+  --> $DIR/elided-lifetime-in-const-param-type.rs:6:20
+   |
+LL | type A = for<const B: c(&())> D;
+   |                    ^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/elided-lifetime-in-const-param-type.rs:6:10
+   |
+LL | type A = for<const B: c(&())> D;
+   |          ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | type A = dyn for<const B: c(&())> D;
+   |          +++
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0405, E0412, E0658.
+For more information about an error, try `rustc --explain E0405`.
