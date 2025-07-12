@@ -1223,9 +1223,14 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     }
 
     pub fn hash_modifiers(&mut self, modifiers: TraitBoundModifiers) {
-        let TraitBoundModifiers { constness, polarity } = modifiers;
+        let TraitBoundModifiers {
+            constness,
+            polarity,
+            source,
+        } = modifiers;
         std::mem::discriminant(&polarity).hash(&mut self.s);
         std::mem::discriminant(&constness).hash(&mut self.s);
+        std::mem::discriminant(&source).hash(&mut self.s);
     }
 
     pub fn hash_stmt(&mut self, b: &Stmt<'_>) {

@@ -101,3 +101,21 @@ pub enum Pinnedness {
     Not,
     Pinned,
 }
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
+pub enum TraitRefSource {
+    /// This source excludes all of the other relationships
+    Any,
+    /// The trait ref source establishes a subtrait-supertrait
+    /// relationship
+    Supertrait,
+    /// The trait ref source establishes a subtrait-supertrait
+    /// relationship and we are obliged to assert that the supertrait
+    /// is a marker trait and generate an automatic `impl` for this
+    /// marker trait
+    SupertraitAutoImpl,
+}

@@ -247,6 +247,7 @@ provide! { tcx, def_id, other, cdata,
     inferred_outlives_of => { table_defaulted_array }
     explicit_super_predicates_of => { table_defaulted_array }
     explicit_implied_predicates_of => { table_defaulted_array }
+    supertrait_auto_impls => { table_defaulted_array }
     type_of => { table }
     type_alias_is_lazy => { table_direct }
     variances_of => { table }
@@ -388,6 +389,9 @@ provide! { tcx, def_id, other, cdata,
     dep_kind => { cdata.dep_kind }
     module_children => {
         tcx.arena.alloc_from_iter(cdata.get_module_children(def_id.index, tcx.sess))
+    }
+    module_supertraits => {
+        tcx.arena.alloc_from_iter(cdata.get_module_supertraits(def_id.index, tcx.sess))
     }
     lib_features => { cdata.get_lib_features() }
     stability_implications => {

@@ -269,7 +269,7 @@ impl clean::GenericBound {
             clean::GenericBound::Outlives(lt) => write!(f, "{}", lt.print()),
             clean::GenericBound::TraitBound(ty, modifiers) => {
                 // `const` and `[const]` trait bounds are experimental; don't render them.
-                let hir::TraitBoundModifiers { polarity, constness: _ } = modifiers;
+                let hir::TraitBoundModifiers { polarity, constness: _, source: _ } = modifiers;
                 f.write_str(match polarity {
                     hir::BoundPolarity::Positive => "",
                     hir::BoundPolarity::Maybe(_) => "?",

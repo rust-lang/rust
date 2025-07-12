@@ -403,6 +403,9 @@ resolve_tool_was_already_registered =
     tool `{$tool}` was already registered
     .label = already registered here
 
+resolve_supertrait_impl_ambiguous =
+    `{$name}` is ambiguous among supertraits, it could refer to either `{$one}` or `{$another}`
+
 resolve_trait_impl_duplicate =
     duplicate definitions with name `{$name}`:
     .label = duplicate definition

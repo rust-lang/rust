@@ -745,7 +745,7 @@ impl<'a> Parser<'a> {
                         ));
                     }
                     let kind = if self.eat(exp!(Colon)) {
-                        AssocItemConstraintKind::Bound { bounds: self.parse_generic_bounds()? }
+                        AssocItemConstraintKind::Bound { bounds: self.parse_generic_bounds(false)? }
                     } else if self.eat(exp!(Eq)) {
                         self.parse_assoc_equality_term(
                             ident,

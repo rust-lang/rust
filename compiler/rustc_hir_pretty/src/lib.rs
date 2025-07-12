@@ -779,7 +779,14 @@ impl<'a> State<'a> {
     }
 
     fn print_poly_trait_ref(&mut self, t: &hir::PolyTraitRef<'_>) {
-        let hir::TraitBoundModifiers { constness, polarity } = t.modifiers;
+        let hir::TraitBoundModifiers { constness, polarity, source } = t.modifiers;
+        match source {
+            ast::TraitRefSource::Any | ast::TraitRefSource::Supertrait => {}
+            ast::TraitRefSource::SupertraitAutoImpl => {
+                self.word("auto");
+                self.word("impl");
+            }
+        }
         match constness {
             hir::BoundConstness::Never => {}
             hir::BoundConstness::Always(_) => self.word("const"),

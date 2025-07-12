@@ -1,0 +1,32 @@
+error[E0277]: the trait bound `S: Sup` is not satisfied
+  --> $DIR/supertrait-in-subtrait-impl.rs:13:14
+   |
+LL |     type A = ();
+   |              ^^ the trait `Sup` is not implemented for `S`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/supertrait-in-subtrait-impl.rs:3:1
+   |
+LL | trait Sup {
+   | ^^^^^^^^^
+
+error[E0277]: the trait bound `S: Sup` is not satisfied
+  --> $DIR/supertrait-in-subtrait-impl.rs:11:14
+   |
+LL | impl Sub for S {
+   |              ^ the trait `Sup` is not implemented for `S`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/supertrait-in-subtrait-impl.rs:3:1
+   |
+LL | trait Sup {
+   | ^^^^^^^^^
+note: required by a bound in `Sub`
+  --> $DIR/supertrait-in-subtrait-impl.rs:8:12
+   |
+LL | trait Sub: Sup {}
+   |            ^^^ required by this bound in `Sub`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
