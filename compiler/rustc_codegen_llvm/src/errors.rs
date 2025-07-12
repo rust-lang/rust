@@ -32,9 +32,12 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
     }
 }
 
+// TODO(Sa4dUs): we will need to reintroduce these errors somewhere
+/*
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_autodiff_without_enable)]
 pub(crate) struct AutoDiffWithoutEnable;
+*/
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_bitcode_from_rlib)]
