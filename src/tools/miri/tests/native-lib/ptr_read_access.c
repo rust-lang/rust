@@ -55,3 +55,13 @@ EXPORT int32_t access_static(const Static *s_ptr) {
 EXPORT uintptr_t do_one_deref(const int32_t ***ptr) {
   return (uintptr_t)*ptr;
 }
+
+/* Test: test_access_struct_ptr */
+
+typedef struct HasPointer {
+  uint8_t *ptr;
+} HasPointer;
+
+EXPORT uint8_t access_struct_ptr(const HasPointer s) {
+  return *s.ptr;
+}

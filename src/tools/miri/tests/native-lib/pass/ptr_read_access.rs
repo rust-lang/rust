@@ -1,12 +1,14 @@
 //@revisions: trace notrace
 //@[trace] only-target: x86_64-unknown-linux-gnu i686-unknown-linux-gnu
 //@[trace] compile-flags: -Zmiri-native-lib-enable-tracing
+//@compile-flags: -Zmiri-permissive-provenance
 
 fn main() {
     test_access_pointer();
     test_access_simple();
     test_access_nested();
     test_access_static();
+    test_access_struct_ptr();
 }
 
 /// Test function that dereferences an int pointer and prints its contents from C.
@@ -73,4 +75,22 @@ fn test_access_static() {
     static STATIC: Static = Static { value: 9001, recurse: &STATIC };
 
     assert_eq!(unsafe { access_static(&STATIC) }, 9001);
+}
+
+/// Test exposing provenance from a field within a struct.
+fn test_access_struct_ptr() {
+    #[repr(C)]
+    struct HasPointer {
+        ptr: *const u8,
+    }
+
+    extern "C" {
+        // Return value exists only so the access isn't optimised away.
+        fn access_struct_ptr(s: HasPointer) -> u8;
+    }
+
+    let some_val = 42u8;
+    let ptr = &raw const some_val;
+    unsafe { access_struct_ptr(HasPointer { ptr }) };
+    assert_eq!(some_val, unsafe { *std::ptr::with_exposed_provenance::<u8>(ptr.addr()) })
 }
