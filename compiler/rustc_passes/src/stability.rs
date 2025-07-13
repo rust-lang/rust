@@ -11,7 +11,7 @@ use rustc_attr_data_structures::{
 };
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
-use rustc_feature::{ACCEPTED_LANG_FEATURES, EnabledLangFeature, EnabledLibFeature};
+use rustc_feature::{EnabledLangFeature, EnabledLibFeature};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::hir_id::CRATE_HIR_ID;
@@ -478,6 +478,7 @@ struct MissingStabilityAnnotations<'tcx> {
 }
 
 impl<'tcx> MissingStabilityAnnotations<'tcx> {
+    /// Verify that deprecation and stability attributes make sense with one another.
     #[instrument(level = "trace", skip(self))]
     fn check_compatible_stability(&self, def_id: LocalDefId, item_sp: Span) {
         if !self.tcx.features().staged_api() {
@@ -539,17 +540,6 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
                     }
                 }
             }
-
-            // Stable *language* features shouldn't be used as unstable library features.
-            // (Not doing this for stable library features is checked by tidy.)
-            if let Stability { level: StabilityLevel::Unstable { .. }, feature } = stab
-                && ACCEPTED_LANG_FEATURES.iter().find(|f| f.name == feature).is_some()
-                && let Some(span) = find_attr_span!(Stability)
-            {
-                self.tcx
-                    .dcx()
-                    .emit_err(errors::UnstableAttrForAlreadyStableFeature { span, item_sp });
-            }
         }
 
         // If the current node is a function with const stability attributes (directly given or
@@ -573,19 +563,6 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             self.tcx
                 .dcx()
                 .emit_err(errors::ConstStableNotStable { fn_sig_span: fn_sig.span, const_span });
-        }
-
-        // Stable *language* features shouldn't be used as unstable library features.
-        // (Not doing this for stable library features is checked by tidy.)
-        if let Some(ConstStability { level: StabilityLevel::Unstable { .. }, feature, .. }) =
-            const_stab
-            && let Some(const_span) = find_attr_span!(ConstStability)
-            && ACCEPTED_LANG_FEATURES.iter().find(|f| f.name == feature).is_some()
-        {
-            self.tcx.dcx().emit_err(errors::UnstableAttrForAlreadyStableFeature {
-                span: const_span,
-                item_sp,
-            });
         }
 
         if let Some(stab) = &const_stab

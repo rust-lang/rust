@@ -11,11 +11,17 @@ use std::slice;
 
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, ast, join_path_syms};
-use rustc_attr_data_structures::{AttributeKind, InlineAttr, ReprAttr, find_attr};
+use rustc_attr_data_structures::{
+    AttributeKind, InlineAttr, PartialConstStability, ReprAttr, Stability, StabilityLevel,
+    find_attr,
+};
 use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
-use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
+use rustc_feature::{
+    ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
+    BuiltinAttribute,
+};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -165,9 +171,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         Target::Impl { of_trait: true },
                     ),
                 Attribute::Parsed(
-                    AttributeKind::Stability { span, .. }
-                    | AttributeKind::ConstStability { span, .. },
-                ) => self.check_stability_promotable(*span, target),
+                    AttributeKind::Stability {
+                        span: attr_span,
+                        stability: Stability { level, feature },
+                    }
+                    | AttributeKind::ConstStability {
+                        span: attr_span,
+                        stability: PartialConstStability { level, feature, .. },
+                    },
+                ) => self.check_stability(*attr_span, span, level, *feature, target),
                 Attribute::Parsed(AttributeKind::Inline(InlineAttr::Force { .. }, ..)) => {} // handled separately below
                 Attribute::Parsed(AttributeKind::Inline(kind, attr_span)) => {
                     self.check_inline(hir_id, *attr_span, span, kind, target)
@@ -2319,12 +2331,29 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_stability_promotable(&self, span: Span, target: Target) {
+    fn check_stability(
+        &self,
+        attr_span: Span,
+        item_span: Span,
+        level: &StabilityLevel,
+        feature: Symbol,
+        target: Target,
+    ) {
         match target {
             Target::Expression => {
-                self.dcx().emit_err(errors::StabilityPromotable { attr_span: span });
+                self.dcx().emit_err(errors::StabilityPromotable { attr_span });
             }
             _ => {}
+        }
+
+        // Stable *language* features shouldn't be used as unstable library features.
+        // (Not doing this for stable library features is checked by tidy.)
+        if level.is_unstable()
+            && ACCEPTED_LANG_FEATURES.iter().find(|f| f.name == feature).is_some()
+        {
+            self.tcx
+                .dcx()
+                .emit_err(errors::UnstableAttrForAlreadyStableFeature { attr_span, item_span });
         }
     }
 
