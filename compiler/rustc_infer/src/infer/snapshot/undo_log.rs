@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::marker::PhantomData;
 
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
@@ -73,7 +74,8 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
             }
             UndoLog::ProjectionCache(undo) => self.projection_cache.reverse(undo),
             UndoLog::PushTypeOutlivesConstraint => {
-                self.region_obligations.pop();
+                let popped = self.region_obligations.pop();
+                assert_matches!(popped, Some(_), "pushed region constraint but could not pop it");
             }
         }
     }
