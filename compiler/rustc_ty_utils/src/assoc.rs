@@ -137,12 +137,10 @@ struct RPITVisitor<'a, 'tcx> {
     synthetics: Vec<LocalDefId>,
     data: DefPathData,
     disambiguator: &'a mut DisambiguatorState,
-    depth: u32,
 }
 
 impl<'tcx> Visitor<'tcx> for RPITVisitor<'_, 'tcx> {
     fn visit_opaque_ty(&mut self, opaque: &'tcx hir::OpaqueTy<'tcx>) -> Self::Result {
-        self.depth += 1;
         self.synthetics.push(associated_type_for_impl_trait_in_trait(
             self.tcx,
             opaque.def_id,
@@ -172,8 +170,7 @@ fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
                 };
                 let def_name = tcx.item_name(fn_def_id.to_def_id());
                 let data = DefPathData::AnonAssocTy(def_name);
-                let mut visitor =
-                    RPITVisitor { tcx, synthetics: vec![], data, depth: 0, disambiguator };
+                let mut visitor = RPITVisitor { tcx, synthetics: vec![], data, disambiguator };
                 visitor.visit_fn_ret_ty(output);
                 let defs = visitor
                     .synthetics
