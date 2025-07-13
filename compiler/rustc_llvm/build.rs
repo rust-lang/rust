@@ -106,6 +106,10 @@ fn output(cmd: &mut Command) -> String {
 }
 
 fn main() {
+    if cfg!(feature = "check_only") {
+        return;
+    }
+
     for component in REQUIRED_COMPONENTS.iter().chain(OPTIONAL_COMPONENTS.iter()) {
         println!("cargo:rustc-check-cfg=cfg(llvm_component,values(\"{component}\"))");
     }
