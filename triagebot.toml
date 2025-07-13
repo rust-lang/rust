@@ -171,6 +171,19 @@ adjusting release notes. Could you take a look if available? Thanks <3
 [prioritize]
 label = "I-prioritize"
 
+[autolabel."S-waiting-on-review"]
+new_pr = true
+
+[autolabel."S-waiting-on-author"]
+new_draft = true
+
+[autolabel."needs-triage"]
+new_issue = true
+exclude_labels = [
+    "C-tracking-issue",
+    "A-diagnostics",
+]
+
 [autolabel."I-prioritize"]
 trigger_labels = [
     "regression-untriaged",
@@ -216,7 +229,6 @@ trigger_files = [
 exclude_labels = [
     "T-*",
 ]
-
 trigger_labels = [
     "A-rustdoc-json",
     "A-rustdoc-type-layout",
@@ -265,7 +277,6 @@ trigger_labels = [
     "A-rustdoc-ui",
     "A-rustdoc-js",
 ]
-
 trigger_files = [
     "src/librustdoc/html/",
     "tests/rustdoc/",
@@ -281,7 +292,6 @@ trigger_files = [
     "tests/rustdoc-js/",
     "tests/rustdoc-js-std",
 ]
-
 trigger_labels = [
     "A-type-based-search",
 ]
@@ -311,20 +321,17 @@ trigger_files = [
 exclude_labels = [
     "T-*",
 ]
-
 trigger_labels = [
     "D-*",
     "A-diagnostics",
 ]
 
 [autolabel."A-diagnostics"]
-
 trigger_labels = [
     "D-*",
 ]
 
 [autolabel."A-lints"]
-
 trigger_labels = [
     "L-*",
 ]
@@ -532,19 +539,6 @@ trigger_files = [
     "src/version"
 ]
 
-[autolabel."S-waiting-on-review"]
-new_pr = true
-
-[autolabel."S-waiting-on-author"]
-new_draft = true
-
-[autolabel."needs-triage"]
-new_issue = true
-exclude_labels = [
-    "C-tracking-issue",
-    "A-diagnostics",
-]
-
 [autolabel."WG-trait-system-refactor"]
 trigger_files = [
     "compiler/rustc_next_trait_solver",
@@ -600,6 +594,10 @@ trigger_files = [
     "compiler/rustc_codegen_llvm",
 ]
 
+[autolabel."T-clippy"]
+trigger_files = [
+    "src/tools/clippy",
+]
 
 # ------------------------------------------------------------------------------
 # Prioritization and team nominations
