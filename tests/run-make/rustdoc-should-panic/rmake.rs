@@ -1,7 +1,7 @@
 // Ensure that `should_panic` doctests only succeed if the test actually panicked.
 // Regression test for <https://github.com/rust-lang/rust/issues/143009>.
 
-//@ needs-target-std
+//@ ignore-cross-compile
 
 use run_make_support::rustdoc;
 
