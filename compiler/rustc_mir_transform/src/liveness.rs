@@ -386,7 +386,7 @@ fn find_self_assignments<'tcx>(
                         continue;
                     };
 
-                    // We ignore indirect self-assignment, because both occurences of `dest` are uses.
+                    // We ignore indirect self-assignment, because both occurrences of `dest` are uses.
                     let is_indirect = checked_places
                         .get(dest.as_ref())
                         .map_or(false, |(_, projections)| is_indirect(projections));
@@ -417,7 +417,7 @@ fn find_self_assignments<'tcx>(
                         continue;
                     }
 
-                    // We ignore indirect self-assignment, because both occurences of `dest` are uses.
+                    // We ignore indirect self-assignment, because both occurrences of `dest` are uses.
                     let is_indirect = checked_places
                         .get(first_place.as_ref())
                         .map_or(false, |(_, projections)| is_indirect(projections));
@@ -1161,7 +1161,7 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_, 'tcx> {
     }
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        // By-ref captures could be read by the surrounding environement, so we mark
+        // By-ref captures could be read by the surrounding environment, so we mark
         // them as live upon yield and return.
         match terminator.kind {
             TerminatorKind::Return
