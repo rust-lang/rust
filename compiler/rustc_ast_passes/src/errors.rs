@@ -590,7 +590,7 @@ pub(crate) struct ConstBoundTraitObject {
 }
 
 // FIXME(const_trait_impl): Consider making the note/reason the message of the diagnostic.
-// FIXME(const_trait_impl): Provide structured suggestions (e.g., add `const` / `#[const_trait]` here).
+// FIXME(const_trait_impl): Provide structured suggestions (e.g., add `const` here).
 #[derive(Diagnostic)]
 #[diag(ast_passes_tilde_const_disallowed)]
 pub(crate) struct TildeConstDisallowed {

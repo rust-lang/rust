@@ -49,14 +49,14 @@ enum SelfSemantic {
 }
 
 enum TraitOrTraitImpl {
-    Trait { span: Span, constness_span: Option<Span> },
+    Trait { span: Span, constness: Const },
     TraitImpl { constness: Const, polarity: ImplPolarity, trait_ref_span: Span },
 }
 
 impl TraitOrTraitImpl {
     fn constness(&self) -> Option<Span> {
         match self {
-            Self::Trait { constness_span: Some(span), .. }
+            Self::Trait { constness: Const::Yes(span), .. }
             | Self::TraitImpl { constness: Const::Yes(span), .. } => Some(*span),
             _ => None,
         }
@@ -110,15 +110,10 @@ impl<'a> AstValidator<'a> {
         self.outer_trait_or_trait_impl = old;
     }
 
-    fn with_in_trait(
-        &mut self,
-        span: Span,
-        constness_span: Option<Span>,
-        f: impl FnOnce(&mut Self),
-    ) {
+    fn with_in_trait(&mut self, span: Span, constness: Const, f: impl FnOnce(&mut Self)) {
         let old = mem::replace(
             &mut self.outer_trait_or_trait_impl,
-            Some(TraitOrTraitImpl::Trait { span, constness_span }),
+            Some(TraitOrTraitImpl::Trait { span, constness }),
         );
         f(self);
         self.outer_trait_or_trait_impl = old;
@@ -273,7 +268,7 @@ impl<'a> AstValidator<'a> {
         };
 
         let make_trait_const_sugg = if const_trait_impl
-            && let TraitOrTraitImpl::Trait { span, constness_span: None } = parent
+            && let TraitOrTraitImpl::Trait { span, constness: ast::Const::No } = parent
         {
             Some(span.shrink_to_lo())
         } else {
@@ -1131,10 +1126,23 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 visit::walk_item(self, item)
             }
-            ItemKind::Trait(box Trait { is_auto, generics, ident, bounds, items, .. }) => {
+            ItemKind::Trait(box Trait {
+                constness,
+                is_auto,
+                generics,
+                ident,
+                bounds,
+                items,
+                ..
+            }) => {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
-                let is_const_trait =
+                // FIXME(const_trait_impl) remove this
+                let alt_const_trait_span =
                     attr::find_by_name(&item.attrs, sym::const_trait).map(|attr| attr.span);
+                let constness = match (*constness, alt_const_trait_span) {
+                    (Const::Yes(span), _) | (Const::No, Some(span)) => Const::Yes(span),
+                    (Const::No, None) => Const::No,
+                };
                 if *is_auto == IsAuto::Yes {
                     // Auto traits cannot have generics, super traits nor contain items.
                     self.deny_generic_params(generics, ident.span);
@@ -1145,13 +1153,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                 // Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
                 // context for the supertraits.
-                let disallowed =
-                    is_const_trait.is_none().then(|| TildeConstReason::Trait { span: item.span });
+                let disallowed = matches!(constness, ast::Const::No)
+                    .then(|| TildeConstReason::Trait { span: item.span });
                 self.with_tilde_const(disallowed, |this| {
                     this.visit_generics(generics);
                     walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
                 });
-                self.with_in_trait(item.span, is_const_trait, |this| {
+                self.with_in_trait(item.span, constness, |this| {
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Trait);
                 });
             }

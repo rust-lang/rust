@@ -334,7 +334,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         let (trait_generics, trait_bounds) = match parent_trait.kind {
-            hir::ItemKind::Trait(_, _, _, generics, supertraits, _) => (generics, supertraits),
+            hir::ItemKind::Trait(_, _, _, _, generics, supertraits, _) => (generics, supertraits),
             hir::ItemKind::TraitAlias(_, generics, supertraits) => (generics, supertraits),
             _ => unreachable!(),
         };

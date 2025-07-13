@@ -738,7 +738,8 @@ macro_rules! common_visitor_and_walkers {
                         try_visit!(vis.visit_ty(self_ty));
                         visit_assoc_items(vis, items, AssocCtxt::Impl { of_trait: of_trait.is_some() })
                     }
-                    ItemKind::Trait(box Trait { safety, is_auto: _, ident, generics, bounds, items }) => {
+                    ItemKind::Trait(box Trait { constness, safety, is_auto: _, ident, generics, bounds, items }) => {
+                        try_visit!(visit_constness(vis, constness));
                         try_visit!(visit_safety(vis, safety));
                         try_visit!(vis.visit_ident(ident));
                         try_visit!(vis.visit_generics(generics));

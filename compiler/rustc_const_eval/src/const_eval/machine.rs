@@ -359,8 +359,8 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         if let ty::InstanceKind::Item(def) = instance.def {
             // Execution might have wandered off into other crates, so we cannot do a stability-
             // sensitive check here. But we can at least rule out functions that are not const at
-            // all. That said, we have to allow calling functions inside a trait marked with
-            // #[const_trait]. These *are* const-checked!
+            // all. That said, we have to allow calling functions inside a `const trait`. These
+            // *are* const-checked!
             if !ecx.tcx.is_const_fn(def) || ecx.tcx.has_attr(def, sym::rustc_do_not_const_check) {
                 // We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.

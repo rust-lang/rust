@@ -1011,8 +1011,7 @@ pub mod ops {
     }
 
     #[lang = "add_assign"]
-    #[const_trait]
-    pub trait AddAssign<Rhs = Self> {
+    pub const trait AddAssign<Rhs = Self> {
         fn add_assign(&mut self, rhs: Rhs);
     }
 

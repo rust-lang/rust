@@ -13,14 +13,14 @@ struct TryMe;
 struct Error;
 
 impl const FromResidual<Error> for TryMe {
-    //~^ ERROR const `impl` for trait `FromResidual` which is not marked with `#[const_trait]`
+    //~^ ERROR const `impl` for trait `FromResidual` which is not `const`
     fn from_residual(residual: Error) -> Self {
         TryMe
     }
 }
 
 impl const Try for TryMe {
-    //~^ ERROR const `impl` for trait `Try` which is not marked with `#[const_trait]`
+    //~^ ERROR const `impl` for trait `Try` which is not `const`
     type Output = ();
     type Residual = Error;
     fn from_output(output: Self::Output) -> Self {

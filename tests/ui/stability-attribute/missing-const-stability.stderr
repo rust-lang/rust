@@ -5,9 +5,9 @@ LL | pub const fn foo() {}
    | ^^^^^^^^^^^^^^^^^^^^^
 
 error: trait has missing const stability attribute
-  --> $DIR/missing-const-stability.rs:24:1
+  --> $DIR/missing-const-stability.rs:23:1
    |
-LL | / pub trait Bar {
+LL | / pub const trait Bar {
 LL | |
 LL | |     #[stable(feature = "stable", since = "1.0.0")]
 LL | |     fn fun();
@@ -15,7 +15,7 @@ LL | | }
    | |_^
 
 error: function has missing const stability attribute
-  --> $DIR/missing-const-stability.rs:37:1
+  --> $DIR/missing-const-stability.rs:36:1
    |
 LL | pub const unsafe fn size_of_val<T>(x: *const T) -> usize { 42 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

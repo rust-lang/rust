@@ -6,11 +6,11 @@ struct TryMe;
 struct Error;
 
 impl const FromResidual<Error> for TryMe {}
-//~^ ERROR const `impl` for trait `FromResidual` which is not marked with `#[const_trait]`
+//~^ ERROR const `impl` for trait `FromResidual` which is not `const`
 //~| ERROR not all trait items implemented
 
 impl const Try for TryMe {
-    //~^ ERROR const `impl` for trait `Try` which is not marked with `#[const_trait]`
+    //~^ ERROR const `impl` for trait `Try` which is not `const`
     //~| ERROR not all trait items implemented
     type Output = ();
     type Residual = Error;

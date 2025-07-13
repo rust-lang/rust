@@ -2,8 +2,7 @@
 #![feature(const_trait_impl)]
 #![feature(associated_type_defaults)]
 
-#[const_trait]
-trait Foo3<T>
+const trait Foo3<T>
 where
     Self::Baz: Clone,
 {

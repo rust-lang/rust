@@ -844,15 +844,20 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let item = tcx.hir_expect_item(def_id);
 
-    let (is_alias, is_auto, safety) = match item.kind {
-        hir::ItemKind::Trait(is_auto, safety, ..) => (false, is_auto == hir::IsAuto::Yes, safety),
-        hir::ItemKind::TraitAlias(..) => (true, false, hir::Safety::Safe),
+    let (constness, is_alias, is_auto, safety) = match item.kind {
+        hir::ItemKind::Trait(constness, is_auto, safety, ..) => {
+            (constness, false, is_auto == hir::IsAuto::Yes, safety)
+        }
+        hir::ItemKind::TraitAlias(..) => (hir::Constness::NotConst, true, false, hir::Safety::Safe),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
     let attrs = tcx.get_all_attrs(def_id);
     // Only regular traits can be const.
-    let constness = if !is_alias && find_attr!(attrs, AttributeKind::ConstTrait(_)) {
+    // FIXME(const_trait_impl): remove this
+    let constness = if constness == hir::Constness::Const
+        || !is_alias && find_attr!(attrs, AttributeKind::ConstTrait(_))
+    {
         hir::Constness::Const
     } else {
         hir::Constness::NotConst

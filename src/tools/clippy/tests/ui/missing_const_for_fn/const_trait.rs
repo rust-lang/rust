@@ -3,8 +3,7 @@
 
 // Reduced test case from https://github.com/rust-lang/rust-clippy/issues/14658
 
-#[const_trait]
-trait ConstTrait {
+const trait ConstTrait {
     fn method(self);
 }
 

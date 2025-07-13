@@ -72,7 +72,7 @@ error: `[const]` is not allowed here
 LL |     type Type<T: [const] Trait>: [const] Trait;
    |                  ^^^^^^^
    |
-note: associated types in non-`#[const_trait]` traits cannot have `[const]` trait bounds
+note: associated types in non-`const` traits cannot have `[const]` trait bounds
   --> $DIR/conditionally-const-invalid-places.rs:25:5
    |
 LL |     type Type<T: [const] Trait>: [const] Trait;
@@ -84,7 +84,7 @@ error: `[const]` is not allowed here
 LL |     type Type<T: [const] Trait>: [const] Trait;
    |                                  ^^^^^^^
    |
-note: associated types in non-`#[const_trait]` traits cannot have `[const]` trait bounds
+note: associated types in non-`const` traits cannot have `[const]` trait bounds
   --> $DIR/conditionally-const-invalid-places.rs:25:5
    |
 LL |     type Type<T: [const] Trait>: [const] Trait;
@@ -180,7 +180,7 @@ error: `[const]` is not allowed here
 LL | trait Child0: [const] Trait {}
    |               ^^^^^^^
    |
-note: this trait is not a `#[const_trait]`, so it cannot have `[const]` trait bounds
+note: this trait is not `const`, so it cannot have `[const]` trait bounds
   --> $DIR/conditionally-const-invalid-places.rs:52:1
    |
 LL | trait Child0: [const] Trait {}
@@ -192,7 +192,7 @@ error: `[const]` is not allowed here
 LL | trait Child1 where Self: [const] Trait {}
    |                          ^^^^^^^
    |
-note: this trait is not a `#[const_trait]`, so it cannot have `[const]` trait bounds
+note: this trait is not `const`, so it cannot have `[const]` trait bounds
   --> $DIR/conditionally-const-invalid-places.rs:53:1
    |
 LL | trait Child1 where Self: [const] Trait {}

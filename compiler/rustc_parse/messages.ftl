@@ -855,6 +855,7 @@ parse_trailing_vert_not_allowed = a trailing `|` is not allowed in an or-pattern
     .suggestion = remove the `{$token}`
 
 parse_trait_alias_cannot_be_auto = trait aliases cannot be `auto`
+parse_trait_alias_cannot_be_const = trait aliases cannot be `const`
 parse_trait_alias_cannot_be_unsafe = trait aliases cannot be `unsafe`
 
 parse_transpose_dyn_or_impl = `for<...>` expected after `{$kw}`, not before

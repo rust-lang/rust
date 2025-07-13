@@ -776,7 +776,7 @@ passes_unused_capture_maybe_capture_ref = value captured by `{$name}` is never r
     .help = did you mean to capture by reference instead?
 
 passes_unused_default_method_body_const_note =
-    `default_method_body_is_const` has been replaced with `#[const_trait]` on traits
+    `default_method_body_is_const` has been replaced with `const` on traits
 
 passes_unused_duplicate =
     unused attribute

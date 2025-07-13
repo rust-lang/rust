@@ -525,6 +525,7 @@ pub(crate) struct ConstImplForNonConstTrait {
     pub trait_name: String,
     #[suggestion(
         applicability = "machine-applicable",
+        // FIXME(const_trait_impl) fix this suggestion
         code = "#[const_trait] ",
         style = "verbose"
     )]
@@ -548,6 +549,7 @@ pub(crate) struct ConstBoundForNonConstTrait {
     pub suggestion_pre: &'static str,
     #[suggestion(
         applicability = "machine-applicable",
+        // FIXME(const_trait_impl) fix this suggestion
         code = "#[const_trait] ",
         style = "verbose"
     )]

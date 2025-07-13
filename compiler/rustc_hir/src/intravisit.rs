@@ -618,7 +618,15 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_variant_data(struct_definition));
         }
-        ItemKind::Trait(_is_auto, _safety, ident, ref generics, bounds, trait_item_refs) => {
+        ItemKind::Trait(
+            _constness,
+            _is_auto,
+            _safety,
+            ident,
+            ref generics,
+            bounds,
+            trait_item_refs,
+        ) => {
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             walk_list!(visitor, visit_param_bound, bounds);
