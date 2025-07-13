@@ -1,3 +1,11 @@
+//! Checks trailing commas are accepted in various places:
+//! - Generic parameters in function and struct definitions.
+//! - Function and method arguments.
+//! - Tuple and array literal expressions.
+//! - Tuple and array destructuring patterns, including those with `..`.
+//! - Enum variant declarations.
+//! - Attributes.
+
 //@ run-pass
 
 fn f<T,>(_: T,) {}
