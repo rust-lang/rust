@@ -1,3 +1,4 @@
+use rustc_attr_data_structures::{AttributeKind, CoverageStatus, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::{BasicCoverageBlock, CoverageIdsInfo, CoverageKind, MappingKind};
@@ -5,7 +6,6 @@ use rustc_middle::mir::{Body, Statement, StatementKind};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::sym;
 use tracing::trace;
 
 use crate::coverage::counters::node_flow::make_node_counters;
@@ -58,25 +58,19 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// Query implementation for `coverage_attr_on`.
 fn coverage_attr_on(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // Check for annotations directly on this def.
-    if let Some(attr) = tcx.get_attr(def_id, sym::coverage) {
-        match attr.meta_item_list().as_deref() {
-            Some([item]) if item.has_name(sym::off) => return false,
-            Some([item]) if item.has_name(sym::on) => return true,
-            Some(_) | None => {
-                // Other possibilities should have been rejected by `rustc_parse::validate_attr`.
-                // Use `span_delayed_bug` to avoid an ICE in failing builds (#127880).
-                tcx.dcx().span_delayed_bug(attr.span(), "unexpected value of coverage attribute");
-            }
+    if let Some(coverage_status) =
+        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Coverage(_, status) => status)
+    {
+        *coverage_status == CoverageStatus::On
+    } else {
+        match tcx.opt_local_parent(def_id) {
+            // Check the parent def (and so on recursively) until we find an
+            // enclosing attribute or reach the crate root.
+            Some(parent) => tcx.coverage_attr_on(parent),
+            // We reached the crate root without seeing a coverage attribute, so
+            // allow coverage instrumentation by default.
+            None => true,
         }
-    }
-
-    match tcx.opt_local_parent(def_id) {
-        // Check the parent def (and so on recursively) until we find an
-        // enclosing attribute or reach the crate root.
-        Some(parent) => tcx.coverage_attr_on(parent),
-        // We reached the crate root without seeing a coverage attribute, so
-        // allow coverage instrumentation by default.
-        None => true,
     }
 }
 

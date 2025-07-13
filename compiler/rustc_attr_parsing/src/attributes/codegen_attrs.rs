@@ -1,4 +1,4 @@
-use rustc_attr_data_structures::{AttributeKind, OptimizeAttr, UsedBy};
+use rustc_attr_data_structures::{AttributeKind, CoverageStatus, OptimizeAttr, UsedBy};
 use rustc_feature::{AttributeTemplate, template};
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
@@ -50,6 +50,45 @@ impl<S: Stage> NoArgsAttributeParser<S> for ColdParser {
     const PATH: &[Symbol] = &[sym::cold];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::Cold;
+}
+
+pub(crate) struct CoverageParser;
+
+impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
+    const PATH: &[Symbol] = &[sym::coverage];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::off, sym::on]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let Some(args) = args.list() else {
+            cx.expected_specific_argument_and_list(cx.attr_span, vec!["on", "off"]);
+            return None;
+        };
+
+        let Some(arg) = args.single() else {
+            cx.expected_single_argument(args.span);
+            return None;
+        };
+
+        let fail_incorrect_argument = |span| cx.expected_specific_argument(span, vec!["on", "off"]);
+
+        let Some(arg) = arg.meta_item() else {
+            fail_incorrect_argument(args.span);
+            return None;
+        };
+
+        let status = match arg.path().word_sym() {
+            Some(sym::off) => CoverageStatus::Off,
+            Some(sym::on) => CoverageStatus::On,
+            None | Some(_) => {
+                fail_incorrect_argument(arg.span());
+                return None;
+            }
+        };
+
+        Some(AttributeKind::Coverage(cx.attr_span, status))
+    }
 }
 
 pub(crate) struct ExportNameParser;
