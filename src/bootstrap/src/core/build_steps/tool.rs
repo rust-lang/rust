@@ -9,6 +9,7 @@
 //! Each Rust tool **MUST** utilize `ToolBuild` inside their `Step` logic,
 //! return `ToolBuildResult` and should never prepare `cargo` invocations manually.
 
+use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::{env, fs};
 
@@ -258,7 +259,7 @@ pub fn prepare_tool_cargo(
         .config
         .tool
         .iter()
-        .filter(|(tool_name, _)| path.ends_with(tool_name))
+        .filter(|(tool_name, _)| path.file_name().and_then(OsStr::to_str) == Some(tool_name))
         .for_each(|(_, tool)| features.extend(tool.features.clone().unwrap_or_default()));
 
     // clippy tests need to know about the stage sysroot. Set them consistently while building to
