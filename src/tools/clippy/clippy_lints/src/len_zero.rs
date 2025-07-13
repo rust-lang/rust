@@ -10,7 +10,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{
-    AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, HirId, ImplItem, ImplItemKind,
+    BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, HirId, ImplItem, ImplItemKind,
     ImplicitSelfKind, Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatExprKind, PatKind, PathSegment, PrimTy,
     QPath, TraitItemRef, TyKind,
 };
@@ -18,6 +18,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, FnSig, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
+use rustc_span::symbol::kw;
 use rustc_span::{Ident, Span, Symbol};
 use rustc_trait_selection::traits::supertrait_def_ids;
 
@@ -267,19 +268,10 @@ fn span_without_enclosing_paren(cx: &LateContext<'_>, span: Span) -> Span {
 fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, ident: Ident, trait_items: &[TraitItemRef]) {
     fn is_named_self(cx: &LateContext<'_>, item: &TraitItemRef, name: Symbol) -> bool {
         item.ident.name == name
-            && if let AssocItemKind::Fn { has_self } = item.kind {
-                has_self && {
-                    cx.tcx
-                        .fn_sig(item.id.owner_id)
-                        .skip_binder()
-                        .inputs()
-                        .skip_binder()
-                        .len()
-                        == 1
-                }
-            } else {
-                false
-            }
+            && matches!(
+                cx.tcx.fn_arg_idents(item.id.owner_id),
+                [Some(Ident { name: kw::SelfLower, .. })],
+            )
     }
 
     // fill the set with current and super traits

@@ -4415,7 +4415,6 @@ impl ItemKind<'_> {
 pub struct TraitItemRef {
     pub id: TraitItemId,
     pub ident: Ident,
-    pub kind: AssocItemKind,
     pub span: Span,
 }
 
@@ -4429,15 +4428,7 @@ pub struct TraitItemRef {
 pub struct ImplItemRef {
     pub id: ImplItemId,
     pub ident: Ident,
-    pub kind: AssocItemKind,
     pub span: Span,
-}
-
-#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
-pub enum AssocItemKind {
-    Const,
-    Fn { has_self: bool },
-    Type,
 }
 
 // The bodies for items are stored "out of line", in a separate

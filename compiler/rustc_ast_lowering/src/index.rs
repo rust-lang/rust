@@ -384,7 +384,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_trait_item_ref(&mut self, ii: &'hir TraitItemRef) {
         // Do not visit the duplicate information in TraitItemRef. We want to
         // map the actual nodes, not the duplicate ones in the *Ref.
-        let TraitItemRef { id, ident: _, kind: _, span: _ } = *ii;
+        let TraitItemRef { id, ident: _, span: _ } = *ii;
 
         self.visit_nested_trait_item(id);
     }
@@ -392,7 +392,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_impl_item_ref(&mut self, ii: &'hir ImplItemRef) {
         // Do not visit the duplicate information in ImplItemRef. We want to
         // map the actual nodes, not the duplicate ones in the *Ref.
-        let ImplItemRef { id, ident: _, kind: _, span: _ } = *ii;
+        let ImplItemRef { id, ident: _, span: _ } = *ii;
 
         self.visit_nested_impl_item(id);
     }

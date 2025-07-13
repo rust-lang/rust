@@ -499,9 +499,6 @@ pub trait Visitor<'v>: Sized {
     fn visit_attribute(&mut self, _attr: &'v Attribute) -> Self::Result {
         Self::Result::output()
     }
-    fn visit_associated_item_kind(&mut self, kind: &'v AssocItemKind) -> Self::Result {
-        walk_associated_item_kind(self, kind)
-    }
     fn visit_defaultness(&mut self, defaultness: &'v Defaultness) -> Self::Result {
         walk_defaultness(self, defaultness)
     }
@@ -1252,10 +1249,9 @@ pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(
     visitor: &mut V,
     trait_item_ref: &'v TraitItemRef,
 ) -> V::Result {
-    let TraitItemRef { id, ident, ref kind, span: _ } = *trait_item_ref;
+    let TraitItemRef { id, ident, span: _ } = *trait_item_ref;
     try_visit!(visitor.visit_nested_trait_item(id));
-    try_visit!(visitor.visit_ident(ident));
-    visitor.visit_associated_item_kind(kind)
+    visitor.visit_ident(ident)
 }
 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(
@@ -1307,10 +1303,9 @@ pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(
     visitor: &mut V,
     impl_item_ref: &'v ImplItemRef,
 ) -> V::Result {
-    let ImplItemRef { id, ident, ref kind, span: _ } = *impl_item_ref;
+    let ImplItemRef { id, ident, span: _ } = *impl_item_ref;
     try_visit!(visitor.visit_nested_impl_item(id));
-    try_visit!(visitor.visit_ident(ident));
-    visitor.visit_associated_item_kind(kind)
+    visitor.visit_ident(ident)
 }
 
 pub fn walk_trait_ref<'v, V: Visitor<'v>>(
@@ -1481,13 +1476,6 @@ pub fn walk_assoc_item_constraint<'v, V: Visitor<'v>>(
             walk_list!(visitor, visit_param_bound, bounds)
         }
     }
-    V::Result::output()
-}
-
-pub fn walk_associated_item_kind<'v, V: Visitor<'v>>(_: &mut V, _: &'v AssocItemKind) -> V::Result {
-    // No visitable content here: this fn exists so you can call it if
-    // the right thing to do, should content be added in the future,
-    // would be to walk it.
     V::Result::output()
 }
 

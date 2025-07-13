@@ -3,7 +3,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, Impl, ItemKind, Node, Path, QPath, TraitRef, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::AssocItem;
+use rustc_middle::ty::{AssocKind, AssocItem};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
@@ -54,7 +54,6 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
             if matches!(cx.tcx.def_kind(id.owner_id), DefKind::Impl { .. })
                 && let item = cx.tcx.hir_item(id)
                 && let ItemKind::Impl(Impl {
-                    items,
                     of_trait,
                     self_ty,
                     ..
@@ -115,13 +114,11 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                             }
                         };
 
-                        for impl_item_ref in (*items)
-                            .iter()
-                            .filter(|impl_item_ref| matches!(impl_item_ref.kind, rustc_hir::AssocItemKind::Fn { .. }))
-                        {
-                            let method_name = impl_item_ref.ident.name;
-                            methods_in_trait.remove(&method_name);
-                            check_trait_method(method_name, impl_item_ref.span);
+                        for assoc_item in cx.tcx.associated_items(id.owner_id).in_definition_order() {
+                            if let AssocKind::Fn { name, .. } = assoc_item.kind {
+                                methods_in_trait.remove(&name);
+                                check_trait_method(name, cx.tcx.def_span(assoc_item.def_id));
+                            }
                         }
 
                         for method_name in methods_in_trait {
@@ -129,14 +126,11 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                         }
                     },
                     None => {
-                        for impl_item_ref in (*items)
-                            .iter()
-                            .filter(|impl_item_ref| matches!(impl_item_ref.kind, rustc_hir::AssocItemKind::Fn { .. }))
-                        {
-                            let method_name = impl_item_ref.ident.name;
-                            let impl_span = impl_item_ref.span;
-                            let hir_id = impl_item_ref.id.hir_id();
-                            if let Some(trait_spans) = existing_name.trait_methods.get(&method_name) {
+                        for assoc_item in cx.tcx.associated_items(id.owner_id).in_definition_order() {
+                            let AssocKind::Fn { name, .. } = assoc_item.kind else { continue };
+                            let impl_span = cx.tcx.def_span(assoc_item.def_id);
+                            let hir_id = cx.tcx.local_def_id_to_hir_id(assoc_item.def_id.expect_local());
+                            if let Some(trait_spans) = existing_name.trait_methods.get(&name) {
                                 span_lint_hir_and_then(
                                     cx,
                                     SAME_NAME_METHOD,
@@ -148,12 +142,12 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                                         // iterate on trait_spans?
                                         diag.span_note(
                                             trait_spans[0],
-                                            format!("existing `{method_name}` defined here"),
+                                            format!("existing `{name}` defined here"),
                                         );
                                     },
                                 );
                             }
-                            existing_name.impl_methods.insert(method_name, (impl_span, hir_id));
+                            existing_name.impl_methods.insert(name, (impl_span, hir_id));
                         }
                     },
                 }

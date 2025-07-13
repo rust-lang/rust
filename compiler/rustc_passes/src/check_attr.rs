@@ -20,8 +20,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, self, AssocItemKind, Attribute, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig, ForeignItem,
-    HirId, Item, ItemKind, MethodKind, Safety, Target, TraitItem,
+    self as hir, self, Attribute, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig, ForeignItem, HirId, Item,
+    ItemKind, MethodKind, Safety, Target, TraitItem,
 };
 use rustc_macros::LintDiagnostic;
 use rustc_middle::hir::nested_filter;
@@ -1151,7 +1151,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 if generics.params.len() != 0 => {}
             ItemKind::Trait(_, _, _, generics, _, items)
                 if generics.params.len() != 0
-                    || items.iter().any(|item| matches!(item.kind, AssocItemKind::Type)) => {}
+                    || items.iter().any(|item| {
+                        matches!(self.tcx.def_kind(item.id.owner_id), DefKind::AssocTy)
+                    }) => {}
             ItemKind::TyAlias(_, generics, _) if generics.params.len() != 0 => {}
             _ => {
                 self.dcx().emit_err(errors::DocSearchUnboxInvalid { span: meta.span() });

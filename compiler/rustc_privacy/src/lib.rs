@@ -26,7 +26,7 @@ use rustc_errors::{MultiSpan, listify};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, InferKind, Visitor};
-use rustc_hir::{AmbigArg, AssocItemKind, ForeignItemKind, ItemId, ItemKind, PatKind};
+use rustc_hir::{AmbigArg, ForeignItemKind, ItemId, ItemKind, PatKind};
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
@@ -678,7 +678,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                         let mut reach = self.reach(trait_item_ref.id.owner_id.def_id, item_ev);
                         reach.generics().predicates();
 
-                        if trait_item_ref.kind == AssocItemKind::Type
+                        if let DefKind::AssocTy = tcx.def_kind(trait_item_ref.id.owner_id)
                             && !tcx.defaultness(trait_item_ref.id.owner_id).has_value()
                         {
                             // No type to visit.
@@ -1576,16 +1576,15 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
 
     fn check_assoc_item(
         &self,
-        def_id: LocalDefId,
-        assoc_item_kind: AssocItemKind,
+        item: &ty::AssocItem,
         vis: ty::Visibility,
         effective_vis: Option<EffectiveVisibility>,
     ) {
-        let mut check = self.check(def_id, vis, effective_vis);
+        let mut check = self.check(item.def_id.expect_local(), vis, effective_vis);
 
-        let (check_ty, is_assoc_ty) = match assoc_item_kind {
-            AssocItemKind::Const | AssocItemKind::Fn { .. } => (true, false),
-            AssocItemKind::Type => (self.tcx.defaultness(def_id).has_value(), true),
+        let (check_ty, is_assoc_ty) = match item.kind {
+            ty::AssocKind::Const { .. } | ty::AssocKind::Fn { .. } => (true, false),
+            ty::AssocKind::Type { .. } => (item.defaultness(self.tcx).has_value(), true),
         };
 
         check.in_assoc_ty = is_assoc_ty;
@@ -1619,30 +1618,20 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                 self.check(def_id, item_visibility, effective_vis).generics().bounds();
             }
             DefKind::Trait => {
-                let item = tcx.hir_item(id);
-                if let hir::ItemKind::Trait(.., trait_item_refs) = item.kind {
-                    self.check_unnameable(item.owner_id.def_id, effective_vis);
+                self.check_unnameable(def_id, effective_vis);
 
-                    self.check(item.owner_id.def_id, item_visibility, effective_vis)
-                        .generics()
-                        .predicates();
+                self.check(def_id, item_visibility, effective_vis).generics().predicates();
 
-                    for trait_item_ref in trait_item_refs {
-                        self.check_assoc_item(
-                            trait_item_ref.id.owner_id.def_id,
-                            trait_item_ref.kind,
+                for assoc_item in tcx.associated_items(id.owner_id).in_definition_order() {
+                    self.check_assoc_item(assoc_item, item_visibility, effective_vis);
+
+                    if assoc_item.is_type() {
+                        self.check(
+                            assoc_item.def_id.expect_local(),
                             item_visibility,
                             effective_vis,
-                        );
-
-                        if let AssocItemKind::Type = trait_item_ref.kind {
-                            self.check(
-                                trait_item_ref.id.owner_id.def_id,
-                                item_visibility,
-                                effective_vis,
-                            )
-                            .bounds();
-                        }
+                        )
+                        .bounds();
                     }
                 }
             }
@@ -1714,69 +1703,52 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             // Subitems of inherent impls have their own publicity.
             // A trait impl is public when both its type and its trait are public
             // Subitems of trait impls have inherited publicity.
-            DefKind::Impl { .. } => {
-                let item = tcx.hir_item(id);
-                if let hir::ItemKind::Impl(impl_) = item.kind {
-                    let impl_vis = ty::Visibility::of_impl::<false>(
-                        item.owner_id.def_id,
-                        tcx,
-                        &Default::default(),
-                    );
+            DefKind::Impl { of_trait } => {
+                let impl_vis = ty::Visibility::of_impl::<false>(def_id, tcx, &Default::default());
 
-                    // We are using the non-shallow version here, unlike when building the
-                    // effective visisibilities table to avoid large number of false positives.
-                    // For example in
-                    //
-                    // impl From<Priv> for Pub {
-                    //     fn from(_: Priv) -> Pub {...}
-                    // }
-                    //
-                    // lints shouldn't be emitted even if `from` effective visibility
-                    // is larger than `Priv` nominal visibility and if `Priv` can leak
-                    // in some scenarios due to type inference.
-                    let impl_ev = EffectiveVisibility::of_impl::<false>(
-                        item.owner_id.def_id,
-                        tcx,
-                        self.effective_visibilities,
-                    );
+                // We are using the non-shallow version here, unlike when building the
+                // effective visisibilities table to avoid large number of false positives.
+                // For example in
+                //
+                // impl From<Priv> for Pub {
+                //     fn from(_: Priv) -> Pub {...}
+                // }
+                //
+                // lints shouldn't be emitted even if `from` effective visibility
+                // is larger than `Priv` nominal visibility and if `Priv` can leak
+                // in some scenarios due to type inference.
+                let impl_ev =
+                    EffectiveVisibility::of_impl::<false>(def_id, tcx, self.effective_visibilities);
 
-                    let mut check = self.check(item.owner_id.def_id, impl_vis, Some(impl_ev));
-                    // Generics and predicates of trait impls are intentionally not checked
-                    // for private components (#90586).
-                    if impl_.of_trait.is_none() {
-                        check.generics().predicates();
-                    }
-                    // Skip checking private components in associated types, due to lack of full
-                    // normalization they produce very ridiculous false positives.
-                    // FIXME: Remove this when full normalization is implemented.
-                    check.skip_assoc_tys = true;
-                    check.ty().trait_ref();
+                let mut check = self.check(def_id, impl_vis, Some(impl_ev));
 
-                    for impl_item_ref in impl_.items {
-                        let impl_item_vis = if impl_.of_trait.is_none() {
-                            min(
-                                tcx.local_visibility(impl_item_ref.id.owner_id.def_id),
-                                impl_vis,
-                                tcx,
-                            )
-                        } else {
-                            impl_vis
-                        };
+                // Generics and predicates of trait impls are intentionally not checked
+                // for private components (#90586).
+                if !of_trait {
+                    check.generics().predicates();
+                }
 
-                        let impl_item_ev = if impl_.of_trait.is_none() {
-                            self.get(impl_item_ref.id.owner_id.def_id)
-                                .map(|ev| ev.min(impl_ev, self.tcx))
-                        } else {
-                            Some(impl_ev)
-                        };
+                // Skip checking private components in associated types, due to lack of full
+                // normalization they produce very ridiculous false positives.
+                // FIXME: Remove this when full normalization is implemented.
+                check.skip_assoc_tys = true;
+                check.ty().trait_ref();
 
-                        self.check_assoc_item(
-                            impl_item_ref.id.owner_id.def_id,
-                            impl_item_ref.kind,
-                            impl_item_vis,
-                            impl_item_ev,
-                        );
-                    }
+                for assoc_item in tcx.associated_items(id.owner_id).in_definition_order() {
+                    let impl_item_vis = if !of_trait {
+                        min(tcx.local_visibility(assoc_item.def_id.expect_local()), impl_vis, tcx)
+                    } else {
+                        impl_vis
+                    };
+
+                    let impl_item_ev = if !of_trait {
+                        self.get(assoc_item.def_id.expect_local())
+                            .map(|ev| ev.min(impl_ev, self.tcx))
+                    } else {
+                        Some(impl_ev)
+                    };
+
+                    self.check_assoc_item(assoc_item, impl_item_vis, impl_item_ev);
                 }
             }
             _ => {}

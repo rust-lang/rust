@@ -62,21 +62,6 @@ pub(crate) struct DelegationResults<'hir> {
 }
 
 impl<'hir> LoweringContext<'_, 'hir> {
-    /// Defines whether the delegatee is an associated function whose first parameter is `self`.
-    pub(crate) fn delegatee_is_method(
-        &self,
-        item_id: NodeId,
-        path_id: NodeId,
-        span: Span,
-        is_in_trait_impl: bool,
-    ) -> bool {
-        let sig_id = self.get_delegation_sig_id(item_id, path_id, span, is_in_trait_impl);
-        let Ok(sig_id) = sig_id else {
-            return false;
-        };
-        self.is_method(sig_id, span)
-    }
-
     fn is_method(&self, def_id: DefId, span: Span) -> bool {
         match self.tcx.def_kind(def_id) {
             DefKind::Fn => false,

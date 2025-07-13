@@ -914,7 +914,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                 let item = items.iter().find(|item| item.ident == *ident);
 
                 match item {
-                    Some(item) if matches!(item.kind, hir::AssocItemKind::Fn { .. }) => {
+                    Some(item) if matches!(tcx.def_kind(item.id.owner_id), DefKind::AssocFn) => {
                         if !tcx.defaultness(item.id.owner_id).has_value() {
                             tcx.dcx().emit_err(errors::FunctionNotHaveDefaultImplementation {
                                 span: item.span,

@@ -154,7 +154,7 @@ fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
         ItemKind::Trait(.., trait_item_refs) => trait_item_refs
             .iter()
             .filter_map(move |item| {
-                if !matches!(item.kind, hir::AssocItemKind::Fn { .. }) {
+                if !matches!(tcx.def_kind(item.id.owner_id), DefKind::AssocFn) {
                     return None;
                 }
                 let fn_def_id = item.id.owner_id.def_id;
@@ -185,7 +185,7 @@ fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
                 .items
                 .iter()
                 .filter_map(|item| {
-                    if !matches!(item.kind, hir::AssocItemKind::Fn { .. }) {
+                    if !matches!(tcx.def_kind(item.id.owner_id), DefKind::AssocFn) {
                         return None;
                     }
                     let did = item.id.owner_id.def_id.to_def_id();
