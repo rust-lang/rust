@@ -113,7 +113,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::mir::{AggregateKind, Operand, RETURN_PLACE, Rvalue, StatementKind, TerminatorKind};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, PointerCoercion};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, GenericArgKind, GenericArgsRef, IntTy, Ty, TyCtxt,
@@ -3566,4 +3566,15 @@ pub fn potential_return_of_enclosing_body(cx: &LateContext<'_>, expr: &Expr<'_>)
     // `expr` is used as part of "something" and is not returned directly from its
     // enclosing body.
     false
+}
+
+/// Checks if the expression has adjustments that require coercion, for example: dereferencing with
+/// overloaded deref, coercing pointers and `dyn` objects.
+pub fn expr_adjustment_requires_coercion(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    cx.typeck_results().expr_adjustments(expr).iter().any(|adj| {
+        matches!(
+            adj.kind,
+            Adjust::Deref(Some(_)) | Adjust::Pointer(PointerCoercion::Unsize) | Adjust::NeverToAny
+        )
+    })
 }
