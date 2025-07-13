@@ -55,7 +55,7 @@ impl CacheEntry {
 #[derive(Clone)]
 pub struct CachingSourceMapView<'sm> {
     source_map: &'sm SourceMap,
-    line_cache: [CacheEntry; 3],
+    line_cache: [CacheEntry; 4],
     time_stamp: usize,
 }
 
@@ -73,7 +73,7 @@ impl<'sm> CachingSourceMapView<'sm> {
 
         CachingSourceMapView {
             source_map,
-            line_cache: [entry.clone(), entry.clone(), entry],
+            line_cache: [entry.clone(), entry.clone(), entry.clone(), entry],
             time_stamp: 0,
         }
     }
