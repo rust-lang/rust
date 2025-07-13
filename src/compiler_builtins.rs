@@ -85,6 +85,7 @@ builtin_functions! {
     fn __divtf3(a: f128, b: f128) -> f128;
     fn fmodf(a: f32, b: f32) -> f32;
     fn fmod(a: f64, b: f64) -> f64;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn fmodf128(a: f128, b: f128) -> f128;
     // float comparison
     fn __eqtf2(a: f128, b: f128) -> i32;
@@ -93,7 +94,9 @@ builtin_functions! {
     fn __letf2(a: f128, b: f128) -> i32;
     fn __gttf2(a: f128, b: f128) -> i32;
     fn __getf2(a: f128, b: f128) -> i32;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn fminimumf128(a: f128, b: f128) -> f128;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn fmaximumf128(a: f128, b: f128) -> f128;
     // Cranelift float libcalls
     fn fmaf(a: f32, b: f32, c: f32) -> f32;
@@ -127,16 +130,27 @@ builtin_functions! {
     fn sin(f: f64) -> f64;
     fn cosf(f: f32) -> f32;
     fn cos(f: f64) -> f64;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn fmaf128(a: f128, b: f128, c: f128) -> f128;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn floorf16(f: f16) -> f16;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn floorf128(f: f128) -> f128;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn ceilf16(f: f16) -> f16;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn ceilf128(f: f128) -> f128;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn truncf16(f: f16) -> f16;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn truncf128(f: f128) -> f128;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn rintf16(f: f16) -> f16;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn rintf128(f: f128) -> f128;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn sqrtf16(f: f16) -> f16;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn sqrtf128(f: f128) -> f128;
     // FIXME(f16_f128): Add other float intrinsics as compiler-builtins gains support (meaning they
     // are available on all targets).
