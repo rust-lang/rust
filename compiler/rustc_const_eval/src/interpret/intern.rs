@@ -106,13 +106,12 @@ fn intern_shallow<'tcx, T: CanIntern, M: CompileTimeMachine<'tcx, T>>(
 
     match kind {
         MemoryKind::Machine(x) if let Some(reason) = x.disallows_intern() => match reason {
-            // attempting to intern a `const_allocate`d pointer that was not made global via
-            // `const_make_global`. We emit an error here but don't return an `Err`. The `Err`
-            // is for pointers that we can't intern at all (i.e. dangling pointers). We still
-            // (recursively) intern this pointer because we don't have to worry about the
-            // additional paperwork involved with _not_ interning it, such as storing it in
-            // the dead memory map and having to deal with additional "dangling pointer"
-            // messages if someone tries to store the non-made-global ptr in the final value.
+            // Attempting to intern a `const_allocate`d pointer that was not made global via
+            // `const_make_global`. This is an error, but if we return `Err` now, things
+            // become inconsistent because we already removed the allocation from `alloc_map`.
+            // So instead we just emit an error and then continue interning as usual.
+            // We *could* do this check before removing the allocation from `alloc_map`, but then
+            // it would be much harder to ensure that we only error once for each allocation.
             DisallowInternReason::ConstHeap => {
                 ecx.tcx.dcx().emit_err(ConstHeapPtrInFinal { span: ecx.tcx.span });
             }

@@ -1,3 +1,5 @@
+// Ensure that we can't call `const_make_global` twice.
+
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
 

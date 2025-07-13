@@ -1,3 +1,8 @@
+// Ensure that we reject interning `const_allocate`d allocations in the final value of constants
+// if they have not been made global through `const_make_global`. The pointers are made *immutable*
+// to focus the test on the missing `make_global`; `ptr_not_made_global_mut.rs` covers the case
+// where the pointer remains mutable.
+
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
 use std::intrinsics;

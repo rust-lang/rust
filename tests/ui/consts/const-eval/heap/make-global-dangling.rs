@@ -1,3 +1,5 @@
+// Ensure that we can't call `const_make_global` on dangling pointers.
+
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
 

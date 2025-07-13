@@ -12,7 +12,7 @@ const fn foo() -> &'static i32 {
         *i = 20;
         i
     };
-    unsafe { &*(intrinsics::const_make_global(t as *mut u8) as *mut i32) }
+    unsafe { &*(intrinsics::const_make_global(t as *mut u8) as *const i32) }
 }
 fn main() {
     assert_eq!(*FOO, 20);

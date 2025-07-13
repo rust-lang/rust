@@ -169,7 +169,11 @@ pub type CompileTimeInterpCx<'tcx> = InterpCx<'tcx, CompileTimeMachine<'tcx>>;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MemoryKind {
-    Heap { was_made_global: bool },
+    Heap {
+        /// Indicates whether `make_global` was called on this allocation.
+        /// If this is `true`, the allocation must be immutable.
+        was_made_global: bool,
+    },
 }
 
 impl fmt::Display for MemoryKind {

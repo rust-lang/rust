@@ -1,5 +1,5 @@
 error[E0080]: attempting to call `const_make_global` twice on the same allocation ALLOC0
-  --> $DIR/make-global-twice.rs:11:5
+  --> $DIR/make-global-twice.rs:13:5
    |
 LL |     intrinsics::const_make_global(ptr);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `Y` failed here

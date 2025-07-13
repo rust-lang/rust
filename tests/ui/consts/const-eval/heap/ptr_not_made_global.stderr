@@ -1,5 +1,5 @@
 error: encountered `const_allocate` pointer in final value that was not made global
-  --> $DIR/ptr_not_made_global.rs:5:1
+  --> $DIR/ptr_not_made_global.rs:10:1
    |
 LL | const FOO: &i32 = foo();
    | ^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | const FOO: &i32 = foo();
    = note: use `const_make_global` to make allocated pointers immutable before returning
 
 error: encountered `const_allocate` pointer in final value that was not made global
-  --> $DIR/ptr_not_made_global.rs:7:1
+  --> $DIR/ptr_not_made_global.rs:12:1
    |
 LL | const FOO_RAW: *const i32 = foo();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^

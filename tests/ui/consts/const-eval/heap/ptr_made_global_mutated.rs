@@ -1,3 +1,4 @@
+// Ensure that once an allocation is "made global", we can no longer mutate it.
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
 use std::intrinsics;

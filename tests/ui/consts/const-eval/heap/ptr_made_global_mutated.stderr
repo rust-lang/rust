@@ -1,5 +1,5 @@
 error[E0080]: writing to ALLOC0 which is read-only
-  --> $DIR/ptr_made_global_mutated.rs:9:5
+  --> $DIR/ptr_made_global_mutated.rs:10:5
    |
 LL |     *(ptr as *mut u8) = 2;
    |     ^^^^^^^^^^^^^^^^^^^^^ evaluation of `A` failed here
