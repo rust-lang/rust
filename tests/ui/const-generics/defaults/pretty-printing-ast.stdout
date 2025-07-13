@@ -8,7 +8,6 @@
 #![crate_type = "lib"]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
-#[macro_use]
 extern crate std;
 
 trait Foo<const KIND : bool = true> {}

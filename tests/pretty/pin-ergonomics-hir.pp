@@ -6,7 +6,6 @@
 #![allow(dead_code, incomplete_features)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
-#[macro_use]
 extern crate std;
 
 use std::pin::Pin;
