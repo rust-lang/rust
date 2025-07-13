@@ -2635,7 +2635,7 @@ pub trait HashStableContext {
     fn span_data_to_lines_and_cols(
         &mut self,
         span: &SpanData,
-    ) -> Option<(StableSourceFileId, usize, BytePos, usize, BytePos)>;
+    ) -> Option<(&SourceFile, usize, BytePos, usize, BytePos)>;
     fn hashing_controls(&self) -> HashingControls;
 }
 
@@ -2671,15 +2671,15 @@ where
             return;
         }
 
-        if let Some(parent) = span.parent {
-            let parent_span = ctx.def_span(parent).data_untracked();
-            if parent_span.contains(span) {
-                // This span is enclosed in a definition: only hash the relative position.
-                Hash::hash(&TAG_RELATIVE_SPAN, hasher);
-                Hash::hash(&(span.lo - parent_span.lo), hasher);
-                Hash::hash(&(span.hi - parent_span.lo), hasher);
-                return;
-            }
+        let parent = span.parent.map(|parent| ctx.def_span(parent).data_untracked());
+        if let Some(parent) = parent
+            && parent.contains(span)
+        {
+            // This span is enclosed in a definition: only hash the relative position.
+            Hash::hash(&TAG_RELATIVE_SPAN, hasher);
+            Hash::hash(&(span.lo - parent.lo), hasher);
+            Hash::hash(&(span.hi - parent.lo), hasher);
+            return;
         }
 
         // If this is not an empty or invalid span, we want to hash the last
@@ -2692,25 +2692,19 @@ where
         };
 
         Hash::hash(&TAG_VALID_SPAN, hasher);
-        Hash::hash(&file, hasher);
+        Hash::hash(&file.stable_id, hasher);
 
-        if let Some(parent) = span.parent {
-            let parent_span = ctx.def_span(parent).data_untracked();
-            let Some((parent_file, ..)) = ctx.span_data_to_lines_and_cols(&parent_span) else {
-                Hash::hash(&TAG_INVALID_SPAN, hasher);
-                return;
-            };
-
-            if parent_file == file {
-                // This span is relative to another span in the same file,
-                // only hash the relative position.
-                Hash::hash(&TAG_RELATIVE_SPAN, hasher);
-                // Use signed difference as `span` may start before `parent_span`,
-                // for instance attributes start before their item's span.
-                Hash::hash(&(span.lo.to_u32() as isize - parent_span.lo.to_u32() as isize), hasher);
-                Hash::hash(&(span.hi.to_u32() as isize - parent_span.lo.to_u32() as isize), hasher);
-                return;
-            }
+        if let Some(parent) = parent
+            && file.contains(parent.lo)
+        {
+            // This span is relative to another span in the same file,
+            // only hash the relative position.
+            Hash::hash(&TAG_RELATIVE_SPAN, hasher);
+            // Use signed difference as `span` may start before `parent`,
+            // for instance attributes start before their item's span.
+            Hash::hash(&(span.lo.to_u32() as isize - parent.lo.to_u32() as isize), hasher);
+            Hash::hash(&(span.hi.to_u32() as isize - parent.lo.to_u32() as isize), hasher);
+            return;
         }
 
         // Hash both the length and the end location (line/column) of a span. If we
