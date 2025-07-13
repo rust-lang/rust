@@ -18,3 +18,5 @@ impl Tr for () {
 fn main() {
     ().bar();
 }
+
+// https://github.com/rust-lang/rust/issues/18685

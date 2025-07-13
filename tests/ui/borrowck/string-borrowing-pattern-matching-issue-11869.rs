@@ -14,3 +14,5 @@ fn borrow<'a>(binding: &'a A) -> &'a str {
 }
 
 fn main() {}
+
+// https://github.com/rust-lang/rust/issues/11869

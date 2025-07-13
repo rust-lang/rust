@@ -22,3 +22,5 @@ pub enum VarError {
     NotPresent,
     NotUnicode(String),
 }
+
+// https://github.com/rust-lang/rust/issues/36023

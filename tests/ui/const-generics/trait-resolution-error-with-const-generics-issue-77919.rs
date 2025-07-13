@@ -11,3 +11,5 @@ struct Multiply<N, M> {
 impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
 //~^ ERROR cannot find type `VAL` in this scope
 //~| ERROR not all trait items implemented
+
+// https://github.com/rust-lang/rust/issues/77919

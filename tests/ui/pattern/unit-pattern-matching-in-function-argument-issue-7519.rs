@@ -9,3 +9,5 @@ fn foo(():()) { }
 pub fn main() {
     foo(());
 }
+
+// https://github.com/rust-lang/rust/issues/7519

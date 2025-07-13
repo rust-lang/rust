@@ -6,3 +6,5 @@ fn main() {
     let x : Vec<Box<dyn Fn()>> = vec![Box::new(|| ())];
     x[0]()
 }
+
+// https://github.com/rust-lang/rust/issues/36786

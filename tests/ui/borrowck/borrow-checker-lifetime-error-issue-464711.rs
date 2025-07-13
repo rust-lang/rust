@@ -6,3 +6,5 @@ fn main() {
     //~^^ ERROR `z` does not live long enough [E0597]
     println!("{}", y);
 }
+
+// https://github.com/rust-lang/rust/issues/464711

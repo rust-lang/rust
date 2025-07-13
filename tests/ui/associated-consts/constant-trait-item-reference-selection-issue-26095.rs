@@ -21,3 +21,5 @@ impl<T> HasNumber<T> for Two {
 }
 
 fn main() {}
+
+// https://github.com/rust-lang/rust/issues/26095

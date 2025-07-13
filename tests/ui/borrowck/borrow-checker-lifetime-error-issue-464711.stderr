@@ -1,5 +1,5 @@
 error[E0597]: `z` does not live long enough
-  --> $DIR/issue-46471-1.rs:4:9
+  --> $DIR/borrow-checker-lifetime-error-issue-464711.rs:4:9
    |
 LL |         let mut z = 0;
    |             ----- binding `z` declared here

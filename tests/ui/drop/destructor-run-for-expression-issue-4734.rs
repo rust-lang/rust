@@ -36,3 +36,5 @@ fn main() {
     { B; }
     assert_eq!(unsafe { NUM_DROPS }, 4);
 }
+
+// https://github.com/rust-lang/rust/issues/4734

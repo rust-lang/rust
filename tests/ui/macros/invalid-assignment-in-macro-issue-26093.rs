@@ -10,3 +10,5 @@ macro_rules! not_a_place {
 fn main() {
     not_a_place!(99);
 }
+
+// https://github.com/rust-lang/rust/issues/26093
