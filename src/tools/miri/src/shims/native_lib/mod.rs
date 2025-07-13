@@ -231,7 +231,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             .collect::<Vec<libffi::high::Arg<'_>>>();
 
         // Prepare all exposed memory (both previously exposed, and just newly exposed since a
-        // pointer was passed as argument).
+        // pointer was passed as argument). Uninitialised memory is left as-is, but any data
+        // exposed this way is garbage anyway.
         this.visit_reachable_allocs(this.exposed_allocs(), |this, alloc_id, info| {
             // If there is no data behind this pointer, skip this.
             if !matches!(info.kind, AllocKind::LiveData) {
@@ -251,8 +252,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Prepare for possible write from native code if mutable.
             if info.mutbl.is_mut() {
-                let alloc = &mut this.get_alloc_raw_mut(alloc_id)?.0;
-                alloc.prepare_for_native_access();
+                let (alloc, cx) = this.get_alloc_raw_mut(alloc_id)?;
+                alloc.process_native_write(&cx.tcx, None);
                 // Also expose *mutable* provenance for the interpreter-level allocation.
                 std::hint::black_box(alloc.get_bytes_unchecked_raw_mut().expose_provenance());
             }
