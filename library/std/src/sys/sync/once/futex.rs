@@ -17,6 +17,8 @@ const POISONED: Primitive = 2;
 /// so all future threads need to wait for it to finish.
 const RUNNING: Primitive = 1;
 /// Initialization has completed and all future calls should finish immediately.
+/// By choosing this state as the all-zero state the `is_completed` check can be
+/// a bit faster on some platforms.
 const COMPLETE: Primitive = 0;
 
 // An additional bit indicates whether there are waiting threads:

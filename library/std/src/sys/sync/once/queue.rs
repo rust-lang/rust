@@ -74,7 +74,8 @@ pub struct OnceState {
 }
 
 // Four states that a Once can be in, encoded into the lower bits of
-// `state_and_queue` in the Once structure.
+// `state_and_queue` in the Once structure. By choosing COMPLETE as the all-zero
+// state the `is_completed` check can be a bit faster on some platforms.
 const INCOMPLETE: usize = 0x3;
 const POISONED: usize = 0x2;
 const RUNNING: usize = 0x1;
