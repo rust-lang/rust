@@ -1,0 +1,77 @@
+error: `#[inline]` attribute cannot be used on function params
+  --> $DIR/invalid-attributes-on-const-params-78957.rs:6:16
+   |
+LL | pub struct Foo<#[inline] const N: usize>;
+   |                ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error: `#[inline]` attribute cannot be used on function params
+  --> $DIR/invalid-attributes-on-const-params-78957.rs:14:17
+   |
+LL | pub struct Foo2<#[inline] 'a>(PhantomData<&'a ()>);
+   |                 ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error: `#[inline]` attribute cannot be used on function params
+  --> $DIR/invalid-attributes-on-const-params-78957.rs:22:17
+   |
+LL | pub struct Foo3<#[inline] T>(PhantomData<T>);
+   |                 ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/invalid-attributes-on-const-params-78957.rs:11:23
+   |
+LL | pub struct Baz<#[repr(C)] const N: usize>;
+   |                       ^   -------------- not a struct, enum, or union
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/invalid-attributes-on-const-params-78957.rs:19:24
+   |
+LL | pub struct Baz2<#[repr(C)] 'a>(PhantomData<&'a ()>);
+   |                        ^   -- not a struct, enum, or union
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/invalid-attributes-on-const-params-78957.rs:27:24
+   |
+LL | pub struct Baz3<#[repr(C)] T>(PhantomData<T>);
+   |                        ^   - not a struct, enum, or union
+
+error: `#[cold]` attribute cannot be used on function params
+  --> $DIR/invalid-attributes-on-const-params-78957.rs:8:16
+   |
+LL | pub struct Bar<#[cold] const N: usize>;
+   |                ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[cold]` can only be applied to functions
+note: the lint level is defined here
+  --> $DIR/invalid-attributes-on-const-params-78957.rs:2:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: `#[cold]` attribute cannot be used on function params
+  --> $DIR/invalid-attributes-on-const-params-78957.rs:16:17
+   |
+LL | pub struct Bar2<#[cold] 'a>(PhantomData<&'a ()>);
+   |                 ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[cold]` can only be applied to functions
+
+error: `#[cold]` attribute cannot be used on function params
+  --> $DIR/invalid-attributes-on-const-params-78957.rs:24:17
+   |
+LL | pub struct Bar3<#[cold] T>(PhantomData<T>);
+   |                 ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[cold]` can only be applied to functions
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0517`.
