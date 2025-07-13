@@ -39,6 +39,7 @@ impl DocTestRunner {
         doctest: &DocTestBuilder,
         scraped_test: &ScrapedDocTest,
         target_str: &str,
+        opts: &RustdocOptions,
     ) {
         let ignore = match scraped_test.langstr.ignore {
             Ignore::All => true,
@@ -62,6 +63,7 @@ impl DocTestRunner {
                 self.nb_tests,
                 &mut self.output,
                 &mut self.output_merged_tests,
+                opts,
             ),
         ));
         self.supports_color &= doctest.supports_color;
@@ -223,6 +225,7 @@ fn generate_mergeable_doctest(
     id: usize,
     output: &mut String,
     output_merged_tests: &mut String,
+    opts: &RustdocOptions,
 ) -> String {
     let test_id = format!("__doctest_{id}");
 
@@ -256,7 +259,7 @@ fn main() {returns_result} {{
         )
         .unwrap();
     }
-    let not_running = ignore || scraped_test.langstr.no_run;
+    let not_running = ignore || scraped_test.no_run(opts);
     writeln!(
         output_merged_tests,
         "
@@ -270,7 +273,7 @@ test::StaticTestFn(
         test_name = scraped_test.name,
         file = scraped_test.path(),
         line = scraped_test.line,
-        no_run = scraped_test.langstr.no_run,
+        no_run = scraped_test.no_run(opts),
         should_panic = !scraped_test.langstr.no_run && scraped_test.langstr.should_panic,
         // Setting `no_run` to `true` in `TestDesc` still makes the test run, so we simply
         // don't give it the function to run.
