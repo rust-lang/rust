@@ -1440,7 +1440,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         |(key, name_resolution)| {
                             if key.ns == TypeNS
                                 && key.ident == ident
-                                && let Some(binding) = name_resolution.borrow().binding
+                                && let Some(binding) = name_resolution.borrow().best_binding()
                             {
                                 match binding.res() {
                                     // No disambiguation needed if the identically named item we
@@ -1494,7 +1494,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     return None;
                 };
                 for (_, resolution) in this.resolutions(m).borrow().iter() {
-                    let Some(binding) = resolution.borrow().binding else {
+                    let Some(binding) = resolution.borrow().best_binding() else {
                         continue;
                     };
                     let Res::Def(DefKind::Macro(MacroKind::Derive | MacroKind::Attr), def_id) =
