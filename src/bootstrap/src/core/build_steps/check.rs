@@ -616,3 +616,9 @@ tool_check_step!(CoverageDump {
     mode: Mode::ToolBootstrap,
     default: false
 });
+
+tool_check_step!(Linkchecker {
+    path: "src/tools/linkchecker",
+    mode: Mode::ToolBootstrap,
+    default: false
+});
