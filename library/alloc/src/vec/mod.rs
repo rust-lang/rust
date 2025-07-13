@@ -64,7 +64,7 @@ use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
-use core::{fmt, intrinsics};
+use core::{fmt, intrinsics, ub_checks};
 
 #[stable(feature = "extract_if", since = "1.87.0")]
 pub use self::extract_if::ExtractIf;
@@ -1950,7 +1950,11 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn set_len(&mut self, new_len: usize) {
-        debug_assert!(new_len <= self.capacity());
+        ub_checks::assert_unsafe_precondition!(
+            check_library_ub,
+            "Vec::set_len requires that new_len <= capacity()",
+            (new_len: usize = new_len, capacity: usize = self.capacity()) => new_len <= capacity
+        );
 
         self.len = new_len;
     }
