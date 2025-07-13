@@ -78,7 +78,7 @@ jobs:
     - name: Run tests
       run: |
         # FIXME(antoyo): we cannot enable LTO for stdarch tests currently because of some failing LTO tests using proc-macros.
-        echo -n 'lto = "fat"' >> build_system/build_sysroot/Cargo.toml
+        printf '[profile.release]\nlto = "fat"\n' >> build/build_sysroot/sysroot_src/library/sysroot/Cargo.toml
         EMBED_LTO_BITCODE=1 ./y.sh test --release --clean --release-sysroot --build-sysroot --keep-lto-tests ${{ matrix.commands }}
 
     - name: Run y.sh cargo build
