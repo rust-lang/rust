@@ -1,5 +1,7 @@
+//! This test checks that various forms of "trivial" casts and coercions
+//! can be explicitly performed using the `as` keyword without compilation errors.
+
 //@ run-pass
-// Test that all coercions can actually be done using casts (modulo the lints).
 
 #![allow(trivial_casts, trivial_numeric_casts)]
 
