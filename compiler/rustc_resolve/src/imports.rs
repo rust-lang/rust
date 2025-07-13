@@ -333,21 +333,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         })
     }
 
-    // pub(crate) fn try_define(
-    //     &mut self,
-    //     module: Module<'ra>,
-    //     key: BindingKey,
-    //     binding: NameBinding<'ra>,
-    //     warn_ambiguity: bool,
-    // ) -> Result<(), NameBinding<'ra>> {
-    //     if module.is_local_module() {
-    //         self.try_define_local(module, key, binding, warn_ambiguity)
-    //     } else {
-    //         self.define_extern(module, key, binding);
-    //         Ok(())
-    //     }
-    // }
-
     /// Define the name or return the existing binding if there is a collision.
     /// `update` indicates if the definition is a redefinition of an existing binding.
     pub(crate) fn try_define_local(
