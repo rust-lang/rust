@@ -36,10 +36,6 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
         _variable_alloca.set_location(_dbg_loc);
     }
 
-    fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {
-        // TODO(antoyo): insert reference to gdb debug scripts section global.
-    }
-
     /// FIXME(tempdragon): Currently, this function is not yet implemented. It seems that the
     /// debug name and the mangled name should both be included in the LValues.
     /// Besides, a function to get the rvalue type(m_is_lvalue) should also be included.
@@ -254,7 +250,8 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // TODO(antoyo): implement.
     }
 
-    fn debuginfo_finalize(&self) {
+    fn debuginfo_finalize(&mut self) {
+        // TODO: emit section `.debug_gdb_scripts`.
         self.context.set_debug_info(true)
     }
 
