@@ -160,7 +160,9 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             let mut next_outlives_predicates = vec![];
             for (pred, constraint_category) in outlives_predicates {
                 // Constraint is implied by a coroutine's well-formedness.
-                if higher_ranked_assumptions.contains(&pred) {
+                if self.infcx.tcx.sess.opts.unstable_opts.higher_ranked_assumptions
+                    && higher_ranked_assumptions.contains(&pred)
+                {
                     continue;
                 }
 

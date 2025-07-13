@@ -2256,6 +2256,8 @@ options! {
         environment variable `RUSTC_GRAPHVIZ_FONT` (default: `Courier, monospace`)"),
     has_thread_local: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the `cfg(target_thread_local)` directive"),
+    higher_ranked_assumptions: bool = (false, parse_bool, [TRACKED],
+        "allow deducing higher-ranked outlives assumptions from coroutines when proving auto traits"),
     hint_mostly_unused: bool = (false, parse_bool, [TRACKED],
         "hint that most of this crate will go unused, to minimize work for uncalled functions"),
     human_readable_cgu_names: bool = (false, parse_bool, [TRACKED],

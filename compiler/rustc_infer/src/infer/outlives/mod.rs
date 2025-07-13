@@ -69,12 +69,14 @@ impl<'tcx> InferCtxt<'tcx> {
 
         // Filter out any region-region outlives assumptions that are implied by
         // coroutine well-formedness.
-        storage.data.constraints.retain(|(constraint, _)| match *constraint {
-            Constraint::RegSubReg(r1, r2) => !outlives_env
-                .higher_ranked_assumptions()
-                .contains(&ty::OutlivesPredicate(r2.into(), r1)),
-            _ => true,
-        });
+        if self.tcx.sess.opts.unstable_opts.higher_ranked_assumptions {
+            storage.data.constraints.retain(|(constraint, _)| match *constraint {
+                Constraint::RegSubReg(r1, r2) => !outlives_env
+                    .higher_ranked_assumptions()
+                    .contains(&ty::OutlivesPredicate(r2.into(), r1)),
+                _ => true,
+            });
+        }
 
         let region_rels = &RegionRelations::new(self.tcx, outlives_env.free_region_map());
 

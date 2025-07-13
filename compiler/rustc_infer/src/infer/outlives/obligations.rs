@@ -235,9 +235,10 @@ impl<'tcx> InferCtxt<'tcx> {
                 let (sup_type, sub_region) =
                     (sup_type, sub_region).fold_with(&mut OpportunisticRegionResolver::new(self));
 
-                if outlives_env
-                    .higher_ranked_assumptions()
-                    .contains(&ty::OutlivesPredicate(sup_type.into(), sub_region))
+                if self.tcx.sess.opts.unstable_opts.higher_ranked_assumptions
+                    && outlives_env
+                        .higher_ranked_assumptions()
+                        .contains(&ty::OutlivesPredicate(sup_type.into(), sub_region))
                 {
                     continue;
                 }

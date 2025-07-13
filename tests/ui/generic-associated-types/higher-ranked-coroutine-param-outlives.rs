@@ -1,5 +1,8 @@
 //@ edition:2018
-//@ check-pass
+//@ revisions: assumptions no_assumptions
+//@[assumptions] compile-flags: -Zhigher-ranked-assumptions
+//@[assumptions] check-pass
+//@[no_assumptions] known-bug: #110338
 
 use std::future::Future;
 
