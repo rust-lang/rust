@@ -17,3 +17,5 @@ fn main() {
     let m2: HashMap<isize, _> = arr.iter().map(copy).collect();
     let m3: HashMap<_, usize> = arr.iter().map(copy).collect();
 }
+
+// https://github.com/rust-lang/rust/issues/12909

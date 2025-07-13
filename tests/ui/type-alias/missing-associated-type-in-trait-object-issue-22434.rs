@@ -6,3 +6,5 @@ type I<'a> = &'a (dyn Foo + 'a);
 //~^ ERROR the value of the associated type `A` in `Foo` must be specified
 
 fn main() {}
+
+// https://github.com/rust-lang/rust/issues/22434

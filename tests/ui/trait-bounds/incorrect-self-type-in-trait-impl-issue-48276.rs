@@ -31,3 +31,5 @@ impl From<A> for &'static str {
 }
 
 fn main(){}
+
+// https://github.com/rust-lang/rust/issues/48276

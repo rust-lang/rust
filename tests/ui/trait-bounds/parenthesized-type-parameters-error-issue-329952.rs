@@ -11,3 +11,5 @@ struct X;
 
 impl ::std::marker()::Copy for X {}
 //~^ ERROR parenthesized type parameters may only be used with a `Fn` trait
+
+// https://github.com/rust-lang/rust/issues/329952

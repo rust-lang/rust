@@ -11,3 +11,5 @@ fn main() {
     //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     5; //~ NOTE not a function
 }
+
+// https://github.com/rust-lang/rust/issues/54044

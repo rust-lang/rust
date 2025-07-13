@@ -1,5 +1,5 @@
 error: cannot find attribute `derive_Clone` in this scope
-  --> $DIR/issue-32655.rs:3:11
+  --> $DIR/macro-expansion-bypasses-derive-stability-issue-32655.rs:3:11
    |
 LL |         #[derive_Clone]
    |           ^^^^^^^^^^^^ help: an attribute macro with a similar name exists: `derive_const`
@@ -13,7 +13,7 @@ LL | foo!();
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: cannot find attribute `derive_Clone` in this scope
-  --> $DIR/issue-32655.rs:15:7
+  --> $DIR/macro-expansion-bypasses-derive-stability-issue-32655.rs:15:7
    |
 LL |     #[derive_Clone]
    |       ^^^^^^^^^^^^ help: an attribute macro with a similar name exists: `derive_const`

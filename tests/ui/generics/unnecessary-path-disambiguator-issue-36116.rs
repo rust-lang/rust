@@ -23,3 +23,5 @@ fn f() {
 }
 
 fn main() {}
+
+// https://github.com/rust-lang/rust/issues/36116

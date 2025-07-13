@@ -10,3 +10,5 @@ fn main() {
     };
     assert_eq!(x, 1);
 }
+
+// https://github.com/rust-lang/rust/issues/25185

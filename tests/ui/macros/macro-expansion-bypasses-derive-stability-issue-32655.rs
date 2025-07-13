@@ -17,3 +17,5 @@ bar!(
 );
 
 fn main() {}
+
+// https://github.com/rust-lang/rust/issues/32655

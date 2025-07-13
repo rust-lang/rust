@@ -1,5 +1,5 @@
 error[E0191]: the value of the associated type `A` in `Foo` must be specified
-  --> $DIR/issue-22434.rs:5:23
+  --> $DIR/missing-associated-type-in-trait-object-issue-22434.rs:5:23
    |
 LL |     type A;
    |     ------ `A` defined here
