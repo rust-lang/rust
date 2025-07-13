@@ -1,5 +1,5 @@
 error: equality constraints are not yet supported in `where` clauses
-  --> $DIR/missing-bounds.rs:37:33
+  --> $DIR/missing-bounds.rs:39:33
    |
 LL | impl<B: Add> Add for E<B> where <B as Add>::Output = B {
    |                                 ^^^^^^^^^^^^^^^^^^^^^^ not supported
@@ -12,7 +12,7 @@ LL + impl<B: Add> Add for E<B> where B: Add<Output = B> {
    |
 
 error[E0308]: mismatched types
-  --> $DIR/missing-bounds.rs:11:11
+  --> $DIR/missing-bounds.rs:13:11
    |
 LL | impl<B> Add for A<B> where B: Add {
    |      - expected this type parameter
@@ -25,14 +25,14 @@ LL |         A(self.0 + rhs.0)
    = note: expected type parameter `B`
              found associated type `<B as Add>::Output`
 help: the type constructed contains `<B as Add>::Output` due to the type of the argument passed
-  --> $DIR/missing-bounds.rs:11:9
+  --> $DIR/missing-bounds.rs:13:9
    |
 LL |         A(self.0 + rhs.0)
    |         ^^--------------^
    |           |
    |           this argument influences the type of `A`
 note: tuple struct defined here
-  --> $DIR/missing-bounds.rs:5:8
+  --> $DIR/missing-bounds.rs:7:8
    |
 LL | struct A<B>(B);
    |        ^
@@ -42,7 +42,7 @@ LL | impl<B> Add for A<B> where B: Add<Output = B> {
    |                                  ++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/missing-bounds.rs:21:14
+  --> $DIR/missing-bounds.rs:23:14
    |
 LL | impl<B: Add> Add for C<B> {
    |      - expected this type parameter
@@ -55,7 +55,7 @@ LL |         Self(self.0 + rhs.0)
    = note: expected type parameter `B`
              found associated type `<B as Add>::Output`
 note: tuple struct defined here
-  --> $DIR/missing-bounds.rs:15:8
+  --> $DIR/missing-bounds.rs:17:8
    |
 LL | struct C<B>(B);
    |        ^
@@ -65,7 +65,7 @@ LL | impl<B: Add<Output = B>> Add for C<B> {
    |            ++++++++++++
 
 error[E0369]: cannot add `B` to `B`
-  --> $DIR/missing-bounds.rs:31:21
+  --> $DIR/missing-bounds.rs:33:21
    |
 LL |         Self(self.0 + rhs.0)
    |              ------ ^ ----- B
@@ -78,7 +78,7 @@ LL | impl<B: std::ops::Add<Output = B>> Add for D<B> {
    |       +++++++++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/missing-bounds.rs:42:14
+  --> $DIR/missing-bounds.rs:44:14
    |
 LL | impl<B: Add> Add for E<B> where <B as Add>::Output = B {
    |      - expected this type parameter
@@ -91,7 +91,7 @@ LL |         Self(self.0 + rhs.0)
    = note: expected type parameter `B`
              found associated type `<B as Add>::Output`
 note: tuple struct defined here
-  --> $DIR/missing-bounds.rs:35:8
+  --> $DIR/missing-bounds.rs:37:8
    |
 LL | struct E<B>(B);
    |        ^
