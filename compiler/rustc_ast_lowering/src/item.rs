@@ -1128,6 +1128,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span: self.lower_span(i.span),
             defaultness,
             has_delayed_lints: !self.delayed_lints.is_empty(),
+            trait_item_def_id: self
+                .resolver
+                .get_partial_res(i.id)
+                .map(|r| r.expect_full_res().opt_def_id())
+                .unwrap_or(None),
         };
         self.arena.alloc(item)
     }
@@ -1157,11 +1162,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     panic!("macros should have been expanded by now")
                 }
             },
-            trait_item_def_id: self
-                .resolver
-                .get_partial_res(i.id)
-                .map(|r| r.expect_full_res().opt_def_id())
-                .unwrap_or(None),
         }
     }
 

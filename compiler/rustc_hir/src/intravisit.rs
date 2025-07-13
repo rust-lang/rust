@@ -1271,6 +1271,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
         span: _,
         vis_span: _,
         has_delayed_lints: _,
+        trait_item_def_id: _,
     } = *impl_item;
 
     try_visit!(visitor.visit_ident(ident));
@@ -1306,7 +1307,7 @@ pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(
     visitor: &mut V,
     impl_item_ref: &'v ImplItemRef,
 ) -> V::Result {
-    let ImplItemRef { id, ident, ref kind, span: _, trait_item_def_id: _ } = *impl_item_ref;
+    let ImplItemRef { id, ident, ref kind, span: _ } = *impl_item_ref;
     try_visit!(visitor.visit_nested_impl_item(id));
     try_visit!(visitor.visit_ident(ident));
     visitor.visit_associated_item_kind(kind)
