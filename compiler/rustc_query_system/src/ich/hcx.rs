@@ -5,9 +5,7 @@ use rustc_hir::definitions::DefPathHash;
 use rustc_session::Session;
 use rustc_session::cstore::Untracked;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{
-    BytePos, CachingSourceMapView, DUMMY_SP, Span, SpanData, StableSourceFileId, Symbol,
-};
+use rustc_span::{BytePos, CachingSourceMapView, DUMMY_SP, SourceFile, Span, SpanData, Symbol};
 
 use crate::ich;
 
@@ -118,7 +116,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     fn span_data_to_lines_and_cols(
         &mut self,
         span: &SpanData,
-    ) -> Option<(StableSourceFileId, usize, BytePos, usize, BytePos)> {
+    ) -> Option<(&SourceFile, usize, BytePos, usize, BytePos)> {
         self.source_map().span_data_to_lines_and_cols(span)
     }
 
