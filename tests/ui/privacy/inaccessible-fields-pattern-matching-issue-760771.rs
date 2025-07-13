@@ -1,0 +1,20 @@
+//@ run-rustfix
+#![allow(dead_code, unused_variables)]
+
+pub mod foo {
+    #[derive(Default)]
+    pub struct Foo { invisible: bool, }
+
+    #[derive(Default)]
+    pub struct Bar { pub visible: bool, invisible: bool, }
+}
+
+fn main() {
+    let foo::Foo {} = foo::Foo::default();
+    //~^ ERROR pattern requires `..` due to inaccessible fields
+
+    let foo::Bar { visible } = foo::Bar::default();
+    //~^ ERROR pattern requires `..` due to inaccessible fields
+}
+
+// https://github.com/rust-lang/rust/issues/760771
