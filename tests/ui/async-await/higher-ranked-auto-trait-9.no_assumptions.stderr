@@ -1,0 +1,11 @@
+error: implementation of `Debug` is not general enough
+  --> $DIR/higher-ranked-auto-trait-9.rs:43:50
+   |
+LL |     let fut: &(dyn Future<Output = ()> + Send) = &fut as _;
+   |                                                  ^^^^^^^^^ implementation of `Debug` is not general enough
+   |
+   = note: `(dyn Any + '0)` must implement `Debug`, for any lifetime `'0`...
+   = note: ...but `Debug` is actually implemented for the type `(dyn Any + 'static)`
+
+error: aborting due to 1 previous error
+

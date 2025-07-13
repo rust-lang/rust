@@ -1,0 +1,8 @@
+error: `S` does not live long enough
+  --> $DIR/higher-ranked-auto-trait-7.rs:26:5
+   |
+LL |     future::<'a, S, _>(async move {
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
