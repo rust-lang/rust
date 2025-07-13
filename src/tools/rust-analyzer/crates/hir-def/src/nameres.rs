@@ -373,19 +373,14 @@ pub fn crate_def_map(db: &dyn DefDatabase, crate_id: Crate) -> &DefMap {
     crate_local_def_map(db, crate_id).def_map(db)
 }
 
-#[allow(unused_lifetimes)]
-mod __ {
-    use super::*;
-    #[salsa_macros::tracked]
-    pub(crate) struct DefMapPair<'db> {
-        #[tracked]
-        #[returns(ref)]
-        pub(crate) def_map: DefMap,
-        #[returns(ref)]
-        pub(crate) local: LocalDefMap,
-    }
+#[salsa_macros::tracked]
+pub(crate) struct DefMapPair<'db> {
+    #[tracked]
+    #[returns(ref)]
+    pub(crate) def_map: DefMap,
+    #[returns(ref)]
+    pub(crate) local: LocalDefMap,
 }
-pub(crate) use __::DefMapPair;
 
 #[salsa_macros::tracked(returns(ref))]
 pub(crate) fn crate_local_def_map(db: &dyn DefDatabase, crate_id: Crate) -> DefMapPair<'_> {
