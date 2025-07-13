@@ -5,7 +5,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::HasSession as _;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{eq_expr_value, peel_blocks, span_contains_comment};
+use clippy_utils::{eq_expr_value, peel_blocks, peel_middle_ty_refs, span_contains_comment};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAbsDiff {
             && let ExprKind::Binary(op, rhs, lhs) = if_expr.cond.kind
             && let (BinOpKind::Gt | BinOpKind::Ge, mut a, mut b) | (BinOpKind::Lt | BinOpKind::Le, mut b, mut a) =
                 (op.node, rhs, lhs)
-            && let Some(ty) = self.are_ty_eligible(cx, a, b)
+            && let Some((ty, b_n_refs)) = self.are_ty_eligible(cx, a, b)
             && is_sub_expr(cx, if_expr.then, a, b, ty)
             && is_sub_expr(cx, r#else, b, a, ty)
         {
@@ -86,8 +86,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualAbsDiff {
                         }
                     };
                     let sugg = format!(
-                        "{}.abs_diff({})",
+                        "{}.abs_diff({}{})",
                         Sugg::hir(cx, a, "..").maybe_paren(),
+                        "*".repeat(b_n_refs),
                         Sugg::hir(cx, b, "..")
                     );
                     diag.span_suggestion(expr.span, "replace with `abs_diff`", sugg, applicability);
@@ -100,13 +101,15 @@ impl<'tcx> LateLintPass<'tcx> for ManualAbsDiff {
 impl ManualAbsDiff {
     /// Returns a type if `a` and `b` are both of it, and this lint can be applied to that
     /// type (currently, any primitive int, or a `Duration`)
-    fn are_ty_eligible<'tcx>(&self, cx: &LateContext<'tcx>, a: &Expr<'_>, b: &Expr<'_>) -> Option<Ty<'tcx>> {
+    fn are_ty_eligible<'tcx>(&self, cx: &LateContext<'tcx>, a: &Expr<'_>, b: &Expr<'_>) -> Option<(Ty<'tcx>, usize)> {
         let is_int = |ty: Ty<'_>| matches!(ty.kind(), ty::Uint(_) | ty::Int(_)) && self.msrv.meets(cx, msrvs::ABS_DIFF);
         let is_duration =
             |ty| is_type_diagnostic_item(cx, ty, sym::Duration) && self.msrv.meets(cx, msrvs::DURATION_ABS_DIFF);
 
         let a_ty = cx.typeck_results().expr_ty(a).peel_refs();
-        (a_ty == cx.typeck_results().expr_ty(b).peel_refs() && (is_int(a_ty) || is_duration(a_ty))).then_some(a_ty)
+        let (b_ty, b_n_refs) = peel_middle_ty_refs(cx.typeck_results().expr_ty(b));
+
+        (a_ty == b_ty && (is_int(a_ty) || is_duration(a_ty))).then_some((a_ty, b_n_refs))
     }
 }
 
