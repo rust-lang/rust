@@ -411,17 +411,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligation.predicate.self_ty().map_bound(|ty| self.infcx.shallow_resolve(ty));
             let self_ty = self.infcx.enter_forall_and_leak_universe(self_ty);
 
-            let types = self.constituent_types_for_ty(self_ty)?;
-            let types = self.infcx.enter_forall_and_leak_universe(types);
+            let constituents = self.constituent_types_for_auto_trait(self_ty)?;
+            let constituents = self.infcx.enter_forall_and_leak_universe(constituents);
 
             let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
-            let obligations = self.collect_predicates_for_types(
+            let mut obligations = self.collect_predicates_for_types(
                 obligation.param_env,
-                cause,
+                cause.clone(),
                 obligation.recursion_depth + 1,
                 obligation.predicate.def_id(),
-                types,
+                constituents.types,
             );
+
+            // FIXME(coroutine_clone): We could uplift this into `collect_predicates_for_types`
+            // and do this for `Copy`/`Clone` too, but that's feature-gated so it doesn't really
+            // matter yet.
+            for assumption in constituents.assumptions {
+                let assumption = normalize_with_depth_to(
+                    self,
+                    obligation.param_env,
+                    cause.clone(),
+                    obligation.recursion_depth + 1,
+                    assumption,
+                    &mut obligations,
+                );
+                self.infcx.register_region_assumption(assumption);
+            }
 
             Ok(obligations)
         })

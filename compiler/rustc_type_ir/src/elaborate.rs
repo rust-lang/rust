@@ -368,3 +368,54 @@ impl<I: Interner, It: Iterator<Item = I::Clause>> Iterator for FilterToTraits<I,
         (0, upper)
     }
 }
+
+pub fn elaborate_outlives_assumptions<I: Interner>(
+    cx: I,
+    assumptions: impl IntoIterator<Item = ty::OutlivesPredicate<I, I::GenericArg>>,
+) -> HashSet<ty::OutlivesPredicate<I, I::GenericArg>> {
+    let mut collected = HashSet::default();
+
+    for ty::OutlivesPredicate(arg1, r2) in assumptions {
+        collected.insert(ty::OutlivesPredicate(arg1, r2));
+        match arg1.kind() {
+            // Elaborate the components of an type, since we may have substituted a
+            // generic coroutine with a more specific type.
+            ty::GenericArgKind::Type(ty1) => {
+                let mut components = smallvec![];
+                push_outlives_components(cx, ty1, &mut components);
+                for c in components {
+                    match c {
+                        Component::Region(r1) => {
+                            if !r1.is_bound() {
+                                collected.insert(ty::OutlivesPredicate(r1.into(), r2));
+                            }
+                        }
+
+                        Component::Param(p) => {
+                            let ty = Ty::new_param(cx, p);
+                            collected.insert(ty::OutlivesPredicate(ty.into(), r2));
+                        }
+
+                        Component::Placeholder(p) => {
+                            let ty = Ty::new_placeholder(cx, p);
+                            collected.insert(ty::OutlivesPredicate(ty.into(), r2));
+                        }
+
+                        Component::Alias(alias_ty) => {
+                            collected.insert(ty::OutlivesPredicate(alias_ty.to_ty(cx).into(), r2));
+                        }
+
+                        Component::UnresolvedInferenceVariable(_) | Component::EscapingAlias(_) => {
+                        }
+                    }
+                }
+            }
+            // Nothing to elaborate for a region.
+            ty::GenericArgKind::Lifetime(_) => {}
+            // Consts don't really participate in outlives.
+            ty::GenericArgKind::Const(_) => {}
+        }
+    }
+
+    collected
+}

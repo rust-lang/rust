@@ -10,6 +10,7 @@ use super::region_constraints::{RegionConstraintData, UndoLog};
 use super::{InferCtxt, RegionResolutionError, SubregionOrigin};
 use crate::infer::free_regions::RegionRelations;
 use crate::infer::lexical_region_resolve;
+use crate::infer::region_constraints::Constraint;
 
 pub mod env;
 pub mod for_liveness;
@@ -54,17 +55,26 @@ impl<'tcx> InferCtxt<'tcx> {
             }
         };
 
-        let storage = {
+        let mut storage = {
             let mut inner = self.inner.borrow_mut();
             let inner = &mut *inner;
             assert!(
                 self.tainted_by_errors().is_some() || inner.region_obligations.is_empty(),
                 "region_obligations not empty: {:#?}",
-                inner.region_obligations
+                inner.region_obligations,
             );
             assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
             inner.region_constraint_storage.take().expect("regions already resolved")
         };
+
+        // Filter out any region-region outlives assumptions that are implied by
+        // coroutine well-formedness.
+        storage.data.constraints.retain(|(constraint, _)| match *constraint {
+            Constraint::RegSubReg(r1, r2) => !outlives_env
+                .higher_ranked_assumptions()
+                .contains(&ty::OutlivesPredicate(r2.into(), r1)),
+            _ => true,
+        });
 
         let region_rels = &RegionRelations::new(self.tcx, outlives_env.free_region_map());
 
@@ -92,6 +102,11 @@ impl<'tcx> InferCtxt<'tcx> {
             self.inner.borrow().region_obligations.is_empty(),
             "region_obligations not empty: {:#?}",
             self.inner.borrow().region_obligations
+        );
+        assert!(
+            self.inner.borrow().region_assumptions.is_empty(),
+            "region_assumptions not empty: {:#?}",
+            self.inner.borrow().region_assumptions
         );
 
         self.inner.borrow_mut().unwrap_region_constraints().take_and_reset_data()

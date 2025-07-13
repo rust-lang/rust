@@ -1021,7 +1021,6 @@ ui/foreign/issue-91370-foreign-fn-block-impl.rs
 ui/foreign/issue-99276-same-type-lifetimes.rs
 ui/function-pointer/issue-102289.rs
 ui/functions-closures/closure-expected-type/issue-38714.rs
-ui/generic-associated-types/bugs/issue-100013.rs
 ui/generic-associated-types/bugs/issue-80626.rs
 ui/generic-associated-types/bugs/issue-87735.rs
 ui/generic-associated-types/bugs/issue-87755.rs
@@ -1099,7 +1098,6 @@ ui/generic-associated-types/issue-90729.rs
 ui/generic-associated-types/issue-91139.rs
 ui/generic-associated-types/issue-91883.rs
 ui/generic-associated-types/issue-92033.rs
-ui/generic-associated-types/issue-92096.rs
 ui/generic-associated-types/issue-92280.rs
 ui/generic-associated-types/issue-92954.rs
 ui/generic-associated-types/issue-93141.rs

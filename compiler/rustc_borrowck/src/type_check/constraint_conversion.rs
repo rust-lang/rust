@@ -1,3 +1,4 @@
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
@@ -7,7 +8,7 @@ use rustc_infer::infer::{InferCtxt, SubregionOrigin};
 use rustc_infer::traits::query::type_op::DeeplyNormalize;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
+    self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, elaborate, fold_regions,
 };
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -70,10 +71,12 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     pub(super) fn convert_all(&mut self, query_constraints: &QueryRegionConstraints<'tcx>) {
-        let QueryRegionConstraints { outlives } = query_constraints;
+        let QueryRegionConstraints { outlives, assumptions } = query_constraints;
+        let assumptions =
+            elaborate::elaborate_outlives_assumptions(self.infcx.tcx, assumptions.iter().copied());
 
         for &(predicate, constraint_category) in outlives {
-            self.convert(predicate, constraint_category);
+            self.convert(predicate, constraint_category, &assumptions);
         }
     }
 
@@ -112,7 +115,11 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
             self.category = outlives_requirement.category;
             self.span = outlives_requirement.blame_span;
-            self.convert(ty::OutlivesPredicate(subject, outlived_region), self.category);
+            self.convert(
+                ty::OutlivesPredicate(subject, outlived_region),
+                self.category,
+                &Default::default(),
+            );
         }
         (self.category, self.span, self.from_closure) = backup;
     }
@@ -121,6 +128,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         &mut self,
         predicate: ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
         constraint_category: ConstraintCategory<'tcx>,
+        higher_ranked_assumptions: &FxHashSet<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>>,
     ) {
         let tcx = self.infcx.tcx;
         debug!("generate: constraints at: {:#?}", self.locations);
@@ -150,7 +158,13 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             }
 
             let mut next_outlives_predicates = vec![];
-            for (ty::OutlivesPredicate(k1, r2), constraint_category) in outlives_predicates {
+            for (pred, constraint_category) in outlives_predicates {
+                // Constraint is implied by a coroutine's well-formedness.
+                if higher_ranked_assumptions.contains(&pred) {
+                    continue;
+                }
+
+                let ty::OutlivesPredicate(k1, r2) = pred;
                 match k1.kind() {
                     GenericArgKind::Lifetime(r1) => {
                         let r1_vid = self.to_region_vid(r1);
@@ -273,7 +287,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         match self.param_env.and(DeeplyNormalize { value: ty }).fully_perform(self.infcx, self.span)
         {
             Ok(TypeOpOutput { output: ty, constraints, .. }) => {
-                if let Some(QueryRegionConstraints { outlives }) = constraints {
+                // FIXME(higher_ranked_auto): What should we do with the assumptions here?
+                if let Some(QueryRegionConstraints { outlives, assumptions: _ }) = constraints {
                     next_outlives_predicates.extend(outlives.iter().copied());
                 }
                 ty

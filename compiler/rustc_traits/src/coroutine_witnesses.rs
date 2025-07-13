@@ -66,12 +66,14 @@ fn compute_assumptions<'tcx>(
         let _errors = ocx.select_all_or_error();
 
         let region_obligations = infcx.take_registered_region_obligations();
+        let region_assumptions = infcx.take_registered_region_assumptions();
         let region_constraints = infcx.take_and_reset_region_constraints();
 
         let outlives = make_query_region_constraints(
             tcx,
             region_obligations,
             &region_constraints,
+            region_assumptions,
         )
         .outlives
         .fold_with(&mut OpportunisticRegionResolver::new(&infcx));

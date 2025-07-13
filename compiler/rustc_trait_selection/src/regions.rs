@@ -4,7 +4,7 @@ use rustc_infer::infer::{InferCtxt, RegionResolutionError};
 use rustc_macros::extension;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, elaborate};
 
 use crate::traits::ScrubbedTraitError;
 use crate::traits::outlives_bounds::InferCtxtExt;
@@ -46,6 +46,11 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
             }
         }
 
+        // FIXME(-Znext-trait-solver): Normalize these.
+        let higher_ranked_assumptions = infcx.take_registered_region_assumptions();
+        let higher_ranked_assumptions =
+            elaborate::elaborate_outlives_assumptions(infcx.tcx, higher_ranked_assumptions);
+
         // FIXME: This needs to be modified so that we normalize the known type
         // outlives obligations then elaborate them into their region/type components.
         // Otherwise, `<W<'a> as Mirror>::Assoc: 'b` will not imply `'a: 'b` even
@@ -59,6 +64,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
                 assumed_wf_tys,
                 disable_implied_bounds_hack,
             ),
+            higher_ranked_assumptions,
         )
     }
 }

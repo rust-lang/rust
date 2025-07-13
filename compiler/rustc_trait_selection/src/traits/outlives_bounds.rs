@@ -78,7 +78,10 @@ fn implied_outlives_bounds<'a, 'tcx>(
     bounds.retain(|bound| !bound.has_placeholders());
 
     if !constraints.is_empty() {
-        let QueryRegionConstraints { outlives } = constraints;
+        // FIXME(higher_ranked_auto): Should we register assumptions here?
+        // We otherwise would get spurious errors if normalizing an implied
+        // outlives bound required proving some higher-ranked coroutine obl.
+        let QueryRegionConstraints { outlives, assumptions: _ } = constraints;
         let cause = ObligationCause::misc(span, body_id);
         for &(predicate, _) in &outlives {
             infcx.register_outlives_constraint(predicate, &cause);
