@@ -889,8 +889,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().explicit_item_bounds(def_id);
             tcx.ensure_ok().explicit_item_self_bounds(def_id);
-            tcx.ensure_ok().item_bounds(def_id);
-            tcx.ensure_ok().item_self_bounds(def_id);
             if tcx.is_conditionally_const(def_id) {
                 tcx.ensure_ok().explicit_implied_const_bounds(def_id);
                 tcx.ensure_ok().const_conditions(def_id);
@@ -1042,8 +1040,12 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             let has_type = match assoc_item.container {
                 ty::AssocItemContainer::Impl => true,
                 ty::AssocItemContainer::Trait => {
-                    tcx.ensure_ok().item_bounds(def_id);
-                    tcx.ensure_ok().item_self_bounds(def_id);
+                    tcx.ensure_ok().explicit_item_bounds(def_id);
+                    tcx.ensure_ok().explicit_item_self_bounds(def_id);
+                    if tcx.is_conditionally_const(def_id) {
+                        tcx.ensure_ok().explicit_implied_const_bounds(def_id);
+                        tcx.ensure_ok().const_conditions(def_id);
+                    }
                     res = res.and(check_trait_item(tcx, def_id));
                     assoc_item.defaultness(tcx).has_value()
                 }
