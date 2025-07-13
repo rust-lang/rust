@@ -15,6 +15,7 @@
 
 pub use rustc_ast_ir::visit::VisitorResult;
 pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Ident, Span};
 use thin_vec::ThinVec;
@@ -52,7 +53,7 @@ pub enum BoundKind {
 
     /// Super traits of a trait.
     /// E.g., `trait A: B`
-    SuperTraits,
+    SuperTraits { subtrait: LocalDefId },
 }
 impl BoundKind {
     pub fn descr(self) -> &'static str {
@@ -60,7 +61,7 @@ impl BoundKind {
             BoundKind::Bound => "bounds",
             BoundKind::Impl => "`impl Trait`",
             BoundKind::TraitObject => "`dyn` trait object bounds",
-            BoundKind::SuperTraits => "supertrait bounds",
+            BoundKind::SuperTraits { .. } => "supertrait bounds",
         }
     }
 }
@@ -266,8 +267,8 @@ macro_rules! common_visitor_and_walkers {
                 walk_trait_ref(self, t)
             }
 
-            fn visit_param_bound(&mut self, bounds: &$($lt)? $($mut)? GenericBound, _ctxt: BoundKind) -> Self::Result {
-                walk_param_bound(self, bounds)
+            fn visit_param_bound(&mut self, bound: &$($lt)? $($mut)? GenericBound, _ctxt: BoundKind) -> Self::Result {
+                walk_param_bound(self, bound)
             }
 
             fn visit_precise_capturing_arg(&mut self, arg: &$($lt)? $($mut)? PreciseCapturingArg) -> Self::Result {
@@ -1142,7 +1143,7 @@ macro_rules! common_visitor_and_walkers {
             vis: &mut V,
             p: &$($lt)? $($mut)? PolyTraitRef,
         ) -> V::Result {
-            let PolyTraitRef { bound_generic_params, modifiers, trait_ref, span, parens: _ } = p;
+            let PolyTraitRef { bound_generic_params, modifiers, trait_ref, span, .. } = p;
             try_visit!(visit_modifiers(vis, modifiers));
             try_visit!(visit_generic_params(vis, bound_generic_params));
             try_visit!(vis.visit_trait_ref(trait_ref));

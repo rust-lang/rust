@@ -898,7 +898,7 @@ impl<'a> Parser<'a> {
         // Parse optional colon and supertrait bounds.
         let had_colon = self.eat(exp!(Colon));
         let span_at_colon = self.prev_token.span;
-        let bounds = if had_colon { self.parse_generic_bounds()? } else { Vec::new() };
+        let bounds = if had_colon { self.parse_generic_bounds(true)? } else { Vec::new() };
 
         let span_before_eq = self.prev_token.span;
         if self.eat(exp!(Eq)) {
@@ -908,7 +908,8 @@ impl<'a> Parser<'a> {
                 self.dcx().emit_err(errors::BoundsNotAllowedOnTraitAliases { span });
             }
 
-            let bounds = self.parse_generic_bounds()?;
+            // We should collect trait aliases as supertraits.
+            let bounds = self.parse_generic_bounds(true)?;
             generics.where_clause = self.parse_where_clause()?;
             self.expect_semi()?;
 
@@ -995,7 +996,8 @@ impl<'a> Parser<'a> {
         let mut generics = self.parse_generics()?;
 
         // Parse optional colon and param bounds.
-        let bounds = if self.eat(exp!(Colon)) { self.parse_generic_bounds()? } else { Vec::new() };
+        let bounds =
+            if self.eat(exp!(Colon)) { self.parse_generic_bounds(false)? } else { Vec::new() };
         let before_where_clause = self.parse_where_clause()?;
 
         let ty = if self.eat(exp!(Eq)) { Some(self.parse_ty()?) } else { None };

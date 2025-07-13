@@ -36,6 +36,7 @@ use rustc_session::lint::builtin::{
     PATTERNS_IN_FNS_WITHOUT_BODY,
 };
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
+use rustc_span::def_id::{DefIndex, LocalDefId};
 use rustc_span::{Ident, Span, kw, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
 use thin_vec::thin_vec;
@@ -1149,7 +1150,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     is_const_trait.is_none().then(|| TildeConstReason::Trait { span: item.span });
                 self.with_tilde_const(disallowed, |this| {
                     this.visit_generics(generics);
-                    walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
+                    walk_list!(
+                        this,
+                        visit_param_bound,
+                        bounds,
+                        BoundKind::SuperTraits {
+                            subtrait: LocalDefId { local_def_index: DefIndex::ZERO }
+                        }
+                    )
                 });
                 self.with_in_trait(item.span, is_const_trait, |this| {
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Trait);
@@ -1373,9 +1381,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match bound {
             GenericBound::Trait(trait_ref) => {
                 match (ctxt, trait_ref.modifiers.constness, trait_ref.modifiers.polarity) {
-                    (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_))
-                        if !self.features.more_maybe_bounds() =>
-                    {
+                    (
+                        BoundKind::SuperTraits { .. },
+                        BoundConstness::Never,
+                        BoundPolarity::Maybe(_),
+                    ) if !self.features.more_maybe_bounds() => {
                         self.sess
                             .create_feature_err(
                                 errors::OptionalTraitSupertrait {
@@ -1438,7 +1448,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             GenericBound::Outlives(_) => {}
             GenericBound::Use(_, span) => match ctxt {
                 BoundKind::Impl => {}
-                BoundKind::Bound | BoundKind::TraitObject | BoundKind::SuperTraits => {
+                BoundKind::Bound | BoundKind::TraitObject | BoundKind::SuperTraits { .. } => {
                     self.dcx().emit_err(errors::PreciseCapturingNotAllowedHere {
                         loc: ctxt.descr(),
                         span: *span,

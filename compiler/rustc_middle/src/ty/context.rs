@@ -3357,6 +3357,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
     }
 
+    pub fn module_supertraits_local(self, def_id: LocalDefId) -> &'tcx [DefId] {
+        self.resolutions(()).module_supertraits.get(&def_id).map_or(&[], |v| &v[..])
+    }
+
     pub fn resolver_for_lowering(self) -> &'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)> {
         self.resolver_for_lowering_raw(()).0
     }

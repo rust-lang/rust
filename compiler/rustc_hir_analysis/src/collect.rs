@@ -79,6 +79,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         predicates_of: predicates_of::predicates_of,
         explicit_predicates_of: predicates_of::explicit_predicates_of,
         explicit_super_predicates_of: predicates_of::explicit_super_predicates_of,
+        supertrait_auto_impls: predicates_of::supertrait_auto_impls,
         explicit_implied_predicates_of: predicates_of::explicit_implied_predicates_of,
         explicit_supertraits_containing_assoc_item:
             predicates_of::explicit_supertraits_containing_assoc_item,

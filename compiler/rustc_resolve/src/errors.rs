@@ -1231,6 +1231,16 @@ pub(crate) struct ItemWasCfgOut {
 }
 
 #[derive(Diagnostic)]
+#[diag(resolve_supertrait_impl_ambiguous)]
+pub(crate) struct SupertraitImplAmbiguous {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) name: Ident,
+    pub(crate) another: String,
+    pub(crate) one: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(resolve_trait_impl_mismatch)]
 pub(crate) struct TraitImplMismatch {
     #[primary_span]
