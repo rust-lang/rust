@@ -1,4 +1,3 @@
-pub mod asm;
 pub mod attr;
 mod attr_wrapper;
 mod diagnostics;
@@ -11,6 +10,11 @@ mod path;
 mod stmt;
 pub mod token_type;
 mod ty;
+
+// Parsers for non-functionlike builtin macros are defined in rustc_parse so they can be used by
+// both rustc_builtin_macros and rustfmt.
+pub mod asm;
+pub mod cfg_select;
 
 use std::assert_matches::debug_assert_matches;
 use std::{fmt, mem, slice};

@@ -48,11 +48,12 @@ fn matches_leading_pipe() {
 fn cfg_select_basic() {
     cfg_select! {
         target_pointer_width = "64" => { fn f0_() -> bool { true }}
+        _ => {}
     }
 
     cfg_select! {
         unix => { fn f1_() -> bool { true } }
-        any(target_os = "macos", target_os = "linux") => { fn f1_() -> bool { false }}
+        _ => { fn f1_() -> bool { false }}
     }
 
     cfg_select! {
@@ -70,6 +71,8 @@ fn cfg_select_basic() {
 
     #[cfg(unix)]
     assert!(f1_());
+    #[cfg(not(unix))]
+    assert!(!f1_());
 
     #[cfg(target_pointer_width = "32")]
     assert!(!f2_());
@@ -183,6 +186,12 @@ fn _accepts_expressions() -> i32 {
     }
 }
 
+fn _accepts_only_wildcard() -> i32 {
+    cfg_select! {
+        _ => { 1 }
+    }
+}
+
 // The current implementation expands to a macro call, which allows the use of expression
 // statements.
 fn _allows_stmt_expr_attributes() {
@@ -195,12 +204,12 @@ fn _allows_stmt_expr_attributes() {
 }
 
 fn _expression() {
-    let _ = cfg_select!({
+    let _ = cfg_select!(
         windows => {
             " XP"
         }
         _ => {
             ""
         }
-    });
+    );
 }
