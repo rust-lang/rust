@@ -685,9 +685,9 @@ impl Step for CargoMiri {
                 cargo.arg("--doc");
             }
         }
-
-        // Finally, pass test-args and run everything.
         cargo.arg("--").args(builder.config.test_args());
+
+        // Finally, run everything.
         let mut cargo = BootstrapCommand::from(cargo);
         {
             let _guard = builder.msg_sysroot_tool(Kind::Test, stage, "cargo-miri", host, target);
