@@ -20,6 +20,7 @@ test = { path = "../test", public = true }
 [features]
 default = ["std_detect_file_io", "std_detect_dlsym_getauxval", "panic-unwind"]
 backtrace = ["std/backtrace"]
+backtrace-trace-only = ["std/backtrace-trace-only"]
 compiler-builtins-c = ["std/compiler-builtins-c"]
 compiler-builtins-mem = ["std/compiler-builtins-mem"]
 compiler-builtins-no-asm = ["std/compiler-builtins-no-asm"]

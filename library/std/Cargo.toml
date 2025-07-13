@@ -92,6 +92,9 @@ backtrace = [
     'object/rustc-dep-of-std',
     'miniz_oxide/rustc-dep-of-std',
 ]
+# Disable symbolization in backtraces. For use with -Zbuild-std.
+# FIXME: Ideally this should be an additive backtrace-symbolization feature
+backtrace-trace-only = []
 
 panic-unwind = ["dep:panic_unwind"]
 compiler-builtins-c = ["alloc/compiler-builtins-c"]
