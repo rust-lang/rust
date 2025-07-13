@@ -43,12 +43,12 @@ impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
             && trait_ref.path.res.def_id() == eq_trait
         {
             for impl_item in *impl_items {
-                if impl_item.ident.name == sym::ne {
+                if cx.tcx.item_name(impl_item.owner_id) == sym::ne {
                     span_lint_hir(
                         cx,
                         PARTIALEQ_NE_IMPL,
-                        impl_item.id.hir_id(),
-                        impl_item.span,
+                        impl_item.hir_id(),
+                        cx.tcx.def_span(impl_item.owner_id),
                         "re-implementing `PartialEq::ne` is unnecessary",
                     );
                 }
