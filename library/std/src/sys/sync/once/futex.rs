@@ -8,16 +8,16 @@ use crate::sys::futex::{Futex, Primitive, futex_wait, futex_wake_all};
 // This means we only need one atomic value with 4 states:
 
 /// No initialization has run yet, and no thread is currently using the Once.
-const INCOMPLETE: Primitive = 0;
+const INCOMPLETE: Primitive = 3;
 /// Some thread has previously attempted to initialize the Once, but it panicked,
 /// so the Once is now poisoned. There are no other threads currently accessing
 /// this Once.
-const POISONED: Primitive = 1;
+const POISONED: Primitive = 2;
 /// Some thread is currently attempting to run initialization. It may succeed,
 /// so all future threads need to wait for it to finish.
-const RUNNING: Primitive = 2;
+const RUNNING: Primitive = 1;
 /// Initialization has completed and all future calls should finish immediately.
-const COMPLETE: Primitive = 3;
+const COMPLETE: Primitive = 0;
 
 // An additional bit indicates whether there are waiting threads:
 

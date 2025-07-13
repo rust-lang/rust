@@ -75,10 +75,10 @@ pub struct OnceState {
 
 // Four states that a Once can be in, encoded into the lower bits of
 // `state_and_queue` in the Once structure.
-const INCOMPLETE: usize = 0x0;
-const POISONED: usize = 0x1;
-const RUNNING: usize = 0x2;
-const COMPLETE: usize = 0x3;
+const INCOMPLETE: usize = 0x3;
+const POISONED: usize = 0x2;
+const RUNNING: usize = 0x1;
+const COMPLETE: usize = 0x0;
 
 // Mask to learn about the state. All other bits are the queue of waiters if
 // this is in the RUNNING state.
