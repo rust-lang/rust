@@ -60,7 +60,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
                 ExprKind::Unary(UnOp::Not, e) => (e, ""),
                 _ => (cond, "!"),
             };
-            let cond_sugg = sugg::Sugg::hir_with_applicability(cx, cond, "..", &mut applicability).maybe_paren();
+            let cond_sugg =
+                sugg::Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "..", &mut applicability).maybe_paren();
             let semicolon = if is_parent_stmt(cx, expr.hir_id) { ";" } else { "" };
             let sugg = format!("assert!({not}{cond_sugg}, {format_args_snip}){semicolon}");
             // we show to the user the suggestion without the comments, but when applying the fix, include the
