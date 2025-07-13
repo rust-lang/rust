@@ -1,14 +1,14 @@
 use rustc_attr_data_structures::AttributeKind;
-use rustc_attr_data_structures::AttributeKind::{LinkName, LinkSection};
+use rustc_attr_data_structures::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
 use rustc_feature::{AttributeTemplate, template};
 use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::{
     AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
 };
-use crate::context::{AcceptContext, Stage};
+use crate::context::{AcceptContext, Stage, parse_single_integer};
 use crate::parser::ArgParser;
-use crate::session_diagnostics::NullOnLinkSection;
+use crate::session_diagnostics::{LinkOrdinalOutOfRange, NullOnLinkSection};
 
 pub(crate) struct LinkNameParser;
 
@@ -86,4 +86,37 @@ impl<S: Stage> NoArgsAttributeParser<S> for StdInternalSymbolParser {
     const PATH: &[Symbol] = &[sym::rustc_std_internal_symbol];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::StdInternalSymbol;
+}
+
+pub(crate) struct LinkOrdinalParser;
+
+impl<S: Stage> SingleAttributeParser<S> for LinkOrdinalParser {
+    const PATH: &[Symbol] = &[sym::link_ordinal];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const TEMPLATE: AttributeTemplate = template!(List: "ordinal");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let ordinal = parse_single_integer(cx, args)?;
+
+        // According to the table at
+        // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header, the
+        // ordinal must fit into 16 bits. Similarly, the Ordinal field in COFFShortExport (defined
+        // in llvm/include/llvm/Object/COFFImportFile.h), which we use to communicate import
+        // information to LLVM for `#[link(kind = "raw-dylib"_])`, is also defined to be uint16_t.
+        //
+        // FIXME: should we allow an ordinal of 0?  The MSVC toolchain has inconsistent support for
+        // this: both LINK.EXE and LIB.EXE signal errors and abort when given a .DEF file that
+        // specifies a zero ordinal. However, llvm-dlltool is perfectly happy to generate an import
+        // library for such a .DEF file, and MSVC's LINK.EXE is also perfectly happy to consume an
+        // import library produced by LLVM with an ordinal of 0, and it generates an .EXE.  (I
+        // don't know yet if the resulting EXE runs, as I haven't yet built the necessary DLL --
+        // see earlier comment about LINK.EXE failing.)
+        let Ok(ordinal) = ordinal.try_into() else {
+            cx.emit_err(LinkOrdinalOutOfRange { span: cx.attr_span, ordinal });
+            return None;
+        };
+
+        Some(LinkOrdinal { ordinal, span: cx.attr_span })
+    }
 }
