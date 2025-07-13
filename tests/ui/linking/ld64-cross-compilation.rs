@@ -1,10 +1,10 @@
+//! This is a regression test for https://github.com/rust-lang/rust/issues/140686.
+//! Although this is a ld64(ld-classic) bug, we still need to support it
+//! due to cross-compilation and support for older Xcode.
+
 //@ compile-flags: -Copt-level=3 -Ccodegen-units=256 -Clink-arg=-ld_classic
 //@ run-pass
 //@ only-x86_64-apple-darwin
-
-// This is a regression test for https://github.com/rust-lang/rust/issues/140686.
-// Although this is a ld64(ld-classic) bug, we still need to support it
-// due to cross-compilation and support for older Xcode.
 
 fn main() {
     let dst: Vec<u8> = Vec::new();
