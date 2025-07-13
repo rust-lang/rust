@@ -1,0 +1,41 @@
+error[E0382]: use of moved value: `foo`
+  --> $DIR/matching-partially-moved-value-17385.rs:19:5
+   |
+LL |     let foo = X(1);
+   |         --- move occurs because `foo` has type `X`, which does not implement the `Copy` trait
+LL |     drop(foo);
+   |          --- value moved here
+LL |     match foo {
+   |     ^^^^^^^^^ value used here after move
+   |
+note: if `X` implemented `Clone`, you could clone the value
+  --> $DIR/matching-partially-moved-value-17385.rs:2:1
+   |
+LL | struct X(isize);
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     drop(foo);
+   |          --- you could clone this value
+
+error[E0382]: use of moved value: `e`
+  --> $DIR/matching-partially-moved-value-17385.rs:26:11
+   |
+LL |     let e = Enum::Variant2;
+   |         - move occurs because `e` has type `Enum`, which does not implement the `Copy` trait
+LL |     drop(e);
+   |          - value moved here
+LL |     match e {
+   |           ^ value used here after move
+   |
+note: if `Enum` implemented `Clone`, you could clone the value
+  --> $DIR/matching-partially-moved-value-17385.rs:4:1
+   |
+LL | enum Enum {
+   | ^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     drop(e);
+   |          - you could clone this value
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.
