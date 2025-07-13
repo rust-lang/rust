@@ -6,6 +6,14 @@
     clippy::unnecessary_literal_unwrap
 )]
 
+const fn identity<T>(x: T) -> T {
+    x
+}
+
+const fn double_it(x: i32) -> i32 {
+    x * 2
+}
+
 fn main() {
     // Expected errors
     // Basic scenario
@@ -32,6 +40,17 @@ fn main() {
         },
     );
 
+    // Identity
+    let string = String::new();
+    let option = Some(&string);
+    let _: &str = option.map_or_else(|| &string, identity); //~ ERROR: unused "map closure" when calling
+
+    // Closure bound to a variable
+    let do_nothing = |x: String| x;
+    let string = String::new();
+    let option = Some(string.clone());
+    let _: String = option.map_or_else(|| string, do_nothing); //~ ERROR: unused "map closure" when calling
+
     // Correct usages
     let option = Some(());
     option.map_or_else(|| (), |_| ());
@@ -51,4 +70,13 @@ fn main() {
             tmp
         },
     );
+
+    let num = 5;
+    let option = Some(num);
+    let _: i32 = option.map_or_else(|| 0, double_it);
+
+    let increase = |x: i32| x + 1;
+    let num = 5;
+    let option = Some(num);
+    let _: i32 = option.map_or_else(|| 0, increase);
 }
