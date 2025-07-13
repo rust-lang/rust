@@ -2653,6 +2653,7 @@ where
     /// codepoint offsets. For the purpose of the hash that's sufficient.
     /// Also, hashing filenames is expensive so we avoid doing it twice when the
     /// span starts and ends in the same file, which is almost always the case.
+    // Important: changes to this method should be reflected in implementations of `SpanEncoder`.
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
