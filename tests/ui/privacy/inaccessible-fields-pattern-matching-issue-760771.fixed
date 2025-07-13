@@ -16,3 +16,5 @@ fn main() {
     let foo::Bar { visible, .. } = foo::Bar::default();
     //~^ ERROR pattern requires `..` due to inaccessible fields
 }
+
+// https://github.com/rust-lang/rust/issues/760771

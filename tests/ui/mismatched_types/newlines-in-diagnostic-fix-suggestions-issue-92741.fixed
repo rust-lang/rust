@@ -11,3 +11,5 @@ fn _bar() -> bool {
 fn _baz() -> bool {
     if true { true } else { false }
 }
+
+// https://github.com/rust-lang/rust/issues/92741

@@ -1,8 +1,8 @@
 //@ run-pass
-//@ aux-build:issue-9123.rs
+//@ aux-build:default-method-fn-call-issue-9123.rs
 
 
-extern crate issue_9123;
+extern crate default_method_fn_call_issue_9123;
 
 pub fn main() {}
 

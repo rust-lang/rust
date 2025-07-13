@@ -1,10 +1,10 @@
 //@ run-pass
-//@ aux-build:issue-2472-b.rs
+//@ aux-build:exporting-impl-from-root-causes-ice-issue-2472-b.rs
 
 
-extern crate issue_2472_b;
+extern crate exporting_impl_from_root_causes_ice_issue_2472_b as lib;
 
-use issue_2472_b::{S, T};
+use lib::{S, T};
 
 pub fn main() {
     let s = S(());

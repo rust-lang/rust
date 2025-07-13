@@ -1,13 +1,13 @@
 //@ run-pass
-//@ aux-build:issue-9155.rs
+//@ aux-build:generic-newtypes-cross-crate-usage-issue-9155.rs
 
 
-extern crate issue_9155;
+extern crate generic_newtypes_cross_crate_usage_issue_9155 as lib;
 
 struct Baz;
 
 pub fn main() {
-    issue_9155::Foo::new(Baz);
+    lib::Foo::new(Baz);
 }
 
 // https://github.com/rust-lang/rust/issues/9155

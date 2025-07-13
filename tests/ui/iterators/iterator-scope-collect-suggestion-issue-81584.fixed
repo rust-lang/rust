@@ -6,3 +6,5 @@ fn main() {
                   //~^ ERROR cannot return value referencing function parameter `y`
             .collect::<Vec<_>>();
 }
+
+// https://github.com/rust-lang/rust/issues/81584

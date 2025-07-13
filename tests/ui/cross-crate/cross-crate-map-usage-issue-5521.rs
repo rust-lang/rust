@@ -1,10 +1,10 @@
 //@ run-pass
 #![allow(dead_code)]
-//@ aux-build:issue-5521.rs
+//@ aux-build:cross-crate-map-usage-issue-5521.rs
 
 
 
-extern crate issue_5521 as foo;
+extern crate cross_crate_map_usage_issue_5521 as foo;
 
 fn bar(a: foo::map) {
     if false {

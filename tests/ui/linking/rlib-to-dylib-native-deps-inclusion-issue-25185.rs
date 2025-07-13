@@ -1,12 +1,12 @@
 //@ run-pass
-//@ aux-build:issue-25185-1.rs
-//@ aux-build:issue-25185-2.rs
+//@ aux-build:rlib-to-dylib-native-deps-inclusion-issue-25185-1.rs
+//@ aux-build:rlib-to-dylib-native-deps-inclusion-issue-25185-2.rs
 
-extern crate issue_25185_2;
+extern crate rlib_to_dylib_native_deps_inclusion_issue_25185_2 as minimal;
 
 fn main() {
     let x = unsafe {
-        issue_25185_2::rust_dbg_extern_identity_u32(1)
+        minimal::rust_dbg_extern_identity_u32(1)
     };
     assert_eq!(x, 1);
 }

@@ -1,8 +1,8 @@
 //@ run-pass
-//@ aux-build:issue-9968.rs
+//@ aux-build:pub-use-link-errors-issue-9968.rs
 
 
-extern crate issue_9968 as lib;
+extern crate pub_use_link_errors_issue_9968 as lib;
 
 use lib::{Trait, Struct};
 

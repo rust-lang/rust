@@ -1,12 +1,11 @@
 //@ run-pass
-//@ aux-build:issue-9188.rs
+//@ aux-build:same-symbol-name-for-inner-statics-issue-9188.rs
 
-
-extern crate issue_9188;
+extern crate same_symbol_name_for_inner_statics_issue_9188 as lib;
 
 pub fn main() {
-    let a = issue_9188::bar();
-    let b = issue_9188::foo::<isize>();
+    let a = lib::bar();
+    let b = lib::foo::<isize>();
     assert_eq!(*a, *b);
 }
 

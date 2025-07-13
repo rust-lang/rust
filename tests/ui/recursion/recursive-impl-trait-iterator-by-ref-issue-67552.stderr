@@ -11,7 +11,7 @@ LL | / fn rec<T>(mut it: T)
 LL | | where
 LL | |     T: Iterator,
    | |________________^
-   = note: the full type name has been written to '$TEST_BUILD_DIR/issue-67552.long-type.txt'
+   = note: the full type name has been written to '$TEST_BUILD_DIR/recursive-impl-trait-iterator-by-ref-issue-67552.long-type.txt'
 
 error: aborting due to 1 previous error
 

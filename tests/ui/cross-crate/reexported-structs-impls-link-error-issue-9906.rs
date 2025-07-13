@@ -1,8 +1,8 @@
 //@ run-pass
-//@ aux-build:issue-9906.rs
+//@ aux-build:reexported-structs-impls-link-error-issue-9906.rs
 
 
-extern crate issue_9906 as testmod;
+extern crate reexported_structs_impls_link_error_issue_9906 as testmod;
 
 pub fn main() {
     testmod::foo();

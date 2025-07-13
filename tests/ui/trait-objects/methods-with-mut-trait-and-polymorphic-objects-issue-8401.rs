@@ -1,8 +1,7 @@
 //@ run-pass
-//@ aux-build:issue-8401.rs
+//@ aux-build:methods-with-mut-trait-and-polymorphic-objects-issue-8401.rs
 
-
-extern crate issue_8401;
+extern crate methods_with_mut_trait_and_polymorphic_objects_issue_8401;
 
 pub fn main() {}
 
