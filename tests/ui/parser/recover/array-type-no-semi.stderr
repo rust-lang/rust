@@ -1,0 +1,56 @@
+error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `]`, found `,`
+  --> $DIR/array-type-no-semi.rs:7:16
+   |
+LL |     let b: [i32, 5];
+   |          -     ^ expected one of 7 possible tokens
+   |          |
+   |          while parsing the type for `b`
+   |          help: use `=` if you meant to assign
+
+error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `]`, found `,`
+  --> $DIR/array-type-no-semi.rs:10:16
+   |
+LL |     let a: [i32, ];
+   |          -     ^ expected one of 7 possible tokens
+   |          |
+   |          while parsing the type for `a`
+   |          help: use `=` if you meant to assign
+
+error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `]`, found `,`
+  --> $DIR/array-type-no-semi.rs:13:16
+   |
+LL |     let c: [i32, x];
+   |          -     ^ expected one of 7 possible tokens
+   |          |
+   |          while parsing the type for `c`
+   |          help: use `=` if you meant to assign
+
+error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `]`, found `5`
+  --> $DIR/array-type-no-semi.rs:16:17
+   |
+LL |     let e: [i32 5];
+   |          -      ^ expected one of 7 possible tokens
+   |          |
+   |          while parsing the type for `e`
+
+error[E0423]: expected value, found builtin type `i32`
+  --> $DIR/array-type-no-semi.rs:7:13
+   |
+LL |     let b: [i32, 5];
+   |             ^^^ not a value
+
+error[E0423]: expected value, found builtin type `i32`
+  --> $DIR/array-type-no-semi.rs:10:13
+   |
+LL |     let a: [i32, ];
+   |             ^^^ not a value
+
+error[E0423]: expected value, found builtin type `i32`
+  --> $DIR/array-type-no-semi.rs:13:13
+   |
+LL |     let c: [i32, x];
+   |             ^^^ not a value
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0423`.
