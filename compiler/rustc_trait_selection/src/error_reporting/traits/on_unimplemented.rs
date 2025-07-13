@@ -11,7 +11,9 @@ use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, GenericArgsRef, GenericParamDef, GenericParamDefKind, TyCtxt};
-use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
+use rustc_session::lint::builtin::{
+    MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+};
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, info};
 
@@ -382,7 +384,7 @@ impl IgnoredDiagnosticOption {
         if let (Some(new_item), Some(old_item)) = (new, old) {
             if let Some(item_def_id) = item_def_id.as_local() {
                 tcx.emit_node_span_lint(
-                    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                     tcx.local_def_id_to_hir_id(item_def_id),
                     new_item,
                     IgnoredDiagnosticOption { span: new_item, prev_span: old_item, option_name },
@@ -533,7 +535,7 @@ impl<'tcx> OnUnimplementedDirective {
             if is_diagnostic_namespace_variant {
                 if let Some(def_id) = item_def_id.as_local() {
                     tcx.emit_node_span_lint(
-                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                         tcx.local_def_id_to_hir_id(def_id),
                         vec![item.span()],
                         MalformedOnUnimplementedAttrLint::new(item.span()),
@@ -689,7 +691,7 @@ impl<'tcx> OnUnimplementedDirective {
 
                 if let Some(item_def_id) = item_def_id.as_local() {
                     tcx.emit_node_span_lint(
-                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                         tcx.local_def_id_to_hir_id(item_def_id),
                         report_span,
                         MalformedOnUnimplementedAttrLint::new(report_span),
@@ -702,7 +704,7 @@ impl<'tcx> OnUnimplementedDirective {
                 Attribute::Unparsed(p) if !matches!(p.args, AttrArgs::Empty) => {
                     if let Some(item_def_id) = item_def_id.as_local() {
                         tcx.emit_node_span_lint(
-                            UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                            MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                             tcx.local_def_id_to_hir_id(item_def_id),
                             attr.span(),
                             MalformedOnUnimplementedAttrLint::new(attr.span()),
@@ -712,7 +714,7 @@ impl<'tcx> OnUnimplementedDirective {
                 _ => {
                     if let Some(item_def_id) = item_def_id.as_local() {
                         tcx.emit_node_span_lint(
-                            UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                            MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                             tcx.local_def_id_to_hir_id(item_def_id),
                             attr.span(),
                             MissingOptionsForOnUnimplementedAttr,
@@ -859,7 +861,7 @@ impl<'tcx> OnUnimplementedFormatString {
                 if self.is_diagnostic_namespace_variant {
                     if let Some(trait_def_id) = trait_def_id.as_local() {
                         tcx.emit_node_span_lint(
-                            UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                            MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
                             tcx.local_def_id_to_hir_id(trait_def_id),
                             self.span,
                             WrappedParserError { description: e.description, label: e.label },
