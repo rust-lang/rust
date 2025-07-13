@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/11869
 //@ check-pass
 #![allow(dead_code)]
 

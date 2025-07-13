@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/4734
 //@ run-pass
 #![allow(dead_code)]
 // Ensures that destructors are run for expressions of the form "e;" where

@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/36023
 //@ run-pass
 #![allow(unused_variables)]
 use std::ops::Deref;

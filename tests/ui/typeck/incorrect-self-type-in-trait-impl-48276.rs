@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/48276
 // Regression test for issue #48276 - ICE when self type does not match what is
 // required by a trait and regions are involved.
 
