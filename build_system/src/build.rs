@@ -139,6 +139,9 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         rustflags.push_str(&cg_rustflags);
     }
 
+    args.push(&"--features");
+    args.push(&"backtrace");
+
     let mut env = env.clone();
     env.insert("RUSTFLAGS".to_string(), rustflags);
     let sysroot_dir = library_dir.join("sysroot");
