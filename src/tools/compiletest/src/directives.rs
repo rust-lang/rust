@@ -56,7 +56,6 @@ impl EarlyProps {
         let mut poisoned = false;
         iter_directives(
             config.mode,
-            &config.suite,
             &mut poisoned,
             testfile,
             rdr,
@@ -349,7 +348,6 @@ impl TestProps {
 
             iter_directives(
                 config.mode,
-                &config.suite,
                 &mut poisoned,
                 testfile,
                 file,
@@ -869,7 +867,6 @@ const COMPILETEST_DIRECTIVE_PREFIX: &str = "//@";
 
 fn iter_directives(
     mode: TestMode,
-    _suite: &str,
     poisoned: &mut bool,
     testfile: &Utf8Path,
     rdr: impl Read,
@@ -1388,7 +1385,6 @@ pub(crate) fn make_test_description<R: Read>(
     // Scan through the test file to handle `ignore-*`, `only-*`, and `needs-*` directives.
     iter_directives(
         config.mode,
-        &config.suite,
         &mut local_poisoned,
         path,
         src,
