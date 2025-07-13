@@ -23,7 +23,8 @@
                                                   :overrideCommand ["python3"
                                                                     "x.py"
                                                                     "check"
-                                                                    "--json-output"])
+                                                                    "--json-output"
+                                                                    "--compile-time-deps"])]
                                         :sysrootSrc "./library"
                                         :extraEnv (:RUSTC_BOOTSTRAP "1"))
                  :rustc ( :source "./Cargo.toml" )))))))
