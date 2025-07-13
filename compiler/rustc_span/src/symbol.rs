@@ -2473,6 +2473,7 @@ symbols! {
         vsreg,
         vsx,
         vtable_align,
+        vtable_for,
         vtable_size,
         warn,
         wasip2,
