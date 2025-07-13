@@ -1179,6 +1179,11 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "allocator_api", reason = "new API", issue = "32838")]
     // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     pub unsafe fn from_parts_in(ptr: NonNull<T>, length: usize, capacity: usize, alloc: A) -> Self {
+        ub_checks::assert_unsafe_precondition!(
+            check_library_ub,
+            "Vec::from_parts_in requires that length <= capacity",
+            (length: usize = length, capacity: usize = capacity) => length <= capacity
+        );
         unsafe { Vec { buf: RawVec::from_nonnull_in(ptr, capacity, alloc), len: length } }
     }
 
