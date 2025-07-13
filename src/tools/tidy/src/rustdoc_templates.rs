@@ -14,7 +14,7 @@ const TAGS: &[(&str, &str)] = &[("{#", "#}"), ("{%", "%}"), ("{{", "}}")];
 pub fn check(librustdoc_path: &Path, bad: &mut bool) {
     walk(
         &librustdoc_path.join("html/templates"),
-        |path, is_dir| is_dir || !path.extension().is_some_and(|ext| ext == OsStr::new("html")),
+        |path, is_dir| is_dir || path.extension().is_none_or(|ext| ext != OsStr::new("html")),
         &mut |path: &DirEntry, file_content: &str| {
             let mut lines = file_content.lines().enumerate().peekable();
 
@@ -23,7 +23,7 @@ pub fn check(librustdoc_path: &Path, bad: &mut bool) {
                 if let Some(need_next_line_check) = TAGS.iter().find_map(|(tag, end_tag)| {
                     // We first check if the line ends with a jinja tag.
                     if !line.ends_with(end_tag) {
-                        return None;
+                        None
                     // Then we check if this a comment tag.
                     } else if *tag != "{#" {
                         return Some(false);
