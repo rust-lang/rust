@@ -358,7 +358,7 @@ pub(crate) fn run_tests(
         );
 
         for (doctest, scraped_test) in &doctests {
-            tests_runner.add_test(doctest, scraped_test, &target_str);
+            tests_runner.add_test(doctest, scraped_test, &target_str, rustdoc_options);
         }
         let (duration, ret) = tests_runner.run_merged_tests(
             rustdoc_test_options,
