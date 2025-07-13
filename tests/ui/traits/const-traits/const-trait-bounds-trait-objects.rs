@@ -1,9 +1,7 @@
 #![feature(const_trait_impl)]
-// FIXME(const_trait_impl) add effects
 //@ edition: 2021
 
-#[const_trait]
-trait Trait {}
+const trait Trait {}
 
 fn main() {
     let _: &dyn const Trait; //~ ERROR const trait bounds are not allowed in trait object types
@@ -14,7 +12,7 @@ fn main() {
 trait NonConst {}
 const fn handle(_: &dyn const NonConst) {}
 //~^ ERROR const trait bounds are not allowed in trait object types
-//~| ERROR `const` can only be applied to `#[const_trait]` traits
+//~| ERROR `const` can only be applied to `const` traits
 const fn take(_: &dyn [const] NonConst) {}
 //~^ ERROR `[const]` is not allowed here
-//~| ERROR `[const]` can only be applied to `#[const_trait]` traits
+//~| ERROR `[const]` can only be applied to `const` traits
