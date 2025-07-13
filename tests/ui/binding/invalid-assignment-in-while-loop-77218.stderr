@@ -1,0 +1,16 @@
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/invalid-assignment-in-while-loop-77218.rs:5:19
+   |
+LL |     while Some(0) = value.get(0) {}
+   |                -  ^
+   |                |
+   |                cannot assign to this expression
+   |
+help: you might have meant to use pattern destructuring
+   |
+LL |     while let Some(0) = value.get(0) {}
+   |           +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0070`.

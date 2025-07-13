@@ -1,0 +1,24 @@
+error: pattern requires `..` due to inaccessible fields
+  --> $DIR/inaccessible-fields-pattern-matching-76077.rs:14:9
+   |
+LL |     let foo::Foo {} = foo::Foo::default();
+   |         ^^^^^^^^^^^
+   |
+help: ignore the inaccessible and unused fields
+   |
+LL |     let foo::Foo { .. } = foo::Foo::default();
+   |                    ++
+
+error: pattern requires `..` due to inaccessible fields
+  --> $DIR/inaccessible-fields-pattern-matching-76077.rs:17:9
+   |
+LL |     let foo::Bar { visible } = foo::Bar::default();
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+help: ignore the inaccessible and unused fields
+   |
+LL |     let foo::Bar { visible, .. } = foo::Bar::default();
+   |                           ++++
+
+error: aborting due to 2 previous errors
+
