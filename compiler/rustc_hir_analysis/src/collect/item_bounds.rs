@@ -124,6 +124,7 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
         ty::ClauseKind::Trait(tr) => tr.self_ty(),
         ty::ClauseKind::Projection(proj) => proj.projection_term.self_ty(),
         ty::ClauseKind::TypeOutlives(outlives) => outlives.0,
+        ty::ClauseKind::HostEffect(host) => host.self_ty(),
         _ => return None,
     };
 
