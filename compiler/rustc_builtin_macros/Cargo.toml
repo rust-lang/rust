@@ -22,6 +22,7 @@ rustc_index = { path = "../rustc_index" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
+rustc_middle = { path = "../rustc_middle" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_parse_format = { path = "../rustc_parse_format" }
 # We must use the proc_macro version that we will compile proc-macros against,

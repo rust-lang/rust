@@ -278,7 +278,7 @@ pub(crate) fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 OperandValue::Immediate(base) => unsize_ptr(bx, base, src_ty, dst_ty, None),
                 OperandValue::Ref(..) | OperandValue::ZeroSized => bug!(),
             };
-            OperandValue::Pair(base, info).store(bx, dst);
+            OperandValue::Pair(base, info).store(bx, dst, None);
         }
 
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
@@ -581,9 +581,9 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(bx: &mut Bx) -> (Bx::Va
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let arg_argc = bx.const_int(bx.cx().type_isize(), 2);
         let arg_argv = bx.alloca(2 * ptr_size, ptr_align);
-        bx.store(param_handle, arg_argv, ptr_align);
+        bx.store(param_handle, arg_argv, ptr_align, None);
         let arg_argv_el1 = bx.inbounds_ptradd(arg_argv, bx.const_usize(ptr_size.bytes()));
-        bx.store(param_system_table, arg_argv_el1, ptr_align);
+        bx.store(param_system_table, arg_argv_el1, ptr_align, None);
         (arg_argc, arg_argv)
     } else if bx.cx().sess().target.main_needs_argc_argv {
         // Params from native `main()` used as args for rust start function

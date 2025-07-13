@@ -116,8 +116,13 @@ impl AutoDiffAttrs {
     pub fn has_primal_ret(&self) -> bool {
         matches!(self.ret_activity, DiffActivity::Active | DiffActivity::Dual)
     }
-    /// New constructor for type tree support
-    pub fn into_item(self, source: String, target: String, inputs: Vec<TypeTree>, output: TypeTree) -> AutoDiffItem {
+    pub fn into_item(
+        self,
+        source: String,
+        target: String,
+        inputs: Vec<TypeTree>,
+        output: TypeTree,
+    ) -> AutoDiffItem {
         AutoDiffItem { source, target, attrs: self, inputs, output }
     }
 }
@@ -284,8 +289,8 @@ impl AutoDiffAttrs {
         !matches!(self.mode, DiffMode::Error | DiffMode::Source)
     }
 
-    pub fn into_item(self, source: String, target: String) -> AutoDiffItem {
-        AutoDiffItem { source, target, attrs: self }
+    pub fn into_item_legacy(self, source: String, target: String) -> AutoDiffItem {
+        AutoDiffItem { source, target, attrs: self, inputs: vec![], output: TypeTree::new() }
     }
 }
 

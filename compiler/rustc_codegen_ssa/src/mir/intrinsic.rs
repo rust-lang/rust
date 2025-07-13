@@ -140,7 +140,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             sym::caller_location => {
                 let location = self.get_caller_location(bx, source_info);
-                location.val.store(bx, result);
+                location.val.store(bx, result, None);
                 return Ok(());
             }
 

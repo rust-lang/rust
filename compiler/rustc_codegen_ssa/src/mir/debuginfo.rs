@@ -249,7 +249,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(name) = name {
             bx.set_var_name(spill_slot.val.llval, &(name + ".dbg.spill"));
         }
-        operand.val.store(bx, spill_slot);
+        operand.val.store(bx, spill_slot, None);
         spill_slot
     }
 

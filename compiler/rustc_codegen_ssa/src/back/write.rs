@@ -412,7 +412,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
             B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
         if cgcx.lto == Lto::Fat && !autodiff.is_empty() {
             let config = cgcx.config(ModuleKind::Regular);
-            module = module.autodiff(cgcx, autodiff, config).unwrap_or_else(|e| e.raise());
+            module = module.autodiff(cgcx, autodiff, rustc_data_structures::fx::FxHashMap::default(), config).unwrap_or_else(|e| e.raise());
         }
         // We are adding a single work item, so the cost doesn't matter.
         vec![(WorkItem::LTO(module), 0)]
@@ -870,7 +870,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
 
-    B::optimize(cgcx, dcx, &mut module, module_config)?;
+    unsafe { B::optimize(cgcx, &dcx, &mut module, module_config)? };
 
     // After we've done the initial round of optimizations we need to
     // decide whether to synchronously codegen this module or ship it
@@ -891,7 +891,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     match lto_type {
         ComputedLtoType::No => finish_intra_module_work(cgcx, module, module_config),
         ComputedLtoType::Thin => {
-            let (name, thin_buffer) = B::prepare_thin(module, false);
+            let (name, thin_buffer) = B::prepare_thin(module);
             if let Some(path) = bitcode {
                 fs::write(&path, thin_buffer.data()).unwrap_or_else(|e| {
                     panic!("Error writing pre-lto-bitcode file `{}`: {}", path.display(), e);
@@ -1014,7 +1014,7 @@ fn finish_intra_module_work<B: ExtraBackendMethods>(
     let dcx = dcx.handle();
 
     if !cgcx.opts.unstable_opts.combine_cgu || module.kind == ModuleKind::Allocator {
-        let module = B::codegen(cgcx, dcx, module, module_config)?;
+        let module = unsafe { B::codegen(cgcx, &dcx, module, module_config)? };
         Ok(WorkItemResult::Finished(module))
     } else {
         Ok(WorkItemResult::NeedsLink(module))
@@ -1700,9 +1700,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
             assert!(compiled_modules.is_empty());
             let dcx = cgcx.create_dcx();
             let dcx = dcx.handle();
-            let module = B::run_link(&cgcx, dcx, needs_link).map_err(|_| ())?;
+            let module = B::run_link(&cgcx, &dcx, needs_link).map_err(|_| ())?;
             let module =
-                B::codegen(&cgcx, dcx, module, cgcx.config(ModuleKind::Regular)).map_err(|_| ())?;
+                unsafe { B::codegen(&cgcx, &dcx, module, cgcx.config(ModuleKind::Regular)) }.map_err(|_| ())?;
             compiled_modules.push(module);
         }
 

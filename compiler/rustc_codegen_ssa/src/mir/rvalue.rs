@@ -102,6 +102,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             size,
                             dest.val.align,
                             MemFlags::empty(),
+                            None,
                         );
                         return;
                     }
@@ -119,7 +120,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let first = bytes[0];
                         if bytes[1..].iter().all(|&b| b == first) {
                             let fill = bx.cx().const_u8(first);
-                            bx.memset(start, fill, size, dest.val.align, MemFlags::empty());
+                            bx.memset(start, fill, size, dest.val.align, MemFlags::empty(), None);
                             return true;
                         }
                     }
@@ -127,7 +128,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = bx.from_immediate(v);
                     if bx.cx().val_ty(v) == bx.cx().type_i8() {
-                        bx.memset(start, v, size, dest.val.align, MemFlags::empty());
+                        bx.memset(start, v, size, dest.val.align, MemFlags::empty(), None);
                         return true;
                     }
                     false
@@ -454,21 +455,32 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     ) => {
                         bug!("{kind:?} is for borrowck, and should never appear in codegen");
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::PtrToPtr
-                        if bx.cx().is_backend_scalar_pair(operand.layout) =>
-                    {
-                        if let OperandValue::Pair(data_ptr, meta) = operand.val {
-                            if bx.cx().is_backend_scalar_pair(cast) {
-                                OperandValue::Pair(data_ptr, meta)
-                            } else {
-                                // Cast of wide-ptr to thin-ptr is an extraction of data-ptr.
-                                OperandValue::Immediate(data_ptr)
-                            }
-                        } else {
-                            bug!("unexpected non-pair operand");
+                    mir::CastKind::PointerCoercion(_, _) => {
+                        let imm = operand.immediate();
+                        let operand_kind = self.value_kind(operand.layout);
+                        let OperandValueKind::Immediate(from_scalar) = operand_kind else {
+                            bug!("Found {operand_kind:?} for operand {operand:?}");
+                        };
+                        let from_backend_ty = bx.cx().immediate_backend_type(operand.layout);
+
+                        assert!(bx.cx().is_backend_immediate(cast));
+                        let to_backend_ty = bx.cx().immediate_backend_type(cast);
+                        if operand.layout.is_uninhabited() {
+                            let val = OperandValue::Immediate(bx.cx().const_poison(to_backend_ty));
+                            return OperandRef { val, layout: cast };
                         }
+                        let cast_kind = self.value_kind(cast);
+                        let OperandValueKind::Immediate(to_scalar) = cast_kind else {
+                            bug!("Found {cast_kind:?} for operand {cast:?}");
+                        };
+
+                        self.cast_immediate(bx, imm, from_scalar, from_backend_ty, to_scalar, to_backend_ty)
+                            .map(OperandValue::Immediate)
+                            .unwrap_or_else(|| {
+                                bug!("Unsupported cast of {operand:?} to {cast:?}");
+                            })
                     }
-                    | mir::CastKind::IntToInt
+                    mir::CastKind::IntToInt
                     | mir::CastKind::FloatToInt
                     | mir::CastKind::FloatToFloat
                     | mir::CastKind::IntToFloat

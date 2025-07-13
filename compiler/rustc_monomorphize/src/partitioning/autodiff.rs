@@ -1,4 +1,5 @@
 use rustc_ast::expand::autodiff_attrs::{AutoDiffItem, DiffActivity};
+use rustc_ast::expand::typetree::TypeTree;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::mir::mono::MonoItem;
@@ -128,7 +129,7 @@ pub(crate) fn find_autodiff_source_functions<'tcx>(
 
         let mut new_target_attrs = target_attrs.clone();
         new_target_attrs.input_activity = input_activities;
-        let itm = new_target_attrs.into_item(symb, target_symbol);
+        let itm = new_target_attrs.into_item(symb, target_symbol, Vec::new(), TypeTree::new());
         autodiff_items.push(itm);
     }
 

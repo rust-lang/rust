@@ -18,6 +18,7 @@ use super::{FunctionCx, LocalRef};
 use crate::common::IntPredicate;
 use crate::traits::*;
 use crate::{MemFlags, size_of_val};
+use rustc_ast::expand::typetree::FncTree;
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -755,7 +756,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
 
                 let val = bx.from_immediate(a);
                 let align = dest.val.align;
-                bx.store(val, dest.val.llval, align, tt);
+                bx.store(val, dest.val.llval, align, tt.clone());
 
                 let llptr = bx.inbounds_ptradd(dest.val.llval, bx.const_usize(b_offset.bytes()));
                 let val = bx.from_immediate(b);
@@ -796,7 +797,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         let neg_address = bx.neg(address);
         let offset = bx.and(neg_address, align_minus_1);
         let dst = bx.inbounds_ptradd(alloca, offset);
-        bx.memcpy(dst, min_align, llptr, min_align, size, MemFlags::empty());
+        bx.memcpy(dst, min_align, llptr, min_align, size, MemFlags::empty(), None);
 
         // Store the allocated region and the extra to the indirect place.
         let indirect_operand = OperandValue::Pair(dst, llextra);

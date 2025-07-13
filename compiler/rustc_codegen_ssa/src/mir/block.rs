@@ -546,7 +546,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let llslot = match op.val {
                     Immediate(_) | Pair(..) => {
                         let scratch = PlaceRef::alloca(bx, self.fn_abi.ret.layout);
-                        op.val.store(bx, scratch);
+                        op.val.store(bx, scratch, None);
                         scratch.val.llval
                     }
                     Ref(place_val) => {
@@ -1077,7 +1077,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 | (&mir::Operand::Constant(_), Ref(PlaceValue { llextra: None, .. })) => {
                     let tmp = PlaceRef::alloca(bx, op.layout);
                     bx.lifetime_start(tmp.val.llval, tmp.layout.size);
-                    op.val.store(bx, tmp);
+                    op.val.store(bx, tmp, None);
                     op.val = Ref(tmp.val);
                     lifetime_ends_after_call.push((tmp.val.llval, tmp.layout.size));
                 }
@@ -1475,13 +1475,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     };
                     let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
                     bx.lifetime_start(scratch.llval, arg.layout.size);
-                    op.val.store(bx, scratch.with_type(arg.layout));
+                    op.val.store(bx, scratch.with_type(arg.layout), None);
                     lifetime_ends_after_call.push((scratch.llval, arg.layout.size));
                     (scratch.llval, scratch.align, true)
                 }
                 PassMode::Cast { .. } => {
                     let scratch = PlaceRef::alloca(bx, arg.layout);
-                    op.val.store(bx, scratch);
+                    op.val.store(bx, scratch, None);
                     (scratch.val.llval, scratch.val.align, true)
                 }
                 _ => (op.immediate_or_packed_pair(bx), arg.layout.align.abi, false),
@@ -1543,13 +1543,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let llscratch = bx.alloca(scratch_size, scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);
                 // ...memcpy the value...
-                bx.memcpy(
+                                  bx.memcpy(
                     llscratch,
                     scratch_align,
                     llval,
                     align,
                     bx.const_usize(copy_bytes),
                     MemFlags::empty(),
+                    None,
                 );
                 // ...and then load it with the ABI type.
                 llval = bx.load(bx.backend_type(arg.layout), llval, align, None);
@@ -1662,7 +1663,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             let slot = self.get_personality_slot(&mut cleanup_bx);
             slot.storage_live(&mut cleanup_bx);
-            Pair(exn0, exn1).store(&mut cleanup_bx, slot);
+            Pair(exn0, exn1).store(&mut cleanup_bx, slot, None);
 
             cleanup_bx.br(llbb);
             cleanup_llbb
@@ -1922,7 +1923,7 @@ fn load_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let res = bx.insert_value(res, first, 0);
         bx.insert_value(res, second, 1)
     } else {
-        bx.load(cast_ty, ptr, align)
+        bx.load(cast_ty, ptr, align, None)
     }
 }
 
@@ -1939,10 +1940,10 @@ pub fn store_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         assert!(cast.prefix[0].is_some());
         let first = bx.extract_value(value, 0);
         let second = bx.extract_value(value, 1);
-        bx.store(first, ptr, align);
+        bx.store(first, ptr, align, None);
         let second_ptr = bx.inbounds_ptradd(ptr, bx.const_usize(offset_from_start.bytes()));
-        bx.store(second, second_ptr, align.restrict_for_offset(offset_from_start));
+        bx.store(second, second_ptr, align.restrict_for_offset(offset_from_start), None);
     } else {
-        bx.store(value, ptr, align);
+        bx.store(value, ptr, align, None);
     };
 }

@@ -6,6 +6,7 @@ use rustc_middle::ty::layout::{FieldsShape, LayoutOf};
 use rustc_middle::hir;
 use rustc_span::Span;
 use rustc_ast::expand::autodiff_attrs::DiffActivity;
+use tracing::trace;
 
 #[cfg(llvm_enzyme)]
 pub fn typetree_from<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
@@ -31,7 +32,7 @@ pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec<Diff
     if !fn_ty.is_fn() {
         return FncTree { args: vec![], ret: TypeTree::new() };
     }
-    let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
+    let fnc_binder: rustc_middle::ty::Binder<'_, rustc_middle::ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
 
     // If rustc compiles the unmodified primal, we know that this copy of the function
     // also has correct lifetimes. We know that Enzyme won't free the shadow too early
@@ -80,7 +81,7 @@ pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec<Diff
                     let activity = match da[i] {
                         DiffActivity::DualOnly | DiffActivity::Dual |
                             DiffActivity::DuplicatedOnly | DiffActivity::Duplicated
-                            => DiffActivity::FakeActivitySize,
+                            => DiffActivity::FakeActivitySize(None),
                         DiffActivity::Const => DiffActivity::Const,
                         _ => panic!("unexpected activity for ptr/ref"),
                     };
@@ -304,27 +305,3 @@ fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize, safety: bool,
     TypeTree::new()
 }
 
-// AST-based type tree construction (simplified fallback)
-#[cfg(llvm_enzyme)]
-pub fn construct_typetree_from_ty(ty: &ast::Ty) -> TypeTree {
-    // For now, return empty type tree to let Enzyme figure out layout
-    // In a full implementation, we'd need to convert AST types to Ty<'tcx>
-    // and use the layout-based approach from the old code
-    TypeTree::new()
-}
-
-#[cfg(llvm_enzyme)]
-pub fn construct_typetree_from_fnsig(sig: &ast::FnSig) -> (Vec<TypeTree>, TypeTree) {
-    // For now, return empty type trees
-    // This will be replaced with proper layout-based construction
-    let inputs: Vec<TypeTree> = sig.decl.inputs.iter()
-        .map(|_| TypeTree::new())
-        .collect();
-    
-    let output = match &sig.decl.output {
-        FnRetTy::Default(_) => TypeTree::new(),
-        FnRetTy::Ty(_) => TypeTree::new(),
-    };
-    
-    (inputs, output)
-}

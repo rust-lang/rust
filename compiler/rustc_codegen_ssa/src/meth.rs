@@ -148,7 +148,7 @@ pub(crate) fn load_vtable<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 
     let gep = bx.inbounds_ptradd(llvtable, bx.const_usize(vtable_byte_offset));
-    let ptr = bx.load(llty, gep, ptr_align);
+    let ptr = bx.load(llty, gep, ptr_align, None);
     // VTable loads are invariant.
     bx.set_invariant_load(ptr);
     if nonnull {

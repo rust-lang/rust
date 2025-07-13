@@ -472,7 +472,7 @@ pub trait BuilderMethods<'a, 'tcx>:
             // If we're not optimizing, the aliasing information from `memcpy`
             // isn't useful, so just load-store the value for smaller code.
             let temp = self.load_operand(src.with_type(layout));
-            temp.val.store_with_flags(self, dst.with_type(layout), flags);
+            temp.val.store_with_flags(self, dst.with_type(layout), flags, None);
         } else if !layout.is_zst() {
             let bytes = self.const_usize(layout.size.bytes());
             self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags, None);
@@ -500,7 +500,7 @@ pub trait BuilderMethods<'a, 'tcx>:
             temp = self.load_operand(alloca);
         }
         self.typed_place_copy(left, right, layout);
-        temp.val.store(self, right.with_type(layout));
+        temp.val.store(self, right.with_type(layout), None);
     }
 
     fn select(

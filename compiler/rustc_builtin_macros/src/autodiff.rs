@@ -11,7 +11,6 @@ mod llvm_enzyme {
         AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ret_activity,
         valid_ty_for_activity,
     };
-    use rustc_ast::expand::typetree::{TypeTree, Type, Kind};
     use rustc_ast::ptr::P;
     use crate::typetree::construct_typetree_from_fnsig;
     use rustc_ast::token::{Lit, LitKind, Token, TokenKind};
@@ -330,7 +329,7 @@ mod llvm_enzyme {
         let (inputs, output) = construct_typetree_from_fnsig(&sig);
         
         // Use the new into_item method to construct the AutoDiffItem
-        let autodiff_item = x.clone().into_item(
+        let _autodiff_item = x.clone().into_item(
             primal.to_string(),
             first_ident(&meta_item_vec[0]).to_string(),
             inputs,
@@ -1058,3 +1057,5 @@ mod llvm_enzyme {
         (d_sig, new_inputs, idents, false)
     }
 }
+
+pub(crate) use crate::autodiff::llvm_enzyme::{expand_forward, expand_reverse};
