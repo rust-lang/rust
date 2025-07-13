@@ -2345,6 +2345,7 @@ symbols! {
         vreg_low16,
         vsx,
         vtable_align,
+        vtable_for,
         vtable_size,
         warn,
         wasip2,

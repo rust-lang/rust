@@ -93,6 +93,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::three_way_compare
         | sym::discriminant_value
         | sym::type_id
+        | sym::vtable_for
         | sym::select_unpredictable
         | sym::cold_path
         | sym::ptr_guaranteed_cmp
@@ -541,6 +542,20 @@ pub(crate) fn check_intrinsic_type(
 
         sym::vtable_size | sym::vtable_align => {
             (0, 0, vec![Ty::new_imm_ptr(tcx, tcx.types.unit)], tcx.types.usize)
+        }
+
+        sym::vtable_for => {
+            let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, span);
+            let dyn_metadata_adt_ref = tcx.adt_def(dyn_metadata);
+            let dyn_metadata_args = tcx.mk_args(&[param(1).into()]);
+            let dyn_ty = Ty::new_adt(tcx, dyn_metadata_adt_ref, dyn_metadata_args);
+
+            let option_did = tcx.require_lang_item(LangItem::Option, span);
+            let option_adt_ref = tcx.adt_def(option_did);
+            let option_args = tcx.mk_args(&[dyn_ty.into()]);
+            let ret_ty = Ty::new_adt(tcx, option_adt_ref, option_args);
+
+            (2, 0, vec![], ret_ty)
         }
 
         // This type check is not particularly useful, but the `where` bounds

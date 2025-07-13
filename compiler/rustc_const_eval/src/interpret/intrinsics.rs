@@ -67,6 +67,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
                 self.copy_op(&val, dest)?;
             }
+            sym::vtable_for => {
+                let tp_ty = instance.args.type_at(0);
+                let result_ty = instance.args.type_at(1);
+                //let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, span);
+
+                ensure_monomorphic_enough(tcx, tp_ty)?;
+                ensure_monomorphic_enough(tcx, result_ty)?;
+
+                // Get vtable
+                //let vtable_ptr = self.get_vtable_ptr(tp_ty, result_ty.into())?;
+
+                //let dyn_metadata = metadata(vtable_ptr);
+                //let val = ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128());
+                //let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
+                //self.copy_op(&val, dest)?;
+            }
             sym::variant_count => {
                 let tp_ty = instance.args.type_at(0);
                 let ty = match tp_ty.kind() {

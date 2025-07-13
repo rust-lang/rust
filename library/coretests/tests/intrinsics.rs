@@ -193,3 +193,20 @@ fn carrying_mul_add_fallback_i128() {
         (u128::MAX - 1, -(i128::MIN / 2)),
     );
 }
+
+#[test]
+fn test_vtable_for() {
+    use std::fmt::Debug;
+    use std::intrinsics::vtable_for;
+    use std::option::Option;
+    use std::ptr::DynMetadata;
+
+    #[allow(dead_code)]
+    #[derive(Debug)]
+    struct A {
+        index: usize,
+    }
+    const debug_vtable: Option<DynMetadata<dyn Debug>> = vtable_for::<A, dyn Debug>();
+
+    println!("{debug_vtable:?}");
+}
