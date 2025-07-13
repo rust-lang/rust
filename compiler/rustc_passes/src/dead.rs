@@ -418,8 +418,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 hir::ItemKind::Trait(.., trait_item_refs) => {
                     // mark assoc ty live if the trait is live
                     for trait_item in trait_item_refs {
-                        if matches!(trait_item.kind, hir::AssocItemKind::Type) {
-                            self.check_def_id(trait_item.id.owner_id.to_def_id());
+                        if matches!(self.tcx.def_kind(trait_item.owner_id), DefKind::AssocTy) {
+                            self.check_def_id(trait_item.owner_id.to_def_id());
                         }
                     }
                     intravisit::walk_item(self, item)

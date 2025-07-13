@@ -716,7 +716,7 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
         walk_trait_ref(&mut checker, trait_ref);
     }
     walk_unambig_ty(&mut checker, impl_.self_ty);
-    for item in impl_.items {
+    for &item in impl_.items {
         walk_impl_item_ref(&mut checker, item);
     }
 
