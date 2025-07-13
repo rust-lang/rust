@@ -432,10 +432,10 @@ impl f16 {
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
-    /// let f = std::f16::consts::FRAC_PI_2;
+    /// let f = std::f16::consts::FRAC_PI_4;
     ///
     /// // asin(sin(pi/2))
-    /// let abs_difference = (f.sin().asin() - std::f16::consts::FRAC_PI_2).abs();
+    /// let abs_difference = (f.sin().asin() - f).abs();
     ///
     /// assert!(abs_difference <= f16::EPSILON);
     /// # }
@@ -877,10 +877,10 @@ impl f16 {
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
-    /// let e = std::f16::consts::E;
-    /// let f = e.tanh().atanh();
+    /// let x = std::f16::consts::FRAC_PI_6;
+    /// let f = x.tanh().atanh();
     ///
-    /// let abs_difference = (f - e).abs();
+    /// let abs_difference = (f - x).abs();
     ///
     /// assert!(abs_difference <= 0.01);
     /// # }

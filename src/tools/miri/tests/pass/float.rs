@@ -1139,14 +1139,13 @@ pub fn libm() {
     assert_approx_eq!((f64::consts::PI / 2f64).sin(), 1f64);
     assert_approx_eq!(f32::consts::FRAC_PI_6.sin(), 0.5);
     assert_approx_eq!(f64::consts::FRAC_PI_6.sin(), 0.5);
-    // Increase error tolerance from 12ULP to 16ULP because of the extra operation.
+    // Increase error tolerance to 16ULP because of the extra operation.
     assert_approx_eq!(f32::consts::FRAC_PI_4.sin().asin(), f32::consts::FRAC_PI_4, 16);
     assert_approx_eq!(f64::consts::FRAC_PI_4.sin().asin(), f64::consts::FRAC_PI_4, 16);
     assert_biteq(0.0f32.asin(), 0.0f32, "asin(+0) = +0");
     assert_biteq((-0.0f32).asin(), -0.0, "asin(-0) = -0");
     assert_biteq(0.0f64.asin(), 0.0, "asin(+0) = +0");
     assert_biteq((-0.0f64).asin(), -0.0, "asin(-0) = -0");
-
 
     assert_approx_eq!(1.0f32.sinh(), 1.1752012f32);
     assert_approx_eq!(1.0f64.sinh(), 1.1752011936438014f64);
@@ -1173,13 +1172,13 @@ pub fn libm() {
     assert_approx_eq!((f64::consts::PI * 2f64).cos(), 1f64);
     assert_approx_eq!(f32::consts::FRAC_PI_3.cos(), 0.5);
     assert_approx_eq!(f64::consts::FRAC_PI_3.cos(), 0.5);
-    // Increase error tolerance from 12ULP to 16ULP because of the extra operation.
+    // Increase error tolerance to 16ULP because of the extra operation.
     assert_approx_eq!(f32::consts::FRAC_PI_4.cos().acos(), f32::consts::FRAC_PI_4, 16);
     assert_approx_eq!(f64::consts::FRAC_PI_4.cos().acos(), f64::consts::FRAC_PI_4, 16);
     assert_biteq(1.0f32.acos(), 0.0, "acos(1) = 0");
     assert_biteq(1.0f64.acos(), 0.0, "acos(1) = 0");
 
-    assert_approx_eq!(1.0f32.cosh(), 1.54308f32);
+    assert_approx_eq!(1.0f32.cosh(), 1.5430806f32);
     assert_approx_eq!(1.0f64.cosh(), 1.5430806348152437f64);
     assert_eq!(0.0f32.cosh(), 1.0);
     assert_eq!(0.0f64.cosh(), 1.0);
