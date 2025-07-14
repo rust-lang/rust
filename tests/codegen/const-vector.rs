@@ -14,6 +14,7 @@
 #![feature(simd_ffi)]
 #![feature(arm_target_feature)]
 #![feature(mips_target_feature)]
+#![feature(riscv_target_feature)]
 #![allow(non_camel_case_types)]
 
 // Setting up structs that can be used as const vectors
@@ -51,6 +52,7 @@ extern "unadjusted" {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "neon"))]
 #[cfg_attr(target_arch = "x86", target_feature(enable = "sse"))]
 #[cfg_attr(target_arch = "mips", target_feature(enable = "msa"))]
+#[cfg_attr(target_arch = "riscv64", target_feature(enable = "v"))]
 pub fn do_call() {
     unsafe {
         // CHECK: call void @test_i8x2(<2 x i8> <i8 32, i8 64>
