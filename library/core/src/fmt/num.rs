@@ -358,7 +358,7 @@ macro_rules! impl_Display {
                 }
                 #[cfg(feature = "optimize_for_size")]
                 {
-                    offset = _inner_slow_integer_to_str(self.unsigned_abs().$conv_fn(), &mut buf.buf);
+                    offset = ${concat(_inner_slow_integer_to_str, $gen_name)}(self.unsigned_abs().$conv_fn(), &mut buf.buf);
                 }
                 // Only difference between signed and unsigned are these 4 lines.
                 if self < 0 {
@@ -401,7 +401,7 @@ macro_rules! impl_Display {
                 }
                 #[cfg(feature = "optimize_for_size")]
                 {
-                    offset = _inner_slow_integer_to_str(self.$conv_fn(), &mut buf.buf);
+                    offset = ${concat(_inner_slow_integer_to_str, $gen_name)}(self.$conv_fn(), &mut buf.buf);
                 }
                 // SAFETY: Starting from `offset`, all elements of the slice have been set.
                 unsafe { slice_buffer_to_str(&buf.buf, offset) }
@@ -412,7 +412,7 @@ macro_rules! impl_Display {
         )*
 
         #[cfg(feature = "optimize_for_size")]
-        fn _inner_slow_integer_to_str(mut n: $u, buf: &mut [MaybeUninit::<u8>]) -> usize {
+        fn ${concat(_inner_slow_integer_to_str, $gen_name)}(mut n: $u, buf: &mut [MaybeUninit::<u8>]) -> usize {
             let mut curr = buf.len();
 
             // SAFETY: To show that it's OK to copy into `buf_ptr`, notice that at the beginning
@@ -437,7 +437,7 @@ macro_rules! impl_Display {
             const MAX_DEC_N: usize = $u::MAX.ilog(10) as usize + 1;
             let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
 
-            let offset = _inner_slow_integer_to_str(n, &mut buf);
+            let offset = ${concat(_inner_slow_integer_to_str, $gen_name)}(n, &mut buf);
             // SAFETY: Starting from `offset`, all elements of the slice have been set.
             let buf_slice = unsafe { slice_buffer_to_str(&buf, offset) };
             f.pad_integral(is_nonnegative, "", buf_slice)
