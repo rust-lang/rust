@@ -4,11 +4,11 @@ use std::fmt;
 
 use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};
 use hir_def::{
-    LocalFieldId, StructId,
     layout::{
         Float, Integer, LayoutCalculator, LayoutCalculatorError, LayoutData, Primitive,
         ReprOptions, Scalar, StructKind, TargetDataLayout, WrappingRange,
     },
+    LocalFieldId, StructId,
 };
 use la_arena::{Idx, RawIdx};
 use rustc_abi::AddressSpace;
@@ -17,11 +17,11 @@ use rustc_index::IndexVec;
 use triomphe::Arc;
 
 use crate::{
-    Interner, ProjectionTy, Substitution, TraitEnvironment, Ty,
     consteval::try_const_usize,
     db::{HirDatabase, InternedClosure},
     infer::normalize,
     utils::ClosureSubst,
+    Interner, ProjectionTy, Substitution, TraitEnvironment, Ty,
 };
 
 pub(crate) use self::adt::layout_of_adt_cycle_result;
@@ -168,7 +168,14 @@ pub fn layout_of_ty_query(
                 let data = db.struct_signature(*s);
                 let repr = data.repr.unwrap_or_default();
                 if repr.simd() {
-                    return layout_of_simd_ty(db, *s, repr.packed(), subst, trait_env, &target);
+                    return layout_of_simd_ty(
+                        db,
+                        *s,
+                        repr.packed(),
+                        subst,
+                        trait_env,
+                        &target,
+                    );
                 }
             };
             return db.layout_of_adt(*def, subst.clone(), trait_env);

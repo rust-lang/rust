@@ -6,30 +6,30 @@ use base_db::Crate;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
-    HirFileId, InFile,
-    attrs::{Attr, AttrId, RawAttrs, collect_attrs},
+    attrs::{collect_attrs, Attr, AttrId, RawAttrs},
     span_map::SpanMapRef,
+    HirFileId, InFile,
 };
-use intern::{Symbol, sym};
+use intern::{sym, Symbol};
 use la_arena::{ArenaMap, Idx, RawIdx};
 use mbe::DelimiterKind;
 use rustc_abi::ReprOptions;
 use span::AstIdNode;
 use syntax::{
-    AstPtr,
     ast::{self, HasAttrs},
+    AstPtr,
 };
 use triomphe::Arc;
 use tt::iter::{TtElement, TtIter};
 
 use crate::{
-    AdtId, AstIdLoc, AttrDefId, GenericParamId, HasModule, LocalFieldId, Lookup, MacroId,
-    VariantId,
     db::DefDatabase,
     item_tree::block_item_tree_query,
     lang_item::LangItem,
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource},
+    AdtId, AstIdLoc, AttrDefId, GenericParamId, HasModule, LocalFieldId, Lookup, MacroId,
+    VariantId,
 };
 
 /// Desugared attributes of an item post `cfg_attr` expansion.
@@ -199,7 +199,11 @@ impl Attrs {
     #[inline]
     pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> Result<(), CfgExpr> {
         self.cfgs().try_for_each(|cfg| {
-            if cfg_options.check(&cfg) != Some(false) { Ok(()) } else { Err(cfg) }
+            if cfg_options.check(&cfg) != Some(false) {
+                Ok(())
+            } else {
+                Err(cfg)
+            }
         })
     }
 
@@ -331,7 +335,7 @@ fn parse_rustc_legacy_const_generics(tt: &crate::tt::TopSubtree) -> Box<[u32]> {
 }
 
 fn merge_repr(this: &mut ReprOptions, other: ReprOptions) {
-    let ReprOptions { int, align, pack, flags, field_shuffle_seed: _ } = this;
+    let ReprOptions { int, align, pack, flags, scalable, field_shuffle_seed: _ } = this;
     flags.insert(other.flags);
     *align = (*align).max(other.align);
     *pack = match (*pack, other.pack) {
@@ -340,6 +344,9 @@ fn merge_repr(this: &mut ReprOptions, other: ReprOptions) {
     };
     if other.int.is_some() {
         *int = other.int;
+    }
+    if other.scalable.is_some() {
+        *scalable = other.scalable;
     }
 }
 
@@ -852,8 +859,8 @@ mod tests {
 
     use hir_expand::span_map::{RealSpanMap, SpanMap};
     use span::FileId;
-    use syntax::{AstNode, TextRange, ast};
-    use syntax_bridge::{DocCommentDesugarMode, syntax_node_to_token_tree};
+    use syntax::{ast, AstNode, TextRange};
+    use syntax_bridge::{syntax_node_to_token_tree, DocCommentDesugarMode};
 
     use crate::attr::{DocAtom, DocExpr};
 
