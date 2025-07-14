@@ -10,10 +10,10 @@ note: found an item that was configured out
 LL |     pub mod doesnt_exist {
    |             ^^^^^^^^^^^^
 note: the item is gated here
-  --> $DIR/diagnostics-same-crate.rs:8:5
+  --> $DIR/diagnostics-same-crate.rs:8:11
    |
 LL |     #[cfg(false)]
-   |     ^^^^^^^^^^^^^
+   |           ^^^^^
 
 error[E0432]: unresolved import `super::inner::doesnt_exist`
   --> $DIR/diagnostics-same-crate.rs:35:23
@@ -27,10 +27,10 @@ note: found an item that was configured out
 LL |     pub mod doesnt_exist {
    |             ^^^^^^^^^^^^
 note: the item is gated here
-  --> $DIR/diagnostics-same-crate.rs:8:5
+  --> $DIR/diagnostics-same-crate.rs:8:11
    |
 LL |     #[cfg(false)]
-   |     ^^^^^^^^^^^^^
+   |           ^^^^^
 
 error[E0433]: failed to resolve: could not find `doesnt_exist` in `inner`
   --> $DIR/diagnostics-same-crate.rs:54:12
@@ -44,10 +44,10 @@ note: found an item that was configured out
 LL |     pub mod doesnt_exist {
    |             ^^^^^^^^^^^^
 note: the item is gated here
-  --> $DIR/diagnostics-same-crate.rs:8:5
+  --> $DIR/diagnostics-same-crate.rs:8:11
    |
 LL |     #[cfg(false)]
-   |     ^^^^^^^^^^^^^
+   |           ^^^^^
 
 error[E0425]: cannot find function `uwu` in module `inner`
   --> $DIR/diagnostics-same-crate.rs:49:12
@@ -61,10 +61,10 @@ note: found an item that was configured out
 LL |     pub fn uwu() {}
    |            ^^^
 note: the item is gated here
-  --> $DIR/diagnostics-same-crate.rs:4:5
+  --> $DIR/diagnostics-same-crate.rs:4:11
    |
 LL |     #[cfg(false)]
-   |     ^^^^^^^^^^^^^
+   |           ^^^^^
 
 error[E0425]: cannot find function `meow` in module `inner::right`
   --> $DIR/diagnostics-same-crate.rs:58:19
