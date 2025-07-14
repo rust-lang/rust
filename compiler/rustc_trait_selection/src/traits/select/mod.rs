@@ -28,7 +28,7 @@ use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
     self, DeepRejectCtxt, GenericArgsRef, PolyProjectionPredicate, SizedTraitKind, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, TypingMode, Upcast, elaborate,
+    TypeFoldable, TypeVisitableExt, TypingMode, Upcast, elaborate, may_use_unstable_feature,
 };
 use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument, trace};
@@ -829,6 +829,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         ProjectAndUnifyResult::FailedNormalization => Ok(EvaluatedToAmbig),
                         ProjectAndUnifyResult::Recursive => Ok(EvaluatedToAmbigStackDependent),
                         ProjectAndUnifyResult::MismatchedProjectionTypes(_) => Ok(EvaluatedToErr),
+                    }
+                }
+
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
+                    if may_use_unstable_feature(self.infcx, obligation.param_env, symbol) {
+                        Ok(EvaluatedToOk)
+                    } else {
+                        Ok(EvaluatedToAmbig)
                     }
                 }
 
