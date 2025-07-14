@@ -49,7 +49,7 @@ fn check_unused_files(path: &Path, bless: bool, bad: &mut bool) {
 }
 
 fn check_dash_files(path: &Path, bless: bool, bad: &mut bool) {
-    for file in walkdir::WalkDir::new(&path.join("mir-opt"))
+    for file in walkdir::WalkDir::new(path.join("mir-opt"))
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())
