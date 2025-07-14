@@ -319,11 +319,6 @@ where
     // Note: `feature_bound_holds_in_crate` does not consider a feature to be enabled
     // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
 
-    if (infcx.typing_mode() == TypingMode::PostAnalysis)
+    (infcx.typing_mode() == TypingMode::PostAnalysis)
         || infcx.cx().features().feature_bound_holds_in_crate(symbol)
-    {
-        return true;
-    } else {
-        return false;
-    }
 }

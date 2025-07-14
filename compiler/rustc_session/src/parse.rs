@@ -209,7 +209,7 @@ pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
 /// This is basically the same as `feature_err_issue`
 /// but without the feature issue note. If we can do a lookup for issue number from feature name,
 /// then we should directly use `feature_err_issue` for ambiguity error of
-/// #[unstable_feature_bound].
+/// `#[unstable_feature_bound]`.
 #[track_caller]
 pub fn feature_err_unstable_feature_bound(
     sess: &Session,
