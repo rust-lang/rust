@@ -360,7 +360,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         stage_id: matches.opt_str("stage-id").unwrap(),
 
         mode,
-        suite: matches.opt_str("suite").unwrap(),
+        suite: matches.opt_str("suite").unwrap().parse().expect("invalid suite"),
         debugger: matches.opt_str("debugger").map(|debugger| {
             debugger
                 .parse::<Debugger>()

@@ -16,9 +16,9 @@ use regex::{Captures, Regex};
 use tracing::*;
 
 use crate::common::{
-    CompareMode, Config, Debugger, FailMode, PassMode, TestMode, TestPaths, UI_EXTENSIONS,
-    UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG,
-    expected_output_path, incremental_dir, output_base_dir, output_base_name,
+    CompareMode, Config, Debugger, FailMode, PassMode, TestMode, TestPaths, TestSuite,
+    UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG,
+    UI_WINDOWS_SVG, expected_output_path, incremental_dir, output_base_dir, output_base_name,
     output_testname_unique,
 };
 use crate::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
@@ -1494,7 +1494,10 @@ impl<'test> TestCx<'test> {
     }
 
     fn is_rustdoc(&self) -> bool {
-        matches!(self.config.suite.as_str(), "rustdoc-ui" | "rustdoc-js" | "rustdoc-json")
+        matches!(
+            self.config.suite,
+            TestSuite::RustdocUi | TestSuite::RustdocJs | TestSuite::RustdocJson
+        )
     }
 
     fn make_compile_args(
