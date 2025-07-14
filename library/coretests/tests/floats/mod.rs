@@ -957,3 +957,23 @@ float_test! {
         assert!(Float::NEG_INFINITY.fract().is_nan());
     }
 }
+
+float_test! {
+    name: signum,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+    },
+    test<Float> {
+        let one: Float = 1.0;
+        let zero: Float = 0.0;
+        assert_biteq!(Float::INFINITY.signum(), one);
+        assert_biteq!(one.signum(), one);
+        assert_biteq!(zero.signum(), one);
+        assert_biteq!((-zero).signum(), -one);
+        assert_biteq!((-one).signum(), -one);
+        assert_biteq!(Float::NEG_INFINITY.signum(), -one);
+        assert_biteq!((one / Float::NEG_INFINITY).signum(), -one);
+        assert!(Float::NAN.signum().is_nan());
+    }
+}

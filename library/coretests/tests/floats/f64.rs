@@ -25,18 +25,6 @@ const NAN_MASK1: u64 = 0x000a_aaaa_aaaa_aaaa;
 const NAN_MASK2: u64 = 0x0005_5555_5555_5555;
 
 #[test]
-fn test_signum() {
-    assert_biteq!(f64::INFINITY.signum(), 1f64);
-    assert_biteq!(1f64.signum(), 1f64);
-    assert_biteq!(0f64.signum(), 1f64);
-    assert_biteq!((-0f64).signum(), -1f64);
-    assert_biteq!((-1f64).signum(), -1f64);
-    assert_biteq!(f64::NEG_INFINITY.signum(), -1f64);
-    assert_biteq!((1f64 / f64::NEG_INFINITY).signum(), -1f64);
-    assert!(f64::NAN.signum().is_nan());
-}
-
-#[test]
 fn test_is_sign_positive() {
     assert!(f64::INFINITY.is_sign_positive());
     assert!(1f64.is_sign_positive());
