@@ -2,7 +2,7 @@
 //@ compile-flags: -C opt-level=0 -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-#![feature(no_core, repr_simd, arm_target_feature, mips_target_feature, s390x_target_feature)]
+#![feature(no_core, repr_simd, arm_target_feature, mips_target_feature, s390x_target_feature, riscv_target_feature)]
 #![no_core]
 extern crate minicore;
 
@@ -79,7 +79,7 @@ pub fn bool_to_fake_bool_signed(b: bool) -> FakeBoolSigned {
     unsafe { mem::transmute(b) }
 }
 
-// CHECK-LABEL: define{{.*}}i1 @fake_bool_signed_to_bool(i8 %b)
+// CHECK-LABEL: define{{.*}}i1 @fake_bool_signed_to_bool(i8 {{.*}}%b)
 // CHECK: %_0 = trunc nuw i8 %b to i1
 // CHECK-NEXT: ret i1 %_0
 #[no_mangle]
@@ -110,34 +110,36 @@ pub fn fake_bool_unsigned_to_bool(b: FakeBoolUnsigned) -> bool {
 #[repr(simd)]
 struct S([i64; 1]);
 
-// CHECK-LABEL: define{{.*}}i64 @single_element_simd_to_scalar(<1 x i64> %b)
+// CHECK-LABEL: define{{.*}}i64 @single_element_simd_to_scalar({{.*}}i64 %{{.*}})
 // CHECK-NEXT: start:
 // CHECK-NEXT: %[[RET:.+]] = alloca [8 x i8]
-// CHECK-NEXT: store <1 x i64> %b, ptr %[[RET]]
-// CHECK-NEXT: %[[TEMP:.+]] = load i64, ptr %[[RET]]
-// CHECK-NEXT: ret i64 %[[TEMP]]
+// CHECK: store <1 x i64> %[[TEMP:.+]], ptr %[[RET]]
+// CHECK: %[[TEMP:.+]] = load i64, ptr %[[RET]]
+// CHECK: ret i64 %[[TEMP]]
 #[no_mangle]
 #[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "neon"))]
 #[cfg_attr(target_arch = "x86", target_feature(enable = "sse"))]
 #[cfg_attr(target_arch = "mips", target_feature(enable = "msa"))]
 #[cfg_attr(target_arch = "s390x", target_feature(enable = "vector"))]
+#[cfg_attr(target_arch = "riscv64", target_feature(enable = "v"))]
 pub extern "C" fn single_element_simd_to_scalar(b: S) -> i64 {
     unsafe { mem::transmute(b) }
 }
 
-// CHECK-LABEL: define{{.*}}<1 x i64> @scalar_to_single_element_simd(i64 %b)
+// CHECK-LABEL: define{{.*}}i64{{.*}} @scalar_to_single_element_simd(i64 %b)
 // CHECK-NEXT: start:
 // CHECK-NEXT: %[[RET:.+]] = alloca [8 x i8]
 // CHECK-NEXT: store i64 %b, ptr %[[RET]]
-// CHECK-NEXT: %[[TEMP:.+]] = load <1 x i64>, ptr %[[RET]]
-// CHECK-NEXT: ret <1 x i64> %[[TEMP]]
+// CHECK-NEXT: %[[TEMP:.+]] = load{{.*}}i64{{.*}}, ptr %[[RET]]
+// CHECK-NEXT: ret {{.*}}i64{{.*}}%[[TEMP]]
 #[no_mangle]
 #[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "neon"))]
 #[cfg_attr(target_arch = "x86", target_feature(enable = "sse"))]
 #[cfg_attr(target_arch = "mips", target_feature(enable = "msa"))]
 #[cfg_attr(target_arch = "s390x", target_feature(enable = "vector"))]
+#[cfg_attr(target_arch = "riscv64", target_feature(enable = "v"))]
 pub extern "C" fn scalar_to_single_element_simd(b: i64) -> S {
     unsafe { mem::transmute(b) }
 }
