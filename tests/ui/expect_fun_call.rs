@@ -107,6 +107,13 @@ fn main() {
         //~^ expect_fun_call
 
         Some("foo").expect(const_evaluable());
+        //~^ expect_fun_call
+
+        const {
+            Some("foo").expect(const_evaluable());
+        }
+
+        Some("foo").expect(const { const_evaluable() });
     }
 
     //Issue #3839

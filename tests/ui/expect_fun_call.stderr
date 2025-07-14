@@ -68,28 +68,34 @@ LL |         Some("foo").expect(get_non_static_str(&0));
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", get_non_static_str(&0)))`
 
 error: function call inside of `expect`
-  --> tests/ui/expect_fun_call.rs:113:16
+  --> tests/ui/expect_fun_call.rs:109:21
+   |
+LL |         Some("foo").expect(const_evaluable());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", const_evaluable()))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:120:16
    |
 LL |     Some(true).expect(&format!("key {}, {}", 1, 2));
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("key {}, {}", 1, 2))`
 
 error: function call inside of `expect`
-  --> tests/ui/expect_fun_call.rs:120:17
+  --> tests/ui/expect_fun_call.rs:127:17
    |
 LL |         opt_ref.expect(&format!("{:?}", opt_ref));
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{:?}", opt_ref))`
 
 error: function call inside of `expect`
-  --> tests/ui/expect_fun_call.rs:125:20
+  --> tests/ui/expect_fun_call.rs:132:20
    |
 LL |     format_capture.expect(&format!("{error_code}"));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{error_code}"))`
 
 error: function call inside of `expect`
-  --> tests/ui/expect_fun_call.rs:129:30
+  --> tests/ui/expect_fun_call.rs:136:30
    |
 LL |     format_capture_and_value.expect(&format!("{error_code}, {}", 1));
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{error_code}, {}", 1))`
 
-error: aborting due to 15 previous errors
+error: aborting due to 16 previous errors
 

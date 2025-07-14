@@ -1,15 +1,16 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::eager_or_lazy::switch_to_lazy_eval;
 use clippy_utils::macros::{FormatArgsStorage, format_args_inputs_span, root_macro_call_first_node};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
-use clippy_utils::{contains_return, peel_blocks};
+use clippy_utils::visitors::for_each_expr;
+use clippy_utils::{contains_return, is_inside_always_const_context, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
+use std::ops::ControlFlow;
 
 use super::EXPECT_FUN_CALL;
 
@@ -48,10 +49,23 @@ pub(super) fn check<'tcx>(
         arg_root
     }
 
+    fn contains_call<'a>(cx: &LateContext<'a>, arg: &'a hir::Expr<'a>) -> bool {
+        for_each_expr(cx, arg, |expr| {
+            if matches!(expr.kind, hir::ExprKind::MethodCall { .. } | hir::ExprKind::Call { .. })
+                && !is_inside_always_const_context(cx.tcx, expr.hir_id)
+            {
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(())
+            }
+        })
+        .is_some()
+    }
+
     if name == sym::expect
         && let [arg] = args
         && let arg_root = get_arg_root(cx, arg)
-        && switch_to_lazy_eval(cx, arg_root)
+        && contains_call(cx, arg_root)
         && !contains_return(arg_root)
     {
         let receiver_type = cx.typeck_results().expr_ty_adjusted(receiver);

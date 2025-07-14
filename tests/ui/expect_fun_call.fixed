@@ -106,7 +106,14 @@ fn main() {
         Some("foo").unwrap_or_else(|| panic!("{}", get_non_static_str(&0)));
         //~^ expect_fun_call
 
-        Some("foo").expect(const_evaluable());
+        Some("foo").unwrap_or_else(|| panic!("{}", const_evaluable()));
+        //~^ expect_fun_call
+
+        const {
+            Some("foo").expect(const_evaluable());
+        }
+
+        Some("foo").expect(const { const_evaluable() });
     }
 
     //Issue #3839
