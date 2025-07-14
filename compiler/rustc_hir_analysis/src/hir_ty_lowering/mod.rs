@@ -37,7 +37,7 @@ use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
-use rustc_middle::ty::typeck_results::{HasTypeDependentDefs, TypeDependentDef};
+use rustc_middle::ty::typeck_results::HasTypeDependentDefs;
 use rustc_middle::ty::{
     self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt,
     TypingMode, Upcast, fold_regions,
@@ -216,7 +216,7 @@ pub trait HirTyLowerer<'tcx>: HasTypeDependentDefs {
     fn record_ty(&self, hir_id: HirId, ty: Ty<'tcx>, span: Span);
 
     /// Record the resolution of a HIR node corresponding to a type-dependent definition in this context.
-    fn record_res(&self, hir_id: hir::HirId, result: TypeDependentDef);
+    fn record_res(&self, hir_id: hir::HirId, result: DefId);
 
     /// The inference context of the lowering context if applicable.
     fn infcx(&self) -> Option<&InferCtxt<'tcx>>;
@@ -1217,28 +1217,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Lower a [type-relative](hir::QPath::TypeRelative) path in type position to a type.
     ///
     /// If the path refers to an enum variant and `permit_variants` holds,
-    /// the returned type is simply the provided self type `qself_ty`.
+    /// the returned type is simply the provided self type `self_ty`.
     ///
-    /// A path like `A::B::C::D` is understood as `<A::B::C>::D`. I.e.,
-    /// `qself_ty` / `qself` is `A::B::C` and `assoc_segment` is `D`.
-    /// We return the lowered type and the `DefId` for the whole path.
-    ///
-    /// We only support associated type paths whose self type is a type parameter or a `Self`
-    /// type alias (in a trait impl) like `T::Ty` (where `T` is a ty param) or `Self::Ty`.
-    /// We **don't** support paths whose self type is an arbitrary type like `Struct::Ty` where
-    /// struct `Struct` impls an in-scope trait that defines an associated type called `Ty`.
-    /// For the latter case, we report ambiguity.
-    /// While desirable to support, the implementation would be non-trivial. Tracked in [#22519].
-    ///
-    /// At the time of writing, *inherent associated types* are also resolved here. This however
-    /// is [problematic][iat]. A proper implementation would be as non-trivial as the one
-    /// described in the previous paragraph and their modeling of projections would likely be
-    /// very similar in nature.
-    ///
-    /// [#22519]: https://github.com/rust-lang/rust/issues/22519
-    /// [iat]: https://github.com/rust-lang/rust/issues/8995#issuecomment-1569208403
-    // FIXME(fmease): Update docs
-    //
     // NOTE: When this function starts resolving `Trait::AssocTy` successfully
     // it should also start reporting the `BARE_TRAIT_OBJECTS` lint.
     #[instrument(level = "debug", skip_all, ret)]
@@ -1250,7 +1230,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         qpath_hir_id: HirId,
         span: Span,
         permit_variants: PermitVariants,
-    ) -> Result<(Ty<'tcx>, DefKind, DefId), ErrorGuaranteed> {
+    ) -> Result<(Ty<'tcx>, DefId), ErrorGuaranteed> {
         let tcx = self.tcx();
         match self.lower_type_relative_path(
             self_ty,
@@ -1261,15 +1241,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             LowerTypeRelativePathMode::Type(permit_variants),
         )? {
             TypeRelativePath::AssocItem(def_id, args) => {
-                let kind = tcx.def_kind(def_id);
-                self.record_res(qpath_hir_id, Ok((kind, def_id)));
                 let alias_ty = ty::AliasTy::new_from_args(tcx, def_id, args);
                 let ty = Ty::new_alias(tcx, alias_ty.kind(tcx), alias_ty);
-                Ok((ty, kind, def_id))
+                Ok((ty, def_id))
             }
-            TypeRelativePath::Variant { adt, variant_did } => {
-                Ok((adt, DefKind::Variant, variant_did))
-            }
+            TypeRelativePath::Variant { adt, variant_did } => Ok((adt, variant_did)),
         }
     }
 
@@ -1313,6 +1289,27 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Lower a [type-relative][hir::QPath::TypeRelative] (and type-level) path.
+    ///
+    /// A path like `A::B::C::D` is understood as `<A::B::C>::D`. I.e., the self type is `A::B::C`
+    /// and the `segment` is `D`.
+    ///
+    /// <!-- FIXME(fmease): No longer accurate -->
+    ///
+    /// We only support associated item paths whose self type is a type parameter or a `Self`
+    /// type alias (in a trait impl) like `T::Ty` (where `T` is a ty param) or `Self::Ty`.
+    /// We **don't** support paths whose self type is an arbitrary type like `Struct::Ty` where
+    /// struct `Struct` impls an in-scope trait that defines an associated type called `Ty`.
+    /// For the latter case, we report ambiguity.
+    /// While desirable to support, the implementation would be non-trivial. Tracked in [#22519].
+    ///
+    /// <!-- FIXME(fmease): Slightly outdated, too -->
+    ///
+    /// At the time of writing, *inherent associated types* are also resolved here. This however
+    /// is problematic. A proper implementation would be as non-trivial as the one
+    /// described in the previous paragraph and their modeling of projections would likely be
+    /// very similar in nature.
+    ///
+    /// [#22519]: https://github.com/rust-lang/rust/issues/22519
     #[instrument(level = "debug", skip_all, ret)]
     fn lower_type_relative_path(
         &self,
@@ -1345,6 +1342,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 adt_def,
                             },
                         );
+                        self.record_res(qpath_hir_id, variant_def.def_id);
                         return Ok(TypeRelativePath::Variant {
                             adt: self_ty,
                             variant_did: variant_def.def_id,
@@ -1356,7 +1354,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
 
             // FIXME(inherent_associated_types, #106719): Support self types other than ADTs.
-            if let Some((did, args)) = self.probe_inherent_assoc_item(
+            if let Some((def_id, args)) = self.probe_inherent_assoc_item(
                 segment,
                 adt_def.did(),
                 self_ty,
@@ -1364,7 +1362,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 span,
                 mode.assoc_tag(),
             )? {
-                return Ok(TypeRelativePath::AssocItem(did, args));
+                self.record_res(qpath_hir_id, def_id);
+                return Ok(TypeRelativePath::AssocItem(def_id, args));
             }
         }
 
@@ -1499,6 +1498,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let assoc_item = self
             .probe_assoc_item(segment.ident, assoc_tag, qpath_hir_id, span, bound.def_id())
             .expect("failed to find associated item");
+
+        self.record_res(qpath_hir_id, assoc_item.def_id);
 
         Ok((assoc_item.def_id, bound))
     }
@@ -2718,7 +2719,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     hir_ty.span,
                     PermitVariants::No,
                 )
-                .map(|(ty, _, _)| ty)
+                .map(|(ty, _)| ty)
                 .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
             }
             hir::TyKind::Array(ty, length) => {

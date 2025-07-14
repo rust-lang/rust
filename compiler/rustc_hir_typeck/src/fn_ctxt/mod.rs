@@ -17,7 +17,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 };
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_infer::traits::{DynCompatibilityViolation, Obligation};
-use rustc_middle::ty::typeck_results::{HasTypeDependentDefs, TypeDependentDef};
+use rustc_middle::ty::typeck_results::HasTypeDependentDefs;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span, sym};
@@ -439,8 +439,8 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         self.write_ty(hir_id, ty)
     }
 
-    fn record_res(&self, hir_id: HirId, result: TypeDependentDef) {
-        self.write_resolution(hir_id, result);
+    fn record_res(&self, hir_id: HirId, def_id: DefId) {
+        self.write_resolution(hir_id, Ok((self.tcx.def_kind(def_id), def_id)));
     }
 
     fn infcx(&self) -> Option<&infer::InferCtxt<'tcx>> {

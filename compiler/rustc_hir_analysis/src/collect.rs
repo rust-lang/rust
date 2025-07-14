@@ -34,8 +34,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::typeck_results::{
-    HasTypeDependentDefs, LocalTableInContext, LocalTableInContextMut, TypeDependentDef,
-    TypeDependentDefs,
+    HasTypeDependentDefs, LocalTableInContext, LocalTableInContextMut, TypeDependentDefs,
 };
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
@@ -520,12 +519,12 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         // There's no place to record types from signatures?
     }
 
-    fn record_res(&self, hir_id: hir::HirId, result: TypeDependentDef) {
+    fn record_res(&self, hir_id: hir::HirId, def_id: DefId) {
         LocalTableInContextMut::new(
             self.hir_id().owner,
             &mut self.type_dependent_defs.borrow_mut(),
         )
-        .insert(hir_id, result);
+        .insert(hir_id, Ok((self.tcx.def_kind(def_id), def_id)));
     }
 
     fn infcx(&self) -> Option<&InferCtxt<'tcx>> {
