@@ -1,18 +1,21 @@
-error: incorrect number of arguments to `#[link_ordinal]`
+error[E0805]: malformed `link_ordinal` attribute input
   --> $DIR/link-ordinal-too-many-arguments.rs:3:5
    |
 LL |     #[link_ordinal(3, 4)]
-   |     ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the attribute requires exactly one argument
+   |     ^^^^^^^^^^^^^^------^
+   |     |             |
+   |     |             expected a single argument here
+   |     help: must be of the form: `#[link_ordinal(ordinal)]`
 
-error: incorrect number of arguments to `#[link_ordinal]`
-  --> $DIR/link-ordinal-too-many-arguments.rs:6:5
+error[E0805]: malformed `link_ordinal` attribute input
+  --> $DIR/link-ordinal-too-many-arguments.rs:7:5
    |
 LL |     #[link_ordinal(3, 4)]
-   |     ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the attribute requires exactly one argument
+   |     ^^^^^^^^^^^^^^------^
+   |     |             |
+   |     |             expected a single argument here
+   |     help: must be of the form: `#[link_ordinal(ordinal)]`
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0805`.
