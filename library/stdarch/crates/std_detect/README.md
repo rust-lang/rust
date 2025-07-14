@@ -55,7 +55,7 @@ crate from working on applications in which `std` is not available.
   application.
 
 * Linux/Android:
-  * `arm{32, 64}`, `mips{32,64}{,el}`, `powerpc{32,64}{,le}`, `loongarch64`, `s390x`:
+  * `arm{32, 64}`, `mips{32,64}{,el}`, `powerpc{32,64}{,le}`, `loongarch{32,64}`, `s390x`:
     `std_detect` supports these on Linux by querying ELF auxiliary vectors (using `getauxval`
     when available), and if that fails, by querying `/proc/self/auxv`.
   * `arm64`: partial support for doing run-time feature detection by directly

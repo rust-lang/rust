@@ -11,6 +11,7 @@
         target_arch = "s390x",
         target_arch = "riscv32",
         target_arch = "riscv64",
+        target_arch = "loongarch32",
         target_arch = "loongarch64"
     ),
     feature(stdarch_internal)
@@ -30,7 +31,7 @@
     feature(stdarch_riscv_feature_detection)
 )]
 #![cfg_attr(
-    target_arch = "loongarch64",
+    any(target_arch = "loongarch32", target_arch = "loongarch64"),
     feature(stdarch_loongarch_feature_detection)
 )]
 
@@ -45,6 +46,7 @@
     target_arch = "s390x",
     target_arch = "riscv32",
     target_arch = "riscv64",
+    target_arch = "loongarch32",
     target_arch = "loongarch64"
 ))]
 #[macro_use]
@@ -65,8 +67,8 @@ fn aarch64() {
 }
 
 #[test]
-#[cfg(target_arch = "loongarch64")]
-fn loongarch64() {
+#[cfg(any(target_arch = "loongarch32", target_arch = "loongarch64"))]
+fn loongarch() {
     let _ = is_loongarch_feature_detected!("lsx");
     let _ = is_loongarch_feature_detected!("lsx",);
 }

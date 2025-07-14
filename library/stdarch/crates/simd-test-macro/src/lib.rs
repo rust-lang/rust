@@ -62,7 +62,7 @@ pub fn simd_test(
         maybe_riscv if maybe_riscv.starts_with("riscv") => "is_riscv_feature_detected",
         "powerpc" | "powerpcle" => "is_powerpc_feature_detected",
         "powerpc64" | "powerpc64le" => "is_powerpc64_feature_detected",
-        "loongarch64" => "is_loongarch_feature_detected",
+        "loongarch32" | "loongarch64" => "is_loongarch_feature_detected",
         "s390x" => "is_s390x_feature_detected",
         t => panic!("unknown target: {t}"),
     };
