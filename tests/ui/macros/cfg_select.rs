@@ -18,10 +18,13 @@ fn arm_rhs_must_be_in_braces() -> i32 {
 cfg_select! {
     _ => {}
     true => {}
-    //~^ WARN unreachable rule
+    //~^ WARN unreachable predicate
 }
 
 cfg_select! {
-    //~^ ERROR none of the rules in this `cfg_select` evaluated to true
+    //~^ ERROR none of the predicates in this `cfg_select` evaluated to true
     false => {}
 }
+
+cfg_select! {}
+//~^ ERROR none of the predicates in this `cfg_select` evaluated to true

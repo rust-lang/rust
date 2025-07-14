@@ -4,15 +4,15 @@ error: expected `{`, found `1`
 LL |         true => 1
    |                 ^ expected `{`
 
-warning: unreachable rule
+warning: unreachable predicate
   --> $DIR/cfg_select.rs:20:5
    |
 LL |     _ => {}
    |     - always matches
 LL |     true => {}
-   |     ^^^^ this rules is never reached
+   |     ^^^^ this predicate is never reached
 
-error: none of the rules in this `cfg_select` evaluated to true
+error: none of the predicates in this `cfg_select` evaluated to true
   --> $DIR/cfg_select.rs:24:1
    |
 LL | / cfg_select! {
@@ -21,5 +21,11 @@ LL | |     false => {}
 LL | | }
    | |_^
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: none of the predicates in this `cfg_select` evaluated to true
+  --> $DIR/cfg_select.rs:29:1
+   |
+LL | cfg_select! {}
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors; 1 warning emitted
 
