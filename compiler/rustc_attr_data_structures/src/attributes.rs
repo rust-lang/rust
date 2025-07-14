@@ -207,6 +207,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
     AsPtr(Span),
 
+    /// Represents `#[automatically_derived]`
+    AutomaticallyDerived(Span),
+
     /// Represents `#[rustc_default_body_unstable]`.
     BodyStability {
         stability: DefaultBodyStability,
