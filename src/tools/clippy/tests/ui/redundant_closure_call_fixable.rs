@@ -144,3 +144,15 @@ fn issue_12358() {
     // different.
     make_closure!(x)();
 }
+
+#[rustfmt::skip]
+fn issue_9583() {
+    (|| { Some(true) })() == Some(true);
+     //~^ redundant_closure_call
+    (|| Some(true))() == Some(true);
+    //~^ redundant_closure_call
+    (|| { Some(if 1 > 2 {1} else {2}) })() == Some(2);
+    //~^ redundant_closure_call
+    (|| { Some( 1 > 2 ) })() == Some(true);
+    //~^ redundant_closure_call
+}

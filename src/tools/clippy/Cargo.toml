@@ -28,13 +28,13 @@ declare_clippy_lint = { path = "declare_clippy_lint" }
 rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
 clippy_lints_internal = { path = "clippy_lints_internal", optional = true }
 tempfile = { version = "3.20", optional = true }
-termize = "0.1"
+termize = "0.2"
 color-print = "0.3.4"
 anstream = "0.6.18"
 
 [dev-dependencies]
 cargo_metadata = "0.18.1"
-ui_test = "0.29.2"
+ui_test = "0.30.2"
 regex = "1.5.5"
 serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1.0.122"
@@ -44,14 +44,6 @@ filetime = "0.2.9"
 itertools = "0.12"
 pulldown-cmark = { version = "0.11", default-features = false, features = ["html"] }
 askama = { version = "0.14", default-features = false, features = ["alloc", "config", "derive"] }
-
-# UI test dependencies
-if_chain = "1.0"
-quote = "1.0.25"
-syn = { version = "2.0", features = ["full"] }
-futures = "0.3"
-parking_lot = "0.12"
-tokio = { version = "1", features = ["io-util"] }
 
 [build-dependencies]
 rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }

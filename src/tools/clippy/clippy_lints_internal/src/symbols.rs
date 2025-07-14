@@ -65,7 +65,7 @@ pub struct Symbols {
 impl_lint_pass!(Symbols => [INTERNING_LITERALS, SYMBOL_AS_STR]);
 
 impl Symbols {
-    fn lit_suggestion(&self, lit: &Lit) -> Option<(Span, String)> {
+    fn lit_suggestion(&self, lit: Lit) -> Option<(Span, String)> {
         if let LitKind::Str(name, _) = lit.node {
             let sugg = if let Some((prefix, name)) = self.symbol_map.get(&name.as_u32()) {
                 format!("{prefix}::{name}")
