@@ -161,7 +161,7 @@ fn report_single_pattern(
             // Try to remove address of expressions first.
             let (ex, removed) = peel_n_hir_expr_refs(ex, ref_count_diff);
 
-            (ex, "&".repeat(ref_count_diff - removed))
+            (ex, String::from(if ref_count_diff == removed { "" } else { "&" }))
         } else {
             (ex, "*".repeat(pat_ref_count - ty_ref_count))
         };
