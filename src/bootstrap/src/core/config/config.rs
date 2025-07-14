@@ -749,7 +749,7 @@ impl Config {
             compiletest_diff_tool,
             compiletest_use_stage0_libtest,
             tidy_extra_checks,
-            mut ccache,
+            ccache,
             exclude,
         } = toml.build.unwrap_or_default();
 
@@ -963,7 +963,7 @@ impl Config {
             config.channel = channel;
         }
 
-        config.apply_llvm_config(toml.llvm, &mut ccache);
+        config.apply_llvm_config(toml.llvm);
 
         config.apply_gcc_config(toml.gcc);
 
