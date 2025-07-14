@@ -1044,6 +1044,7 @@ impl<'a> Builder<'a> {
             Kind::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,
                 test::Tidy,
+                test::Bootstrap,
                 test::Ui,
                 test::Crashes,
                 test::Coverage,
@@ -1098,8 +1099,6 @@ impl<'a> Builder<'a> {
                 test::RustInstaller,
                 test::TestFloatParse,
                 test::CollectLicenseMetadata,
-                // Run bootstrap close to the end as it's unlikely to fail
-                test::Bootstrap,
                 // Run run-make last, since these won't pass without make on Windows
                 test::RunMake,
             ),
