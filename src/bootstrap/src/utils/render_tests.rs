@@ -63,7 +63,7 @@ fn run_tests(builder: &Builder<'_>, cmd: &mut BootstrapCommand, stream: bool) ->
         renderer.render_all();
     }
 
-    let status = streaming_command.wait().unwrap();
+    let status = streaming_command.wait(&builder.config.exec_ctx).unwrap();
     if !status.success() && builder.is_verbose() {
         println!(
             "\n\ncommand did not execute successfully: {cmd:?}\n\

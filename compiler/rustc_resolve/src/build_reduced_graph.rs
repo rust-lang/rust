@@ -32,10 +32,9 @@ use crate::def_collector::collect_definitions;
 use crate::imports::{ImportData, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::{
-    BindingKey, Determinacy, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind,
-    ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult,
-    ResolutionError, Resolver, ResolverArenas, Segment, ToNameBinding, Used, VisResolutionError,
-    errors,
+    BindingKey, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind, ModuleOrUniformRoot,
+    NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult, ResolutionError,
+    Resolver, ResolverArenas, Segment, ToNameBinding, Used, VisResolutionError, errors,
 };
 
 type Res = def::Res<NodeId>;
@@ -620,16 +619,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 let kind = ImportKind::Single {
                     source: source.ident,
                     target: ident,
-                    source_bindings: PerNS {
-                        type_ns: Cell::new(Err(Determinacy::Undetermined)),
-                        value_ns: Cell::new(Err(Determinacy::Undetermined)),
-                        macro_ns: Cell::new(Err(Determinacy::Undetermined)),
-                    },
-                    target_bindings: PerNS {
-                        type_ns: Cell::new(None),
-                        value_ns: Cell::new(None),
-                        macro_ns: Cell::new(None),
-                    },
+                    bindings: Default::default(),
                     type_ns_only,
                     nested,
                     id,

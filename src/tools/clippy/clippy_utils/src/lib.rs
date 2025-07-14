@@ -107,7 +107,7 @@ use rustc_hir::{
     Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem,
     TraitItemKind, TraitRef, TyKind, UnOp, def,
 };
-use rustc_lexer::{TokenKind, tokenize};
+use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::hir::place::PlaceBase;
@@ -2765,7 +2765,7 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'tcx>) -> ExprUseCtx
 /// Tokenizes the input while keeping the text associated with each token.
 pub fn tokenize_with_text(s: &str) -> impl Iterator<Item = (TokenKind, &str, InnerSpan)> {
     let mut pos = 0;
-    tokenize(s).map(move |t| {
+    tokenize(s, FrontmatterAllowed::No).map(move |t| {
         let end = pos + t.len;
         let range = pos as usize..end as usize;
         let inner = InnerSpan::new(range.start, range.end);
@@ -2780,7 +2780,7 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
     let Ok(snippet) = sm.span_to_snippet(span) else {
         return false;
     };
-    return tokenize(&snippet).any(|token| {
+    return tokenize(&snippet, FrontmatterAllowed::No).any(|token| {
         matches!(
             token.kind,
             TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }

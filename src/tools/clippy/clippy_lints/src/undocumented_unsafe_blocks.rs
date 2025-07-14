@@ -9,7 +9,7 @@ use clippy_utils::visitors::{Descend, for_each_expr};
 use hir::HirId;
 use rustc_hir as hir;
 use rustc_hir::{Block, BlockCheckMode, ItemKind, Node, UnsafeSource};
-use rustc_lexer::{TokenKind, tokenize};
+use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Pos, RelativeBytePos, Span, SyntaxContext};
@@ -760,7 +760,7 @@ fn text_has_safety_comment(src: &str, line_starts: &[RelativeBytePos], start_pos
     loop {
         if line.starts_with("/*") {
             let src = &src[line_start..line_starts.last().unwrap().to_usize()];
-            let mut tokens = tokenize(src);
+            let mut tokens = tokenize(src, FrontmatterAllowed::No);
             return (src[..tokens.next().unwrap().len as usize]
                 .to_ascii_uppercase()
                 .contains("SAFETY:")

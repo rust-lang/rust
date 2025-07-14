@@ -112,11 +112,7 @@ If you want to install the `browser-ui-test` dependency, run `npm install browse
                 .current_dir(path);
 
             if let Some(librs) = find_librs(entry.path()) {
-                let compiletest_c = compiletest::common::Config {
-                    edition: None,
-                    mode: compiletest::common::Mode::Rustdoc,
-                    ..Default::default()
-                };
+                let compiletest_c = compiletest::common::Config::incomplete_for_rustdoc_gui_test();
 
                 let test_props = TestProps::from_file(
                     &camino::Utf8PathBuf::try_from(librs).unwrap(),

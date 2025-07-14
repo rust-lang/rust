@@ -641,7 +641,7 @@ impl<'ra> Module<'ra> {
         F: FnMut(&mut R, Ident, Namespace, NameBinding<'ra>),
     {
         for (key, name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
-            if let Some(binding) = name_resolution.borrow().binding {
+            if let Some(binding) = name_resolution.borrow().best_binding() {
                 f(resolver, key.ident, key.ns, binding);
             }
         }
@@ -888,6 +888,13 @@ impl<'ra> NameBindingData<'ra> {
             NameBindingKind::Res(res) => res,
             NameBindingKind::Module(module) => module.res().unwrap(),
             NameBindingKind::Import { binding, .. } => binding.res(),
+        }
+    }
+
+    fn import_source(&self) -> NameBinding<'ra> {
+        match self.kind {
+            NameBindingKind::Import { binding, .. } => binding,
+            _ => unreachable!(),
         }
     }
 

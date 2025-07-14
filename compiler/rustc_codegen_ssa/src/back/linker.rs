@@ -800,9 +800,7 @@ impl<'a> Linker for GccLinker<'a> {
             return;
         }
 
-        let is_windows = self.sess.target.is_like_windows;
-        let path = tmpdir.join(if is_windows { "list.def" } else { "list" });
-
+        let path = tmpdir.join(if self.sess.target.is_like_windows { "list.def" } else { "list" });
         debug!("EXPORTED SYMBOLS:");
 
         if self.sess.target.is_like_darwin {
@@ -817,7 +815,8 @@ impl<'a> Linker for GccLinker<'a> {
             if let Err(error) = res {
                 self.sess.dcx().emit_fatal(errors::LibDefWriteFailure { error });
             }
-        } else if is_windows {
+            self.link_arg("-exported_symbols_list").link_arg(path);
+        } else if self.sess.target.is_like_windows {
             let res: io::Result<()> = try {
                 let mut f = File::create_buffered(&path)?;
 
@@ -835,6 +834,21 @@ impl<'a> Linker for GccLinker<'a> {
             if let Err(error) = res {
                 self.sess.dcx().emit_fatal(errors::LibDefWriteFailure { error });
             }
+            self.link_arg(path);
+        } else if crate_type == CrateType::Executable && !self.sess.target.is_like_solaris {
+            let res: io::Result<()> = try {
+                let mut f = File::create_buffered(&path)?;
+                writeln!(f, "{{")?;
+                for (sym, _) in symbols {
+                    debug!(sym);
+                    writeln!(f, "  {sym};")?;
+                }
+                writeln!(f, "}};")?;
+            };
+            if let Err(error) = res {
+                self.sess.dcx().emit_fatal(errors::VersionScriptWriteFailure { error });
+            }
+            self.link_arg("--dynamic-list").link_arg(path);
         } else {
             // Write an LD version script
             let res: io::Result<()> = try {
@@ -852,18 +866,13 @@ impl<'a> Linker for GccLinker<'a> {
             if let Err(error) = res {
                 self.sess.dcx().emit_fatal(errors::VersionScriptWriteFailure { error });
             }
-        }
-
-        if self.sess.target.is_like_darwin {
-            self.link_arg("-exported_symbols_list").link_arg(path);
-        } else if self.sess.target.is_like_solaris {
-            self.link_arg("-M").link_arg(path);
-        } else if is_windows {
-            self.link_arg(path);
-        } else {
-            let mut arg = OsString::from("--version-script=");
-            arg.push(path);
-            self.link_arg(arg).link_arg("--no-undefined-version");
+            if self.sess.target.is_like_solaris {
+                self.link_arg("-M").link_arg(path);
+            } else {
+                let mut arg = OsString::from("--version-script=");
+                arg.push(path);
+                self.link_arg(arg).link_arg("--no-undefined-version");
+            }
         }
     }
 

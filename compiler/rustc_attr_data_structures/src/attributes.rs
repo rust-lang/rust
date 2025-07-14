@@ -198,6 +198,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_allow_const_fn_unstable]`.
     AllowConstFnUnstable(ThinVec<Symbol>, Span),
 
+    /// Represents `#[rustc_allow_incoherent_impl]`.
+    AllowIncoherentImpl(Span),
+
     /// Represents `#[allow_internal_unstable]`.
     AllowInternalUnstable(ThinVec<(Symbol, Span)>, Span),
 
@@ -210,6 +213,12 @@ pub enum AttributeKind {
         /// Span of the `#[rustc_default_body_unstable(...)]` attribute
         span: Span,
     },
+
+    /// Represents `#[rustc_coherence_is_core]`.
+    CoherenceIsCore,
+
+    /// Represents `#[rustc_coinductive]`.
+    Coinductive(Span),
 
     /// Represents `#[cold]`.
     Cold(Span),
@@ -234,8 +243,17 @@ pub enum AttributeKind {
     /// Represents `#[rustc_const_stable_indirect]`.
     ConstStabilityIndirect,
 
+    /// Represents `#[const_trait]`.
+    ConstTrait(Span),
+
+    ///Represents `#[rustc_deny_explicit_impl]`.
+    DenyExplicitImpl(Span),
+
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
     Deprecation { deprecation: Deprecation, span: Span },
+
+    /// Represents `#[rustc_do_not_implement_via_object]`.
+    DoNotImplementViaObject(Span),
 
     /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
@@ -260,6 +278,9 @@ pub enum AttributeKind {
     /// Represents `#[ffi_pure]`.
     FfiPure(Span),
 
+    /// Represents `#[fundamental]`.
+    Fundamental,
+
     /// Represents `#[ignore]`
     Ignore {
         span: Span,
@@ -281,6 +302,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
+
+    /// Represents `#[marker]`.
+    Marker(Span),
 
     /// Represents [`#[may_dangle]`](https://std-dev-guide.rust-lang.org/tricky/may-dangle.html).
     MayDangle(Span),
@@ -307,6 +331,9 @@ pub enum AttributeKind {
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 
+    /// Represents `#[rustc_paren_sugar]`.
+    ParenSugar(Span),
+
     /// Represents `#[rustc_pass_by_value]` (used by the `rustc_pass_by_value` lint).
     PassByValue(Span),
 
@@ -331,6 +358,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_skip_during_method_dispatch]`.
     SkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },
 
+    /// Represents `#[rustc_specialization_trait]`.
+    SpecializationTrait(Span),
+
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
     Stability {
         stability: Stability,
@@ -346,6 +376,12 @@ pub enum AttributeKind {
 
     /// Represents `#[track_caller]`
     TrackCaller(Span),
+
+    /// Represents `#[type_const]`.
+    TypeConst(Span),
+
+    /// Represents `#[rustc_unsafe_specialization_marker]`.
+    UnsafeSpecializationMarker(Span),
 
     /// Represents `#[used]`
     Used { used_by: UsedBy, span: Span },

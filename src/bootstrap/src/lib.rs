@@ -22,7 +22,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use std::time::SystemTime;
+use std::time::{Instant, SystemTime};
 use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
@@ -775,6 +775,9 @@ impl Build {
         if self.config.rust_randomize_layout && check("rustc_randomized_layouts") {
             features.push("rustc_randomized_layouts");
         }
+        if self.config.compile_time_deps && kind == Kind::Check {
+            features.push("check_only");
+        }
 
         // If debug logging is on, then we want the default for tracing:
         // https://github.com/tokio-rs/tracing/blob/3dd5c03d907afdf2c39444a29931833335171554/tracing/src/level_filters.rs#L26
@@ -1318,7 +1321,7 @@ impl Build {
         if let Some(path) = configured {
             return Some(path.join("lib").join(target.to_string()));
         }
-        let mut env_root = PathBuf::from(std::env::var_os("WASI_SDK_PATH")?);
+        let mut env_root = self.wasi_sdk_path.clone()?;
         env_root.push("share");
         env_root.push("wasi-sysroot");
         env_root.push("lib");
@@ -1927,6 +1930,10 @@ to download LLVM rather than building it.
 
     pub fn exec_ctx(&self) -> &ExecutionContext {
         &self.config.exec_ctx
+    }
+
+    pub fn report_summary(&self, start_time: Instant) {
+        self.config.exec_ctx.profiler().report_summary(start_time);
     }
 }
 

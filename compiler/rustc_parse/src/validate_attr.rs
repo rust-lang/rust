@@ -283,6 +283,18 @@ pub fn check_builtin_meta_item(
                 | sym::rustc_confusables
                 | sym::rustc_skip_during_method_dispatch
                 | sym::rustc_pass_by_value
+                | sym::rustc_deny_explicit_impl
+                | sym::rustc_do_not_implement_via_object
+                | sym::rustc_coinductive
+                | sym::const_trait
+                | sym::rustc_specialization_trait
+                | sym::rustc_unsafe_specialization_marker
+                | sym::rustc_allow_incoherent_impl
+                | sym::rustc_coherence_is_core
+                | sym::marker
+                | sym::fundamental
+                | sym::rustc_paren_sugar
+                | sym::type_const
                 | sym::repr
                 | sym::align
                 | sym::deprecated

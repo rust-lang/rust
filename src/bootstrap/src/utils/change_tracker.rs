@@ -466,4 +466,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "The --extra-checks flag now supports prefixing any check with `auto:` to only run it if relevant files are modified",
     },
+    ChangeInfo {
+        change_id: 143785,
+        severity: ChangeSeverity::Info,
+        summary: "A --compile-time-deps flag has been added to reduce the time it takes rust-analyzer to start",
+    },
 ];

@@ -62,15 +62,8 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
             if let hir::StmtKind::Let(local) = stmt.kind
                 && let hir::PatKind::Binding(mode, canonical_id, ident, None) = local.pat.kind
                 && let hir::StmtKind::Expr(if_) = next.kind
-                && let hir::ExprKind::If(
-                    hir::Expr {
-                        kind: hir::ExprKind::DropTemps(cond),
-                        ..
-                    },
-                    then,
-                    else_,
-                ) = if_.kind
-                && !is_local_used(cx, *cond, canonical_id)
+                && let hir::ExprKind::If(cond, then, else_) = if_.kind
+                && !is_local_used(cx, cond, canonical_id)
                 && let hir::ExprKind::Block(then, _) = then.kind
                 && let Some(value) = check_assign(cx, canonical_id, then)
                 && !is_local_used(cx, value, canonical_id)

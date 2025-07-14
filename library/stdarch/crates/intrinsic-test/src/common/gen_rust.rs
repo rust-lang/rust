@@ -120,7 +120,7 @@ path = "{binary}/main.rs""#,
             false
         }
     } else {
-        error!("Command failed: {:#?}", output);
+        error!("Command failed: {output:#?}");
         false
     }
 }

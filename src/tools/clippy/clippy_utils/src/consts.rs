@@ -15,7 +15,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
     BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, PatExpr, PatExprKind, QPath, UnOp,
 };
-use rustc_lexer::tokenize;
+use rustc_lexer::{FrontmatterAllowed, tokenize};
 use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::{Scalar, alloc_range};
@@ -711,7 +711,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                     && let Some(src) = src.as_str()
                 {
                     use rustc_lexer::TokenKind::{BlockComment, LineComment, OpenBrace, Semi, Whitespace};
-                    if !tokenize(src)
+                    if !tokenize(src, FrontmatterAllowed::No)
                         .map(|t| t.kind)
                         .filter(|t| !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. } | Semi))
                         .eq([OpenBrace])
