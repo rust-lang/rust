@@ -197,23 +197,8 @@ LL - #[macro_use = 1]
 LL + #[macro_use]
    |
 
-error: malformed `macro_export` attribute input
-  --> $DIR/malformed-attrs.rs:214:1
-   |
-LL | #[macro_export = 18]
-   | ^^^^^^^^^^^^^^^^^^^^
-   |
-help: the following are the possible correct uses
-   |
-LL - #[macro_export = 18]
-LL + #[macro_export(local_inner_macros)]
-   |
-LL - #[macro_export = 18]
-LL + #[macro_export]
-   |
-
 error: malformed `allow_internal_unsafe` attribute input
-  --> $DIR/malformed-attrs.rs:216:1
+  --> $DIR/malformed-attrs.rs:217:1
    |
 LL | #[allow_internal_unsafe = 1]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[allow_internal_unsafe]`
@@ -237,7 +222,7 @@ LL | #[proc_macro_derive]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error[E0658]: allow_internal_unsafe side-steps the unsafe_code lint
-  --> $DIR/malformed-attrs.rs:216:1
+  --> $DIR/malformed-attrs.rs:217:1
    |
 LL | #[allow_internal_unsafe = 1]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -630,8 +615,17 @@ LL | #[ignore()]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
+error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
+  --> $DIR/malformed-attrs.rs:214:1
+   |
+LL | #[macro_export = 18]
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+
 error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
-  --> $DIR/malformed-attrs.rs:223:1
+  --> $DIR/malformed-attrs.rs:224:1
    |
 LL | #[ignore = 1]
    | ^^^^^^^^^^^^^

@@ -29,6 +29,7 @@ use crate::attributes::link_attrs::{
 };
 use crate::attributes::lint_helpers::{AsPtrParser, PassByValueParser, PubTransparentParser};
 use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
+use crate::attributes::macro_attrs::MacroExportParser;
 use crate::attributes::must_use::MustUseParser;
 use crate::attributes::no_implicit_prelude::NoImplicitPreludeParser;
 use crate::attributes::non_exhaustive::NonExhaustiveParser;
@@ -142,6 +143,7 @@ attribute_parsers!(
         Single<InlineParser>,
         Single<LinkNameParser>,
         Single<LinkSectionParser>,
+        Single<MacroExportParser>,
         Single<MustUseParser>,
         Single<OptimizeParser>,
         Single<PathAttributeParser>,
