@@ -5,7 +5,7 @@ extern crate test_macros;
 use test_macros::empty_attr as empty_helper;
 
 #[empty_helper] //~ ERROR `empty_helper` is ambiguous
-                //~| WARN derive helper attribute is used before it is introduced
+                //~| ERROR derive helper attribute is used before it is introduced
                 //~| WARN this was previously accepted
 #[derive(Empty)]
 struct S;
