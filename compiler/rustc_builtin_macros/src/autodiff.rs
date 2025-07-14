@@ -594,17 +594,11 @@ mod llvm_enzyme {
         span: Span,
         primal: Ident,
         idents: &[Ident],
-        errored: bool,
+        _errored: bool,
         generics: &Generics,
     ) -> P<ast::Block> {
-        let primal_call = gen_primal_call(ecx, span, primal, idents, generics);
-        let mut body = ecx.block(span, ThinVec::new());
-
-        // This uses primal args which won't be available if we errored before
-        if !errored {
-            body.stmts.push(ecx.stmt_semi(primal_call.clone()));
-        }
-
+        let _primal_call = gen_primal_call(ecx, span, primal, idents, generics);
+        let body = ecx.block(span, ThinVec::new());
         body
     }
 
