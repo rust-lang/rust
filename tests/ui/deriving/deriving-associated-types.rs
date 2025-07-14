@@ -44,6 +44,16 @@ struct TupleStruct<A, B: DeclaredTrait, C>(
 ) where C: WhereTrait;
 
 #[derive(PartialEq, Debug)]
+struct TupleStructJustQSelf<B: DeclaredTrait, C>(
+    <B>::Type,
+    <B as DeclaredTrait>::Type,
+    Option<<B as DeclaredTrait>::Type>,
+    <C as WhereTrait>::Type,
+    Option<<C as WhereTrait>::Type>,
+    <i32 as DeclaredTrait>::Type,
+) where C: WhereTrait;
+
+#[derive(PartialEq, Debug)]
 pub struct Struct<A, B: DeclaredTrait, C> where C: WhereTrait {
     m1: module::Type,
     m2: Option<module::Type>,
@@ -57,6 +67,16 @@ pub struct Struct<A, B: DeclaredTrait, C> where C: WhereTrait {
     c: C,
     c1: C::Type,
     c2: Option<C::Type>,
+    c3: <C as WhereTrait>::Type,
+    c4: Option<<C as WhereTrait>::Type>,
+    d: <i32 as DeclaredTrait>::Type,
+}
+
+#[derive(PartialEq, Debug)]
+pub struct StructJustQSelf<B: DeclaredTrait, C> where C: WhereTrait {
+    b1: <B>::Type,
+    b3: <B as DeclaredTrait>::Type,
+    b4: Option<<B as DeclaredTrait>::Type>,
     c3: <C as WhereTrait>::Type,
     c4: Option<<C as WhereTrait>::Type>,
     d: <i32 as DeclaredTrait>::Type,
@@ -101,6 +121,29 @@ enum Enum<A, B: DeclaredTrait, C> where C: WhereTrait {
     },
 }
 
+#[derive(PartialEq, Debug)]
+enum EnumJustQSelf<B: DeclaredTrait, C> where C: WhereTrait {
+    Unit,
+    Seq(
+        <B>::Type,
+        <B as DeclaredTrait>::Type,
+        Option<<B as DeclaredTrait>::Type>,
+        <C>::Type,
+        <C as WhereTrait>::Type,
+        Option<<C as WhereTrait>::Type>,
+        <i32 as DeclaredTrait>::Type,
+    ),
+    Map {
+        b1: <B>::Type,
+        b3: <B as DeclaredTrait>::Type,
+        b4: Option<<B as DeclaredTrait>::Type>,
+        c1: <C>::Type,
+        c3: <C as WhereTrait>::Type,
+        c4: Option<<C as WhereTrait>::Type>,
+        d: <i32 as DeclaredTrait>::Type,
+    },
+}
+
 fn main() {
     let e: TupleStruct<
         i32,
@@ -116,6 +159,19 @@ fn main() {
         None,
         0,
         None,
+        0,
+        0,
+        None,
+        0,
+        None,
+        0,
+    );
+    assert_eq!(e, e);
+
+    let e: TupleStructJustQSelf<
+        i32,
+        i32,
+    > = TupleStructJustQSelf(
         0,
         0,
         None,
@@ -142,6 +198,19 @@ fn main() {
         c: 0,
         c1: 0,
         c2: None,
+        c3: 0,
+        c4: None,
+        d: 0,
+    };
+    assert_eq!(e, e);
+
+    let e: StructJustQSelf<
+        i32,
+        i32,
+    > = StructJustQSelf {
+        b1: 0,
+        b3: 0,
+        b4: None,
         c3: 0,
         c4: None,
         d: 0,
@@ -191,6 +260,40 @@ fn main() {
         c: 0,
         c1: 0,
         c2: None,
+        c3: 0,
+        c4: None,
+        d: 0,
+    };
+    assert_eq!(e, e);
+
+    let e: EnumJustQSelf<
+        i32,
+        i32,
+    > = EnumJustQSelf::Unit;
+    assert_eq!(e, e);
+
+    let e: EnumJustQSelf<
+        i32,
+        i32,
+    > = EnumJustQSelf::Seq(
+        0,
+        0,
+        None,
+        0,
+        0,
+        None,
+        0,
+    );
+    assert_eq!(e, e);
+
+    let e: EnumJustQSelf<
+        i32,
+        i32,
+    > = EnumJustQSelf::Map {
+        b1: 0,
+        b3: 0,
+        b4: None,
+        c1: 0,
         c3: 0,
         c4: None,
         d: 0,
