@@ -1,13 +1,12 @@
-use crate::methods::method_call;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::{peel_blocks, sym};
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{peel_blocks, peel_hir_expr_while, sym};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::{BytePos, Span};
+use rustc_span::BytePos;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -43,53 +42,48 @@ declare_clippy_lint! {
 
 declare_lint_pass!(IneffectiveOpenOptions => [INEFFECTIVE_OPEN_OPTIONS]);
 
-fn index_if_arg_is_boolean(args: &[Expr<'_>], call_span: Span) -> Option<Span> {
-    if let [arg] = args
-        && let ExprKind::Lit(lit) = peel_blocks(arg).kind
-        && lit.node == LitKind::Bool(true)
-    {
-        // The `.` is not included in the span so we cheat a little bit to include it as well.
-        Some(call_span.with_lo(call_span.lo() - BytePos(1)))
-    } else {
-        None
-    }
-}
-
 impl<'tcx> LateLintPass<'tcx> for IneffectiveOpenOptions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let Some((sym::open, mut receiver, [_arg], _, _)) = method_call(expr) else {
-            return;
-        };
-        let receiver_ty = cx.typeck_results().expr_ty(receiver);
-        match receiver_ty.peel_refs().kind() {
-            ty::Adt(adt, _) if cx.tcx.is_diagnostic_item(sym::FsOpenOptions, adt.did()) => {},
-            _ => return,
-        }
-
-        let mut append = None;
-        let mut write = None;
-
-        while let Some((name, recv, args, _, span)) = method_call(receiver) {
-            if name == sym::append {
-                append = index_if_arg_is_boolean(args, span);
-            } else if name == sym::write {
-                write = index_if_arg_is_boolean(args, span);
-            }
-            receiver = recv;
-        }
-
-        if let Some(write_span) = write
-            && append.is_some()
+        if let ExprKind::MethodCall(name, recv, [_], _) = expr.kind
+            && name.ident.name == sym::open
+            && !expr.span.from_expansion()
+            && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv).peel_refs(), sym::FsOpenOptions)
         {
-            span_lint_and_sugg(
-                cx,
-                INEFFECTIVE_OPEN_OPTIONS,
-                write_span,
-                "unnecessary use of `.write(true)` because there is `.append(true)`",
-                "remove `.write(true)`",
-                String::new(),
-                Applicability::MachineApplicable,
-            );
+            let mut append = false;
+            let mut write = None;
+            peel_hir_expr_while(recv, |e| {
+                if let ExprKind::MethodCall(name, recv, args, call_span) = e.kind
+                    && !e.span.from_expansion()
+                {
+                    if let [arg] = args
+                        && let ExprKind::Lit(lit) = peel_blocks(arg).kind
+                        && matches!(lit.node, LitKind::Bool(true))
+                        && !arg.span.from_expansion()
+                        && !lit.span.from_expansion()
+                    {
+                        match name.ident.name {
+                            sym::append => append = true,
+                            sym::write => write = Some(call_span.with_lo(call_span.lo() - BytePos(1))),
+                            _ => {},
+                        }
+                    }
+                    Some(recv)
+                } else {
+                    None
+                }
+            });
+
+            if append && let Some(write_span) = write {
+                span_lint_and_sugg(
+                    cx,
+                    INEFFECTIVE_OPEN_OPTIONS,
+                    write_span,
+                    "unnecessary use of `.write(true)` because there is `.append(true)`",
+                    "remove `.write(true)`",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+            }
         }
     }
 }
