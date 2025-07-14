@@ -1,6 +1,7 @@
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::*;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty;
+use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_target::spec::PanicStrategy;
 use tracing::debug;
 
@@ -41,14 +42,13 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
 
         let mut jumps_folded = 0;
         let mut landing_pads_removed = 0;
-        let mut nop_landing_pads = DenseBitSet::new_empty(body.basic_blocks.len());
+        let nop_landing_pads = find_noop_landing_pads(body, None);
 
         // This is a post-order traversal, so that if A post-dominates B
         // then A will be visited before B.
-        let postorder: Vec<_> = traversal::postorder(body).map(|(bb, _)| bb).collect();
-        for bb in postorder {
+        for (bb, block) in body.basic_blocks_mut().iter_enumerated_mut() {
             debug!("  processing {:?}", bb);
-            if let Some(unwind) = body[bb].terminator_mut().unwind_mut() {
+            if let Some(unwind) = block.terminator_mut().unwind_mut() {
                 if let UnwindAction::Cleanup(unwind_bb) = *unwind {
                     if nop_landing_pads.contains(unwind_bb) {
                         debug!("    removing noop landing pad");
@@ -58,19 +58,13 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
                 }
             }
 
-            body[bb].terminator_mut().successors_mut(|target| {
+            block.terminator_mut().successors_mut(|target| {
                 if *target != resume_block && nop_landing_pads.contains(*target) {
                     debug!("    folding noop jump to {:?} to resume block", target);
                     *target = resume_block;
                     jumps_folded += 1;
                 }
             });
-
-            let is_nop_landing_pad = self.is_nop_landing_pad(bb, body, &nop_landing_pads);
-            if is_nop_landing_pad {
-                nop_landing_pads.insert(bb);
-            }
-            debug!("    is_nop_landing_pad({:?}) = {}", bb, is_nop_landing_pad);
         }
 
         debug!("removed {:?} jumps and {:?} landing pads", jumps_folded, landing_pads_removed);
@@ -81,65 +75,112 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
     }
 }
 
-impl RemoveNoopLandingPads {
-    fn is_nop_landing_pad(
-        &self,
-        bb: BasicBlock,
-        body: &Body<'_>,
-        nop_landing_pads: &DenseBitSet<BasicBlock>,
-    ) -> bool {
-        for stmt in &body[bb].statements {
-            match &stmt.kind {
-                StatementKind::FakeRead(..)
-                | StatementKind::StorageLive(_)
-                | StatementKind::StorageDead(_)
-                | StatementKind::PlaceMention(..)
-                | StatementKind::AscribeUserType(..)
-                | StatementKind::Coverage(..)
-                | StatementKind::ConstEvalCounter
-                | StatementKind::BackwardIncompatibleDropHint { .. }
-                | StatementKind::Nop => {
-                    // These are all noops in a landing pad
-                }
+/// This provides extra information that allows further analysis.
+///
+/// Used by rustc_codegen_ssa.
+pub struct ExtraInfo<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+    pub instance: Instance<'tcx>,
+    pub typing_env: ty::TypingEnv<'tcx>,
+}
 
-                StatementKind::Assign(box (place, Rvalue::Use(_) | Rvalue::Discriminant(_))) => {
-                    if place.as_local().is_some() {
-                        // Writing to a local (e.g., a drop flag) does not
-                        // turn a landing pad to a non-nop
-                    } else {
-                        return false;
-                    }
-                }
+pub fn find_noop_landing_pads<'tcx>(
+    body: &Body<'tcx>,
+    extra: Option<ExtraInfo<'tcx>>,
+) -> DenseBitSet<BasicBlock> {
+    let mut nop_landing_pads = DenseBitSet::new_empty(body.basic_blocks.len());
 
-                StatementKind::Assign { .. }
-                | StatementKind::SetDiscriminant { .. }
-                | StatementKind::Deinit(..)
-                | StatementKind::Intrinsic(..)
-                | StatementKind::Retag { .. } => {
+    // This is a post-order traversal, so that if A post-dominates B
+    // then A will be visited before B.
+    let postorder: Vec<_> = traversal::postorder(body).map(|(bb, _)| bb).collect();
+    for bb in postorder {
+        let is_nop_landing_pad = is_nop_landing_pad(bb, body, &nop_landing_pads, extra.as_ref());
+        if is_nop_landing_pad {
+            nop_landing_pads.insert(bb);
+        }
+        debug!("    is_nop_landing_pad({:?}) = {}", bb, is_nop_landing_pad);
+    }
+
+    nop_landing_pads
+}
+
+fn is_nop_landing_pad<'tcx>(
+    bb: BasicBlock,
+    body: &Body<'tcx>,
+    nop_landing_pads: &DenseBitSet<BasicBlock>,
+    extra: Option<&ExtraInfo<'tcx>>,
+) -> bool {
+    for stmt in &body[bb].statements {
+        match &stmt.kind {
+            StatementKind::FakeRead(..)
+            | StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_)
+            | StatementKind::PlaceMention(..)
+            | StatementKind::AscribeUserType(..)
+            | StatementKind::Coverage(..)
+            | StatementKind::ConstEvalCounter
+            | StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::Nop => {
+                // These are all noops in a landing pad
+            }
+
+            StatementKind::Assign(box (place, Rvalue::Use(_) | Rvalue::Discriminant(_))) => {
+                if place.as_local().is_some() {
+                    // Writing to a local (e.g., a drop flag) does not
+                    // turn a landing pad to a non-nop
+                } else {
                     return false;
                 }
             }
+
+            StatementKind::Assign { .. }
+            | StatementKind::SetDiscriminant { .. }
+            | StatementKind::Deinit(..)
+            | StatementKind::Intrinsic(..)
+            | StatementKind::Retag { .. } => {
+                return false;
+            }
+        }
+    }
+
+    let terminator = body[bb].terminator();
+    match terminator.kind {
+        TerminatorKind::Goto { .. }
+        | TerminatorKind::UnwindResume
+        | TerminatorKind::SwitchInt { .. }
+        | TerminatorKind::FalseEdge { .. }
+        | TerminatorKind::FalseUnwind { .. } => {
+            terminator.successors().all(|succ| nop_landing_pads.contains(succ))
         }
 
-        let terminator = body[bb].terminator();
-        match terminator.kind {
-            TerminatorKind::Goto { .. }
-            | TerminatorKind::UnwindResume
-            | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. } => {
-                terminator.successors().all(|succ| nop_landing_pads.contains(succ))
+        TerminatorKind::Drop { place, .. } => {
+            if let Some(extra) = extra {
+                let ty = place.ty(body, extra.tcx).ty;
+                debug!("monomorphize: instance={:?}", extra.instance);
+                let ty = extra.instance.instantiate_mir_and_normalize_erasing_regions(
+                    extra.tcx,
+                    extra.typing_env,
+                    ty::EarlyBinder::bind(ty),
+                );
+                let drop_fn = Instance::resolve_drop_in_place(extra.tcx, ty);
+                if let ty::InstanceKind::DropGlue(_, None) = drop_fn.def {
+                    // no need to drop anything, if all of our successors are also no-op then we
+                    // can be skipped.
+                    return terminator.successors().all(|succ| nop_landing_pads.contains(succ));
+                }
             }
-            TerminatorKind::CoroutineDrop
-            | TerminatorKind::Yield { .. }
-            | TerminatorKind::Return
-            | TerminatorKind::UnwindTerminate(_)
-            | TerminatorKind::Unreachable
-            | TerminatorKind::Call { .. }
-            | TerminatorKind::TailCall { .. }
-            | TerminatorKind::Assert { .. }
-            | TerminatorKind::Drop { .. }
-            | TerminatorKind::InlineAsm { .. } => false,
+
+            false
         }
+
+        TerminatorKind::CoroutineDrop
+        | TerminatorKind::Yield { .. }
+        | TerminatorKind::Return
+        | TerminatorKind::UnwindTerminate(_)
+        | TerminatorKind::Call { .. }
+        | TerminatorKind::TailCall { .. }
+        | TerminatorKind::Unreachable
+        | TerminatorKind::Assert { .. }
+        | TerminatorKind::InlineAsm { .. } => false,
     }
 }
