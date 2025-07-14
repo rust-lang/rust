@@ -237,7 +237,12 @@ pub(crate) fn parse_stability<S: Stage>(
     let mut feature = None;
     let mut since = None;
 
-    for param in args.list()?.mixed() {
+    let ArgParser::List(list) = args else {
+        cx.expected_list(cx.attr_span);
+        return None;
+    };
+
+    for param in list.mixed() {
         let param_span = param.span();
         let Some(param) = param.meta_item() else {
             cx.emit_err(session_diagnostics::UnsupportedLiteral {
@@ -312,7 +317,13 @@ pub(crate) fn parse_unstability<S: Stage>(
     let mut is_soft = false;
     let mut implied_by = None;
     let mut old_name = None;
-    for param in args.list()?.mixed() {
+
+    let ArgParser::List(list) = args else {
+        cx.expected_list(cx.attr_span);
+        return None;
+    };
+
+    for param in list.mixed() {
         let Some(param) = param.meta_item() else {
             cx.emit_err(session_diagnostics::UnsupportedLiteral {
                 span: param.span(),

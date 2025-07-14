@@ -42,7 +42,6 @@ impl MultiItemModifier for Expander {
                     ast::AttrStyle::Outer,
                     sym::derive,
                     template,
-                    true,
                 );
 
                 let mut resolutions = match &meta_item.kind {

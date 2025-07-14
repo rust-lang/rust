@@ -51,7 +51,6 @@ impl MultiItemModifier for Expander {
             ast::AttrStyle::Outer,
             sym::cfg_accessible,
             template,
-            true,
         );
 
         let Some(path) = validate_input(ecx, meta_item) else {

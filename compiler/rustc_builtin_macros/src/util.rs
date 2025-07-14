@@ -22,7 +22,6 @@ pub(crate) fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaI
         AttrStyle::Outer,
         name,
         template,
-        true,
     );
 }
 
