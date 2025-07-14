@@ -80,6 +80,23 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
                 continue;
             }
         }
+
+        let pci = PseudoCanonicalInput { typing_env: TypingEnv::fully_monomorphized(), value: *ty };
+
+        let layout = match tcx.layout_of(pci) {
+            Ok(layout) => layout.layout,
+            Err(_) => {
+                bug!("failed to compute layout for type {:?}", ty);
+            }
+        };
+
+        match layout.backend_repr() {
+            rustc_abi::BackendRepr::ScalarPair(_, _) => {
+                new_activities.push(da[i].clone());
+                new_positions.push(i + 1);
+            }
+            _ => {}
+        }
     }
     // now add the extra activities coming from slices
     // Reverse order to not invalidate the indices
