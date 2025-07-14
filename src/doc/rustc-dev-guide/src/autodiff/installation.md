@@ -6,7 +6,7 @@ In the near future, `std::autodiff` should become available in nightly builds fo
 
 First you need to clone and configure the Rust repository:
 ```bash
-git clone --depth=1 git@github.com:rust-lang/rust.git
+git clone git@github.com:rust-lang/rust
 cd rust
 ./configure --enable-llvm-link-shared --enable-llvm-plugins --enable-llvm-enzyme --release-channel=nightly --enable-llvm-assertions --enable-clang --enable-lld --enable-option-checking --enable-ninja --disable-docs
 ```
@@ -45,7 +45,7 @@ apt install wget vim python3 git curl libssl-dev pkg-config lld ninja-build cmak
 ```
 Then build rustc in a slightly altered way:
 ```bash
-git clone --depth=1 https://github.com/rust-lang/rust.git
+git clone https://github.com/rust-lang/rust
 cd rust
 ./configure --enable-llvm-link-shared --enable-llvm-plugins --enable-llvm-enzyme --release-channel=nightly --enable-llvm-assertions --enable-clang --enable-lld --enable-option-checking --enable-ninja --disable-docs
 ./x dist
@@ -66,7 +66,7 @@ We recommend that approach, if you just want to use any of them and have no expe
 However, if you prefer to just build Enzyme without Rust, then these instructions might help.
 
 ```bash
-git clone --depth=1 git@github.com:llvm/llvm-project.git 
+git clone git@github.com:llvm/llvm-project
 cd llvm-project
 mkdir build
 cd build
@@ -77,7 +77,7 @@ ninja install
 This gives you a working LLVM build, now we can continue with building Enzyme.
 Leave the `llvm-project` folder, and execute the following commands:
 ```bash
-git clone git@github.com:EnzymeAD/Enzyme.git 
+git clone git@github.com:EnzymeAD/Enzyme
 cd Enzyme/enzyme
 mkdir build 
 cd build 
