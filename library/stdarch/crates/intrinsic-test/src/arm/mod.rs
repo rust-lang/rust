@@ -104,7 +104,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
     }
 
     fn compare_outputs(&self) -> bool {
-        if let Some(ref toolchain) = self.cli_options.toolchain {
+        if self.cli_options.toolchain.is_some() {
             let intrinsics_name_list = self
                 .intrinsics
                 .iter()
@@ -113,8 +113,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
 
             compare_outputs(
                 &intrinsics_name_list,
-                toolchain,
-                &self.cli_options.c_runner,
+                &self.cli_options.runner,
                 &self.cli_options.target,
             )
         } else {
