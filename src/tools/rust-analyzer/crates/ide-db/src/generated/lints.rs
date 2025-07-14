@@ -4711,9 +4711,9 @@ The tracking issue for this feature is: [#133668]
         label: "const_trait_impl",
         description: r##"# `const_trait_impl`
 
-The tracking issue for this feature is: [#67792]
+The tracking issue for this feature is: [#143874]
 
-[#67792]: https://github.com/rust-lang/rust/issues/67792
+[#143874]: https://github.com/rust-lang/rust/issues/143874
 
 ------------------------
 "##,
