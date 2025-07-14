@@ -29,6 +29,7 @@ use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
 use rustc_attr_data_structures::AttributeKind;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -178,7 +179,7 @@ pub struct ResolverOutputs {
 
 #[derive(Debug, HashStable)]
 pub struct ResolverGlobalCtxt {
-    pub visibilities_for_hashing: Vec<(LocalDefId, Visibility)>,
+    pub visibilities_hash: Fingerprint,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     pub expn_that_defined: UnordMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,

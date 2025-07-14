@@ -1178,11 +1178,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         }
         tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
         tcx.stable_crate_id(LOCAL_CRATE).hash_stable(&mut hcx, &mut stable_hasher);
-        // Hash visibility information since it does not appear in HIR.
-        // FIXME: Figure out how to remove `visibilities_for_hashing` by hashing visibilities on
-        // the fly in the resolver, storing only their accumulated hash in `ResolverGlobalCtxt`,
-        // and combining it with other hashes here.
-        resolutions.visibilities_for_hashing.hash_stable(&mut hcx, &mut stable_hasher);
+        resolutions.visibilities_hash.hash_stable(&mut hcx, &mut stable_hasher);
         with_metavar_spans(|mspans| {
             mspans.freeze_and_get_read_spans().hash_stable(&mut hcx, &mut stable_hasher);
         });
