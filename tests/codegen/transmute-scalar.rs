@@ -2,8 +2,9 @@
 //@ compile-flags: -C opt-level=0 -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-#![feature(no_core, repr_simd, arm_target_feature, mips_target_feature, s390x_target_feature, riscv_target_feature)]
+#![feature(no_core, repr_simd, arm_target_feature, mips_target_feature, s390x_target_feature)]
 #![no_core]
+#![feature(riscv_target_feature)]
 extern crate minicore;
 
 use minicore::*;
