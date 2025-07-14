@@ -417,6 +417,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_unsafe_specialization_marker]`.
     UnsafeSpecializationMarker(Span),
 
+    /// Represents `#[unstable_feature_bound]`.
+    UnstableFeatureBound(ThinVec<(Symbol, Span)>),
+
     /// Represents `#[used]`
     Used { used_by: UsedBy, span: Span },
     // tidy-alphabetical-end
