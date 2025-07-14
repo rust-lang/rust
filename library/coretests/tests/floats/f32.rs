@@ -30,18 +30,6 @@ const NAN_MASK2: u32 = 0x0055_5555;
 const APPROX_DELTA: f32 = if cfg!(miri) { 1e-4 } else { 1e-6 };
 
 #[test]
-fn test_abs() {
-    assert_biteq!(f32::INFINITY.abs(), f32::INFINITY);
-    assert_biteq!(1f32.abs(), 1f32);
-    assert_biteq!(0f32.abs(), 0f32);
-    assert_biteq!((-0f32).abs(), 0f32);
-    assert_biteq!((-1f32).abs(), 1f32);
-    assert_biteq!(f32::NEG_INFINITY.abs(), f32::INFINITY);
-    assert_biteq!((1f32 / f32::NEG_INFINITY).abs(), 0f32);
-    assert!(f32::NAN.abs().is_nan());
-}
-
-#[test]
 fn test_signum() {
     assert_biteq!(f32::INFINITY.signum(), 1f32);
     assert_biteq!(1f32.signum(), 1f32);

@@ -720,10 +720,16 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
-        assert_biteq!((-1.0 as Float).abs(), 1.0);
-        assert_biteq!((1.0 as Float).abs(), 1.0);
-        assert_biteq!(Float::NEG_INFINITY.abs(), Float::INFINITY);
+        let one: Float = 1.0;
+        let zero: Float = 0.0;
         assert_biteq!(Float::INFINITY.abs(), Float::INFINITY);
+        assert_biteq!(one.abs(), one);
+        assert_biteq!(zero.abs(), zero);
+        assert_biteq!((-zero).abs(), zero);
+        assert_biteq!((-one).abs(), one);
+        assert_biteq!(Float::NEG_INFINITY.abs(), Float::INFINITY);
+        assert_biteq!((one / Float::NEG_INFINITY).abs(), zero);
+        assert!(Float::NAN.abs().is_nan());
     }
 }
 

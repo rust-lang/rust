@@ -46,19 +46,6 @@ const NAN_MASK2: u16 = 0x0155;
 // the intrinsics.
 
 #[test]
-#[cfg(any(miri, target_has_reliable_f16_math))]
-fn test_abs() {
-    assert_biteq!(f16::INFINITY.abs(), f16::INFINITY);
-    assert_biteq!(1f16.abs(), 1f16);
-    assert_biteq!(0f16.abs(), 0f16);
-    assert_biteq!((-0f16).abs(), 0f16);
-    assert_biteq!((-1f16).abs(), 1f16);
-    assert_biteq!(f16::NEG_INFINITY.abs(), f16::INFINITY);
-    assert_biteq!((1f16 / f16::NEG_INFINITY).abs(), 0f16);
-    assert!(f16::NAN.abs().is_nan());
-}
-
-#[test]
 fn test_is_sign_positive() {
     assert!(f16::INFINITY.is_sign_positive());
     assert!(1f16.is_sign_positive());
