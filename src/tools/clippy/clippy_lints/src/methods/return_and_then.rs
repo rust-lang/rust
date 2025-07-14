@@ -1,5 +1,5 @@
 use rustc_errors::Applicability;
-use rustc_hir as hir;
+use rustc_hir::{self as hir, Node};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, GenericArg, Ty};
 use rustc_span::sym;
@@ -9,7 +9,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_with_applicability};
 use clippy_utils::ty::get_type_diagnostic_name;
 use clippy_utils::visitors::for_each_unconsumed_temporary;
-use clippy_utils::{get_parent_expr, peel_blocks};
+use clippy_utils::{peel_blocks, potential_return_of_enclosing_body};
 
 use super::RETURN_AND_THEN;
 
@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
     recv: &'tcx hir::Expr<'tcx>,
     arg: &'tcx hir::Expr<'_>,
 ) {
-    if cx.tcx.hir_get_fn_id_for_return_block(expr.hir_id).is_none() {
+    if !potential_return_of_enclosing_body(cx, expr) {
         return;
     }
 
@@ -55,15 +55,28 @@ pub(super) fn check<'tcx>(
         None => &body_snip,
     };
 
-    // If suggestion is going to get inserted as part of a `return` expression, it must be blockified.
-    let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr) {
-        let base_indent = indent_of(cx, parent_expr.span);
+    // If suggestion is going to get inserted as part of a `return` expression or as a match expression
+    // arm, it must be blockified.
+    let (parent_span_for_indent, opening_paren, closing_paren) = match cx.tcx.parent_hir_node(expr.hir_id) {
+        Node::Expr(parent_expr) if matches!(parent_expr.kind, hir::ExprKind::Break(..)) => {
+            (Some(parent_expr.span), "(", ")")
+        },
+        Node::Expr(parent_expr) => (Some(parent_expr.span), "", ""),
+        Node::Arm(match_arm) => (Some(match_arm.span), "", ""),
+        _ => (None, "", ""),
+    };
+    let sugg = if let Some(span) = parent_span_for_indent {
+        let base_indent = indent_of(cx, span);
         let inner_indent = base_indent.map(|i| i + 4);
         format!(
             "{}\n{}\n{}",
-            reindent_multiline(&format!("{{\nlet {arg_snip} = {recv_snip}?;"), true, inner_indent),
+            reindent_multiline(
+                &format!("{opening_paren}{{\nlet {arg_snip} = {recv_snip}?;"),
+                true,
+                inner_indent
+            ),
             reindent_multiline(inner, false, inner_indent),
-            reindent_multiline("}", false, base_indent),
+            reindent_multiline(&format!("}}{closing_paren}"), false, base_indent),
         )
     } else {
         format!(
