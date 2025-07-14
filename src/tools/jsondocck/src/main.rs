@@ -47,8 +47,8 @@ static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
         ^\s*
         //@\s+
         (?P<negated>!?)
-        (?P<directive>[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)
-        (?P<args>.*)$
+        (?P<directive>.+?)
+        (?:[\s:](?P<args>.*))?$
     "#,
     )
     .ignore_whitespace(true)
@@ -58,15 +58,7 @@ static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 static DEPRECATED_LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    RegexBuilder::new(
-        r#"
-        //\s+@
-    "#,
-    )
-    .ignore_whitespace(true)
-    .unicode(true)
-    .build()
-    .unwrap()
+    RegexBuilder::new(r"//\s+@").ignore_whitespace(true).unicode(true).build().unwrap()
 });
 
 fn print_err(msg: &str, lineno: usize) {
@@ -94,7 +86,7 @@ fn get_directives(template: &str) -> Result<Vec<Directive>, ()> {
 
         let negated = &cap["negated"] == "!";
 
-        let args_str = &cap["args"];
+        let args_str = cap.name("args").map(|m| m.as_str()).unwrap_or_default();
         let Some(args) = shlex::split(args_str) else {
             print_err(&format!("Invalid arguments to shlex::split: `{args_str}`",), lineno);
             errors = true;
