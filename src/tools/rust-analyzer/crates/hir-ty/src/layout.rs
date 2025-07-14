@@ -4,11 +4,11 @@ use std::fmt;
 
 use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};
 use hir_def::{
-    LocalFieldId, StructId,
     layout::{
         Float, Integer, LayoutCalculator, LayoutCalculatorError, LayoutData, Primitive,
         ReprOptions, Scalar, StructKind, TargetDataLayout, WrappingRange,
     },
+    LocalFieldId, StructId,
 };
 use la_arena::{Idx, RawIdx};
 use rustc_abi::AddressSpace;
@@ -17,11 +17,11 @@ use rustc_index::IndexVec;
 use triomphe::Arc;
 
 use crate::{
-    Interner, ProjectionTy, Substitution, TraitEnvironment, Ty,
     consteval::try_const_usize,
     db::{HirDatabase, InternedClosure},
     infer::normalize,
     utils::ClosureSubst,
+    Interner, ProjectionTy, Substitution, TraitEnvironment, Ty,
 };
 
 pub(crate) use self::adt::layout_of_adt_cycle_result;
@@ -123,6 +123,7 @@ fn layout_of_simd_ty(
     db: &dyn HirDatabase,
     id: StructId,
     repr_packed: bool,
+    repr_scalable: Option<u32>,
     subst: &Substitution,
     env: Arc<TraitEnvironment>,
     dl: &TargetDataLayout,
@@ -146,7 +147,7 @@ fn layout_of_simd_ty(
     let e_ly = db.layout_of_ty(e_ty, env)?;
 
     let cx = LayoutCx::new(dl);
-    Ok(Arc::new(cx.calc.simd_type(e_ly, e_len, repr_packed)?))
+    Ok(Arc::new(cx.calc.simd_type(e_ly, e_len, repr_packed, repr_scalable)?))
 }
 
 pub fn layout_of_ty_query(
@@ -168,7 +169,15 @@ pub fn layout_of_ty_query(
                 let data = db.struct_signature(*s);
                 let repr = data.repr.unwrap_or_default();
                 if repr.simd() {
-                    return layout_of_simd_ty(db, *s, repr.packed(), subst, trait_env, &target);
+                    return layout_of_simd_ty(
+                        db,
+                        *s,
+                        repr.packed(),
+                        repr.scalable,
+                        subst,
+                        trait_env,
+                        &target,
+                    );
                 }
             };
             return db.layout_of_adt(*def, subst.clone(), trait_env);
