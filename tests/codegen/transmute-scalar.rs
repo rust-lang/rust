@@ -111,7 +111,7 @@ pub fn fake_bool_unsigned_to_bool(b: FakeBoolUnsigned) -> bool {
 #[repr(simd)]
 struct S([i64; 1]);
 
-// CHECK-LABEL: define{{.*}}i64 @single_element_simd_to_scalar({{.*}}i64 %{{.*}})
+// CHECK-LABEL: define{{.*}}i64 @single_element_simd_to_scalar({{.*}}i64{{.*}}%{{.*}})
 // CHECK-NEXT: start:
 // CHECK-NEXT: %[[RET:.+]] = alloca [8 x i8]
 // CHECK: store <1 x i64> %[[TEMP:.+]], ptr %[[RET]]
