@@ -4,7 +4,7 @@ pub trait Assoc {
 
 pub struct Foo(<Foo as crate::Assoc>::Ty);
 
-const _: () = {
+const _X: () = {
     impl crate::Assoc for Foo {
         type Ty = Bar;
     }
