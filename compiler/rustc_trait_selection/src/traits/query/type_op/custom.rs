@@ -103,10 +103,7 @@ where
     let region_constraint_data = infcx.take_and_reset_region_constraints();
     let region_constraints = query_response::make_query_region_constraints(
         infcx.tcx,
-        region_obligations
-            .iter()
-            .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category()))
-            .map(|(ty, r, cc)| (infcx.resolve_vars_if_possible(ty), r, cc)),
+        region_obligations,
         &region_constraint_data,
     );
 
