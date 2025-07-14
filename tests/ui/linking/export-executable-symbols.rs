@@ -1,6 +1,7 @@
 //@ run-pass
 //@ compile-flags: -Ctarget-feature=-crt-static -Zexport-executable-symbols
 //@ ignore-wasm
+//@ ignore-cross-compile
 //@ edition: 2024
 
 // Regression test for <https://github.com/rust-lang/rust/issues/101610>.

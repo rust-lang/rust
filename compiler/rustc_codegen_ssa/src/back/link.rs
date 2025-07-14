@@ -2543,8 +2543,6 @@ fn add_order_independent_options(
         let keep_metadata =
             crate_type == CrateType::Dylib || sess.opts.cg.profile_generate.enabled();
         cmd.gc_sections(keep_metadata);
-    } else {
-        cmd.no_gc_sections();
     }
 
     cmd.set_output_kind(link_output_kind, crate_type, out_filename);

@@ -5,6 +5,7 @@
 // See https://github.com/rust-lang/rust/pull/85673
 
 //@ ignore-wasm
+//@ ignore-cross-compile
 
 use run_make_support::object::Object;
 use run_make_support::{bin_name, is_darwin, object, rustc};
