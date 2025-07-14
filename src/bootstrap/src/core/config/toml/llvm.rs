@@ -17,8 +17,6 @@ define_config! {
         tests: Option<bool> = "tests",
         enzyme: Option<bool> = "enzyme",
         plugins: Option<bool> = "plugins",
-        // FIXME: Remove this field at Q2 2025, it has been replaced by build.ccache
-        ccache: Option<StringOrBool> = "ccache",
         static_libstdcpp: Option<bool> = "static-libstdcpp",
         libzstd: Option<bool> = "libzstd",
         ninja: Option<bool> = "ninja",
@@ -97,7 +95,6 @@ pub fn check_incompatible_options_for_ci_llvm(
         assertions: _,
         tests: _,
         plugins,
-        ccache: _,
         static_libstdcpp: _,
         libzstd,
         ninja: _,
@@ -149,11 +146,7 @@ pub fn check_incompatible_options_for_ci_llvm(
 }
 
 impl Config {
-    pub fn apply_llvm_config(
-        &mut self,
-        toml_llvm: Option<Llvm>,
-        ccache: &mut Option<StringOrBool>,
-    ) {
+    pub fn apply_llvm_config(&mut self, toml_llvm: Option<Llvm>) {
         let mut llvm_tests = None;
         let mut llvm_enzyme = None;
         let mut llvm_offload = None;
@@ -168,7 +161,6 @@ impl Config {
                 tests,
                 enzyme,
                 plugins,
-                ccache: llvm_ccache,
                 static_libstdcpp,
                 libzstd,
                 ninja,
@@ -191,13 +183,7 @@ impl Config {
                 download_ci_llvm,
                 build_config,
             } = llvm;
-            if llvm_ccache.is_some() {
-                eprintln!("Warning: llvm.ccache is deprecated. Use build.ccache instead.");
-            }
 
-            if ccache.is_none() {
-                *ccache = llvm_ccache;
-            }
             set(&mut self.ninja_in_file, ninja);
             llvm_tests = tests;
             llvm_enzyme = enzyme;
