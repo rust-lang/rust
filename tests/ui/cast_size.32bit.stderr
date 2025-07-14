@@ -177,6 +177,14 @@ error: casting `usize` to `f64` causes a loss of precision on targets with 64-bi
 LL |     9_999_999_999_999_999usize as f64;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: casting `usize` to `u16` may truncate the value
+  --> tests/ui/cast_size.rs:71:20
+   |
+LL |     const N: u16 = M as u16;
+   |                    ^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+
 error: literal out of range for `usize`
   --> tests/ui/cast_size.rs:63:5
    |
@@ -186,5 +194,5 @@ LL |     9_999_999_999_999_999usize as f64;
    = note: the literal `9_999_999_999_999_999usize` does not fit into the type `usize` whose range is `0..=4294967295`
    = note: `#[deny(overflowing_literals)]` on by default
 
-error: aborting due to 19 previous errors
+error: aborting due to 20 previous errors
 
