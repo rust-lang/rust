@@ -12,11 +12,11 @@ use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::{
-    self, SizedTraitKind, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt as _, TypingMode,
+    self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt as _, TypingMode,
 };
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
-use crate::traits::{EvaluateConstErr, ObligationCause, specialization_graph};
+use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
 
 #[repr(transparent)]
 pub struct SolverDelegate<'tcx>(InferCtxt<'tcx>);
@@ -76,19 +76,11 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
             if trait_pred.polarity() == ty::PredicatePolarity::Positive {
                 match self.0.tcx.as_lang_item(trait_pred.def_id()) {
-                    Some(LangItem::Sized)
-                        if self
-                            .resolve_vars_if_possible(trait_pred.self_ty().skip_binder())
-                            .has_trivial_sizedness(self.0.tcx, SizedTraitKind::Sized) =>
-                    {
-                        return Some(Certainty::Yes);
-                    }
-                    Some(LangItem::MetaSized)
-                        if self
-                            .resolve_vars_if_possible(trait_pred.self_ty().skip_binder())
-                            .has_trivial_sizedness(self.0.tcx, SizedTraitKind::MetaSized) =>
-                    {
-                        return Some(Certainty::Yes);
+                    Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
+                        let predicate = self.resolve_vars_if_possible(goal.predicate);
+                        if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
+                            return Some(Certainty::Yes);
+                        }
                     }
                     Some(LangItem::Copy | LangItem::Clone) => {
                         let self_ty =
