@@ -334,3 +334,11 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
         features
     }
 }
+
+pub(crate) struct OmitGdbPrettyPrinterSectionParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for OmitGdbPrettyPrinterSectionParser {
+    const PATH: &[Symbol] = &[sym::omit_gdb_pretty_printer_section];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::OmitGdbPrettyPrinterSection;
+}
