@@ -604,6 +604,14 @@ pub(crate) struct NoMangle {
     pub span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(passes_align_on_fields)]
+#[warning]
+pub(crate) struct AlignOnFields {
+    #[label]
+    pub span: Span,
+}
+
 #[derive(Diagnostic)]
 #[diag(passes_repr_conflicting, code = E0566)]
 pub(crate) struct ReprConflicting {

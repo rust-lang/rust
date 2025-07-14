@@ -17,6 +17,10 @@ passes_align_attr_application =
     `#[align(...)]` should be applied to a function item
     .label = not a function item
 
+passes_align_on_fields =
+    attribute should be applied to a function or method
+    .warn = {-passes_previously_accepted}
+
 passes_align_should_be_repr_align =
     `#[align(...)]` is not supported on {$item} items
     .suggestion = use `#[repr(align(...))]` instead
