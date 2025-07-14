@@ -117,6 +117,10 @@ attr_parsing_rustc_allowed_unstable_pairing =
 attr_parsing_rustc_promotable_pairing =
     `rustc_promotable` attribute must be paired with either a `rustc_const_unstable` or a `rustc_const_stable` attribute
 
+attr_parsing_scalable_missing_n =
+    invalid `scalable(num)` attribute: `scalable` needs an argument
+    .suggestion = supply an argument here
+
 attr_parsing_soft_no_args =
     `soft` should not have any arguments
 

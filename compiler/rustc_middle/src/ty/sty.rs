@@ -1194,6 +1194,14 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    #[inline]
+    pub fn is_scalable_simd(self) -> bool {
+        match self.kind() {
+            Adt(def, _) => def.repr().simd() && def.repr().scalable(),
+            _ => false,
+        }
+    }
+
     pub fn sequence_element_type(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
             Array(ty, _) | Slice(ty) => *ty,
@@ -1210,19 +1218,25 @@ impl<'tcx> Ty<'tcx> {
         let variant = def.non_enum_variant();
         assert_eq!(variant.fields.len(), 1);
         let field_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
-        let Array(f0_elem_ty, f0_len) = field_ty.kind() else {
-            bug!("Simd type has non-array field type {field_ty:?}")
-        };
-        // FIXME(repr_simd): https://github.com/rust-lang/rust/pull/78863#discussion_r522784112
-        // The way we evaluate the `N` in `[T; N]` here only works since we use
-        // `simd_size_and_type` post-monomorphization. It will probably start to ICE
-        // if we use it in generic code. See the `simd-array-trait` ui test.
-        (
-            f0_len
-                .try_to_target_usize(tcx)
-                .expect("expected SIMD field to have definite array size"),
-            *f0_elem_ty,
-        )
+
+        match field_ty.kind() {
+            Array(f0_elem_ty, f0_len) => {
+                // FIXME(repr_simd): https://github.com/rust-lang/rust/pull/78863#discussion_r522784112
+                // The way we evaluate the `N` in `[T; N]` here only works since we use
+                // `simd_size_and_type` post-monomorphization. It will probably start to ICE
+                // if we use it in generic code. See the `simd-array-trait` ui test.
+                (
+                    f0_len
+                        .try_to_target_usize(tcx)
+                        .expect("expected SIMD field to have definite array size"),
+                    *f0_elem_ty,
+                )
+            }
+            Slice(f0_elem_ty) if def.repr().scalable() => {
+                (def.repr().scalable.unwrap_or(0) as u64, *f0_elem_ty)
+            }
+            _ => bug!("Simd type has non-array field type {field_ty:?}"),
+        }
     }
 
     #[inline]
@@ -1826,9 +1840,12 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Tuple(tys) => tys.last().is_none_or(|ty| ty.has_trivial_sizedness(tcx, sizedness)),
 
-            ty::Adt(def, args) => def
-                .sizedness_constraint(tcx, sizedness)
-                .is_none_or(|ty| ty.instantiate(tcx, args).has_trivial_sizedness(tcx, sizedness)),
+            ty::Adt(def, args) => {
+                def.repr().scalable() // see comment on `sizedness_conditions`
+                    || def.sizedness_constraint(tcx, sizedness).is_none_or(|ty| {
+                        ty.instantiate(tcx, args).has_trivial_sizedness(tcx, sizedness)
+                    })
+            }
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
 

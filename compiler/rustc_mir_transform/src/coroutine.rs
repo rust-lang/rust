@@ -1856,6 +1856,11 @@ fn check_must_not_suspend_ty<'tcx>(
                 SuspendCheckData { descr_pre: &format!("{}allocator ", data.descr_pre), ..data },
             )
         }
+        ty::Adt(def, _) if def.repr().scalable() => {
+            tcx.dcx()
+                .span_err(data.source_span, "scalable vectors cannot be held over await points");
+            true
+        }
         ty::Adt(def, _) => check_must_not_suspend_def(tcx, def.did(), hir_id, data),
         // FIXME: support adding the attribute to TAITs
         ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {

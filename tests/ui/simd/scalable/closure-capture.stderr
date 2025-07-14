@@ -1,0 +1,29 @@
+error: scalable vectors cannot be tuple fields
+  --> $DIR/closure-capture.rs:45:9
+   |
+LL |         run(move || {
+   |         ^^^
+
+error[E0507]: cannot move out of `a`, a captured variable in an `Fn` closure
+  --> $DIR/closure-capture.rs:46:30
+   |
+LL |         let a = svdup_n_s32(42);
+   |             - captured outer variable
+LL |         run(move || {
+   |             ------- captured by this `Fn` closure
+LL |             svxar_n_s32::<2>(a, a);
+   |                              ^ move occurs because `a` has type `svint32_t`, which does not implement the `Copy` trait
+
+error[E0507]: cannot move out of `a`, a captured variable in an `Fn` closure
+  --> $DIR/closure-capture.rs:46:33
+   |
+LL |         let a = svdup_n_s32(42);
+   |             - captured outer variable
+LL |         run(move || {
+   |             ------- captured by this `Fn` closure
+LL |             svxar_n_s32::<2>(a, a);
+   |                                 ^ move occurs because `a` has type `svint32_t`, which does not implement the `Copy` trait
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

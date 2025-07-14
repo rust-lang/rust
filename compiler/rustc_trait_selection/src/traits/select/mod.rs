@@ -2128,6 +2128,19 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Pat(ty, _) => ty::Binder::dummy(vec![*ty]),
 
             ty::Adt(def, args) => {
+                // FIXME(repr_scalable): Scalable vectors aren't actually `Sized`. They will be
+                // non-const `Sized` after the `sized_hierarchy` feature is implemented, but until
+                // then need to act like `Sized` types - either by forcing it in the trait solver,
+                // as below, or by omitting the `Sized` constraints in the first place. Omitting the
+                // constraints would require many small changes throughout the compiler and in some
+                // cases would not be trivially limited to only the `repr(scalable)` types due
+                // to inference variables, etc. When `sized_hierarchy` is fully implemented, this
+                // line will be required anyway and will be correct, just that in the host effect
+                // builtin impl for sizedness, it won't be `const Sized`.
+                if def.repr().scalable() {
+                    return ty::Binder::dummy(vec![]);
+                }
+
                 if let Some(crit) = def.sizedness_constraint(self.tcx(), sizedness) {
                     ty::Binder::dummy(vec![crit.instantiate(self.tcx(), args)])
                 } else {

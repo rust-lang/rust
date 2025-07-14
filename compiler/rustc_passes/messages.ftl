@@ -605,6 +605,9 @@ passes_repr_align_should_be_align =
 passes_repr_conflicting =
     conflicting representation hints
 
+passes_repr_scalable_without_simd =
+    `scalable` representation hint without `simd` representation hint
+
 passes_rustc_allow_const_fn_unstable =
     attribute should be applied to `const fn`
     .label = not a `const fn`

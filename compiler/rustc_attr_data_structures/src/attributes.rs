@@ -65,6 +65,7 @@ pub enum ReprAttr {
     ReprC,
     ReprPacked(Align),
     ReprSimd,
+    ReprScalable(ScalableElt),
     ReprTransparent,
     ReprAlign(Align),
 }
@@ -80,6 +81,13 @@ pub enum TransparencyError {
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy),
+}
+
+/// The base multiple of lanes that are in a scalable vector.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Encodable, Decodable, HashStable_Generic, PrintAttribute)]
+pub struct ScalableElt {
+    pub elt: u16,
 }
 
 #[derive(Copy, Debug, Encodable, Decodable, Clone, HashStable_Generic, PrintAttribute)]

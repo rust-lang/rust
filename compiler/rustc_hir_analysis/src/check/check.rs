@@ -95,7 +95,11 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     def.destructor(tcx); // force the destructor to be evaluated
 
     if def.repr().simd() {
-        check_simd(tcx, span, def_id);
+        if def.repr().scalable() {
+            check_scalable_simd(tcx, span, def_id);
+        } else {
+            check_simd(tcx, span, def_id);
+        }
     }
 
     check_transparent(tcx, def);
@@ -1389,6 +1393,54 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
                 .emit();
                 return;
             }
+        }
+    }
+}
+
+fn check_scalable_simd(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId) {
+    let ty = tcx.type_of(def_id).instantiate_identity();
+    let ty::Adt(def, args) = ty.kind() else { return };
+    if !def.is_struct() {
+        tcx.dcx().delayed_bug("`repr(scalable)` applied to non-struct");
+        return;
+    }
+
+    let fields = &def.non_enum_variant().fields;
+    match fields.len() {
+        0 => {
+            let mut err =
+                tcx.dcx().struct_span_err(span, "scalable vectors must have a single field");
+            err.help("scalable vector types' only field must be slice of a primitive scalar type");
+            err.emit();
+            return;
+        }
+        1 => {}
+        2.. => {
+            tcx.dcx().struct_span_err(span, "scalable vectors cannot have multiple fields").emit();
+        }
+    }
+
+    let array_field = &fields[FieldIdx::ZERO];
+    let array_ty = array_field.ty(tcx, args);
+    let ty::Slice(element_ty) = array_ty.kind() else {
+        let mut err =
+            tcx.dcx().struct_span_err(span, "the field of a scalable vector type must be a slice");
+        err.span_label(tcx.def_span(array_field.did), "not a slice");
+        err.emit();
+        return;
+    };
+
+    // Check that `element_ty` only uses types valid in the lanes of a scalable vector register:
+    // scalar types which directly match a "machine" type - e.g. integers, floats, bools, thin ptrs.
+    match element_ty.kind() {
+        ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_, _) | ty::Bool => (),
+        _ => {
+            let mut err = tcx.dcx().struct_span_err(
+                span,
+                "element type of a scalable vector must be a primitive scalar",
+            );
+            err.help("only `u*`, `i*`, `f*`, `*const`, `*mut` and `bool` types are accepted");
+            err.emit();
         }
     }
 }

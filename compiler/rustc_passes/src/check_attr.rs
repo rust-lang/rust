@@ -1991,6 +1991,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let mut is_explicit_rust = false;
         let mut is_c = false;
         let mut is_simd = false;
+        let mut is_scalable = false;
         let mut is_transparent = false;
 
         for (repr, repr_span) in reprs {
@@ -2050,6 +2051,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 ReprAttr::ReprSimd => {
                     is_simd = true;
+                    if target != Target::Struct {
+                        self.dcx().emit_err(errors::AttrApplication::Struct {
+                            hint_span: *repr_span,
+                            span,
+                        });
+                    } else {
+                        continue;
+                    }
+                }
+                ReprAttr::ReprScalable(..) => {
+                    is_scalable = true;
                     if target != Target::Struct {
                         self.dcx().emit_err(errors::AttrApplication::Struct {
                             hint_span: *repr_span,
@@ -2120,13 +2132,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 target: target.to_string(),
             });
         }
-        if is_explicit_rust && (int_reprs > 0 || is_c || is_simd) {
+        if is_explicit_rust && (int_reprs > 0 || is_c || is_simd || is_scalable) {
             let hint_spans = hint_spans.clone().collect();
             self.dcx().emit_err(errors::ReprConflicting { hint_spans });
         }
-        // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
+        // Warn on `repr(scalable(N))` w/out `repr(simd)`
+        // i.e. only `repr(simd, scalable(N))` permitted
+        if is_scalable && !is_simd {
+            let hint_spans = hint_spans.clone().collect();
+            self.dcx().emit_err(errors::ReprScalableWithoutSimd { hint_spans });
+        }
+        // Warn on repr(u8, u16), repr(C, simd), repr(C, scalable), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
             || (is_simd && is_c)
+            || (is_scalable && is_c)
             || (int_reprs == 1
                 && is_c
                 && item.is_some_and(|item| {

@@ -85,6 +85,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
             );
         }
         BackendRepr::Memory { .. } => {}
+        BackendRepr::ScalableVector { .. } => todo!(),
     }
 
     let name = match *layout.ty.kind() {
@@ -178,7 +179,9 @@ pub trait LayoutGccExt<'tcx> {
 impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     fn is_gcc_immediate(&self) -> bool {
         match self.backend_repr {
-            BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => true,
+            BackendRepr::Scalar(_)
+            | BackendRepr::SimdVector { .. }
+            | BackendRepr::ScalableVector { .. } => true,
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => false,
         }
     }
@@ -188,6 +191,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             BackendRepr::ScalarPair(..) => true,
             BackendRepr::Scalar(_)
             | BackendRepr::SimdVector { .. }
+            | BackendRepr::ScalableVector { .. }
             | BackendRepr::Memory { .. } => false,
         }
     }

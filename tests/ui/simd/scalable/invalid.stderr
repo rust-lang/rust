@@ -1,0 +1,729 @@
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/invalid.rs:135:11
+   |
+LL | fn barqux(#[repr(simd, scalable(4))] _x: u32) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: invalid `scalable(num)` attribute: `scalable` needs an argument
+  --> $DIR/invalid.rs:198:14
+   |
+LL | #[repr(simd, scalable)]
+   |              ^^^^^^^^ help: supply an argument here: `scalable(...)`
+
+error: invalid `scalable(num)` attribute: `scalable` needs an argument
+  --> $DIR/invalid.rs:204:14
+   |
+LL | #[repr(simd, scalable("4"))]
+   |              ^^^^^^^^^^^^^ help: supply an argument here: `scalable(...)`
+
+error: invalid `scalable(num)` attribute: `scalable` needs an argument
+  --> $DIR/invalid.rs:210:14
+   |
+LL | #[repr(simd, scalable(4, 2))]
+   |              ^^^^^^^^^^^^^^ help: supply an argument here: `scalable(...)`
+
+error[E0552]: unrecognized representation hint
+  --> $DIR/invalid.rs:216:14
+   |
+LL | #[repr(simd, scalable = "4")]
+   |              ^^^^^^^^^^^^^^
+   |
+   = help: valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:10:8
+   |
+LL | #[repr(simd, scalable(4))]
+   |        ^^^^
+...
+LL | extern crate std as other_std;
+   | ------------------------------ not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:10:14
+   |
+LL | #[repr(simd, scalable(4))]
+   |              ^^^^^^^^^^^
+...
+LL | extern crate std as other_std;
+   | ------------------------------ not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:15:8
+   |
+LL | #[repr(simd, scalable(4))]
+   |        ^^^^
+...
+LL | use std::vec::Vec;
+   | ------------------ not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:15:14
+   |
+LL | #[repr(simd, scalable(4))]
+   |              ^^^^^^^^^^^
+...
+LL | use std::vec::Vec;
+   | ------------------ not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:20:8
+   |
+LL | #[repr(simd, scalable(4))]
+   |        ^^^^
+...
+LL | static _X: u32 = 0;
+   | ------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:20:14
+   |
+LL | #[repr(simd, scalable(4))]
+   |              ^^^^^^^^^^^
+...
+LL | static _X: u32 = 0;
+   | ------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:25:8
+   |
+LL | #[repr(simd, scalable(4))]
+   |        ^^^^
+...
+LL | const _Y: u32 = 0;
+   | ------------------ not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:25:14
+   |
+LL | #[repr(simd, scalable(4))]
+   |              ^^^^^^^^^^^
+...
+LL | const _Y: u32 = 0;
+   | ------------------ not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:30:8
+   |
+LL |   #[repr(simd, scalable(4))]
+   |          ^^^^
+...
+LL | / mod bar {
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:30:14
+   |
+LL |   #[repr(simd, scalable(4))]
+   |                ^^^^^^^^^^^
+...
+LL | / mod bar {
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:36:8
+   |
+LL |   #[repr(simd, scalable(4))]
+   |          ^^^^
+...
+LL | / unsafe extern "C" {
+LL | |     #[repr(simd, scalable(4))]
+...  |
+LL | |     fn foo();
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:36:14
+   |
+LL |   #[repr(simd, scalable(4))]
+   |                ^^^^^^^^^^^
+...
+LL | / unsafe extern "C" {
+LL | |     #[repr(simd, scalable(4))]
+...  |
+LL | |     fn foo();
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:54:8
+   |
+LL | #[repr(simd, scalable(4))]
+   |        ^^^^
+...
+LL | type Foo = u32;
+   | --------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:54:14
+   |
+LL | #[repr(simd, scalable(4))]
+   |              ^^^^^^^^^^^
+...
+LL | type Foo = u32;
+   | --------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:59:8
+   |
+LL |   #[repr(simd, scalable(4))]
+   |          ^^^^
+...
+LL | / enum Bar<#[repr(simd, scalable(4))] T> {
+LL | |
+LL | |
+LL | |     #[repr(simd, scalable(4))]
+...  |
+LL | |     Baz(std::marker::PhantomData<T>),
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:59:14
+   |
+LL |   #[repr(simd, scalable(4))]
+   |                ^^^^^^^^^^^
+...
+LL | / enum Bar<#[repr(simd, scalable(4))] T> {
+LL | |
+LL | |
+LL | |     #[repr(simd, scalable(4))]
+...  |
+LL | |     Baz(std::marker::PhantomData<T>),
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:62:17
+   |
+LL | enum Bar<#[repr(simd, scalable(4))] T> {
+   |                 ^^^^                - not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:62:23
+   |
+LL | enum Bar<#[repr(simd, scalable(4))] T> {
+   |                       ^^^^^^^^^^^   - not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:65:12
+   |
+LL |     #[repr(simd, scalable(4))]
+   |            ^^^^
+...
+LL |     Baz(std::marker::PhantomData<T>),
+   |     -------------------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:65:18
+   |
+LL |     #[repr(simd, scalable(4))]
+   |                  ^^^^^^^^^^^
+...
+LL |     Baz(std::marker::PhantomData<T>),
+   |     -------------------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:72:12
+   |
+LL |     #[repr(simd, scalable(4))]
+   |            ^^^^
+...
+LL |     field: u32,
+   |     ---------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:72:18
+   |
+LL |     #[repr(simd, scalable(4))]
+   |                  ^^^^^^^^^^^
+...
+LL |     field: u32,
+   |     ---------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:78:8
+   |
+LL |   #[repr(simd, scalable(4))]
+   |          ^^^^
+...
+LL | / union FooBar {
+LL | |     x: u32,
+LL | |     y: u32,
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:78:14
+   |
+LL |   #[repr(simd, scalable(4))]
+   |                ^^^^^^^^^^^
+...
+LL | / union FooBar {
+LL | |     x: u32,
+LL | |     y: u32,
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:86:8
+   |
+LL |   #[repr(simd, scalable(4))]
+   |          ^^^^
+...
+LL | / trait FooBaz {
+LL | |     #[repr(simd, scalable(4))]
+...  |
+LL | |     fn foo() {}
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:86:14
+   |
+LL |   #[repr(simd, scalable(4))]
+   |                ^^^^^^^^^^^
+...
+LL | / trait FooBaz {
+LL | |     #[repr(simd, scalable(4))]
+...  |
+LL | |     fn foo() {}
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:104:8
+   |
+LL | #[repr(simd, scalable(4))]
+   |        ^^^^
+...
+LL | trait FooQux = FooBaz;
+   | ---------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:104:14
+   |
+LL | #[repr(simd, scalable(4))]
+   |              ^^^^^^^^^^^
+...
+LL | trait FooQux = FooBaz;
+   | ---------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:109:8
+   |
+LL |   #[repr(simd, scalable(4))]
+   |          ^^^^
+...
+LL | / impl<T> Bar<T> {
+LL | |     #[repr(simd, scalable(4))]
+...  |
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:109:14
+   |
+LL |   #[repr(simd, scalable(4))]
+   |                ^^^^^^^^^^^
+...
+LL | / impl<T> Bar<T> {
+LL | |     #[repr(simd, scalable(4))]
+...  |
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:119:8
+   |
+LL |   #[repr(simd, scalable(4))]
+   |          ^^^^
+...
+LL | / impl<T> FooBaz for Bar<T> {
+LL | |     type Foo = u32;
+LL | |     const Bar: i32 = 3;
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:119:14
+   |
+LL |   #[repr(simd, scalable(4))]
+   |                ^^^^^^^^^^^
+...
+LL | / impl<T> FooBaz for Bar<T> {
+LL | |     type Foo = u32;
+LL | |     const Bar: i32 = 3;
+LL | | }
+   | |_- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:127:8
+   |
+LL | #[repr(simd, scalable(4))]
+   |        ^^^^
+...
+LL | macro_rules! barqux { ($foo:tt) => { $foo }; }
+   | ---------------------------------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:127:14
+   |
+LL | #[repr(simd, scalable(4))]
+   |              ^^^^^^^^^^^
+...
+LL | macro_rules! barqux { ($foo:tt) => { $foo }; }
+   | ---------------------------------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:132:8
+   |
+LL | #[repr(simd, scalable(4))]
+   |        ^^^^
+...
+LL | fn barqux(#[repr(simd, scalable(4))] _x: u32) {}
+   | ------------------------------------------------ not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:132:14
+   |
+LL | #[repr(simd, scalable(4))]
+   |              ^^^^^^^^^^^
+...
+LL | fn barqux(#[repr(simd, scalable(4))] _x: u32) {}
+   | ------------------------------------------------ not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:135:18
+   |
+LL | fn barqux(#[repr(simd, scalable(4))] _x: u32) {}
+   |           -------^^^^----------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:135:24
+   |
+LL | fn barqux(#[repr(simd, scalable(4))] _x: u32) {}
+   |           -------------^^^^^^^^^^^---------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:140:8
+   |
+LL | #[repr(simd, scalable(4))]
+   |        ^^^^
+...
+LL | async fn async_foo() {}
+   | ----------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:140:14
+   |
+LL | #[repr(simd, scalable(4))]
+   |              ^^^^^^^^^^^
+...
+LL | async fn async_foo() {}
+   | ----------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:145:8
+   |
+LL | #[repr(simd, scalable(4))]
+   |        ^^^^
+...
+LL | gen fn gen_foo() {}
+   | ------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:145:14
+   |
+LL | #[repr(simd, scalable(4))]
+   |              ^^^^^^^^^^^
+...
+LL | gen fn gen_foo() {}
+   | ------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:150:8
+   |
+LL | #[repr(simd, scalable(4))]
+   |        ^^^^
+...
+LL | async gen fn async_gen_foo() {}
+   | ------------------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:150:14
+   |
+LL | #[repr(simd, scalable(4))]
+   |              ^^^^^^^^^^^
+...
+LL | async gen fn async_gen_foo() {}
+   | ------------------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:156:21
+   |
+LL |     let _x = #[repr(simd, scalable(4))] || { };
+   |                     ^^^^                ------ not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:156:27
+   |
+LL |     let _x = #[repr(simd, scalable(4))] || { };
+   |                           ^^^^^^^^^^^   ------ not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:159:21
+   |
+LL |     let _y = #[repr(simd, scalable(4))] 3 + 4;
+   |                     ^^^^                - not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:159:27
+   |
+LL |     let _y = #[repr(simd, scalable(4))] 3 + 4;
+   |                           ^^^^^^^^^^^   - not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:162:12
+   |
+LL |     #[repr(simd, scalable(4))]
+   |            ^^^^
+...
+LL |     let _z = 3;
+   |     ----------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:162:18
+   |
+LL |     #[repr(simd, scalable(4))]
+   |                  ^^^^^^^^^^^
+...
+LL |     let _z = 3;
+   |     ----------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:168:16
+   |
+LL |         #[repr(simd, scalable(4))]
+   |                ^^^^
+...
+LL |         1 => (),
+   |         ------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:168:22
+   |
+LL |         #[repr(simd, scalable(4))]
+   |                      ^^^^^^^^^^^
+...
+LL |         1 => (),
+   |         ------- not a struct
+
+error[E0692]: transparent struct cannot have other repr hints
+  --> $DIR/invalid.rs:176:8
+   |
+LL | #[repr(transparent, simd, scalable(4))]
+   |        ^^^^^^^^^^^  ^^^^  ^^^^^^^^^^^
+
+error[E0566]: conflicting representation hints
+  --> $DIR/invalid.rs:181:8
+   |
+LL | #[repr(Rust, simd, scalable(4))]
+   |        ^^^^  ^^^^  ^^^^^^^^^^^
+
+error[E0566]: conflicting representation hints
+  --> $DIR/invalid.rs:186:8
+   |
+LL | #[repr(C, simd, scalable(4))]
+   |        ^  ^^^^  ^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
+   = note: `#[deny(conflicting_repr_hints)]` on by default
+
+error: `scalable` representation hint without `simd` representation hint
+  --> $DIR/invalid.rs:193:8
+   |
+LL | #[repr(scalable(4))]
+   |        ^^^^^^^^^^^
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:90:12
+   |
+LL |     #[repr(simd, scalable(4))]
+   |            ^^^^
+...
+LL |     type Foo;
+   |     --------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:90:18
+   |
+LL |     #[repr(simd, scalable(4))]
+   |                  ^^^^^^^^^^^
+...
+LL |     type Foo;
+   |     --------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:94:12
+   |
+LL |     #[repr(simd, scalable(4))]
+   |            ^^^^
+...
+LL |     const Bar: i32;
+   |     --------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:94:18
+   |
+LL |     #[repr(simd, scalable(4))]
+   |                  ^^^^^^^^^^^
+...
+LL |     const Bar: i32;
+   |     --------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:98:12
+   |
+LL |     #[repr(simd, scalable(4))]
+   |            ^^^^
+...
+LL |     fn foo() {}
+   |     ----------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:98:18
+   |
+LL |     #[repr(simd, scalable(4))]
+   |                  ^^^^^^^^^^^
+...
+LL |     fn foo() {}
+   |     ----------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:113:12
+   |
+LL |     #[repr(simd, scalable(4))]
+   |            ^^^^
+...
+LL |     fn foo() {}
+   |     ----------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:113:18
+   |
+LL |     #[repr(simd, scalable(4))]
+   |                  ^^^^^^^^^^^
+...
+LL |     fn foo() {}
+   |     ----------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:40:12
+   |
+LL |     #[repr(simd, scalable(4))]
+   |            ^^^^
+...
+LL |     static X: &'static u32;
+   |     ----------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:40:18
+   |
+LL |     #[repr(simd, scalable(4))]
+   |                  ^^^^^^^^^^^
+...
+LL |     static X: &'static u32;
+   |     ----------------------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:44:12
+   |
+LL |     #[repr(simd, scalable(4))]
+   |            ^^^^
+...
+LL |     type Y;
+   |     ------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:44:18
+   |
+LL |     #[repr(simd, scalable(4))]
+   |                  ^^^^^^^^^^^
+...
+LL |     type Y;
+   |     ------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:48:12
+   |
+LL |     #[repr(simd, scalable(4))]
+   |            ^^^^
+...
+LL |     fn foo();
+   |     --------- not a struct
+
+error[E0517]: attribute should be applied to a struct
+  --> $DIR/invalid.rs:48:18
+   |
+LL |     #[repr(simd, scalable(4))]
+   |                  ^^^^^^^^^^^
+...
+LL |     fn foo();
+   |     --------- not a struct
+
+error[E0076]: SIMD vector's only field must be an array
+  --> $DIR/invalid.rs:199:1
+   |
+LL | struct MissingArg {
+   | ^^^^^^^^^^^^^^^^^
+LL |
+LL |     _ty: [f64],
+   |     ---------- not an array
+
+error[E0076]: SIMD vector's only field must be an array
+  --> $DIR/invalid.rs:205:1
+   |
+LL | struct ArgNotLit {
+   | ^^^^^^^^^^^^^^^^
+LL |
+LL |     _ty: [f64],
+   |     ---------- not an array
+
+error[E0076]: SIMD vector's only field must be an array
+  --> $DIR/invalid.rs:211:1
+   |
+LL | struct ArgMultipleLits {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     _ty: [f64],
+   |     ---------- not an array
+
+error[E0076]: SIMD vector's only field must be an array
+  --> $DIR/invalid.rs:217:1
+   |
+LL | struct ArgKind {
+   | ^^^^^^^^^^^^^^
+LL |
+LL |     _ty: [f64],
+   |     ---------- not an array
+
+error: aborting due to 79 previous errors
+
+Some errors have detailed explanations: E0076, E0517, E0552, E0566, E0692.
+For more information about an error, try `rustc --explain E0076`.
+Future incompatibility report: Future breakage diagnostic:
+error[E0566]: conflicting representation hints
+  --> $DIR/invalid.rs:186:8
+   |
+LL | #[repr(C, simd, scalable(4))]
+   |        ^  ^^^^  ^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
+   = note: `#[deny(conflicting_repr_hints)]` on by default
+

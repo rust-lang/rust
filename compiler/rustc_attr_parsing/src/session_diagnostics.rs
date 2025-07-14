@@ -644,3 +644,11 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
         diag
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_scalable_missing_n)]
+pub(crate) struct ScalableAttrMissingN {
+    #[primary_span]
+    #[suggestion(applicability = "has-placeholders", code = "scalable(...)")]
+    pub span: Span,
+}

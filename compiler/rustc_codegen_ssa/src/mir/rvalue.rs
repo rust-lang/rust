@@ -978,6 +978,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // cases like from vectors of f32 to vectors of pointers or
                     // from fat pointers to vectors of u16. (See #143194 #110021 ...)
                     (abi::BackendRepr::SimdVector { .. }, _) | (_, abi::BackendRepr::SimdVector { .. }) => false,
+                    (abi::BackendRepr::ScalableVector { .. }, _) | (_, abi::BackendRepr::ScalableVector { .. }) => false,
                 }
             }
             mir::Rvalue::Ref(..) |
