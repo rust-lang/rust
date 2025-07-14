@@ -256,12 +256,12 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'_, 'tcx> {
             }
             PlaceContext::MutatingUse(MutatingUseContext::Call) => {
                 let call = loc.block;
-                let TerminatorKind::Call { target, .. } =
+                let TerminatorKind::Call { target: Some(target), .. } =
                     self.body.basic_blocks[call].terminator().kind
                 else {
-                    bug!()
+                    return;
                 };
-                Some(DefLocation::CallReturn { call, target })
+                Some(DefLocation::CallReturn { call, target: Some(target) })
             }
             _ => None,
         };
