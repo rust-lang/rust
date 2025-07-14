@@ -51,6 +51,7 @@ impl AttributeKind {
             NoImplicitPrelude(..) => No,
             NoMangle(..) => No,
             NonExhaustive(..) => Yes,
+            OmitGdbPrettyPrinterSection => No,
             Optimize(..) => No,
             ParenSugar(..) => No,
             PassByValue(..) => Yes,
