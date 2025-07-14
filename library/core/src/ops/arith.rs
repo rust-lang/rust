@@ -106,7 +106,8 @@ macro_rules! add_impl {
             fn add(self, other: $t) -> $t { self + other }
         }
 
-        forward_ref_binop! { impl Add, add for $t, $t }
+        forward_ref_binop! { impl Add, add for $t, $t,
+        #[stable(feature = "rust1", since = "1.0.0")] }
     )*)
 }
 
@@ -218,7 +219,8 @@ macro_rules! sub_impl {
             fn sub(self, other: $t) -> $t { self - other }
         }
 
-        forward_ref_binop! { impl Sub, sub for $t, $t }
+        forward_ref_binop! { impl Sub, sub for $t, $t,
+        #[stable(feature = "rust1", since = "1.0.0")] }
     )*)
 }
 
@@ -351,7 +353,8 @@ macro_rules! mul_impl {
             fn mul(self, other: $t) -> $t { self * other }
         }
 
-        forward_ref_binop! { impl Mul, mul for $t, $t }
+        forward_ref_binop! { impl Mul, mul for $t, $t,
+        #[stable(feature = "rust1", since = "1.0.0")] }
     )*)
 }
 
@@ -493,7 +496,8 @@ macro_rules! div_impl_integer {
             fn div(self, other: $t) -> $t { self / other }
         }
 
-        forward_ref_binop! { impl Div, div for $t, $t }
+        forward_ref_binop! { impl Div, div for $t, $t,
+        #[stable(feature = "rust1", since = "1.0.0")] }
     )*)*)
 }
 
@@ -513,7 +517,8 @@ macro_rules! div_impl_float {
             fn div(self, other: $t) -> $t { self / other }
         }
 
-        forward_ref_binop! { impl Div, div for $t, $t }
+        forward_ref_binop! { impl Div, div for $t, $t,
+        #[stable(feature = "rust1", since = "1.0.0")] }
     )*)
 }
 
@@ -599,7 +604,8 @@ macro_rules! rem_impl_integer {
             fn rem(self, other: $t) -> $t { self % other }
         }
 
-        forward_ref_binop! { impl Rem, rem for $t, $t }
+        forward_ref_binop! { impl Rem, rem for $t, $t,
+        #[stable(feature = "rust1", since = "1.0.0")] }
     )*)*)
 }
 
@@ -634,7 +640,8 @@ macro_rules! rem_impl_float {
             fn rem(self, other: $t) -> $t { self % other }
         }
 
-        forward_ref_binop! { impl Rem, rem for $t, $t }
+        forward_ref_binop! { impl Rem, rem for $t, $t,
+        #[stable(feature = "rust1", since = "1.0.0")] }
     )*)
 }
 
@@ -709,7 +716,8 @@ macro_rules! neg_impl {
             fn neg(self) -> $t { -self }
         }
 
-        forward_ref_unop! { impl Neg, neg for $t }
+        forward_ref_unop! { impl Neg, neg for $t,
+        #[stable(feature = "rust1", since = "1.0.0")] }
     )*)
 }
 
@@ -776,7 +784,8 @@ macro_rules! add_assign_impl {
             fn add_assign(&mut self, other: $t) { *self += other }
         }
 
-        forward_ref_op_assign! { impl AddAssign, add_assign for $t, $t }
+        forward_ref_op_assign! { impl AddAssign, add_assign for $t, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
     )+)
 }
 
@@ -843,7 +852,8 @@ macro_rules! sub_assign_impl {
             fn sub_assign(&mut self, other: $t) { *self -= other }
         }
 
-        forward_ref_op_assign! { impl SubAssign, sub_assign for $t, $t }
+        forward_ref_op_assign! { impl SubAssign, sub_assign for $t, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
     )+)
 }
 
@@ -901,7 +911,8 @@ macro_rules! mul_assign_impl {
             fn mul_assign(&mut self, other: $t) { *self *= other }
         }
 
-        forward_ref_op_assign! { impl MulAssign, mul_assign for $t, $t }
+        forward_ref_op_assign! { impl MulAssign, mul_assign for $t, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
     )+)
 }
 
@@ -958,7 +969,8 @@ macro_rules! div_assign_impl {
             fn div_assign(&mut self, other: $t) { *self /= other }
         }
 
-        forward_ref_op_assign! { impl DivAssign, div_assign for $t, $t }
+        forward_ref_op_assign! { impl DivAssign, div_assign for $t, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
     )+)
 }
 
@@ -1019,7 +1031,8 @@ macro_rules! rem_assign_impl {
             fn rem_assign(&mut self, other: $t) { *self %= other }
         }
 
-        forward_ref_op_assign! { impl RemAssign, rem_assign for $t, $t }
+        forward_ref_op_assign! { impl RemAssign, rem_assign for $t, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
     )+)
 }
 

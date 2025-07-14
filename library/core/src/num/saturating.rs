@@ -109,7 +109,8 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Saturating<T> {
 //         //         *self = *self << other;
 //         //     }
 //         // }
-//         // forward_ref_op_assign! { impl ShlAssign, shl_assign for Saturating<$t>, $f }
+//         // forward_ref_op_assign! { impl ShlAssign, shl_assign for Saturating<$t>, $f,
+//         // #[unstable(feature = "saturating_int_impl", issue = "87920")] }
 //
 //         #[unstable(feature = "saturating_int_impl", issue = "87920")]
 //         impl Shr<$f> for Saturating<$t> {
@@ -134,7 +135,8 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Saturating<T> {
 //                 *self = *self >> other;
 //             }
 //         }
-//         forward_ref_op_assign! { impl ShrAssign, shr_assign for Saturating<$t>, $f }
+//         forward_ref_op_assign! { impl ShrAssign, shr_assign for Saturating<$t>, $f,
+//         #[unstable(feature = "saturating_int_impl", issue = "87920")] }
 //     };
 // }
 //
@@ -159,7 +161,8 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Saturating<T> {
 //                 *self = *self << other;
 //             }
 //         }
-//         forward_ref_op_assign! { impl ShlAssign, shl_assign for Saturating<$t>, $f }
+//         forward_ref_op_assign! { impl ShlAssign, shl_assign for Saturating<$t>, $f,
+//         #[unstable(feature = "saturating_int_impl", issue = "87920")] }
 //
 //         #[unstable(feature = "saturating_int_impl", issue = "87920")]
 //         impl Shr<$f> for Saturating<$t> {
@@ -180,7 +183,8 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Saturating<T> {
 //                 *self = *self >> other;
 //             }
 //         }
-//         forward_ref_op_assign! { impl ShrAssign, shr_assign for Saturating<$t>, $f }
+//         forward_ref_op_assign! { impl ShrAssign, shr_assign for Saturating<$t>, $f,
+//         #[unstable(feature = "saturating_int_impl", issue = "87920")] }
 //     };
 // }
 //
@@ -218,7 +222,7 @@ macro_rules! saturating_impl {
             }
         }
         forward_ref_binop! { impl Add, add for Saturating<$t>, Saturating<$t>,
-                #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl AddAssign for Saturating<$t> {
@@ -227,7 +231,8 @@ macro_rules! saturating_impl {
                 *self = *self + other;
             }
         }
-        forward_ref_op_assign! { impl AddAssign, add_assign for Saturating<$t>, Saturating<$t> }
+        forward_ref_op_assign! { impl AddAssign, add_assign for Saturating<$t>, Saturating<$t>,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_assign_impl", since = "1.74.0")]
         impl AddAssign<$t> for Saturating<$t> {
@@ -236,7 +241,8 @@ macro_rules! saturating_impl {
                 *self = *self + Saturating(other);
             }
         }
-        forward_ref_op_assign! { impl AddAssign, add_assign for Saturating<$t>, $t }
+        forward_ref_op_assign! { impl AddAssign, add_assign for Saturating<$t>, $t,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl Sub for Saturating<$t> {
@@ -248,7 +254,7 @@ macro_rules! saturating_impl {
             }
         }
         forward_ref_binop! { impl Sub, sub for Saturating<$t>, Saturating<$t>,
-                #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl SubAssign for Saturating<$t> {
@@ -257,7 +263,8 @@ macro_rules! saturating_impl {
                 *self = *self - other;
             }
         }
-        forward_ref_op_assign! { impl SubAssign, sub_assign for Saturating<$t>, Saturating<$t> }
+        forward_ref_op_assign! { impl SubAssign, sub_assign for Saturating<$t>, Saturating<$t>,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_assign_impl", since = "1.74.0")]
         impl SubAssign<$t> for Saturating<$t> {
@@ -266,7 +273,8 @@ macro_rules! saturating_impl {
                 *self = *self - Saturating(other);
             }
         }
-        forward_ref_op_assign! { impl SubAssign, sub_assign for Saturating<$t>, $t }
+        forward_ref_op_assign! { impl SubAssign, sub_assign for Saturating<$t>, $t,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl Mul for Saturating<$t> {
@@ -278,7 +286,7 @@ macro_rules! saturating_impl {
             }
         }
         forward_ref_binop! { impl Mul, mul for Saturating<$t>, Saturating<$t>,
-                #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl MulAssign for Saturating<$t> {
@@ -287,7 +295,8 @@ macro_rules! saturating_impl {
                 *self = *self * other;
             }
         }
-        forward_ref_op_assign! { impl MulAssign, mul_assign for Saturating<$t>, Saturating<$t> }
+        forward_ref_op_assign! { impl MulAssign, mul_assign for Saturating<$t>, Saturating<$t>,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_assign_impl", since = "1.74.0")]
         impl MulAssign<$t> for Saturating<$t> {
@@ -296,7 +305,8 @@ macro_rules! saturating_impl {
                 *self = *self * Saturating(other);
             }
         }
-        forward_ref_op_assign! { impl MulAssign, mul_assign for Saturating<$t>, $t }
+        forward_ref_op_assign! { impl MulAssign, mul_assign for Saturating<$t>, $t,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         /// # Examples
         ///
@@ -323,8 +333,7 @@ macro_rules! saturating_impl {
             }
         }
         forward_ref_binop! { impl Div, div for Saturating<$t>, Saturating<$t>,
-                #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
-
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl DivAssign for Saturating<$t> {
@@ -333,7 +342,8 @@ macro_rules! saturating_impl {
                 *self = *self / other;
             }
         }
-        forward_ref_op_assign! { impl DivAssign, div_assign for Saturating<$t>, Saturating<$t> }
+        forward_ref_op_assign! { impl DivAssign, div_assign for Saturating<$t>, Saturating<$t>,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_assign_impl", since = "1.74.0")]
         impl DivAssign<$t> for Saturating<$t> {
@@ -342,7 +352,8 @@ macro_rules! saturating_impl {
                 *self = *self / Saturating(other);
             }
         }
-        forward_ref_op_assign! { impl DivAssign, div_assign for Saturating<$t>, $t }
+        forward_ref_op_assign! { impl DivAssign, div_assign for Saturating<$t>, $t,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl Rem for Saturating<$t> {
@@ -354,7 +365,7 @@ macro_rules! saturating_impl {
             }
         }
         forward_ref_binop! { impl Rem, rem for Saturating<$t>, Saturating<$t>,
-                #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl RemAssign for Saturating<$t> {
@@ -363,7 +374,8 @@ macro_rules! saturating_impl {
                 *self = *self % other;
             }
         }
-        forward_ref_op_assign! { impl RemAssign, rem_assign for Saturating<$t>, Saturating<$t> }
+        forward_ref_op_assign! { impl RemAssign, rem_assign for Saturating<$t>, Saturating<$t>,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_assign_impl", since = "1.74.0")]
         impl RemAssign<$t> for Saturating<$t> {
@@ -372,7 +384,8 @@ macro_rules! saturating_impl {
                 *self = *self % Saturating(other);
             }
         }
-        forward_ref_op_assign! { impl RemAssign, rem_assign for Saturating<$t>, $t }
+        forward_ref_op_assign! { impl RemAssign, rem_assign for Saturating<$t>, $t,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl Not for Saturating<$t> {
@@ -384,7 +397,7 @@ macro_rules! saturating_impl {
             }
         }
         forward_ref_unop! { impl Not, not for Saturating<$t>,
-                #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl BitXor for Saturating<$t> {
@@ -396,7 +409,7 @@ macro_rules! saturating_impl {
             }
         }
         forward_ref_binop! { impl BitXor, bitxor for Saturating<$t>, Saturating<$t>,
-                #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl BitXorAssign for Saturating<$t> {
@@ -405,7 +418,8 @@ macro_rules! saturating_impl {
                 *self = *self ^ other;
             }
         }
-        forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for Saturating<$t>, Saturating<$t> }
+        forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for Saturating<$t>, Saturating<$t>,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_assign_impl", since = "1.74.0")]
         impl BitXorAssign<$t> for Saturating<$t> {
@@ -414,7 +428,8 @@ macro_rules! saturating_impl {
                 *self = *self ^ Saturating(other);
             }
         }
-        forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for Saturating<$t>, $t }
+        forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for Saturating<$t>, $t,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl BitOr for Saturating<$t> {
@@ -426,7 +441,7 @@ macro_rules! saturating_impl {
             }
         }
         forward_ref_binop! { impl BitOr, bitor for Saturating<$t>, Saturating<$t>,
-                #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl BitOrAssign for Saturating<$t> {
@@ -435,7 +450,8 @@ macro_rules! saturating_impl {
                 *self = *self | other;
             }
         }
-        forward_ref_op_assign! { impl BitOrAssign, bitor_assign for Saturating<$t>, Saturating<$t> }
+        forward_ref_op_assign! { impl BitOrAssign, bitor_assign for Saturating<$t>, Saturating<$t>,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_assign_impl", since = "1.74.0")]
         impl BitOrAssign<$t> for Saturating<$t> {
@@ -444,7 +460,8 @@ macro_rules! saturating_impl {
                 *self = *self | Saturating(other);
             }
         }
-        forward_ref_op_assign! { impl BitOrAssign, bitor_assign for Saturating<$t>, $t }
+        forward_ref_op_assign! { impl BitOrAssign, bitor_assign for Saturating<$t>, $t,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl BitAnd for Saturating<$t> {
@@ -456,7 +473,7 @@ macro_rules! saturating_impl {
             }
         }
         forward_ref_binop! { impl BitAnd, bitand for Saturating<$t>, Saturating<$t>,
-                #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_impl", since = "1.74.0")]
         impl BitAndAssign for Saturating<$t> {
@@ -465,7 +482,8 @@ macro_rules! saturating_impl {
                 *self = *self & other;
             }
         }
-        forward_ref_op_assign! { impl BitAndAssign, bitand_assign for Saturating<$t>, Saturating<$t> }
+        forward_ref_op_assign! { impl BitAndAssign, bitand_assign for Saturating<$t>, Saturating<$t>,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
         #[stable(feature = "saturating_int_assign_impl", since = "1.74.0")]
         impl BitAndAssign<$t> for Saturating<$t> {
@@ -474,7 +492,8 @@ macro_rules! saturating_impl {
                 *self = *self & Saturating(other);
             }
         }
-        forward_ref_op_assign! { impl BitAndAssign, bitand_assign for Saturating<$t>, $t }
+        forward_ref_op_assign! { impl BitAndAssign, bitand_assign for Saturating<$t>, $t,
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
 
     )*)
 }
@@ -939,7 +958,7 @@ macro_rules! saturating_int_impl_signed {
             }
         }
         forward_ref_unop! { impl Neg, neg for Saturating<$t>,
-                #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
+        #[stable(feature = "saturating_int_impl", since = "1.74.0")] }
     )*)
 }
 
