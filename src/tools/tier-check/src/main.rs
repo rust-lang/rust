@@ -25,29 +25,27 @@ fn main() {
     let doc_targets: HashSet<_> = doc_targets_md
         .lines()
         .filter(|line| line.starts_with(&['`', '['][..]) && line.contains('|'))
-        .map(|line| line.split('`').skip(1).next().expect("expected target code span"))
+        .map(|line| line.split('`').nth(1).expect("expected target code span"))
         .collect();
 
     let missing: Vec<_> = target_list.difference(&doc_targets).collect();
     let extra: Vec<_> = doc_targets.difference(&target_list).collect();
     for target in &missing {
         eprintln!(
-            "error: target `{}` is missing from {}\n\
-            If this is a new target, please add it to {}.",
-            target, filename, src
+            "error: target `{target}` is missing from {filename}\n\
+            If this is a new target, please add it to {src}."
         );
     }
     for target in &extra {
         eprintln!(
-            "error: target `{}` is in {}, but does not appear in the rustc target list\n\
-            If the target has been removed, please edit {} and remove the target.",
-            target, filename, src
+            "error: target `{target}` is in {filename}, but does not appear in the rustc target list\n\
+            If the target has been removed, please edit {src} and remove the target."
         );
     }
     // Check target names for unwanted characters like `.` that can cause problems e.g. in Cargo.
     // See also Tier 3 target policy.
     // If desired, target names can ignore this check.
-    let ignore_target_names = vec![
+    let ignore_target_names = [
         "thumbv8m.base-none-eabi",
         "thumbv8m.main-none-eabi",
         "thumbv8m.main-none-eabihf",
