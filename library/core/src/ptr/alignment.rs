@@ -230,7 +230,7 @@ impl hash::Hash for Alignment {
 
 /// Returns [`Alignment::MIN`], which is valid for any type.
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-#[rustc_const_unstable(feature = "const_default", issue = "67792")]
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
 impl const Default for Alignment {
     fn default() -> Alignment {
         Alignment::MIN

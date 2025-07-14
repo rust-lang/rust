@@ -980,7 +980,7 @@ fn assoc_method(
     let name = meth.name.as_ref().unwrap();
     let vis = visibility_print_with_space(meth, cx).to_string();
     let defaultness = print_default_space(meth.is_default());
-    // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
+    // FIXME: Once https://github.com/rust-lang/rust/issues/143874 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
         RenderMode::Normal => print_constness_with_space(
@@ -2152,7 +2152,7 @@ fn render_rightside(
     let tcx = cx.tcx();
 
     fmt::from_fn(move |w| {
-        // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
+        // FIXME: Once https://github.com/rust-lang/rust/issues/143874 is implemented, we can remove
         // this condition.
         let const_stability = match render_mode {
             RenderMode::Normal => item.const_stability(tcx),
