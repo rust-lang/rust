@@ -4,7 +4,7 @@ warning: `#[diagnostic::on_unimplemented]` can only be applied to trait definiti
 LL | #[diagnostic::on_unimplemented(message = "Baz")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
+   = note: `#[warn(misplaced_diagnostic_attributes)]` on by default
 
 warning: malformed `on_unimplemented` attribute
   --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:3:32
@@ -13,6 +13,7 @@ LL | #[diagnostic::on_unimplemented(unsupported = "foo")]
    |                                ^^^^^^^^^^^^^^^^^^^ invalid option found here
    |
    = help: only `message`, `note` and `label` are allowed as options
+   = note: `#[warn(malformed_diagnostic_attributes)]` on by default
 
 warning: malformed `on_unimplemented` attribute
   --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:12:50
@@ -61,6 +62,7 @@ LL | #[diagnostic::on_unimplemented(message = "{DoesNotExist}")]
    |                                            ^^^^^^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
+   = note: `#[warn(malformed_diagnostic_format_literals)]` on by default
 
 warning: malformed `on_unimplemented` attribute
   --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:3:32

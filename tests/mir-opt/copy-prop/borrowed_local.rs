@@ -50,11 +50,10 @@ fn compare_address() -> bool {
 fn borrowed<T: Copy + Freeze>(x: T) -> bool {
     // CHECK-LABEL: fn borrowed(
     // CHECK: bb0: {
-    // CHECK-NEXT: _2 = copy _1;
     // CHECK-NEXT: _3 = &_1;
     // CHECK-NEXT: _0 = opaque::<&T>(copy _3)
     // CHECK: bb1: {
-    // CHECK-NEXT: _0 = opaque::<T>(copy _2)
+    // CHECK-NEXT: _0 = opaque::<T>(copy _1)
     mir! {
         {
             let a = x;

@@ -844,47 +844,47 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let item = tcx.hir_expect_item(def_id);
 
-    let (is_alias, is_auto, safety, items) = match item.kind {
-        hir::ItemKind::Trait(is_auto, safety, .., items) => {
-            (false, is_auto == hir::IsAuto::Yes, safety, items)
-        }
-        hir::ItemKind::TraitAlias(..) => (true, false, hir::Safety::Safe, &[][..]),
+    let (is_alias, is_auto, safety) = match item.kind {
+        hir::ItemKind::Trait(is_auto, safety, ..) => (false, is_auto == hir::IsAuto::Yes, safety),
+        hir::ItemKind::TraitAlias(..) => (true, false, hir::Safety::Safe),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
+    let attrs = tcx.get_all_attrs(def_id);
     // Only regular traits can be const.
-    let constness = if !is_alias && tcx.has_attr(def_id, sym::const_trait) {
+    let constness = if !is_alias && find_attr!(attrs, AttributeKind::ConstTrait(_)) {
         hir::Constness::Const
     } else {
         hir::Constness::NotConst
     };
 
-    let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
+    let paren_sugar = find_attr!(attrs, AttributeKind::ParenSugar(_));
     if paren_sugar && !tcx.features().unboxed_closures() {
         tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
     }
 
     // Only regular traits can be marker.
-    let is_marker = !is_alias && tcx.has_attr(def_id, sym::marker);
+    let is_marker = !is_alias && find_attr!(attrs, AttributeKind::Marker(_));
 
-    let rustc_coinductive = tcx.has_attr(def_id, sym::rustc_coinductive);
-    let is_fundamental = tcx.has_attr(def_id, sym::fundamental);
+    let rustc_coinductive = find_attr!(attrs, AttributeKind::Coinductive(_));
+    let is_fundamental = find_attr!(attrs, AttributeKind::Fundamental);
 
     let [skip_array_during_method_dispatch, skip_boxed_slice_during_method_dispatch] = find_attr!(
-        tcx.get_all_attrs(def_id),
-        AttributeKind::SkipDuringMethodDispatch { array, boxed_slice, span:_ } => [*array, *boxed_slice]
+        attrs,
+        AttributeKind::SkipDuringMethodDispatch { array, boxed_slice, span: _ } => [*array, *boxed_slice]
     )
     .unwrap_or([false; 2]);
 
-    let specialization_kind = if tcx.has_attr(def_id, sym::rustc_unsafe_specialization_marker) {
+    let specialization_kind = if find_attr!(attrs, AttributeKind::UnsafeSpecializationMarker(_)) {
         ty::trait_def::TraitSpecializationKind::Marker
-    } else if tcx.has_attr(def_id, sym::rustc_specialization_trait) {
+    } else if find_attr!(attrs, AttributeKind::SpecializationTrait(_)) {
         ty::trait_def::TraitSpecializationKind::AlwaysApplicable
     } else {
         ty::trait_def::TraitSpecializationKind::None
     };
-    let must_implement_one_of = tcx
-        .get_attr(def_id, sym::rustc_must_implement_one_of)
+    let must_implement_one_of = attrs
+        .iter()
+        .find(|attr| attr.has_name(sym::rustc_must_implement_one_of))
         // Check that there are at least 2 arguments of `#[rustc_must_implement_one_of]`
         // and that they are all identifiers
         .and_then(|attr| match attr.meta_item_list() {
@@ -909,13 +909,16 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         // functions in the trait with default implementations
         .and_then(|(list, attr_span)| {
             let errors = list.iter().filter_map(|ident| {
-                let item = items.iter().find(|item| item.ident == *ident);
+                let item = tcx
+                    .associated_items(def_id)
+                    .filter_by_name_unhygienic(ident.name)
+                    .find(|item| item.ident(tcx) == *ident);
 
                 match item {
-                    Some(item) if matches!(item.kind, hir::AssocItemKind::Fn { .. }) => {
-                        if !tcx.defaultness(item.id.owner_id).has_value() {
+                    Some(item) if matches!(item.kind, ty::AssocKind::Fn { .. }) => {
+                        if !item.defaultness(tcx).has_value() {
                             tcx.dcx().emit_err(errors::FunctionNotHaveDefaultImplementation {
-                                span: item.span,
+                                span: tcx.def_span(item.def_id),
                                 note_span: attr_span,
                             });
 
@@ -926,7 +929,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                     }
                     Some(item) => {
                         tcx.dcx().emit_err(errors::MustImplementNotFunction {
-                            span: item.span,
+                            span: tcx.def_span(item.def_id),
                             span_note: errors::MustImplementNotFunctionSpanNote { span: attr_span },
                             note: errors::MustImplementNotFunctionNote {},
                         });
@@ -958,8 +961,8 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
             no_dups.then_some(list)
         });
 
-    let deny_explicit_impl = tcx.has_attr(def_id, sym::rustc_deny_explicit_impl);
-    let implement_via_object = !tcx.has_attr(def_id, sym::rustc_do_not_implement_via_object);
+    let deny_explicit_impl = find_attr!(attrs, AttributeKind::DenyExplicitImpl(_));
+    let implement_via_object = !find_attr!(attrs, AttributeKind::DoNotImplementViaObject(_));
 
     ty::TraitDef {
         def_id: def_id.to_def_id(),

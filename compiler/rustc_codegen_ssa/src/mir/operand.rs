@@ -16,9 +16,9 @@ use tracing::{debug, instrument};
 use super::place::{PlaceRef, PlaceValue};
 use super::rvalue::transmute_scalar;
 use super::{FunctionCx, LocalRef};
+use crate::MemFlags;
 use crate::common::IntPredicate;
 use crate::traits::*;
-use crate::{MemFlags, size_of_val};
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -860,44 +860,6 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 bx.store_with_flags(val, llptr, align, flags);
             }
         }
-    }
-
-    pub fn store_unsized<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
-        self,
-        bx: &mut Bx,
-        indirect_dest: PlaceRef<'tcx, V>,
-    ) {
-        debug!("OperandRef::store_unsized: operand={:?}, indirect_dest={:?}", self, indirect_dest);
-        // `indirect_dest` must have `*mut T` type. We extract `T` out of it.
-        let unsized_ty = indirect_dest
-            .layout
-            .ty
-            .builtin_deref(true)
-            .unwrap_or_else(|| bug!("indirect_dest has non-pointer type: {:?}", indirect_dest));
-
-        let OperandValue::Ref(PlaceValue { llval: llptr, llextra: Some(llextra), .. }) = self
-        else {
-            bug!("store_unsized called with a sized value (or with an extern type)")
-        };
-
-        // Allocate an appropriate region on the stack, and copy the value into it. Since alloca
-        // doesn't support dynamic alignment, we allocate an extra align - 1 bytes, and align the
-        // pointer manually.
-        let (size, align) = size_of_val::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
-        let one = bx.const_usize(1);
-        let align_minus_1 = bx.sub(align, one);
-        let size_extra = bx.add(size, align_minus_1);
-        let min_align = Align::ONE;
-        let alloca = bx.dynamic_alloca(size_extra, min_align);
-        let address = bx.ptrtoint(alloca, bx.type_isize());
-        let neg_address = bx.neg(address);
-        let offset = bx.and(neg_address, align_minus_1);
-        let dst = bx.inbounds_ptradd(alloca, offset);
-        bx.memcpy(dst, min_align, llptr, min_align, size, MemFlags::empty());
-
-        // Store the allocated region and the extra to the indirect place.
-        let indirect_operand = OperandValue::Pair(dst, llextra);
-        indirect_operand.store(bx, indirect_dest);
     }
 }
 

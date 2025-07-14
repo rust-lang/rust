@@ -116,24 +116,6 @@ error: malformed `cfi_encoding` attribute input
 LL | #[cfi_encoding]
    | ^^^^^^^^^^^^^^^ help: must be of the form: `#[cfi_encoding = "encoding"]`
 
-error: malformed `type_const` attribute input
-  --> $DIR/malformed-attrs.rs:143:5
-   |
-LL |     #[type_const = 1]
-   |     ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[type_const]`
-
-error: malformed `marker` attribute input
-  --> $DIR/malformed-attrs.rs:155:1
-   |
-LL | #[marker = 3]
-   | ^^^^^^^^^^^^^ help: must be of the form: `#[marker]`
-
-error: malformed `fundamental` attribute input
-  --> $DIR/malformed-attrs.rs:157:1
-   |
-LL | #[fundamental()]
-   | ^^^^^^^^^^^^^^^^ help: must be of the form: `#[fundamental]`
-
 error: malformed `link_ordinal` attribute input
   --> $DIR/malformed-attrs.rs:167:5
    |
@@ -528,6 +510,24 @@ LL | #[rustc_layout_scalar_valid_range_end]
    | expected this to be a list
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
 
+error[E0565]: malformed `marker` attribute input
+  --> $DIR/malformed-attrs.rs:155:1
+   |
+LL | #[marker = 3]
+   | ^^^^^^^^^---^
+   | |        |
+   | |        didn't expect any arguments here
+   | help: must be of the form: `#[marker]`
+
+error[E0565]: malformed `fundamental` attribute input
+  --> $DIR/malformed-attrs.rs:157:1
+   |
+LL | #[fundamental()]
+   | ^^^^^^^^^^^^^--^
+   | |            |
+   | |            didn't expect any arguments here
+   | help: must be of the form: `#[fundamental]`
+
 error[E0565]: malformed `ffi_pure` attribute input
   --> $DIR/malformed-attrs.rs:165:5
    |
@@ -554,6 +554,15 @@ LL | #[non_exhaustive = 1]
    | |                |
    | |                didn't expect any arguments here
    | help: must be of the form: `#[non_exhaustive]`
+
+error[E0565]: malformed `type_const` attribute input
+  --> $DIR/malformed-attrs.rs:143:5
+   |
+LL |     #[type_const = 1]
+   |     ^^^^^^^^^^^^^---^
+   |     |            |
+   |     |            didn't expect any arguments here
+   |     help: must be of the form: `#[type_const]`
 
 error: attribute should be applied to `const fn`
   --> $DIR/malformed-attrs.rs:34:1
@@ -585,7 +594,7 @@ warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
 LL | #[diagnostic::do_not_recommend()]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
+   = note: `#[warn(malformed_diagnostic_attributes)]` on by default
 
 warning: missing options for `on_unimplemented` attribute
   --> $DIR/malformed-attrs.rs:138:1

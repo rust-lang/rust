@@ -94,12 +94,12 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     // This covers the case where somebody does an import which should pull in an item,
     // but there's already an item with the same namespace and same name. Rust gives
     // priority to the not-imported one, so we should, too.
-    items.extend(doc.items.values().flat_map(|(item, renamed, import_id)| {
+    items.extend(doc.items.values().flat_map(|(item, renamed, import_ids)| {
         // First, lower everything other than glob imports.
         if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
             return Vec::new();
         }
-        let v = clean_maybe_renamed_item(cx, item, *renamed, *import_id);
+        let v = clean_maybe_renamed_item(cx, item, *renamed, import_ids);
         for item in &v {
             if let Some(name) = item.name
                 && (cx.render_options.document_hidden || !item.is_doc_hidden())
@@ -162,7 +162,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         kind,
         doc.def_id.to_def_id(),
         doc.name,
-        doc.import_id,
+        doc.import_id.as_slice(),
         doc.renamed,
     )
 }
@@ -182,22 +182,29 @@ fn generate_item_with_correct_attrs(
     kind: ItemKind,
     def_id: DefId,
     name: Symbol,
-    import_id: Option<LocalDefId>,
+    import_ids: &[LocalDefId],
     renamed: Option<Symbol>,
 ) -> Item {
     let target_attrs = inline::load_attrs(cx, def_id);
-    let attrs = if let Some(import_id) = import_id {
-        // glob reexports are treated the same as `#[doc(inline)]` items.
-        //
-        // For glob re-exports the item may or may not exist to be re-exported (potentially the cfgs
-        // on the path up until the glob can be removed, and only cfgs on the globbed item itself
-        // matter), for non-inlined re-exports see #85043.
-        let is_inline = hir_attr_lists(inline::load_attrs(cx, import_id.to_def_id()), sym::doc)
-            .get_word_attr(sym::inline)
-            .is_some()
-            || (is_glob_import(cx.tcx, import_id)
-                && (cx.render_options.document_hidden || !cx.tcx.is_doc_hidden(def_id)));
-        let mut attrs = get_all_import_attributes(cx, import_id, def_id, is_inline);
+    let attrs = if !import_ids.is_empty() {
+        let mut attrs = Vec::with_capacity(import_ids.len());
+        let mut is_inline = false;
+
+        for import_id in import_ids.iter().copied() {
+            // glob reexports are treated the same as `#[doc(inline)]` items.
+            //
+            // For glob re-exports the item may or may not exist to be re-exported (potentially the
+            // cfgs on the path up until the glob can be removed, and only cfgs on the globbed item
+            // itself matter), for non-inlined re-exports see #85043.
+            let import_is_inline =
+                hir_attr_lists(inline::load_attrs(cx, import_id.to_def_id()), sym::doc)
+                    .get_word_attr(sym::inline)
+                    .is_some()
+                    || (is_glob_import(cx.tcx, import_id)
+                        && (cx.render_options.document_hidden || !cx.tcx.is_doc_hidden(def_id)));
+            attrs.extend(get_all_import_attributes(cx, import_id, def_id, is_inline));
+            is_inline = is_inline || import_is_inline;
+        }
         add_without_unwanted_attributes(&mut attrs, target_attrs, is_inline, None);
         attrs
     } else {
@@ -216,7 +223,8 @@ fn generate_item_with_correct_attrs(
 
     let name = renamed.or(Some(name));
     let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, attrs, cfg);
-    item.inner.inline_stmt_id = import_id;
+    // FIXME (GuillaumeGomez): Should we also make `inline_stmt_id` a `Vec` instead of an `Option`?
+    item.inner.inline_stmt_id = import_ids.first().copied();
     item
 }
 
@@ -2754,7 +2762,7 @@ fn clean_maybe_renamed_item<'tcx>(
     cx: &mut DocContext<'tcx>,
     item: &hir::Item<'tcx>,
     renamed: Option<Symbol>,
-    import_id: Option<LocalDefId>,
+    import_ids: &[LocalDefId],
 ) -> Vec<Item> {
     use hir::ItemKind;
     fn get_name(
@@ -2825,7 +2833,7 @@ fn clean_maybe_renamed_item<'tcx>(
                     })),
                     item.owner_id.def_id.to_def_id(),
                     name,
-                    import_id,
+                    import_ids,
                     renamed,
                 ));
                 return ret;
@@ -2859,7 +2867,7 @@ fn clean_maybe_renamed_item<'tcx>(
             ItemKind::Trait(_, _, _, generics, bounds, item_ids) => {
                 let items = item_ids
                     .iter()
-                    .map(|ti| clean_trait_item(cx.tcx.hir_trait_item(ti.id), cx))
+                    .map(|&ti| clean_trait_item(cx.tcx.hir_trait_item(ti), cx))
                     .collect();
 
                 TraitItem(Box::new(Trait {
@@ -2880,7 +2888,7 @@ fn clean_maybe_renamed_item<'tcx>(
             kind,
             item.owner_id.def_id.to_def_id(),
             name,
-            import_id,
+            import_ids,
             renamed,
         )]
     })
@@ -2902,7 +2910,7 @@ fn clean_impl<'tcx>(
     let items = impl_
         .items
         .iter()
-        .map(|ii| clean_impl_item(tcx.hir_impl_item(ii.id), cx))
+        .map(|&ii| clean_impl_item(tcx.hir_impl_item(ii), cx))
         .collect::<Vec<_>>();
 
     // If this impl block is an implementation of the Deref trait, then we
@@ -3151,7 +3159,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
             kind,
             item.owner_id.def_id.to_def_id(),
             item.ident.name,
-            import_id,
+            import_id.as_slice(),
             renamed,
         )
     })

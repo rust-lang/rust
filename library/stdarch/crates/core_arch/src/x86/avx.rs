@@ -1258,7 +1258,7 @@ pub fn _mm256_permute2f128_si256<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
 #[cfg_attr(test, assert_instr(vbroadcastss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::trivially_copy_pass_by_ref)]
-pub unsafe fn _mm256_broadcast_ss(f: &f32) -> __m256 {
+pub fn _mm256_broadcast_ss(f: &f32) -> __m256 {
     _mm256_set1_ps(*f)
 }
 
@@ -1271,7 +1271,7 @@ pub unsafe fn _mm256_broadcast_ss(f: &f32) -> __m256 {
 #[cfg_attr(test, assert_instr(vbroadcastss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::trivially_copy_pass_by_ref)]
-pub unsafe fn _mm_broadcast_ss(f: &f32) -> __m128 {
+pub fn _mm_broadcast_ss(f: &f32) -> __m128 {
     _mm_set1_ps(*f)
 }
 
@@ -1284,7 +1284,7 @@ pub unsafe fn _mm_broadcast_ss(f: &f32) -> __m128 {
 #[cfg_attr(test, assert_instr(vbroadcastsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::trivially_copy_pass_by_ref)]
-pub unsafe fn _mm256_broadcast_sd(f: &f64) -> __m256d {
+pub fn _mm256_broadcast_sd(f: &f64) -> __m256d {
     _mm256_set1_pd(*f)
 }
 
@@ -1296,8 +1296,8 @@ pub unsafe fn _mm256_broadcast_sd(f: &f64) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vbroadcastf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_broadcast_ps(a: &__m128) -> __m256 {
-    simd_shuffle!(*a, _mm_setzero_ps(), [0, 1, 2, 3, 0, 1, 2, 3])
+pub fn _mm256_broadcast_ps(a: &__m128) -> __m256 {
+    unsafe { simd_shuffle!(*a, _mm_setzero_ps(), [0, 1, 2, 3, 0, 1, 2, 3]) }
 }
 
 /// Broadcasts 128 bits from memory (composed of 2 packed double-precision
@@ -1308,8 +1308,8 @@ pub unsafe fn _mm256_broadcast_ps(a: &__m128) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vbroadcastf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
-    simd_shuffle!(*a, _mm_setzero_pd(), [0, 1, 0, 1])
+pub fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
+    unsafe { simd_shuffle!(*a, _mm_setzero_pd(), [0, 1, 0, 1]) }
 }
 
 /// Copies `a` to result, then inserts 128 bits (composed of 4 packed

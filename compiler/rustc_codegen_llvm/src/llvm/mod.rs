@@ -211,7 +211,7 @@ pub(crate) fn SetFunctionCallConv(fn_: &Value, cc: CallConv) {
 // function.
 // For more details on COMDAT sections see e.g., https://www.airs.com/blog/archives/52
 pub(crate) fn SetUniqueComdat(llmod: &Module, val: &Value) {
-    let name_buf = get_value_name(val).to_vec();
+    let name_buf = get_value_name(val);
     let name =
         CString::from_vec_with_nul(name_buf).or_else(|buf| CString::new(buf.into_bytes())).unwrap();
     set_comdat(llmod, val, &name);
@@ -319,12 +319,14 @@ pub(crate) fn get_param(llfn: &Value, index: c_uint) -> &Value {
     }
 }
 
-/// Safe wrapper for `LLVMGetValueName2` into a byte slice
-pub(crate) fn get_value_name(value: &Value) -> &[u8] {
+/// Safe wrapper for `LLVMGetValueName2`
+/// Needs to allocate the value, because `set_value_name` will invalidate
+/// the pointer.
+pub(crate) fn get_value_name(value: &Value) -> Vec<u8> {
     unsafe {
         let mut len = 0;
         let data = LLVMGetValueName2(value, &mut len);
-        std::slice::from_raw_parts(data.cast(), len)
+        std::slice::from_raw_parts(data.cast(), len).to_vec()
     }
 }
 

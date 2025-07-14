@@ -1590,7 +1590,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Look up the name of a definition across crates. This does not look at HIR.
-    pub fn opt_item_name(self, def_id: DefId) -> Option<Symbol> {
+    pub fn opt_item_name(self, def_id: impl IntoQueryParam<DefId>) -> Option<Symbol> {
+        let def_id = def_id.into_query_param();
         if let Some(cnum) = def_id.as_crate_root() {
             Some(self.crate_name(cnum))
         } else {
@@ -1610,7 +1611,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// [`opt_item_name`] instead.
     ///
     /// [`opt_item_name`]: Self::opt_item_name
-    pub fn item_name(self, id: DefId) -> Symbol {
+    pub fn item_name(self, id: impl IntoQueryParam<DefId>) -> Symbol {
+        let id = id.into_query_param();
         self.opt_item_name(id).unwrap_or_else(|| {
             bug!("item_name: no name for {:?}", self.def_path(id));
         })
@@ -1619,7 +1621,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Look up the name and span of a definition.
     ///
     /// See [`item_name`][Self::item_name] for more information.
-    pub fn opt_item_ident(self, def_id: DefId) -> Option<Ident> {
+    pub fn opt_item_ident(self, def_id: impl IntoQueryParam<DefId>) -> Option<Ident> {
+        let def_id = def_id.into_query_param();
         let def = self.opt_item_name(def_id)?;
         let span = self
             .def_ident_span(def_id)
@@ -1630,7 +1633,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Look up the name and span of a definition.
     ///
     /// See [`item_name`][Self::item_name] for more information.
-    pub fn item_ident(self, def_id: DefId) -> Ident {
+    pub fn item_ident(self, def_id: impl IntoQueryParam<DefId>) -> Ident {
+        let def_id = def_id.into_query_param();
         self.opt_item_ident(def_id).unwrap_or_else(|| {
             bug!("item_ident: no name for {:?}", self.def_path(def_id));
         })
@@ -1782,21 +1786,18 @@ impl<'tcx> TyCtxt<'tcx> {
         did: impl Into<DefId>,
         attr: Symbol,
     ) -> impl Iterator<Item = &'tcx hir::Attribute> {
-        self.get_all_attrs(did).filter(move |a: &&hir::Attribute| a.has_name(attr))
+        self.get_all_attrs(did).iter().filter(move |a: &&hir::Attribute| a.has_name(attr))
     }
 
     /// Gets all attributes.
     ///
     /// To see if an item has a specific attribute, you should use [`rustc_attr_data_structures::find_attr!`] so you can use matching.
-    pub fn get_all_attrs(
-        self,
-        did: impl Into<DefId>,
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
+    pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [hir::Attribute] {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {
-            self.hir_attrs(self.local_def_id_to_hir_id(did)).iter()
+            self.hir_attrs(self.local_def_id_to_hir_id(did))
         } else {
-            self.attrs_for_def(did).iter()
+            self.attrs_for_def(did)
         }
     }
 

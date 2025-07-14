@@ -147,7 +147,6 @@ checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 name = "core_arch"
 version = "0.1.5"
 dependencies = [
- "std_detect",
  "stdarch-test",
  "syscalls",
 ]
