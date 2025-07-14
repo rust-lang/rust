@@ -46,19 +46,6 @@ const NAN_MASK2: u16 = 0x0155;
 // the intrinsics.
 
 #[test]
-fn test_is_sign_positive() {
-    assert!(f16::INFINITY.is_sign_positive());
-    assert!(1f16.is_sign_positive());
-    assert!(0f16.is_sign_positive());
-    assert!(!(-0f16).is_sign_positive());
-    assert!(!(-1f16).is_sign_positive());
-    assert!(!f16::NEG_INFINITY.is_sign_positive());
-    assert!(!(1f16 / f16::NEG_INFINITY).is_sign_positive());
-    assert!(f16::NAN.is_sign_positive());
-    assert!(!(-f16::NAN).is_sign_positive());
-}
-
-#[test]
 fn test_is_sign_negative() {
     assert!(!f16::INFINITY.is_sign_negative());
     assert!(!1f16.is_sign_negative());
