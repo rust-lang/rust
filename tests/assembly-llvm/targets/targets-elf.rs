@@ -472,6 +472,9 @@
 //@ revisions: riscv64gc_unknown_linux_gnu
 //@ [riscv64gc_unknown_linux_gnu] compile-flags: --target riscv64gc-unknown-linux-gnu
 //@ [riscv64gc_unknown_linux_gnu] needs-llvm-components: riscv
+//@ revisions: riscv64a23_unknown_linux_gnu
+//@ [riscv64a23_unknown_linux_gnu] compile-flags: --target riscv64a23-unknown-linux-gnu
+//@ [riscv64a23_unknown_linux_gnu] needs-llvm-components: riscv
 //@ revisions: riscv64gc_unknown_linux_musl
 //@ [riscv64gc_unknown_linux_musl] compile-flags: --target riscv64gc-unknown-linux-musl
 //@ [riscv64gc_unknown_linux_musl] needs-llvm-components: riscv
