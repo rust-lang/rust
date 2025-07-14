@@ -20,7 +20,7 @@ pub fn check(src_path: &Path, ci_info: &crate::CiInfo, bad: &mut bool) {
         return;
     }
     // Then we check that if `FORMAT_VERSION` was updated, the `Latest feature:` was also updated.
-    match crate::git_diff(&base_commit, src_path.join("rustdoc-json-types")) {
+    match crate::git_diff(base_commit, src_path.join("rustdoc-json-types")) {
         Some(output) => {
             let mut format_version_updated = false;
             let mut latest_feature_comment_updated = false;
