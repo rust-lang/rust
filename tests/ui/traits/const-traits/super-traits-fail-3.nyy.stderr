@@ -4,7 +4,7 @@ error[E0658]: const trait impls are experimental
 LL | trait Bar: [const] Foo {}
    |            ^^^^^^^
    |
-   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -14,7 +14,7 @@ error[E0658]: const trait impls are experimental
 LL | const fn foo<T: [const] Bar>(x: &T) {
    |                 ^^^^^^^
    |
-   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -24,7 +24,7 @@ error[E0658]: `const_trait` is a temporary placeholder for marking a trait that 
 LL | #[cfg_attr(any(yyy, yyn, nyy, nyn), const_trait)]
    |                                     ^^^^^^^^^^^
    |
-   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -34,7 +34,7 @@ error[E0658]: `const_trait` is a temporary placeholder for marking a trait that 
 LL | #[cfg_attr(any(yyy, yny, nyy, nyn), const_trait)]
    |                                     ^^^^^^^^^^^
    |
-   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -45,7 +45,7 @@ LL |     x.a();
    |       ^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 

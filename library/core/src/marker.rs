@@ -863,7 +863,7 @@ impl<T: PointeeSized> Clone for PhantomData<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default", issue = "67792")]
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
 impl<T: PointeeSized> const Default for PhantomData<T> {
     fn default() -> Self {
         Self

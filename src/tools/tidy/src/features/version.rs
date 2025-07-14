@@ -20,7 +20,7 @@ impl fmt::Display for Version {
             Version::Explicit { parts } => {
                 f.pad(&format!("{}.{}.{}", parts[0], parts[1], parts[2]))
             }
-            Version::CurrentPlaceholder => f.pad(&format!("CURRENT")),
+            Version::CurrentPlaceholder => f.pad("CURRENT"),
         }
     }
 }

@@ -38,7 +38,7 @@ fn dir_entry_is_file(dir_entry: &fs::DirEntry) -> bool {
 pub fn collect_unstable_feature_names(features: &Features) -> BTreeSet<String> {
     features
         .iter()
-        .filter(|&(_, ref f)| f.level == Status::Unstable)
+        .filter(|&(_, f)| f.level == Status::Unstable)
         .map(|(name, _)| name.replace('_', "-"))
         .collect()
 }
@@ -90,7 +90,7 @@ pub fn check(path: &Path, features: CollectedFeatures, bad: &mut bool) {
     let lib_features = features
         .lib
         .into_iter()
-        .filter(|&(ref name, _)| !lang_features.contains_key(name))
+        .filter(|(name, _)| !lang_features.contains_key(name))
         .collect::<Features>();
 
     // Library features

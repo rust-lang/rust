@@ -16,7 +16,7 @@ bounds of that allocation. In particular, this range must not "wrap around" the 
 of the address space. Note that "range" here refers to a half-open range as usual in Rust,
 i.e., `self..result` for non-negative offsets and `result..self` for negative offsets.
 
-Allocated objects can never be larger than `isize::MAX` bytes, so if the computed offset
+Allocations can never be larger than `isize::MAX` bytes, so if the computed offset
 stays in bounds of the allocation, it is guaranteed to satisfy the first requirement.
 This implies, for instance, that `vec.as_ptr().add(vec.len())` (for `vec: Vec<T>`) is always
 safe.

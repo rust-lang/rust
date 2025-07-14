@@ -700,7 +700,7 @@ passes_trait_impl_const_stability_mismatch_trait_unstable = ...but the trait is 
 
 passes_trait_impl_const_stable =
     trait implementations cannot be const stable yet
-    .note = see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+    .note = see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
 
 passes_transparent_incompatible =
     transparent {$target} cannot have other repr hints
