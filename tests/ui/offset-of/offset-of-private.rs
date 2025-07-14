@@ -1,5 +1,3 @@
-#![feature(offset_of_enum)]
-
 use std::mem::offset_of;
 
 mod m {
@@ -31,7 +29,7 @@ fn main() {
     offset_of!(m::FooTuple, 1); //~ ERROR field `1` of struct `FooTuple` is private
     offset_of!(m::Bar, public); //~ ERROR struct `Bar` is private
     offset_of!(m::Bar, private); //~ ERROR struct `Bar` is private
-    //~| ERROR field `private` of struct `Bar` is private
+    //~^ ERROR field `private` of struct `Bar` is private
 
     offset_of!(m::Baz, Var1.0.public);
     offset_of!(m::Baz, Var1.0.private); //~ ERROR field `private` of struct `Foo` is private

@@ -1,5 +1,3 @@
-#![feature(offset_of_enum)]
-
 use std::mem::offset_of;
 
 enum Alpha {

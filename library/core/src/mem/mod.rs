@@ -1365,7 +1365,6 @@ impl<T> SizedTypeProperties for T {}
 ///
 /// The following unstable features expand the functionality of `offset_of!`:
 ///
-/// * [`offset_of_enum`] — allows `enum` variants to be traversed as if they were fields.
 /// * [`offset_of_slice`] — allows getting the offset of a field of type `[T]`.
 ///
 /// # Examples
@@ -1392,10 +1391,20 @@ impl<T> SizedTypeProperties for T {}
 /// struct NestedB(u8);
 ///
 /// assert_eq!(mem::offset_of!(NestedA, b.0), 0);
+///
+/// #[repr(u8)]
+/// enum Enum {
+///    A(u8, u16),
+///    B { one: u8, two: u16 },
+/// }
+///
+/// assert_eq!(mem::offset_of!(Enum, A.0), 1);
+/// assert_eq!(mem::offset_of!(Enum, B.two), 2);
+///
+/// assert_eq!(mem::offset_of!(Option<&u8>, Some.0), 0);
 /// ```
 ///
 /// [dynamically sized]: https://doc.rust-lang.org/reference/dynamically-sized-types.html
-/// [`offset_of_enum`]: https://doc.rust-lang.org/nightly/unstable-book/language-features/offset-of-enum.html
 /// [`offset_of_slice`]: https://doc.rust-lang.org/nightly/unstable-book/language-features/offset-of-slice.html
 #[stable(feature = "offset_of", since = "1.77.0")]
 #[allow_internal_unstable(builtin_syntax)]
