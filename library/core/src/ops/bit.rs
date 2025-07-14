@@ -61,7 +61,8 @@ macro_rules! not_impl {
             fn not(self) -> $t { !self }
         }
 
-        forward_ref_unop! { impl Not, not for $t }
+        forward_ref_unop! { impl Not, not for $t,
+        #[stable(feature = "rust1", since = "1.0.0")] }
     )*)
 }
 
@@ -171,7 +172,8 @@ macro_rules! bitand_impl {
             fn bitand(self, rhs: $t) -> $t { self & rhs }
         }
 
-        forward_ref_binop! { impl BitAnd, bitand for $t, $t }
+        forward_ref_binop! { impl BitAnd, bitand for $t, $t,
+        #[stable(feature = "rust1", since = "1.0.0")] }
     )*)
 }
 
@@ -271,7 +273,8 @@ macro_rules! bitor_impl {
             fn bitor(self, rhs: $t) -> $t { self | rhs }
         }
 
-        forward_ref_binop! { impl BitOr, bitor for $t, $t }
+        forward_ref_binop! { impl BitOr, bitor for $t, $t,
+        #[stable(feature = "rust1", since = "1.0.0")] }
     )*)
 }
 
@@ -371,7 +374,8 @@ macro_rules! bitxor_impl {
             fn bitxor(self, other: $t) -> $t { self ^ other }
         }
 
-        forward_ref_binop! { impl BitXor, bitxor for $t, $t }
+        forward_ref_binop! { impl BitXor, bitxor for $t, $t,
+        #[stable(feature = "rust1", since = "1.0.0")] }
     )*)
 }
 
@@ -471,7 +475,8 @@ macro_rules! shl_impl {
             }
         }
 
-        forward_ref_binop! { impl Shl, shl for $t, $f }
+        forward_ref_binop! { impl Shl, shl for $t, $f,
+        #[stable(feature = "rust1", since = "1.0.0")] }
     };
 }
 
@@ -589,7 +594,8 @@ macro_rules! shr_impl {
             }
         }
 
-        forward_ref_binop! { impl Shr, shr for $t, $f }
+        forward_ref_binop! { impl Shr, shr for $t, $f,
+        #[stable(feature = "rust1", since = "1.0.0")] }
     };
 }
 
@@ -719,7 +725,8 @@ macro_rules! bitand_assign_impl {
             fn bitand_assign(&mut self, other: $t) { *self &= other }
         }
 
-        forward_ref_op_assign! { impl BitAndAssign, bitand_assign for $t, $t }
+        forward_ref_op_assign! { impl BitAndAssign, bitand_assign for $t, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
     )+)
 }
 
@@ -790,7 +797,8 @@ macro_rules! bitor_assign_impl {
             fn bitor_assign(&mut self, other: $t) { *self |= other }
         }
 
-        forward_ref_op_assign! { impl BitOrAssign, bitor_assign for $t, $t }
+        forward_ref_op_assign! { impl BitOrAssign, bitor_assign for $t, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
     )+)
 }
 
@@ -861,7 +869,8 @@ macro_rules! bitxor_assign_impl {
             fn bitxor_assign(&mut self, other: $t) { *self ^= other }
         }
 
-        forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for $t, $t }
+        forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for $t, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
     )+)
 }
 
@@ -925,7 +934,8 @@ macro_rules! shl_assign_impl {
             }
         }
 
-        forward_ref_op_assign! { impl ShlAssign, shl_assign for $t, $f }
+        forward_ref_op_assign! { impl ShlAssign, shl_assign for $t, $f,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
     };
 }
 
@@ -1007,7 +1017,8 @@ macro_rules! shr_assign_impl {
             }
         }
 
-        forward_ref_op_assign! { impl ShrAssign, shr_assign for $t, $f }
+        forward_ref_op_assign! { impl ShrAssign, shr_assign for $t, $f,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
     };
 }
 

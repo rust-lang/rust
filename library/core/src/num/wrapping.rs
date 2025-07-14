@@ -110,7 +110,8 @@ macro_rules! sh_impl_signed {
                 *self = *self << other;
             }
         }
-        forward_ref_op_assign! { impl ShlAssign, shl_assign for Wrapping<$t>, $f }
+        forward_ref_op_assign! { impl ShlAssign, shl_assign for Wrapping<$t>, $f,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Shr<$f> for Wrapping<$t> {
@@ -135,7 +136,8 @@ macro_rules! sh_impl_signed {
                 *self = *self >> other;
             }
         }
-        forward_ref_op_assign! { impl ShrAssign, shr_assign for Wrapping<$t>, $f }
+        forward_ref_op_assign! { impl ShrAssign, shr_assign for Wrapping<$t>, $f,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
     };
 }
 
@@ -160,7 +162,8 @@ macro_rules! sh_impl_unsigned {
                 *self = *self << other;
             }
         }
-        forward_ref_op_assign! { impl ShlAssign, shl_assign for Wrapping<$t>, $f }
+        forward_ref_op_assign! { impl ShlAssign, shl_assign for Wrapping<$t>, $f,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Shr<$f> for Wrapping<$t> {
@@ -181,7 +184,8 @@ macro_rules! sh_impl_unsigned {
                 *self = *self >> other;
             }
         }
-        forward_ref_op_assign! { impl ShrAssign, shr_assign for Wrapping<$t>, $f }
+        forward_ref_op_assign! { impl ShrAssign, shr_assign for Wrapping<$t>, $f,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
     };
 }
 
@@ -219,7 +223,7 @@ macro_rules! wrapping_impl {
             }
         }
         forward_ref_binop! { impl Add, add for Wrapping<$t>, Wrapping<$t>,
-                #[stable(feature = "wrapping_ref", since = "1.14.0")] }
+        #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl AddAssign for Wrapping<$t> {
@@ -228,7 +232,8 @@ macro_rules! wrapping_impl {
                 *self = *self + other;
             }
         }
-        forward_ref_op_assign! { impl AddAssign, add_assign for Wrapping<$t>, Wrapping<$t> }
+        forward_ref_op_assign! { impl AddAssign, add_assign for Wrapping<$t>, Wrapping<$t>,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
         impl AddAssign<$t> for Wrapping<$t> {
@@ -237,7 +242,8 @@ macro_rules! wrapping_impl {
                 *self = *self + Wrapping(other);
             }
         }
-        forward_ref_op_assign! { impl AddAssign, add_assign for Wrapping<$t>, $t }
+        forward_ref_op_assign! { impl AddAssign, add_assign for Wrapping<$t>, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Sub for Wrapping<$t> {
@@ -249,7 +255,7 @@ macro_rules! wrapping_impl {
             }
         }
         forward_ref_binop! { impl Sub, sub for Wrapping<$t>, Wrapping<$t>,
-                #[stable(feature = "wrapping_ref", since = "1.14.0")] }
+        #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl SubAssign for Wrapping<$t> {
@@ -258,7 +264,8 @@ macro_rules! wrapping_impl {
                 *self = *self - other;
             }
         }
-        forward_ref_op_assign! { impl SubAssign, sub_assign for Wrapping<$t>, Wrapping<$t> }
+        forward_ref_op_assign! { impl SubAssign, sub_assign for Wrapping<$t>, Wrapping<$t>,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
         impl SubAssign<$t> for Wrapping<$t> {
@@ -267,7 +274,8 @@ macro_rules! wrapping_impl {
                 *self = *self - Wrapping(other);
             }
         }
-        forward_ref_op_assign! { impl SubAssign, sub_assign for Wrapping<$t>, $t }
+        forward_ref_op_assign! { impl SubAssign, sub_assign for Wrapping<$t>, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Mul for Wrapping<$t> {
@@ -279,7 +287,7 @@ macro_rules! wrapping_impl {
             }
         }
         forward_ref_binop! { impl Mul, mul for Wrapping<$t>, Wrapping<$t>,
-                #[stable(feature = "wrapping_ref", since = "1.14.0")] }
+        #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl MulAssign for Wrapping<$t> {
@@ -288,7 +296,8 @@ macro_rules! wrapping_impl {
                 *self = *self * other;
             }
         }
-        forward_ref_op_assign! { impl MulAssign, mul_assign for Wrapping<$t>, Wrapping<$t> }
+        forward_ref_op_assign! { impl MulAssign, mul_assign for Wrapping<$t>, Wrapping<$t>,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
         impl MulAssign<$t> for Wrapping<$t> {
@@ -297,7 +306,8 @@ macro_rules! wrapping_impl {
                 *self = *self * Wrapping(other);
             }
         }
-        forward_ref_op_assign! { impl MulAssign, mul_assign for Wrapping<$t>, $t }
+        forward_ref_op_assign! { impl MulAssign, mul_assign for Wrapping<$t>, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "wrapping_div", since = "1.3.0")]
         impl Div for Wrapping<$t> {
@@ -309,7 +319,7 @@ macro_rules! wrapping_impl {
             }
         }
         forward_ref_binop! { impl Div, div for Wrapping<$t>, Wrapping<$t>,
-                #[stable(feature = "wrapping_ref", since = "1.14.0")] }
+        #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl DivAssign for Wrapping<$t> {
@@ -318,7 +328,8 @@ macro_rules! wrapping_impl {
                 *self = *self / other;
             }
         }
-        forward_ref_op_assign! { impl DivAssign, div_assign for Wrapping<$t>, Wrapping<$t> }
+        forward_ref_op_assign! { impl DivAssign, div_assign for Wrapping<$t>, Wrapping<$t>,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
         impl DivAssign<$t> for Wrapping<$t> {
@@ -327,7 +338,8 @@ macro_rules! wrapping_impl {
                 *self = *self / Wrapping(other);
             }
         }
-        forward_ref_op_assign! { impl DivAssign, div_assign for Wrapping<$t>, $t }
+        forward_ref_op_assign! { impl DivAssign, div_assign for Wrapping<$t>, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "wrapping_impls", since = "1.7.0")]
         impl Rem for Wrapping<$t> {
@@ -339,7 +351,7 @@ macro_rules! wrapping_impl {
             }
         }
         forward_ref_binop! { impl Rem, rem for Wrapping<$t>, Wrapping<$t>,
-                #[stable(feature = "wrapping_ref", since = "1.14.0")] }
+        #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl RemAssign for Wrapping<$t> {
@@ -348,7 +360,8 @@ macro_rules! wrapping_impl {
                 *self = *self % other;
             }
         }
-        forward_ref_op_assign! { impl RemAssign, rem_assign for Wrapping<$t>, Wrapping<$t> }
+        forward_ref_op_assign! { impl RemAssign, rem_assign for Wrapping<$t>, Wrapping<$t>,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
         impl RemAssign<$t> for Wrapping<$t> {
@@ -357,7 +370,8 @@ macro_rules! wrapping_impl {
                 *self = *self % Wrapping(other);
             }
         }
-        forward_ref_op_assign! { impl RemAssign, rem_assign for Wrapping<$t>, $t }
+        forward_ref_op_assign! { impl RemAssign, rem_assign for Wrapping<$t>, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Not for Wrapping<$t> {
@@ -369,7 +383,7 @@ macro_rules! wrapping_impl {
             }
         }
         forward_ref_unop! { impl Not, not for Wrapping<$t>,
-                #[stable(feature = "wrapping_ref", since = "1.14.0")] }
+        #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl BitXor for Wrapping<$t> {
@@ -381,7 +395,7 @@ macro_rules! wrapping_impl {
             }
         }
         forward_ref_binop! { impl BitXor, bitxor for Wrapping<$t>, Wrapping<$t>,
-                #[stable(feature = "wrapping_ref", since = "1.14.0")] }
+        #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitXorAssign for Wrapping<$t> {
@@ -390,7 +404,8 @@ macro_rules! wrapping_impl {
                 *self = *self ^ other;
             }
         }
-        forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for Wrapping<$t>, Wrapping<$t> }
+        forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for Wrapping<$t>, Wrapping<$t>,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
         impl BitXorAssign<$t> for Wrapping<$t> {
@@ -399,7 +414,8 @@ macro_rules! wrapping_impl {
                 *self = *self ^ Wrapping(other);
             }
         }
-        forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for Wrapping<$t>, $t }
+        forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for Wrapping<$t>, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl BitOr for Wrapping<$t> {
@@ -411,7 +427,7 @@ macro_rules! wrapping_impl {
             }
         }
         forward_ref_binop! { impl BitOr, bitor for Wrapping<$t>, Wrapping<$t>,
-                #[stable(feature = "wrapping_ref", since = "1.14.0")] }
+        #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitOrAssign for Wrapping<$t> {
@@ -420,7 +436,8 @@ macro_rules! wrapping_impl {
                 *self = *self | other;
             }
         }
-        forward_ref_op_assign! { impl BitOrAssign, bitor_assign for Wrapping<$t>, Wrapping<$t> }
+        forward_ref_op_assign! { impl BitOrAssign, bitor_assign for Wrapping<$t>, Wrapping<$t>,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
         impl BitOrAssign<$t> for Wrapping<$t> {
@@ -429,7 +446,8 @@ macro_rules! wrapping_impl {
                 *self = *self | Wrapping(other);
             }
         }
-        forward_ref_op_assign! { impl BitOrAssign, bitor_assign for Wrapping<$t>, $t }
+        forward_ref_op_assign! { impl BitOrAssign, bitor_assign for Wrapping<$t>, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl BitAnd for Wrapping<$t> {
@@ -441,7 +459,7 @@ macro_rules! wrapping_impl {
             }
         }
         forward_ref_binop! { impl BitAnd, bitand for Wrapping<$t>, Wrapping<$t>,
-                #[stable(feature = "wrapping_ref", since = "1.14.0")] }
+        #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitAndAssign for Wrapping<$t> {
@@ -450,7 +468,8 @@ macro_rules! wrapping_impl {
                 *self = *self & other;
             }
         }
-        forward_ref_op_assign! { impl BitAndAssign, bitand_assign for Wrapping<$t>, Wrapping<$t> }
+        forward_ref_op_assign! { impl BitAndAssign, bitand_assign for Wrapping<$t>, Wrapping<$t>,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
         impl BitAndAssign<$t> for Wrapping<$t> {
@@ -459,7 +478,8 @@ macro_rules! wrapping_impl {
                 *self = *self & Wrapping(other);
             }
         }
-        forward_ref_op_assign! { impl BitAndAssign, bitand_assign for Wrapping<$t>, $t }
+        forward_ref_op_assign! { impl BitAndAssign, bitand_assign for Wrapping<$t>, $t,
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
 
         #[stable(feature = "wrapping_neg", since = "1.10.0")]
         impl Neg for Wrapping<$t> {
@@ -470,7 +490,7 @@ macro_rules! wrapping_impl {
             }
         }
         forward_ref_unop! { impl Neg, neg for Wrapping<$t>,
-                #[stable(feature = "wrapping_ref", since = "1.14.0")] }
+        #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
     )*)
 }
