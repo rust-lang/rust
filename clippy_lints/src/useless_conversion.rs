@@ -176,6 +176,33 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 }
             },
 
+            ExprKind::MethodCall(path, recv, [arg], _) => {
+                if matches!(
+                    path.ident.name,
+                    sym::map | sym::map_err | sym::map_break | sym::map_continue
+                ) && has_eligible_receiver(cx, recv, e)
+                    && (is_trait_item(cx, arg, sym::Into) || is_trait_item(cx, arg, sym::From))
+                    && let ty::FnDef(_, args) = cx.typeck_results().expr_ty(arg).kind()
+                    && let &[from_ty, to_ty] = args.into_type_list(cx.tcx).as_slice()
+                    && same_type_and_consts(from_ty, to_ty)
+                {
+                    span_lint_and_then(
+                        cx,
+                        USELESS_CONVERSION,
+                        e.span.with_lo(recv.span.hi()),
+                        format!("useless conversion to the same type: `{from_ty}`"),
+                        |diag| {
+                            diag.suggest_remove_item(
+                                cx,
+                                e.span.with_lo(recv.span.hi()),
+                                "consider removing",
+                                Applicability::MachineApplicable,
+                            );
+                        },
+                    );
+                }
+            },
+
             ExprKind::MethodCall(name, recv, [], _) => {
                 if is_trait_method(cx, e, sym::Into) && name.ident.name == sym::into {
                     let a = cx.typeck_results().expr_ty(e);
@@ -409,32 +436,6 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
         if e.span.from_expansion() {
             self.expn_depth -= 1;
         }
-    }
-}
-
-/// Check if `arg` is a `Into::into` or `From::from` applied to `receiver` to give `expr`, through a
-/// higher-order mapping function.
-pub fn check_function_application(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>) {
-    if has_eligible_receiver(cx, recv, expr)
-        && (is_trait_item(cx, arg, sym::Into) || is_trait_item(cx, arg, sym::From))
-        && let ty::FnDef(_, args) = cx.typeck_results().expr_ty(arg).kind()
-        && let &[from_ty, to_ty] = args.into_type_list(cx.tcx).as_slice()
-        && same_type_and_consts(from_ty, to_ty)
-    {
-        span_lint_and_then(
-            cx,
-            USELESS_CONVERSION,
-            expr.span.with_lo(recv.span.hi()),
-            format!("useless conversion to the same type: `{from_ty}`"),
-            |diag| {
-                diag.suggest_remove_item(
-                    cx,
-                    expr.span.with_lo(recv.span.hi()),
-                    "consider removing",
-                    Applicability::MachineApplicable,
-                );
-            },
-        );
     }
 }
 

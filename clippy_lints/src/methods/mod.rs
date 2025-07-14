@@ -5275,10 +5275,6 @@ impl Methods {
                     }
                     map_identity::check(cx, expr, recv, m_arg, name, span);
                     manual_inspect::check(cx, expr, m_arg, name, span, self.msrv);
-                    crate::useless_conversion::check_function_application(cx, expr, recv, m_arg);
-                },
-                (sym::map_break | sym::map_continue, [m_arg]) => {
-                    crate::useless_conversion::check_function_application(cx, expr, recv, m_arg);
                 },
                 (sym::map_or, [def, map]) => {
                     option_map_or_none::check(cx, expr, recv, def, map);
