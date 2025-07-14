@@ -45,6 +45,7 @@ use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
 
+use crate::errors::AlignOnFields;
 use crate::{errors, fluent_generated as fluent};
 
 #[derive(LintDiagnostic)]
@@ -207,8 +208,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::ExportName { span: attr_span, .. }) => {
                     self.check_export_name(hir_id, *attr_span, span, target)
                 }
-                Attribute::Parsed(AttributeKind::Align { align, span: repr_span }) => {
-                    self.check_align(span, target, *align, *repr_span)
+                Attribute::Parsed(AttributeKind::Align { align, span: attr_span }) => {
+                    self.check_align(span, hir_id, target, *align, *attr_span)
                 }
                 Attribute::Parsed(AttributeKind::LinkSection { span: attr_span, .. }) => {
                     self.check_link_section(hir_id, *attr_span, span, target)
@@ -250,7 +251,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_)
-                    | AttributeKind::Dummy,
+                    | AttributeKind::Dummy
+                    | AttributeKind::OmitGdbPrettyPrinterSection,
                 ) => { /* do nothing  */ }
                 Attribute::Parsed(AttributeKind::AsPtr(attr_span)) => {
                     self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)
@@ -380,7 +382,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             // need to be fixed
                             | sym::cfi_encoding // FIXME(cfi_encoding)
                             | sym::pointee // FIXME(derive_coerce_pointee)
-                            | sym::omit_gdb_pretty_printer_section // FIXME(omit_gdb_pretty_printer_section)
                             | sym::instruction_set // broken on stable!!!
                             | sym::windows_subsystem // broken on stable!!!
                             | sym::patchable_function_entry // FIXME(patchable_function_entry)
@@ -1953,22 +1954,37 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[align]` attributes on `item` are valid.
-    fn check_align(&self, span: Span, target: Target, align: Align, repr_span: Span) {
+    fn check_align(
+        &self,
+        span: Span,
+        hir_id: HirId,
+        target: Target,
+        align: Align,
+        attr_span: Span,
+    ) {
         match target {
             Target::Fn | Target::Method(_) | Target::ForeignFn => {}
+            Target::Field => {
+                self.tcx.emit_node_span_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr_span,
+                    AlignOnFields { span },
+                );
+            }
             Target::Struct | Target::Union | Target::Enum => {
                 self.dcx().emit_err(errors::AlignShouldBeReprAlign {
-                    span: repr_span,
+                    span: attr_span,
                     item: target.name(),
                     align_bytes: align.bytes(),
                 });
             }
             _ => {
-                self.dcx().emit_err(errors::AlignAttrApplication { hint_span: repr_span, span });
+                self.dcx().emit_err(errors::AlignAttrApplication { hint_span: attr_span, span });
             }
         }
 
-        self.check_align_value(align, repr_span);
+        self.check_align_value(align, attr_span);
     }
 
     /// Checks if the `#[repr]` attributes on `item` are valid.

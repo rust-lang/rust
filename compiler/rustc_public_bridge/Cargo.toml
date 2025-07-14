@@ -1,5 +1,5 @@
 [package]
-name = "rustc_smir"
+name = "rustc_public_bridge"
 version = "0.0.0"
 edition = "2024"
 

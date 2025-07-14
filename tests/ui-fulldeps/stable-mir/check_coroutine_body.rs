@@ -14,18 +14,18 @@ extern crate rustc_middle;
 extern crate rustc_driver;
 extern crate rustc_interface;
 #[macro_use]
-extern crate stable_mir;
+extern crate rustc_public;
 
 use std::io::Write;
 use std::ops::ControlFlow;
 
-use stable_mir::mir::Body;
-use stable_mir::ty::{RigidTy, TyKind};
+use rustc_public::mir::Body;
+use rustc_public::ty::{RigidTy, TyKind};
 
 const CRATE_NAME: &str = "crate_coroutine_body";
 
 fn test_coroutine_body() -> ControlFlow<()> {
-    let crate_items = stable_mir::all_local_items();
+    let crate_items = rustc_public::all_local_items();
     if let Some(body) = crate_items.iter().find_map(|item| {
         let item_ty = item.ty();
         if let TyKind::RigidTy(RigidTy::Coroutine(def, ..)) = &item_ty.kind() {

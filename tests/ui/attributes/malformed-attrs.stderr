@@ -22,12 +22,6 @@ error[E0463]: can't find crate for `wloop`
 LL | extern crate wloop;
    | ^^^^^^^^^^^^^^^^^^^ can't find crate
 
-error: malformed `omit_gdb_pretty_printer_section` attribute input
-  --> $DIR/malformed-attrs.rs:26:1
-   |
-LL | #![omit_gdb_pretty_printer_section = 1]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![omit_gdb_pretty_printer_section]`
-
 error: malformed `windows_subsystem` attribute input
   --> $DIR/malformed-attrs.rs:29:1
    |
@@ -270,6 +264,15 @@ LL | #[debugger_visualizer]
    = note: expected: `natvis_file = "..."`
    = note: OR
    = note: expected: `gdb_script_file = "..."`
+
+error[E0565]: malformed `omit_gdb_pretty_printer_section` attribute input
+  --> $DIR/malformed-attrs.rs:26:1
+   |
+LL | #![omit_gdb_pretty_printer_section = 1]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^
+   | |                                  |
+   | |                                  didn't expect any arguments here
+   | help: must be of the form: `#[omit_gdb_pretty_printer_section]`
 
 error[E0539]: malformed `export_name` attribute input
   --> $DIR/malformed-attrs.rs:32:1

@@ -1,7 +1,7 @@
 //! Internal memory allocator implementation for StableMIR.
 //!
 //! This module handles all direct interactions with rustc queries and performs
-//! the actual memory allocations. The stable interface in `stable_mir::alloc`
+//! the actual memory allocations. The stable interface in `rustc_public::alloc`
 //! delegates all query-related operations to this implementation.
 
 use rustc_abi::{Size, TyAndLayout};
