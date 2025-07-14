@@ -1181,6 +1181,20 @@ mod sealed {
 
     impl_vec_trait! { [VectorOrc vec_orc]+ 2c (orc) }
 
+    // Z vector intrinsic      C23 math.h  LLVM IR         ISO/IEC 60559 operation        inexact  vfidb parameters
+    //
+    // vec_rint                rint        llvm.rint       roundToIntegralExact           yes      0, 0
+    // vec_roundc              nearbyint   llvm.nearbyint  n/a                            no       4, 0
+    // vec_floor / vec_roundm  floor       llvm.floor      roundToIntegralTowardNegative  no       4, 7
+    // vec_ceil / vec_roundp   ceil        llvm.ceil       roundToIntegralTowardPositive  no       4, 6
+    // vec_trunc / vec_roundz  trunc       llvm.trunc      roundToIntegralTowardZero      no       4, 5
+    // vec_round               roundeven   llvm.roundeven  roundToIntegralTiesToEven      no       4, 4
+    // n/a                     round       llvm.round      roundToIntegralTiesAway        no       4, 1
+
+    // `simd_round_ties_even` is implemented as `llvm.rint`.
+    test_impl! { vec_rint_f32 (a: vector_float) -> vector_float [simd_round_ties_even, "vector-enhancements-1" vfisb] }
+    test_impl! { vec_rint_f64 (a: vector_double) -> vector_double [simd_round_ties_even, vfidb] }
+
     test_impl! { vec_roundc_f32 (a: vector_float) -> vector_float [nearbyint_v4f32,  "vector-enhancements-1" vfisb] }
     test_impl! { vec_roundc_f64 (a: vector_double) -> vector_double [nearbyint_v2f64, vfidb] }
 
@@ -1188,9 +1202,6 @@ mod sealed {
     // use https://godbolt.org/z/cWq95fexe to check, and enable the instruction test when it works
     test_impl! { vec_round_f32 (a: vector_float) -> vector_float [roundeven_v4f32, _] }
     test_impl! { vec_round_f64 (a: vector_double) -> vector_double [roundeven_v2f64, _] }
-
-    test_impl! { vec_rint_f32 (a: vector_float) -> vector_float [simd_round_ties_even, "vector-enhancements-1" vfisb] }
-    test_impl! { vec_rint_f64 (a: vector_double) -> vector_double [simd_round_ties_even, vfidb] }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorRoundc {
