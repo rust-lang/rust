@@ -30,17 +30,17 @@ pub fn check(tests_path: &Path, bad: &mut bool) {
                         comp_vec.push(component);
                     }
                 }
-            } else if let Some(compile_flags) = directive.strip_prefix(COMPILE_FLAGS_HEADER) {
-                if let Some((_, v)) = compile_flags.split_once("--target") {
-                    let v = v.trim_start_matches([' ', '=']);
-                    let v = if v == "{{target}}" { Some((v, v)) } else { v.split_once("-") };
-                    if let Some((arch, _)) = v {
-                        let info = header_map.entry(revision).or_insert(RevisionInfo::default());
-                        info.target_arch.replace(arch);
-                    } else {
-                        eprintln!("{file}: seems to have a malformed --target value");
-                        *bad = true;
-                    }
+            } else if let Some(compile_flags) = directive.strip_prefix(COMPILE_FLAGS_HEADER)
+                && let Some((_, v)) = compile_flags.split_once("--target")
+            {
+                let v = v.trim_start_matches([' ', '=']);
+                let v = if v == "{{target}}" { Some((v, v)) } else { v.split_once("-") };
+                if let Some((arch, _)) = v {
+                    let info = header_map.entry(revision).or_insert(RevisionInfo::default());
+                    info.target_arch.replace(arch);
+                } else {
+                    eprintln!("{file}: seems to have a malformed --target value");
+                    *bad = true;
                 }
             }
         });

@@ -134,7 +134,7 @@ pub fn files_modified(ci_info: &CiInfo, pred: impl Fn(&str) -> bool) -> bool {
         eprintln!("No base commit, assuming all files are modified");
         return true;
     };
-    match crate::git_diff(&base_commit, "--name-status") {
+    match crate::git_diff(base_commit, "--name-status") {
         Some(output) => {
             let modified_files = output.lines().filter_map(|ln| {
                 let (status, name) = ln

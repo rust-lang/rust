@@ -161,31 +161,30 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
                     tidy_error!(bad, "Stray file with UI testing output: {:?}", file_path);
                 }
 
-                if let Ok(metadata) = fs::metadata(file_path) {
-                    if metadata.len() == 0 {
-                        tidy_error!(bad, "Empty file with UI testing output: {:?}", file_path);
-                    }
+                if let Ok(metadata) = fs::metadata(file_path)
+                    && metadata.len() == 0
+                {
+                    tidy_error!(bad, "Empty file with UI testing output: {:?}", file_path);
                 }
             }
 
-            if ext == "rs" {
-                if let Some(test_name) = static_regex!(r"^issues?[-_]?(\d{3,})").captures(testname)
-                {
-                    // these paths are always relative to the passed `path` and always UTF8
-                    let stripped_path = file_path
-                        .strip_prefix(path)
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                        .replace(std::path::MAIN_SEPARATOR_STR, "/");
+            if ext == "rs"
+                && let Some(test_name) = static_regex!(r"^issues?[-_]?(\d{3,})").captures(testname)
+            {
+                // these paths are always relative to the passed `path` and always UTF8
+                let stripped_path = file_path
+                    .strip_prefix(path)
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .replace(std::path::MAIN_SEPARATOR_STR, "/");
 
-                    if !remaining_issue_names.remove(stripped_path.as_str()) {
-                        tidy_error!(
-                            bad,
-                            "file `tests/{stripped_path}` must begin with a descriptive name, consider `{{reason}}-issue-{issue_n}.rs`",
-                            issue_n = &test_name[1],
-                        );
-                    }
+                if !remaining_issue_names.remove(stripped_path.as_str()) {
+                    tidy_error!(
+                        bad,
+                        "file `tests/{stripped_path}` must begin with a descriptive name, consider `{{reason}}-issue-{issue_n}.rs`",
+                        issue_n = &test_name[1],
+                    );
                 }
             }
         }
