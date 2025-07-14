@@ -6,8 +6,8 @@
 use std::cell::{Cell, RefCell};
 
 use rustc_middle::ty::TyCtxt;
-use rustc_smir::context::SmirCtxt;
-use rustc_smir::{Bridge, SmirContainer, Tables};
+use rustc_public_bridge::context::SmirCtxt;
+use rustc_public_bridge::{Bridge, SmirContainer, Tables};
 use rustc_span::def_id::CrateNum;
 use scoped_tls::scoped_thread_local;
 
@@ -105,11 +105,11 @@ where
 /// # extern crate rustc_interface;
 /// # extern crate rustc_middle;
 /// # #[macro_use]
-/// # extern crate stable_mir;
+/// # extern crate rustc_public;
 /// #
 /// # fn main() {
 /// #   use std::ops::ControlFlow;
-/// #   use stable_mir::CompilerError;
+/// #   use rustc_public::CompilerError;
 ///     fn analyze_code() -> ControlFlow<(), ()> {
 ///         // Your code goes in here.
 /// #       ControlFlow::Continue(())
@@ -125,11 +125,11 @@ where
 /// # extern crate rustc_interface;
 /// # extern crate rustc_middle;
 /// # #[macro_use]
-/// # extern crate stable_mir;
+/// # extern crate rustc_public;
 /// #
 /// # fn main() {
 /// #   use std::ops::ControlFlow;
-/// #   use stable_mir::CompilerError;
+/// #   use rustc_public::CompilerError;
 ///     fn analyze_code(extra_args: Vec<String>) -> ControlFlow<(), ()> {
 /// #       let _ = extra_args;
 ///         // Your code goes in here.
@@ -187,8 +187,8 @@ macro_rules! run_driver {
         use rustc_driver::{Callbacks, Compilation, run_compiler};
         use rustc_middle::ty::TyCtxt;
         use rustc_interface::interface;
-        use stable_mir::rustc_internal;
-        use stable_mir::CompilerError;
+        use rustc_public::rustc_internal;
+        use rustc_public::CompilerError;
         use std::ops::ControlFlow;
 
         pub struct StableMir<B = (), C = (), F = fn($(optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C>>

@@ -3271,8 +3271,8 @@ dependencies = [
  "rustc_codegen_ssa",
  "rustc_driver",
  "rustc_driver_impl",
- "rustc_smir",
- "stable_mir",
+ "rustc_public",
+ "rustc_public_bridge",
  "tikv-jemalloc-sys",
 ]
 
@@ -3709,6 +3709,7 @@ dependencies = [
  "rustc_passes",
  "rustc_pattern_analysis",
  "rustc_privacy",
+ "rustc_public",
  "rustc_query_system",
  "rustc_resolve",
  "rustc_session",
@@ -3718,7 +3719,6 @@ dependencies = [
  "rustc_ty_utils",
  "serde_json",
  "shlex",
- "stable_mir",
  "tracing",
  "windows 0.61.3",
 ]
@@ -4416,6 +4416,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_public"
+version = "0.1.0-preview"
+dependencies = [
+ "rustc_abi",
+ "rustc_hir",
+ "rustc_middle",
+ "rustc_public_bridge",
+ "rustc_session",
+ "rustc_span",
+ "rustc_target",
+ "scoped-tls",
+ "serde",
+ "tracing",
+]
+
+[[package]]
+name = "rustc_public_bridge"
+version = "0.0.0"
+dependencies = [
+ "rustc_abi",
+ "rustc_data_structures",
+ "rustc_hir",
+ "rustc_hir_pretty",
+ "rustc_middle",
+ "rustc_session",
+ "rustc_span",
+ "rustc_target",
+]
+
+[[package]]
 name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
@@ -4540,20 +4570,6 @@ dependencies = [
  "termize 0.2.0",
  "tracing",
  "windows 0.61.3",
-]
-
-[[package]]
-name = "rustc_smir"
-version = "0.0.0"
-dependencies = [
- "rustc_abi",
- "rustc_data_structures",
- "rustc_hir",
- "rustc_hir_pretty",
- "rustc_middle",
- "rustc_session",
- "rustc_span",
- "rustc_target",
 ]
 
 [[package]]
@@ -5102,22 +5118,6 @@ name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
-
-[[package]]
-name = "stable_mir"
-version = "0.1.0-preview"
-dependencies = [
- "rustc_abi",
- "rustc_hir",
- "rustc_middle",
- "rustc_session",
- "rustc_smir",
- "rustc_span",
- "rustc_target",
- "scoped-tls",
- "serde",
- "tracing",
-]
 
 [[package]]
 name = "stacker"

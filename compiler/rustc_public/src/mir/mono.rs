@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 use std::io;
 
-use rustc_smir::bridge::SmirError;
+use rustc_public_bridge::bridge::SmirError;
 use serde::Serialize;
 
 use crate::abi::FnAbi;

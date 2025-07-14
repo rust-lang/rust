@@ -1,8 +1,8 @@
 //! Conversion of internal Rust compiler items to stable ones.
 
 use rustc_abi::FieldIdx;
-use rustc_smir::Tables;
-use rustc_smir::context::SmirCtxt;
+use rustc_public_bridge::Tables;
+use rustc_public_bridge::context::SmirCtxt;
 
 use super::Stable;
 use crate::compiler_interface::BridgeTys;

@@ -4,8 +4,8 @@
 
 use rustc_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
 use rustc_middle::ty;
-use rustc_smir::Tables;
-use rustc_smir::context::SmirCtxt;
+use rustc_public_bridge::Tables;
+use rustc_public_bridge::context::SmirCtxt;
 use rustc_target::callconv;
 
 use crate::abi::{

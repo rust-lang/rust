@@ -6,8 +6,8 @@
 use std::cell::Cell;
 
 use rustc_hir::def::DefKind;
-use rustc_smir::context::SmirCtxt;
-use rustc_smir::{Bridge, SmirContainer};
+use rustc_public_bridge::context::SmirCtxt;
+use rustc_public_bridge::{Bridge, SmirContainer};
 use tracing::debug;
 
 use crate::abi::{FnAbi, Layout, LayoutShape, ReprOptions};
@@ -68,7 +68,7 @@ impl Bridge for BridgeTys {
 
 /// Stable public API for querying compiler information.
 ///
-/// All queries are delegated to [`rustc_smir::context::SmirCtxt`] that provides
+/// All queries are delegated to [`rustc_public_bridge::context::SmirCtxt`] that provides
 /// similar APIs but based on internal rustc constructs.
 ///
 /// Do not use this directly. This is currently used in the macro expansion.
@@ -567,7 +567,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
             DefKind::Fn => ForeignItemKind::Fn(tables.fn_def(def_id)),
             DefKind::Static { .. } => ForeignItemKind::Static(tables.static_def(def_id)),
             DefKind::ForeignTy => {
-                use rustc_smir::context::SmirTy;
+                use rustc_public_bridge::context::SmirTy;
                 ForeignItemKind::Type(tables.intern_ty(cx.new_foreign(def_id)))
             }
             def_kind => unreachable!("Unexpected kind for a foreign item: {:?}", def_kind),

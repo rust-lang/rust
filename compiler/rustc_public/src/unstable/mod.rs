@@ -9,8 +9,8 @@ use std::marker::PointeeSized;
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::{List, Ty, TyCtxt};
 use rustc_middle::{mir, ty};
-use rustc_smir::Tables;
-use rustc_smir::context::SmirCtxt;
+use rustc_public_bridge::Tables;
+use rustc_public_bridge::context::SmirCtxt;
 
 use super::compiler_interface::BridgeTys;
 use crate::{CtorKind, ItemKind};
@@ -21,7 +21,7 @@ mod internal_cx;
 /// Trait that defines the methods that are fine to call from [`RustcInternal`].
 ///
 /// This trait is only for [`RustcInternal`]. Any other other access to rustc's internals
-/// should go through [`rustc_smir::context::SmirCtxt`].
+/// should go through [`rustc_public_bridge::context::SmirCtxt`].
 pub trait InternalCx<'tcx>: Copy + Clone {
     fn tcx(self) -> TyCtxt<'tcx>;
 
