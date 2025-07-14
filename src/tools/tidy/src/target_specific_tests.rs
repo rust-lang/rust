@@ -30,10 +30,9 @@ pub fn check(tests_path: &Path, bad: &mut bool) {
                         comp_vec.push(component);
                     }
                 }
-            } else if directive.starts_with(COMPILE_FLAGS_HEADER) {
-                let compile_flags = &directive[COMPILE_FLAGS_HEADER.len()..];
+            } else if let Some(compile_flags) = directive.strip_prefix(COMPILE_FLAGS_HEADER) {
                 if let Some((_, v)) = compile_flags.split_once("--target") {
-                    let v = v.trim_start_matches(|c| c == ' ' || c == '=');
+                    let v = v.trim_start_matches([' ', '=']);
                     let v = if v == "{{target}}" { Some((v, v)) } else { v.split_once("-") };
                     if let Some((arch, _)) = v {
                         let info = header_map.entry(revision).or_insert(RevisionInfo::default());
@@ -57,15 +56,13 @@ pub fn check(tests_path: &Path, bad: &mut bool) {
                 (None, None) => {}
                 (Some(_), None) => {
                     eprintln!(
-                        "{}: revision {} should specify `{}` as it has `--target` set",
-                        file, rev, LLVM_COMPONENTS_HEADER
+                        "{file}: revision {rev} should specify `{LLVM_COMPONENTS_HEADER}` as it has `--target` set"
                     );
                     *bad = true;
                 }
                 (None, Some(_)) => {
                     eprintln!(
-                        "{}: revision {} should not specify `{}` as it doesn't need `--target`",
-                        file, rev, LLVM_COMPONENTS_HEADER
+                        "{file}: revision {rev} should not specify `{LLVM_COMPONENTS_HEADER}` as it doesn't need `--target`"
                     );
                     *bad = true;
                 }

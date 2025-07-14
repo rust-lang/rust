@@ -125,8 +125,8 @@ pub fn check(
                 let gate_test_str = "gate-test-";
 
                 let feature_name = match line.find(gate_test_str) {
-                    // NB: the `splitn` always succeeds, even if the delimiter is not present.
-                    Some(i) => line[i + gate_test_str.len()..].splitn(2, ' ').next().unwrap(),
+                    // `split` always contains at least 1 element, even if the delimiter is not present.
+                    Some(i) => line[i + gate_test_str.len()..].split(' ').next().unwrap(),
                     None => continue,
                 };
                 match features.get_mut(feature_name) {
@@ -135,16 +135,14 @@ pub fn check(
                             err(&format!(
                                 "The file is already marked as gate test \
                                       through its name, no need for a \
-                                      'gate-test-{}' comment",
-                                feature_name
+                                      'gate-test-{feature_name}' comment"
                             ));
                         }
                         f.has_gate_test = true;
                     }
                     None => {
                         err(&format!(
-                            "gate-test test found referencing a nonexistent feature '{}'",
-                            feature_name
+                            "gate-test test found referencing a nonexistent feature '{feature_name}'"
                         ));
                     }
                 }
@@ -170,8 +168,7 @@ pub fn check(
         );
         println!(
             "Hint: If you already have such a test and don't want to rename it,\
-                \n      you can also add a // gate-test-{} line to the test file.",
-            name
+                \n      you can also add a // gate-test-{name} line to the test file."
         );
     }
 
@@ -231,7 +228,7 @@ pub fn check(
 fn get_version_and_channel(src_path: &Path) -> (Version, String) {
     let version_str = t!(std::fs::read_to_string(src_path.join("version")));
     let version_str = version_str.trim();
-    let version = t!(std::str::FromStr::from_str(&version_str).map_err(|e| format!("{e:?}")));
+    let version = t!(std::str::FromStr::from_str(version_str).map_err(|e| format!("{e:?}")));
     let channel_str = t!(std::fs::read_to_string(src_path.join("ci").join("channel")));
     (version, channel_str.trim().to_owned())
 }
@@ -468,7 +465,7 @@ fn get_and_check_lib_features(
     map_lib_features(base_src_path, &mut |res, file, line| match res {
         Ok((name, f)) => {
             let mut check_features = |f: &Feature, list: &Features, display: &str| {
-                if let Some(ref s) = list.get(name) {
+                if let Some(s) = list.get(name) {
                     if f.tracking_issue != s.tracking_issue && f.level != Status::Accepted {
                         tidy_error!(
                             bad,
@@ -483,7 +480,7 @@ fn get_and_check_lib_features(
                     }
                 }
             };
-            check_features(&f, &lang_features, "corresponding lang feature");
+            check_features(&f, lang_features, "corresponding lang feature");
             check_features(&f, &lib_features, "previous");
             lib_features.insert(name.to_owned(), f);
         }
@@ -543,7 +540,7 @@ fn map_lib_features(
                     continue;
                 }
 
-                if let Some((ref name, ref mut f)) = becoming_feature {
+                if let Some((name, ref mut f)) = becoming_feature {
                     if f.tracking_issue.is_none() {
                         f.tracking_issue = find_attr_val(line, "issue").and_then(handle_issue_none);
                     }
