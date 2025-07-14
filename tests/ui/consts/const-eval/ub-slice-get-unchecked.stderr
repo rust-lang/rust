@@ -1,11 +1,25 @@
-error[E0015]: cannot call non-const method `core::slice::<impl [()]>::get_unchecked::<std::ops::Range<usize>>` in constants
+error[E0658]: cannot call conditionally-const method `core::slice::<impl [()]>::get_unchecked::<std::ops::Range<usize>>` in constants
   --> $DIR/ub-slice-get-unchecked.rs:7:29
    |
 LL | const B: &[()] = unsafe { A.get_unchecked(3..1) };
    |                             ^^^^^^^^^^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 1 previous error
+error: `core::slice::<impl [T]>::get_unchecked` is not yet stable as a const fn
+  --> $DIR/ub-slice-get-unchecked.rs:7:27
+   |
+LL | const B: &[()] = unsafe { A.get_unchecked(3..1) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `#![feature(const_index)]` to the crate attributes to enable
+   |
+LL + #![feature(const_index)]
+   |
 
-For more information about this error, try `rustc --explain E0015`.
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
