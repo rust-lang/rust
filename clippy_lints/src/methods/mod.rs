@@ -5557,7 +5557,7 @@ impl Methods {
         // Handle method calls whose receiver and arguments may come from expansion
         if let ExprKind::MethodCall(path, recv, args, _call_span) = expr.kind {
             match (path.ident.name, args) {
-                (sym::expect, [_]) if !matches!(method_call(recv), Some((sym::ok | sym::err, _, [], _, _))) => {
+                (sym::expect, [_]) => {
                     unwrap_expect_used::check(
                         cx,
                         expr,
