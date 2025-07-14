@@ -476,4 +476,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Option `tool.TOOL_NAME.features` now works on any subcommand, not just `build`.",
     },
+    ChangeInfo {
+        change_id: 143926,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `rust.description` and `llvm.ccache` as it was deprecated in #137723 and #136941 long time ago.",
+    },
 ];

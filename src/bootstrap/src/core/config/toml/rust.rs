@@ -36,8 +36,6 @@ define_config! {
         incremental: Option<bool> = "incremental",
         default_linker: Option<String> = "default-linker",
         channel: Option<String> = "channel",
-        // FIXME: Remove this field at Q2 2025, it has been replaced by build.description
-        description: Option<String> = "description",
         musl_root: Option<String> = "musl-root",
         rpath: Option<bool> = "rpath",
         strip: Option<bool> = "strip",
@@ -320,7 +318,6 @@ pub fn check_incompatible_options_for_ci_rustc(
         jemalloc,
         rpath,
         channel,
-        description,
         default_linker,
         std_features,
 
@@ -388,7 +385,6 @@ pub fn check_incompatible_options_for_ci_rustc(
     err!(current_rust_config.std_features, std_features, "rust");
 
     warn!(current_rust_config.channel, channel, "rust");
-    warn!(current_rust_config.description, description, "rust");
 
     Ok(())
 }
@@ -415,12 +411,7 @@ pub(crate) fn validate_codegen_backends(backends: Vec<String>, section: &str) ->
 }
 
 impl Config {
-    pub fn apply_rust_config(
-        &mut self,
-        toml_rust: Option<Rust>,
-        warnings: Warnings,
-        description: &mut Option<String>,
-    ) {
+    pub fn apply_rust_config(&mut self, toml_rust: Option<Rust>, warnings: Warnings) {
         let mut debug = None;
         let mut rustc_debug_assertions = None;
         let mut std_debug_assertions = None;
@@ -459,7 +450,6 @@ impl Config {
                 randomize_layout,
                 default_linker,
                 channel: _, // already handled above
-                description: rust_description,
                 musl_root,
                 rpath,
                 verbose_tests,
@@ -552,14 +542,6 @@ impl Config {
             set(&mut self.jemalloc, jemalloc);
             set(&mut self.test_compare_mode, test_compare_mode);
             set(&mut self.backtrace, backtrace);
-            if rust_description.is_some() {
-                eprintln!(
-                    "Warning: rust.description is deprecated. Use build.description instead."
-                );
-            }
-            if description.is_none() {
-                *description = rust_description;
-            }
             set(&mut self.rust_dist_src, dist_src);
             set(&mut self.verbose_tests, verbose_tests);
             // in the case "false" is set explicitly, do not overwrite the command line args
