@@ -310,6 +310,7 @@ pub fn check_builtin_meta_item(
                 | sym::must_use
                 | sym::track_caller
                 | sym::link_name
+                | sym::link_ordinal
                 | sym::export_name
                 | sym::rustc_macro_transparency
                 | sym::link_section

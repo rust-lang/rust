@@ -116,12 +116,6 @@ error: malformed `cfi_encoding` attribute input
 LL | #[cfi_encoding]
    | ^^^^^^^^^^^^^^^ help: must be of the form: `#[cfi_encoding = "encoding"]`
 
-error: malformed `link_ordinal` attribute input
-  --> $DIR/malformed-attrs.rs:167:5
-   |
-LL |     #[link_ordinal]
-   |     ^^^^^^^^^^^^^^^ help: must be of the form: `#[link_ordinal(ordinal)]`
-
 error: malformed `linkage` attribute input
   --> $DIR/malformed-attrs.rs:173:5
    |
@@ -530,6 +524,15 @@ LL |     #[unsafe(ffi_pure = 1)]
    |     |                 |
    |     |                 didn't expect any arguments here
    |     help: must be of the form: `#[ffi_pure]`
+
+error[E0539]: malformed `link_ordinal` attribute input
+  --> $DIR/malformed-attrs.rs:167:5
+   |
+LL |     #[link_ordinal]
+   |     ^^^^^^^^^^^^^^^
+   |     |
+   |     expected this to be a list
+   |     help: must be of the form: `#[link_ordinal(ordinal)]`
 
 error[E0565]: malformed `ffi_const` attribute input
   --> $DIR/malformed-attrs.rs:171:5
