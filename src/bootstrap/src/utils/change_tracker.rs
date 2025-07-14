@@ -481,4 +481,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "The current `./x suggest` implementation has been removed due to it being quite broken and a lack of maintenance bandwidth, with no prejudice against re-implementing it in a more maintainable form.",
     },
+    ChangeInfo {
+        change_id: 143926,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `rust.description` and `llvm.ccache` as it was deprecated in #137723 and #136941 long time ago.",
+    },
 ];
