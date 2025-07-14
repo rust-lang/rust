@@ -1,7 +1,6 @@
 //@ compile-flags: -Copt-level=0 -Cno-prepopulate-passes
 //@ min-llvm-version: 19
 //@ only-64bit
-//@ ignore-riscv64
 
 #![crate_type = "lib"]
 
@@ -28,7 +27,7 @@ fn make_none_bool() -> Option<bool> {
 
 #[no_mangle]
 fn make_some_ordering(x: Ordering) -> Option<Ordering> {
-    // CHECK-LABEL: i8 @make_some_ordering(i8 %x)
+    // CHECK-LABEL: i8 @make_some_ordering(i8 {{.*}}%x)
     // CHECK-NEXT: start:
     // CHECK-NEXT: ret i8 %x
     Some(x)
@@ -36,7 +35,7 @@ fn make_some_ordering(x: Ordering) -> Option<Ordering> {
 
 #[no_mangle]
 fn make_some_u16(x: u16) -> Option<u16> {
-    // CHECK-LABEL: { i16, i16 } @make_some_u16(i16 %x)
+    // CHECK-LABEL: { i16, i16 } @make_some_u16(i16 {{.*}}%x)
     // CHECK-NEXT: start:
     // CHECK-NEXT: %0 = insertvalue { i16, i16 } { i16 1, i16 poison }, i16 %x, 1
     // CHECK-NEXT: ret { i16, i16 } %0
@@ -53,7 +52,7 @@ fn make_none_u16() -> Option<u16> {
 
 #[no_mangle]
 fn make_some_nzu32(x: NonZero<u32>) -> Option<NonZero<u32>> {
-    // CHECK-LABEL: i32 @make_some_nzu32(i32 %x)
+    // CHECK-LABEL: i32 @make_some_nzu32(i32 {{.*}}%x)
     // CHECK-NEXT: start:
     // CHECK-NEXT: ret i32 %x
     Some(x)
@@ -115,7 +114,7 @@ fn make_uninhabited_err_indirectly(n: Never) -> Result<u32, Never> {
 fn make_fully_uninhabited_result(v: u32, n: Never) -> Result<(u32, Never), (Never, u32)> {
     // Actually reaching this would be UB, so we don't actually build a result.
 
-    // CHECK-LABEL: { i32, i32 } @make_fully_uninhabited_result(i32 %v)
+    // CHECK-LABEL: { i32, i32 } @make_fully_uninhabited_result(i32 {{.*}}%v)
     // CHECK-NEXT: start:
     // CHECK-NEXT: call void @llvm.trap()
     // CHECK-NEXT: call void @llvm.trap()
