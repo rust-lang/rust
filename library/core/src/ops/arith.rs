@@ -107,7 +107,9 @@ macro_rules! add_impl {
         }
 
         forward_ref_binop! { impl Add, add for $t, $t,
-        #[stable(feature = "rust1", since = "1.0.0")] }
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")],
+        const }
     )*)
 }
 
@@ -220,7 +222,9 @@ macro_rules! sub_impl {
         }
 
         forward_ref_binop! { impl Sub, sub for $t, $t,
-        #[stable(feature = "rust1", since = "1.0.0")] }
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")],
+        const }
     )*)
 }
 
@@ -354,7 +358,9 @@ macro_rules! mul_impl {
         }
 
         forward_ref_binop! { impl Mul, mul for $t, $t,
-        #[stable(feature = "rust1", since = "1.0.0")] }
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")],
+        const }
     )*)
 }
 
@@ -497,7 +503,9 @@ macro_rules! div_impl_integer {
         }
 
         forward_ref_binop! { impl Div, div for $t, $t,
-        #[stable(feature = "rust1", since = "1.0.0")] }
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")],
+        const }
     )*)*)
 }
 
@@ -518,7 +526,9 @@ macro_rules! div_impl_float {
         }
 
         forward_ref_binop! { impl Div, div for $t, $t,
-        #[stable(feature = "rust1", since = "1.0.0")] }
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")],
+        const }
     )*)
 }
 
@@ -605,7 +615,9 @@ macro_rules! rem_impl_integer {
         }
 
         forward_ref_binop! { impl Rem, rem for $t, $t,
-        #[stable(feature = "rust1", since = "1.0.0")] }
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")],
+        const }
     )*)*)
 }
 
@@ -641,7 +653,9 @@ macro_rules! rem_impl_float {
         }
 
         forward_ref_binop! { impl Rem, rem for $t, $t,
-        #[stable(feature = "rust1", since = "1.0.0")] }
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")],
+        const }
     )*)
 }
 
@@ -720,7 +734,9 @@ macro_rules! neg_impl {
         }
 
         forward_ref_unop! { impl Neg, neg for $t,
-        #[stable(feature = "rust1", since = "1.0.0")] }
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")],
+        const }
     )*)
 }
 
@@ -791,7 +807,9 @@ macro_rules! add_assign_impl {
         }
 
         forward_ref_op_assign! { impl AddAssign, add_assign for $t, $t,
-        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")],
+        const }
     )+)
 }
 
@@ -862,7 +880,9 @@ macro_rules! sub_assign_impl {
         }
 
         forward_ref_op_assign! { impl SubAssign, sub_assign for $t, $t,
-        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")],
+        const }
     )+)
 }
 
@@ -924,7 +944,9 @@ macro_rules! mul_assign_impl {
         }
 
         forward_ref_op_assign! { impl MulAssign, mul_assign for $t, $t,
-        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")],
+        const }
     )+)
 }
 
@@ -985,7 +1007,9 @@ macro_rules! div_assign_impl {
         }
 
         forward_ref_op_assign! { impl DivAssign, div_assign for $t, $t,
-        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")],
+        const }
     )+)
 }
 
@@ -1050,7 +1074,9 @@ macro_rules! rem_assign_impl {
         }
 
         forward_ref_op_assign! { impl RemAssign, rem_assign for $t, $t,
-        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")] }
+        #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")],
+        const }
     )+)
 }
 
