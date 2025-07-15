@@ -37,8 +37,8 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
 // are deliberately not in a doc comment, because they need not be in public docs.)
 //
-// Latest feature: Pretty printing of no_mangle attributes changed
-pub const FORMAT_VERSION: u32 = 53;
+// Latest feature: Structured Attributes
+pub const FORMAT_VERSION: u32 = 54;
 
 /// The root of the emitted JSON blob.
 ///
@@ -195,11 +195,92 @@ pub struct Item {
     /// - `#[repr(C)]` and other reprs also appear as themselves,
     ///   though potentially with a different order: e.g. `repr(i8, C)` may become `repr(C, i8)`.
     ///   Multiple repr attributes on the same item may be combined into an equivalent single attr.
-    pub attrs: Vec<String>,
+    pub attrs: Vec<Attribute>,
     /// Information about the item’s deprecation, if present.
     pub deprecation: Option<Deprecation>,
     /// The type-specific fields describing this item.
     pub inner: ItemEnum,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+/// An attribute, e.g. `#[repr(C)]`
+///
+/// This doesn't include:
+/// - `#[doc = "Doc Comment"]` or `/// Doc comment`. These are in [`Item::docs`] instead.
+/// - `#[deprecated]`. These are in [`Item::deprecation`] instead.
+pub enum Attribute {
+    /// `#[non_exhaustive]`
+    NonExhaustive,
+
+    /// `#[must_use]`
+    MustUse { reason: Option<String> },
+
+    /// `#[export_name = "name"]`
+    ExportName(String),
+
+    /// `#[link_section = "name"]`
+    LinkSection(String),
+
+    /// `#[automatically_derived]`
+    AutomaticallyDerived,
+
+    /// `#[repr]`
+    Repr(AttributeRepr),
+
+    /// `#[no_mangle]`
+    NoMangle,
+
+    /// #[target_feature(enable = "feature1", enable = "feature2")]
+    TargetFeature { enable: Vec<String> },
+
+    /// Something else.
+    ///
+    /// Things here are explicitly *not* covered by the [`FORMAT_VERSION`]
+    /// constant, and may change without bumping the format version.
+    ///
+    /// As an implementation detail, this is currently either:
+    /// 1. A HIR debug printing, like `"#[attr = Optimize(Speed)]"`
+    /// 2. The attribute as it appears in source form, like
+    ///    `"#[optimize(speed)]"`.
+    Other(String),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// The contents of a `#[repr(...)]` attribute.
+///
+/// Used in [`Attribute::Repr`].
+pub struct AttributeRepr {
+    /// The representation, e.g. `#[repr(C)]`, `#[repr(transparent)]`
+    pub kind: ReprKind,
+
+    /// Alignment in bytes, if explicitly specified by `#[repr(align(...)]`.
+    pub align: Option<u64>,
+    /// Alignment in bytes, if explicitly specified by `#[repr(packed(...)]]`.
+    pub packed: Option<u64>,
+
+    /// The integer type for an enum descriminant, if explicitly specified.
+    ///
+    /// e.g. `"i32"`, for `#[repr(C, i32)]`
+    pub int: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+/// The kind of `#[repr]`.
+///
+/// See [AttributeRepr::kind]`.
+pub enum ReprKind {
+    /// `#[repr(Rust)]`
+    ///
+    /// Also the default.
+    Rust,
+    /// `#[repr(C)]`
+    C,
+    /// `#[repr(transparent)]
+    Transparent,
+    /// `#[repr(simd)]`
+    Simd,
 }
 
 /// A range of source code.
@@ -1343,7 +1424,7 @@ pub struct Static {
 
     /// Is the static `unsafe`?
     ///
-    /// This is only true if it's in an `extern` block, and not explicity marked
+    /// This is only true if it's in an `extern` block, and not explicitly marked
     /// as `safe`.
     ///
     /// ```rust
