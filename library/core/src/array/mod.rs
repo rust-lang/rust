@@ -374,9 +374,10 @@ impl<'a, T, const N: usize> IntoIterator for &'a mut [T; N] {
 }
 
 #[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
-impl<T, I, const N: usize> Index<I> for [T; N]
+#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+impl<T, I, const N: usize> const Index<I> for [T; N]
 where
-    [T]: Index<I>,
+    [T]: ~const Index<I>,
 {
     type Output = <[T] as Index<I>>::Output;
 
@@ -387,9 +388,10 @@ where
 }
 
 #[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
-impl<T, I, const N: usize> IndexMut<I> for [T; N]
+#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+impl<T, I, const N: usize> const IndexMut<I> for [T; N]
 where
-    [T]: IndexMut<I>,
+    [T]: ~const IndexMut<I>,
 {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
