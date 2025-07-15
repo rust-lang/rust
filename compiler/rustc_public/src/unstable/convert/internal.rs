@@ -1,4 +1,4 @@
-//! Module containing the translation from stable mir constructs to the rustc counterpart.
+//! Module containing the translation from rustc_public constructs to the rustc counterpart.
 //!
 //! This module will only include a few constructs to allow users to invoke internal rustc APIs
 //! due to incomplete stable coverage.

@@ -1,5 +1,5 @@
 //! When things go wrong, we need some error handling.
-//! There are a few different types of errors in StableMIR:
+//! There are a few different types of errors in rustc_public:
 //!
 //! - [CompilerError]: This represents errors that can be raised when invoking the compiler.
 //! - [Error]: Generic error that represents the reason why a request that could not be fulfilled.

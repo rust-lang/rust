@@ -1,4 +1,4 @@
-//! # The Stable MIR Visitor
+//! # The rustc_public's IR Visitor
 //!
 //! ## Overview
 //!

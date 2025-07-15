@@ -1,6 +1,6 @@
 //! Define the interface with the Rust compiler.
 //!
-//! StableMIR users should not use any of the items in this module directly.
+//! rustc_public users should not use any of the items in this module directly.
 //! These APIs have no stability guarantee.
 
 use std::cell::Cell;
@@ -1067,7 +1067,7 @@ where
     F: FnOnce() -> T,
 {
     if TLV.is_set() {
-        Err(Error::from("StableMIR already running"))
+        Err(Error::from("rustc_public already running"))
     } else {
         let ptr: *const () = (&raw const interface) as _;
         TLV.set(&Cell::new(ptr), || Ok(f()))
