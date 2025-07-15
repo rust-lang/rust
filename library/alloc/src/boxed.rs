@@ -1672,7 +1672,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Box<T, A> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Box<T> {
-    /// Creates a `Box<T>`, with the `Default` value for T.
+    /// Creates a `Box<T>`, with the `Default` value for `T`.
     #[inline]
     fn default() -> Self {
         let mut x: Box<mem::MaybeUninit<T>> = Box::new_uninit();
@@ -1695,6 +1695,7 @@ impl<T: Default> Default for Box<T> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Box<[T]> {
+    /// Creates an empty `[T]` inside a `Box`.
     #[inline]
     fn default() -> Self {
         let ptr: Unique<[T]> = Unique::<[T; 0]>::dangling();
@@ -1713,6 +1714,19 @@ impl Default for Box<str> {
             Unique::new_unchecked(bytes.as_ptr() as *mut str)
         };
         Box(ptr, Global)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "pin_default_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T> Default for Pin<Box<T>>
+where
+    T: ?Sized,
+    Box<T>: Default,
+{
+    #[inline]
+    fn default() -> Self {
+        Box::into_pin(Box::<T>::default())
     }
 }
 
