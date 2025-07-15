@@ -7,9 +7,10 @@ use private::Sealed;
 use rustc_ast::{self as ast, LitKind, MetaItemLit, NodeId};
 use rustc_attr_data_structures::AttributeKind;
 use rustc_attr_data_structures::lints::{AttributeLint, AttributeLintKind};
-use rustc_errors::{DiagCtxtHandle, Diagnostic};
-use rustc_feature::{AttributeTemplate, Features};
+use rustc_errors::{Applicability, DiagCtxtHandle, Diagnostic};
+use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features};
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, HirId};
+use rustc_parse::validate_attr::{is_attr_template_compatible, parse_meta};
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
@@ -197,7 +198,7 @@ mod private {
 #[allow(private_interfaces)]
 pub trait Stage: Sized + 'static + Sealed {
     type Id: Copy;
-    const SHOULD_EMIT_LINTS: bool;
+    const IS_LATE: bool;
 
     fn parsers() -> &'static group_type!(Self);
 
@@ -212,7 +213,7 @@ pub trait Stage: Sized + 'static + Sealed {
 #[allow(private_interfaces)]
 impl Stage for Early {
     type Id = NodeId;
-    const SHOULD_EMIT_LINTS: bool = false;
+    const IS_LATE: bool = false;
 
     fn parsers() -> &'static group_type!(Self) {
         &early::ATTRIBUTE_PARSERS
@@ -234,7 +235,7 @@ impl Stage for Early {
 #[allow(private_interfaces)]
 impl Stage for Late {
     type Id = HirId;
-    const SHOULD_EMIT_LINTS: bool = true;
+    const IS_LATE: bool = true;
 
     fn parsers() -> &'static group_type!(Self) {
         &late::ATTRIBUTE_PARSERS
@@ -284,7 +285,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     /// must be delayed until after HIR is built. This method will take care of the details of
     /// that.
     pub(crate) fn emit_lint(&mut self, lint: AttributeLintKind, span: Span) {
-        if !S::SHOULD_EMIT_LINTS {
+        if !S::IS_LATE {
             return;
         }
         let id = self.target_id;
@@ -740,12 +741,25 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser::Ast(&n.item.path));
 
+                    // Parse attribute using new infra
                     let parser = MetaItemParser::from_attr(n, self.dcx());
                     let path = parser.path();
                     let args = parser.args();
                     let parts = path.segments().map(|i| i.name).collect::<Vec<_>>();
 
                     if let Some(accepts) = S::parsers().0.get(parts.as_slice()) {
+                        //FIXME we call this to generate a few of the errors (such as invalid literals) that the new parses does not generate yet
+                        //Remove this when possible
+
+                        // rustc_dummy is not checked unless it is of the `Eq` arguments form
+                        let skip_parse_meta_check = attr.has_name(sym::rustc_dummy)
+                            && !matches!(n.item.args, rustc_ast::AttrArgs::Eq { .. });
+                        if !skip_parse_meta_check
+                            && let Err(err) = parse_meta(&self.sess.psess, attr)
+                        {
+                            err.emit();
+                        }
+
                         for (template, accept) in accepts {
                             let mut cx: AcceptContext<'_, 'sess, S> = AcceptContext {
                                 shared: SharedContext {
@@ -777,6 +791,46 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         //     "attribute {path} wasn't parsed and isn't a know tool attribute",
                         // );
 
+                        if S::IS_LATE
+                            && !attr.has_name(sym::cfg_trace)
+                            && !attr.has_name(sym::cfg_attr_trace)
+                        {
+                            let builtin_attr_info = attr
+                                .ident()
+                                .and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
+                            if let Some(BuiltinAttribute { name, template, .. }) = builtin_attr_info
+                            {
+                                match parse_meta(&self.sess.psess, attr) {
+                                    // Don't check safety again, we just did that
+                                    Ok(meta) => {
+                                        if !is_attr_template_compatible(&template, &meta.kind) {
+                                            self.emit_malformed_unparsed_attribute(
+                                                attr.style,
+                                                meta.span,
+                                                *name,
+                                                *template,
+                                                target_id,
+                                                &mut emit_lint,
+                                            );
+                                        }
+                                    }
+                                    Err(err) => {
+                                        err.emit();
+                                    }
+                                }
+                            } else {
+                                if let rustc_ast::AttrArgs::Eq { .. } = n.item.args {
+                                    // All key-value attributes are restricted to meta-item syntax.
+                                    match parse_meta(&self.sess.psess, attr) {
+                                        Ok(_) => {}
+                                        Err(err) => {
+                                            err.emit();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         attributes.push(Attribute::Unparsed(Box::new(AttrItem {
                             path: AttrPath::from_ast(&n.item.path),
                             args: self.lower_attr_args(&n.item.args, lower_span),
@@ -807,6 +861,57 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         attributes.extend(parsed_attributes);
 
         attributes
+    }
+
+    fn emit_malformed_unparsed_attribute(
+        &self,
+        style: ast::AttrStyle,
+        span: Span,
+        name: Symbol,
+        template: AttributeTemplate,
+        target_id: S::Id,
+        emit_lint: &mut impl FnMut(AttributeLint<S::Id>),
+    ) {
+        // Some of previously accepted forms were used in practice,
+        // report them as warnings for now.
+        let should_warn = |name| matches!(name, sym::doc | sym::link | sym::test | sym::bench);
+
+        let error_msg = format!("malformed `{name}` attribute input");
+        let mut suggestions = vec![];
+        let inner = if style == ast::AttrStyle::Inner { "!" } else { "" };
+        if template.word {
+            suggestions.push(format!("#{inner}[{name}]"));
+        }
+        if let Some(descr) = template.list {
+            suggestions.push(format!("#{inner}[{name}({descr})]"));
+        }
+        suggestions.extend(template.one_of.iter().map(|&word| format!("#{inner}[{name}({word})]")));
+        if let Some(descr) = template.name_value_str {
+            suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
+        }
+        if should_warn(name) {
+            emit_lint(AttributeLint {
+                id: target_id,
+                span,
+                kind: AttributeLintKind::IllFormedAttributeInput { suggestions },
+            });
+        } else {
+            suggestions.sort();
+            self.sess
+                .dcx()
+                .struct_span_err(span, error_msg)
+                .with_span_suggestions(
+                    span,
+                    if suggestions.len() == 1 {
+                        "must be of the form"
+                    } else {
+                        "the following are the possible correct uses"
+                    },
+                    suggestions,
+                    Applicability::HasPlaceholders,
+                )
+                .emit();
+        }
     }
 
     /// Returns whether there is a parser for an attribute with this name

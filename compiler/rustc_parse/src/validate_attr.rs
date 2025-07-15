@@ -7,7 +7,7 @@ use rustc_ast::{
     Path, Safety,
 };
 use rustc_errors::{Applicability, DiagCtxtHandle, FatalError, PResult};
-use rustc_feature::{AttributeSafety, AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
+use rustc_feature::{AttributeSafety, AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::errors::report_lit_error;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{ILL_FORMED_ATTRIBUTE_INPUT, UNSAFE_ATTR_OUTSIDE_UNSAFE};
@@ -26,34 +26,6 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute, id: NodeId) {
 
     let builtin_attr_safety = builtin_attr_info.map(|x| x.safety);
     check_attribute_safety(psess, builtin_attr_safety, attr, id);
-
-    // Check input tokens for built-in and key-value attributes.
-    match builtin_attr_info {
-        // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
-        Some(BuiltinAttribute { name, template, .. }) if *name != sym::rustc_dummy => {
-            match parse_meta(psess, attr) {
-                // Don't check safety again, we just did that
-                Ok(meta) => {
-                    check_builtin_meta_item(psess, &meta, attr.style, *name, *template, false)
-                }
-                Err(err) => {
-                    err.emit();
-                }
-            }
-        }
-        _ => {
-            let attr_item = attr.get_normal_item();
-            if let AttrArgs::Eq { .. } = attr_item.args {
-                // All key-value attributes are restricted to meta-item syntax.
-                match parse_meta(psess, attr) {
-                    Ok(_) => {}
-                    Err(err) => {
-                        err.emit();
-                    }
-                }
-            }
-        }
-    }
 }
 
 pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, MetaItem> {
@@ -141,7 +113,7 @@ pub(super) fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim
 }
 
 /// Checks that the given meta-item is compatible with this `AttributeTemplate`.
-fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaItemKind) -> bool {
+pub fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaItemKind) -> bool {
     let is_one_allowed_subword = |items: &[MetaItemInner]| match items {
         [item] => item.is_word() && template.one_of.iter().any(|&word| item.has_name(word)),
         _ => false,
@@ -262,70 +234,11 @@ pub fn check_builtin_meta_item(
     style: ast::AttrStyle,
     name: Symbol,
     template: AttributeTemplate,
-    deny_unsafety: bool,
 ) {
     if !is_attr_template_compatible(&template, &meta.kind) {
-        // attrs with new parsers are locally validated so excluded here
-        if matches!(
-            name,
-            sym::inline
-                | sym::export_stable
-                | sym::ffi_const
-                | sym::ffi_pure
-                | sym::rustc_std_internal_symbol
-                | sym::may_dangle
-                | sym::rustc_as_ptr
-                | sym::rustc_pub_transparent
-                | sym::rustc_const_stable_indirect
-                | sym::rustc_force_inline
-                | sym::rustc_confusables
-                | sym::rustc_skip_during_method_dispatch
-                | sym::rustc_pass_by_value
-                | sym::rustc_deny_explicit_impl
-                | sym::rustc_do_not_implement_via_object
-                | sym::rustc_coinductive
-                | sym::const_trait
-                | sym::rustc_specialization_trait
-                | sym::rustc_unsafe_specialization_marker
-                | sym::rustc_allow_incoherent_impl
-                | sym::rustc_coherence_is_core
-                | sym::marker
-                | sym::fundamental
-                | sym::rustc_paren_sugar
-                | sym::type_const
-                | sym::repr
-                | sym::align
-                | sym::deprecated
-                | sym::optimize
-                | sym::cold
-                | sym::target_feature
-                | sym::rustc_allow_const_fn_unstable
-                | sym::naked
-                | sym::no_mangle
-                | sym::non_exhaustive
-                | sym::omit_gdb_pretty_printer_section
-                | sym::path
-                | sym::ignore
-                | sym::must_use
-                | sym::track_caller
-                | sym::link_name
-                | sym::link_ordinal
-                | sym::export_name
-                | sym::rustc_macro_transparency
-                | sym::link_section
-                | sym::rustc_layout_scalar_valid_range_start
-                | sym::rustc_layout_scalar_valid_range_end
-                | sym::no_implicit_prelude
-                | sym::automatically_derived
-        ) {
-            return;
-        }
         emit_malformed_attribute(psess, style, meta.span, name, template);
     }
-
-    if deny_unsafety {
-        deny_builtin_meta_unsafety(psess.dcx(), meta.unsafety, &meta.path);
-    }
+    deny_builtin_meta_unsafety(psess.dcx(), meta.unsafety, &meta.path);
 }
 
 fn emit_malformed_attribute(
