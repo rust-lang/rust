@@ -5,9 +5,7 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     debug n => _2;
     let mut _0: u16;
     scope 1 (inlined <u16 as Step>::forward) {
-        let _8: std::option::Option<u16>;
-        let mut _10: u16;
-        let mut _11: &std::option::Option<u16>;
+        let mut _8: u16;
         scope 2 {
         }
         scope 3 (inlined <u16 as Step>::forward_checked) {
@@ -15,9 +13,8 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
                 scope 6 (inlined core::num::<impl u16>::checked_add) {
                     let mut _5: (u16, bool);
                     let mut _6: bool;
-                    let mut _7: u16;
                     scope 7 (inlined std::intrinsics::unlikely) {
-                        let _9: ();
+                        let _7: ();
                     }
                 }
             }
@@ -38,8 +35,6 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
 
     bb0: {
         StorageLive(_4);
-        StorageLive(_11);
-        StorageLive(_8);
         StorageLive(_3);
         _3 = Gt(copy _2, const 65535_usize);
         switchInt(move _3) -> [0: bb1, otherwise: bb5];
@@ -58,55 +53,34 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     bb2: {
         StorageDead(_5);
         StorageDead(_6);
-        StorageLive(_7);
-        _7 = AddUnchecked(copy _1, copy _4);
-        _8 = Option::<u16>::Some(move _7);
-        StorageDead(_7);
-        // DBG: _11 = &_8;
-        StorageDead(_8);
-        StorageDead(_11);
         goto -> bb7;
     }
 
     bb3: {
-        _9 = std::intrinsics::cold_path() -> [return: bb4, unwind unreachable];
+        _7 = std::intrinsics::cold_path() -> [return: bb4, unwind unreachable];
     }
 
     bb4: {
         StorageDead(_5);
         StorageDead(_6);
-        _8 = const Option::<u16>::None;
-        // DBG: _11 = &_8;
         goto -> bb6;
     }
 
     bb5: {
         StorageDead(_3);
-        _8 = const Option::<u16>::None;
-        // DBG: _11 = &_8;
         goto -> bb6;
     }
 
     bb6: {
-        StorageDead(_8);
-        StorageDead(_11);
         assert(!const true, "attempt to compute `{} + {}`, which would overflow", const core::num::<impl u16>::MAX, const 1_u16) -> [success: bb7, unwind continue];
     }
 
     bb7: {
-        StorageLive(_10);
-        _10 = copy _2 as u16 (IntToInt);
-        _0 = Add(copy _1, copy _10);
-        StorageDead(_10);
+        StorageLive(_8);
+        _8 = copy _2 as u16 (IntToInt);
+        _0 = Add(copy _1, copy _8);
+        StorageDead(_8);
         StorageDead(_4);
         return;
     }
-}
-
-ALLOC0 (size: 4, align: 2) {
-    00 00 __ __                                     │ ..░░
-}
-
-ALLOC1 (size: 4, align: 2) {
-    00 00 __ __                                     │ ..░░
 }
