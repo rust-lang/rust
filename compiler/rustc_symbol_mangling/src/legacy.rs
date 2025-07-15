@@ -36,6 +36,11 @@ pub(super) fn mangle<'tcx>(
                 debug!(?instance_ty);
                 break;
             }
+            DefPathData::GlobalAsm => {
+                // `global_asm!` doesn't have a type.
+                instance_ty = tcx.types.unit;
+                break;
+            }
             _ => {
                 // if we're making a symbol for something, there ought
                 // to be a value or type-def or something in there

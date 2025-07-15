@@ -19,9 +19,9 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_middle::middle::exported_symbols::{self, SymbolExportKind};
 use rustc_middle::middle::lang_items;
-use rustc_middle::mir::BinOp;
-use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::interpret::{ErrorHandled, Scalar};
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
+use rustc_middle::mir::{BinOp, ConstValue};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
@@ -409,20 +409,34 @@ where
                         Ok(const_value) => {
                             let ty =
                                 cx.tcx().typeck_body(anon_const.body).node_type(anon_const.hir_id);
-                            let string = common::asm_const_to_str(
-                                cx.tcx(),
-                                *op_sp,
-                                const_value,
-                                cx.layout_of(ty),
-                            );
-                            GlobalAsmOperandRef::Const { string }
+                            let ConstValue::Scalar(scalar) = const_value else {
+                                span_bug!(
+                                    *op_sp,
+                                    "expected Scalar for promoted asm const, but got {:#?}",
+                                    const_value
+                                )
+                            };
+                            match scalar {
+                                Scalar::Int(_) => {
+                                    let string = common::asm_const_to_str(
+                                        cx.tcx(),
+                                        *op_sp,
+                                        const_value,
+                                        cx.layout_of(ty),
+                                    );
+                                    GlobalAsmOperandRef::Interpolate { string }
+                                }
+                                Scalar::Ptr(value, _) => {
+                                    GlobalAsmOperandRef::ConstPointer { value }
+                                }
+                            }
                         }
                         Err(ErrorHandled::Reported { .. }) => {
                             // An error has already been reported and
                             // compilation is guaranteed to fail if execution
                             // hits this path. So an empty string instead of
                             // a stringified constant value will suffice.
-                            GlobalAsmOperandRef::Const { string: String::new() }
+                            GlobalAsmOperandRef::Interpolate { string: String::new() }
                         }
                         Err(ErrorHandled::TooGeneric(_)) => {
                             span_bug!(*op_sp, "asm const cannot be resolved; too generic")
@@ -457,7 +471,13 @@ where
             })
             .collect();
 
-        cx.codegen_global_asm(asm.template, &operands, asm.options, asm.line_spans);
+        cx.codegen_global_asm(
+            asm.template,
+            &operands,
+            asm.options,
+            asm.line_spans,
+            Instance::mono(cx.tcx(), item_id.owner_id.to_def_id()),
+        );
     } else {
         span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
     }

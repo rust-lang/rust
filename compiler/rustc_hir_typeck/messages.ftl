@@ -15,6 +15,10 @@ hir_typeck_arg_mismatch_indeterminate = argument type mismatch was detected, but
     .note = we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new
 
 hir_typeck_as_deref_suggestion = consider using `as_deref` here
+
+hir_typeck_asm_const_ptr_unstable =
+    using pointers in asm `const` operand is experimental
+
 hir_typeck_base_expression_double_dot = base expression required after `..`
 hir_typeck_base_expression_double_dot_add_expr = add a base expression here
 hir_typeck_base_expression_double_dot_enable_default_field_values =
