@@ -30,16 +30,10 @@ impl<'tcx> Statement<'tcx> {
         }
         let replaced_stmt = std::mem::replace(&mut self.kind, StatementKind::Nop);
         if !drop_debuginfo {
-            match replaced_stmt {
-                StatementKind::Assign(box (place, Rvalue::Ref(_, _, ref_place)))
-                    if let Some(local) = place.as_local() =>
-                {
-                    self.debuginfos.push(StmtDebugInfo::AssignRef(local, ref_place));
-                }
-                _ => {
-                    bug!("debuginfo is not yet supported.")
-                }
-            }
+            let Some(debuginfo) = replaced_stmt.as_debuginfo() else {
+                bug!("debuginfo is not yet supported.")
+            };
+            self.debuginfos.push(debuginfo);
         }
     }
 
