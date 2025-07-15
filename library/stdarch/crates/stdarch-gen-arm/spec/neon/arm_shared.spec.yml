@@ -9755,7 +9755,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vuzp]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uzp]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uzp1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uzp2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -9796,7 +9797,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vuzp]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uzp]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uzp1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uzp2]]}]]
       - *neon-fp16
       - *neon-unstable-f16
     safety: safe
