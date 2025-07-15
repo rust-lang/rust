@@ -154,9 +154,9 @@ pub trait LayoutTypeCodegenMethods<'tcx>: BackendTypes {
 // For backends that support CFI using type membership (i.e., testing whether a given pointer is
 // associated with a type identifier).
 pub trait TypeMembershipCodegenMethods<'tcx>: BackendTypes {
-    fn add_type_metadata(&self, _function: Self::Function, _typeid: String) {}
-    fn set_type_metadata(&self, _function: Self::Function, _typeid: String) {}
-    fn typeid_metadata(&self, _typeid: String) -> Option<Self::Metadata> {
+    fn add_type_metadata(&self, _function: Self::Function, _typeid: &[u8]) {}
+    fn set_type_metadata(&self, _function: Self::Function, _typeid: &[u8]) {}
+    fn typeid_metadata(&self, _typeid: &[u8]) -> Option<Self::Metadata> {
         None
     }
     fn add_kcfi_type_metadata(&self, _function: Self::Function, _typeid: u32) {}

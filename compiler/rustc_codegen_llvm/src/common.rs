@@ -215,10 +215,10 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                 bug!("symbol `{}` is already defined", sym);
             });
             llvm::set_initializer(g, sc);
-            unsafe {
-                llvm::LLVMSetGlobalConstant(g, True);
-                llvm::LLVMSetUnnamedAddress(g, llvm::UnnamedAddr::Global);
-            }
+
+            llvm::set_global_constant(g, true);
+            llvm::set_unnamed_address(g, llvm::UnnamedAddr::Global);
+
             llvm::set_linkage(g, llvm::Linkage::InternalLinkage);
             // Cast to default address space if globals are in a different addrspace
             let g = self.const_pointercast(g, self.type_ptr());
