@@ -1818,7 +1818,6 @@ ui/issues/issue-23024.rs
 ui/issues/issue-23036.rs
 ui/issues/issue-23041.rs
 ui/issues/issue-23046.rs
-ui/issues/issue-23073.rs
 ui/issues/issue-2311-2.rs
 ui/issues/issue-2311.rs
 ui/issues/issue-2312.rs
