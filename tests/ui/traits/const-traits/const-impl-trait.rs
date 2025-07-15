@@ -1,7 +1,7 @@
 //@ compile-flags: -Znext-solver
 //@ known-bug: #110395
 
-// Broken until we have `const PartialEq` impl in stdlib
+// Broken until `(): const PartialEq`
 
 #![allow(incomplete_features)]
 #![feature(const_trait_impl, const_cmp, const_destruct)]

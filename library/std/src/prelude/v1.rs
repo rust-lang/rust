@@ -67,7 +67,7 @@ pub use core::prelude::v1::{
     alloc_error_handler, bench, derive, global_allocator, test, test_case,
 };
 
-#[unstable(feature = "derive_const", issue = "none")]
+#[unstable(feature = "derive_const", issue = "118304")]
 pub use core::prelude::v1::derive_const;
 
 // Do not `doc(no_inline)` either.
