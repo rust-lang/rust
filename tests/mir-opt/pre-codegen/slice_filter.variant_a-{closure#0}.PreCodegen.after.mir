@@ -70,9 +70,7 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
         // DBG: _15 = &((*_3).2: usize);
         // DBG: _16 = &((*_3).3: usize);
         StorageLive(_6);
-        StorageLive(_17);
         // DBG: _17 = &_13;
-        StorageLive(_18);
         // DBG: _18 = &_15;
         _4 = copy ((*_3).0: usize);
         _5 = copy ((*_3).2: usize);
@@ -81,18 +79,12 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
     }
 
     bb1: {
-        StorageDead(_18);
-        StorageDead(_17);
         goto -> bb4;
     }
 
     bb2: {
-        StorageDead(_18);
-        StorageDead(_17);
         StorageLive(_9);
-        StorageLive(_19);
         // DBG: _19 = &_16;
-        StorageLive(_20);
         // DBG: _20 = &_14;
         StorageLive(_7);
         _7 = copy ((*_3).3: usize);
@@ -105,34 +97,24 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
     }
 
     bb3: {
-        StorageDead(_20);
-        StorageDead(_19);
         goto -> bb4;
     }
 
     bb4: {
         StorageLive(_10);
-        StorageLive(_21);
         // DBG: _21 = &_15;
-        StorageLive(_22);
         // DBG: _22 = &_13;
         _10 = Le(copy _5, copy _4);
         switchInt(move _10) -> [0: bb5, otherwise: bb6];
     }
 
     bb5: {
-        StorageDead(_22);
-        StorageDead(_21);
         _0 = const false;
         goto -> bb7;
     }
 
     bb6: {
-        StorageDead(_22);
-        StorageDead(_21);
-        StorageLive(_23);
         // DBG: _23 = &_14;
-        StorageLive(_24);
         // DBG: _24 = &_16;
         StorageLive(_11);
         _11 = copy ((*_3).1: usize);
@@ -141,8 +123,6 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
         _0 = Le(move _11, move _12);
         StorageDead(_12);
         StorageDead(_11);
-        StorageDead(_24);
-        StorageDead(_23);
         goto -> bb7;
     }
 
@@ -152,8 +132,6 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
     }
 
     bb8: {
-        StorageDead(_20);
-        StorageDead(_19);
         _0 = const true;
         goto -> bb9;
     }

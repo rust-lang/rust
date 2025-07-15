@@ -64,9 +64,7 @@
 +         StorageLive(_8);
 +         StorageLive(_9);
 +         StorageLive(_11);
-+         // DBG: _11 = &((*_6).0: alloc::raw_vec::RawVec<A>);
 +         StorageLive(_12);
-+         // DBG: _12 = &(((*_6).0: alloc::raw_vec::RawVec<A>).0: alloc::raw_vec::RawVecInner);
 +         StorageLive(_13);
 +         _13 = copy (((((*_6).0: alloc::raw_vec::RawVec<A>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
 +         _9 = copy _13 as *mut A (Transmute);
@@ -92,7 +90,6 @@
           _5 = copy _2;
 -         _0 = drop_in_place::<Option<B>>(move _5) -> [return: bb2, unwind unreachable];
 +         StorageLive(_17);
-+         StorageLive(_18);
 +         _17 = discriminant((*_5));
 +         switchInt(move _17) -> [0: bb5, otherwise: bb6];
       }
@@ -118,7 +115,6 @@
 +     }
 + 
 +     bb5: {
-+         StorageDead(_18);
 +         StorageDead(_17);
           StorageDead(_5);
           return;

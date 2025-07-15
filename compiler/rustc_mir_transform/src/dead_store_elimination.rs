@@ -22,13 +22,15 @@ use rustc_mir_dataflow::impls::{
     LivenessTransferFunction, MaybeTransitiveLiveLocals, borrowed_locals,
 };
 
+use crate::simplify::UsedInStmtLocals;
 use crate::util::is_within_packed;
 
 /// Performs the optimization on the body
 ///
 /// The `borrowed` set must be a `DenseBitSet` of all the locals that are ever borrowed in this
 /// body. It can be generated via the [`borrowed_locals`] function.
-fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+/// Returns true if any instruction is eliminated.
+fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     let borrowed_locals = borrowed_locals(body);
 
     // If the user requests complete debuginfo, mark the locals that appear in it as live, so
@@ -97,8 +99,9 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     }
 
     if patch.is_empty() && call_operands_to_move.is_empty() {
-        return;
+        return false;
     }
+    let eliminated = !patch.is_empty();
 
     let bbs = body.basic_blocks.as_mut_preserves_cfg();
     for (Location { block, statement_index }, drop_debuginfo) in patch {
@@ -112,6 +115,8 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let Operand::Copy(place) = *arg else { bug!() };
         *arg = Operand::Move(place);
     }
+
+    eliminated
 }
 
 pub(super) enum DeadStoreElimination {
@@ -132,7 +137,12 @@ impl<'tcx> crate::MirPass<'tcx> for DeadStoreElimination {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        eliminate(tcx, body);
+        if eliminate(tcx, body) {
+            UsedInStmtLocals::new(body).remove_unused_storage_annotations(body);
+            for data in body.basic_blocks.as_mut_preserves_cfg() {
+                data.strip_nops();
+            }
+        }
     }
 
     fn is_required(&self) -> bool {

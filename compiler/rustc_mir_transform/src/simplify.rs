@@ -35,12 +35,12 @@
 //! pre-"runtime" MIR!
 
 use itertools::Itertools as _;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_middle::mir::visit::{
-    MutVisitor, MutatingUseContext, NonUseContext, PlaceContext, Visitor,
-};
+use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
 use tracing::{debug, trace};
@@ -329,7 +329,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
     fn strip_nops(&mut self) {
         for blk in self.basic_blocks.iter_mut() {
-            blk.retain_statements(|stmt| !matches!(stmt.kind, StatementKind::Nop))
+            blk.strip_nops();
         }
     }
 }
@@ -502,17 +502,22 @@ fn make_local_map<V>(
 /// Keeps track of used & unused locals.
 struct UsedLocals {
     increment: bool,
-    arg_count: u32,
     use_count: IndexVec<Local, u32>,
+    always_used: DenseBitSet<Local>,
 }
 
 impl UsedLocals {
     /// Determines which locals are used & unused in the given body.
     fn new(body: &Body<'_>) -> Self {
+        let mut always_used = debuginfo_locals(body);
+        always_used.insert(RETURN_PLACE);
+        for arg in body.args_iter() {
+            always_used.insert(arg);
+        }
         let mut this = Self {
             increment: true,
-            arg_count: body.arg_count.try_into().unwrap(),
             use_count: IndexVec::from_elem(0, &body.local_decls),
+            always_used,
         };
         this.visit_body(body);
         this
@@ -520,10 +525,16 @@ impl UsedLocals {
 
     /// Checks if local is used.
     ///
-    /// Return place and arguments are always considered used.
+    /// Return place, arguments, var debuginfo are always considered used.
     fn is_used(&self, local: Local) -> bool {
-        trace!("is_used({:?}): use_count: {:?}", local, self.use_count[local]);
-        local.as_u32() <= self.arg_count || self.use_count[local] != 0
+        trace!(
+            "is_used({:?}): use_count: {:?}, always_used: {}",
+            local,
+            self.use_count[local],
+            self.always_used.contains(local)
+        );
+        // To keep things simple, we don't handle debugging information here, these are in DSE.
+        self.always_used.contains(local) || self.use_count[local] != 0
     }
 
     /// Updates the use counts to reflect the removal of given statement.
@@ -568,17 +579,9 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             StatementKind::ConstEvalCounter
             | StatementKind::Nop
             | StatementKind::StorageLive(..)
-            | StatementKind::StorageDead(..) => {
-                for debuginfo in statement.debuginfos.iter() {
-                    self.visit_statement_debuginfo(debuginfo, location);
-                }
-            }
-
+            | StatementKind::StorageDead(..) => {}
             StatementKind::Assign(box (ref place, ref rvalue)) => {
                 if rvalue.is_safe_to_remove() {
-                    for debuginfo in statement.debuginfos.iter() {
-                        self.visit_statement_debuginfo(debuginfo, location);
-                    }
                     self.visit_lhs(place, location);
                     self.visit_rvalue(rvalue, location);
                 } else {
@@ -589,18 +592,18 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             StatementKind::SetDiscriminant { ref place, variant_index: _ }
             | StatementKind::Deinit(ref place)
             | StatementKind::BackwardIncompatibleDropHint { ref place, reason: _ } => {
-                for debuginfo in statement.debuginfos.iter() {
-                    self.visit_statement_debuginfo(debuginfo, location);
-                }
                 self.visit_lhs(place, location);
             }
         }
     }
 
     fn visit_local(&mut self, local: Local, ctx: PlaceContext, _location: Location) {
+        if matches!(ctx, PlaceContext::NonUse(_)) {
+            return;
+        }
         if self.increment {
             self.use_count[local] += 1;
-        } else if ctx != PlaceContext::NonUse(NonUseContext::VarDebugInfo) {
+        } else {
             assert_ne!(self.use_count[local], 0);
             self.use_count[local] -= 1;
         }
@@ -620,28 +623,26 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
 
         for data in body.basic_blocks.as_mut_preserves_cfg() {
             // Remove unnecessary StorageLive and StorageDead annotations.
-            data.retain_statements(|statement| {
-                let keep = match &statement.kind {
+            for statement in data.statements.iter_mut() {
+                let keep_statement = match &statement.kind {
                     StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                         used_locals.is_used(*local)
                     }
-                    StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
-
-                    StatementKind::SetDiscriminant { place, .. }
-                    | StatementKind::BackwardIncompatibleDropHint { place, reason: _ }
-                    | StatementKind::Deinit(place) => used_locals.is_used(place.local),
-                    StatementKind::Nop => false,
-                    _ => true,
+                    StatementKind::Assign(box (place, _))
+                    | StatementKind::SetDiscriminant { box place, .. }
+                    | StatementKind::BackwardIncompatibleDropHint { box place, .. }
+                    | StatementKind::Deinit(box place) => used_locals.is_used(place.local),
+                    _ => continue,
                 };
-
-                if !keep {
-                    trace!("removing statement {:?}", statement);
-                    modified = true;
-                    used_locals.statement_removed(statement);
+                if keep_statement {
+                    continue;
                 }
-
-                keep
-            });
+                trace!("removing statement {:?}", statement);
+                modified = true;
+                used_locals.statement_removed(statement);
+                statement.make_nop(true);
+            }
+            data.strip_nops();
         }
     }
 }
@@ -658,5 +659,44 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
 
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
         *l = self.map[*l].unwrap();
+    }
+}
+
+pub(crate) struct UsedInStmtLocals {
+    pub(crate) locals: DenseBitSet<Local>,
+}
+
+impl UsedInStmtLocals {
+    pub(crate) fn new(body: &Body<'_>) -> Self {
+        let mut this = Self { locals: DenseBitSet::new_empty(body.local_decls.len()) };
+        this.visit_body(body);
+        this
+    }
+
+    pub(crate) fn remove_unused_storage_annotations<'tcx>(&self, body: &mut Body<'tcx>) {
+        for data in body.basic_blocks.as_mut_preserves_cfg() {
+            // Remove unnecessary StorageLive and StorageDead annotations.
+            for statement in data.statements.iter_mut() {
+                let keep_statement = match &statement.kind {
+                    StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
+                        self.locals.contains(*local)
+                    }
+                    _ => continue,
+                };
+                if keep_statement {
+                    continue;
+                }
+                statement.make_nop(true);
+            }
+        }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for UsedInStmtLocals {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
+        if matches!(context, PlaceContext::NonUse(_)) {
+            return;
+        }
+        self.locals.insert(local);
     }
 }

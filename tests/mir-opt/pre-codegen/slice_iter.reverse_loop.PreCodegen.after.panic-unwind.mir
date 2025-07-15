@@ -23,8 +23,6 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                 let mut _18: bool;
                 let mut _19: *const T;
                 let _32: &T;
-                let mut _38: &std::ptr::NonNull<T>;
-                let mut _39: &std::ptr::NonNull<T>;
                 scope 20 {
                     let _14: std::ptr::NonNull<T>;
                     let _20: usize;
@@ -48,7 +46,6 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                 }
                 scope 28 (inlined std::slice::Iter::<'_, T>::next_back_unchecked) {
                     let _26: std::ptr::NonNull<T>;
-                    let mut _40: &std::ptr::NonNull<T>;
                     scope 29 (inlined std::slice::Iter::<'_, T>::pre_dec_end) {
                         let mut _21: *mut *const T;
                         let mut _22: *mut std::ptr::NonNull<T>;
@@ -190,10 +187,6 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         _13 = copy ((_12.0: std::slice::Iter<'_, T>).1: *const T);
         _14 = copy _13 as std::ptr::NonNull<T> (Transmute);
         StorageDead(_13);
-        StorageLive(_38);
-        // DBG: _38 = &((_12.0: std::slice::Iter<'_, T>).0: std::ptr::NonNull<T>);
-        StorageLive(_39);
-        // DBG: _39 = &_14;
         StorageLive(_16);
         StorageLive(_15);
         _15 = copy ((_12.0: std::slice::Iter<'_, T>).0: std::ptr::NonNull<T>);
@@ -204,8 +197,6 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         _18 = Eq(copy _16, copy _17);
         StorageDead(_17);
         StorageDead(_16);
-        StorageDead(_39);
-        StorageDead(_38);
         goto -> bb7;
     }
 
@@ -222,7 +213,6 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb8: {
         StorageLive(_26);
-        StorageLive(_40);
         StorageLive(_28);
         StorageLive(_22);
         StorageLive(_23);
@@ -275,12 +265,10 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_23);
         StorageDead(_22);
         StorageDead(_28);
-        // DBG: _40 = &_26;
         StorageLive(_31);
         _31 = copy _26 as *const T (Transmute);
         _32 = &(*_31);
         StorageDead(_31);
-        StorageDead(_40);
         StorageDead(_26);
         _33 = Option::<&T>::Some(copy _32);
         StorageDead(_18);

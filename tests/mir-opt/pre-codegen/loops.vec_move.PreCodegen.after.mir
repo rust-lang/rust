@@ -171,12 +171,9 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
 
     bb0: {
         StorageLive(_22);
-        StorageLive(_29);
         StorageLive(_6);
         StorageLive(_7);
-        StorageLive(_33);
         StorageLive(_11);
-        StorageLive(_35);
         StorageLive(_20);
         StorageLive(_5);
         StorageLive(_4);
@@ -184,30 +181,18 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         StorageLive(_2);
         _2 = ManuallyDrop::<Vec<impl Sized>> { value: copy _1 };
         StorageLive(_3);
-        StorageLive(_30);
         // DBG: _30 = &_2;
         // DBG: _29 = &(_2.0: std::vec::Vec<impl Sized>);
-        StorageDead(_30);
-        StorageLive(_39);
         // DBG: _39 = &((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
-        StorageLive(_40);
         // DBG: _40 = &(((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner);
-        StorageDead(_40);
-        StorageDead(_39);
         _3 = &raw const ((((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).2: std::alloc::Global);
         StorageDead(_3);
-        StorageLive(_31);
-        StorageLive(_32);
         // DBG: _32 = &_2;
-        StorageDead(_32);
         // DBG: _31 = &((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
-        StorageLive(_41);
         // DBG: _41 = &(((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner);
         _4 = copy (((((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
         _5 = copy _4 as *const impl Sized (Transmute);
         _6 = NonNull::<impl Sized> { pointer: copy _5 };
-        StorageDead(_41);
-        StorageDead(_31);
         _7 = copy _4 as *mut impl Sized (Transmute);
         switchInt(const <impl Sized as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
     }
@@ -215,10 +200,8 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     bb1: {
         StorageLive(_10);
         StorageLive(_8);
-        StorageLive(_36);
         // DBG: _36 = &_2;
         // DBG: _35 = &(_2.0: std::vec::Vec<impl Sized>);
-        StorageDead(_36);
         _8 = copy ((_2.0: std::vec::Vec<impl Sized>).1: usize);
         StorageLive(_9);
         _9 = Le(copy _8, const <impl Sized as std::mem::SizedTypeProperties>::MAX_SLICE_LEN);
@@ -233,10 +216,8 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
 
     bb2: {
         StorageLive(_12);
-        StorageLive(_34);
         // DBG: _34 = &_2;
         // DBG: _33 = &(_2.0: std::vec::Vec<impl Sized>);
-        StorageDead(_34);
         _12 = copy ((_2.0: std::vec::Vec<impl Sized>).1: usize);
         StorageLive(_13);
         _13 = Le(copy _12, const <impl Sized as std::mem::SizedTypeProperties>::MAX_SLICE_LEN);
@@ -264,12 +245,8 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     }
 
     bb4: {
-        StorageLive(_37);
-        StorageLive(_38);
         // DBG: _38 = &_2;
-        StorageDead(_38);
         // DBG: _37 = &((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
-        StorageLive(_42);
         // DBG: _42 = &(((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner);
         StorageLive(_19);
         _19 = SizeOf(impl Sized);
@@ -291,20 +268,15 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
 
     bb7: {
         StorageDead(_19);
-        StorageDead(_42);
-        StorageDead(_37);
         _22 = std::vec::IntoIter::<impl Sized> { buf: copy _6, phantom: const ZeroSized: PhantomData<impl Sized>, cap: move _20, alloc: const ManuallyDrop::<std::alloc::Global> {{ value: std::alloc::Global }}, ptr: copy _6, end: copy _11 };
         StorageDead(_2);
         StorageDead(_17);
         StorageDead(_4);
         StorageDead(_5);
         StorageDead(_20);
-        StorageDead(_35);
         StorageDead(_11);
-        StorageDead(_33);
         StorageDead(_7);
         StorageDead(_6);
-        StorageDead(_29);
         StorageLive(_23);
         _23 = move _22;
         goto -> bb8;

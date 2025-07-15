@@ -233,8 +233,10 @@ impl<'a> MaybeTransitiveLiveLocals<'a> {
         // Compute the place that we are storing to, if any
         let destination = match stmt_kind {
             StatementKind::Assign(box (place, rvalue)) => (rvalue.is_safe_to_remove()
+                // FIXME: We are not sure how we should represent this debugging information for some statements,
+                // keep it for now.
                 && (!debuginfo_locals.contains(place.local)
-                    || (place.as_local().is_some() && matches!(rvalue, mir::Rvalue::Ref(..)))))
+                    || (place.as_local().is_some() && stmt_kind.as_debuginfo().is_some())))
             .then_some(*place),
             StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
                 (!debuginfo_locals.contains(place.local)).then_some(**place)

@@ -21,7 +21,7 @@ use tracing::{debug, instrument, trace, trace_span};
 
 use crate::cost_checker::{CostChecker, is_call_like};
 use crate::deref_separator::deref_finder;
-use crate::simplify::simplify_cfg;
+use crate::simplify::{UsedInStmtLocals, simplify_cfg};
 use crate::validate::validate_types;
 use crate::{check_inline, util};
 
@@ -935,7 +935,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
         in_cleanup_block: false,
         return_block,
         tcx,
-        always_live_locals: DenseBitSet::new_filled(callee_body.local_decls.len()),
+        always_live_locals: UsedInStmtLocals::new(&callee_body).locals,
     };
 
     // Map all `Local`s, `SourceScope`s and `BasicBlock`s to new ones
@@ -995,6 +995,10 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
         // people working on rust can build with or without debuginfo while
         // still getting consistent results from the mir-opt tests.
         caller_body.var_debug_info.append(&mut callee_body.var_debug_info);
+    } else {
+        for bb in callee_body.basic_blocks_mut() {
+            bb.drop_debuginfo();
+        }
     }
     caller_body.basic_blocks_mut().append(callee_body.basic_blocks_mut());
 
