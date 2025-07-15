@@ -38,9 +38,9 @@ pub fn compile_c_arm(
             .set_include_paths(vec![
                 "/include",
                 "/aarch64_be-none-linux-gnu/include",
-                "/aarch64_be-none-linux-gnu/include/c++/14.2.1",
-                "/aarch64_be-none-linux-gnu/include/c++/14.2.1/aarch64_be-none-linux-gnu",
-                "/aarch64_be-none-linux-gnu/include/c++/14.2.1/backward",
+                "/aarch64_be-none-linux-gnu/include/c++/14.3.1",
+                "/aarch64_be-none-linux-gnu/include/c++/14.3.1/aarch64_be-none-linux-gnu",
+                "/aarch64_be-none-linux-gnu/include/c++/14.3.1/backward",
                 "/aarch64_be-none-linux-gnu/libc/usr/include",
             ]);
     }

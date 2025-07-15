@@ -144,21 +144,21 @@ case ${TARGET} in
     aarch64-unknown-linux-gnu*)
         TEST_CPPFLAGS="-fuse-ld=lld -I/usr/aarch64-linux-gnu/include/ -I/usr/aarch64-linux-gnu/include/c++/9/aarch64-linux-gnu/"
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_aarch64.txt
-        TEST_CXX_COMPILER="clang++-19"
+        TEST_CXX_COMPILER="clang++"
         TEST_RUNNER="${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER}"
         ;;
 
     aarch64_be-unknown-linux-gnu*)
         TEST_CPPFLAGS="-fuse-ld=lld"
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_aarch64.txt
-        TEST_CXX_COMPILER="clang++-19"
+        TEST_CXX_COMPILER="clang++"
         TEST_RUNNER="${CARGO_TARGET_AARCH64_BE_UNKNOWN_LINUX_GNU_RUNNER}"
         ;;
 
     armv7-unknown-linux-gnueabihf*)
         TEST_CPPFLAGS="-fuse-ld=lld -I/usr/arm-linux-gnueabihf/include/ -I/usr/arm-linux-gnueabihf/include/c++/9/arm-linux-gnueabihf/"
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_arm.txt
-        TEST_CXX_COMPILER="clang++-19"
+        TEST_CXX_COMPILER="clang++"
         TEST_RUNNER="${CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER}"
         ;;
     *)
