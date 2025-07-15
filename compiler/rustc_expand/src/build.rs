@@ -3,8 +3,8 @@ use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::literal;
 use rustc_ast::{
-    self as ast, AnonConst, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp,
-    attr, token, tokenstream,
+    self as ast, AnonConst, AttrItem, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind,
+    UnOp, attr, token, tokenstream,
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -765,5 +765,11 @@ impl<'a> ExtCtxt<'a> {
             inner,
             span,
         )
+    }
+
+    // Builds an attribute fully manually.
+    pub fn attr_nested(&self, inner: AttrItem, span: Span) -> ast::Attribute {
+        let g = &self.sess.psess.attr_id_generator;
+        attr::mk_attr_from_item(g, inner, None, ast::AttrStyle::Outer, span)
     }
 }

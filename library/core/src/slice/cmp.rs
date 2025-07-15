@@ -8,9 +8,10 @@ use crate::num::NonZero;
 use crate::ops::ControlFlow;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, U> PartialEq<[U]> for [T]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T, U> const PartialEq<[U]> for [T]
 where
-    T: PartialEq<U>,
+    T: ~const PartialEq<U>,
 {
     fn eq(&self, other: &[U]) -> bool {
         SlicePartialEq::equal(self, other)
@@ -94,6 +95,8 @@ impl<T: PartialOrd> PartialOrd for [T] {
 
 #[doc(hidden)]
 // intermediate trait for specialization of slice's PartialEq
+#[const_trait]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 trait SlicePartialEq<B> {
     fn equal(&self, other: &[B]) -> bool;
 
@@ -103,9 +106,10 @@ trait SlicePartialEq<B> {
 }
 
 // Generic slice equality
-impl<A, B> SlicePartialEq<B> for [A]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<A, B> const SlicePartialEq<B> for [A]
 where
-    A: PartialEq<B>,
+    A: ~const PartialEq<B>,
 {
     default fn equal(&self, other: &[B]) -> bool {
         if self.len() != other.len() {
@@ -115,11 +119,14 @@ where
         // Implemented as explicit indexing rather
         // than zipped iterators for performance reasons.
         // See PR https://github.com/rust-lang/rust/pull/116846
-        for idx in 0..self.len() {
+        // FIXME(const_hack): make this a `for idx in 0..self.len()` loop.
+        let mut idx = 0;
+        while idx < self.len() {
             // bound checks are optimized away
             if self[idx] != other[idx] {
                 return false;
             }
+            idx += 1;
         }
 
         true
@@ -128,9 +135,10 @@ where
 
 // When each element can be compared byte-wise, we can compare all the bytes
 // from the whole size in one call to the intrinsics.
-impl<A, B> SlicePartialEq<B> for [A]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<A, B> const SlicePartialEq<B> for [A]
 where
-    A: BytewiseEq<B>,
+    A: ~const BytewiseEq<B>,
 {
     fn equal(&self, other: &[B]) -> bool {
         if self.len() != other.len() {
