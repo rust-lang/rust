@@ -29,7 +29,7 @@ use std::hash::Hash;
 use std::ops::Index;
 
 use bridge::*;
-use context::SmirCtxt;
+use context::CompilerCtxt;
 use rustc_data_structures::fx::{self, FxIndexMap};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;
@@ -48,7 +48,7 @@ pub mod rustc_internal {}
 /// A container which is used for TLS.
 pub struct SmirContainer<'tcx, B: Bridge> {
     pub tables: RefCell<Tables<'tcx, B>>,
-    pub cx: RefCell<SmirCtxt<'tcx, B>>,
+    pub cx: RefCell<CompilerCtxt<'tcx, B>>,
 }
 
 pub struct Tables<'tcx, B: Bridge> {

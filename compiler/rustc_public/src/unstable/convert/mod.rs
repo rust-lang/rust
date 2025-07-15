@@ -9,7 +9,7 @@
 use std::ops::RangeInclusive;
 
 use rustc_public_bridge::Tables;
-use rustc_public_bridge::context::SmirCtxt;
+use rustc_public_bridge::context::CompilerCtxt;
 
 use super::Stable;
 use crate::compiler_interface::BridgeTys;
@@ -26,7 +26,7 @@ where
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
-        cx: &SmirCtxt<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         (*self).stable(tables, cx)
     }
@@ -41,7 +41,7 @@ where
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
-        cx: &SmirCtxt<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         self.as_ref().map(|value| value.stable(tables, cx))
     }
@@ -57,7 +57,7 @@ where
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
-        cx: &SmirCtxt<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         match self {
             Ok(val) => Ok(val.stable(tables, cx)),
@@ -74,7 +74,7 @@ where
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
-        cx: &SmirCtxt<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         self.iter().map(|e| e.stable(tables, cx)).collect()
     }
@@ -89,7 +89,7 @@ where
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
-        cx: &SmirCtxt<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         (self.0.stable(tables, cx), self.1.stable(tables, cx))
     }
@@ -103,7 +103,7 @@ where
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
-        cx: &SmirCtxt<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         RangeInclusive::new(self.start().stable(tables, cx), self.end().stable(tables, cx))
     }

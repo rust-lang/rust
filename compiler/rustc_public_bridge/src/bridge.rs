@@ -6,7 +6,7 @@
 
 use std::fmt::Debug;
 
-use super::context::SmirCtxt;
+use super::context::CompilerCtxt;
 use super::{Bridge, Tables};
 
 pub trait SmirError {
@@ -25,7 +25,7 @@ pub trait Allocation<B: Bridge> {
         align: u64,
         mutability: rustc_middle::mir::Mutability,
         tables: &mut Tables<'tcx, B>,
-        cx: &SmirCtxt<'tcx, B>,
+        cx: &CompilerCtxt<'tcx, B>,
     ) -> Self;
 }
 

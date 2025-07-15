@@ -18,21 +18,21 @@ pub use traits::*;
 
 /// Provides direct access to rustc's internal queries.
 ///
-/// `SmirInterface` must go through
+/// `CompilerInterface` must go through
 /// this context to obtain rustc-level information.
-pub struct SmirCtxt<'tcx, B: Bridge> {
+pub struct CompilerCtxt<'tcx, B: Bridge> {
     pub tcx: TyCtxt<'tcx>,
     _marker: PhantomData<B>,
 }
 
-impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
+impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
         Self { tcx, _marker: Default::default() }
     }
 }
 
 /// Implement error handling for extracting function ABI information.
-impl<'tcx, B: Bridge> FnAbiOfHelpers<'tcx> for SmirCtxt<'tcx, B> {
+impl<'tcx, B: Bridge> FnAbiOfHelpers<'tcx> for CompilerCtxt<'tcx, B> {
     type FnAbiOfResult = Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, B::Error>;
 
     #[inline]
@@ -46,7 +46,7 @@ impl<'tcx, B: Bridge> FnAbiOfHelpers<'tcx> for SmirCtxt<'tcx, B> {
     }
 }
 
-impl<'tcx, B: Bridge> LayoutOfHelpers<'tcx> for SmirCtxt<'tcx, B> {
+impl<'tcx, B: Bridge> LayoutOfHelpers<'tcx> for CompilerCtxt<'tcx, B> {
     type LayoutOfResult = Result<ty::layout::TyAndLayout<'tcx>, B::Error>;
 
     #[inline]
@@ -60,19 +60,19 @@ impl<'tcx, B: Bridge> LayoutOfHelpers<'tcx> for SmirCtxt<'tcx, B> {
     }
 }
 
-impl<'tcx, B: Bridge> HasTypingEnv<'tcx> for SmirCtxt<'tcx, B> {
+impl<'tcx, B: Bridge> HasTypingEnv<'tcx> for CompilerCtxt<'tcx, B> {
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
         ty::TypingEnv::fully_monomorphized()
     }
 }
 
-impl<'tcx, B: Bridge> HasTyCtxt<'tcx> for SmirCtxt<'tcx, B> {
+impl<'tcx, B: Bridge> HasTyCtxt<'tcx> for CompilerCtxt<'tcx, B> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
 
-impl<'tcx, B: Bridge> HasDataLayout for SmirCtxt<'tcx, B> {
+impl<'tcx, B: Bridge> HasDataLayout for CompilerCtxt<'tcx, B> {
     fn data_layout(&self) -> &rustc_abi::TargetDataLayout {
         self.tcx.data_layout()
     }
