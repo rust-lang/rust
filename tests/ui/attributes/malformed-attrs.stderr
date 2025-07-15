@@ -37,19 +37,6 @@ error: malformed `crate_name` attribute input
 LL | #[crate_name]
    | ^^^^^^^^^^^^^ help: must be of the form: `#[crate_name = "name"]`
 
-error: malformed `coverage` attribute input
-  --> $DIR/malformed-attrs.rs:90:1
-   |
-LL | #[coverage]
-   | ^^^^^^^^^^^
-   |
-help: the following are the possible correct uses
-   |
-LL | #[coverage(off)]
-   |           +++++
-LL | #[coverage(on)]
-   |           ++++
-
 error: malformed `no_sanitize` attribute input
   --> $DIR/malformed-attrs.rs:92:1
    |
@@ -459,6 +446,19 @@ error[E0539]: malformed `link_section` attribute input
    |
 LL | #[link_section]
    | ^^^^^^^^^^^^^^^ help: must be of the form: `#[link_section = "name"]`
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/malformed-attrs.rs:90:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
 
 error[E0565]: malformed `no_implicit_prelude` attribute input
   --> $DIR/malformed-attrs.rs:97:1
