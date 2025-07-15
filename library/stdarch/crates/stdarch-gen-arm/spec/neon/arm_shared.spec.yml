@@ -9601,7 +9601,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vtrn]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -9629,7 +9630,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vorr]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -9663,7 +9665,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vtrn]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -9691,7 +9694,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vzip]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -9723,7 +9727,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vzip.16"']]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip2]]}]]
       - *neon-fp16
       - *neon-unstable-f16
     safety: safe
@@ -9819,7 +9824,8 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vtrn]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
