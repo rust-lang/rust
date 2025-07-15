@@ -34,6 +34,7 @@ pub(crate) fn expand_deriving_ord(
         }],
         associated_types: Vec::new(),
         is_const,
+        is_staged_api_crate: cx.ecfg.features.staged_api(),
     };
 
     trait_def.expand(cx, mitem, item, push)
