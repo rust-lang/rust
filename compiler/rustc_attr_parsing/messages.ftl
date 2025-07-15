@@ -133,9 +133,6 @@ attr_parsing_unrecognized_repr_hint =
     unrecognized representation hint
     .help = valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
 
-attr_parsing_unstable_cfg_target_compact =
-    compact `cfg(target(..))` is experimental and subject to change
-
 attr_parsing_unsupported_literal_cfg_boolean =
     literal in `cfg` predicate value must be a boolean
 attr_parsing_unsupported_literal_cfg_string =
