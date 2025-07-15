@@ -2,7 +2,12 @@ error: `cfg` predicate is not specified
   --> $DIR/doc-cfg.rs:3:7
    |
 LL | #[doc(cfg(), cfg(foo, bar))]
-   |       ^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   |       ^^^^^
+   |
+help: expected syntax is
+   |
+LL | #[doc(cfg(/* predicate */), cfg(foo, bar))]
+   |           +++++++++++++++
 
 error: multiple `cfg` predicates are specified
   --> $DIR/doc-cfg.rs:3:23
@@ -14,7 +19,12 @@ error: `cfg` predicate is not specified
   --> $DIR/doc-cfg.rs:9:7
    |
 LL | #[doc(cfg())]
-   |       ^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   |       ^^^^^
+   |
+help: expected syntax is
+   |
+LL | #[doc(cfg(/* predicate */))]
+   |           +++++++++++++++
 
 error: multiple `cfg` predicates are specified
   --> $DIR/doc-cfg.rs:10:16

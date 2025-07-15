@@ -1878,7 +1878,7 @@ macro_rules! common_visitor_and_walkers {
             match kind {
                 AttrKind::Normal(normal) => {
                     let NormalAttr { item, tokens: _ } = &$($mut)?**normal;
-                    let AttrItem { unsafety: _, path, args, tokens: _ } = item;
+                    let AttrItem { unsafety: _, path, args, tokens: _, span: _ } = item;
                     try_visit!(vis.visit_path(path));
                     try_visit!(walk_attr_args(vis, args));
                 }

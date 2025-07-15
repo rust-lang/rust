@@ -2,7 +2,12 @@ error: `cfg` is not followed by parentheses
   --> $DIR/malformed-attrs.rs:102:1
    |
 LL | #[cfg]
-   | ^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   | ^^^^^^
+   |
+help: expected syntax is
+   |
+LL | #[cfg()]
+   |      ++
 
 error: malformed `cfg_attr` attribute input
   --> $DIR/malformed-attrs.rs:104:1

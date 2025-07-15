@@ -1102,6 +1102,33 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
         Cfg::True
     };
 
+    // for attr in attrs.clone() {
+    //     // #[doc]
+    //     if attr.doc_str().is_none() && attr.has_name(sym::doc) {
+    //         // #[doc(...)]
+    //         if let Some(list) = attr.meta_item_list() {
+    //             for item in list {
+    //                 // #[doc(hidden)]
+    //                 if !item.has_name(sym::cfg) {
+    //                     continue;
+    //                 }
+    //                 // #[doc(cfg(...))]
+    //                 if let Some(cfg_mi) = item
+    //                     .meta_item()
+    //                     .and_then(|item| rustc_expand::config::parse_cfg(item, sess, item.span))
+    //                 {
+    //                     match Cfg::parse(cfg_mi) {
+    //                         Ok(new_cfg) => cfg &= new_cfg,
+    //                         Err(e) => {
+    //                             sess.dcx().span_err(e.span, e.msg);
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
     // treat #[target_feature(enable = "feat")] attributes as if they were
     // #[doc(cfg(target_feature = "feat"))] attributes as well
     if let Some(features) = find_attr!(attrs, AttributeKind::TargetFeature(features, _) => features)

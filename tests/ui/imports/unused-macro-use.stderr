@@ -1,8 +1,8 @@
 error: unused `#[macro_use]` import
-  --> $DIR/unused-macro-use.rs:3:1
+  --> $DIR/unused-macro-use.rs:3:3
    |
 LL | #[macro_use]
-   | ^^^^^^^^^^^^
+   |   ^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/unused-macro-use.rs:1:9
