@@ -2629,7 +2629,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         false
     }
 
-    fn find_module(&mut self, def_id: DefId) -> Option<(Module<'ra>, ImportSuggestion)> {
+    fn find_module(&self, def_id: DefId) -> Option<(Module<'ra>, ImportSuggestion)> {
         let mut result = None;
         let mut seen_modules = FxHashSet::default();
         let root_did = self.r.graph_root.def_id();
@@ -2686,7 +2686,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         result
     }
 
-    fn collect_enum_ctors(&mut self, def_id: DefId) -> Option<Vec<(Path, DefId, CtorKind)>> {
+    fn collect_enum_ctors(&self, def_id: DefId) -> Option<Vec<(Path, DefId, CtorKind)>> {
         self.find_module(def_id).map(|(enum_module, enum_import_suggestion)| {
             let mut variants = Vec::new();
             enum_module.for_each_child(self.r, |_, ident, _, name_binding| {
@@ -2703,7 +2703,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
     /// Adds a suggestion for using an enum's variant when an enum is used instead.
     fn suggest_using_enum_variant(
-        &mut self,
+        &self,
         err: &mut Diag<'_>,
         source: PathSource<'_, '_, '_>,
         def_id: DefId,
