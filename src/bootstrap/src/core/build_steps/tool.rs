@@ -196,6 +196,7 @@ impl Step for ToolBuild {
             Kind::Build,
             self.mode,
             self.tool,
+            // A stage N tool is built with the stage N-1 compiler.
             self.build_compiler.stage + 1,
             &self.build_compiler.host,
             &self.target,
@@ -366,7 +367,7 @@ pub(crate) fn get_tool_rustc_compiler(
 }
 
 /// Determines how to build a `ToolTarget`, i.e. which compiler should be used to compile it.
-/// The compiler stage is automatically auto-bumped if we need to cross-compile a stage 1 tool.
+/// The compiler stage is automatically bumped if we need to cross-compile a stage 1 tool.
 pub enum ToolTargetBuildMode {
     /// Build the tool using rustc that corresponds to the selected CLI stage.
     Build(TargetSelection),
@@ -399,7 +400,7 @@ pub(crate) fn get_tool_target_compiler(
         builder.compiler(build_compiler_stage, builder.host_target)
     } else {
         // If we are cross-compiling a stage 1 tool, we cannot do that with a stage 0 compiler,
-        // so we auto-bump the tool's stage to 2.
+        // so we auto-bump the tool's stage to 2, which means we need a stage 1 compiler.
         builder.compiler(build_compiler_stage.max(1), builder.host_target)
     };
     builder.std(compiler, target);
