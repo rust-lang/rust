@@ -90,12 +90,12 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
             }
         };
 
-        match layout.backend_repr() {
-            rustc_abi::BackendRepr::ScalarPair(_, _) => {
-                new_activities.push(da[i].clone());
-                new_positions.push(i + 1);
-            }
-            _ => {}
+        // If the argument is lowered as a `ScalarPair`, we need to duplicate its activity.
+        // Otherwise, the number of activities won't match the number of LLVM arguments and
+        // this will lead to errors when verifying the Enzyme call.
+        if let rustc_abi::BackendRepr::ScalarPair(_, _) = layout.backend_repr() {
+            new_activities.push(da[i].clone());
+            new_positions.push(i + 1);
         }
     }
     // now add the extra activities coming from slices
