@@ -48,8 +48,8 @@ use crate::attributes::test_attrs::IgnoreParser;
 use crate::attributes::traits::{
     AllowIncoherentImplParser, CoherenceIsCoreParser, CoinductiveParser, ConstTraitParser,
     DenyExplicitImplParser, DoNotImplementViaObjectParser, FundamentalParser, MarkerParser,
-    ParenSugarParser, SkipDuringMethodDispatchParser, SpecializationTraitParser, TypeConstParser,
-    UnsafeSpecializationMarkerParser,
+    ParenSugarParser, PointeeParser, SkipDuringMethodDispatchParser, SpecializationTraitParser,
+    TypeConstParser, UnsafeSpecializationMarkerParser,
 };
 use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
@@ -178,6 +178,7 @@ attribute_parsers!(
         Single<WithoutArgs<OmitGdbPrettyPrinterSectionParser>>,
         Single<WithoutArgs<ParenSugarParser>>,
         Single<WithoutArgs<PassByValueParser>>,
+        Single<WithoutArgs<PointeeParser>>,
         Single<WithoutArgs<PubTransparentParser>>,
         Single<WithoutArgs<SpecializationTraitParser>>,
         Single<WithoutArgs<StdInternalSymbolParser>>,
