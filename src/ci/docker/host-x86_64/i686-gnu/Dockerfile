@@ -24,7 +24,6 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu
-ARG SCRIPT_ARG
 COPY scripts/stage_2_test_set1.sh /scripts/
 COPY scripts/stage_2_test_set2.sh /scripts/
-ENV SCRIPT /scripts/${SCRIPT_ARG}
+ENV SCRIPT "Must specify DOCKER_SCRIPT for this image"

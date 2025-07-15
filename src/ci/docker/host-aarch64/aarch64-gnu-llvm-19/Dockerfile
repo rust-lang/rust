@@ -50,9 +50,7 @@ ENV RUST_CONFIGURE_ARGS \
 
 COPY scripts/shared.sh /scripts/
 
-ARG SCRIPT_ARG
+COPY scripts/stage_2_test_set1.sh /scripts/
+COPY scripts/stage_2_test_set2.sh /scripts/
 
-COPY scripts/stage_2_test_set1.sh /tmp/
-COPY scripts/stage_2_test_set2.sh /tmp/
-
-ENV SCRIPT "/tmp/${SCRIPT_ARG}"
+ENV SCRIPT "Must specify DOCKER_SCRIPT for this image"

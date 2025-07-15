@@ -315,16 +315,14 @@ auto:
   - name: i686-gnu-nopt-1
     env:
       IMAGE: i686-gnu-nopt
-      DOCKER_SCRIPT: /scripts/stage_2_test_set1.sh
+      DOCKER_SCRIPT: stage_2_test_set1.sh
     <<: *job-linux-4c
 
   # Skip tests that run in i686-gnu-nopt-1
   - name: i686-gnu-nopt-2
     env:
       IMAGE: i686-gnu-nopt
-      DOCKER_SCRIPT: >-
-        python3 ../x.py test --stage 1 --set rust.optimize=false library/std &&
-        /scripts/stage_2_test_set2.sh
+      DOCKER_SCRIPT: i686-gnu-nopt-2.sh
     <<: *job-linux-4c
 
   - name: pr-check-1

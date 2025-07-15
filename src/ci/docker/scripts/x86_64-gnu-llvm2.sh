@@ -4,7 +4,7 @@ set -ex
 
 ##### Test stage 2 #####
 
-/tmp/stage_2_test_set1.sh
+/scripts/stage_2_test_set1.sh
 
 # Run the `mir-opt` tests again but this time for a 32-bit target.
 # This enforces that tests using `// EMIT_MIR_FOR_EACH_BIT_WIDTH` have
