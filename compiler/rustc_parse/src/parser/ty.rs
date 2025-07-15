@@ -575,12 +575,67 @@ impl<'a> Parser<'a> {
                 self.expect(exp!(CloseBracket))?;
             }
             TyKind::Array(elt_ty, length)
-        } else {
-            self.expect(exp!(CloseBracket))?;
+        } else if self.eat(exp!(CloseBracket)) {
             TyKind::Slice(elt_ty)
+        } else {
+            self.maybe_recover_array_ty_without_semi(elt_ty)?
         };
 
         Ok(ty)
+    }
+
+    /// Recover from malformed array type syntax.
+    ///
+    /// This method attempts to recover from cases like:
+    /// - `[u8, 5]` → suggests using `;`, return a Array type
+    /// - `[u8 5]` → suggests using `;`, return a Array type
+    /// Consider to add more cases in the future.
+    fn maybe_recover_array_ty_without_semi(&mut self, elt_ty: P<Ty>) -> PResult<'a, TyKind> {
+        let span = self.token.span;
+        let token_descr = super::token_descr(&self.token);
+        let mut err =
+            self.dcx().struct_span_err(span, format!("expected `;` or `]`, found {}", token_descr));
+        err.span_label(span, "expected `;` or `]`");
+        err.note("you might have meant to write a slice or array type");
+
+        // If we cannot recover, return the error immediately.
+        if !self.may_recover() {
+            return Err(err);
+        }
+
+        let snapshot = self.create_snapshot_for_diagnostic();
+
+        let suggestion_span = if self.eat(exp!(Comma)) || self.eat(exp!(Star)) {
+            // Consume common erroneous separators.
+            self.prev_token.span
+        } else {
+            self.token.span.shrink_to_lo()
+        };
+
+        // we first try to parse pattern like `[u8 5]`
+        let length = match self.parse_expr_anon_const() {
+            Ok(length) => length,
+            Err(e) => {
+                e.cancel();
+                self.restore_snapshot(snapshot);
+                return Err(err);
+            }
+        };
+
+        if let Err(e) = self.expect(exp!(CloseBracket)) {
+            e.cancel();
+            self.restore_snapshot(snapshot);
+            return Err(err);
+        }
+
+        err.span_suggestion_verbose(
+            suggestion_span,
+            "you might have meant to use `;` as the separator",
+            ";",
+            Applicability::MaybeIncorrect,
+        );
+        err.emit();
+        Ok(TyKind::Array(elt_ty, length))
     }
 
     fn parse_borrowed_pointee(&mut self) -> PResult<'a, TyKind> {
