@@ -59,7 +59,7 @@ pub(crate) fn try_new_allocation<'tcx>(
         }
         ConstValue::Indirect { alloc_id, offset } => {
             let alloc = alloc::try_new_indirect(alloc_id, cx);
-            use rustc_public_bridge::context::SmirAllocRange;
+            use rustc_public_bridge::context::AllocRangeHelpers;
             Ok(allocation_filter(&alloc.0, cx.alloc_range(offset, layout.size), tables, cx))
         }
     }

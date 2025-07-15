@@ -567,7 +567,7 @@ impl<'tcx> CompilerInterface for Container<'tcx, BridgeTys> {
             DefKind::Fn => ForeignItemKind::Fn(tables.fn_def(def_id)),
             DefKind::Static { .. } => ForeignItemKind::Static(tables.static_def(def_id)),
             DefKind::ForeignTy => {
-                use rustc_public_bridge::context::SmirTy;
+                use rustc_public_bridge::context::TyHelpers;
                 ForeignItemKind::Type(tables.intern_ty(cx.new_foreign(def_id)))
             }
             def_kind => unreachable!("Unexpected kind for a foreign item: {:?}", def_kind),

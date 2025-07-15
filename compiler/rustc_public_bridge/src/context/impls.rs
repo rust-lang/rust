@@ -24,23 +24,23 @@ use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_span::{FileNameDisplayPreference, Span, Symbol};
 use rustc_target::callconv::FnAbi;
 
-use super::{SmirAllocRange, CompilerCtxt, SmirTy, SmirTypingEnv};
+use super::{AllocRangeHelpers, CompilerCtxt, TyHelpers, TypingEnvHelpers};
 use crate::builder::BodyBuilder;
 use crate::{Bridge, SmirError, Tables, filter_def_ids};
 
-impl<'tcx, B: Bridge> SmirTy<'tcx> for CompilerCtxt<'tcx, B> {
+impl<'tcx, B: Bridge> TyHelpers<'tcx> for CompilerCtxt<'tcx, B> {
     fn new_foreign(&self, def_id: DefId) -> ty::Ty<'tcx> {
         ty::Ty::new_foreign(self.tcx, def_id)
     }
 }
 
-impl<'tcx, B: Bridge> SmirTypingEnv<'tcx> for CompilerCtxt<'tcx, B> {
+impl<'tcx, B: Bridge> TypingEnvHelpers<'tcx> for CompilerCtxt<'tcx, B> {
     fn fully_monomorphized(&self) -> ty::TypingEnv<'tcx> {
         ty::TypingEnv::fully_monomorphized()
     }
 }
 
-impl<'tcx, B: Bridge> SmirAllocRange<'tcx> for CompilerCtxt<'tcx, B> {
+impl<'tcx, B: Bridge> AllocRangeHelpers<'tcx> for CompilerCtxt<'tcx, B> {
     fn alloc_range(
         &self,
         offset: rustc_abi::Size,
@@ -426,7 +426,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
 
     /// Evaluate constant as a target usize.
     pub fn eval_target_usize(&self, cnst: MirConst<'tcx>) -> Result<u64, B::Error> {
-        use crate::context::SmirTypingEnv;
+        use crate::context::TypingEnvHelpers;
         cnst.try_eval_target_usize(self.tcx, self.fully_monomorphized())
             .ok_or_else(|| B::Error::new(format!("Const `{cnst:?}` cannot be encoded as u64")))
     }

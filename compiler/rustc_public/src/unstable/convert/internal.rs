@@ -504,7 +504,7 @@ impl RustcInternal for ExistentialProjection {
         tables: &mut Tables<'_, BridgeTys>,
         tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
-        use crate::unstable::internal_cx::SmirExistentialProjection;
+        use crate::unstable::internal_cx::ExistentialProjectionHelpers;
         tcx.new_from_args(
             self.def_id.0.internal(tables, tcx),
             self.generic_args.internal(tables, tcx),
@@ -536,7 +536,7 @@ impl RustcInternal for ExistentialTraitRef {
         tables: &mut Tables<'_, BridgeTys>,
         tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
-        use crate::unstable::internal_cx::SmirExistentialTraitRef;
+        use crate::unstable::internal_cx::ExistentialTraitRefHelpers;
         tcx.new_from_args(
             self.def_id.0.internal(tables, tcx),
             self.generic_args.internal(tables, tcx),
@@ -552,7 +552,7 @@ impl RustcInternal for TraitRef {
         tables: &mut Tables<'_, BridgeTys>,
         tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
-        use crate::unstable::internal_cx::SmirTraitRef;
+        use crate::unstable::internal_cx::TraitRefHelpers;
         tcx.new_from_args(self.def_id.0.internal(tables, tcx), self.args().internal(tables, tcx))
     }
 }
