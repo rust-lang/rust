@@ -62,7 +62,7 @@ impl Instance {
     /// For more information on fallback body, see <https://github.com/rust-lang/rust/issues/93145>.
     ///
     /// This call is much cheaper than `instance.body().is_some()`, since it doesn't try to build
-    /// the StableMIR body.
+    /// the rustc_public's IR body.
     pub fn has_body(&self) -> bool {
         with(|cx| cx.has_body(self.def.def_id()))
     }
@@ -157,7 +157,7 @@ impl Instance {
     ///
     /// Allow users to check if this shim can be ignored when called directly.
     ///
-    /// We have decided not to export different types of Shims to StableMIR users, however, this
+    /// We have decided not to export different types of Shims to rustc_public users, however, this
     /// is a query that can be very helpful for users when processing DropGlue.
     ///
     /// When generating code for a Drop terminator, users can ignore an empty drop glue.

@@ -1,4 +1,4 @@
-//! This module holds the logic to convert rustc internal ADTs into stable mir ADTs.
+//! This module holds the logic to convert rustc internal ADTs into rustc_public ADTs.
 //!
 //! The conversion from stable to internal is not meant to be complete,
 //! and it should be added as when needed to be passed as input to rustc_public_bridge functions.

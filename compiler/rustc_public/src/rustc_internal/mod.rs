@@ -1,7 +1,7 @@
-//! Module that implements the bridge between Stable MIR and internal compiler MIR.
+//! Module that implements the bridge between rustc_public's IR and internal compiler MIR.
 //!
 //! For that, we define APIs that will temporarily be public to 3P that exposes rustc internal APIs
-//! until stable MIR is complete.
+//! until rustc_public's IR is complete.
 
 use std::cell::{Cell, RefCell};
 
@@ -26,7 +26,7 @@ pub mod pretty;
 ///
 /// # Panics
 ///
-/// This function will panic if StableMIR has not been properly initialized.
+/// This function will panic if rustc_public has not been properly initialized.
 pub fn stable<'tcx, S: Stable<'tcx>>(item: S) -> S::T {
     with_container(|tables, cx| item.stable(tables, cx))
 }
@@ -41,7 +41,7 @@ pub fn stable<'tcx, S: Stable<'tcx>>(item: S) -> S::T {
 ///
 /// # Panics
 ///
-/// This function will panic if StableMIR has not been properly initialized.
+/// This function will panic if rustc_public has not been properly initialized.
 pub fn internal<'tcx, S>(tcx: TyCtxt<'tcx>, item: S) -> S::T<'tcx>
 where
     S: RustcInternal,
@@ -57,7 +57,7 @@ pub fn crate_num(item: &crate::Crate) -> CrateNum {
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
-// datastructures and stable MIR datastructures
+// datastructures and rustc_public's IR datastructures
 scoped_thread_local! (static TLV: Cell<*const ()>);
 
 pub(crate) fn init<'tcx, F, T, B: Bridge>(container: &Container<'tcx, B>, f: F) -> T
@@ -176,7 +176,7 @@ macro_rules! optional {
 
 /// Prefer using [run!] and [run_with_tcx] instead.
 ///
-/// This macro implements the instantiation of a StableMIR driver, and it will invoke
+/// This macro implements the instantiation of a rustc_public driver, and it will invoke
 /// the given callback after the compiler analyses.
 ///
 /// The third argument determines whether the callback requires `tcx` as an argument.

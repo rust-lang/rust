@@ -1,4 +1,4 @@
-//! Memory allocation implementation for StableMIR.
+//! Memory allocation implementation for rustc_public.
 //!
 //! This module is responsible for constructing stable components.
 //! All operations requiring rustc queries must be delegated
