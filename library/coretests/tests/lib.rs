@@ -20,6 +20,7 @@
 #![feature(const_destruct)]
 #![feature(const_eval_select)]
 #![feature(const_float_round_methods)]
+#![feature(const_ops)]
 #![feature(const_ref_cell)]
 #![feature(const_trait_impl)]
 #![feature(core_float_math)]
