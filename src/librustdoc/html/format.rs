@@ -481,6 +481,20 @@ fn generate_item_def_id_path(
     Ok((url_parts, shortty, fqp))
 }
 
+/// Checks if the given defid refers to an item that is unnamable, such as one defined in a const block.
+fn is_unnamable(tcx: TyCtxt<'_>, did: DefId) -> bool {
+    let mut cur_did = did;
+    while let Some(parent) = tcx.opt_parent(cur_did) {
+        match tcx.def_kind(parent) {
+            // items defined in these can be linked to
+            DefKind::Mod | DefKind::Impl { .. } | DefKind::ForeignMod => cur_did = parent,
+            // everything else does not have docs generated for it
+            _ => return true,
+        }
+    }
+    return false;
+}
+
 fn to_module_fqp(shortty: ItemType, fqp: &[Symbol]) -> &[Symbol] {
     if shortty == ItemType::Module { fqp } else { &fqp[..fqp.len() - 1] }
 }
@@ -500,13 +514,7 @@ fn url_parts(
             builder.extend(module_fqp.iter().copied());
             Ok(builder)
         }
-        ExternalLocation::Local => {
-            if module_fqp.iter().any(|sym| sym.as_str() == "_") {
-                Err(HrefError::UnnamableItem)
-            } else {
-                Ok(href_relative_parts(module_fqp, relative_to))
-            }
-        }
+        ExternalLocation::Local => Ok(href_relative_parts(module_fqp, relative_to)),
         ExternalLocation::Unknown => Err(HrefError::DocumentationNotBuilt),
     }
 }
@@ -560,6 +568,9 @@ pub(crate) fn href_with_root_path(
         }
         _ => original_did,
     };
+    if is_unnamable(cx.tcx(), did) {
+        return Err(HrefError::UnnamableItem);
+    }
     let cache = cx.cache();
     let relative_to = &cx.current;
 
