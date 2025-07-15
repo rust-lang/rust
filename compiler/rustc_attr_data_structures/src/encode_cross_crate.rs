@@ -57,6 +57,7 @@ impl AttributeKind {
             ParenSugar(..) => No,
             PassByValue(..) => Yes,
             Path(..) => No,
+            Pointee(..) => No,
             PubTransparent(..) => Yes,
             Repr { .. } => No,
             RustcLayoutScalarValidRangeEnd(..) => Yes,

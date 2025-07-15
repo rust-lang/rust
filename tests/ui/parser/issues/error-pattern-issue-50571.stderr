@@ -1,0 +1,28 @@
+error: expected `;` or `]`, found `,`
+  --> $DIR/error-pattern-issue-50571.rs:6:14
+   |
+LL |     fn foo([a, b]: [i32; 2]) {}
+   |              ^ expected `;` or `]`
+   |
+   = note: you might have meant to write a slice or array type
+help: you might have meant to use `;` as the separator
+   |
+LL -     fn foo([a, b]: [i32; 2]) {}
+LL +     fn foo([a; b]: [i32; 2]) {}
+   |
+
+error[E0642]: patterns aren't allowed in methods without bodies
+  --> $DIR/error-pattern-issue-50571.rs:6:12
+   |
+LL |     fn foo([a, b]: [i32; 2]) {}
+   |            ^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     fn foo([a, b]: [i32; 2]) {}
+LL +     fn foo(_: [i32; 2]) {}
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0642`.

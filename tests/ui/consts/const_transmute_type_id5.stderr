@@ -1,5 +1,5 @@
-error[E0080]: pointer not dereferenceable: pointer must point to some allocation, but got 0x3e7[noalloc] which is a dangling pointer (it has no provenance)
-  --> $DIR/const_transmute_type_id3.rs:15:13
+error[E0080]: type_id_eq: one of the TypeId arguments is invalid, chunk 1 of the hash does not match the type it represents
+  --> $DIR/const_transmute_type_id5.rs:17:13
    |
 LL |     assert!(a == b);
    |             ^^^^^^ evaluation of `_` failed inside this call

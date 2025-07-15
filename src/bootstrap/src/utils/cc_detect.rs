@@ -67,7 +67,6 @@ pub fn fill_compilers(build: &mut Build) {
         // We don't need to check cross targets for these commands.
         crate::Subcommand::Clean { .. }
         | crate::Subcommand::Check { .. }
-        | crate::Subcommand::Suggest { .. }
         | crate::Subcommand::Format { .. }
         | crate::Subcommand::Setup { .. } => {
             build.hosts.iter().cloned().chain(iter::once(build.host_target)).collect()
@@ -221,10 +220,15 @@ fn default_compiler(
         }
 
         t if t.contains("-wasi") => {
-            let root = build
-                .wasi_sdk_path
-                .as_ref()
-                .expect("WASI_SDK_PATH mut be configured for a -wasi target");
+            let root = if let Some(path) = build.wasi_sdk_path.as_ref() {
+                path
+            } else {
+                if build.config.is_running_on_ci {
+                    panic!("ERROR: WASI_SDK_PATH must be configured for a -wasi target on CI");
+                }
+                println!("WARNING: WASI_SDK_PATH not set, using default cc/cxx compiler");
+                return None;
+            };
             let compiler = match compiler {
                 Language::C => format!("{t}-clang"),
                 Language::CPlusPlus => format!("{t}-clang++"),
