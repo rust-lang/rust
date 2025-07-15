@@ -788,8 +788,11 @@ impl<'a> AstValidator<'a> {
             TyKind::FnPtr(bfty) => {
                 self.check_fn_ptr_safety(bfty.decl_span, bfty.safety);
                 self.check_fn_decl(&bfty.decl, SelfSemantic::No);
-                Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
-                    self.dcx().emit_err(errors::PatternFnPointer { span });
+                Self::check_decl_no_pat(&bfty.decl, |span, ident, _| {
+                    // `self` in bare fn ptr is already an error; don't add an extra one.
+                    if !ident.is_some_and(|ident| ident.name == kw::SelfLower) {
+                        self.dcx().emit_err(errors::PatternFnPointer { span });
+                    }
                 });
                 if let Extern::Implicit(extern_span) = bfty.ext {
                     self.handle_missing_abi(extern_span, ty.id);

@@ -2932,6 +2932,8 @@ impl<'a> Parser<'a> {
     /// Parses the parameter list of a function, including the `(` and `)` delimiters.
     pub(super) fn parse_fn_params(&mut self, req_name: ReqName) -> PResult<'a, ThinVec<Param>> {
         let mut first_param = true;
+        let is_bare_fn_ptr = self.prev_token.is_keyword(kw::Fn);
+
         // Parse the arguments, starting out with `self` being allowed...
         if self.token != TokenKind::OpenParen
         // might be typo'd trait impl, handled elsewhere
@@ -2946,22 +2948,23 @@ impl<'a> Parser<'a> {
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
             p.recover_vcs_conflict_marker();
             let snapshot = p.create_snapshot_for_diagnostic();
-            let param = p.parse_param_general(req_name, first_param, true).or_else(|e| {
-                let guar = e.emit();
-                // When parsing a param failed, we should check to make the span of the param
-                // not contain '(' before it.
-                // For example when parsing `*mut Self` in function `fn oof(*mut Self)`.
-                let lo = if let TokenKind::OpenParen = p.prev_token.kind {
-                    p.prev_token.span.shrink_to_hi()
-                } else {
-                    p.prev_token.span
-                };
-                p.restore_snapshot(snapshot);
-                // Skip every token until next possible arg or end.
-                p.eat_to_tokens(&[exp!(Comma), exp!(CloseParen)]);
-                // Create a placeholder argument for proper arg count (issue #34264).
-                Ok(dummy_arg(Ident::new(sym::dummy, lo.to(p.prev_token.span)), guar))
-            });
+            let param =
+                p.parse_param_general(req_name, first_param, true, is_bare_fn_ptr).or_else(|e| {
+                    let guar = e.emit();
+                    // When parsing a param failed, we should check to make the span of the param
+                    // not contain '(' before it.
+                    // For example when parsing `*mut Self` in function `fn oof(*mut Self)`.
+                    let lo = if let TokenKind::OpenParen = p.prev_token.kind {
+                        p.prev_token.span.shrink_to_hi()
+                    } else {
+                        p.prev_token.span
+                    };
+                    p.restore_snapshot(snapshot);
+                    // Skip every token until next possible arg or end.
+                    p.eat_to_tokens(&[exp!(Comma), exp!(CloseParen)]);
+                    // Create a placeholder argument for proper arg count (issue #34264).
+                    Ok(dummy_arg(Ident::new(sym::dummy, lo.to(p.prev_token.span)), guar))
+                });
             // ...now that we've parsed the first argument, `self` is no longer allowed.
             first_param = false;
             param
@@ -2975,11 +2978,13 @@ impl<'a> Parser<'a> {
     ///
     /// - `self` is syntactically allowed when `first_param` holds.
     /// - `recover_arg_parse` is used to recover from a failed argument parse.
+    /// - `is_bare_fn_ptr` is used to improve diagnostics for bare fn ptrs.
     pub(super) fn parse_param_general(
         &mut self,
         req_name: ReqName,
         first_param: bool,
         recover_arg_parse: bool,
+        is_bare_fn_ptr: bool,
     ) -> PResult<'a, Param> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
@@ -3040,6 +3045,7 @@ impl<'a> Parser<'a> {
                         ty = this.unexpected_any();
                     }
                 }
+
                 match ty {
                     Ok(ty) => {
                         let pat = this.mk_pat(ty.span, PatKind::Missing);
@@ -3052,7 +3058,7 @@ impl<'a> Parser<'a> {
                         // Recover from attempting to parse the argument as a type without pattern.
                         err.cancel();
                         this.restore_snapshot(parser_snapshot_before_ty);
-                        this.recover_arg_parse()?
+                        this.recover_arg_parse(!is_bare_fn_ptr)?
                     }
                     Err(err) => return Err(err),
                 }

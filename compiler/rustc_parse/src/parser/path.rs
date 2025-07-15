@@ -400,7 +400,7 @@ impl<'a> Parser<'a> {
 
                     let dcx = self.dcx();
                     let parse_params_result = self.parse_paren_comma_seq(|p| {
-                        let param = p.parse_param_general(|_| false, false, false);
+                        let param = p.parse_param_general(|_| false, false, false, false);
                         param.map(move |param| {
                             if !matches!(param.pat.kind, PatKind::Missing) {
                                 dcx.emit_err(FnPathFoundNamedParams {

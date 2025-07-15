@@ -17,18 +17,66 @@ LL |     fn f3(arg @ _: u8);
    |           ^^^^^^^ pattern not allowed in foreign function
 
 error[E0561]: patterns aren't allowed in function pointer types
-  --> $DIR/no-patterns-in-args.rs:10:14
+  --> $DIR/no-patterns-in-args.rs:14:14
    |
 LL | type A1 = fn(mut arg: u8);
    |              ^^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL - type A1 = fn(mut arg: u8);
+LL + type A1 = fn(_: u8);
+   |
 
 error[E0561]: patterns aren't allowed in function pointer types
-  --> $DIR/no-patterns-in-args.rs:11:14
+  --> $DIR/no-patterns-in-args.rs:15:14
    |
 LL | type A2 = fn(&arg: u8);
    |              ^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL - type A2 = fn(&arg: u8);
+LL + type A2 = fn(_: u8);
+   |
 
-error: aborting due to 5 previous errors
+error[E0561]: patterns aren't allowed in function pointer types
+  --> $DIR/no-patterns-in-args.rs:16:14
+   |
+LL | type A3 = fn(&_: ());
+   |              ^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL - type A3 = fn(&_: ());
+LL + type A3 = fn(_: ());
+   |
+
+error[E0561]: patterns aren't allowed in function pointer types
+  --> $DIR/no-patterns-in-args.rs:17:14
+   |
+LL | type A4 = fn((): ());
+   |              ^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL - type A4 = fn((): ());
+LL + type A4 = fn(_: ());
+   |
+
+error[E0561]: patterns aren't allowed in function pointer types
+  --> $DIR/no-patterns-in-args.rs:18:14
+   |
+LL | type A5 = fn(Foo { bar }: Foo);
+   |              ^^^^^^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL - type A5 = fn(Foo { bar }: Foo);
+LL + type A5 = fn(_: Foo);
+   |
+
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0130, E0561.
 For more information about an error, try `rustc --explain E0130`.
