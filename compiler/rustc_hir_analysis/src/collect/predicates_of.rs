@@ -1,7 +1,6 @@
 use std::assert_matches::assert_matches;
 
 use hir::Node;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -332,19 +331,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
     if tcx.features().generic_const_exprs() {
         predicates.extend(const_evaluatable_predicates_of(tcx, def_id, &predicates));
-    }
-
-    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
-    // FIXME(staged_api): We might want to look at the normal stability attributes too but
-    // first we would need a way to let std/core use APIs with unstable feature bounds from
-    // within stable APIs.
-    let allow_unstable_feature_attr =
-        find_attr!(attrs, AttributeKind::UnstableFeatureBound(i) => i)
-            .map(|i| i.as_slice())
-            .unwrap_or_default();
-
-    for (feat_name, span) in allow_unstable_feature_attr {
-        predicates.insert((ty::ClauseKind::UnstableFeature(*feat_name).upcast(tcx), *span));
     }
 
     let mut predicates: Vec<_> = predicates.into_iter().collect();
