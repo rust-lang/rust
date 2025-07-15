@@ -6,7 +6,7 @@
 use std::cell::{Cell, RefCell};
 
 use rustc_middle::ty::TyCtxt;
-use rustc_public_bridge::context::SmirCtxt;
+use rustc_public_bridge::context::CompilerCtxt;
 use rustc_public_bridge::{Bridge, SmirContainer, Tables};
 use rustc_span::def_id::CrateNum;
 use scoped_tls::scoped_thread_local;
@@ -72,7 +72,7 @@ where
 /// Loads the current context and calls a function with it.
 /// Do not nest these, as that will ICE.
 pub(crate) fn with_container<R, B: Bridge>(
-    f: impl for<'tcx> FnOnce(&mut Tables<'tcx, B>, &SmirCtxt<'tcx, B>) -> R,
+    f: impl for<'tcx> FnOnce(&mut Tables<'tcx, B>, &CompilerCtxt<'tcx, B>) -> R,
 ) -> R {
     assert!(TLV.is_set());
     TLV.with(|tlv| {
@@ -89,8 +89,8 @@ pub fn run<F, T>(tcx: TyCtxt<'_>, f: F) -> Result<T, Error>
 where
     F: FnOnce() -> T,
 {
-    let smir_cx = RefCell::new(SmirCtxt::new(tcx));
-    let container = SmirContainer { tables: RefCell::new(Tables::default()), cx: smir_cx };
+    let compiler_cx = RefCell::new(CompilerCtxt::new(tcx));
+    let container = SmirContainer { tables: RefCell::new(Tables::default()), cx: compiler_cx };
 
     crate::compiler_interface::run(&container, || init(&container, f))
 }

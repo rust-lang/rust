@@ -6,7 +6,7 @@
 use std::cell::Cell;
 
 use rustc_hir::def::DefKind;
-use rustc_public_bridge::context::SmirCtxt;
+use rustc_public_bridge::context::CompilerCtxt;
 use rustc_public_bridge::{Bridge, SmirContainer};
 use tracing::debug;
 
@@ -66,13 +66,13 @@ impl Bridge for BridgeTys {
     type Allocation = crate::ty::Allocation;
 }
 
-/// Stable public API for querying compiler information.
+/// Public API for querying compiler information.
 ///
-/// All queries are delegated to [`rustc_public_bridge::context::SmirCtxt`] that provides
+/// All queries are delegated to [`rustc_public_bridge::context::CompilerCtxt`] that provides
 /// similar APIs but based on internal rustc constructs.
 ///
 /// Do not use this directly. This is currently used in the macro expansion.
-pub(crate) trait SmirInterface {
+pub(crate) trait CompilerInterface {
     fn entry_fn(&self) -> Option<CrateItem>;
     /// Retrieve all items of the local crate that have a MIR associated with them.
     fn all_local_items(&self) -> CrateItems;
@@ -316,7 +316,7 @@ pub(crate) trait SmirInterface {
     fn associated_items(&self, def_id: DefId) -> AssocItems;
 }
 
-impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
+impl<'tcx> CompilerInterface for SmirContainer<'tcx, BridgeTys> {
     fn entry_fn(&self) -> Option<CrateItem> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
@@ -1059,10 +1059,10 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     }
 }
 
-// A thread local variable that stores a pointer to [`SmirInterface`].
+// A thread local variable that stores a pointer to [`CompilerInterface`].
 scoped_tls::scoped_thread_local!(static TLV: Cell<*const ()>);
 
-pub(crate) fn run<F, T>(interface: &dyn SmirInterface, f: F) -> Result<T, Error>
+pub(crate) fn run<F, T>(interface: &dyn CompilerInterface, f: F) -> Result<T, Error>
 where
     F: FnOnce() -> T,
 {
@@ -1074,21 +1074,21 @@ where
     }
 }
 
-/// Execute the given function with access the [`SmirInterface`].
+/// Execute the given function with access the [`CompilerInterface`].
 ///
 /// I.e., This function will load the current interface and calls a function with it.
 /// Do not nest these, as that will ICE.
-pub(crate) fn with<R>(f: impl FnOnce(&dyn SmirInterface) -> R) -> R {
+pub(crate) fn with<R>(f: impl FnOnce(&dyn CompilerInterface) -> R) -> R {
     assert!(TLV.is_set());
     TLV.with(|tlv| {
         let ptr = tlv.get();
         assert!(!ptr.is_null());
-        f(unsafe { *(ptr as *const &dyn SmirInterface) })
+        f(unsafe { *(ptr as *const &dyn CompilerInterface) })
     })
 }
 
 fn smir_crate<'tcx>(
-    cx: &SmirCtxt<'tcx, BridgeTys>,
+    cx: &CompilerCtxt<'tcx, BridgeTys>,
     crate_num: rustc_span::def_id::CrateNum,
 ) -> Crate {
     let name = cx.crate_name(crate_num);

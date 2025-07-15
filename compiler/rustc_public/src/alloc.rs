@@ -8,7 +8,7 @@ use rustc_abi::Align;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::AllocRange;
 use rustc_public_bridge::bridge::SmirError;
-use rustc_public_bridge::context::SmirCtxt;
+use rustc_public_bridge::context::CompilerCtxt;
 use rustc_public_bridge::{Tables, alloc};
 
 use super::Error;
@@ -35,7 +35,7 @@ pub(crate) fn new_allocation<'tcx>(
     ty: rustc_middle::ty::Ty<'tcx>,
     const_value: ConstValue<'tcx>,
     tables: &mut Tables<'tcx, BridgeTys>,
-    cx: &SmirCtxt<'tcx, BridgeTys>,
+    cx: &CompilerCtxt<'tcx, BridgeTys>,
 ) -> Allocation {
     try_new_allocation(ty, const_value, tables, cx)
         .unwrap_or_else(|_| panic!("Failed to convert: {const_value:?} to {ty:?}"))
@@ -46,7 +46,7 @@ pub(crate) fn try_new_allocation<'tcx>(
     ty: rustc_middle::ty::Ty<'tcx>,
     const_value: ConstValue<'tcx>,
     tables: &mut Tables<'tcx, BridgeTys>,
-    cx: &SmirCtxt<'tcx, BridgeTys>,
+    cx: &CompilerCtxt<'tcx, BridgeTys>,
 ) -> Result<Allocation, Error> {
     let layout = alloc::create_ty_and_layout(cx, ty).map_err(|e| Error::from_internal(e))?;
     match const_value {
@@ -70,7 +70,7 @@ pub(super) fn allocation_filter<'tcx>(
     alloc: &rustc_middle::mir::interpret::Allocation,
     alloc_range: AllocRange,
     tables: &mut Tables<'tcx, BridgeTys>,
-    cx: &SmirCtxt<'tcx, BridgeTys>,
+    cx: &CompilerCtxt<'tcx, BridgeTys>,
 ) -> Allocation {
     alloc::allocation_filter(alloc, alloc_range, tables, cx)
 }
