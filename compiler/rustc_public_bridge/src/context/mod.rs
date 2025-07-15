@@ -9,10 +9,10 @@ use rustc_middle::ty;
 use rustc_middle::ty::layout::{FnAbiOfHelpers, HasTyCtxt, HasTypingEnv, LayoutOfHelpers};
 use rustc_middle::ty::{Ty, TyCtxt};
 
-use crate::{Bridge, SmirError};
+use crate::{Bridge, Error};
 
-mod impls;
 mod helpers;
+mod impls;
 
 pub use helpers::*;
 

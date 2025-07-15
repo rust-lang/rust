@@ -2,9 +2,8 @@
 
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::{bug, mir};
-use rustc_public_bridge::Tables;
-use rustc_public_bridge::bridge::SmirError;
 use rustc_public_bridge::context::CompilerCtxt;
+use rustc_public_bridge::{Tables, bridge};
 
 use crate::compiler_interface::BridgeTys;
 use crate::mir::alloc::GlobalAlloc;
@@ -914,7 +913,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::ErrorHandled {
     type T = Error;
 
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
-        Error::new(format!("{self:?}"))
+        bridge::Error::new(format!("{self:?}"))
     }
 }
 
