@@ -8,8 +8,6 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
         let mut _7: bool;
         let mut _8: *mut T;
         let mut _21: &mut T;
-        let mut _22: &std::ptr::NonNull<T>;
-        let mut _23: &std::ptr::NonNull<T>;
         scope 2 {
             let _3: std::ptr::NonNull<T>;
             let _9: usize;
@@ -33,7 +31,6 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
         }
         scope 10 (inlined std::slice::IterMut::<'_, T>::next_back_unchecked) {
             let mut _15: std::ptr::NonNull<T>;
-            let mut _24: &mut std::ptr::NonNull<T>;
             scope 11 (inlined std::slice::IterMut::<'_, T>::pre_dec_end) {
                 let mut _10: *mut *mut T;
                 let mut _11: *mut std::ptr::NonNull<T>;
@@ -88,10 +85,6 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
     bb1: {
         _2 = copy ((*_1).1: *mut T);
         _3 = copy _2 as std::ptr::NonNull<T> (Transmute);
-        StorageLive(_22);
-        // DBG: _22 = &((*_1).0: std::ptr::NonNull<T>);
-        StorageLive(_23);
-        // DBG: _23 = &_3;
         StorageLive(_5);
         StorageLive(_4);
         _4 = copy ((*_1).0: std::ptr::NonNull<T>);
@@ -102,8 +95,6 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
         _7 = Eq(copy _5, copy _6);
         StorageDead(_6);
         StorageDead(_5);
-        StorageDead(_23);
-        StorageDead(_22);
         goto -> bb3;
     }
 
@@ -120,7 +111,6 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
 
     bb4: {
         StorageLive(_15);
-        StorageLive(_24);
         StorageLive(_17);
         StorageLive(_11);
         StorageLive(_12);
@@ -173,12 +163,10 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
         StorageDead(_12);
         StorageDead(_11);
         StorageDead(_17);
-        // DBG: _24 = &_15;
         StorageLive(_20);
         _20 = copy _15 as *mut T (Transmute);
         _21 = &mut (*_20);
         StorageDead(_20);
-        StorageDead(_24);
         StorageDead(_15);
         _0 = Option::<&mut T>::Some(copy _21);
         goto -> bb11;

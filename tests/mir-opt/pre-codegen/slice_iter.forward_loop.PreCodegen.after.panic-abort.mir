@@ -23,9 +23,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
             let mut _15: bool;
             let mut _19: usize;
             let _21: &T;
-            let mut _27: &std::ptr::NonNull<T>;
-            let mut _28: &std::ptr::NonNull<T>;
-            let mut _29: &std::ptr::NonNull<T>;
             scope 17 {
                 let _11: *const T;
                 scope 18 {
@@ -151,11 +148,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb5: {
         StorageLive(_15);
-        StorageLive(_27);
-        // DBG: _27 = &_10;
-        StorageLive(_28);
         _12 = copy _11 as std::ptr::NonNull<T> (Transmute);
-        // DBG: _28 = &_12;
         StorageLive(_13);
         _13 = copy _10 as *mut T (Transmute);
         StorageLive(_14);
@@ -167,8 +160,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb6: {
-        StorageDead(_28);
-        StorageDead(_27);
         StorageDead(_15);
         StorageLive(_17);
         StorageLive(_16);
@@ -181,8 +172,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb7: {
-        StorageDead(_28);
-        StorageDead(_27);
         StorageDead(_15);
         StorageDead(_21);
         StorageDead(_12);
@@ -224,13 +213,10 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb13: {
-        StorageLive(_29);
-        // DBG: _29 = &_10;
         StorageLive(_20);
         _20 = copy _10 as *const T (Transmute);
         _21 = &(*_20);
         StorageDead(_20);
-        StorageDead(_29);
         _22 = Option::<&T>::Some(copy _21);
         StorageDead(_21);
         StorageDead(_12);

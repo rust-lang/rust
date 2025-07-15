@@ -15,7 +15,6 @@
           StorageLive(_2);
 -         _2 = &((*_1).2: i32);
 +         // DBG: _2 = &((*_1).2: i32);
-+         nop;
           StorageLive(_3);
           StorageLive(_4);
           _4 = &((*_1).0: i32);

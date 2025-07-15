@@ -12,14 +12,13 @@
       }
   
       bb0: {
-          StorageLive(_2);
+-         StorageLive(_2);
           _3 = deref_copy (_1.1: &Foo);
 -         _2 = &((*_3).2: i32);
 +         // DBG: _2 = &((*_3).2: i32);
-+         nop;
           _4 = deref_copy (_1.1: &Foo);
           _0 = copy ((*_4).0: i32);
-          StorageDead(_2);
+-         StorageDead(_2);
           return;
       }
   }
