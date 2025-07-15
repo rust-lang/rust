@@ -1,4 +1,4 @@
-#![warn(clippy::iter_overeager_cloned, clippy::redundant_clone, clippy::filter_next)]
+#![warn(clippy::iter_overeager_cloned, clippy::redundant_iter_cloned, clippy::filter_next)]
 #![allow(
     dead_code,
     clippy::let_unit_value,
@@ -16,7 +16,7 @@ fn main() {
     //~^ iter_overeager_cloned
 
     let _: usize = vec.iter().filter(|x| x == &"2").cloned().count();
-    //~^ redundant_clone
+    //~^ redundant_iter_cloned
 
     let _: Vec<_> = vec.iter().cloned().take(2).collect();
     //~^ iter_overeager_cloned
@@ -78,19 +78,19 @@ fn main() {
     }
 
     let _ = vec.iter().cloned().map(|x| x.len());
-    //~^ redundant_clone
+    //~^ redundant_iter_cloned
 
     // This would fail if changed.
     let _ = vec.iter().cloned().map(|x| x + "2");
 
     let _ = vec.iter().cloned().for_each(|x| assert!(!x.is_empty()));
-    //~^ redundant_clone
+    //~^ redundant_iter_cloned
 
     let _ = vec.iter().cloned().all(|x| x.len() == 1);
-    //~^ redundant_clone
+    //~^ redundant_iter_cloned
 
     let _ = vec.iter().cloned().any(|x| x.len() == 1);
-    //~^ redundant_clone
+    //~^ redundant_iter_cloned
 
     // Should probably stay as it is.
     let _ = [0, 1, 2, 3, 4].iter().cloned().take(10);
