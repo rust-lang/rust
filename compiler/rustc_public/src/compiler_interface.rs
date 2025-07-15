@@ -7,7 +7,7 @@ use std::cell::Cell;
 
 use rustc_hir::def::DefKind;
 use rustc_public_bridge::context::CompilerCtxt;
-use rustc_public_bridge::{Bridge, SmirContainer};
+use rustc_public_bridge::{Bridge, Container};
 use tracing::debug;
 
 use crate::abi::{FnAbi, Layout, LayoutShape, ReprOptions};
@@ -316,7 +316,7 @@ pub(crate) trait CompilerInterface {
     fn associated_items(&self, def_id: DefId) -> AssocItems;
 }
 
-impl<'tcx> CompilerInterface for SmirContainer<'tcx, BridgeTys> {
+impl<'tcx> CompilerInterface for Container<'tcx, BridgeTys> {
     fn entry_fn(&self) -> Option<CrateItem> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();

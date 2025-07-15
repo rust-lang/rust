@@ -46,7 +46,7 @@ pub mod context;
 pub mod rustc_internal {}
 
 /// A container which is used for TLS.
-pub struct SmirContainer<'tcx, B: Bridge> {
+pub struct Container<'tcx, B: Bridge> {
     pub tables: RefCell<Tables<'tcx, B>>,
     pub cx: RefCell<CompilerCtxt<'tcx, B>>,
 }

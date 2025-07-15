@@ -7,7 +7,7 @@ use std::cell::{Cell, RefCell};
 
 use rustc_middle::ty::TyCtxt;
 use rustc_public_bridge::context::CompilerCtxt;
-use rustc_public_bridge::{Bridge, SmirContainer, Tables};
+use rustc_public_bridge::{Bridge, Container, Tables};
 use rustc_span::def_id::CrateNum;
 use scoped_tls::scoped_thread_local;
 
@@ -60,7 +60,7 @@ pub fn crate_num(item: &crate::Crate) -> CrateNum {
 // datastructures and stable MIR datastructures
 scoped_thread_local! (static TLV: Cell<*const ()>);
 
-pub(crate) fn init<'tcx, F, T, B: Bridge>(container: &SmirContainer<'tcx, B>, f: F) -> T
+pub(crate) fn init<'tcx, F, T, B: Bridge>(container: &Container<'tcx, B>, f: F) -> T
 where
     F: FnOnce() -> T,
 {
@@ -78,7 +78,7 @@ pub(crate) fn with_container<R, B: Bridge>(
     TLV.with(|tlv| {
         let ptr = tlv.get();
         assert!(!ptr.is_null());
-        let container = ptr as *const SmirContainer<'_, B>;
+        let container = ptr as *const Container<'_, B>;
         let mut tables = unsafe { (*container).tables.borrow_mut() };
         let cx = unsafe { (*container).cx.borrow() };
         f(&mut *tables, &*cx)
@@ -90,7 +90,7 @@ where
     F: FnOnce() -> T,
 {
     let compiler_cx = RefCell::new(CompilerCtxt::new(tcx));
-    let container = SmirContainer { tables: RefCell::new(Tables::default()), cx: compiler_cx };
+    let container = Container { tables: RefCell::new(Tables::default()), cx: compiler_cx };
 
     crate::compiler_interface::run(&container, || init(&container, f))
 }
