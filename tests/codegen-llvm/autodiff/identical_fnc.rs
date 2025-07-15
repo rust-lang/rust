@@ -10,7 +10,7 @@
 // We also explicetly test that we keep running merge_function after AD, by checking for two
 // identical function calls in the LLVM-IR, while having two different calls in the Rust code.
 #![feature(autodiff)]
-#![feature(intrinsics)]
+#![feature(core_intrinsics)]
 
 use std::autodiff::autodiff_reverse;
 
@@ -30,10 +30,8 @@ fn square2(x: &f64) -> f64 {
 // CHECK-NEXT:start:
 // CHECK-NOT:br
 // CHECK-NOT:ret
-// CHECK:; call identical_fnc::d_square
-// CHECK-NEXT:  call fastcc void @_ZN13identical_fnc8d_square17h4c364207a2f8e06dE(double %x.val, ptr noalias noundef nonnull align 8 dereferenceable(8) %dx1)
-// CHECK-NEXT:; call identical_fnc::d_square
-// CHECK-NEXT:  call fastcc void @_ZN13identical_fnc8d_square17h4c364207a2f8e06dE(double %x.val, ptr noalias noundef nonnull align 8 dereferenceable(8) %dx2)
+// CHECK:call fastcc void @diffe_ZN13identical_fnc6square17hdfa1c645848284b7E(double %x.val, ptr %dx1)
+// CHECK-NEXT:call fastcc void @diffe_ZN13identical_fnc6square17hdfa1c645848284b7E(double %x.val, ptr %dx2)
 
 fn main() {
     let x = std::hint::black_box(3.0);
