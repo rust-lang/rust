@@ -60,10 +60,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ident: Ident,
         ns: Namespace,
         res: Res,
-        vis: Visibility<impl Into<DefId>>,
+        vis: Visibility,
         span: Span,
         expn_id: LocalExpnId,
     ) {
+        assert!(parent.is_local());
+        assert!(res.opt_def_id().is_none_or(|def_id| def_id.is_local()));
         let binding = self.arenas.new_res_binding(res, vis.to_def_id(), span, expn_id);
         self.define_binding_local(parent, ident, ns, binding)
     }
@@ -75,18 +77,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ident: Ident,
         ns: Namespace,
         res: Res,
-        vis: Visibility<impl Into<DefId>>,
+        vis: Visibility<DefId>,
         span: Span,
         expn_id: LocalExpnId,
     ) {
-        let binding = self.arenas.new_res_binding(res, vis.to_def_id(), span, expn_id);
+        assert!(!parent.is_local());
+        assert!(!res.opt_def_id().is_some_and(|def_id| def_id.is_local()), "res: {res:?} is local");
+        let binding = self.arenas.new_res_binding(res, vis, span, expn_id);
         let key = self.new_disambiguated_key(ident, ns);
-        self.check_reserved_macro_name(key.ident, binding.res());
         let resolution = &mut *self.resolution(parent, key).borrow_mut();
         if resolution.binding.is_some() {
             panic!("An external binding was already defined");
         }
-        // FIXME: maybe some handling of glob-importers
         resolution.binding = Some(binding);
     }
 

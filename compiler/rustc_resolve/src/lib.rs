@@ -702,6 +702,10 @@ impl<'ra> Module<'ra> {
         }
     }
 
+    fn is_local(self) -> bool {
+        self.opt_def_id().is_none_or(|def_id| def_id.is_local())
+    }
+
     // `self` resolves to the first module ancestor that `is_normal`.
     fn is_normal(self) -> bool {
         matches!(self.kind, ModuleKind::Def(DefKind::Mod, _, _))
