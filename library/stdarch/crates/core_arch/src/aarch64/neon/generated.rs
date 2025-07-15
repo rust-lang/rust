@@ -298,14 +298,24 @@ pub fn vabsq_f64(a: float64x2_t) -> float64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(abs))]
 pub fn vabs_s64(a: int64x1_t) -> int64x1_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.abs.v1i64"
-        )]
-        fn _vabs_s64(a: int64x1_t) -> int64x1_t;
+    unsafe {
+        let neg: int64x1_t = simd_neg(a);
+        let mask: int64x1_t = simd_ge(a, neg);
+        simd_select(mask, a, neg)
     }
-    unsafe { _vabs_s64(a) }
+}
+#[doc = "Absolute Value (wrapping)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabsq_s64)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+#[cfg_attr(test, assert_instr(abs))]
+pub fn vabsq_s64(a: int64x2_t) -> int64x2_t {
+    unsafe {
+        let neg: int64x2_t = simd_neg(a);
+        let mask: int64x2_t = simd_ge(a, neg);
+        simd_select(mask, a, neg)
+    }
 }
 #[doc = "Absolute Value (wrapping)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabsd_s64)"]
@@ -322,22 +332,6 @@ pub fn vabsd_s64(a: i64) -> i64 {
         fn _vabsd_s64(a: i64) -> i64;
     }
     unsafe { _vabsd_s64(a) }
-}
-#[doc = "Absolute Value (wrapping)."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabsq_s64)"]
-#[inline]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(abs))]
-pub fn vabsq_s64(a: int64x2_t) -> int64x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.abs.v2i64"
-        )]
-        fn _vabsq_s64(a: int64x2_t) -> int64x2_t;
-    }
-    unsafe { _vabsq_s64(a) }
 }
 #[doc = "Add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddd_s64)"]
@@ -604,14 +598,7 @@ pub fn vaddvq_f64(a: float64x2_t) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addp))]
 pub fn vaddv_s32(a: int32x2_t) -> i32 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.saddv.i32.v2i32"
-        )]
-        fn _vaddv_s32(a: int32x2_t) -> i32;
-    }
-    unsafe { _vaddv_s32(a) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddv_s8)"]
@@ -620,14 +607,7 @@ pub fn vaddv_s32(a: int32x2_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addv))]
 pub fn vaddv_s8(a: int8x8_t) -> i8 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.saddv.i8.v8i8"
-        )]
-        fn _vaddv_s8(a: int8x8_t) -> i8;
-    }
-    unsafe { _vaddv_s8(a) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddvq_s8)"]
@@ -636,14 +616,7 @@ pub fn vaddv_s8(a: int8x8_t) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addv))]
 pub fn vaddvq_s8(a: int8x16_t) -> i8 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.saddv.i8.v16i8"
-        )]
-        fn _vaddvq_s8(a: int8x16_t) -> i8;
-    }
-    unsafe { _vaddvq_s8(a) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddv_s16)"]
@@ -652,14 +625,7 @@ pub fn vaddvq_s8(a: int8x16_t) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addv))]
 pub fn vaddv_s16(a: int16x4_t) -> i16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.saddv.i16.v4i16"
-        )]
-        fn _vaddv_s16(a: int16x4_t) -> i16;
-    }
-    unsafe { _vaddv_s16(a) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddvq_s16)"]
@@ -668,14 +634,7 @@ pub fn vaddv_s16(a: int16x4_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addv))]
 pub fn vaddvq_s16(a: int16x8_t) -> i16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.saddv.i16.v8i16"
-        )]
-        fn _vaddvq_s16(a: int16x8_t) -> i16;
-    }
-    unsafe { _vaddvq_s16(a) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddvq_s32)"]
@@ -684,14 +643,7 @@ pub fn vaddvq_s16(a: int16x8_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addv))]
 pub fn vaddvq_s32(a: int32x4_t) -> i32 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.saddv.i32.v4i32"
-        )]
-        fn _vaddvq_s32(a: int32x4_t) -> i32;
-    }
-    unsafe { _vaddvq_s32(a) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddv_u32)"]
@@ -700,14 +652,7 @@ pub fn vaddvq_s32(a: int32x4_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addp))]
 pub fn vaddv_u32(a: uint32x2_t) -> u32 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uaddv.i32.v2i32"
-        )]
-        fn _vaddv_u32(a: uint32x2_t) -> u32;
-    }
-    unsafe { _vaddv_u32(a) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddv_u8)"]
@@ -716,14 +661,7 @@ pub fn vaddv_u32(a: uint32x2_t) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addv))]
 pub fn vaddv_u8(a: uint8x8_t) -> u8 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uaddv.i8.v8i8"
-        )]
-        fn _vaddv_u8(a: uint8x8_t) -> u8;
-    }
-    unsafe { _vaddv_u8(a) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddvq_u8)"]
@@ -732,14 +670,7 @@ pub fn vaddv_u8(a: uint8x8_t) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addv))]
 pub fn vaddvq_u8(a: uint8x16_t) -> u8 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uaddv.i8.v16i8"
-        )]
-        fn _vaddvq_u8(a: uint8x16_t) -> u8;
-    }
-    unsafe { _vaddvq_u8(a) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddv_u16)"]
@@ -748,14 +679,7 @@ pub fn vaddvq_u8(a: uint8x16_t) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addv))]
 pub fn vaddv_u16(a: uint16x4_t) -> u16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uaddv.i16.v4i16"
-        )]
-        fn _vaddv_u16(a: uint16x4_t) -> u16;
-    }
-    unsafe { _vaddv_u16(a) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddvq_u16)"]
@@ -764,14 +688,7 @@ pub fn vaddv_u16(a: uint16x4_t) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addv))]
 pub fn vaddvq_u16(a: uint16x8_t) -> u16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uaddv.i16.v8i16"
-        )]
-        fn _vaddvq_u16(a: uint16x8_t) -> u16;
-    }
-    unsafe { _vaddvq_u16(a) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddvq_u32)"]
@@ -780,14 +697,7 @@ pub fn vaddvq_u16(a: uint16x8_t) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addv))]
 pub fn vaddvq_u32(a: uint32x4_t) -> u32 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uaddv.i32.v4i32"
-        )]
-        fn _vaddvq_u32(a: uint32x4_t) -> u32;
-    }
-    unsafe { _vaddvq_u32(a) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddvq_s64)"]
@@ -796,14 +706,7 @@ pub fn vaddvq_u32(a: uint32x4_t) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addp))]
 pub fn vaddvq_s64(a: int64x2_t) -> i64 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.saddv.i64.v2i64"
-        )]
-        fn _vaddvq_s64(a: int64x2_t) -> i64;
-    }
-    unsafe { _vaddvq_s64(a) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddvq_u64)"]
@@ -812,14 +715,7 @@ pub fn vaddvq_s64(a: int64x2_t) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addp))]
 pub fn vaddvq_u64(a: uint64x2_t) -> u64 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uaddv.i64.v2i64"
-        )]
-        fn _vaddvq_u64(a: uint64x2_t) -> u64;
-    }
-    unsafe { _vaddvq_u64(a) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Multi-vector floating-point absolute maximum"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamax_f32)"]
@@ -15671,23 +15567,11 @@ pub fn vpadds_f32(a: float32x2_t) -> f32 {
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddd_s64)"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addp))]
 pub fn vpaddd_s64(a: int64x2_t) -> i64 {
-    unsafe { transmute(vaddvq_u64(transmute(a))) }
-}
-#[doc = "Add pairwise"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddd_s64)"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(addp))]
-pub fn vpaddd_s64(a: int64x2_t) -> i64 {
-    let a: int64x2_t = unsafe { simd_shuffle!(a, a, [1, 0]) };
-    unsafe { transmute(vaddvq_u64(transmute(a))) }
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddd_u64)"]
@@ -15696,7 +15580,7 @@ pub fn vpaddd_s64(a: int64x2_t) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(addp))]
 pub fn vpaddd_u64(a: uint64x2_t) -> u64 {
-    vaddvq_u64(a)
+    unsafe { simd_reduce_add_unordered(a) }
 }
 #[doc = "Floating-point add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_f16)"]
