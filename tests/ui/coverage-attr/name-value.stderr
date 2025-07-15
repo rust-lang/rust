@@ -1,10 +1,10 @@
-error: malformed `coverage` attribute input
+error[E0539]: malformed `coverage` attribute input
   --> $DIR/name-value.rs:12:1
    |
 LL | #[coverage = "off"]
-   | ^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
    |
-help: the following are the possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[coverage = "off"]
 LL + #[coverage(off)]
@@ -13,43 +13,28 @@ LL - #[coverage = "off"]
 LL + #[coverage(on)]
    |
 
-error: malformed `coverage` attribute input
+error[E0539]: malformed `coverage` attribute input
   --> $DIR/name-value.rs:17:5
    |
 LL |     #![coverage = "off"]
-   |     ^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
    |
-help: the following are the possible correct uses
-   |
-LL -     #![coverage = "off"]
-LL +     #![coverage(off)]
+help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #![coverage = "off"]
-LL +     #![coverage(on)]
+LL +     #[coverage(off)]
+   |
+LL -     #![coverage = "off"]
+LL +     #[coverage(on)]
    |
 
-error: malformed `coverage` attribute input
+error[E0539]: malformed `coverage` attribute input
   --> $DIR/name-value.rs:21:1
    |
 LL | #[coverage = "off"]
-   | ^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
    |
-help: the following are the possible correct uses
-   |
-LL - #[coverage = "off"]
-LL + #[coverage(off)]
-   |
-LL - #[coverage = "off"]
-LL + #[coverage(on)]
-   |
-
-error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:26:1
-   |
-LL | #[coverage = "off"]
-   | ^^^^^^^^^^^^^^^^^^^
-   |
-help: the following are the possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[coverage = "off"]
 LL + #[coverage(off)]
@@ -58,28 +43,13 @@ LL - #[coverage = "off"]
 LL + #[coverage(on)]
    |
 
-error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:29:5
-   |
-LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^^^^^^^^^
-   |
-help: the following are the possible correct uses
-   |
-LL -     #[coverage = "off"]
-LL +     #[coverage(off)]
-   |
-LL -     #[coverage = "off"]
-LL +     #[coverage(on)]
-   |
-
-error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:35:1
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:25:1
    |
 LL | #[coverage = "off"]
-   | ^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
    |
-help: the following are the possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[coverage = "off"]
 LL + #[coverage(off)]
@@ -88,13 +58,13 @@ LL - #[coverage = "off"]
 LL + #[coverage(on)]
    |
 
-error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:39:5
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:28:5
    |
 LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
    |
-help: the following are the possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[coverage = "off"]
 LL +     #[coverage(off)]
@@ -103,28 +73,13 @@ LL -     #[coverage = "off"]
 LL +     #[coverage(on)]
    |
 
-error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:44:5
-   |
-LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^^^^^^^^^
-   |
-help: the following are the possible correct uses
-   |
-LL -     #[coverage = "off"]
-LL +     #[coverage(off)]
-   |
-LL -     #[coverage = "off"]
-LL +     #[coverage(on)]
-   |
-
-error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:50:1
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:33:1
    |
 LL | #[coverage = "off"]
-   | ^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
    |
-help: the following are the possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[coverage = "off"]
 LL + #[coverage(off)]
@@ -133,13 +88,13 @@ LL - #[coverage = "off"]
 LL + #[coverage(on)]
    |
 
-error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:53:5
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:36:5
    |
 LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
    |
-help: the following are the possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[coverage = "off"]
 LL +     #[coverage(off)]
@@ -148,13 +103,13 @@ LL -     #[coverage = "off"]
 LL +     #[coverage(on)]
    |
 
-error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:58:5
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:40:5
    |
 LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
    |
-help: the following are the possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[coverage = "off"]
 LL +     #[coverage(off)]
@@ -163,13 +118,13 @@ LL -     #[coverage = "off"]
 LL +     #[coverage(on)]
    |
 
-error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:64:1
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:45:1
    |
 LL | #[coverage = "off"]
-   | ^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
    |
-help: the following are the possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[coverage = "off"]
 LL + #[coverage(off)]
@@ -178,87 +133,51 @@ LL - #[coverage = "off"]
 LL + #[coverage(on)]
    |
 
-error[E0788]: coverage attribute not allowed here
-  --> $DIR/name-value.rs:21:1
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:48:5
+   |
+LL |     #[coverage = "off"]
+   |     ^^^^^^^^^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL -     #[coverage = "off"]
+LL +     #[coverage(off)]
+   |
+LL -     #[coverage = "off"]
+LL +     #[coverage(on)]
+   |
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:52:5
+   |
+LL |     #[coverage = "off"]
+   |     ^^^^^^^^^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL -     #[coverage = "off"]
+LL +     #[coverage(off)]
+   |
+LL -     #[coverage = "off"]
+LL +     #[coverage(on)]
+   |
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:57:1
    |
 LL | #[coverage = "off"]
-   | ^^^^^^^^^^^^^^^^^^^
-...
-LL | struct MyStruct;
-   | ---------------- not a function, impl block, or module
+   | ^^^^^^^^^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
    |
-   = help: coverage attribute can be applied to a function (with body), impl block, or module
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[coverage = "off"]
+LL + #[coverage(off)]
+   |
+LL - #[coverage = "off"]
+LL + #[coverage(on)]
+   |
 
-error[E0788]: coverage attribute not allowed here
-  --> $DIR/name-value.rs:35:1
-   |
-LL |   #[coverage = "off"]
-   |   ^^^^^^^^^^^^^^^^^^^
-...
-LL | / trait MyTrait {
-LL | |     #[coverage = "off"]
-...  |
-LL | |     type T;
-LL | | }
-   | |_- not a function, impl block, or module
-   |
-   = help: coverage attribute can be applied to a function (with body), impl block, or module
+error: aborting due to 12 previous errors
 
-error[E0788]: coverage attribute not allowed here
-  --> $DIR/name-value.rs:39:5
-   |
-LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^^^^^^^^^
-...
-LL |     const X: u32;
-   |     ------------- not a function, impl block, or module
-   |
-   = help: coverage attribute can be applied to a function (with body), impl block, or module
-
-error[E0788]: coverage attribute not allowed here
-  --> $DIR/name-value.rs:44:5
-   |
-LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^^^^^^^^^
-...
-LL |     type T;
-   |     ------- not a function, impl block, or module
-   |
-   = help: coverage attribute can be applied to a function (with body), impl block, or module
-
-error[E0788]: coverage attribute not allowed here
-  --> $DIR/name-value.rs:29:5
-   |
-LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^^^^^^^^^
-...
-LL |     const X: u32 = 7;
-   |     ----------------- not a function, impl block, or module
-   |
-   = help: coverage attribute can be applied to a function (with body), impl block, or module
-
-error[E0788]: coverage attribute not allowed here
-  --> $DIR/name-value.rs:53:5
-   |
-LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^^^^^^^^^
-...
-LL |     const X: u32 = 8;
-   |     ----------------- not a function, impl block, or module
-   |
-   = help: coverage attribute can be applied to a function (with body), impl block, or module
-
-error[E0788]: coverage attribute not allowed here
-  --> $DIR/name-value.rs:58:5
-   |
-LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^^^^^^^^^
-...
-LL |     type T = ();
-   |     ------------ not a function, impl block, or module
-   |
-   = help: coverage attribute can be applied to a function (with body), impl block, or module
-
-error: aborting due to 19 previous errors
-
-For more information about this error, try `rustc --explain E0788`.
+For more information about this error, try `rustc --explain E0539`.
