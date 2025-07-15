@@ -1,6 +1,6 @@
-//! Crate that implements what will become the rustc side of Stable MIR.
+//! Crate that implements what will become the rustc side of rustc_public.
 //!
-//! This crate is responsible for building Stable MIR components from internal components.
+//! This crate serves as a proxy for making calls to rustc queries.
 //!
 //! This crate is not intended to be invoked directly by users.
 //! This crate is the public API of rustc that will be invoked by the `rustc_public` crate.
@@ -210,7 +210,7 @@ impl<'tcx, B: Bridge> Tables<'tcx, B> {
     }
 }
 
-/// A trait defining types that are used to emulate StableMIR components, which is really
+/// A trait defining types that are used to emulate rustc_public components, which is really
 /// useful when programming in rustc_public-agnostic settings.
 pub trait Bridge: Sized {
     type DefId: Copy + Debug + PartialEq + IndexedVal;

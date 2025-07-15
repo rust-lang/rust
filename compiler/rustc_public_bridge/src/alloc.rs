@@ -1,4 +1,4 @@
-//! Internal memory allocator implementation for StableMIR.
+//! Internal memory allocator implementation for rustc_public.
 //!
 //! This module handles all direct interactions with rustc queries and performs
 //! the actual memory allocations. The stable interface in `rustc_public::alloc`

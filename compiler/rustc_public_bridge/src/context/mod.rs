@@ -1,4 +1,4 @@
-//! Implementation of StableMIR Context.
+//! Implementation of CompilerCtxt.
 
 #![allow(rustc::usage_of_qualified_ty)]
 
@@ -19,7 +19,7 @@ pub use helpers::*;
 /// Provides direct access to rustc's internal queries.
 ///
 /// `CompilerInterface` must go through
-/// this context to obtain rustc-level information.
+/// this context to obtain internal information.
 pub struct CompilerCtxt<'tcx, B: Bridge> {
     pub tcx: TyCtxt<'tcx>,
     _marker: PhantomData<B>,
