@@ -27,13 +27,11 @@
           _5 = copy _2;
 -         _0 = drop_in_place::<Option<B>>(move _5) -> [return: bb2, unwind continue];
 +         StorageLive(_6);
-+         StorageLive(_7);
 +         _6 = discriminant((*_5));
 +         switchInt(move _6) -> [0: bb2, otherwise: bb3];
       }
   
       bb2: {
-+         StorageDead(_7);
 +         StorageDead(_6);
           StorageDead(_5);
           return;
