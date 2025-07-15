@@ -285,6 +285,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::StdInternalSymbol(attr_span)) => {
                     self.check_rustc_std_internal_symbol(attr_span, span, target)
                 }
+                &Attribute::Parsed(AttributeKind::Coverage(attr_span, _)) => {
+                    self.check_coverage(attr_span, span, target)
+                }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
@@ -294,7 +297,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::diagnostic, sym::on_unimplemented, ..] => {
                             self.check_diagnostic_on_unimplemented(attr.span(), hir_id, target)
                         }
-                        [sym::coverage, ..] => self.check_coverage(attr, span, target),
                         [sym::no_sanitize, ..] => {
                             self.check_no_sanitize(attr, span, target)
                         }
@@ -585,7 +587,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Checks that `#[coverage(..)]` is applied to a function/closure/method,
     /// or to an impl block or module.
-    fn check_coverage(&self, attr: &Attribute, target_span: Span, target: Target) {
+    fn check_coverage(&self, attr_span: Span, target_span: Span, target: Target) {
         let mut not_fn_impl_mod = None;
         let mut no_body = None;
 
@@ -608,7 +610,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
 
         self.dcx().emit_err(errors::CoverageAttributeNotAllowed {
-            attr_span: attr.span(),
+            attr_span,
             not_fn_impl_mod,
             no_body,
             help: (),
