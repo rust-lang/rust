@@ -1708,6 +1708,11 @@ impl RustcOptGroup {
             OptionKind::FlagMulti => options.optflagmulti(short_name, long_name, desc),
         };
     }
+
+    /// This is for diagnostics-only.
+    pub fn long_name(&self) -> &str {
+        self.long_name
+    }
 }
 
 pub fn make_opt(

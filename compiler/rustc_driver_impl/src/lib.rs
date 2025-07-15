@@ -1237,7 +1237,53 @@ pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<geto
         return None;
     }
 
+    warn_on_confusing_output_filename_flag(early_dcx, &matches, args);
+
     Some(matches)
+}
+
+/// Warn if `-o` is used without a space between the flag name and the value
+/// and the value is a high-value confusables,
+/// e.g. `-optimize` instead of `-o optimize`, see issue #142812.
+fn warn_on_confusing_output_filename_flag(
+    early_dcx: &EarlyDiagCtxt,
+    matches: &getopts::Matches,
+    args: &[String],
+) {
+    fn eq_ignore_separators(s1: &str, s2: &str) -> bool {
+        let s1 = s1.replace('-', "_");
+        let s2 = s2.replace('-', "_");
+        s1 == s2
+    }
+
+    if let Some(name) = matches.opt_str("o")
+        && let Some(suspect) = args.iter().find(|arg| arg.starts_with("-o") && *arg != "-o")
+    {
+        let filename = suspect.strip_prefix("-").unwrap_or(suspect);
+        let optgroups = config::rustc_optgroups();
+        let fake_args = ["optimize", "o0", "o1", "o2", "o3", "ofast", "og", "os", "oz"];
+
+        // Check if provided filename might be confusing in conjunction with `-o` flag,
+        // i.e. consider `-o{filename}` such as `-optimize` with `filename` being `ptimize`.
+        // There are high-value confusables, for example:
+        // - Long name of flags, e.g. `--out-dir` vs `-out-dir`
+        // - C compiler flag, e.g. `optimize`, `o0`, `o1`, `o2`, `o3`, `ofast`.
+        // - Codegen flags, e.g. `pt-level` of `-opt-level`.
+        if optgroups.iter().any(|option| eq_ignore_separators(option.long_name(), filename))
+            || config::CG_OPTIONS.iter().any(|option| eq_ignore_separators(option.name(), filename))
+            || fake_args.iter().any(|arg| eq_ignore_separators(arg, filename))
+        {
+            early_dcx.early_warn(
+                "option `-o` has no space between flag name and value, which can be confusing",
+            );
+            early_dcx.early_note(format!(
+                "output filename `-o {name}` is applied instead of a flag named `o{name}`"
+            ));
+            early_dcx.early_help(format!(
+                "insert a space between `-o` and `{name}` if this is intentional: `-o {name}`"
+            ));
+        }
+    }
 }
 
 fn parse_crate_attrs<'a>(sess: &'a Session) -> PResult<'a, ast::AttrVec> {
