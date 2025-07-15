@@ -960,7 +960,7 @@ pub fn drop<T>(_x: T) {}
 ///
 /// This function is not magic; it is literally defined as
 /// ```
-/// pub fn copy<T: Copy>(x: &T) -> T { *x }
+/// pub const fn copy<T: Copy>(x: &T) -> T { *x }
 /// ```
 ///
 /// It is useful when you want to pass a function pointer to a combinator, rather than defining a new closure.
