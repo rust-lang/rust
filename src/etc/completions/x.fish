@@ -73,7 +73,6 @@ complete -c x -n "__fish_x_needs_command" -a "dist" -d 'Build distribution artif
 complete -c x -n "__fish_x_needs_command" -a "install" -d 'Install distribution artifacts'
 complete -c x -n "__fish_x_needs_command" -a "run" -d 'Run tools contained in this repository'
 complete -c x -n "__fish_x_needs_command" -a "setup" -d 'Set up the environment for development'
-complete -c x -n "__fish_x_needs_command" -a "suggest" -d 'Suggest a subset of tests to run, based on modified files'
 complete -c x -n "__fish_x_needs_command" -a "vendor" -d 'Vendor dependencies'
 complete -c x -n "__fish_x_needs_command" -a "perf" -d 'Perform profiling and benchmarking of the compiler using `rustc-perf`'
 complete -c x -n "__fish_x_using_subcommand build" -l config -d 'TOML configuration file for build' -r -F
@@ -599,42 +598,6 @@ complete -c x -n "__fish_x_using_subcommand setup" -l enable-bolt-settings -d 'E
 complete -c x -n "__fish_x_using_subcommand setup" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x -n "__fish_x_using_subcommand setup" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
 complete -c x -n "__fish_x_using_subcommand setup" -s h -l help -d 'Print help (see more with \'--help\')'
-complete -c x -n "__fish_x_using_subcommand suggest" -l config -d 'TOML configuration file for build' -r -F
-complete -c x -n "__fish_x_using_subcommand suggest" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
-complete -c x -n "__fish_x_using_subcommand suggest" -l build -d 'host target of the stage0 compiler' -r -f
-complete -c x -n "__fish_x_using_subcommand suggest" -l host -d 'host targets to build' -r -f
-complete -c x -n "__fish_x_using_subcommand suggest" -l target -d 'target targets to build' -r -f
-complete -c x -n "__fish_x_using_subcommand suggest" -l exclude -d 'build paths to exclude' -r -F
-complete -c x -n "__fish_x_using_subcommand suggest" -l skip -d 'build paths to skip' -r -F
-complete -c x -n "__fish_x_using_subcommand suggest" -l rustc-error-format -d 'rustc error format' -r -f
-complete -c x -n "__fish_x_using_subcommand suggest" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
-complete -c x -n "__fish_x_using_subcommand suggest" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
-complete -c x -n "__fish_x_using_subcommand suggest" -l keep-stage -d 'stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
-complete -c x -n "__fish_x_using_subcommand suggest" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
-complete -c x -n "__fish_x_using_subcommand suggest" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
-complete -c x -n "__fish_x_using_subcommand suggest" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x -n "__fish_x_using_subcommand suggest" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
-complete -c x -n "__fish_x_using_subcommand suggest" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x -n "__fish_x_using_subcommand suggest" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
-complete -c x -n "__fish_x_using_subcommand suggest" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
-complete -c x -n "__fish_x_using_subcommand suggest" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
-complete -c x -n "__fish_x_using_subcommand suggest" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x -n "__fish_x_using_subcommand suggest" -l set -d 'override options in bootstrap.toml' -r -f
-complete -c x -n "__fish_x_using_subcommand suggest" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
-complete -c x -n "__fish_x_using_subcommand suggest" -l run -d 'run suggested tests'
-complete -c x -n "__fish_x_using_subcommand suggest" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
-complete -c x -n "__fish_x_using_subcommand suggest" -s i -l incremental -d 'use incremental compilation'
-complete -c x -n "__fish_x_using_subcommand suggest" -l include-default-paths -d 'include default paths in addition to the provided ones'
-complete -c x -n "__fish_x_using_subcommand suggest" -l dry-run -d 'dry run; don\'t build anything'
-complete -c x -n "__fish_x_using_subcommand suggest" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
-complete -c x -n "__fish_x_using_subcommand suggest" -l json-output -d 'use message-format=json'
-complete -c x -n "__fish_x_using_subcommand suggest" -l compile-time-deps -d 'only build proc-macros and build scripts (for rust-analyzer)'
-complete -c x -n "__fish_x_using_subcommand suggest" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
-complete -c x -n "__fish_x_using_subcommand suggest" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
-complete -c x -n "__fish_x_using_subcommand suggest" -l enable-bolt-settings -d 'Enable BOLT link flags'
-complete -c x -n "__fish_x_using_subcommand suggest" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
-complete -c x -n "__fish_x_using_subcommand suggest" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
-complete -c x -n "__fish_x_using_subcommand suggest" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x -n "__fish_x_using_subcommand vendor" -l sync -d 'Additional `Cargo.toml` to sync and vendor' -r -F
 complete -c x -n "__fish_x_using_subcommand vendor" -l config -d 'TOML configuration file for build' -r -F
 complete -c x -n "__fish_x_using_subcommand vendor" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"

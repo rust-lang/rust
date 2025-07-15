@@ -517,7 +517,6 @@ bootstrap_tool!(
     ReplaceVersionPlaceholder, "src/tools/replace-version-placeholder", "replace-version-placeholder";
     CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
     GenerateCopyright, "src/tools/generate-copyright", "generate-copyright";
-    SuggestTests, "src/tools/suggest-tests", "suggest-tests";
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
     // rustdoc-gui-test has a crate dependency on compiletest, so it needs the same unstable features.
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = COMPILETEST_ALLOW_FEATURES;
