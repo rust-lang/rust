@@ -1054,6 +1054,7 @@ impl<'a> Builder<'a> {
                 test::UiFullDeps,
                 test::Rustdoc,
                 test::CoverageRunRustdoc,
+                test::Parallel,
                 test::Pretty,
                 test::CodegenCranelift,
                 test::CodegenGCC,
