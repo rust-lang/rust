@@ -9,16 +9,16 @@
 
 extern crate rustc_hir;
 extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_smir;
+
 extern crate rustc_driver;
 extern crate rustc_interface;
-extern crate stable_mir;
+#[macro_use]
+extern crate rustc_public;
 
-use stable_mir::mir::mono::Instance;
-use stable_mir::mir::visit::{Location, MirVisitor};
-use stable_mir::mir::{LocalDecl, Rvalue, Statement, StatementKind, Terminator, TerminatorKind};
-use stable_mir::ty::{RigidTy, TyKind};
+use rustc_public::mir::mono::Instance;
+use rustc_public::mir::visit::{Location, MirVisitor};
+use rustc_public::mir::{LocalDecl, Rvalue, Statement, StatementKind, Terminator, TerminatorKind};
+use rustc_public::ty::{RigidTy, TyKind};
 use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::io::Write;
@@ -27,7 +27,7 @@ use std::ops::ControlFlow;
 /// This function tests that we can correctly get type information from binary operations.
 fn test_binops() -> ControlFlow<()> {
     // Find items in the local crate.
-    let items = stable_mir::all_local_items();
+    let items = rustc_public::all_local_items();
     let mut instances =
         items.into_iter().map(|item| Instance::try_from(item).unwrap()).collect::<Vec<_>>();
     while let Some(instance) = instances.pop() {

@@ -10,25 +10,24 @@
 #![feature(assert_matches)]
 
 extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_smir;
+
 extern crate rustc_driver;
 extern crate rustc_interface;
-extern crate stable_mir;
+extern crate rustc_public;
 
 use std::io::Write;
 use std::ops::ControlFlow;
 
 use mir::mono::Instance;
 use mir::TerminatorKind::*;
-use stable_mir::ty::{RigidTy, TyKind};
-use stable_mir::*;
+use rustc_public::ty::{RigidTy, TyKind};
+use rustc_public::*;
 
 const CRATE_NAME: &str = "input";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_stable_mir() -> ControlFlow<()> {
-    let items = stable_mir::all_local_items();
+    let items = rustc_public::all_local_items();
 
     // Get all items and split generic vs monomorphic items.
     let (generic, mono): (Vec<_>, Vec<_>) =

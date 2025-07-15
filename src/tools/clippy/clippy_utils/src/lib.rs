@@ -77,7 +77,8 @@ pub mod visitors;
 pub use self::attrs::*;
 pub use self::check_proc_macro::{is_from_proc_macro, is_span_if, is_span_match};
 pub use self::hir_utils::{
-    HirEqInterExpr, SpanlessEq, SpanlessHash, both, count_eq, eq_expr_value, hash_expr, hash_stmt, is_bool, over,
+    HirEqInterExpr, SpanlessEq, SpanlessHash, both, count_eq, eq_expr_value, has_ambiguous_literal_in_expr, hash_expr,
+    hash_stmt, is_bool, over,
 };
 
 use core::mem;
@@ -106,7 +107,7 @@ use rustc_hir::{
     Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem,
     TraitItemKind, TraitRef, TyKind, UnOp, def,
 };
-use rustc_lexer::{TokenKind, tokenize};
+use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::hir::place::PlaceBase;
@@ -1761,7 +1762,7 @@ pub fn has_attr(attrs: &[hir::Attribute], symbol: Symbol) -> bool {
 }
 
 pub fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    find_attr!(cx.tcx.hir_attrs(hir_id), AttributeKind::Repr(..))
+    find_attr!(cx.tcx.hir_attrs(hir_id), AttributeKind::Repr { .. })
 }
 
 pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool {
@@ -1784,9 +1785,9 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
     tcx.hir_parent_owner_iter(id)
         .filter(|(_, node)| matches!(node, OwnerNode::Item(item) if matches!(item.kind, ItemKind::Impl(_))))
         .any(|(id, _)| {
-            has_attr(
+            find_attr!(
                 tcx.hir_attrs(tcx.local_def_id_to_hir_id(id.def_id)),
-                sym::automatically_derived,
+                AttributeKind::AutomaticallyDerived(..)
             )
         })
 }
@@ -2764,7 +2765,7 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'tcx>) -> ExprUseCtx
 /// Tokenizes the input while keeping the text associated with each token.
 pub fn tokenize_with_text(s: &str) -> impl Iterator<Item = (TokenKind, &str, InnerSpan)> {
     let mut pos = 0;
-    tokenize(s).map(move |t| {
+    tokenize(s, FrontmatterAllowed::No).map(move |t| {
         let end = pos + t.len;
         let range = pos as usize..end as usize;
         let inner = InnerSpan::new(range.start, range.end);
@@ -2779,7 +2780,7 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
     let Ok(snippet) = sm.span_to_snippet(span) else {
         return false;
     };
-    return tokenize(&snippet).any(|token| {
+    return tokenize(&snippet, FrontmatterAllowed::No).any(|token| {
         matches!(
             token.kind,
             TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }
@@ -3496,4 +3497,65 @@ pub fn is_expr_default<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> 
     } else {
         false
     }
+}
+
+/// Checks if `expr` may be directly used as the return value of its enclosing body.
+/// The following cases are covered:
+/// - `expr` as the last expression of the body, or of a block that can be used as the return value
+/// - `return expr`
+/// - then or else part of a `if` in return position
+/// - arm body of a `match` in a return position
+/// - `break expr` or `break 'label expr` if the loop or block being exited is used as a return
+///   value
+///
+/// Contrary to [`TyCtxt::hir_get_fn_id_for_return_block()`], if `expr` is part of a
+/// larger expression, for example a field expression of a `struct`, it will not be
+/// considered as matching the condition and will return `false`.
+///
+/// Also, even if `expr` is assigned to a variable which is later returned, this function
+/// will still return `false` because `expr` is not used *directly* as the return value
+/// as it goes through the intermediate variable.
+pub fn potential_return_of_enclosing_body(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    let enclosing_body_owner = cx
+        .tcx
+        .local_def_id_to_hir_id(cx.tcx.hir_enclosing_body_owner(expr.hir_id));
+    let mut prev_id = expr.hir_id;
+    let mut skip_until_id = None;
+    for (hir_id, node) in cx.tcx.hir_parent_iter(expr.hir_id) {
+        if hir_id == enclosing_body_owner {
+            return true;
+        }
+        if let Some(id) = skip_until_id {
+            prev_id = hir_id;
+            if id == hir_id {
+                skip_until_id = None;
+            }
+            continue;
+        }
+        match node {
+            Node::Block(Block { expr, .. }) if expr.is_some_and(|expr| expr.hir_id == prev_id) => {},
+            Node::Arm(arm) if arm.body.hir_id == prev_id => {},
+            Node::Expr(expr) => match expr.kind {
+                ExprKind::Ret(_) => return true,
+                ExprKind::If(_, then, opt_else)
+                    if then.hir_id == prev_id || opt_else.is_some_and(|els| els.hir_id == prev_id) => {},
+                ExprKind::Match(_, arms, _) if arms.iter().any(|arm| arm.hir_id == prev_id) => {},
+                ExprKind::Block(block, _) if block.hir_id == prev_id => {},
+                ExprKind::Break(
+                    Destination {
+                        target_id: Ok(target_id),
+                        ..
+                    },
+                    _,
+                ) => skip_until_id = Some(target_id),
+                _ => break,
+            },
+            _ => break,
+        }
+        prev_id = hir_id;
+    }
+
+    // `expr` is used as part of "something" and is not returned directly from its
+    // enclosing body.
+    false
 }

@@ -372,13 +372,16 @@ impl Diagnostic {
         };
         let level = diag.level.to_str();
         let spans = DiagnosticSpan::from_multispan(&diag.span, &args, je);
-        let children = diag
+        let mut children: Vec<Diagnostic> = diag
             .children
             .iter()
             .map(|c| Diagnostic::from_sub_diagnostic(c, &args, je))
             .chain(sugg)
             .collect();
-
+        if je.track_diagnostics && diag.span.has_primary_spans() && !diag.span.is_dummy() {
+            children
+                .insert(0, Diagnostic::from_sub_diagnostic(&diag.emitted_at_sub_diag(), &args, je));
+        }
         let buf = BufWriter::default();
         let mut dst: Destination = Box::new(buf.clone());
         let short = je.json_rendered.short();

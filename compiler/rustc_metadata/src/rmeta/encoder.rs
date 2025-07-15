@@ -16,6 +16,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir_pretty::id_to_string;
+use rustc_middle::dep_graph::WorkProductId;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::metadata_symbol_name;
 use rustc_middle::mir::interpret;
@@ -29,8 +30,8 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::{CrateType, OptLevel, TargetModifier};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
-    ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
-    sym,
+    ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
+    Symbol, SyntaxContext, sym,
 };
 use tracing::{debug, instrument, trace};
 
@@ -63,7 +64,8 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     required_source_files: Option<FxIndexSet<usize>>,
     is_proc_macro: bool,
     hygiene_ctxt: &'a HygieneEncodeContext,
-    symbol_table: FxHashMap<Symbol, usize>,
+    // Used for both `Symbol`s and `ByteSymbol`s.
+    symbol_index_table: FxHashMap<u32, usize>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -200,27 +202,14 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_symbol(&mut self, symbol: Symbol) {
-        // if symbol predefined, emit tag and symbol index
-        if symbol.is_predefined() {
-            self.opaque.emit_u8(SYMBOL_PREDEFINED);
-            self.opaque.emit_u32(symbol.as_u32());
-        } else {
-            // otherwise write it as string or as offset to it
-            match self.symbol_table.entry(symbol) {
-                Entry::Vacant(o) => {
-                    self.opaque.emit_u8(SYMBOL_STR);
-                    let pos = self.opaque.position();
-                    o.insert(pos);
-                    self.emit_str(symbol.as_str());
-                }
-                Entry::Occupied(o) => {
-                    let x = *o.get();
-                    self.emit_u8(SYMBOL_OFFSET);
-                    self.emit_usize(x);
-                }
-            }
-        }
+    fn encode_symbol(&mut self, sym: Symbol) {
+        self.encode_symbol_or_byte_symbol(sym.as_u32(), |this| this.emit_str(sym.as_str()));
+    }
+
+    fn encode_byte_symbol(&mut self, byte_sym: ByteSymbol) {
+        self.encode_symbol_or_byte_symbol(byte_sym.as_u32(), |this| {
+            this.emit_byte_str(byte_sym.as_byte_str())
+        });
     }
 }
 
@@ -492,6 +481,33 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         LazyArray::from_position_and_num_elems(pos, len)
     }
 
+    fn encode_symbol_or_byte_symbol(
+        &mut self,
+        index: u32,
+        emit_str_or_byte_str: impl Fn(&mut Self),
+    ) {
+        // if symbol/byte symbol is predefined, emit tag and symbol index
+        if Symbol::is_predefined(index) {
+            self.opaque.emit_u8(SYMBOL_PREDEFINED);
+            self.opaque.emit_u32(index);
+        } else {
+            // otherwise write it as string or as offset to it
+            match self.symbol_index_table.entry(index) {
+                Entry::Vacant(o) => {
+                    self.opaque.emit_u8(SYMBOL_STR);
+                    let pos = self.opaque.position();
+                    o.insert(pos);
+                    emit_str_or_byte_str(self);
+                }
+                Entry::Occupied(o) => {
+                    let x = *o.get();
+                    self.emit_u8(SYMBOL_OFFSET);
+                    self.emit_usize(x);
+                }
+            }
+        }
+    }
+
     fn encode_def_path_table(&mut self) {
         let table = self.tcx.def_path_table();
         if self.is_proc_macro {
@@ -677,9 +693,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             stat!("exportable-items", || self.encode_stable_order_of_exportable_impls());
 
         // Encode exported symbols info. This is prefetched in `encode_metadata`.
-        let exported_symbols = stat!("exported-symbols", || {
-            self.encode_exported_symbols(tcx.exported_symbols(LOCAL_CRATE))
-        });
+        let (exported_non_generic_symbols, exported_generic_symbols) =
+            stat!("exported-symbols", || {
+                (
+                    self.encode_exported_symbols(tcx.exported_non_generic_symbols(LOCAL_CRATE)),
+                    self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE)),
+                )
+            });
 
         // Encode the hygiene data.
         // IMPORTANT: this *must* be the last thing that we encode (other than `SourceMap`). The
@@ -745,7 +765,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 incoherent_impls,
                 exportable_items,
                 stable_order_of_exportable_impls,
-                exported_symbols,
+                exported_non_generic_symbols,
+                exported_generic_symbols,
                 interpret_alloc_index,
                 tables,
                 syntax_contexts,
@@ -1361,17 +1382,6 @@ fn should_encode_const(def_kind: DefKind) -> bool {
     }
 }
 
-fn should_encode_fn_impl_trait_in_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
-    if let Some(assoc_item) = tcx.opt_associated_item(def_id)
-        && assoc_item.container == ty::AssocItemContainer::Trait
-        && assoc_item.is_fn()
-    {
-        true
-    } else {
-        false
-    }
-}
-
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
@@ -1596,9 +1606,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             {
                 record!(self.tables.trait_impl_trait_tys[def_id] <- table);
             }
-            if should_encode_fn_impl_trait_in_trait(tcx, def_id) {
-                let table = tcx.associated_types_for_impl_traits_in_associated_fn(def_id);
-                record_defaulted_array!(self.tables.associated_types_for_impl_traits_in_associated_fn[def_id] <- table);
+            if let DefKind::Impl { .. } | DefKind::Trait = def_kind {
+                let table = tcx.associated_types_for_impl_traits_in_trait_or_impl(def_id);
+                record!(self.tables.associated_types_for_impl_traits_in_trait_or_impl[def_id] <- table);
             }
         }
 
@@ -2287,6 +2297,8 @@ pub struct EncodedMetadata {
     // This is an optional stub metadata containing only the crate header.
     // The header should be very small, so we load it directly into memory.
     stub_metadata: Option<Vec<u8>>,
+    // The path containing the metadata, to record as work product.
+    path: Option<Box<Path>>,
     // We need to carry MaybeTempDir to avoid deleting the temporary
     // directory while accessing the Mmap.
     _temp_dir: Option<MaybeTempDir>,
@@ -2302,14 +2314,24 @@ impl EncodedMetadata {
         let file = std::fs::File::open(&path)?;
         let file_metadata = file.metadata()?;
         if file_metadata.len() == 0 {
-            return Ok(Self { full_metadata: None, stub_metadata: None, _temp_dir: None });
+            return Ok(Self {
+                full_metadata: None,
+                stub_metadata: None,
+                path: None,
+                _temp_dir: None,
+            });
         }
         let full_mmap = unsafe { Some(Mmap::map(file)?) };
 
         let stub =
             if let Some(stub_path) = stub_path { Some(std::fs::read(stub_path)?) } else { None };
 
-        Ok(Self { full_metadata: full_mmap, stub_metadata: stub, _temp_dir: temp_dir })
+        Ok(Self {
+            full_metadata: full_mmap,
+            stub_metadata: stub,
+            path: Some(path.into()),
+            _temp_dir: temp_dir,
+        })
     }
 
     #[inline]
@@ -2320,6 +2342,11 @@ impl EncodedMetadata {
     #[inline]
     pub fn stub_or_full(&self) -> &[u8] {
         self.stub_metadata.as_deref().unwrap_or(self.full())
+    }
+
+    #[inline]
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
     }
 }
 
@@ -2345,42 +2372,20 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
             None
         };
 
-        Self { full_metadata, stub_metadata: stub, _temp_dir: None }
+        Self { full_metadata, stub_metadata: stub, path: None, _temp_dir: None }
     }
 }
 
+#[instrument(level = "trace", skip(tcx))]
 pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
-    let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
-
     // Since encoding metadata is not in a query, and nothing is cached,
     // there's no need to do dep-graph tracking for any of it.
     tcx.dep_graph.assert_ignored();
 
-    if tcx.sess.threads() != 1 {
-        // Prefetch some queries used by metadata encoding.
-        // This is not necessary for correctness, but is only done for performance reasons.
-        // It can be removed if it turns out to cause trouble or be detrimental to performance.
-        join(|| prefetch_mir(tcx), || tcx.exported_symbols(LOCAL_CRATE));
-    }
-
-    with_encode_metadata_header(tcx, path, |ecx| {
-        // Encode all the entries and extra information in the crate,
-        // culminating in the `CrateRoot` which points to all of it.
-        let root = ecx.encode_crate_root();
-
-        // Flush buffer to ensure backing file has the correct size.
-        ecx.opaque.flush();
-        // Record metadata size for self-profiling
-        tcx.prof.artifact_size(
-            "crate_metadata",
-            "crate_metadata",
-            ecx.opaque.file().metadata().unwrap().len(),
-        );
-
-        root.position.get()
-    });
-
+    // Generate the metadata stub manually, as that is a small file compared to full metadata.
     if let Some(ref_path) = ref_path {
+        let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
+
         with_encode_metadata_header(tcx, ref_path, |ecx| {
             let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
                 name: tcx.crate_name(LOCAL_CRATE),
@@ -2390,8 +2395,69 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                 is_stub: true,
             });
             header.position.get()
-        });
+        })
     }
+
+    let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
+
+    let dep_node = tcx.metadata_dep_node();
+
+    // If the metadata dep-node is green, try to reuse the saved work product.
+    if tcx.dep_graph.is_fully_enabled()
+        && let work_product_id = WorkProductId::from_cgu_name("metadata")
+        && let Some(work_product) = tcx.dep_graph.previous_work_product(&work_product_id)
+        && tcx.try_mark_green(&dep_node)
+    {
+        let saved_path = &work_product.saved_files["rmeta"];
+        let incr_comp_session_dir = tcx.sess.incr_comp_session_dir_opt().unwrap();
+        let source_file = rustc_incremental::in_incr_comp_dir(&incr_comp_session_dir, saved_path);
+        debug!("copying preexisting metadata from {source_file:?} to {path:?}");
+        match rustc_fs_util::link_or_copy(&source_file, path) {
+            Ok(_) => {}
+            Err(err) => tcx.dcx().emit_fatal(FailCreateFileEncoder { err }),
+        };
+        return;
+    };
+
+    if tcx.sess.threads() != 1 {
+        // Prefetch some queries used by metadata encoding.
+        // This is not necessary for correctness, but is only done for performance reasons.
+        // It can be removed if it turns out to cause trouble or be detrimental to performance.
+        join(
+            || prefetch_mir(tcx),
+            || {
+                let _ = tcx.exported_non_generic_symbols(LOCAL_CRATE);
+                let _ = tcx.exported_generic_symbols(LOCAL_CRATE);
+            },
+        );
+    }
+
+    // Perform metadata encoding inside a task, so the dep-graph can check if any encoded
+    // information changes, and maybe reuse the work product.
+    tcx.dep_graph.with_task(
+        dep_node,
+        tcx,
+        path,
+        |tcx, path| {
+            with_encode_metadata_header(tcx, path, |ecx| {
+                // Encode all the entries and extra information in the crate,
+                // culminating in the `CrateRoot` which points to all of it.
+                let root = ecx.encode_crate_root();
+
+                // Flush buffer to ensure backing file has the correct size.
+                ecx.opaque.flush();
+                // Record metadata size for self-profiling
+                tcx.prof.artifact_size(
+                    "crate_metadata",
+                    "crate_metadata",
+                    ecx.opaque.file().metadata().unwrap().len(),
+                );
+
+                root.position.get()
+            })
+        },
+        None,
+    );
 }
 
 fn with_encode_metadata_header(
@@ -2427,7 +2493,7 @@ fn with_encode_metadata_header(
         required_source_files,
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
-        symbol_table: Default::default(),
+        symbol_index_table: Default::default(),
     };
 
     // Encode the rustc version string in a predictable location.

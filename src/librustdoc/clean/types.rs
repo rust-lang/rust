@@ -7,7 +7,7 @@ use arrayvec::ArrayVec;
 use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_attr_data_structures::{
-    AttributeKind, ConstStability, Deprecation, Stability, StableSince,
+    AttributeKind, ConstStability, Deprecation, Stability, StableSince, find_attr,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -24,7 +24,7 @@ use rustc_resolve::rustdoc::{
 };
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::symbol::{Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, FileName, Loc};
 use thin_vec::ThinVec;
 use tracing::{debug, trace};
@@ -621,7 +621,7 @@ impl Item {
     }
 
     pub(crate) fn is_non_exhaustive(&self) -> bool {
-        self.attrs.other_attrs.iter().any(|a| a.has_name(sym::non_exhaustive))
+        find_attr!(&self.attrs.other_attrs, AttributeKind::NonExhaustive(..))
     }
 
     /// Returns a documentation-level item type from the item.
@@ -647,7 +647,20 @@ impl Item {
         ) -> hir::FnHeader {
             let sig = tcx.fn_sig(def_id).skip_binder();
             let constness = if tcx.is_const_fn(def_id) {
-                hir::Constness::Const
+                // rustc's `is_const_fn` returns `true` for associated functions that have an `impl const` parent
+                // or that have a `#[const_trait]` parent. Do not display those as `const` in rustdoc because we
+                // won't be printing correct syntax plus the syntax is unstable.
+                match tcx.opt_associated_item(def_id) {
+                    Some(ty::AssocItem {
+                        container: ty::AssocItemContainer::Impl,
+                        trait_item_def_id: Some(_),
+                        ..
+                    })
+                    | Some(ty::AssocItem { container: ty::AssocItemContainer::Trait, .. }) => {
+                        hir::Constness::NotConst
+                    }
+                    None | Some(_) => hir::Constness::Const,
+                }
             } else {
                 hir::Constness::NotConst
             };
@@ -753,20 +766,39 @@ impl Item {
             .other_attrs
             .iter()
             .filter_map(|attr| {
+                if let hir::Attribute::Parsed(AttributeKind::LinkSection { name, .. }) = attr {
+                    Some(format!("#[link_section = \"{name}\"]"))
+                }
                 // NoMangle is special cased, as it appears in HTML output, and we want to show it in source form, not HIR printing.
                 // It is also used by cargo-semver-checks.
-                if let hir::Attribute::Parsed(AttributeKind::NoMangle(..)) = attr {
+                else if let hir::Attribute::Parsed(AttributeKind::NoMangle(..)) = attr {
                     Some("#[no_mangle]".to_string())
                 } else if let hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) = attr
                 {
                     Some(format!("#[export_name = \"{name}\"]"))
+                } else if let hir::Attribute::Parsed(AttributeKind::NonExhaustive(..)) = attr {
+                    Some("#[non_exhaustive]".to_string())
                 } else if is_json {
                     match attr {
                         // rustdoc-json stores this in `Item::deprecation`, so we
                         // don't want it it `Item::attrs`.
                         hir::Attribute::Parsed(AttributeKind::Deprecation { .. }) => None,
                         // We have separate pretty-printing logic for `#[repr(..)]` attributes.
-                        hir::Attribute::Parsed(AttributeKind::Repr(..)) => None,
+                        hir::Attribute::Parsed(AttributeKind::Repr { .. }) => None,
+                        // target_feature is special-cased because cargo-semver-checks uses it
+                        hir::Attribute::Parsed(AttributeKind::TargetFeature(features, _)) => {
+                            let mut output = String::new();
+                            for (i, (feature, _)) in features.iter().enumerate() {
+                                if i != 0 {
+                                    output.push_str(", ");
+                                }
+                                output.push_str(&format!("enable=\"{}\"", feature.as_str()));
+                            }
+                            Some(format!("#[target_feature({output})]"))
+                        }
+                        hir::Attribute::Parsed(AttributeKind::AutomaticallyDerived(..)) => {
+                            Some("#[automatically_derived]".to_string())
+                        }
                         _ => Some({
                             let mut s = rustc_hir_pretty::attribute_to_string(&tcx, attr);
                             assert_eq!(s.pop(), Some('\n'));
@@ -1072,16 +1104,10 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
 
     // treat #[target_feature(enable = "feat")] attributes as if they were
     // #[doc(cfg(target_feature = "feat"))] attributes as well
-    for attr in hir_attr_lists(attrs, sym::target_feature) {
-        if attr.has_name(sym::enable) && attr.value_str().is_some() {
-            // Clone `enable = "feat"`, change to `target_feature = "feat"`.
-            // Unwrap is safe because `value_str` succeeded above.
-            let mut meta = attr.meta_item().unwrap().clone();
-            meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
-
-            if let Ok(feat_cfg) = Cfg::parse(&ast::MetaItemInner::MetaItem(meta)) {
-                cfg &= feat_cfg;
-            }
+    if let Some(features) = find_attr!(attrs, AttributeKind::TargetFeature(features, _) => features)
+    {
+        for (feature, _) in features {
+            cfg &= Cfg::Cfg(sym::target_feature, Some(*feature));
         }
     }
 

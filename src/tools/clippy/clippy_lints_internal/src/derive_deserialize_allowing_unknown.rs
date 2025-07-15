@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for DeriveDeserializeAllowingUnknown {
         }
 
         // Is it derived?
-        if !cx.tcx.has_attr(item.owner_id, sym::automatically_derived) {
+        if !find_attr!(cx.tcx.get_all_attrs(item.owner_id), AttributeKind::AutomaticallyDerived(..)) {
             return;
         }
 

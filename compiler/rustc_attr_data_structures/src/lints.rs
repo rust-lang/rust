@@ -12,4 +12,5 @@ pub struct AttributeLint<Id> {
 pub enum AttributeLintKind {
     UnusedDuplicate { this: Span, other: Span, warning: bool },
     IllFormedAttributeInput { suggestions: Vec<String> },
+    EmptyAttribute { first_span: Span },
 }

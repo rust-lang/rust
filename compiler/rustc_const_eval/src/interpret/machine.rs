@@ -18,8 +18,8 @@ use rustc_target::callconv::FnAbi;
 
 use super::{
     AllocBytes, AllocId, AllocKind, AllocRange, Allocation, CTFE_ALLOC_SALT, ConstAllocation,
-    CtfeProvenance, FnArg, Frame, ImmTy, InterpCx, InterpResult, MPlaceTy, MemoryKind,
-    Misalignment, OpTy, PlaceTy, Pointer, Provenance, RangeSet, interp_ok, throw_unsup,
+    CtfeProvenance, EnteredTraceSpan, FnArg, Frame, ImmTy, InterpCx, InterpResult, MPlaceTy,
+    MemoryKind, Misalignment, OpTy, PlaceTy, Pointer, Provenance, RangeSet, interp_ok, throw_unsup,
 };
 
 /// Data returned by [`Machine::after_stack_pop`], and consumed by
@@ -147,12 +147,6 @@ pub trait Machine<'tcx>: Sized {
     /// already been checked before.
     const ALL_CONSTS_ARE_PRECHECKED: bool = true;
 
-    /// Determines whether rustc_const_eval functions that make use of the [Machine] should make
-    /// tracing calls (to the `tracing` library). By default this is `false`, meaning the tracing
-    /// calls will supposedly be optimized out. This flag is set to `true` inside Miri, to allow
-    /// tracing the interpretation steps, among other things.
-    const TRACING_ENABLED: bool = false;
-
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(ecx: &InterpCx<'tcx, Self>) -> bool;
 
@@ -189,8 +183,8 @@ pub trait Machine<'tcx>: Sized {
     fn load_mir(
         ecx: &InterpCx<'tcx, Self>,
         instance: ty::InstanceKind<'tcx>,
-    ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
-        interp_ok(ecx.tcx.instance_mir(instance))
+    ) -> &'tcx mir::Body<'tcx> {
+        ecx.tcx.instance_mir(instance)
     }
 
     /// Entry point to all function calls.
@@ -634,6 +628,17 @@ pub trait Machine<'tcx>: Sized {
     /// Compute the value passed to the constructors of the `AllocBytes` type for
     /// abstract machine allocations.
     fn get_default_alloc_params(&self) -> <Self::Bytes as AllocBytes>::AllocParams;
+
+    /// Allows enabling/disabling tracing calls from within `rustc_const_eval` at compile time, by
+    /// delegating the entering of [tracing::Span]s to implementors of the [Machine] trait. The
+    /// default implementation corresponds to tracing being disabled, meaning the tracing calls will
+    /// supposedly be optimized out completely. To enable tracing, override this trait method and
+    /// return `span.entered()`. Also see [crate::enter_trace_span].
+    #[must_use]
+    #[inline(always)]
+    fn enter_trace_span(_span: impl FnOnce() -> tracing::Span) -> impl EnteredTraceSpan {
+        ()
+    }
 }
 
 /// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines
@@ -747,7 +752,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         // Allow these casts, but make the pointer not dereferenceable.
         // (I.e., they behave like transmutation.)
         // This is correct because no pointers can ever be exposed in compile-time evaluation.
-        interp_ok(Pointer::from_addr_invalid(addr))
+        interp_ok(Pointer::without_provenance(addr))
     }
 
     #[inline(always)]
@@ -756,8 +761,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         ptr: Pointer<CtfeProvenance>,
         _size: i64,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
-        // We know `offset` is relative to the allocation, so we can use `into_parts`.
-        let (prov, offset) = ptr.into_parts();
+        let (prov, offset) = ptr.prov_and_relative_offset();
         Some((prov.alloc_id(), offset, prov.immutable()))
     }
 

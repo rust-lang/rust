@@ -665,7 +665,11 @@ impl Step for Std {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::doc("std", self.target).stage(self.stage))
+        Some(
+            StepMetadata::doc("std", self.target)
+                .stage(self.stage)
+                .with_metadata(format!("crates=[{}]", self.crates.join(","))),
+        )
     }
 }
 
@@ -739,10 +743,6 @@ fn doc_std(
     }
 
     for krate in requested_crates {
-        if krate == "sysroot" {
-            // The sysroot crate is an implementation detail, don't include it in public docs.
-            continue;
-        }
         cargo.arg("-p").arg(krate);
     }
 

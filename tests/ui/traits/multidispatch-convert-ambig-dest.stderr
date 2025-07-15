@@ -2,7 +2,7 @@ error[E0283]: type annotations needed
   --> $DIR/multidispatch-convert-ambig-dest.rs:26:5
    |
 LL |     test(22, std::default::Default::default());
-   |     ^^^^     -------------------------------- type must be known at this point
+   |     ^^^^ -- type must be known at this point
    |     |
    |     cannot infer type of the type parameter `U` declared on the function `test`
    |

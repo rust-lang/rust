@@ -167,8 +167,8 @@ impl NonCamelCaseTypes {
 impl EarlyLintPass for NonCamelCaseTypes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
         let has_repr_c = matches!(
-            AttributeParser::parse_limited(cx.sess(), &it.attrs, sym::repr, it.span, it.id),
-            Some(Attribute::Parsed(AttributeKind::Repr(r))) if r.iter().any(|(r, _)| r == &ReprAttr::ReprC)
+            AttributeParser::parse_limited(cx.sess(), &it.attrs, sym::repr, it.span, it.id, None),
+            Some(Attribute::Parsed(AttributeKind::Repr { reprs, ..})) if reprs.iter().any(|(r, _)| r == &ReprAttr::ReprC)
         );
 
         if has_repr_c {
@@ -431,7 +431,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &hir::Ty<'_, hir::AmbigArg>) {
-        if let hir::TyKind::BareFn(hir::BareFnTy { param_idents, .. }) = &ty.kind {
+        if let hir::TyKind::FnPtr(hir::FnPtrTy { param_idents, .. }) = &ty.kind {
             for param_ident in *param_idents {
                 if let Some(param_ident) = param_ident {
                     self.check_snake_case(cx, "variable", param_ident);

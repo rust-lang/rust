@@ -141,7 +141,7 @@ unsafe extern "unadjusted" {
     fn llvm_f64x2_max(x: simd::f64x2, y: simd::f64x2) -> simd::f64x2;
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 #[derive(Copy)]
 struct Unaligned<T>(T);
 

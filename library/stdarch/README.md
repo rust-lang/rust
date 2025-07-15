@@ -16,3 +16,9 @@ This repository contains two main crates:
 
 The `std::simd` component now lives in the
 [`packed_simd_2`](https://github.com/rust-lang/packed_simd) crate.
+
+## Synchronizing josh subtree with rustc
+
+This repository is linked to `rust-lang/rust` as a [josh](https://josh-project.github.io/josh/intro.html) subtree. You can use the [rustc-josh-sync](https://github.com/rust-lang/josh-sync) tool to perform synchronization.
+
+You can find a guide on how to perform the synchronization [here](https://rustc-dev-guide.rust-lang.org/external-repos.html#synchronizing-a-josh-subtree).

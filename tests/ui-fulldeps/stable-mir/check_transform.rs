@@ -11,17 +11,17 @@
 
 extern crate rustc_hir;
 extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_smir;
+
 extern crate rustc_driver;
 extern crate rustc_interface;
-extern crate stable_mir;
+#[macro_use]
+extern crate rustc_public;
 
-use stable_mir::mir::alloc::GlobalAlloc;
-use stable_mir::mir::mono::Instance;
-use stable_mir::mir::{Body, ConstOperand, Operand, Rvalue, StatementKind, TerminatorKind};
-use stable_mir::ty::{ConstantKind, MirConst};
-use stable_mir::{CrateDef, CrateItems, ItemKind};
+use rustc_public::mir::alloc::GlobalAlloc;
+use rustc_public::mir::mono::Instance;
+use rustc_public::mir::{Body, ConstOperand, Operand, Rvalue, StatementKind, TerminatorKind};
+use rustc_public::ty::{ConstantKind, MirConst};
+use rustc_public::{CrateDef, CrateItems, ItemKind};
 use std::convert::TryFrom;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -31,7 +31,7 @@ const CRATE_NAME: &str = "input";
 /// This function uses the Stable MIR APIs to transform the MIR.
 fn test_transform() -> ControlFlow<()> {
     // Find items in the local crate.
-    let items = stable_mir::all_local_items();
+    let items = rustc_public::all_local_items();
 
     // Test fn_abi
     let target_fn = *get_item(&items, (ItemKind::Fn, "dummy")).unwrap();
@@ -109,7 +109,7 @@ fn change_panic_msg(mut body: Body, new_msg: &str) -> Body {
 fn get_item<'a>(
     items: &'a CrateItems,
     item: (ItemKind, &str),
-) -> Option<&'a stable_mir::CrateItem> {
+) -> Option<&'a rustc_public::CrateItem> {
     items.iter().find(|crate_item| (item.0 == crate_item.kind()) && crate_item.name() == item.1)
 }
 

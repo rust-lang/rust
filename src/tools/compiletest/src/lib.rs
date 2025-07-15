@@ -11,9 +11,10 @@ mod tests;
 pub mod common;
 pub mod compute_diff;
 mod debuggers;
+pub mod diagnostics;
+pub mod directives;
 pub mod errors;
 mod executor;
-pub mod header;
 mod json;
 mod raise_fd_limit;
 mod read2;
@@ -33,16 +34,16 @@ use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use camino::{Utf8Path, Utf8PathBuf};
 use getopts::Options;
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use tracing::*;
+use tracing::debug;
 use walkdir::WalkDir;
 
-use self::header::{EarlyProps, make_test_description};
+use self::directives::{EarlyProps, make_test_description};
 use crate::common::{
-    CompareMode, Config, Debugger, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path,
-    output_base_dir, output_relative_path,
+    CompareMode, Config, Debugger, PassMode, TestMode, TestPaths, UI_EXTENSIONS,
+    expected_output_path, output_base_dir, output_relative_path,
 };
+use crate::directives::DirectivesCache;
 use crate::executor::{CollectedTest, ColorConfig, OutputFormat};
-use crate::header::HeadersCache;
 use crate::util::logv;
 
 /// Creates the `Config` instance for this invocation of compiletest.
@@ -51,12 +52,6 @@ use crate::util::logv;
 /// some code here that inspects environment variables or even runs executables
 /// (e.g. when discovering debugger versions).
 pub fn parse_config(args: Vec<String>) -> Config {
-    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
-        eprintln!(
-            "WARNING: RUST_TEST_NOCAPTURE is not supported. Use the `--no-capture` flag instead."
-        );
-    }
-
     let mut opts = Options::new();
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
@@ -247,9 +242,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let target = opt_str2(matches.opt_str("target"));
     let android_cross_path = opt_path(matches, "android-cross-path");
+    // FIXME: `cdb_version` is *derived* from cdb, but it's *not* technically a config!
     let (cdb, cdb_version) = debuggers::analyze_cdb(matches.opt_str("cdb"), &target);
+    // FIXME: `gdb_version` is *derived* from gdb, but it's *not* technically a config!
     let (gdb, gdb_version) =
         debuggers::analyze_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
+    // FIXME: `lldb_version` is *derived* from lldb, but it's *not* technically a config!
     let lldb_version =
         matches.opt_str("lldb-version").as_deref().and_then(debuggers::extract_lldb_version);
     let color = match matches.opt_str("color").as_deref() {
@@ -258,16 +256,19 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some("never") => ColorConfig::NeverColor,
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
+    // FIXME: this is very questionable, we really should be obtaining LLVM version info from
+    // `bootstrap`, and not trying to be figuring out that in `compiletest` by running the
+    // `FileCheck` binary.
     let llvm_version =
-        matches.opt_str("llvm-version").as_deref().map(header::extract_llvm_version).or_else(
-            || header::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
+        matches.opt_str("llvm-version").as_deref().map(directives::extract_llvm_version).or_else(
+            || directives::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
         );
 
     let run_ignored = matches.opt_present("ignored");
     let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
     let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
-    let has_html_tidy = if mode == Mode::Rustdoc {
+    let has_html_tidy = if mode == TestMode::Rustdoc {
         Command::new("tidy")
             .arg("--version")
             .stdout(Stdio::null())
@@ -278,7 +279,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         false
     };
     let has_enzyme = matches.opt_present("has-enzyme");
-    let filters = if mode == Mode::RunMake {
+    let filters = if mode == TestMode::RunMake {
         matches
             .free
             .iter()
@@ -359,7 +360,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         stage_id: matches.opt_str("stage-id").unwrap(),
 
         mode,
-        suite: matches.opt_str("suite").unwrap(),
+        suite: matches.opt_str("suite").unwrap().parse().expect("invalid suite"),
         debugger: matches.opt_str("debugger").map(|debugger| {
             debugger
                 .parse::<Debugger>()
@@ -375,6 +376,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             mode.parse::<PassMode>()
                 .unwrap_or_else(|_| panic!("unknown `--pass` option `{}` given", mode))
         }),
+        // FIXME: this run scheme is... confusing.
         run: matches.opt_str("run").and_then(|mode| match mode.as_str() {
             "auto" => None,
             "always" => Some(true),
@@ -543,13 +545,17 @@ pub fn run_tests(config: Arc<Config>) {
     unsafe { env::set_var("TARGET", &config.target) };
 
     let mut configs = Vec::new();
-    if let Mode::DebugInfo = config.mode {
+    if let TestMode::DebugInfo = config.mode {
         // Debugging emscripten code doesn't make sense today
         if !config.target.contains("emscripten") {
             match config.debugger {
                 Some(Debugger::Cdb) => configs.extend(debuggers::configure_cdb(&config)),
                 Some(Debugger::Gdb) => configs.extend(debuggers::configure_gdb(&config)),
                 Some(Debugger::Lldb) => configs.extend(debuggers::configure_lldb(&config)),
+                // FIXME: the *implicit* debugger discovery makes it really difficult to control
+                // which {`cdb`, `gdb`, `lldb`} are used. These should **not** be implicitly
+                // discovered by `compiletest`; these should be explicit `bootstrap` configuration
+                // options that are passed to `compiletest`!
                 None => {
                     configs.extend(debuggers::configure_cdb(&config));
                     configs.extend(debuggers::configure_gdb(&config));
@@ -623,7 +629,7 @@ pub fn run_tests(config: Arc<Config>) {
 /// Read-only context data used during test collection.
 struct TestCollectorCx {
     config: Arc<Config>,
-    cache: HeadersCache,
+    cache: DirectivesCache,
     common_inputs_stamp: Stamp,
     modified_tests: Vec<Utf8PathBuf>,
 }
@@ -657,12 +663,9 @@ pub(crate) fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> 
     let common_inputs_stamp = common_inputs_stamp(&config);
     let modified_tests =
         modified_tests(&config, &config.src_test_suite_root).unwrap_or_else(|err| {
-            panic!(
-                "modified_tests got error from dir: {}, error: {}",
-                config.src_test_suite_root, err
-            )
+            fatal!("modified_tests: {}: {err}", config.src_test_suite_root);
         });
-    let cache = HeadersCache::load(&config);
+    let cache = DirectivesCache::load(&config);
 
     let cx = TestCollectorCx { config, cache, common_inputs_stamp, modified_tests };
     let collector = collect_tests_from_dir(&cx, &cx.config.src_test_suite_root, Utf8Path::new(""))
@@ -780,7 +783,7 @@ fn collect_tests_from_dir(
     }
 
     // For run-make tests, a "test file" is actually a directory that contains an `rmake.rs`.
-    if cx.config.mode == Mode::RunMake {
+    if cx.config.mode == TestMode::RunMake {
         let mut collector = TestCollector::new();
         if dir.join("rmake.rs").exists() {
             let paths = TestPaths {
@@ -866,7 +869,7 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     // For run-make tests, each "test file" is actually a _directory_ containing an `rmake.rs`. But
     // for the purposes of directive parsing, we want to look at that recipe file, not the directory
     // itself.
-    let test_path = if cx.config.mode == Mode::RunMake {
+    let test_path = if cx.config.mode == TestMode::RunMake {
         testpaths.file.join("rmake.rs")
     } else {
         testpaths.file.clone()
@@ -881,7 +884,7 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     // - Incremental tests inherently can't run their revisions in parallel, so
     //   we treat them like non-revisioned tests here. Incremental revisions are
     //   handled internally by `runtest::run` instead.
-    let revisions = if early_props.revisions.is_empty() || cx.config.mode == Mode::Incremental {
+    let revisions = if early_props.revisions.is_empty() || cx.config.mode == TestMode::Incremental {
         vec![None]
     } else {
         early_props.revisions.iter().map(|r| Some(r.as_str())).collect()
@@ -1109,5 +1112,22 @@ fn check_for_overlapping_test_paths(found_path_stems: &HashSet<Utf8PathBuf>) {
             "{collisions}\n\
             Tests cannot have overlapping names. Make sure they use unique prefixes."
         );
+    }
+}
+
+pub fn early_config_check(config: &Config) {
+    if !config.has_html_tidy && config.mode == TestMode::Rustdoc {
+        warning!("`tidy` (html-tidy.org) is not installed; diffs will not be generated");
+    }
+
+    if !config.profiler_runtime && config.mode == TestMode::CoverageRun {
+        let actioned = if config.bless { "blessed" } else { "checked" };
+        warning!("profiler runtime is not available, so `.coverage` files won't be {actioned}");
+        help!("try setting `profiler = true` in the `[build]` section of `bootstrap.toml`");
+    }
+
+    // `RUST_TEST_NOCAPTURE` is a libtest env var, but we don't callout to libtest.
+    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
+        warning!("`RUST_TEST_NOCAPTURE` is not supported; use the `--no-capture` flag instead");
     }
 }

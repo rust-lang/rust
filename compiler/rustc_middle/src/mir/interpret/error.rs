@@ -116,7 +116,7 @@ impl<'tcx> From<ErrorHandled> for ValTreeCreationError<'tcx> {
 
 impl<'tcx> From<InterpErrorInfo<'tcx>> for ValTreeCreationError<'tcx> {
     fn from(err: InterpErrorInfo<'tcx>) -> Self {
-        // An error ocurred outside the const-eval query, as part of constructing the valtree. We
+        // An error occurred outside the const-eval query, as part of constructing the valtree. We
         // don't currently preserve the details of this error, since `InterpErrorInfo` cannot be put
         // into a query result and it can only be access of some mutable or external memory.
         let (_kind, backtrace) = err.into_parts();
@@ -392,6 +392,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     DerefFunctionPointer(AllocId),
     /// Trying to access the data behind a vtable pointer.
     DerefVTablePointer(AllocId),
+    /// Trying to access the actual type id.
+    DerefTypeIdPointer(AllocId),
     /// Using a non-boolean `u8` as bool.
     InvalidBool(u8),
     /// Using a non-character `u32` as character.

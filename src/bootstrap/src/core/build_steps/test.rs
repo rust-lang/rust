@@ -8,12 +8,11 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::{env, fs, iter};
 
-use clap_complete::shells;
-
 use crate::core::build_steps::compile::{Std, run_cargo};
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
+use crate::core::build_steps::run::get_completion_paths;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{self, COMPILETEST_ALLOW_FEATURES, SourceType, Tool};
 use crate::core::build_steps::toolstate::ToolState;
@@ -263,7 +262,13 @@ impl Step for Cargotest {
             .args(builder.config.test_args())
             .env("RUSTC", builder.rustc(compiler))
             .env("RUSTDOC", builder.rustdoc(compiler));
-        add_rustdoc_cargo_linker_args(&mut cmd, builder, compiler.host, LldThreads::No);
+        add_rustdoc_cargo_linker_args(
+            &mut cmd,
+            builder,
+            compiler.host,
+            LldThreads::No,
+            compiler.stage,
+        );
         cmd.delay_failure().run(builder);
     }
 }
@@ -551,8 +556,13 @@ impl Step for Miri {
         // Miri has its own "target dir" for ui test dependencies. Make sure it gets cleared when
         // the sysroot gets rebuilt, to avoid "found possibly newer version of crate `std`" errors.
         if !builder.config.dry_run() {
-            let ui_test_dep_dir =
-                builder.stage_out(miri.build_compiler, Mode::ToolStd).join("miri_ui");
+            // This has to match `CARGO_TARGET_TMPDIR` in Miri's `ui.rs`.
+            // This means we need `host` here as that's the target `ui.rs` is built for.
+            let ui_test_dep_dir = builder
+                .stage_out(miri.build_compiler, Mode::ToolStd)
+                .join(host)
+                .join("tmp")
+                .join("miri_ui");
             // The mtime of `miri_sysroot` changes when the sysroot gets rebuilt (also see
             // <https://github.com/RalfJung/rustc-build-sysroot/commit/10ebcf60b80fe2c3dc765af0ff19fdc0da4b7466>).
             // We can hence use that directly as a signal to clear the ui test dir.
@@ -675,9 +685,9 @@ impl Step for CargoMiri {
                 cargo.arg("--doc");
             }
         }
-
-        // Finally, pass test-args and run everything.
         cargo.arg("--").args(builder.config.test_args());
+
+        // Finally, run everything.
         let mut cargo = BootstrapCommand::from(cargo);
         {
             let _guard = builder.msg_sysroot_tool(Kind::Test, stage, "cargo-miri", host, target);
@@ -858,7 +868,7 @@ impl Step for RustdocTheme {
             .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
             .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTC_BOOTSTRAP", "1");
-        cmd.args(linker_args(builder, self.compiler.host, LldThreads::No));
+        cmd.args(linker_args(builder, self.compiler.host, LldThreads::No, self.compiler.stage));
 
         cmd.delay_failure().run(builder);
     }
@@ -1034,7 +1044,13 @@ impl Step for RustdocGUI {
         cmd.env("RUSTDOC", builder.rustdoc(self.compiler))
             .env("RUSTC", builder.rustc(self.compiler));
 
-        add_rustdoc_cargo_linker_args(&mut cmd, builder, self.compiler.host, LldThreads::No);
+        add_rustdoc_cargo_linker_args(
+            &mut cmd,
+            builder,
+            self.compiler.host,
+            LldThreads::No,
+            self.compiler.stage,
+        );
 
         for path in &builder.paths {
             if let Some(p) = helpers::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder) {
@@ -1108,7 +1124,9 @@ impl Step for Tidy {
         if builder.config.cmd.bless() {
             cmd.arg("--bless");
         }
-        if let Some(s) = builder.config.cmd.extra_checks() {
+        if let Some(s) =
+            builder.config.cmd.extra_checks().or(builder.config.tidy_extra_checks.as_deref())
+        {
             cmd.arg(format!("--extra-checks={s}"));
         }
         let mut args = std::env::args_os();
@@ -1151,14 +1169,12 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         cmd.delay_failure().run(builder);
 
         builder.info("x.py completions check");
-        let [bash, zsh, fish, powershell] = ["x.py.sh", "x.py.zsh", "x.py.fish", "x.py.ps1"]
-            .map(|filename| builder.src.join("src/etc/completions").join(filename));
+        let completion_paths = get_completion_paths(builder);
         if builder.config.cmd.bless() {
             builder.ensure(crate::core::build_steps::run::GenerateCompletions);
-        } else if get_completion(shells::Bash, &bash).is_some()
-            || get_completion(shells::Fish, &fish).is_some()
-            || get_completion(shells::PowerShell, &powershell).is_some()
-            || crate::flags::get_completion(shells::Zsh, &zsh).is_some()
+        } else if completion_paths
+            .into_iter()
+            .any(|(shell, path)| get_completion(shell, &path).is_some())
         {
             eprintln!(
                 "x.py completions were changed; run `x.py run generate-completions` to update them"
@@ -1813,7 +1829,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         let mut hostflags = flags.clone();
-        hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
+        hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No, compiler.stage));
 
         let mut targetflags = flags;
 

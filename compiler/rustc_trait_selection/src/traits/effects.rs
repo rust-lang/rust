@@ -1,7 +1,8 @@
 use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::traits::{
-    ImplDerivedHostCause, ImplSource, Obligation, ObligationCauseCode, PredicateObligation,
+    ImplDerivedHostCause, ImplSource, Obligation, ObligationCause, ObligationCauseCode,
+    PredicateObligation,
 };
 use rustc_middle::span_bug;
 use rustc_middle::traits::query::NoSolution;
@@ -44,6 +45,12 @@ pub fn evaluate_host_effect_obligation<'tcx>(
         Err(EvaluationFailure::NoSolution) => {}
     }
 
+    match evaluate_host_effect_from_conditionally_const_item_bounds(selcx, obligation) {
+        Ok(result) => return Ok(result),
+        Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
+        Err(EvaluationFailure::NoSolution) => {}
+    }
+
     match evaluate_host_effect_from_item_bounds(selcx, obligation) {
         Ok(result) => return Ok(result),
         Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
@@ -56,7 +63,7 @@ pub fn evaluate_host_effect_obligation<'tcx>(
         Err(EvaluationFailure::NoSolution) => {}
     }
 
-    match evaluate_host_effect_from_selection_candiate(selcx, obligation) {
+    match evaluate_host_effect_from_selection_candidate(selcx, obligation) {
         Ok(result) => return Ok(result),
         Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
         Err(EvaluationFailure::NoSolution) => {}
@@ -153,7 +160,9 @@ fn evaluate_host_effect_from_bounds<'tcx>(
     }
 }
 
-fn evaluate_host_effect_from_item_bounds<'tcx>(
+/// Assembles constness bounds from `~const` item bounds on alias types, which only
+/// hold if the `~const` where bounds also hold and the parent trait is `~const`.
+fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
@@ -232,12 +241,72 @@ fn evaluate_host_effect_from_item_bounds<'tcx>(
     }
 }
 
+/// Assembles constness bounds "normal" item bounds on aliases, which may include
+/// unconditionally `const` bounds that are *not* conditional and thus always hold.
+fn evaluate_host_effect_from_item_bounds<'tcx>(
+    selcx: &mut SelectionContext<'_, 'tcx>,
+    obligation: &HostEffectObligation<'tcx>,
+) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
+    let infcx = selcx.infcx;
+    let tcx = infcx.tcx;
+    let drcx = DeepRejectCtxt::relate_rigid_rigid(selcx.tcx());
+    let mut candidate = None;
+
+    let mut consider_ty = obligation.predicate.self_ty();
+    while let ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) = *consider_ty.kind() {
+        for clause in tcx.item_bounds(alias_ty.def_id).iter_instantiated(tcx, alias_ty.args) {
+            let bound_clause = clause.kind();
+            let ty::ClauseKind::HostEffect(data) = bound_clause.skip_binder() else {
+                continue;
+            };
+            let data = bound_clause.rebind(data);
+            if data.skip_binder().trait_ref.def_id != obligation.predicate.trait_ref.def_id {
+                continue;
+            }
+
+            if !drcx.args_may_unify(
+                obligation.predicate.trait_ref.args,
+                data.skip_binder().trait_ref.args,
+            ) {
+                continue;
+            }
+
+            let is_match =
+                infcx.probe(|_| match_candidate(selcx, obligation, data, true, |_, _| {}).is_ok());
+
+            if is_match {
+                if candidate.is_some() {
+                    return Err(EvaluationFailure::Ambiguous);
+                } else {
+                    candidate = Some(data);
+                }
+            }
+        }
+
+        if kind != ty::Projection {
+            break;
+        }
+
+        consider_ty = alias_ty.self_ty();
+    }
+
+    if let Some(data) = candidate {
+        Ok(match_candidate(selcx, obligation, data, true, |_, _| {})
+            .expect("candidate matched before, so it should match again"))
+    } else {
+        Err(EvaluationFailure::NoSolution)
+    }
+}
+
 fn evaluate_host_effect_from_builtin_impls<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
     match selcx.tcx().as_lang_item(obligation.predicate.def_id()) {
         Some(LangItem::Destruct) => evaluate_host_effect_for_destruct_goal(selcx, obligation),
+        Some(LangItem::Fn | LangItem::FnMut | LangItem::FnOnce) => {
+            evaluate_host_effect_for_fn_goal(selcx, obligation)
+        }
         _ => Err(EvaluationFailure::NoSolution),
     }
 }
@@ -333,7 +402,52 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
         .collect())
 }
 
-fn evaluate_host_effect_from_selection_candiate<'tcx>(
+// NOTE: Keep this in sync with `extract_fn_def_from_const_callable` in the new solver.
+fn evaluate_host_effect_for_fn_goal<'tcx>(
+    selcx: &mut SelectionContext<'_, 'tcx>,
+    obligation: &HostEffectObligation<'tcx>,
+) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
+    let tcx = selcx.tcx();
+    let self_ty = obligation.predicate.self_ty();
+
+    let (def, args) = match *self_ty.kind() {
+        ty::FnDef(def, args) => (def, args),
+
+        // We may support function pointers at some point in the future
+        ty::FnPtr(..) => return Err(EvaluationFailure::NoSolution),
+
+        // Closures could implement `[const] Fn`,
+        // but they don't really need to right now.
+        ty::Closure(..) | ty::CoroutineClosure(_, _) => {
+            return Err(EvaluationFailure::NoSolution);
+        }
+
+        // Everything else needs explicit impls or cannot have an impl
+        _ => return Err(EvaluationFailure::NoSolution),
+    };
+
+    match tcx.constness(def) {
+        hir::Constness::Const => Ok(tcx
+            .const_conditions(def)
+            .instantiate(tcx, args)
+            .into_iter()
+            .map(|(c, span)| {
+                let code = ObligationCauseCode::WhereClause(def, span);
+                let cause =
+                    ObligationCause::new(obligation.cause.span, obligation.cause.body_id, code);
+                Obligation::new(
+                    tcx,
+                    cause,
+                    obligation.param_env,
+                    c.to_host_effect_clause(tcx, obligation.predicate.constness),
+                )
+            })
+            .collect()),
+        hir::Constness::NotConst => Err(EvaluationFailure::NoSolution),
+    }
+}
+
+fn evaluate_host_effect_from_selection_candidate<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {

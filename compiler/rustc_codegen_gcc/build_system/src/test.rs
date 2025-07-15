@@ -9,8 +9,8 @@ use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
     create_dir, get_sysroot_dir, get_toolchain, git_clone, git_clone_root_dir, remove_file,
-    run_command, run_command_with_env, run_command_with_output, run_command_with_output_and_env,
-    rustc_version_info, split_args, walk_dir,
+    run_command, run_command_with_env, run_command_with_output_and_env, rustc_version_info,
+    split_args, walk_dir,
 };
 
 type Env = HashMap<String, String>;
@@ -483,30 +483,6 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
         )?;
     } else {
         run_command_with_output_and_env(&[&"git", &"checkout"], rust_dir, Some(env))?;
-    }
-
-    let mut patches = Vec::new();
-    walk_dir(
-        "patches/tests",
-        &mut |_| Ok(()),
-        &mut |file_path: &Path| {
-            patches.push(file_path.to_path_buf());
-            Ok(())
-        },
-        false,
-    )?;
-    patches.sort();
-    // TODO: remove duplication with prepare.rs by creating a apply_patch function in the utils
-    // module.
-    for file_path in patches {
-        println!("[GIT] apply `{}`", file_path.display());
-        let path = Path::new("../..").join(file_path);
-        run_command_with_output(&[&"git", &"apply", &path], rust_dir)?;
-        run_command_with_output(&[&"git", &"add", &"-A"], rust_dir)?;
-        run_command_with_output(
-            &[&"git", &"commit", &"--no-gpg-sign", &"-m", &format!("Patch {}", path.display())],
-            rust_dir,
-        )?;
     }
 
     let cargo = String::from_utf8(

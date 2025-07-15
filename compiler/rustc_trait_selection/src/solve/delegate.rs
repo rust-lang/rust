@@ -213,13 +213,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         // inside of a `probe` whenever we have multiple choices inside of the solver.
         let region_obligations = self.0.inner.borrow().region_obligations().to_owned();
         let region_constraints = self.0.with_region_constraints(|region_constraints| {
-            make_query_region_constraints(
-                self.tcx,
-                region_obligations
-                    .iter()
-                    .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())),
-                region_constraints,
-            )
+            make_query_region_constraints(self.tcx, region_obligations, region_constraints)
         });
 
         let mut seen = FxHashSet::default();

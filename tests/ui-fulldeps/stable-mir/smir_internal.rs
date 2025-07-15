@@ -10,22 +10,21 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 
-#[macro_use]
-extern crate rustc_smir;
 extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate rustc_middle;
-extern crate stable_mir;
+#[macro_use]
+extern crate rustc_public;
 
 use rustc_middle::ty::TyCtxt;
-use rustc_smir::rustc_internal;
+use rustc_public::rustc_internal;
 use std::io::Write;
 use std::ops::ControlFlow;
 
 const CRATE_NAME: &str = "input";
 
 fn test_translation(tcx: TyCtxt<'_>) -> ControlFlow<()> {
-    let main_fn = stable_mir::entry_fn().unwrap();
+    let main_fn = rustc_public::entry_fn().unwrap();
     let body = main_fn.expect_body();
     let orig_ty = body.locals()[0].ty;
     let rustc_ty = rustc_internal::internal(tcx, &orig_ty);

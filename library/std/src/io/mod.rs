@@ -3128,7 +3128,7 @@ impl<T> SizeHint for Take<T> {
     }
 }
 
-#[stable(feature = "seek_io_take", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "seek_io_take", since = "1.89.0")]
 impl<T: Seek> Seek for Take<T> {
     fn seek(&mut self, pos: SeekFrom) -> Result<u64> {
         let new_position = match pos {

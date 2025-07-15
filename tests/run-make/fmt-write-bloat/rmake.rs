@@ -18,7 +18,7 @@
 //@ ignore-cross-compile
 
 use run_make_support::artifact_names::bin_name;
-use run_make_support::env::no_debug_assertions;
+use run_make_support::env::std_debug_assertions_enabled;
 use run_make_support::rustc;
 use run_make_support::symbols::any_symbol_contains;
 
@@ -26,7 +26,7 @@ fn main() {
     rustc().input("main.rs").opt().run();
     // panic machinery identifiers, these should not appear in the final binary
     let mut panic_syms = vec!["panic_bounds_check", "Debug"];
-    if no_debug_assertions() {
+    if std_debug_assertions_enabled() {
         // if debug assertions are allowed, we need to allow these,
         // otherwise, add them to the list of symbols to deny.
         panic_syms.extend_from_slice(&["panicking", "panic_fmt", "pad_integral", "Display"]);

@@ -13,11 +13,11 @@
 
 extern crate rustc_hir;
 extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_smir;
+
 extern crate rustc_driver;
 extern crate rustc_interface;
-extern crate stable_mir;
+#[macro_use]
+extern crate rustc_public;
 
 use std::ascii::Char;
 use std::assert_matches::assert_matches;
@@ -27,19 +27,19 @@ use std::ffi::CStr;
 use std::io::Write;
 use std::ops::ControlFlow;
 
-use stable_mir::crate_def::CrateDef;
-use stable_mir::mir::Body;
-use stable_mir::mir::alloc::GlobalAlloc;
-use stable_mir::mir::mono::{Instance, StaticDef};
-use stable_mir::ty::{Allocation, ConstantKind};
-use stable_mir::{CrateItem, CrateItems, ItemKind};
+use rustc_public::crate_def::CrateDef;
+use rustc_public::mir::Body;
+use rustc_public::mir::alloc::GlobalAlloc;
+use rustc_public::mir::mono::{Instance, StaticDef};
+use rustc_public::ty::{Allocation, ConstantKind};
+use rustc_public::{CrateItem, CrateItems, ItemKind};
 
 const CRATE_NAME: &str = "input";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_stable_mir() -> ControlFlow<()> {
     // Find items in the local crate.
-    let items = stable_mir::all_local_items();
+    let items = rustc_public::all_local_items();
     check_foo(*get_item(&items, (ItemKind::Static, "FOO")).unwrap());
     check_bar(*get_item(&items, (ItemKind::Static, "BAR")).unwrap());
     check_len(*get_item(&items, (ItemKind::Static, "LEN")).unwrap());
@@ -164,7 +164,7 @@ fn check_other_consts(item: CrateItem) {
     }
     let bool_id = bool_id.unwrap();
     let char_id = char_id.unwrap();
-    // FIXME(stable_mir): add `read_ptr` to `Allocation`
+    // FIXME(rustc_public): add `read_ptr` to `Allocation`
     assert_ne!(bool_id, char_id);
 }
 
@@ -196,7 +196,7 @@ fn check_len(item: CrateItem) {
 fn get_item<'a>(
     items: &'a CrateItems,
     item: (ItemKind, &str),
-) -> Option<&'a stable_mir::CrateItem> {
+) -> Option<&'a rustc_public::CrateItem> {
     items.iter().find(|crate_item| (item.0 == crate_item.kind()) && crate_item.name() == item.1)
 }
 

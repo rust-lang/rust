@@ -410,7 +410,7 @@ These tests revolve around command-line flags which change the way error/warning
 
 ## `tests/ui/diagnostic_namespace/`
 
-Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namepsace](https://github.com/rust-lang/rfcs/blob/master/text/3368-diagnostic-attribute-namespace.md).
+Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namespace](https://github.com/rust-lang/rfcs/blob/master/text/3368-diagnostic-attribute-namespace.md).
 
 ## `tests/ui/diagnostic-width/`: `--diagnostic-width`
 
@@ -483,10 +483,6 @@ Previously known as "object safety".
 The `dyn` keyword is used to highlight that calls to methods on the associated Trait are dynamically dispatched. To use the trait this way, it must be dyn-compatible - tests about dyn-compatibility belong in `tests/ui/dyn-compatibility/`, while more general tests on dynamic dispatch belong here.
 
 See [`dyn` keyword](https://doc.rust-lang.org/std/keyword.dyn.html).
-
-## `tests/ui/dyn-star/`: `dyn*`, Sized `dyn`, `#![feature(dyn_star)]`
-
-See [Tracking issue for dyn-star #102425](https://github.com/rust-lang/rust/issues/102425).
 
 ## `tests/ui/editions/`: Rust edition-specific peculiarities
 

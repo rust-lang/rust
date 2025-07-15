@@ -10,7 +10,7 @@ use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem};
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
+use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::{Span, Symbol, sym};
@@ -23,8 +23,8 @@ use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
     GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, Scalar,
-    compile_time_machine, interp_ok, throw_exhaust, throw_inval, throw_ub, throw_ub_custom,
-    throw_unsup, throw_unsup_format,
+    compile_time_machine, err_inval, interp_ok, throw_exhaust, throw_inval, throw_ub,
+    throw_ub_custom, throw_unsup, throw_unsup_format,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -331,10 +331,10 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     fn load_mir(
         ecx: &InterpCx<'tcx, Self>,
         instance: ty::InstanceKind<'tcx>,
-    ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
+    ) -> &'tcx mir::Body<'tcx> {
         match instance {
-            ty::InstanceKind::Item(def) => interp_ok(ecx.tcx.mir_for_ctfe(def)),
-            _ => interp_ok(ecx.tcx.instance_mir(instance)),
+            ty::InstanceKind::Item(def) => ecx.tcx.mir_for_ctfe(def),
+            _ => ecx.tcx.instance_mir(instance),
         }
     }
 
@@ -462,6 +462,44 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             // (We know the value here in the machine of course, but this is the runtime of that code,
             // not the optimization stage.)
             sym::is_val_statically_known => ecx.write_scalar(Scalar::from_bool(false), dest)?,
+
+            // We handle these here since Miri does not want to have them.
+            sym::assert_inhabited
+            | sym::assert_zero_valid
+            | sym::assert_mem_uninitialized_valid => {
+                let ty = instance.args.type_at(0);
+                let requirement = ValidityRequirement::from_intrinsic(intrinsic_name).unwrap();
+
+                let should_panic = !ecx
+                    .tcx
+                    .check_validity_requirement((requirement, ecx.typing_env().as_query_input(ty)))
+                    .map_err(|_| err_inval!(TooGeneric))?;
+
+                if should_panic {
+                    let layout = ecx.layout_of(ty)?;
+
+                    let msg = match requirement {
+                        // For *all* intrinsics we first check `is_uninhabited` to give a more specific
+                        // error message.
+                        _ if layout.is_uninhabited() => format!(
+                            "aborted execution: attempted to instantiate uninhabited type `{ty}`"
+                        ),
+                        ValidityRequirement::Inhabited => bug!("handled earlier"),
+                        ValidityRequirement::Zero => format!(
+                            "aborted execution: attempted to zero-initialize type `{ty}`, which is invalid"
+                        ),
+                        ValidityRequirement::UninitMitigated0x01Fill => format!(
+                            "aborted execution: attempted to leave type `{ty}` uninitialized, which is invalid"
+                        ),
+                        ValidityRequirement::Uninit => bug!("assert_uninit_valid doesn't exist"),
+                    };
+
+                    Self::panic_nounwind(ecx, &msg)?;
+                    // Skip the `return_to_block` at the end (we panicked, we do not return).
+                    return interp_ok(None);
+                }
+            }
+
             _ => {
                 // We haven't handled the intrinsic, let's see if we can use a fallback body.
                 if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {

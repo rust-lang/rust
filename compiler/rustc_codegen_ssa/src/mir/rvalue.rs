@@ -1,18 +1,15 @@
-use std::assert_matches::assert_matches;
-
 use rustc_abi::{self as abi, FIRST_VARIANT};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_middle::{bug, mir, span_bug};
+use rustc_middle::{bug, mir};
 use rustc_session::config::OptLevel;
-use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
-use super::operand::{OperandRef, OperandValue};
-use super::place::PlaceRef;
+use super::operand::{OperandRef, OperandRefBuilder, OperandValue};
+use super::place::{PlaceRef, codegen_tag_value};
 use super::{FunctionCx, LocalRef};
-use crate::common::IntPredicate;
+use crate::common::{IntPredicate, TypeKind};
 use crate::traits::*;
 use crate::{MemFlags, base};
 
@@ -183,13 +180,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             _ => {
-                assert!(self.rvalue_creates_operand(rvalue, DUMMY_SP));
+                assert!(self.rvalue_creates_operand(rvalue));
                 let temp = self.codegen_rvalue_operand(bx, rvalue);
                 temp.val.store(bx, dest);
             }
         }
     }
 
+    /// Transmutes the `src` value to the destination type by writing it to `dst`.
+    ///
+    /// See also [`Self::codegen_transmute_operand`] for cases that can be done
+    /// without needing a pre-allocated place for the destination.
     fn codegen_transmute(
         &mut self,
         bx: &mut Bx,
@@ -200,115 +201,71 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         assert!(src.layout.is_sized());
         assert!(dst.layout.is_sized());
 
-        if let Some(val) = self.codegen_transmute_operand(bx, src, dst.layout) {
-            val.store(bx, dst);
-            return;
-        }
-
-        match src.val {
-            OperandValue::Ref(..) | OperandValue::ZeroSized => {
-                span_bug!(
-                    self.mir.span,
-                    "Operand path should have handled transmute \
-                    from {src:?} to place {dst:?}"
-                );
-            }
-            OperandValue::Immediate(..) | OperandValue::Pair(..) => {
-                // When we have immediate(s), the alignment of the source is irrelevant,
-                // so we can store them using the destination's alignment.
-                src.val.store(bx, dst.val.with_type(src.layout));
-            }
+        if src.layout.size != dst.layout.size
+            || src.layout.is_uninhabited()
+            || dst.layout.is_uninhabited()
+        {
+            // These cases are all UB to actually hit, so don't emit code for them.
+            // (The size mismatches are reachable via `transmute_unchecked`.)
+            bx.unreachable_nonterminator();
+        } else {
+            // Since in this path we have a place anyway, we can store or copy to it,
+            // making sure we use the destination place's alignment even if the
+            // source would normally have a higher one.
+            src.val.store(bx, dst.val.with_type(src.layout));
         }
     }
 
-    /// Attempts to transmute an `OperandValue` to another `OperandValue`.
+    /// Transmutes an `OperandValue` to another `OperandValue`.
     ///
-    /// Returns `None` for cases that can't work in that framework, such as for
-    /// `Immediate`->`Ref` that needs an `alloc` to get the location.
+    /// This is supported only for cases where [`Self::rvalue_creates_operand`]
+    /// returns `true`, and will ICE otherwise. (In particular, anything that
+    /// would need to `alloca` in order to return a `PlaceValue` will ICE,
+    /// expecting those to go via [`Self::codegen_transmute`] instead where
+    /// the destination place is already allocated.)
     pub(crate) fn codegen_transmute_operand(
         &mut self,
         bx: &mut Bx,
         operand: OperandRef<'tcx, Bx::Value>,
         cast: TyAndLayout<'tcx>,
-    ) -> Option<OperandValue<Bx::Value>> {
+    ) -> OperandValue<Bx::Value> {
         // Check for transmutes that are always UB.
         if operand.layout.size != cast.size
             || operand.layout.is_uninhabited()
             || cast.is_uninhabited()
         {
-            if !operand.layout.is_uninhabited() {
-                // Since this is known statically and the input could have existed
-                // without already having hit UB, might as well trap for it.
-                bx.abort();
-            }
+            bx.unreachable_nonterminator();
 
-            // Because this transmute is UB, return something easy to generate,
-            // since it's fine that later uses of the value are probably UB.
-            return Some(OperandValue::poison(bx, cast));
+            // We still need to return a value of the appropriate type, but
+            // it's already UB so do the easiest thing available.
+            return OperandValue::poison(bx, cast);
         }
 
-        let operand_kind = self.value_kind(operand.layout);
-        let cast_kind = self.value_kind(cast);
-
-        match operand.val {
-            OperandValue::Ref(source_place_val) => {
+        match (operand.val, operand.layout.backend_repr, cast.backend_repr) {
+            _ if cast.is_zst() => OperandValue::ZeroSized,
+            (_, _, abi::BackendRepr::Memory { .. }) => {
+                bug!("Cannot `codegen_transmute_operand` to non-ZST memory-ABI output {cast:?}");
+            }
+            (OperandValue::Ref(source_place_val), abi::BackendRepr::Memory { .. }, _) => {
                 assert_eq!(source_place_val.llextra, None);
-                assert_matches!(operand_kind, OperandValueKind::Ref);
                 // The existing alignment is part of `source_place_val`,
                 // so that alignment will be used, not `cast`'s.
-                Some(bx.load_operand(source_place_val.with_type(cast)).val)
+                bx.load_operand(source_place_val.with_type(cast)).val
             }
-            OperandValue::ZeroSized => {
-                let OperandValueKind::ZeroSized = operand_kind else {
-                    bug!("Found {operand_kind:?} for operand {operand:?}");
-                };
-                if let OperandValueKind::ZeroSized = cast_kind {
-                    Some(OperandValue::ZeroSized)
-                } else {
-                    None
-                }
-            }
-            OperandValue::Immediate(imm) => {
-                let OperandValueKind::Immediate(from_scalar) = operand_kind else {
-                    bug!("Found {operand_kind:?} for operand {operand:?}");
-                };
-                if let OperandValueKind::Immediate(to_scalar) = cast_kind
-                    && from_scalar.size(self.cx) == to_scalar.size(self.cx)
-                {
-                    let from_backend_ty = bx.backend_type(operand.layout);
-                    let to_backend_ty = bx.backend_type(cast);
-                    Some(OperandValue::Immediate(transmute_immediate(
-                        bx,
-                        imm,
-                        from_scalar,
-                        from_backend_ty,
-                        to_scalar,
-                        to_backend_ty,
-                    )))
-                } else {
-                    None
-                }
-            }
-            OperandValue::Pair(imm_a, imm_b) => {
-                let OperandValueKind::Pair(in_a, in_b) = operand_kind else {
-                    bug!("Found {operand_kind:?} for operand {operand:?}");
-                };
-                if let OperandValueKind::Pair(out_a, out_b) = cast_kind
-                    && in_a.size(self.cx) == out_a.size(self.cx)
-                    && in_b.size(self.cx) == out_b.size(self.cx)
-                {
-                    let in_a_ibty = bx.scalar_pair_element_backend_type(operand.layout, 0, false);
-                    let in_b_ibty = bx.scalar_pair_element_backend_type(operand.layout, 1, false);
-                    let out_a_ibty = bx.scalar_pair_element_backend_type(cast, 0, false);
-                    let out_b_ibty = bx.scalar_pair_element_backend_type(cast, 1, false);
-                    Some(OperandValue::Pair(
-                        transmute_immediate(bx, imm_a, in_a, in_a_ibty, out_a, out_a_ibty),
-                        transmute_immediate(bx, imm_b, in_b, in_b_ibty, out_b, out_b_ibty),
-                    ))
-                } else {
-                    None
-                }
-            }
+            (
+                OperandValue::Immediate(imm),
+                abi::BackendRepr::Scalar(from_scalar),
+                abi::BackendRepr::Scalar(to_scalar),
+            ) => OperandValue::Immediate(transmute_scalar(bx, imm, from_scalar, to_scalar)),
+            (
+                OperandValue::Pair(imm_a, imm_b),
+                abi::BackendRepr::ScalarPair(in_a, in_b),
+                abi::BackendRepr::ScalarPair(out_a, out_b),
+            ) => OperandValue::Pair(
+                transmute_scalar(bx, imm_a, in_a, out_a),
+                transmute_scalar(bx, imm_b, in_b, out_b),
+            ),
+            _ => bug!("Cannot `codegen_transmute_operand` {operand:?} to {cast:?}"),
         }
     }
 
@@ -364,36 +321,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         Some(imm)
     }
 
-    pub(crate) fn codegen_rvalue_unsized(
-        &mut self,
-        bx: &mut Bx,
-        indirect_dest: PlaceRef<'tcx, Bx::Value>,
-        rvalue: &mir::Rvalue<'tcx>,
-    ) {
-        debug!(
-            "codegen_rvalue_unsized(indirect_dest.llval={:?}, rvalue={:?})",
-            indirect_dest.val.llval, rvalue
-        );
-
-        match *rvalue {
-            mir::Rvalue::Use(ref operand) => {
-                let cg_operand = self.codegen_operand(bx, operand);
-                cg_operand.val.store_unsized(bx, indirect_dest);
-            }
-
-            _ => bug!("unsized assignment other than `Rvalue::Use`"),
-        }
-    }
-
     pub(crate) fn codegen_rvalue_operand(
         &mut self,
         bx: &mut Bx,
         rvalue: &mir::Rvalue<'tcx>,
     ) -> OperandRef<'tcx, Bx::Value> {
-        assert!(
-            self.rvalue_creates_operand(rvalue, DUMMY_SP),
-            "cannot codegen {rvalue:?} to operand",
-        );
+        assert!(self.rvalue_creates_operand(rvalue), "cannot codegen {rvalue:?} to operand",);
 
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref source, mir_cast_ty) => {
@@ -468,12 +401,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("unexpected non-pair operand");
                         }
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::DynStar, _) => {
-                        let (lldata, llextra) = operand.val.pointer_parts();
-                        let (lldata, llextra) =
-                            base::cast_to_dyn_star(bx, lldata, operand.layout, cast.ty, llextra);
-                        OperandValue::Pair(lldata, llextra)
-                    }
                     | mir::CastKind::IntToInt
                     | mir::CastKind::FloatToInt
                     | mir::CastKind::FloatToFloat
@@ -485,9 +412,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // path as the other integer-to-X casts.
                     | mir::CastKind::PointerWithExposedProvenance => {
                         let imm = operand.immediate();
-                        let operand_kind = self.value_kind(operand.layout);
-                        let OperandValueKind::Immediate(from_scalar) = operand_kind else {
-                            bug!("Found {operand_kind:?} for operand {operand:?}");
+                        let abi::BackendRepr::Scalar(from_scalar) = operand.layout.backend_repr else {
+                            bug!("Found non-scalar for operand {operand:?}");
                         };
                         let from_backend_ty = bx.cx().immediate_backend_type(operand.layout);
 
@@ -497,9 +423,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             let val = OperandValue::Immediate(bx.cx().const_poison(to_backend_ty));
                             return OperandRef { val, layout: cast };
                         }
-                        let cast_kind = self.value_kind(cast);
-                        let OperandValueKind::Immediate(to_scalar) = cast_kind else {
-                            bug!("Found {cast_kind:?} for operand {cast:?}");
+                        let abi::BackendRepr::Scalar(to_scalar) = cast.layout.backend_repr else {
+                            bug!("Found non-scalar for cast {cast:?}");
                         };
 
                         self.cast_immediate(bx, imm, from_scalar, from_backend_ty, to_scalar, to_backend_ty)
@@ -509,9 +434,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             })
                     }
                     mir::CastKind::Transmute => {
-                        self.codegen_transmute_operand(bx, operand, cast).unwrap_or_else(|| {
-                            bug!("Unsupported transmute-as-operand of {operand:?} to {cast:?}");
-                        })
+                        self.codegen_transmute_operand(bx, operand, cast)
                     }
                 };
                 OperandRef { val, layout: cast }
@@ -700,22 +623,44 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             mir::Rvalue::Use(ref operand) => self.codegen_operand(bx, operand),
             mir::Rvalue::Repeat(..) => bug!("{rvalue:?} in codegen_rvalue_operand"),
-            mir::Rvalue::Aggregate(_, ref fields) => {
+            mir::Rvalue::Aggregate(ref kind, ref fields) => {
+                let (variant_index, active_field_index) = match **kind {
+                    mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
+                        (variant_index, active_field_index)
+                    }
+                    _ => (FIRST_VARIANT, None),
+                };
+
                 let ty = rvalue.ty(self.mir, self.cx.tcx());
                 let ty = self.monomorphize(ty);
                 let layout = self.cx.layout_of(ty);
 
                 // `rvalue_creates_operand` has arranged that we only get here if
                 // we can build the aggregate immediate from the field immediates.
-                let Some(mut builder) = OperandRef::builder(layout) else {
-                    bug!("Cannot use type in operand builder: {layout:?}")
-                };
+                let mut builder = OperandRefBuilder::new(layout);
                 for (field_idx, field) in fields.iter_enumerated() {
                     let op = self.codegen_operand(bx, field);
-                    builder.insert_field(bx, FIRST_VARIANT, field_idx, op);
+                    let fi = active_field_index.unwrap_or(field_idx);
+                    builder.insert_field(bx, variant_index, fi, op);
                 }
 
-                builder.build()
+                let tag_result = codegen_tag_value(self.cx, variant_index, layout);
+                match tag_result {
+                    Err(super::place::UninhabitedVariantError) => {
+                        // Like codegen_set_discr we use a sound abort, but could
+                        // potentially `unreachable` or just return the poison for
+                        // more optimizability, if that turns out to be helpful.
+                        bx.abort();
+                        let val = OperandValue::poison(bx, layout);
+                        OperandRef { val, layout }
+                    }
+                    Ok(maybe_tag_value) => {
+                        if let Some((tag_field, tag_imm)) = maybe_tag_value {
+                            builder.insert_imm(tag_field, tag_imm);
+                        }
+                        builder.build(bx.cx())
+                    }
+                }
             }
             mir::Rvalue::ShallowInitBox(ref operand, content_ty) => {
                 let operand = self.codegen_operand(bx, operand);
@@ -993,37 +938,46 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         OperandValue::Pair(val, of)
     }
 
-    pub(crate) fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
+    /// Returns `true` if the `rvalue` can be computed into an [`OperandRef`],
+    /// rather than needing a full `PlaceRef` for the assignment destination.
+    ///
+    /// This is used by the [`super::analyze`] code to decide which MIR locals
+    /// can stay as SSA values (as opposed to generating `alloca` slots for them).
+    /// As such, some paths here return `true` even where the specific rvalue
+    /// will not actually take the operand path because the result type is such
+    /// that it always gets an `alloca`, but where it's not worth re-checking the
+    /// layout in this code when the right thing will happen anyway.
+    pub(crate) fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
         match *rvalue {
             mir::Rvalue::Cast(mir::CastKind::Transmute, ref operand, cast_ty) => {
                 let operand_ty = operand.ty(self.mir, self.cx.tcx());
                 let cast_layout = self.cx.layout_of(self.monomorphize(cast_ty));
                 let operand_layout = self.cx.layout_of(self.monomorphize(operand_ty));
+                match (operand_layout.backend_repr, cast_layout.backend_repr) {
+                    // When the output will be in memory anyway, just use its place
+                    // (instead of the operand path) unless it's the trivial ZST case.
+                    (_, abi::BackendRepr::Memory { .. }) => cast_layout.is_zst(),
 
-                match (self.value_kind(operand_layout), self.value_kind(cast_layout)) {
-                    // Can always load from a pointer as needed
-                    (OperandValueKind::Ref, _) => true,
-
-                    // ZST-to-ZST is the easiest thing ever
-                    (OperandValueKind::ZeroSized, OperandValueKind::ZeroSized) => true,
-
-                    // But if only one of them is a ZST the sizes can't match
-                    (OperandValueKind::ZeroSized, _) | (_, OperandValueKind::ZeroSized) => false,
-
-                    // Need to generate an `alloc` to get a pointer from an immediate
-                    (OperandValueKind::Immediate(..) | OperandValueKind::Pair(..), OperandValueKind::Ref) => false,
+                    // Otherwise (for a non-memory output) if the input is memory
+                    // then we can just read the value from the place.
+                    (abi::BackendRepr::Memory { .. }, _) => true,
 
                     // When we have scalar immediates, we can only convert things
                     // where the sizes match, to avoid endianness questions.
-                    (OperandValueKind::Immediate(a), OperandValueKind::Immediate(b)) =>
+                    (abi::BackendRepr::Scalar(a), abi::BackendRepr::Scalar(b)) =>
                         a.size(self.cx) == b.size(self.cx),
-                    (OperandValueKind::Pair(a0, a1), OperandValueKind::Pair(b0, b1)) =>
+                    (abi::BackendRepr::ScalarPair(a0, a1), abi::BackendRepr::ScalarPair(b0, b1)) =>
                         a0.size(self.cx) == b0.size(self.cx) && a1.size(self.cx) == b1.size(self.cx),
 
-                    // Send mixings between scalars and pairs through the memory route
-                    // FIXME: Maybe this could use insertvalue/extractvalue instead?
-                    (OperandValueKind::Immediate(..), OperandValueKind::Pair(..)) |
-                    (OperandValueKind::Pair(..), OperandValueKind::Immediate(..)) => false,
+                    // Mixing Scalars and ScalarPairs can get quite complicated when
+                    // padding and undef get involved, so leave that to the memory path.
+                    (abi::BackendRepr::Scalar(_), abi::BackendRepr::ScalarPair(_, _)) |
+                    (abi::BackendRepr::ScalarPair(_, _), abi::BackendRepr::Scalar(_)) => false,
+
+                    // SIMD vectors aren't worth the trouble of dealing with complex
+                    // cases like from vectors of f32 to vectors of pointers or
+                    // from fat pointers to vectors of u16. (See #143194 #110021 ...)
+                    (abi::BackendRepr::SimdVector { .. }, _) | (_, abi::BackendRepr::SimdVector { .. }) => false,
                 }
             }
             mir::Rvalue::Ref(..) |
@@ -1038,87 +992,38 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::NullaryOp(..) |
             mir::Rvalue::ThreadLocalRef(_) |
             mir::Rvalue::Use(..) |
+            mir::Rvalue::Aggregate(..) | // (*)
             mir::Rvalue::WrapUnsafeBinder(..) => // (*)
                 true,
             // Arrays are always aggregates, so it's not worth checking anything here.
             // (If it's really `[(); N]` or `[T; 0]` and we use the place path, fine.)
             mir::Rvalue::Repeat(..) => false,
-            mir::Rvalue::Aggregate(ref kind, _) => {
-                let allowed_kind = match **kind {
-                    // This always produces a `ty::RawPtr`, so will be Immediate or Pair
-                    mir::AggregateKind::RawPtr(..) => true,
-                    mir::AggregateKind::Array(..) => false,
-                    mir::AggregateKind::Tuple => true,
-                    mir::AggregateKind::Adt(def_id, ..) => {
-                        let adt_def = self.cx.tcx().adt_def(def_id);
-                        adt_def.is_struct() && !adt_def.repr().simd()
-                    }
-                    mir::AggregateKind::Closure(..) => true,
-                    // FIXME: Can we do this for simple coroutines too?
-                    mir::AggregateKind::Coroutine(..) | mir::AggregateKind::CoroutineClosure(..) => false,
-                };
-                allowed_kind && {
-                    let ty = rvalue.ty(self.mir, self.cx.tcx());
-                    let ty = self.monomorphize(ty);
-                    let layout = self.cx.spanned_layout_of(ty, span);
-                    OperandRef::<Bx::Value>::builder(layout).is_some()
-                }
-            }
         }
 
         // (*) this is only true if the type is suitable
     }
-
-    /// Gets which variant of [`OperandValue`] is expected for a particular type.
-    fn value_kind(&self, layout: TyAndLayout<'tcx>) -> OperandValueKind {
-        if layout.is_zst() {
-            OperandValueKind::ZeroSized
-        } else if self.cx.is_backend_immediate(layout) {
-            assert!(!self.cx.is_backend_scalar_pair(layout));
-            OperandValueKind::Immediate(match layout.backend_repr {
-                abi::BackendRepr::Scalar(s) => s,
-                abi::BackendRepr::SimdVector { element, .. } => element,
-                x => span_bug!(self.mir.span, "Couldn't translate {x:?} as backend immediate"),
-            })
-        } else if self.cx.is_backend_scalar_pair(layout) {
-            let abi::BackendRepr::ScalarPair(s1, s2) = layout.backend_repr else {
-                span_bug!(
-                    self.mir.span,
-                    "Couldn't translate {:?} as backend scalar pair",
-                    layout.backend_repr,
-                );
-            };
-            OperandValueKind::Pair(s1, s2)
-        } else {
-            OperandValueKind::Ref
-        }
-    }
 }
 
-/// The variants of this match [`OperandValue`], giving details about the
-/// backend values that will be held in that other type.
-#[derive(Debug, Copy, Clone)]
-enum OperandValueKind {
-    Ref,
-    Immediate(abi::Scalar),
-    Pair(abi::Scalar, abi::Scalar),
-    ZeroSized,
-}
-
-/// Transmutes one of the immediates from an [`OperandValue::Immediate`]
-/// or an [`OperandValue::Pair`] to an immediate of the target type.
+/// Transmutes a single scalar value `imm` from `from_scalar` to `to_scalar`.
 ///
-/// `to_backend_ty` must be the *non*-immediate backend type (so it will be
-/// `i8`, not `i1`, for `bool`-like types.)
-pub(super) fn transmute_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+/// This is expected to be in *immediate* form, as seen in [`OperandValue::Immediate`]
+/// or [`OperandValue::Pair`] (so `i1` for bools, not `i8`, for example).
+///
+/// ICEs if the passed-in `imm` is not a value of the expected type for
+/// `from_scalar`, such as if it's a vector or a pair.
+pub(super) fn transmute_scalar<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     mut imm: Bx::Value,
     from_scalar: abi::Scalar,
-    from_backend_ty: Bx::Type,
     to_scalar: abi::Scalar,
-    to_backend_ty: Bx::Type,
 ) -> Bx::Value {
     assert_eq!(from_scalar.size(bx.cx()), to_scalar.size(bx.cx()));
+    let imm_ty = bx.cx().val_ty(imm);
+    assert_ne!(
+        bx.cx().type_kind(imm_ty),
+        TypeKind::Vector,
+        "Vector type {imm_ty:?} not allowed in transmute_scalar {from_scalar:?} -> {to_scalar:?}"
+    );
 
     // While optimizations will remove no-op transmutes, they might still be
     // there in debug or things that aren't no-op in MIR because they change
@@ -1129,6 +1034,10 @@ pub(super) fn transmute_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     use abi::Primitive::*;
     imm = bx.from_immediate(imm);
+
+    let from_backend_ty = bx.cx().type_from_scalar(from_scalar);
+    debug_assert_eq!(bx.cx().val_ty(imm), from_backend_ty);
+    let to_backend_ty = bx.cx().type_from_scalar(to_scalar);
 
     // If we have a scalar, we must already know its range. Either
     //
@@ -1142,13 +1051,7 @@ pub(super) fn transmute_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
 
     imm = match (from_scalar.primitive(), to_scalar.primitive()) {
-        (Int(..) | Float(_), Int(..) | Float(_)) => {
-            if from_backend_ty == to_backend_ty {
-                imm
-            } else {
-                bx.bitcast(imm, to_backend_ty)
-            }
-        }
+        (Int(..) | Float(_), Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
         (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
         (Int(..), Pointer(..)) => bx.ptradd(bx.const_null(bx.type_ptr()), imm),
         (Pointer(..), Int(..)) => {
@@ -1165,6 +1068,8 @@ pub(super) fn transmute_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             bx.bitcast(int_imm, to_backend_ty)
         }
     };
+
+    debug_assert_eq!(bx.cx().val_ty(imm), to_backend_ty);
 
     // This `assume` remains important for cases like (a conceptual)
     //    transmute::<u32, NonZeroU32>(x) == 0
@@ -1192,7 +1097,7 @@ fn assume_scalar_range<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let range = scalar.valid_range(bx.cx());
             bx.assume_integer_range(imm, backend_ty, range);
         }
-        abi::Primitive::Pointer(abi::AddressSpace::DATA)
+        abi::Primitive::Pointer(abi::AddressSpace::ZERO)
             if !scalar.valid_range(bx.cx()).contains(0) =>
         {
             bx.assume_nonnull(imm);

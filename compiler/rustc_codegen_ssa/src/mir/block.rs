@@ -628,50 +628,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     virtual_drop,
                 )
             }
-            ty::Dynamic(_, _, ty::DynStar) => {
-                // IN THIS ARM, WE HAVE:
-                // ty = *mut (dyn* Trait)
-                // which is: *mut exists<T: sizeof(T) == sizeof(usize)> (T, Vtable<T: Trait>)
-                //
-                // args = [ * ]
-                //          |
-                //          v
-                //      ( Data, Vtable )
-                //                |
-                //                v
-                //              /-------\
-                //              | ...   |
-                //              \-------/
-                //
-                //
-                // WE CAN CONVERT THIS INTO THE ABOVE LOGIC BY DOING
-                //
-                // data = &(*args[0]).0    // gives a pointer to Data above (really the same pointer)
-                // vtable = (*args[0]).1   // loads the vtable out
-                // (data, vtable)          // an equivalent Rust `*mut dyn Trait`
-                //
-                // SO THEN WE CAN USE THE ABOVE CODE.
-                let virtual_drop = Instance {
-                    def: ty::InstanceKind::Virtual(drop_fn.def_id(), 0), // idx 0: the drop function
-                    args: drop_fn.args,
-                };
-                debug!("ty = {:?}", ty);
-                debug!("drop_fn = {:?}", drop_fn);
-                debug!("args = {:?}", args);
-                let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
-                let meta_ptr = place.project_field(bx, 1);
-                let meta = bx.load_operand(meta_ptr);
-                // Truncate vtable off of args list
-                args = &args[..1];
-                debug!("args' = {:?}", args);
-                (
-                    true,
-                    meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                        .get_optional_fn(bx, meta.immediate(), ty, fn_abi),
-                    fn_abi,
-                    virtual_drop,
-                )
-            }
             _ => (
                 false,
                 bx.get_fn_addr(drop_fn),
@@ -1106,33 +1062,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             fn_abi,
                         ));
                         llargs.push(data_ptr);
-                        continue;
-                    }
-                    Immediate(_) => {
-                        // See comment above explaining why we peel these newtypes
-                        while !op.layout.ty.is_raw_ptr() && !op.layout.ty.is_ref() {
-                            let (idx, _) = op.layout.non_1zst_field(bx).expect(
-                                "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
-                            );
-                            op = op.extract_field(self, bx, idx.as_usize());
-                        }
-
-                        // Make sure that we've actually unwrapped the rcvr down
-                        // to a pointer or ref to `dyn* Trait`.
-                        if !op.layout.ty.builtin_deref(true).unwrap().is_dyn_star() {
-                            span_bug!(fn_span, "can't codegen a virtual call on {:#?}", op);
-                        }
-                        let place = op.deref(bx.cx());
-                        let data_place = place.project_field(bx, 0);
-                        let meta_place = place.project_field(bx, 1);
-                        let meta = bx.load_operand(meta_place);
-                        llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
-                            bx,
-                            meta.immediate(),
-                            op.layout.ty,
-                            fn_abi,
-                        ));
-                        llargs.push(data_place.val.llval);
                         continue;
                     }
                     _ => {

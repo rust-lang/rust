@@ -172,7 +172,7 @@ impl<'a> ExtCtxt<'a> {
             attrs: AttrVec::new(),
             bounds,
             is_placeholder: false,
-            kind: ast::GenericParamKind::Const { ty, kw_span: DUMMY_SP, default },
+            kind: ast::GenericParamKind::Const { ty, span: DUMMY_SP, default },
             colon_span: None,
         }
     }
@@ -195,6 +195,7 @@ impl<'a> ExtCtxt<'a> {
             },
             trait_ref: self.trait_ref(path),
             span,
+            parens: ast::Parens::No,
         }
     }
 

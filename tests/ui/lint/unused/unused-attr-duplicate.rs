@@ -102,4 +102,10 @@ pub fn no_mangle_test() {}
 #[used] //~ ERROR unused attribute
 static FOO: u32 = 0;
 
+#[link_section = ".text"]
+//~^ ERROR unused attribute
+//~| WARN this was previously accepted
+#[link_section = ".bss"]
+pub extern "C" fn example() {}
+
 fn main() {}

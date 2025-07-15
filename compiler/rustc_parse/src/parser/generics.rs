@@ -114,13 +114,18 @@ impl<'a> Parser<'a> {
 
         // Parse optional const generics default value.
         let default = if self.eat(exp!(Eq)) { Some(self.parse_const_arg()?) } else { None };
+        let span = if let Some(ref default) = default {
+            const_span.to(default.value.span)
+        } else {
+            const_span.to(ty.span)
+        };
 
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs,
             bounds: Vec::new(),
-            kind: GenericParamKind::Const { ty, kw_span: const_span, default },
+            kind: GenericParamKind::Const { ty, span, default },
             is_placeholder: false,
             colon_span: None,
         })
@@ -137,6 +142,11 @@ impl<'a> Parser<'a> {
 
         // Parse optional const generics default value.
         let default = if self.eat(exp!(Eq)) { Some(self.parse_const_arg()?) } else { None };
+        let span = if let Some(ref default) = default {
+            mistyped_const_ident.span.to(default.value.span)
+        } else {
+            mistyped_const_ident.span.to(ty.span)
+        };
 
         self.dcx()
             .struct_span_err(
@@ -156,7 +166,7 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs,
             bounds: Vec::new(),
-            kind: GenericParamKind::Const { ty, kw_span: mistyped_const_ident.span, default },
+            kind: GenericParamKind::Const { ty, span, default },
             is_placeholder: false,
             colon_span: None,
         })

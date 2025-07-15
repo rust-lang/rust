@@ -1,4 +1,3 @@
-pub mod asm;
 pub mod attr;
 mod attr_wrapper;
 mod diagnostics;
@@ -11,6 +10,11 @@ mod path;
 mod stmt;
 pub mod token_type;
 mod ty;
+
+// Parsers for non-functionlike builtin macros are defined in rustc_parse so they can be used by
+// both rustc_builtin_macros and rustfmt.
+pub mod asm;
+pub mod cfg_select;
 
 use std::assert_matches::debug_assert_matches;
 use std::{fmt, mem, slice};
@@ -1293,8 +1297,10 @@ impl<'a> Parser<'a> {
         let kind = if pat {
             let guar = self
                 .dcx()
-                .struct_span_err(blk_span, "`inline_const_pat` has been removed")
-                .with_help("use a named `const`-item or an `if`-guard instead")
+                .struct_span_err(blk_span, "const blocks cannot be used as patterns")
+                .with_help(
+                    "use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead",
+                )
                 .emit();
             ExprKind::Err(guar)
         } else {

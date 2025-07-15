@@ -36,7 +36,7 @@ fn get<S: Stage>(
 
 impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
     const PATH: &[Symbol] = &[sym::deprecated];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(
         Word,

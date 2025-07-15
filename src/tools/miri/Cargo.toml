@@ -27,6 +27,7 @@ chrono = { version = "0.4.38", default-features = false }
 chrono-tz = "0.10"
 directories = "6"
 bitflags = "2.6"
+serde_json = { version = "1.0", optional = true }
 
 # Copied from `compiler/rustc/Cargo.toml`.
 # But only for some targets, it fails for others. Rustc configures this in its CI, but we can't
@@ -67,10 +68,10 @@ default = ["stack-cache"]
 genmc = []
 stack-cache = []
 stack-cache-consistency-check = ["stack-cache"]
+tracing = ["serde_json"]
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = ['cfg(bootstrap)']
 
 # Be aware that this file is inside a workspace when used via the
 # submodule in the rustc repo. That means there are many cargo features

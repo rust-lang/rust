@@ -15,9 +15,11 @@ pub struct Nested64 {
     d: i8,
 }
 
+// This has the extra field in B to ensure it's not ScalarPair,
+// and thus that the test actually emits it via memory, not `insertvalue`.
 pub enum Enum4 {
     A(i32),
-    B(i32),
+    B(i32, i32),
 }
 
 pub enum Enum64 {
@@ -54,7 +56,7 @@ pub fn nested64(a: Align64, b: i32, c: i32, d: i8) -> Nested64 {
 // CHECK-LABEL: @enum4
 #[no_mangle]
 pub fn enum4(a: i32) -> Enum4 {
-    // CHECK: %e4 = alloca [8 x i8], align 4
+    // CHECK: %e4 = alloca [12 x i8], align 4
     let e4 = Enum4::A(a);
     e4
 }

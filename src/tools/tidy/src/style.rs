@@ -94,10 +94,9 @@ fn generate_problems<'a>(
     letter_digit: &'a FxHashMap<char, char>,
 ) -> impl Iterator<Item = u32> + 'a {
     consts.iter().flat_map(move |const_value| {
-        let problem =
-            letter_digit.iter().fold(format!("{:X}", const_value), |acc, (key, value)| {
-                acc.replace(&value.to_string(), &key.to_string())
-            });
+        let problem = letter_digit.iter().fold(format!("{const_value:X}"), |acc, (key, value)| {
+            acc.replace(&value.to_string(), &key.to_string())
+        });
         let indexes: Vec<usize> = problem
             .chars()
             .enumerate()
@@ -341,7 +340,7 @@ fn is_unexplained_ignore(extension: &str, line: &str) -> bool {
 
 pub fn check(path: &Path, bad: &mut bool) {
     fn skip(path: &Path, is_dir: bool) -> bool {
-        if path.file_name().map_or(false, |name| name.to_string_lossy().starts_with(".#")) {
+        if path.file_name().is_some_and(|name| name.to_string_lossy().starts_with(".#")) {
             // vim or emacs temporary file
             return true;
         }
@@ -358,12 +357,12 @@ pub fn check(path: &Path, bad: &mut bool) {
         let extensions = ["rs", "py", "js", "sh", "c", "cpp", "h", "md", "css", "ftl", "goml"];
 
         // NB: don't skip paths without extensions (or else we'll skip all directories and will only check top level files)
-        if path.extension().map_or(true, |ext| !extensions.iter().any(|e| ext == OsStr::new(e))) {
+        if path.extension().is_none_or(|ext| !extensions.iter().any(|e| ext == OsStr::new(e))) {
             return true;
         }
 
         // We only check CSS files in rustdoc.
-        path.extension().map_or(false, |e| e == "css") && !is_in(path, "src", "librustdoc")
+        path.extension().is_some_and(|e| e == "css") && !is_in(path, "src", "librustdoc")
     }
 
     // This creates a RegexSet as regex contains performance optimizations to be able to deal with these over
@@ -435,7 +434,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             mut skip_copyright,
             mut skip_dbg,
             mut skip_odd_backticks,
-        ] = contains_ignore_directives(&path_str, can_contain, &contents, CONFIGURABLE_CHECKS);
+        ] = contains_ignore_directives(&path_str, can_contain, contents, CONFIGURABLE_CHECKS);
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
         let mut lines = 0;

@@ -776,8 +776,15 @@ impl Session {
 
     pub fn must_emit_unwind_tables(&self) -> bool {
         // This is used to control the emission of the `uwtable` attribute on
-        // LLVM functions.
+        // LLVM functions. The `uwtable` attribute according to LLVM is:
         //
+        //     This attribute indicates that the ABI being targeted requires that an
+        //     unwind table entry be produced for this function even if we can show
+        //     that no exceptions passes by it. This is normally the case for the
+        //     ELF x86-64 abi, but it can be disabled for some compilation units.
+        //
+        // Typically when we're compiling with `-C panic=abort` we don't need
+        // `uwtable` because we can't generate any exceptions!
         // Unwind tables are needed when compiling with `-C panic=unwind`, but
         // LLVM won't omit unwind tables unless the function is also marked as
         // `nounwind`, so users are allowed to disable `uwtable` emission.
@@ -1545,7 +1552,7 @@ impl RemapFileNameExt for rustc_span::FileName {
             "one and only one scope should be passed to for_scope"
         );
         if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
-            self.prefer_remapped_unconditionaly()
+            self.prefer_remapped_unconditionally()
         } else {
             self.prefer_local()
         }

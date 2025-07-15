@@ -51,10 +51,10 @@ instead of those in the system. The stable boolean values for this flag are coar
 - `mingw`: other MinGW libs and Windows import libs
 
 Out of the above self-contained linking components, `linker` is the only one currently implemented
-(beyond parsing the CLI options).
+(beyond parsing the CLI options) and stabilized.
 
 It refers to the LLD linker, built from the same LLVM revision used by rustc (named `rust-lld` to
 avoid naming conflicts), that is distributed via `rustup` with the compiler (and is used by default
-for the wasm targets). One can also opt-in to use it by combining this flag with an appropriate
-linker flavor: for example, `-Clinker-flavor=gnu-lld-cc -Clink-self-contained=+linker` will use the
-toolchain's `rust-lld` as the linker.
+for the wasm targets). One can also opt into using it by combining this flag with the appropriate
+linker feature: for example, `-Clinker-features=+lld -Clink-self-contained=+linker` will use the
+toolchain's `rust-lld` as the linker instead of the system's lld with `-Clinker-features=+lld` only.

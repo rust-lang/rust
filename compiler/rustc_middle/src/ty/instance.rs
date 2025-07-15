@@ -71,7 +71,7 @@ pub enum InstanceKind<'tcx> {
     /// - coroutines
     Item(DefId),
 
-    /// An intrinsic `fn` item (with`#[rustc_instrinsic]`).
+    /// An intrinsic `fn` item (with`#[rustc_intrinsic]`).
     ///
     /// Alongside `Virtual`, this is the only `InstanceKind` that does not have its own callable MIR.
     /// Instead, codegen and const eval "magically" evaluate calls to intrinsics purely in the
@@ -445,10 +445,10 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
     }
 }
 
-// async_drop_in_place<T>::coroutine.poll, when T is a standart coroutine,
+// async_drop_in_place<T>::coroutine.poll, when T is a standard coroutine,
 // should be resolved to this coroutine's future_drop_poll (through FutureDropPollShim proxy).
 // async_drop_in_place<async_drop_in_place<T>::coroutine>::coroutine.poll,
-// when T is a standart coroutine, should be resolved to this coroutine's future_drop_poll.
+// when T is a standard coroutine, should be resolved to this coroutine's future_drop_poll.
 // async_drop_in_place<async_drop_in_place<T>::coroutine>::coroutine.poll,
 // when T is not a coroutine, should be resolved to the innermost
 // async_drop_in_place<T>::coroutine's poll function (through FutureDropPollShim proxy)
@@ -991,18 +991,16 @@ fn needs_fn_once_adapter_shim(
             Ok(false)
         }
         (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
-            // The closure fn `llfn` is a `fn(&self, ...)`. We want a
-            // `fn(&mut self, ...)`. In fact, at codegen time, these are
-            // basically the same thing, so we can just return llfn.
+            // The closure fn is a `fn(&self, ...)`, but we want a `fn(&mut self, ...)`.
+            // At codegen time, these are basically the same, so we can just return the closure.
             Ok(false)
         }
         (ty::ClosureKind::Fn | ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
-            // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
-            // self, ...)`. We want a `fn(self, ...)`. We can produce
-            // this by doing something like:
+            // The closure fn is a `fn(&self, ...)` or `fn(&mut self, ...)`, but
+            // we want a `fn(self, ...)`. We can produce this by doing something like:
             //
-            //     fn call_once(self, ...) { call_mut(&self, ...) }
-            //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
+            //     fn call_once(self, ...) { Fn::call(&self, ...) }
+            //     fn call_once(mut self, ...) { FnMut::call_mut(&mut self, ...) }
             //
             // These are both the same at codegen time.
             Ok(true)

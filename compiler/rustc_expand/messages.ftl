@@ -109,9 +109,6 @@ expand_malformed_feature_attribute =
 
 expand_meta_var_dif_seq_matchers = {$msg}
 
-expand_meta_var_expr_unrecognized_var =
-    variable `{$key}` is not recognized in meta-variable expression
-
 expand_missing_fragment_specifier = missing fragment specifier
     .note = fragment specifiers must be provided
     .suggestion_add_fragspec = try adding a specifier here
@@ -135,6 +132,35 @@ expand_module_multiple_candidates =
 
 expand_must_repeat_once =
     this must repeat at least once
+
+expand_mve_extra_tokens =
+    unexpected trailing tokens
+    .label = for this metavariable expression
+    .range = the `{$name}` metavariable expression takes between {$min_or_exact_args} and {$max_args} arguments
+    .exact = the `{$name}` metavariable expression takes {$min_or_exact_args ->
+        [zero] no arguments
+        [one] a single argument
+        *[other] {$min_or_exact_args} arguments
+    }
+    .suggestion = try removing {$extra_count ->
+        [one] this token
+        *[other] these tokens
+    }
+
+expand_mve_missing_paren =
+    expected `(`
+    .label = for this this metavariable expression
+    .unexpected = unexpected token
+    .note = metavariable expressions use function-like parentheses syntax
+    .suggestion = try adding parentheses
+
+expand_mve_unrecognized_expr =
+    unrecognized metavariable expression
+    .label = not a valid metavariable expression
+    .note = valid metavariable expressions are {$valid_expr_list}
+
+expand_mve_unrecognized_var =
+    variable `{$key}` is not recognized in meta-variable expression
 
 expand_non_inline_modules_in_proc_macro_input_are_unstable =
     non-inline modules in proc macro input are unstable

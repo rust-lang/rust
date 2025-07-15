@@ -59,7 +59,7 @@ fn equate_intrinsic_type<'tcx>(
 
 /// Returns the unsafety of the given intrinsic.
 fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hir::Safety {
-    let is_in_list = match tcx.item_name(intrinsic_id.into()) {
+    let is_in_list = match tcx.item_name(intrinsic_id) {
         // When adding a new intrinsic to this list,
         // it's usually worth updating that intrinsic's documentation
         // to note that it's safe to call, since
@@ -93,6 +93,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::three_way_compare
         | sym::discriminant_value
         | sym::type_id
+        | sym::type_id_eq
         | sym::select_unpredictable
         | sym::cold_path
         | sym::ptr_guaranteed_cmp
@@ -143,7 +144,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
             tcx.def_span(intrinsic_id),
             DiagMessage::from(format!(
                 "intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `{}`",
-                tcx.item_name(intrinsic_id.into())
+                tcx.item_name(intrinsic_id)
             )
         )).emit();
     }
@@ -220,7 +221,13 @@ pub(crate) fn check_intrinsic_type(
         sym::needs_drop => (1, 0, vec![], tcx.types.bool),
 
         sym::type_name => (1, 0, vec![], Ty::new_static_str(tcx)),
-        sym::type_id => (1, 0, vec![], tcx.types.u128),
+        sym::type_id => {
+            (1, 0, vec![], tcx.type_of(tcx.lang_items().type_id().unwrap()).instantiate_identity())
+        }
+        sym::type_id_eq => {
+            let type_id = tcx.type_of(tcx.lang_items().type_id().unwrap()).instantiate_identity();
+            (0, 0, vec![type_id, type_id], tcx.types.bool)
+        }
         sym::offset => (2, 0, vec![param(0), param(1)], param(0)),
         sym::arith_offset => (
             1,

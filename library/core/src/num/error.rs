@@ -45,8 +45,11 @@ impl From<!> for TryFromIntError {
 
 /// An error which can be returned when parsing an integer.
 ///
-/// This error is used as the error type for the `from_str_radix()` functions
-/// on the primitive integer types, such as [`i8::from_str_radix`].
+/// For example, this error is returned by the `from_str_radix()` functions
+/// on the primitive integer types (such as [`i8::from_str_radix`])
+/// and is used as the error type in their [`FromStr`] implementations.
+///
+/// [`FromStr`]: crate::str::FromStr
 ///
 /// # Potential causes
 ///
@@ -79,7 +82,7 @@ pub struct ParseIntError {
 /// # }
 /// ```
 #[stable(feature = "int_error_matching", since = "1.55.0")]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Hash)]
 #[non_exhaustive]
 pub enum IntErrorKind {
     /// Value being parsed is empty.

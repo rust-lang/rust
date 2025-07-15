@@ -7,7 +7,7 @@ floating-point units.
 
 ## Target maintainers
 
-[@koalatux](https://github.com/koalatux)
+There are currently no formally documented target maintainers.
 
 ## Requirements
 

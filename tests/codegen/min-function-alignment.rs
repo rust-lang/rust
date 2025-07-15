@@ -2,6 +2,7 @@
 //@ compile-flags: -C no-prepopulate-passes -Z mir-opt-level=0 -Clink-dead-code
 //@ [align16] compile-flags: -Zmin-function-alignment=16
 //@ [align1024] compile-flags: -Zmin-function-alignment=1024
+//@ ignore-wasm32 aligning functions is not currently supported on wasm (#143368)
 
 #![crate_type = "lib"]
 #![feature(fn_align)]

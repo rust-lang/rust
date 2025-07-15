@@ -162,7 +162,7 @@ pub fn iter_exported_symbols<'tcx>(
 
         // We can ignore `_export_info` here: we are a Rust crate, and everything is exported
         // from a Rust crate.
-        for &(symbol, _export_info) in tcx.exported_symbols(cnum) {
+        for &(symbol, _export_info) in tcx.exported_non_generic_symbols(cnum) {
             if let ExportedSymbol::NonGeneric(def_id) = symbol {
                 f(cnum, def_id)?;
             }
@@ -444,7 +444,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         caller_abi: ExternAbi,
         args: &[ImmTy<'tcx>],
         dest: Option<&MPlaceTy<'tcx>>,
-        stack_pop: StackPopCleanup,
+        cont: ReturnContinuation,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -472,7 +472,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             &args.iter().map(|a| FnArg::Copy(a.clone().into())).collect::<Vec<_>>(),
             /*with_caller_location*/ false,
             &dest.into(),
-            stack_pop,
+            cont,
         )
     }
 
@@ -594,10 +594,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     interp_ok(())
                 } else if matches!(v.layout.fields, FieldsShape::Union(..)) {
                     // A (non-frozen) union. We fall back to whatever the type says.
-                    (self.unsafe_cell_action)(v)
-                } else if matches!(v.layout.ty.kind(), ty::Dynamic(_, _, ty::DynStar)) {
-                    // This needs to read the vtable pointer to proceed type-driven, but we don't
-                    // want to reentrantly read from memory here.
                     (self.unsafe_cell_action)(v)
                 } else {
                     // We want to not actually read from memory for this visit. So, before
@@ -1337,7 +1333,6 @@ where
 
 /// Check that the number of varargs is at least the minimum what we expect.
 /// Fixed args should not be included.
-/// Use `check_vararg_fixed_arg_count` to extract the varargs slice from full function arguments.
 pub fn check_min_vararg_count<'a, 'tcx, const N: usize>(
     name: &'a str,
     args: &'a [OpTy<'tcx>],

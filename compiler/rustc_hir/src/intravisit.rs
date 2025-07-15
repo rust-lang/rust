@@ -347,7 +347,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_pat_expr(&mut self, expr: &'v PatExpr<'v>) -> Self::Result {
         walk_pat_expr(self, expr)
     }
-    fn visit_lit(&mut self, _hir_id: HirId, _lit: &'v Lit, _negated: bool) -> Self::Result {
+    fn visit_lit(&mut self, _hir_id: HirId, _lit: Lit, _negated: bool) -> Self::Result {
         Self::Result::output()
     }
     fn visit_anon_const(&mut self, c: &'v AnonConst) -> Self::Result {
@@ -435,17 +435,17 @@ pub trait Visitor<'v>: Sized {
     fn visit_trait_item(&mut self, ti: &'v TraitItem<'v>) -> Self::Result {
         walk_trait_item(self, ti)
     }
-    fn visit_trait_item_ref(&mut self, ii: &'v TraitItemRef) -> Self::Result {
-        walk_trait_item_ref(self, ii)
+    fn visit_trait_item_ref(&mut self, ii: &'v TraitItemId) -> Self::Result {
+        walk_trait_item_ref(self, *ii)
     }
     fn visit_impl_item(&mut self, ii: &'v ImplItem<'v>) -> Self::Result {
         walk_impl_item(self, ii)
     }
-    fn visit_foreign_item_ref(&mut self, ii: &'v ForeignItemRef) -> Self::Result {
-        walk_foreign_item_ref(self, ii)
+    fn visit_foreign_item_ref(&mut self, ii: &'v ForeignItemId) -> Self::Result {
+        walk_foreign_item_ref(self, *ii)
     }
-    fn visit_impl_item_ref(&mut self, ii: &'v ImplItemRef) -> Self::Result {
-        walk_impl_item_ref(self, ii)
+    fn visit_impl_item_ref(&mut self, ii: &'v ImplItemId) -> Self::Result {
+        walk_impl_item_ref(self, *ii)
     }
     fn visit_trait_ref(&mut self, t: &'v TraitRef<'v>) -> Self::Result {
         walk_trait_ref(self, t)
@@ -498,9 +498,6 @@ pub trait Visitor<'v>: Sized {
     }
     fn visit_attribute(&mut self, _attr: &'v Attribute) -> Self::Result {
         Self::Result::output()
-    }
-    fn visit_associated_item_kind(&mut self, kind: &'v AssocItemKind) -> Self::Result {
-        walk_associated_item_kind(self, kind)
     }
     fn visit_defaultness(&mut self, defaultness: &'v Defaultness) -> Self::Result {
         walk_defaultness(self, defaultness)
@@ -786,7 +783,7 @@ pub fn walk_pat_expr<'v, V: Visitor<'v>>(visitor: &mut V, expr: &'v PatExpr<'v>)
     let PatExpr { hir_id, span, kind } = expr;
     try_visit!(visitor.visit_id(*hir_id));
     match kind {
-        PatExprKind::Lit { lit, negated } => visitor.visit_lit(*hir_id, lit, *negated),
+        PatExprKind::Lit { lit, negated } => visitor.visit_lit(*hir_id, *lit, *negated),
         PatExprKind::ConstBlock(c) => visitor.visit_inline_const(c),
         PatExprKind::Path(qpath) => visitor.visit_qpath(qpath, *hir_id, *span),
     }
@@ -1001,7 +998,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v, AmbigArg>) -
         TyKind::Tup(tuple_element_types) => {
             walk_list!(visitor, visit_ty_unambig, tuple_element_types);
         }
-        TyKind::BareFn(ref function_declaration) => {
+        TyKind::FnPtr(ref function_declaration) => {
             walk_list!(visitor, visit_generic_param, function_declaration.generic_params);
             try_visit!(visitor.visit_fn_decl(function_declaration.decl));
         }
@@ -1248,14 +1245,8 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
     V::Result::output()
 }
 
-pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    trait_item_ref: &'v TraitItemRef,
-) -> V::Result {
-    let TraitItemRef { id, ident, ref kind, span: _ } = *trait_item_ref;
-    try_visit!(visitor.visit_nested_trait_item(id));
-    try_visit!(visitor.visit_ident(ident));
-    visitor.visit_associated_item_kind(kind)
+pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, id: TraitItemId) -> V::Result {
+    visitor.visit_nested_trait_item(id)
 }
 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(
@@ -1271,6 +1262,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
         span: _,
         vis_span: _,
         has_delayed_lints: _,
+        trait_item_def_id: _,
     } = *impl_item;
 
     try_visit!(visitor.visit_ident(ident));
@@ -1293,23 +1285,12 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
     }
 }
 
-pub fn walk_foreign_item_ref<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    foreign_item_ref: &'v ForeignItemRef,
-) -> V::Result {
-    let ForeignItemRef { id, ident, span: _ } = *foreign_item_ref;
-    try_visit!(visitor.visit_nested_foreign_item(id));
-    visitor.visit_ident(ident)
+pub fn walk_foreign_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, id: ForeignItemId) -> V::Result {
+    visitor.visit_nested_foreign_item(id)
 }
 
-pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    impl_item_ref: &'v ImplItemRef,
-) -> V::Result {
-    let ImplItemRef { id, ident, ref kind, span: _, trait_item_def_id: _ } = *impl_item_ref;
-    try_visit!(visitor.visit_nested_impl_item(id));
-    try_visit!(visitor.visit_ident(ident));
-    visitor.visit_associated_item_kind(kind)
+pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, id: ImplItemId) -> V::Result {
+    visitor.visit_nested_impl_item(id)
 }
 
 pub fn walk_trait_ref<'v, V: Visitor<'v>>(
@@ -1480,13 +1461,6 @@ pub fn walk_assoc_item_constraint<'v, V: Visitor<'v>>(
             walk_list!(visitor, visit_param_bound, bounds)
         }
     }
-    V::Result::output()
-}
-
-pub fn walk_associated_item_kind<'v, V: Visitor<'v>>(_: &mut V, _: &'v AssocItemKind) -> V::Result {
-    // No visitable content here: this fn exists so you can call it if
-    // the right thing to do, should content be added in the future,
-    // would be to walk it.
     V::Result::output()
 }
 

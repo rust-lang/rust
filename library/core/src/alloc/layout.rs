@@ -61,8 +61,8 @@ impl Layout {
     /// * `align` must be a power of two,
     ///
     /// * `size`, when rounded up to the nearest multiple of `align`,
-    ///    must not overflow `isize` (i.e., the rounded value must be
-    ///    less than or equal to `isize::MAX`).
+    ///   must not overflow `isize` (i.e., the rounded value must be
+    ///   less than or equal to `isize::MAX`).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[inline]

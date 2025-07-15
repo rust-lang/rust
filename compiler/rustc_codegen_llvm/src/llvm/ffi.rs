@@ -1492,12 +1492,6 @@ unsafe extern "C" {
         Ty: &'a Type,
         Name: *const c_char,
     ) -> &'a Value;
-    pub(crate) fn LLVMBuildArrayAlloca<'a>(
-        B: &Builder<'a>,
-        Ty: &'a Type,
-        Val: &'a Value,
-        Name: *const c_char,
-    ) -> &'a Value;
     pub(crate) fn LLVMBuildLoad2<'a>(
         B: &Builder<'a>,
         Ty: &'a Type,
@@ -1980,12 +1974,12 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustBuildMinNum<'a>(
         B: &Builder<'a>,
         LHS: &'a Value,
-        LHS: &'a Value,
+        RHS: &'a Value,
     ) -> &'a Value;
     pub(crate) fn LLVMRustBuildMaxNum<'a>(
         B: &Builder<'a>,
         LHS: &'a Value,
-        LHS: &'a Value,
+        RHS: &'a Value,
     ) -> &'a Value;
 
     // Atomic Operations

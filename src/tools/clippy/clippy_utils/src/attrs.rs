@@ -1,5 +1,8 @@
+use crate::source::SpanRangeExt;
+use crate::{sym, tokenize_with_text};
 use rustc_ast::attr;
 use rustc_ast::attr::AttributeExt;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_errors::Applicability;
 use rustc_lexer::TokenKind;
 use rustc_lint::LateContext;
@@ -7,9 +10,6 @@ use rustc_middle::ty::{AdtDef, TyCtxt};
 use rustc_session::Session;
 use rustc_span::{Span, Symbol};
 use std::str::FromStr;
-
-use crate::source::SpanRangeExt;
-use crate::{sym, tokenize_with_text};
 
 /// Deprecation status of attributes known by Clippy.
 pub enum DeprecationStatus {
@@ -165,13 +165,14 @@ pub fn is_doc_hidden(attrs: &[impl AttributeExt]) -> bool {
 
 pub fn has_non_exhaustive_attr(tcx: TyCtxt<'_>, adt: AdtDef<'_>) -> bool {
     adt.is_variant_list_non_exhaustive()
-        || tcx.has_attr(adt.did(), sym::non_exhaustive)
+        || find_attr!(tcx.get_all_attrs(adt.did()), AttributeKind::NonExhaustive(..))
         || adt.variants().iter().any(|variant_def| {
-            variant_def.is_field_list_non_exhaustive() || tcx.has_attr(variant_def.def_id, sym::non_exhaustive)
+            variant_def.is_field_list_non_exhaustive()
+                || find_attr!(tcx.get_all_attrs(variant_def.def_id), AttributeKind::NonExhaustive(..))
         })
         || adt
             .all_fields()
-            .any(|field_def| tcx.has_attr(field_def.did, sym::non_exhaustive))
+            .any(|field_def| find_attr!(tcx.get_all_attrs(field_def.did), AttributeKind::NonExhaustive(..)))
 }
 
 /// Checks if the given span contains a `#[cfg(..)]` attribute

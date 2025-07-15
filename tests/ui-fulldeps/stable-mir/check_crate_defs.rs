@@ -10,13 +10,13 @@
 
 extern crate rustc_hir;
 extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_smir;
+
 extern crate rustc_driver;
 extern crate rustc_interface;
-extern crate stable_mir;
+#[macro_use]
+extern crate rustc_public;
 
-use stable_mir::CrateDef;
+use rustc_public::CrateDef;
 use std::collections::HashSet;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -26,7 +26,7 @@ const CRATE_NAME: &str = "crate_defs";
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_stable_mir() -> ControlFlow<()> {
     // Find items in the local crate.
-    let local = stable_mir::local_crate();
+    let local = rustc_public::local_crate();
     check_items(&local.statics(), &["PRIVATE_STATIC", "dummy::PUBLIC_STATIC"]);
     check_items(
         &local.fn_defs(),
@@ -44,7 +44,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     // Find items inside core crate.
     // FIXME: We are currently missing primitive type methods and trait implementations for external
     // crates.
-    let core = stable_mir::find_crates("core").pop().expect("Cannot find `core` crate");
+    let core = rustc_public::find_crates("core").pop().expect("Cannot find `core` crate");
     contains(
         &core.fn_defs(),
         &[

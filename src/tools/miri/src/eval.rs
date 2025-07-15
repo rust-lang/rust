@@ -283,16 +283,6 @@ impl<'tcx> MainThreadState<'tcx> {
                 // to be like a global `static`, so that all memory reached by it is considered to "not leak".
                 this.terminate_active_thread(TlsAllocAction::Leak)?;
 
-                // Machine cleanup. Only do this if all threads have terminated; threads that are still running
-                // might cause Stacked Borrows errors (https://github.com/rust-lang/miri/issues/2396).
-                if this.have_all_terminated() {
-                    // Even if all threads have terminated, we have to beware of data races since some threads
-                    // might not have joined the main thread (https://github.com/rust-lang/miri/issues/2020,
-                    // https://github.com/rust-lang/miri/issues/2508).
-                    this.allow_data_races_all_threads_done();
-                    EnvVars::cleanup(this).expect("error during env var cleanup");
-                }
-
                 // Stop interpreter loop.
                 throw_machine_stop!(TerminationInfo::Exit { code: exit_code, leak_check: true });
             }
@@ -446,7 +436,7 @@ pub fn create_ecx<'tcx>(
                     ImmTy::from_uint(sigpipe, ecx.machine.layouts.u8),
                 ],
                 Some(&ret_place),
-                StackPopCleanup::Root { cleanup: true },
+                ReturnContinuation::Stop { cleanup: true },
             )?;
         }
         MiriEntryFnType::MiriStart => {
@@ -455,7 +445,7 @@ pub fn create_ecx<'tcx>(
                 ExternAbi::Rust,
                 &[argc, argv],
                 Some(&ret_place),
-                StackPopCleanup::Root { cleanup: true },
+                ReturnContinuation::Stop { cleanup: true },
             )?;
         }
     }

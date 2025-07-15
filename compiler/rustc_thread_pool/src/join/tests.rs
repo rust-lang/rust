@@ -96,7 +96,9 @@ fn join_context_both() {
     assert!(b_migrated);
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn join_context_neither() {
     // If we're already in a 1-thread pool, neither job should be stolen.

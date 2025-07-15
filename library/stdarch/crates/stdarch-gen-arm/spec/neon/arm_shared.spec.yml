@@ -11447,14 +11447,14 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int8x8_t, uint8x8_t, '3', 'const { int8x8_t([N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8]) }']
-      - [int16x4_t, uint16x4_t, '4', 'const { int16x4_t([N as i16, N as i16, N as i16, N as i16]) }']
-      - [int32x2_t, uint32x2_t, '5', 'const { int32x2_t([N as i32, N as i32]) }']
+      - [int8x8_t, uint8x8_t, '3', 'const { int8x8_t([N as i8; 8]) }']
+      - [int16x4_t, uint16x4_t, '4', 'const { int16x4_t([N as i16; 4]) }']
+      - [int32x2_t, uint32x2_t, '5', 'const { int32x2_t([N; 2]) }']
       - [int64x1_t, uint64x1_t, '6', 'const { int64x1_t([N as i64]) }']
-      - [int8x16_t, uint8x16_t, '3', 'const { int8x16_t([N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8]) }']
-      - [int16x8_t, uint16x8_t, '4', 'const { int16x8_t([N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16]) }']
-      - [int32x4_t, uint32x4_t, '5', 'const { int32x4_t([N as i32, N as i32, N as i32, N as i32]) }']
-      - [int64x2_t, uint64x2_t, '6', 'const { int64x2_t([N as i64, N as i64]) }']
+      - [int8x16_t, uint8x16_t, '3', 'const { int8x16_t([N as i8; 16]) }']
+      - [int16x8_t, uint16x8_t, '4', 'const { int16x8_t([N as i16; 8]) }']
+      - [int32x4_t, uint32x4_t, '5', 'const { int32x4_t([N; 4]) }']
+      - [int64x2_t, uint64x2_t, '6', 'const { int64x2_t([N as i64; 2]) }']
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, "{type[2]}"]]
       - LLVMLink:
@@ -11479,14 +11479,14 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int8x8_t, uint8x8_t, '3', 'const { int8x8_t([N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8]) }']
-      - [int16x4_t, uint16x4_t, '4', 'const { int16x4_t([N as i16, N as i16, N as i16, N as i16]) }']
-      - [int32x2_t, uint32x2_t, '5', 'const { int32x2_t([N as i32, N as i32]) }']
+      - [int8x8_t, uint8x8_t, '3', 'const { int8x8_t([N as i8; 8]) }']
+      - [int16x4_t, uint16x4_t, '4', 'const { int16x4_t([N as i16; 4]) }']
+      - [int32x2_t, uint32x2_t, '5', 'const { int32x2_t([N; 2]) }']
       - [int64x1_t, uint64x1_t, '6', 'const { int64x1_t([N as i64]) }']
-      - [int8x16_t, uint8x16_t, '3', 'const { int8x16_t([N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8]) }']
-      - [int16x8_t, uint16x8_t, '4', 'const { int16x8_t([N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16]) }']
-      - [int32x4_t, uint32x4_t, '5', 'const { int32x4_t([N as i32, N as i32, N as i32, N as i32]) }']
-      - [int64x2_t, uint64x2_t, '6', 'const { int64x2_t([N as i64, N as i64]) }']
+      - [int8x16_t, uint8x16_t, '3', 'const { int8x16_t([N as i8; 16]) }']
+      - [int16x8_t, uint16x8_t, '4', 'const { int16x8_t([N as i16; 8]) }']
+      - [int32x4_t, uint32x4_t, '5', 'const { int32x4_t([N; 4]) }']
+      - [int64x2_t, uint64x2_t, '6', 'const { int64x2_t([N as i64; 2]) }']
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, "{type[2]}"]]
       - LLVMLink:

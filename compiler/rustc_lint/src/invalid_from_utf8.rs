@@ -108,8 +108,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidFromUtf8 {
             }
             match init.kind {
                 ExprKind::Lit(Spanned { node: lit, .. }) => {
-                    if let LitKind::ByteStr(bytes, _) = &lit
-                        && let Err(utf8_error) = std::str::from_utf8(bytes)
+                    if let LitKind::ByteStr(byte_sym, _) = &lit
+                        && let Err(utf8_error) = std::str::from_utf8(byte_sym.as_byte_str())
                     {
                         lint(init.span, utf8_error);
                     }

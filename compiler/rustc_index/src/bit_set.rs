@@ -1744,13 +1744,13 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
 
 #[inline]
 fn num_words<T: Idx>(domain_size: T) -> usize {
-    (domain_size.index() + WORD_BITS - 1) / WORD_BITS
+    domain_size.index().div_ceil(WORD_BITS)
 }
 
 #[inline]
 fn num_chunks<T: Idx>(domain_size: T) -> usize {
     assert!(domain_size.index() > 0);
-    (domain_size.index() + CHUNK_BITS - 1) / CHUNK_BITS
+    domain_size.index().div_ceil(CHUNK_BITS)
 }
 
 #[inline]

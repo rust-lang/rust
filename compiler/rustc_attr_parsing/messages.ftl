@@ -6,6 +6,10 @@ attr_parsing_deprecated_item_suggestion =
     .help = add `#![feature(deprecated_suggestion)]` to the crate root
     .note = see #94785 for more details
 
+attr_parsing_empty_attribute =
+    unused attribute
+    .suggestion = remove this attribute
+
 attr_parsing_empty_confusables =
     expected at least one confusable name
 attr_parsing_expected_one_cfg_pattern =
@@ -74,6 +78,9 @@ attr_parsing_invalid_repr_hint_no_value =
 attr_parsing_invalid_since =
     'since' must be a Rust version number, such as "1.31.0"
 
+attr_parsing_link_ordinal_out_of_range = ordinal value in `link_ordinal` is too large: `{$ordinal}`
+    .note = the value may not exceed `u16::MAX`
+
 attr_parsing_missing_feature =
     missing 'feature'
 
@@ -98,6 +105,8 @@ attr_parsing_non_ident_feature =
     'feature' is not an identifier
 
 attr_parsing_null_on_export = `export_name` may not contain null characters
+
+attr_parsing_null_on_link_section = `link_section` may not contain null characters
 
 attr_parsing_repr_ident =
     meta item in `repr` must be an identifier
@@ -140,12 +149,12 @@ attr_parsing_unused_duplicate =
     unused attribute
     .suggestion = remove this attribute
     .note = attribute also specified here
-    .warn = {-passes_previously_accepted}
+    .warn = {-attr_parsing_previously_accepted}
 
 attr_parsing_unused_multiple =
     multiple `{$name}` attributes
     .suggestion = remove this attribute
     .note = attribute also specified here
 
--attr_parsing_perviously_accepted =
+-attr_parsing_previously_accepted =
     this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

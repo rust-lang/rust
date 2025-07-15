@@ -52,20 +52,6 @@ fn test_num_f16() {
 // the intrinsics.
 
 #[test]
-fn test_nan() {
-    let nan: f16 = f16::NAN;
-    assert!(nan.is_nan());
-    assert!(!nan.is_infinite());
-    assert!(!nan.is_finite());
-    assert!(nan.is_sign_positive());
-    assert!(!nan.is_sign_negative());
-    assert!(!nan.is_normal());
-    assert_eq!(Fp::Nan, nan.classify());
-    // Ensure the quiet bit is set.
-    assert!(nan.to_bits() & (1 << (f16::MANTISSA_DIGITS - 2)) != 0);
-}
-
-#[test]
 fn test_infinity() {
     let inf: f16 = f16::INFINITY;
     assert!(inf.is_infinite());

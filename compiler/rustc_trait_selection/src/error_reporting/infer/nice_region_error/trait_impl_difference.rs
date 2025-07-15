@@ -60,14 +60,15 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // Mark all unnamed regions in the type with a number.
         // This diagnostic is called in response to lifetime errors, so be informative.
         struct HighlightBuilder<'tcx> {
+            tcx: TyCtxt<'tcx>,
             highlight: RegionHighlightMode<'tcx>,
             counter: usize,
         }
 
         impl<'tcx> HighlightBuilder<'tcx> {
-            fn build(sig: ty::PolyFnSig<'tcx>) -> RegionHighlightMode<'tcx> {
+            fn build(tcx: TyCtxt<'tcx>, sig: ty::PolyFnSig<'tcx>) -> RegionHighlightMode<'tcx> {
                 let mut builder =
-                    HighlightBuilder { highlight: RegionHighlightMode::default(), counter: 1 };
+                    HighlightBuilder { tcx, highlight: RegionHighlightMode::default(), counter: 1 };
                 sig.visit_with(&mut builder);
                 builder.highlight
             }
@@ -75,15 +76,15 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for HighlightBuilder<'tcx> {
             fn visit_region(&mut self, r: ty::Region<'tcx>) {
-                if !r.has_name() && self.counter <= 3 {
+                if !r.is_named(self.tcx) && self.counter <= 3 {
                     self.highlight.highlighting_region(r, self.counter);
                     self.counter += 1;
                 }
             }
         }
 
-        let expected_highlight = HighlightBuilder::build(expected);
         let tcx = self.cx.tcx;
+        let expected_highlight = HighlightBuilder::build(tcx, expected);
         let expected = Highlighted {
             highlight: expected_highlight,
             ns: Namespace::TypeNS,
@@ -91,7 +92,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             value: expected,
         }
         .to_string();
-        let found_highlight = HighlightBuilder::build(found);
+        let found_highlight = HighlightBuilder::build(tcx, found);
         let found =
             Highlighted { highlight: found_highlight, ns: Namespace::TypeNS, tcx, value: found }
                 .to_string();

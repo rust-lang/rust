@@ -23,6 +23,10 @@ impl<A: ParameterizedOverTcx, B: ParameterizedOverTcx> ParameterizedOverTcx for 
     type Value<'tcx> = (A::Value<'tcx>, B::Value<'tcx>);
 }
 
+impl<T: ParameterizedOverTcx> ParameterizedOverTcx for Vec<T> {
+    type Value<'tcx> = Vec<T::Value<'tcx>>;
+}
+
 impl<I: Idx + 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for IndexVec<I, T> {
     type Value<'tcx> = IndexVec<I, T::Value<'tcx>>;
 }
@@ -83,7 +87,7 @@ trivially_parameterized_over_tcx! {
     ty::IntrinsicDef,
     rustc_ast::Attribute,
     rustc_ast::DelimArgs,
-    rustc_ast::expand::StrippedCfgItem<rustc_hir::def_id::DefIndex>,
+    rustc_attr_data_structures::StrippedCfgItem<rustc_hir::def_id::DefIndex>,
     rustc_attr_data_structures::ConstStability,
     rustc_attr_data_structures::DefaultBodyStability,
     rustc_attr_data_structures::Deprecation,

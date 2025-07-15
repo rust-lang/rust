@@ -453,6 +453,13 @@ pub(crate) struct NullOnExport {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_parsing_null_on_link_section, code = E0648)]
+pub(crate) struct NullOnLinkSection {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_parsing_stability_outside_std, code = E0734)]
 pub(crate) struct StabilityOutsideStd {
     #[primary_span]
@@ -464,6 +471,13 @@ pub(crate) struct StabilityOutsideStd {
 pub(crate) struct EmptyConfusables {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(attr_parsing_empty_attribute)]
+pub(crate) struct EmptyAttributeList {
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub attr_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -500,9 +514,19 @@ pub(crate) struct NakedFunctionIncompatibleAttribute {
     pub attr: String,
 }
 
+#[derive(Diagnostic)]
+#[diag(attr_parsing_link_ordinal_out_of_range)]
+#[note]
+pub(crate) struct LinkOrdinalOutOfRange {
+    #[primary_span]
+    pub span: Span,
+    pub ordinal: u128,
+}
+
 pub(crate) enum AttributeParseErrorReason {
     ExpectedNoArgs,
     ExpectedStringLiteral { byte_string: Option<Span> },
+    ExpectedIntegerLiteral,
     ExpectedAtLeastOneArgument,
     ExpectedSingleArgument,
     ExpectedList,
@@ -543,6 +567,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                     diag.span_label(self.span, "expected a string literal here");
                 }
             }
+            AttributeParseErrorReason::ExpectedIntegerLiteral => {
+                diag.span_label(self.span, "expected an integer literal here");
+            }
             AttributeParseErrorReason::ExpectedSingleArgument => {
                 diag.span_label(self.span, "expected a single argument here");
                 diag.code(E0805);
@@ -566,10 +593,13 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                 diag.code(E0565);
             }
             AttributeParseErrorReason::ExpectedNameValue(None) => {
-                diag.span_label(
-                    self.span,
-                    format!("expected this to be of the form `{name} = \"...\"`"),
-                );
+                // If the span is the entire attribute, the suggestion we add below this match already contains enough information
+                if self.span != self.attr_span {
+                    diag.span_label(
+                        self.span,
+                        format!("expected this to be of the form `... = \"...\"`"),
+                    );
+                }
             }
             AttributeParseErrorReason::ExpectedNameValue(Some(name)) => {
                 diag.span_label(

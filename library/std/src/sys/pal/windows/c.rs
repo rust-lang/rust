@@ -37,13 +37,6 @@ pub fn nt_success(status: NTSTATUS) -> bool {
     status >= 0
 }
 
-impl UNICODE_STRING {
-    pub fn from_ref(slice: &[u16]) -> Self {
-        let len = size_of_val(slice);
-        Self { Length: len as _, MaximumLength: len as _, Buffer: slice.as_ptr() as _ }
-    }
-}
-
 impl OBJECT_ATTRIBUTES {
     pub fn with_length() -> Self {
         Self {

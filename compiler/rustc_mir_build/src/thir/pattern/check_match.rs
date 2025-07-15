@@ -6,7 +6,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, struct_span_code_err};
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, MatchSource};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::Level;
 use rustc_middle::bug;
@@ -153,6 +153,12 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
             }
             ExprKind::Match { scrutinee, box ref arms, match_source } => {
                 self.check_match(scrutinee, arms, match_source, ex.span);
+            }
+            ExprKind::LoopMatch {
+                match_data: box LoopMatchMatchData { scrutinee, box ref arms, span },
+                ..
+            } => {
+                self.check_match(scrutinee, arms, MatchSource::Normal, span);
             }
             ExprKind::Let { box ref pat, expr } => {
                 self.check_let(pat, Some(expr), ex.span);
@@ -400,6 +406,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             scrut_span,
             refutable,
             known_valid_scrutinee,
+            internal_state: Default::default(),
         }
     }
 
@@ -1077,7 +1084,7 @@ fn find_fallback_pattern_typo<'tcx>(
                 && infcx.can_eq(param_env, ty, cx.tcx.type_of(item.owner_id).instantiate_identity())
             {
                 // Look for local consts.
-                let item_name = cx.tcx.item_name(item.owner_id.into());
+                let item_name = cx.tcx.item_name(item.owner_id);
                 let vis = cx.tcx.visibility(item.owner_id);
                 if vis.is_accessible_from(parent, cx.tcx) {
                     accessible.push(item_name);

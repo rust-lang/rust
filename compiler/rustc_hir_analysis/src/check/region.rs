@@ -15,7 +15,6 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Block, Expr, LetStmt, Pat, PatKind, Stmt};
 use rustc_index::Idx;
-use rustc_middle::bug;
 use rustc_middle::middle::region::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
@@ -34,14 +33,6 @@ struct Context {
 struct ScopeResolutionVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 
-    // The number of expressions and patterns visited in the current body.
-    expr_and_pat_count: usize,
-    // When this is `true`, we record the `Scopes` we encounter
-    // when processing a Yield expression. This allows us to fix
-    // up their indices.
-    pessimistic_yield: bool,
-    // Stores scopes when `pessimistic_yield` is `true`.
-    fixup_scopes: Vec<Scope>,
     // The generated scope tree.
     scope_tree: ScopeTree,
 
@@ -176,15 +167,31 @@ fn resolve_block<'tcx>(
     visitor.cx = prev_cx;
 }
 
-fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
-    fn has_let_expr(expr: &Expr<'_>) -> bool {
-        match &expr.kind {
-            hir::ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
-            hir::ExprKind::Let(..) => true,
-            _ => false,
-        }
-    }
+/// Resolve a condition from an `if` expression or match guard so that it is a terminating scope
+/// if it doesn't contain `let` expressions.
+fn resolve_cond<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, cond: &'tcx hir::Expr<'tcx>) {
+    let terminate = match cond.kind {
+        // Temporaries for `let` expressions must live into the success branch.
+        hir::ExprKind::Let(_) => false,
+        // Logical operator chains are handled in `resolve_expr`. Since logical operator chains in
+        // conditions are lowered to control-flow rather than boolean temporaries, there's no
+        // temporary to drop for logical operators themselves. `resolve_expr` will also recursively
+        // wrap any operands in terminating scopes, other than `let` expressions (which we shouldn't
+        // terminate) and other logical operators (which don't need a terminating scope, since their
+        // operands will be terminated). Any temporaries that would need to be dropped will be
+        // dropped before we leave this operator's scope; terminating them here would be redundant.
+        hir::ExprKind::Binary(
+            source_map::Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
+            _,
+            _,
+        ) => false,
+        // Otherwise, conditions should always drop their temporaries.
+        _ => true,
+    };
+    resolve_expr(visitor, cond, terminate);
+}
 
+fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
     let prev_cx = visitor.cx;
 
     visitor.enter_node_scope_with_dtor(arm.hir_id.local_id, true);
@@ -192,26 +199,21 @@ fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir:
 
     resolve_pat(visitor, arm.pat);
     if let Some(guard) = arm.guard {
-        resolve_expr(visitor, guard, !has_let_expr(guard));
+        resolve_cond(visitor, guard);
     }
     resolve_expr(visitor, arm.body, false);
 
     visitor.cx = prev_cx;
 }
 
+#[tracing::instrument(level = "debug", skip(visitor))]
 fn resolve_pat<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
     // If this is a binding then record the lifetime of that binding.
     if let PatKind::Binding(..) = pat.kind {
         record_var_lifetime(visitor, pat.hir_id.local_id);
     }
 
-    debug!("resolve_pat - pre-increment {} pat = {:?}", visitor.expr_and_pat_count, pat);
-
     intravisit::walk_pat(visitor, pat);
-
-    visitor.expr_and_pat_count += 1;
-
-    debug!("resolve_pat - post-increment {} pat = {:?}", visitor.expr_and_pat_count, pat);
 }
 
 fn resolve_stmt<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, stmt: &'tcx hir::Stmt<'tcx>) {
@@ -243,67 +245,14 @@ fn resolve_stmt<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, stmt: &'tcx hi
     }
 }
 
+#[tracing::instrument(level = "debug", skip(visitor))]
 fn resolve_expr<'tcx>(
     visitor: &mut ScopeResolutionVisitor<'tcx>,
     expr: &'tcx hir::Expr<'tcx>,
     terminating: bool,
 ) {
-    debug!("resolve_expr - pre-increment {} expr = {:?}", visitor.expr_and_pat_count, expr);
-
     let prev_cx = visitor.cx;
     visitor.enter_node_scope_with_dtor(expr.hir_id.local_id, terminating);
-
-    let prev_pessimistic = visitor.pessimistic_yield;
-
-    // Ordinarily, we can rely on the visit order of HIR intravisit
-    // to correspond to the actual execution order of statements.
-    // However, there's a weird corner case with compound assignment
-    // operators (e.g. `a += b`). The evaluation order depends on whether
-    // or not the operator is overloaded (e.g. whether or not a trait
-    // like AddAssign is implemented).
-
-    // For primitive types (which, despite having a trait impl, don't actually
-    // end up calling it), the evaluation order is right-to-left. For example,
-    // the following code snippet:
-    //
-    //    let y = &mut 0;
-    //    *{println!("LHS!"); y} += {println!("RHS!"); 1};
-    //
-    // will print:
-    //
-    // RHS!
-    // LHS!
-    //
-    // However, if the operator is used on a non-primitive type,
-    // the evaluation order will be left-to-right, since the operator
-    // actually get desugared to a method call. For example, this
-    // nearly identical code snippet:
-    //
-    //     let y = &mut String::new();
-    //    *{println!("LHS String"); y} += {println!("RHS String"); "hi"};
-    //
-    // will print:
-    // LHS String
-    // RHS String
-    //
-    // To determine the actual execution order, we need to perform
-    // trait resolution. Unfortunately, we need to be able to compute
-    // yield_in_scope before type checking is even done, as it gets
-    // used by AST borrowcheck.
-    //
-    // Fortunately, we don't need to know the actual execution order.
-    // It suffices to know the 'worst case' order with respect to yields.
-    // Specifically, we need to know the highest 'expr_and_pat_count'
-    // that we could assign to the yield expression. To do this,
-    // we pick the greater of the two values from the left-hand
-    // and right-hand expressions. This makes us overly conservative
-    // about what types could possibly live across yield points,
-    // but we will never fail to detect that a type does actually
-    // live across a yield point. The latter part is critical -
-    // we're already overly conservative about what types will live
-    // across yield points, as the generated MIR will determine
-    // when things are actually live. However, for typecheck to work
-    // properly, we can't miss any types.
 
     match expr.kind {
         // Conditional or repeating scopes are always terminating
@@ -360,55 +309,42 @@ fn resolve_expr<'tcx>(
             let body = visitor.tcx.hir_body(body);
             visitor.visit_body(body);
         }
+        // Ordinarily, we can rely on the visit order of HIR intravisit
+        // to correspond to the actual execution order of statements.
+        // However, there's a weird corner case with compound assignment
+        // operators (e.g. `a += b`). The evaluation order depends on whether
+        // or not the operator is overloaded (e.g. whether or not a trait
+        // like AddAssign is implemented).
+        //
+        // For primitive types (which, despite having a trait impl, don't actually
+        // end up calling it), the evaluation order is right-to-left. For example,
+        // the following code snippet:
+        //
+        //    let y = &mut 0;
+        //    *{println!("LHS!"); y} += {println!("RHS!"); 1};
+        //
+        // will print:
+        //
+        // RHS!
+        // LHS!
+        //
+        // However, if the operator is used on a non-primitive type,
+        // the evaluation order will be left-to-right, since the operator
+        // actually get desugared to a method call. For example, this
+        // nearly identical code snippet:
+        //
+        //     let y = &mut String::new();
+        //    *{println!("LHS String"); y} += {println!("RHS String"); "hi"};
+        //
+        // will print:
+        // LHS String
+        // RHS String
+        //
+        // To determine the actual execution order, we need to perform
+        // trait resolution. Fortunately, we don't need to know the actual execution order.
         hir::ExprKind::AssignOp(_, left_expr, right_expr) => {
-            debug!(
-                "resolve_expr - enabling pessimistic_yield, was previously {}",
-                prev_pessimistic
-            );
-
-            let start_point = visitor.fixup_scopes.len();
-            visitor.pessimistic_yield = true;
-
-            // If the actual execution order turns out to be right-to-left,
-            // then we're fine. However, if the actual execution order is left-to-right,
-            // then we'll assign too low a count to any `yield` expressions
-            // we encounter in 'right_expression' - they should really occur after all of the
-            // expressions in 'left_expression'.
             visitor.visit_expr(right_expr);
-            visitor.pessimistic_yield = prev_pessimistic;
-
-            debug!("resolve_expr - restoring pessimistic_yield to {}", prev_pessimistic);
             visitor.visit_expr(left_expr);
-            debug!("resolve_expr - fixing up counts to {}", visitor.expr_and_pat_count);
-
-            // Remove and process any scopes pushed by the visitor
-            let target_scopes = visitor.fixup_scopes.drain(start_point..);
-
-            for scope in target_scopes {
-                let yield_data =
-                    visitor.scope_tree.yield_in_scope.get_mut(&scope).unwrap().last_mut().unwrap();
-                let count = yield_data.expr_and_pat_count;
-                let span = yield_data.span;
-
-                // expr_and_pat_count never decreases. Since we recorded counts in yield_in_scope
-                // before walking the left-hand side, it should be impossible for the recorded
-                // count to be greater than the left-hand side count.
-                if count > visitor.expr_and_pat_count {
-                    bug!(
-                        "Encountered greater count {} at span {:?} - expected no greater than {}",
-                        count,
-                        span,
-                        visitor.expr_and_pat_count
-                    );
-                }
-                let new_count = visitor.expr_and_pat_count;
-                debug!(
-                    "resolve_expr - increasing count for scope {:?} from {} to {} at span {:?}",
-                    scope, count, new_count, span
-                );
-
-                yield_data.expr_and_pat_count = new_count;
-            }
         }
 
         hir::ExprKind::If(cond, then, Some(otherwise)) => {
@@ -420,7 +356,7 @@ fn resolve_expr<'tcx>(
             };
             visitor.enter_scope(Scope { local_id: then.hir_id.local_id, data });
             visitor.cx.var_parent = visitor.cx.parent;
-            visitor.visit_expr(cond);
+            resolve_cond(visitor, cond);
             resolve_expr(visitor, then, true);
             visitor.cx = expr_cx;
             resolve_expr(visitor, otherwise, true);
@@ -435,7 +371,7 @@ fn resolve_expr<'tcx>(
             };
             visitor.enter_scope(Scope { local_id: then.hir_id.local_id, data });
             visitor.cx.var_parent = visitor.cx.parent;
-            visitor.visit_expr(cond);
+            resolve_cond(visitor, cond);
             resolve_expr(visitor, then, true);
             visitor.cx = expr_cx;
         }
@@ -451,43 +387,6 @@ fn resolve_expr<'tcx>(
         }
 
         _ => intravisit::walk_expr(visitor, expr),
-    }
-
-    visitor.expr_and_pat_count += 1;
-
-    debug!("resolve_expr post-increment {}, expr = {:?}", visitor.expr_and_pat_count, expr);
-
-    if let hir::ExprKind::Yield(_, source) = &expr.kind {
-        // Mark this expr's scope and all parent scopes as containing `yield`.
-        let mut scope = Scope { local_id: expr.hir_id.local_id, data: ScopeData::Node };
-        loop {
-            let data = YieldData {
-                span: expr.span,
-                expr_and_pat_count: visitor.expr_and_pat_count,
-                source: *source,
-            };
-            match visitor.scope_tree.yield_in_scope.get_mut(&scope) {
-                Some(yields) => yields.push(data),
-                None => {
-                    visitor.scope_tree.yield_in_scope.insert(scope, vec![data]);
-                }
-            }
-
-            if visitor.pessimistic_yield {
-                debug!("resolve_expr in pessimistic_yield - marking scope {:?} for fixup", scope);
-                visitor.fixup_scopes.push(scope);
-            }
-
-            // Keep traversing up while we can.
-            match visitor.scope_tree.parent_map.get(&scope) {
-                // Don't cross from closure bodies to their parent.
-                Some(&superscope) => match superscope.data {
-                    ScopeData::CallSite => break,
-                    _ => scope = superscope,
-                },
-                None => break,
-            }
-        }
     }
 
     visitor.cx = prev_cx;
@@ -612,8 +511,8 @@ fn resolve_local<'tcx>(
         }
     }
 
-    // Make sure we visit the initializer first, so expr_and_pat_count remains correct.
-    // The correct order, as shared between coroutine_interior, drop_ranges and intravisitor,
+    // Make sure we visit the initializer first.
+    // The correct order, as shared between drop_ranges and intravisitor,
     // is to walk initializer, followed by pattern bindings, finally followed by the `else` block.
     if let Some(expr) = init {
         visitor.visit_expr(expr);
@@ -798,16 +697,7 @@ impl<'tcx> ScopeResolutionVisitor<'tcx> {
     }
 
     fn enter_body(&mut self, hir_id: hir::HirId, f: impl FnOnce(&mut Self)) {
-        // Save all state that is specific to the outer function
-        // body. These will be restored once down below, once we've
-        // visited the body.
-        let outer_ec = mem::replace(&mut self.expr_and_pat_count, 0);
         let outer_cx = self.cx;
-        // The 'pessimistic yield' flag is set to true when we are
-        // processing a `+=` statement and have to make pessimistic
-        // control flow assumptions. This doesn't apply to nested
-        // bodies within the `+=` statements. See #69307.
-        let outer_pessimistic_yield = mem::replace(&mut self.pessimistic_yield, false);
 
         self.enter_scope(Scope { local_id: hir_id.local_id, data: ScopeData::CallSite });
         self.enter_scope(Scope { local_id: hir_id.local_id, data: ScopeData::Arguments });
@@ -815,9 +705,7 @@ impl<'tcx> ScopeResolutionVisitor<'tcx> {
         f(self);
 
         // Restore context we had at the start.
-        self.expr_and_pat_count = outer_ec;
         self.cx = outer_cx;
-        self.pessimistic_yield = outer_pessimistic_yield;
     }
 }
 
@@ -919,10 +807,7 @@ pub(crate) fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
         let mut visitor = ScopeResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),
-            expr_and_pat_count: 0,
             cx: Context { parent: None, var_parent: None },
-            pessimistic_yield: false,
-            fixup_scopes: vec![],
             extended_super_lets: Default::default(),
         };
 
