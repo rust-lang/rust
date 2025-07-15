@@ -7,7 +7,7 @@
 use rustc_abi::Align;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::AllocRange;
-use rustc_public_bridge::bridge::SmirError;
+use rustc_public_bridge::bridge::Error as _;
 use rustc_public_bridge::context::CompilerCtxt;
 use rustc_public_bridge::{Tables, alloc};
 

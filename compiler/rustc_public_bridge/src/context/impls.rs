@@ -26,7 +26,7 @@ use rustc_target::callconv::FnAbi;
 
 use super::{AllocRangeHelpers, CompilerCtxt, TyHelpers, TypingEnvHelpers};
 use crate::builder::BodyBuilder;
-use crate::{Bridge, SmirError, Tables, filter_def_ids};
+use crate::{Bridge, Error, Tables, filter_def_ids};
 
 impl<'tcx, B: Bridge> TyHelpers<'tcx> for CompilerCtxt<'tcx, B> {
     fn new_foreign(&self, def_id: DefId) -> ty::Ty<'tcx> {

@@ -222,7 +222,7 @@ pub trait Bridge: Sized {
     type MirConstId: Copy + Debug + PartialEq + IndexedVal;
     type Layout: Copy + Debug + PartialEq + IndexedVal;
 
-    type Error: SmirError;
+    type Error: Error;
     type CrateItem: CrateItem<Self>;
     type AdtDef: AdtDef<Self>;
     type ForeignModuleDef: ForeignModuleDef<Self>;

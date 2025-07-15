@@ -12,7 +12,7 @@ use rustc_middle::ty::{Ty, layout};
 
 use super::{CompilerCtxt, Tables};
 use crate::bridge::Allocation as _;
-use crate::{Bridge, SmirError};
+use crate::{Bridge, Error};
 
 pub fn create_ty_and_layout<'tcx, B: Bridge>(
     cx: &CompilerCtxt<'tcx, B>,

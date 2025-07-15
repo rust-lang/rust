@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use super::context::CompilerCtxt;
 use super::{Bridge, Tables};
 
-pub trait SmirError {
+pub trait Error {
     fn new(msg: String) -> Self;
     fn from_internal<T: Debug>(err: T) -> Self;
 }
