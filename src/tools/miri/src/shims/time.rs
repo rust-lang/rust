@@ -330,18 +330,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(0)) // KERN_SUCCESS
     }
 
-    fn nanosleep(
-        &mut self,
-        req_op: &OpTy<'tcx>,
-        _rem: &OpTy<'tcx>, // Signal handlers are not supported, so rem will never be written to.
-    ) -> InterpResult<'tcx, Scalar> {
+    fn nanosleep(&mut self, duration: &OpTy<'tcx>, rem: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         this.assert_target_os_is_unix("nanosleep");
 
-        let req = this.deref_pointer_as(req_op, this.libc_ty_layout("timespec"))?;
+        let duration = this.deref_pointer_as(duration, this.libc_ty_layout("timespec"))?;
+        let _rem = this.read_pointer(rem)?; // Signal handlers are not supported, so rem will never be written to.
 
-        let duration = match this.read_timespec(&req)? {
+        let duration = match this.read_timespec(&duration)? {
             Some(duration) => duration,
             None => {
                 return this.set_last_error_and_return_i32(LibcError("EINVAL"));
@@ -351,6 +348,63 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.block_thread(
             BlockReason::Sleep,
             Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
+            callback!(
+                @capture<'tcx> {}
+                |_this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::TimedOut);
+                    interp_ok(())
+                }
+            ),
+        );
+        interp_ok(Scalar::from_i32(0))
+    }
+
+    fn clock_nanosleep(
+        &mut self,
+        clock_id: &OpTy<'tcx>,
+        flags: &OpTy<'tcx>,
+        timespec: &OpTy<'tcx>,
+        rem: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+        let clockid_t_size = this.libc_ty_layout("clockid_t").size;
+
+        let clock_id = this.read_scalar(clock_id)?.to_int(clockid_t_size)?;
+        let timespec = this.deref_pointer_as(timespec, this.libc_ty_layout("timespec"))?;
+        let flags = this.read_scalar(flags)?.to_i32()?;
+        let _rem = this.read_pointer(rem)?; // Signal handlers are not supported, so rem will never be written to.
+
+        // The standard lib through sleep_until only needs CLOCK_MONOTONIC
+        if clock_id != this.eval_libc("CLOCK_MONOTONIC").to_int(clockid_t_size)? {
+            throw_unsup_format!("clock_nanosleep: only CLOCK_MONOTONIC is supported");
+        }
+
+        let duration = match this.read_timespec(&timespec)? {
+            Some(duration) => duration,
+            None => {
+                return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+            }
+        };
+
+        let timeout_anchor = if flags == 0 {
+            // No flags set, the timespec should be interperted as a duration
+            // to sleep for
+            TimeoutAnchor::Relative
+        } else if flags == this.eval_libc_i32("TIMER_ABSTIME") {
+            // Only flag TIMER_ABSTIME set, the timespec should be interperted as
+            // an absolute time.
+            TimeoutAnchor::Absolute
+        } else {
+            // The standard lib (through `sleep_until`) only needs TIMER_ABSTIME
+            throw_unsup_format!(
+                "`clock_nanosleep` unsupported flags {flags}, only no flags or \
+                TIMER_ABSTIME is supported"
+            );
+        };
+
+        this.block_thread(
+            BlockReason::Sleep,
+            Some((TimeoutClock::Monotonic, timeout_anchor, duration)),
             callback!(
                 @capture<'tcx> {}
                 |_this, unblock: UnblockKind| {

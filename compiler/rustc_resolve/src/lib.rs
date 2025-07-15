@@ -36,17 +36,17 @@ use late::{
 };
 use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use rustc_arena::{DroplessArena, TypedArena};
-use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{
     self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, Expr, ExprKind, GenericArg, GenericArgs,
     LitKind, NodeId, Path, attr,
 };
+use rustc_attr_data_structures::StrippedCfgItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::FreezeReadGuard;
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
@@ -57,6 +57,7 @@ use rustc_hir::def::{
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::DisambiguatorState;
 use rustc_hir::{PrimTy, TraitCandidate};
+use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
@@ -640,7 +641,7 @@ impl<'ra> Module<'ra> {
         F: FnMut(&mut R, Ident, Namespace, NameBinding<'ra>),
     {
         for (key, name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
-            if let Some(binding) = name_resolution.borrow().binding {
+            if let Some(binding) = name_resolution.borrow().best_binding() {
                 f(resolver, key.ident, key.ns, binding);
             }
         }
@@ -890,6 +891,13 @@ impl<'ra> NameBindingData<'ra> {
         }
     }
 
+    fn import_source(&self) -> NameBinding<'ra> {
+        match self.kind {
+            NameBindingKind::Import { binding, .. } => binding,
+            _ => unreachable!(),
+        }
+    }
+
     fn is_ambiguity_recursive(&self) -> bool {
         self.ambiguity.is_some()
             || match self.kind {
@@ -1014,13 +1022,13 @@ struct DeriveData {
 
 struct MacroData {
     ext: Arc<SyntaxExtension>,
-    rule_spans: Vec<(usize, Span)>,
+    nrules: usize,
     macro_rules: bool,
 }
 
 impl MacroData {
     fn new(ext: Arc<SyntaxExtension>) -> MacroData {
-        MacroData { ext, rule_spans: Vec::new(), macro_rules: false }
+        MacroData { ext, nrules: 0, macro_rules: false }
     }
 }
 
@@ -1031,7 +1039,7 @@ pub struct Resolver<'ra, 'tcx> {
     tcx: TyCtxt<'tcx>,
 
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
-    expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
+    expn_that_defined: UnordMap<LocalDefId, ExpnId>,
 
     graph_root: Module<'ra>,
 
@@ -1127,15 +1135,17 @@ pub struct Resolver<'ra, 'tcx> {
     builtin_macros: FxHashMap<Symbol, SyntaxExtensionKind>,
     registered_tools: &'tcx RegisteredTools,
     macro_use_prelude: FxIndexMap<Symbol, NameBinding<'ra>>,
-    macro_map: FxHashMap<DefId, MacroData>,
+    local_macro_map: FxHashMap<LocalDefId, &'ra MacroData>,
+    /// Lazily populated cache of macros loaded from external crates.
+    extern_macro_map: RefCell<FxHashMap<DefId, &'ra MacroData>>,
     dummy_ext_bang: Arc<SyntaxExtension>,
     dummy_ext_derive: Arc<SyntaxExtension>,
-    non_macro_attr: MacroData,
+    non_macro_attr: &'ra MacroData,
     local_macro_def_scopes: FxHashMap<LocalDefId, Module<'ra>>,
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'ra>>,
     unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident)>,
     /// A map from the macro to all its potentially unused arms.
-    unused_macro_rules: FxIndexMap<NodeId, UnordMap<usize, (Ident, Span)>>,
+    unused_macro_rules: FxIndexMap<NodeId, DenseBitSet<usize>>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
@@ -1208,7 +1218,7 @@ pub struct Resolver<'ra, 'tcx> {
     effective_visibilities: EffectiveVisibilities,
     doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
-    all_macro_rules: FxHashSet<Symbol>,
+    all_macro_rules: UnordSet<Symbol>,
 
     /// Invocation ids of all glob delegations.
     glob_delegation_invoc_ids: FxHashSet<LocalExpnId>,
@@ -1240,6 +1250,7 @@ pub struct ResolverArenas<'ra> {
     imports: TypedArena<ImportData<'ra>>,
     name_resolutions: TypedArena<RefCell<NameResolution<'ra>>>,
     ast_paths: TypedArena<ast::Path>,
+    macros: TypedArena<MacroData>,
     dropless: DroplessArena,
 }
 
@@ -1286,7 +1297,7 @@ impl<'ra> ResolverArenas<'ra> {
         self.name_resolutions.alloc(Default::default())
     }
     fn alloc_macro_rules_scope(&'ra self, scope: MacroRulesScope<'ra>) -> MacroRulesScopeRef<'ra> {
-        Interned::new_unchecked(self.dropless.alloc(Cell::new(scope)))
+        self.dropless.alloc(Cell::new(scope))
     }
     fn alloc_macro_rules_binding(
         &'ra self,
@@ -1296,6 +1307,9 @@ impl<'ra> ResolverArenas<'ra> {
     }
     fn alloc_ast_paths(&'ra self, paths: &[ast::Path]) -> &'ra [ast::Path] {
         self.ast_paths.alloc_from_iter(paths.iter().cloned())
+    }
+    fn alloc_macro(&'ra self, macro_data: MacroData) -> &'ra MacroData {
+        self.macros.alloc(macro_data)
     }
     fn alloc_pattern_spans(&'ra self, spans: impl Iterator<Item = Span>) -> &'ra [Span] {
         self.dropless.alloc_from_iter(spans)
@@ -1539,10 +1553,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             builtin_macros: Default::default(),
             registered_tools,
             macro_use_prelude: Default::default(),
-            macro_map: FxHashMap::default(),
+            local_macro_map: Default::default(),
+            extern_macro_map: Default::default(),
             dummy_ext_bang: Arc::new(SyntaxExtension::dummy_bang(edition)),
             dummy_ext_derive: Arc::new(SyntaxExtension::dummy_derive(edition)),
-            non_macro_attr: MacroData::new(Arc::new(SyntaxExtension::non_macro_attr(edition))),
+            non_macro_attr: arenas
+                .alloc_macro(MacroData::new(Arc::new(SyntaxExtension::non_macro_attr(edition)))),
             invocation_parent_scopes: Default::default(),
             output_macro_rules_scopes: Default::default(),
             macro_rules_scopes: Default::default(),
@@ -1615,6 +1631,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         )
     }
 
+    fn new_local_macro(&mut self, def_id: LocalDefId, macro_data: MacroData) -> &'ra MacroData {
+        let mac = self.arenas.alloc_macro(macro_data);
+        self.local_macro_map.insert(def_id, mac);
+        mac
+    }
+
     fn next_node_id(&mut self) -> NodeId {
         let start = self.next_node_id;
         let next = start.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
@@ -1653,16 +1675,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let confused_type_with_std_module = self.confused_type_with_std_module;
         let effective_visibilities = self.effective_visibilities;
 
-        let stripped_cfg_items = Steal::new(
-            self.stripped_cfg_items
-                .into_iter()
-                .filter_map(|item| {
-                    let parent_module =
-                        self.node_id_to_def_id.get(&item.parent_module)?.key().to_def_id();
-                    Some(StrippedCfgItem { parent_module, ident: item.ident, cfg: item.cfg })
-                })
-                .collect(),
-        );
+        let stripped_cfg_items = self
+            .stripped_cfg_items
+            .into_iter()
+            .filter_map(|item| {
+                let parent_module =
+                    self.node_id_to_def_id.get(&item.parent_module)?.key().to_def_id();
+                Some(StrippedCfgItem { parent_module, ident: item.ident, cfg: item.cfg })
+            })
+            .collect();
 
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,
@@ -1734,7 +1755,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         f(self, MacroNS);
     }
 
-    fn is_builtin_macro(&mut self, res: Res) -> bool {
+    fn is_builtin_macro(&self, res: Res) -> bool {
         self.get_macro(res).is_some_and(|macro_data| macro_data.ext.builtin_name.is_some())
     }
 

@@ -4,7 +4,7 @@ error: functions with the "msp430-interrupt" ABI cannot be `async`
 LL | async extern "msp430-interrupt" fn msp430() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: remove the `async` keyword from this definiton
+help: remove the `async` keyword from this definition
    |
 LL - async extern "msp430-interrupt" fn msp430() {
 LL + extern "msp430-interrupt" fn msp430() {

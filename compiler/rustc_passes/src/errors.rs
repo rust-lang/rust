@@ -157,7 +157,7 @@ pub(crate) struct NonExhaustiveWrongLocation {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_non_exaustive_with_default_field_values)]
+#[diag(passes_non_exhaustive_with_default_field_values)]
 pub(crate) struct NonExhaustiveWithDefaultFieldValues {
     #[primary_span]
     pub attr_span: Span,
@@ -536,13 +536,6 @@ pub(crate) struct RustcLayoutScalarValidRangeNotStruct {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_rustc_layout_scalar_valid_range_arg)]
-pub(crate) struct RustcLayoutScalarValidRangeArg {
-    #[primary_span]
-    pub attr_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_rustc_legacy_const_generics_only)]
 pub(crate) struct RustcLegacyConstGenericsOnly {
     #[primary_span]
@@ -607,6 +600,14 @@ pub(crate) struct NoMangleForeign {
 #[diag(passes_no_mangle)]
 #[warning]
 pub(crate) struct NoMangle {
+    #[label]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes_align_on_fields)]
+#[warning]
+pub(crate) struct AlignOnFields {
     #[label]
     pub span: Span,
 }
@@ -1844,4 +1845,13 @@ pub(crate) struct AlignShouldBeReprAlign {
     pub span: Span,
     pub item: &'static str,
     pub align_bytes: u64,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_align_attr_application)]
+pub(crate) struct AlignAttrApplication {
+    #[primary_span]
+    pub hint_span: Span,
+    #[label]
+    pub span: Span,
 }

@@ -1,4 +1,4 @@
-//@ known-bug: #110395
+//@ check-pass
 //
 // This test is complement to the test in issue-73976-polymorphic.rs.
 // In that test we ensure that polymorphic use of type_id and type_name in patterns
@@ -8,6 +8,7 @@
 #![feature(const_type_id)]
 #![feature(const_type_name)]
 #![feature(const_trait_impl)]
+#![feature(const_cmp)]
 
 use std::any::{self, TypeId};
 

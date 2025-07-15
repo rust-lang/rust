@@ -81,9 +81,11 @@ impl<'tcx> crate::MirPass<'tcx> for AddRetag {
             // Emit their retags.
             basic_blocks[START_BLOCK].statements.splice(
                 0..0,
-                places.map(|(place, source_info)| Statement {
-                    source_info,
-                    kind: StatementKind::Retag(RetagKind::FnEntry, Box::new(place)),
+                places.map(|(place, source_info)| {
+                    Statement::new(
+                        source_info,
+                        StatementKind::Retag(RetagKind::FnEntry, Box::new(place)),
+                    )
                 }),
             );
         }
@@ -113,10 +115,10 @@ impl<'tcx> crate::MirPass<'tcx> for AddRetag {
         for (source_info, dest_place, dest_block) in returns {
             basic_blocks[dest_block].statements.insert(
                 0,
-                Statement {
+                Statement::new(
                     source_info,
-                    kind: StatementKind::Retag(RetagKind::Default, Box::new(dest_place)),
-                },
+                    StatementKind::Retag(RetagKind::Default, Box::new(dest_place)),
+                ),
             );
         }
 
@@ -174,10 +176,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddRetag {
                 let source_info = block_data.statements[i].source_info;
                 block_data.statements.insert(
                     i + 1,
-                    Statement {
-                        source_info,
-                        kind: StatementKind::Retag(retag_kind, Box::new(place)),
-                    },
+                    Statement::new(source_info, StatementKind::Retag(retag_kind, Box::new(place))),
                 );
             }
         }

@@ -18,7 +18,6 @@ use rustc_span::sym;
 use tracing::{debug, instrument};
 
 use crate::borrow_set::BorrowSet;
-use crate::consumers::ConsumerOptions;
 use crate::diagnostics::RegionErrors;
 use crate::handle_placeholders::compute_sccs_applying_placeholder_outlives_constraints;
 use crate::polonius::PoloniusDiagnosticsContext;
@@ -83,12 +82,11 @@ pub(crate) fn compute_regions<'tcx>(
     location_table: &PoloniusLocationTable,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    consumer_options: Option<ConsumerOptions>,
 ) -> NllOutput<'tcx> {
     let is_polonius_legacy_enabled = infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
-    let polonius_input = consumer_options.map(|c| c.polonius_input()).unwrap_or_default()
+    let polonius_input = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_input())
         || is_polonius_legacy_enabled;
-    let polonius_output = consumer_options.map(|c| c.polonius_output()).unwrap_or_default()
+    let polonius_output = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_output())
         || is_polonius_legacy_enabled;
     let mut polonius_facts =
         (polonius_input || PoloniusFacts::enabled(infcx.tcx)).then_some(PoloniusFacts::default());
@@ -232,13 +230,13 @@ pub(super) fn dump_nll_mir<'tcx>(
     // Also dump the region constraint graph as a graphviz file.
     let _: io::Result<()> = try {
         let mut file = create_dump_file(tcx, "regioncx.all.dot", false, "nll", &0, body)?;
-        regioncx.dump_graphviz_raw_constraints(&mut file)?;
+        regioncx.dump_graphviz_raw_constraints(tcx, &mut file)?;
     };
 
     // Also dump the region constraint SCC graph as a graphviz file.
     let _: io::Result<()> = try {
         let mut file = create_dump_file(tcx, "regioncx.scc.dot", false, "nll", &0, body)?;
-        regioncx.dump_graphviz_scc_constraints(&mut file)?;
+        regioncx.dump_graphviz_scc_constraints(tcx, &mut file)?;
     };
 }
 

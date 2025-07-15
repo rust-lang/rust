@@ -2,6 +2,7 @@ use super::{
     AdtExpr, AdtExprBase, Arm, Block, ClosureExpr, Expr, ExprKind, InlineAsmExpr, InlineAsmOperand,
     Pat, PatKind, Stmt, StmtKind, Thir,
 };
+use crate::thir::LoopMatchMatchData;
 
 /// Every `walk_*` method uses deconstruction to access fields of structs and
 /// enums. This will result in a compile error if a field is added, which makes
@@ -83,7 +84,8 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             visitor.visit_pat(pat);
         }
         Loop { body } => visitor.visit_expr(&visitor.thir()[body]),
-        LoopMatch { state: scrutinee, ref arms, .. } | Match { scrutinee, ref arms, .. } => {
+        LoopMatch { match_data: box LoopMatchMatchData { scrutinee, ref arms, .. }, .. }
+        | Match { scrutinee, ref arms, .. } => {
             visitor.visit_expr(&visitor.thir()[scrutinee]);
             for &arm in &**arms {
                 visitor.visit_arm(&visitor.thir()[arm]);

@@ -14,16 +14,14 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
-use rustc_middle::ty::{
-    self, GenericArgsRef, Region, SizedTraitKind, Ty, TyCtxt, Upcast, elaborate,
-};
+use rustc_middle::ty::{self, GenericArgsRef, Region, SizedTraitKind, Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use thin_vec::thin_vec;
 use tracing::{debug, instrument};
 
 use super::SelectionCandidate::{self, *};
-use super::{BuiltinImplConditions, PredicateObligations, SelectionContext};
+use super::{PredicateObligations, SelectionContext};
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::util::{self, closure_trait_ref_and_return_type};
 use crate::traits::{
@@ -39,13 +37,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidate: SelectionCandidate<'tcx>,
     ) -> Result<Selection<'tcx>, SelectionError<'tcx>> {
         Ok(match candidate {
-            SizedCandidate { has_nested } => {
-                let data = self.confirm_builtin_candidate(obligation, has_nested);
+            SizedCandidate => {
+                let data = self.confirm_builtin_candidate(obligation);
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
-            BuiltinCandidate { has_nested } => {
-                let data = self.confirm_builtin_candidate(obligation, has_nested);
+            BuiltinCandidate => {
+                let data = self.confirm_builtin_candidate(obligation);
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
@@ -251,50 +249,53 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn confirm_builtin_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
-        has_nested: bool,
     ) -> PredicateObligations<'tcx> {
-        debug!(?obligation, ?has_nested, "confirm_builtin_candidate");
-
+        debug!(?obligation, "confirm_builtin_candidate");
         let tcx = self.tcx();
-        let obligations = if has_nested {
-            let trait_def = obligation.predicate.def_id();
-            let conditions = match tcx.as_lang_item(trait_def) {
-                Some(LangItem::Sized) => {
-                    self.sizedness_conditions(obligation, SizedTraitKind::Sized)
+        let trait_def = obligation.predicate.def_id();
+        let self_ty = self.infcx.shallow_resolve(
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate.self_ty()),
+        );
+        let types = match tcx.as_lang_item(trait_def) {
+            Some(LangItem::Sized) => self.sizedness_conditions(self_ty, SizedTraitKind::Sized),
+            Some(LangItem::MetaSized) => {
+                self.sizedness_conditions(self_ty, SizedTraitKind::MetaSized)
+            }
+            Some(LangItem::PointeeSized) => {
+                bug!("`PointeeSized` is removing during lowering");
+            }
+            Some(LangItem::Copy | LangItem::Clone) => self.copy_clone_conditions(self_ty),
+            Some(LangItem::FusedIterator) => {
+                if self.coroutine_is_gen(self_ty) {
+                    ty::Binder::dummy(vec![])
+                } else {
+                    unreachable!("tried to assemble `FusedIterator` for non-gen coroutine");
                 }
-                Some(LangItem::MetaSized) => {
-                    self.sizedness_conditions(obligation, SizedTraitKind::MetaSized)
-                }
-                Some(LangItem::PointeeSized) => {
-                    bug!("`PointeeSized` is removing during lowering");
-                }
-                Some(LangItem::Copy | LangItem::Clone) => self.copy_clone_conditions(obligation),
-                Some(LangItem::FusedIterator) => self.fused_iterator_conditions(obligation),
-                other => bug!("unexpected builtin trait {trait_def:?} ({other:?})"),
-            };
-            let BuiltinImplConditions::Where(types) = conditions else {
-                bug!("obligation {:?} had matched a builtin impl but now doesn't", obligation);
-            };
-            let types = self.infcx.enter_forall_and_leak_universe(types);
-
-            let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
-            self.collect_predicates_for_types(
-                obligation.param_env,
-                cause,
-                obligation.recursion_depth + 1,
-                trait_def,
-                types,
-            )
-        } else {
-            PredicateObligations::new()
+            }
+            Some(
+                LangItem::Destruct
+                | LangItem::DiscriminantKind
+                | LangItem::FnPtrTrait
+                | LangItem::PointeeTrait
+                | LangItem::Tuple
+                | LangItem::Unpin,
+            ) => ty::Binder::dummy(vec![]),
+            other => bug!("unexpected builtin trait {trait_def:?} ({other:?})"),
         };
+        let types = self.infcx.enter_forall_and_leak_universe(types);
 
-        debug!(?obligations);
-
-        obligations
+        let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
+        self.collect_predicates_for_types(
+            obligation.param_env,
+            cause,
+            obligation.recursion_depth + 1,
+            trait_def,
+            types,
+        )
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -408,6 +409,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             let self_ty =
                 obligation.predicate.self_ty().map_bound(|ty| self.infcx.shallow_resolve(ty));
+            let self_ty = self.infcx.enter_forall_and_leak_universe(self_ty);
 
             let types = self.constituent_types_for_ty(self_ty)?;
             let types = self.infcx.enter_forall_and_leak_universe(types);
@@ -904,7 +906,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let goal_kind =
             self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id()).unwrap();
 
-        // If we have not yet determiend the `ClosureKind` of the closure or coroutine-closure,
+        // If we have not yet determined the `ClosureKind` of the closure or coroutine-closure,
         // then additionally register an `AsyncFnKindHelper` goal which will fail if the kind
         // is constrained to an insufficient type later on.
         if let Some(closure_kind) = self.infcx.shallow_resolve(kind_ty).to_opt_closure_kind() {
@@ -1147,38 +1149,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::ClauseKind::TypeOutlives(outlives).upcast(tcx),
                 ));
 
-                // Require that all AFIT will return something that can be coerced into `dyn*`
-                // -- a shim will be responsible for doing the actual coercion to `dyn*`.
-                if let Some(principal) = data.principal() {
-                    for supertrait in
-                        elaborate::supertraits(tcx, principal.with_self_ty(tcx, source))
-                    {
-                        if tcx.is_trait_alias(supertrait.def_id()) {
-                            continue;
-                        }
-
-                        for &assoc_item in tcx.associated_item_def_ids(supertrait.def_id()) {
-                            if !tcx.is_impl_trait_in_trait(assoc_item) {
-                                continue;
-                            }
-
-                            // RPITITs with `Self: Sized` don't need to be checked.
-                            if tcx.generics_require_sized_self(assoc_item) {
-                                continue;
-                            }
-
-                            let pointer_like_goal = pointer_like_goal_for_rpitit(
-                                tcx,
-                                supertrait,
-                                assoc_item,
-                                &obligation.cause,
-                            );
-
-                            nested.push(predicate_to_obligation(pointer_like_goal.upcast(tcx)));
-                        }
-                    }
-                }
-
                 ImplSource::Builtin(BuiltinImplSource::Misc, nested)
             }
 
@@ -1343,47 +1313,4 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
     }
-}
-
-/// Compute a goal that some RPITIT (right now, only RPITITs corresponding to Futures)
-/// implements the `PointerLike` trait, which is a requirement for the RPITIT to be
-/// coercible to `dyn* Future`, which is itself a requirement for the RPITIT's parent
-/// trait to be coercible to `dyn Trait`.
-///
-/// We do this given a supertrait's substitutions, and then augment the substitutions
-/// with bound variables to compute the goal universally. Given that `PointerLike` has
-/// no region requirements (at least for the built-in pointer types), this shouldn't
-/// *really* matter, but it is the best choice for soundness.
-fn pointer_like_goal_for_rpitit<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    supertrait: ty::PolyTraitRef<'tcx>,
-    rpitit_item: DefId,
-    cause: &ObligationCause<'tcx>,
-) -> ty::PolyTraitRef<'tcx> {
-    let mut bound_vars = supertrait.bound_vars().to_vec();
-
-    let args = supertrait.skip_binder().args.extend_to(tcx, rpitit_item, |arg, _| match arg.kind {
-        ty::GenericParamDefKind::Lifetime => {
-            let kind = ty::BoundRegionKind::Named(arg.def_id, tcx.item_name(arg.def_id));
-            bound_vars.push(ty::BoundVariableKind::Region(kind));
-            ty::Region::new_bound(
-                tcx,
-                ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
-            )
-            .into()
-        }
-        ty::GenericParamDefKind::Type { .. } | ty::GenericParamDefKind::Const { .. } => {
-            unreachable!()
-        }
-    });
-
-    ty::Binder::bind_with_vars(
-        ty::TraitRef::new(
-            tcx,
-            tcx.require_lang_item(LangItem::PointerLike, cause.span),
-            [Ty::new_projection_from_args(tcx, rpitit_item, args)],
-        ),
-        tcx.mk_bound_variable_kinds(&bound_vars),
-    )
 }

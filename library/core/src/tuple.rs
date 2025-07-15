@@ -1,7 +1,7 @@
 // See core/src/primitive_docs.rs for documentation.
 
 use crate::cmp::Ordering::{self, *};
-use crate::marker::{ConstParamTy_, PointeeSized, StructuralPartialEq, UnsizedConstParamTy};
+use crate::marker::{ConstParamTy_, StructuralPartialEq, UnsizedConstParamTy};
 use crate::ops::ControlFlow::{self, Break, Continue};
 
 // Recursive macro for implementing n-ary tuple functions and operations
@@ -23,10 +23,7 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T: PartialEq),+> PartialEq for ($($T,)+)
-            where
-                last_type!($($T,)+): PointeeSized
-            {
+            impl<$($T: PartialEq),+> PartialEq for ($($T,)+) {
                 #[inline]
                 fn eq(&self, other: &($($T,)+)) -> bool {
                     $( ${ignore($T)} self.${index()} == other.${index()} )&&+
@@ -42,8 +39,6 @@ macro_rules! tuple_impls {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T: Eq),+> Eq for ($($T,)+)
-            where
-                last_type!($($T,)+): PointeeSized
             {}
         }
 
@@ -72,8 +67,6 @@ macro_rules! tuple_impls {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T: PartialOrd),+> PartialOrd for ($($T,)+)
-            where
-                last_type!($($T,)+): PointeeSized
             {
                 #[inline]
                 fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
@@ -118,8 +111,6 @@ macro_rules! tuple_impls {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T: Ord),+> Ord for ($($T,)+)
-            where
-                last_type!($($T,)+): PointeeSized
             {
                 #[inline]
                 fn cmp(&self, other: &($($T,)+)) -> Ordering {
@@ -232,11 +223,6 @@ macro_rules! lexical_cmp {
         }
     };
     ($a:expr, $b:expr) => { ($a).cmp(&$b) };
-}
-
-macro_rules! last_type {
-    ($a:ident,) => { $a };
-    ($a:ident, $($rest_a:ident,)+) => { last_type!($($rest_a,)+) };
 }
 
 tuple_impls!(E D C B A Z Y X W V U T);

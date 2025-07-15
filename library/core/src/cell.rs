@@ -252,7 +252,7 @@
 
 use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
-use crate::marker::{PhantomData, PointerLike, Unsize};
+use crate::marker::{PhantomData, Unsize};
 use crate::mem;
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
 use crate::panic::const_panic;
@@ -333,7 +333,8 @@ impl<T: Copy> Clone for Cell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Default> Default for Cell<T> {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+impl<T: ~const Default> const Default for Cell<T> {
     /// Creates a `Cell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> Cell<T> {
@@ -668,9 +669,6 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
 // `self: CellWrapper<Self>` becomes possible
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<Cell<U>> for Cell<T> {}
-
-#[unstable(feature = "pointer_like_trait", issue = "none")]
-impl<T: PointerLike> PointerLike for Cell<T> {}
 
 impl<T> Cell<[T]> {
     /// Returns a `&[Cell<T>]` from a `&Cell<[T]>`
@@ -1326,7 +1324,8 @@ impl<T: Clone> Clone for RefCell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Default> Default for RefCell<T> {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+impl<T: ~const Default> const Default for RefCell<T> {
     /// Creates a `RefCell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> RefCell<T> {
@@ -1941,21 +1940,21 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// The precise Rust aliasing rules are somewhat in flux, but the main points are not contentious:
 ///
 /// - If you create a safe reference with lifetime `'a` (either a `&T` or `&mut T` reference), then
-/// you must not access the data in any way that contradicts that reference for the remainder of
-/// `'a`. For example, this means that if you take the `*mut T` from an `UnsafeCell<T>` and cast it
-/// to an `&T`, then the data in `T` must remain immutable (modulo any `UnsafeCell` data found
-/// within `T`, of course) until that reference's lifetime expires. Similarly, if you create a `&mut
-/// T` reference that is released to safe code, then you must not access the data within the
-/// `UnsafeCell` until that reference expires.
+///   you must not access the data in any way that contradicts that reference for the remainder of
+///   `'a`. For example, this means that if you take the `*mut T` from an `UnsafeCell<T>` and cast it
+///   to an `&T`, then the data in `T` must remain immutable (modulo any `UnsafeCell` data found
+///   within `T`, of course) until that reference's lifetime expires. Similarly, if you create a
+///   `&mut T` reference that is released to safe code, then you must not access the data within the
+///   `UnsafeCell` until that reference expires.
 ///
 /// - For both `&T` without `UnsafeCell<_>` and `&mut T`, you must also not deallocate the data
-/// until the reference expires. As a special exception, given an `&T`, any part of it that is
-/// inside an `UnsafeCell<_>` may be deallocated during the lifetime of the reference, after the
-/// last time the reference is used (dereferenced or reborrowed). Since you cannot deallocate a part
-/// of what a reference points to, this means the memory an `&T` points to can be deallocated only if
-/// *every part of it* (including padding) is inside an `UnsafeCell`.
+///   until the reference expires. As a special exception, given an `&T`, any part of it that is
+///   inside an `UnsafeCell<_>` may be deallocated during the lifetime of the reference, after the
+///   last time the reference is used (dereferenced or reborrowed). Since you cannot deallocate a part
+///   of what a reference points to, this means the memory an `&T` points to can be deallocated only if
+///   *every part of it* (including padding) is inside an `UnsafeCell`.
 ///
-///     However, whenever a `&UnsafeCell<T>` is constructed or dereferenced, it must still point to
+/// However, whenever a `&UnsafeCell<T>` is constructed or dereferenced, it must still point to
 /// live memory and the compiler is allowed to insert spurious reads if it can prove that this
 /// memory has not yet been deallocated.
 ///
@@ -1963,10 +1962,10 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// for single-threaded code:
 ///
 /// 1. A `&T` reference can be released to safe code and there it can co-exist with other `&T`
-/// references, but not with a `&mut T`
+///    references, but not with a `&mut T`
 ///
 /// 2. A `&mut T` reference may be released to safe code provided neither other `&mut T` nor `&T`
-/// co-exist with it. A `&mut T` must always be unique.
+///    co-exist with it. A `&mut T` must always be unique.
 ///
 /// Note that whilst mutating the contents of an `&UnsafeCell<T>` (even while other
 /// `&UnsafeCell<T>` references alias the cell) is
@@ -2333,7 +2332,8 @@ impl<T: ?Sized> UnsafeCell<T> {
 }
 
 #[stable(feature = "unsafe_cell_default", since = "1.10.0")]
-impl<T: Default> Default for UnsafeCell<T> {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+impl<T: ~const Default> const Default for UnsafeCell<T> {
     /// Creates an `UnsafeCell`, with the `Default` value for T.
     fn default() -> UnsafeCell<T> {
         UnsafeCell::new(Default::default())
@@ -2360,9 +2360,6 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
 // `self: UnsafeCellWrapper<Self>` becomes possible
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<UnsafeCell<U>> for UnsafeCell<T> {}
-
-#[unstable(feature = "pointer_like_trait", issue = "none")]
-impl<T: PointerLike> PointerLike for UnsafeCell<T> {}
 
 /// [`UnsafeCell`], but [`Sync`].
 ///
@@ -2440,7 +2437,8 @@ impl<T: ?Sized> SyncUnsafeCell<T> {
 }
 
 #[unstable(feature = "sync_unsafe_cell", issue = "95439")]
-impl<T: Default> Default for SyncUnsafeCell<T> {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+impl<T: ~const Default> const Default for SyncUnsafeCell<T> {
     /// Creates an `SyncUnsafeCell`, with the `Default` value for T.
     fn default() -> SyncUnsafeCell<T> {
         SyncUnsafeCell::new(Default::default())
@@ -2469,9 +2467,6 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<SyncUnsafeCell<U>> for SyncUnsafeCell
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 //#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<SyncUnsafeCell<U>> for SyncUnsafeCell<T> {}
-
-#[unstable(feature = "pointer_like_trait", issue = "none")]
-impl<T: PointerLike> PointerLike for SyncUnsafeCell<T> {}
 
 #[allow(unused)]
 fn assert_coerce_unsized(

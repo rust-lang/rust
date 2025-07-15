@@ -248,7 +248,7 @@ use crate::ops::ControlFlow;
 )]
 #[rustc_diagnostic_item = "PartialEq"]
 #[const_trait]
-#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 pub trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
     /// Tests for `self` and `other` values to be equal, and is used by `==`.
     #[must_use]
@@ -1449,7 +1449,6 @@ pub trait PartialOrd<Rhs: PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
     /// check `==` and `<` separately to do rather than needing to calculate
     /// (then optimize out) the three-way `Ordering` result.
     #[inline]
-    #[must_use]
     // Added to improve the behaviour of tuples; not necessarily stabilization-track.
     #[unstable(feature = "partial_ord_chaining_methods", issue = "none")]
     #[doc(hidden)]
@@ -1459,7 +1458,6 @@ pub trait PartialOrd<Rhs: PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
 
     /// Same as `__chaining_lt`, but for `<=` instead of `<`.
     #[inline]
-    #[must_use]
     #[unstable(feature = "partial_ord_chaining_methods", issue = "none")]
     #[doc(hidden)]
     fn __chaining_le(&self, other: &Rhs) -> ControlFlow<bool> {
@@ -1468,7 +1466,6 @@ pub trait PartialOrd<Rhs: PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
 
     /// Same as `__chaining_lt`, but for `>` instead of `<`.
     #[inline]
-    #[must_use]
     #[unstable(feature = "partial_ord_chaining_methods", issue = "none")]
     #[doc(hidden)]
     fn __chaining_gt(&self, other: &Rhs) -> ControlFlow<bool> {
@@ -1477,7 +1474,6 @@ pub trait PartialOrd<Rhs: PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
 
     /// Same as `__chaining_lt`, but for `>=` instead of `<`.
     #[inline]
-    #[must_use]
     #[unstable(feature = "partial_ord_chaining_methods", issue = "none")]
     #[doc(hidden)]
     fn __chaining_ge(&self, other: &Rhs) -> ControlFlow<bool> {
@@ -1813,7 +1809,7 @@ mod impls {
     macro_rules! partial_eq_impl {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
             impl const PartialEq for $t {
                 #[inline]
                 fn eq(&self, other: &Self) -> bool { *self == *other }
@@ -2021,7 +2017,7 @@ mod impls {
     // & pointers
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     impl<A: PointeeSized, B: PointeeSized> const PartialEq<&B> for &A
     where
         A: ~const PartialEq<B>,
@@ -2093,7 +2089,7 @@ mod impls {
     // &mut pointers
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     impl<A: PointeeSized, B: PointeeSized> const PartialEq<&mut B> for &mut A
     where
         A: ~const PartialEq<B>,
@@ -2163,7 +2159,7 @@ mod impls {
     impl<A: PointeeSized> Eq for &mut A where A: Eq {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     impl<A: PointeeSized, B: PointeeSized> const PartialEq<&mut B> for &A
     where
         A: ~const PartialEq<B>,
@@ -2179,7 +2175,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     impl<A: PointeeSized, B: PointeeSized> const PartialEq<&B> for &mut A
     where
         A: ~const PartialEq<B>,

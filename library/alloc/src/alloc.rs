@@ -429,10 +429,10 @@ pub mod __alloc_error_handler {
             // This symbol is emitted by rustc next to __rust_alloc_error_handler.
             // Its value depends on the -Zoom={panic,abort} compiler option.
             #[rustc_std_internal_symbol]
-            static __rust_alloc_error_handler_should_panic: u8;
+            fn __rust_alloc_error_handler_should_panic_v2() -> u8;
         }
 
-        if unsafe { __rust_alloc_error_handler_should_panic != 0 } {
+        if unsafe { __rust_alloc_error_handler_should_panic_v2() != 0 } {
             panic!("memory allocation of {size} bytes failed")
         } else {
             core::panicking::panic_nounwind_fmt(

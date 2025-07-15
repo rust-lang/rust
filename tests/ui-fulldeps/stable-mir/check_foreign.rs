@@ -10,14 +10,13 @@
 #![feature(assert_matches)]
 
 extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_smir;
+
 extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate rustc_span;
-extern crate stable_mir;
+extern crate rustc_public;
 
-use stable_mir::{
+use rustc_public::{
     ty::{Abi, ForeignItemKind},
     *,
 };

@@ -1,3 +1,4 @@
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{Diag, MultiSpan, pluralize};
 use rustc_hir as hir;
@@ -8,7 +9,7 @@ use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::print::{FmtPrinter, Printer};
 use rustc_middle::ty::{self, Ty, suggest_constraining_type_param};
 use rustc_span::def_id::DefId;
-use rustc_span::{BytePos, Span, Symbol, sym};
+use rustc_span::{BytePos, Span, Symbol};
 use tracing::debug;
 
 use crate::error_reporting::TypeErrCtxt;
@@ -353,26 +354,6 @@ impl<T> Trait<T> for X {
                             ));
                         }
                     }
-                    (ty::Dynamic(t, _, ty::DynKind::DynStar), _)
-                        if let Some(def_id) = t.principal_def_id() =>
-                    {
-                        let mut has_matching_impl = false;
-                        tcx.for_each_relevant_impl(def_id, values.found, |did| {
-                            if DeepRejectCtxt::relate_rigid_infer(tcx)
-                                .types_may_unify(values.found, tcx.type_of(did).skip_binder())
-                            {
-                                has_matching_impl = true;
-                            }
-                        });
-                        if has_matching_impl {
-                            let trait_name = tcx.item_name(def_id);
-                            diag.help(format!(
-                                "`{}` implements `{trait_name}`, `#[feature(dyn_star)]` is likely \
-                                 not enabled; that feature it is currently incomplete",
-                                values.found,
-                            ));
-                        }
-                    }
                     (_, ty::Alias(ty::Opaque, opaque_ty))
                     | (ty::Alias(ty::Opaque, opaque_ty), _) => {
                         if opaque_ty.def_id.is_local()
@@ -555,8 +536,7 @@ impl<T> Trait<T> for X {
                 }
             }
             TypeError::TargetFeatureCast(def_id) => {
-                let target_spans =
-                    tcx.get_attrs(def_id, sym::target_feature).map(|attr| attr.span());
+                let target_spans = find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TargetFeature(.., span) => *span);
                 diag.note(
                     "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
                 );
@@ -861,54 +841,32 @@ fn foo(&self) -> Self::T { String::new() }
 
         let param_env = tcx.param_env(body_owner_def_id);
 
-        match item {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., items), .. }) => {
-                // FIXME: account for `#![feature(specialization)]`
-                for item in &items[..] {
-                    match item.kind {
-                        hir::AssocItemKind::Type => {
-                            // FIXME: account for returning some type in a trait fn impl that has
-                            // an assoc type as a return type (#72076).
-                            if let hir::Defaultness::Default { has_value: true } =
-                                tcx.defaultness(item.id.owner_id)
-                            {
-                                let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
-                                if self.infcx.can_eq(param_env, assoc_ty, found) {
-                                    diag.span_label(
-                                        item.span,
-                                        "associated type defaults can't be assumed inside the \
-                                            trait defining them",
-                                    );
-                                    return true;
-                                }
-                            }
+        if let DefKind::Trait | DefKind::Impl { .. } = tcx.def_kind(parent_id) {
+            let assoc_items = tcx.associated_items(parent_id);
+            // FIXME: account for `#![feature(specialization)]`
+            for assoc_item in assoc_items.in_definition_order() {
+                if assoc_item.is_type()
+                    // FIXME: account for returning some type in a trait fn impl that has
+                    // an assoc type as a return type (#72076).
+                    && let hir::Defaultness::Default { has_value: true } = assoc_item.defaultness(tcx)
+                    && let assoc_ty = tcx.type_of(assoc_item.def_id).instantiate_identity()
+                    && self.infcx.can_eq(param_env, assoc_ty, found)
+                {
+                    let msg = match assoc_item.container {
+                        ty::AssocItemContainer::Trait => {
+                            "associated type defaults can't be assumed inside the \
+                                            trait defining them"
                         }
-                        _ => {}
-                    }
+                        ty::AssocItemContainer::Impl => {
+                            "associated type is `default` and may be overridden"
+                        }
+                    };
+                    diag.span_label(tcx.def_span(assoc_item.def_id), msg);
+                    return true;
                 }
             }
-            hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Impl(hir::Impl { items, .. }),
-                ..
-            }) => {
-                for item in &items[..] {
-                    if let hir::AssocItemKind::Type = item.kind {
-                        let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
-                        if let hir::Defaultness::Default { has_value: true } =
-                            tcx.defaultness(item.id.owner_id)
-                            && self.infcx.can_eq(param_env, assoc_ty, found)
-                        {
-                            diag.span_label(
-                                item.span,
-                                "associated type is `default` and may be overridden",
-                            );
-                            return true;
-                        }
-                    }
-                }
-            }
-            _ => {}
         }
+
         false
     }
 

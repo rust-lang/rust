@@ -134,3 +134,13 @@ fn issue14201(a: Option<String>, b: Option<String>, s: &String) -> bool {
     //~^ unnecessary_map_or
     x && y
 }
+
+fn issue15180() {
+    let s = std::sync::Mutex::new(Some("foo"));
+    _ = s.lock().unwrap().map_or(false, |s| s == "foo");
+    //~^ unnecessary_map_or
+
+    let s = &&&&Some("foo");
+    _ = s.map_or(false, |s| s == "foo");
+    //~^ unnecessary_map_or
+}

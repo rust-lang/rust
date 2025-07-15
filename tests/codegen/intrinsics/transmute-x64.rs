@@ -9,17 +9,20 @@ use std::mem::transmute;
 // CHECK-LABEL: @check_sse_pair_to_avx(
 #[no_mangle]
 pub unsafe fn check_sse_pair_to_avx(x: (__m128i, __m128i)) -> __m256i {
+    // CHECK: start:
     // CHECK-NOT: alloca
-    // CHECK: %0 = load <4 x i64>, ptr %x, align 16
-    // CHECK: store <4 x i64> %0, ptr %_0, align 32
+    // CHECK-NEXT: call void @llvm.memcpy.p0.p0.i64(ptr align 32 %_0, ptr align 16 %x, i64 32, i1 false)
+    // CHECK-NEXT: ret void
     transmute(x)
 }
 
 // CHECK-LABEL: @check_sse_pair_from_avx(
 #[no_mangle]
 pub unsafe fn check_sse_pair_from_avx(x: __m256i) -> (__m128i, __m128i) {
+    // CHECK: start:
     // CHECK-NOT: alloca
-    // CHECK: %0 = load <4 x i64>, ptr %x, align 32
-    // CHECK: store <4 x i64> %0, ptr %_0, align 16
+    // CHECK-NEXT: %[[TEMP:.+]] = load <4 x i64>, ptr %x, align 32
+    // CHECK-NEXT: store <4 x i64> %[[TEMP]], ptr %_0, align 16
+    // CHECK-NEXT: ret void
     transmute(x)
 }

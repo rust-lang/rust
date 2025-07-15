@@ -1,5 +1,4 @@
-#![cfg_attr(bootstrap, feature(cfg_match))]
-#![cfg_attr(not(bootstrap), feature(cfg_select))]
+#![feature(cfg_select)]
 #![feature(rustc_private)]
 #![feature(float_gamma)]
 #![feature(float_erf)]
@@ -10,14 +9,12 @@
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
-#![cfg_attr(bootstrap, feature(nonnull_provenance))]
 #![feature(strict_overflow_ops)]
 #![feature(pointer_is_aligned_to)]
 #![feature(ptr_metadata)]
 #![feature(unqualified_local_imports)]
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
-#![cfg_attr(bootstrap, feature(file_lock))]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -128,10 +125,8 @@ pub use crate::concurrency::cpu_affinity::MAX_CPUS;
 pub use crate::concurrency::data_race::{
     AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _,
 };
-pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceId};
-pub use crate::concurrency::sync::{
-    CondvarId, EvalContextExt as _, MutexRef, RwLockRef, SynchronizationObjects,
-};
+pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceRef};
+pub use crate::concurrency::sync::{CondvarRef, EvalContextExt as _, MutexRef, RwLockRef};
 pub use crate::concurrency::thread::{
     BlockReason, DynUnblockCallback, EvalContextExt as _, StackEmptyCallback, ThreadId,
     ThreadManager, TimeoutAnchor, TimeoutClock, UnblockKind,

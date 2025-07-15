@@ -4,8 +4,6 @@
 //! executable MIR bodies, so we have to do this instead.
 #![allow(clippy::float_cmp)]
 
-use std::sync::Arc;
-
 use crate::source::{SpanRangeExt, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, unsext};
 
@@ -17,7 +15,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
     BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, PatExpr, PatExprKind, QPath, UnOp,
 };
-use rustc_lexer::tokenize;
+use rustc_lexer::{FrontmatterAllowed, tokenize};
 use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::{Scalar, alloc_range};
@@ -38,7 +36,7 @@ pub enum Constant<'tcx> {
     /// A `String` (e.g., "abc").
     Str(String),
     /// A binary string (e.g., `b"abc"`).
-    Binary(Arc<[u8]>),
+    Binary(Vec<u8>),
     /// A single `char` (e.g., `'a'`).
     Char(char),
     /// An integer's bit representation.
@@ -306,7 +304,7 @@ pub fn lit_to_mir_constant<'tcx>(lit: &LitKind, ty: Option<Ty<'tcx>>) -> Constan
     match *lit {
         LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
         LitKind::Byte(b) => Constant::Int(u128::from(b)),
-        LitKind::ByteStr(ref s, _) | LitKind::CStr(ref s, _) => Constant::Binary(Arc::clone(s)),
+        LitKind::ByteStr(ref s, _) | LitKind::CStr(ref s, _) => Constant::Binary(s.as_byte_str().to_vec()),
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n.get()),
         LitKind::Float(ref is, LitFloatType::Suffixed(fty)) => match fty {
@@ -568,7 +566,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 } else {
                     match &lit.node {
                         LitKind::Str(is, _) => Some(is.is_empty()),
-                        LitKind::ByteStr(s, _) | LitKind::CStr(s, _) => Some(s.is_empty()),
+                        LitKind::ByteStr(s, _) | LitKind::CStr(s, _) => Some(s.as_byte_str().is_empty()),
                         _ => None,
                     }
                 }
@@ -713,7 +711,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                     && let Some(src) = src.as_str()
                 {
                     use rustc_lexer::TokenKind::{BlockComment, LineComment, OpenBrace, Semi, Whitespace};
-                    if !tokenize(src)
+                    if !tokenize(src, FrontmatterAllowed::No)
                         .map(|t| t.kind)
                         .filter(|t| !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. } | Semi))
                         .eq([OpenBrace])
@@ -916,7 +914,7 @@ fn mir_is_empty<'tcx>(tcx: TyCtxt<'tcx>, result: mir::Const<'tcx>) -> Option<boo
                     // Get the length from the slice, using the same formula as
                     // [`ConstValue::try_get_slice_bytes_for_diagnostics`].
                     let a = tcx.global_alloc(alloc_id).unwrap_memory().inner();
-                    let ptr_size = tcx.data_layout.pointer_size;
+                    let ptr_size = tcx.data_layout.pointer_size();
                     if a.size() < offset + 2 * ptr_size {
                         // (partially) dangling reference
                         return None;

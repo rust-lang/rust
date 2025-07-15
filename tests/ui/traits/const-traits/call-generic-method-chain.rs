@@ -3,7 +3,7 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
 
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, const_cmp)]
 
 struct S;
 

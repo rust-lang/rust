@@ -1,4 +1,3 @@
-//@ check-pass
 // https://github.com/rust-lang/rust/pull/113099#issuecomment-1638206152
 
 pub mod dsl {
@@ -22,8 +21,8 @@ use prelude::*;
 
 fn main() {
     date_range();
-    //~^ WARNING `date_range` is ambiguous
+    //~^ ERROR `date_range` is ambiguous
     //~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //~| WARNING `date_range` is ambiguous
+    //~| ERROR `date_range` is ambiguous
     //~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 }

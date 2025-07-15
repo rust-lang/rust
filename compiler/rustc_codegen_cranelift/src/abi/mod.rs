@@ -753,51 +753,6 @@ pub(crate) fn codegen_drop<'tcx>(
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
                 fx.bcx.ins().jump(ret_block, &[]);
             }
-            ty::Dynamic(_, _, ty::DynStar) => {
-                // IN THIS ARM, WE HAVE:
-                // ty = *mut (dyn* Trait)
-                // which is: *mut exists<T: sizeof(T) == sizeof(usize)> (T, Vtable<T: Trait>)
-                //
-                // args = [ * ]
-                //          |
-                //          v
-                //      ( Data, Vtable )
-                //                |
-                //                v
-                //              /-------\
-                //              | ...   |
-                //              \-------/
-                //
-                //
-                // WE CAN CONVERT THIS INTO THE ABOVE LOGIC BY DOING
-                //
-                // data = &(*args[0]).0    // gives a pointer to Data above (really the same pointer)
-                // vtable = (*args[0]).1   // loads the vtable out
-                // (data, vtable)          // an equivalent Rust `*mut dyn Trait`
-                //
-                // SO THEN WE CAN USE THE ABOVE CODE.
-                let (data, vtable) = drop_place.to_cvalue(fx).dyn_star_force_data_on_stack(fx);
-                let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable);
-
-                let is_null = fx.bcx.ins().icmp_imm(IntCC::Equal, drop_fn, 0);
-                let target_block = fx.get_block(target);
-                let continued = fx.bcx.create_block();
-                fx.bcx.ins().brif(is_null, target_block, &[], continued, &[]);
-                fx.bcx.switch_to_block(continued);
-
-                let virtual_drop = Instance {
-                    def: ty::InstanceKind::Virtual(drop_instance.def_id(), 0),
-                    args: drop_instance.args,
-                };
-                let fn_abi = FullyMonomorphizedLayoutCx(fx.tcx)
-                    .fn_abi_of_instance(virtual_drop, ty::List::empty());
-
-                let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
-                let sig = fx.bcx.import_signature(sig);
-                fx.bcx.ins().call_indirect(sig, drop_fn, &[data]);
-                // FIXME implement cleanup on exceptions
-                fx.bcx.ins().jump(ret_block, &[]);
-            }
             _ => {
                 assert!(!matches!(drop_instance.def, InstanceKind::Virtual(_, _)));
 
@@ -831,7 +786,7 @@ pub(crate) fn codegen_drop<'tcx>(
 
 pub(crate) fn lib_call_arg_param(tcx: TyCtxt<'_>, ty: Type, is_signed: bool) -> AbiParam {
     let param = AbiParam::new(ty);
-    if ty.is_int() && u64::from(ty.bits()) < tcx.data_layout.pointer_size.bits() {
+    if ty.is_int() && u64::from(ty.bits()) < tcx.data_layout.pointer_size().bits() {
         match (&*tcx.sess.target.arch, &*tcx.sess.target.vendor) {
             ("x86_64", _) | ("aarch64", "apple") => match (ty, is_signed) {
                 (types::I8 | types::I16, true) => param.sext(),

@@ -1621,6 +1621,7 @@ pub fn write_allocations<'tcx>(
             Some(GlobalAlloc::VTable(ty, dyn_ty)) => {
                 write!(w, " (vtable: impl {dyn_ty} for {ty})")?
             }
+            Some(GlobalAlloc::TypeId { ty }) => write!(w, " (typeid for {ty})")?,
             Some(GlobalAlloc::Static(did)) if !tcx.is_foreign_item(did) => {
                 write!(w, " (static: {}", tcx.def_path_str(did))?;
                 if body.phase <= MirPhase::Runtime(RuntimePhase::PostCleanup)
@@ -1753,7 +1754,7 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
     let mut i = Size::ZERO;
     let mut line_start = Size::ZERO;
 
-    let ptr_size = tcx.data_layout.pointer_size;
+    let ptr_size = tcx.data_layout.pointer_size();
 
     let mut ascii = String::new();
 

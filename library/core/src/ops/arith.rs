@@ -65,7 +65,7 @@
 /// ```
 #[lang = "add"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
 #[rustc_on_unimplemented(
     on(all(Self = "{integer}", Rhs = "{float}"), message = "cannot add a float to an integer",),
     on(all(Self = "{float}", Rhs = "{integer}"), message = "cannot add an integer to a float",),
@@ -96,7 +96,7 @@ pub trait Add<Rhs = Self> {
 macro_rules! add_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
         impl const Add for $t {
             type Output = $t;
 
@@ -179,7 +179,7 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
 /// ```
 #[lang = "sub"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
 #[rustc_on_unimplemented(
     message = "cannot subtract `{Rhs}` from `{Self}`",
     label = "no implementation for `{Self} - {Rhs}`",
@@ -208,7 +208,7 @@ pub trait Sub<Rhs = Self> {
 macro_rules! sub_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
         impl const Sub for $t {
             type Output = $t;
 
@@ -313,7 +313,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
 /// ```
 #[lang = "mul"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
 #[diagnostic::on_unimplemented(
     message = "cannot multiply `{Self}` by `{Rhs}`",
     label = "no implementation for `{Self} * {Rhs}`"
@@ -341,7 +341,7 @@ pub trait Mul<Rhs = Self> {
 macro_rules! mul_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
         impl const Mul for $t {
             type Output = $t;
 
@@ -450,7 +450,7 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
 /// ```
 #[lang = "div"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
 #[diagnostic::on_unimplemented(
     message = "cannot divide `{Self}` by `{Rhs}`",
     label = "no implementation for `{Self} / {Rhs}`"
@@ -484,7 +484,7 @@ macro_rules! div_impl_integer {
         ///
         #[doc = $panic]
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
         impl const Div for $t {
             type Output = $t;
 
@@ -505,7 +505,7 @@ div_impl_integer! {
 macro_rules! div_impl_float {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
         impl const Div for $t {
             type Output = $t;
 
@@ -556,7 +556,7 @@ div_impl_float! { f16 f32 f64 f128 }
 /// ```
 #[lang = "rem"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
 #[diagnostic::on_unimplemented(
     message = "cannot calculate the remainder of `{Self}` divided by `{Rhs}`",
     label = "no implementation for `{Self} % {Rhs}`"
@@ -590,7 +590,7 @@ macro_rules! rem_impl_integer {
         ///
         #[doc = $panic]
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
         impl const Rem for $t {
             type Output = $t;
 
@@ -626,8 +626,8 @@ macro_rules! rem_impl_float {
         /// assert_eq!(x % y, remainder);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl Rem for $t {
+        #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+        impl const Rem for $t {
             type Output = $t;
 
             #[inline]

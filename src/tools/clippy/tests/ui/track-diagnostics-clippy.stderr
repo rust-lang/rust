@@ -1,0 +1,29 @@
+error: casting to the same type is unnecessary (`u32` -> `u32`)
+  --> tests/ui/track-diagnostics-clippy.rs:LL:CC
+   |
+LL |     let b = a as u32;
+   |             ^^^^^^^^ help: try: `a`
+   |
+   = note: -Ztrack-diagnostics: created at clippy_lints/src/casts/unnecessary_cast.rs:LL:CC
+   = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_cast)]`
+
+error: returning the result of a `let` binding from a block
+  --> tests/ui/track-diagnostics-clippy.rs:LL:CC
+   |
+LL |         let d = 42;
+   |         ----------- unnecessary `let` binding
+LL |         d
+   |         ^
+   |
+   = note: -Ztrack-diagnostics: created at clippy_lints/src/returns.rs:LL:CC
+   = note: `-D clippy::let-and-return` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::let_and_return)]`
+help: return the expression directly
+   |
+LL ~         
+LL ~         42
+   |
+
+error: aborting due to 2 previous errors
+

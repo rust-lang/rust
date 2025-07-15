@@ -44,7 +44,9 @@ impl<'a> LexedStr<'a> {
 
         // Re-create the tokenizer from scratch every token because `GuardedStrPrefix` is one token in the lexer
         // but we want to split it to two in edition <2024.
-        while let Some(token) = rustc_lexer::tokenize(&text[conv.offset..]).next() {
+        while let Some(token) =
+            rustc_lexer::tokenize(&text[conv.offset..], rustc_lexer::FrontmatterAllowed::No).next()
+        {
             let token_text = &text[conv.offset..][..token.len as usize];
 
             conv.extend_token(&token.kind, token_text);
@@ -58,7 +60,7 @@ impl<'a> LexedStr<'a> {
             return None;
         }
 
-        let token = rustc_lexer::tokenize(text).next()?;
+        let token = rustc_lexer::tokenize(text, rustc_lexer::FrontmatterAllowed::No).next()?;
         if token.len as usize != text.len() {
             return None;
         }

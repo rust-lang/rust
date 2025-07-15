@@ -1,6 +1,5 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, CratePredicatesMap, GenericArgKind, TyCtxt, Upcast};
 use rustc_span::Span;
 
@@ -9,11 +8,10 @@ mod explicit;
 mod implicit_infer;
 mod utils;
 
-pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { inferred_outlives_of, inferred_outlives_crate, ..*providers };
-}
-
-fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clause<'_>, Span)] {
+pub(super) fn inferred_outlives_of(
+    tcx: TyCtxt<'_>,
+    item_def_id: LocalDefId,
+) -> &[(ty::Clause<'_>, Span)] {
     match tcx.def_kind(item_def_id) {
         DefKind::Struct | DefKind::Enum | DefKind::Union => {
             let crate_map = tcx.inferred_outlives_crate(());
@@ -48,7 +46,7 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clau
     }
 }
 
-fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
+pub(super) fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
     // Compute a map from each ADT (struct/enum/union) and lazy type alias to
     // the **explicit** outlives predicates (`T: 'a`, `'a: 'b`) that the user wrote.
     // Typically there won't be many of these, except in older code where

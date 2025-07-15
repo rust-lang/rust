@@ -41,12 +41,12 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ManualIgnoreCaseCmp => [MANUAL_IGNORE_CASE_CMP]);
 
-enum MatchType<'a, 'b> {
+enum MatchType<'a> {
     ToAscii(bool, Ty<'a>),
-    Literal(&'b LitKind),
+    Literal(LitKind),
 }
 
-fn get_ascii_type<'a, 'b>(cx: &LateContext<'a>, kind: rustc_hir::ExprKind<'b>) -> Option<(Span, MatchType<'a, 'b>)> {
+fn get_ascii_type<'a>(cx: &LateContext<'a>, kind: rustc_hir::ExprKind<'_>) -> Option<(Span, MatchType<'a>)> {
     if let MethodCall(path, expr, _, _) = kind {
         let is_lower = match path.ident.name {
             sym::to_ascii_lowercase => true,
@@ -63,7 +63,7 @@ fn get_ascii_type<'a, 'b>(cx: &LateContext<'a>, kind: rustc_hir::ExprKind<'b>) -
             return Some((expr.span, ToAscii(is_lower, ty_raw)));
         }
     } else if let Lit(expr) = kind {
-        return Some((expr.span, Literal(&expr.node)));
+        return Some((expr.span, Literal(expr.node)));
     }
     None
 }

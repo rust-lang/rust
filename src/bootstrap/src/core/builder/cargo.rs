@@ -115,7 +115,7 @@ impl Cargo {
             // No need to configure the target linker for these command types.
             Kind::Clean | Kind::Check | Kind::Suggest | Kind::Format | Kind::Setup => {}
             _ => {
-                cargo.configure_linker(builder);
+                cargo.configure_linker(builder, mode);
             }
         }
 
@@ -209,7 +209,7 @@ impl Cargo {
 
     // FIXME(onur-ozkan): Add coverage to make sure modifications to this function
     // doesn't cause cache invalidations (e.g., #130108).
-    fn configure_linker(&mut self, builder: &Builder<'_>) -> &mut Cargo {
+    fn configure_linker(&mut self, builder: &Builder<'_>, mode: Mode) -> &mut Cargo {
         let target = self.target;
         let compiler = self.compiler;
 
@@ -264,7 +264,12 @@ impl Cargo {
             }
         }
 
-        for arg in linker_args(builder, compiler.host, LldThreads::Yes) {
+        // We use the snapshot compiler when building host code (build scripts/proc macros) of
+        // `Mode::Std` tools, so we need to determine the current stage here to pass the proper
+        // linker args (e.g. -C vs -Z).
+        // This should stay synchronized with the [cargo] function.
+        let host_stage = if mode == Mode::Std { 0 } else { compiler.stage };
+        for arg in linker_args(builder, compiler.host, LldThreads::Yes, host_stage) {
             self.hostflags.arg(&arg);
         }
 
@@ -274,10 +279,10 @@ impl Cargo {
         }
         // We want to set -Clinker using Cargo, therefore we only call `linker_flags` and not
         // `linker_args` here.
-        for flag in linker_flags(builder, target, LldThreads::Yes) {
+        for flag in linker_flags(builder, target, LldThreads::Yes, compiler.stage) {
             self.rustflags.arg(&flag);
         }
-        for arg in linker_args(builder, target, LldThreads::Yes) {
+        for arg in linker_args(builder, target, LldThreads::Yes, compiler.stage) {
             self.rustdocflags.arg(&arg);
         }
 
@@ -741,6 +746,12 @@ impl Builder<'_> {
 
         // Make cargo emit diagnostics relative to the rustc src dir.
         cargo.arg(format!("-Zroot-dir={}", self.src.display()));
+
+        if self.config.compile_time_deps {
+            // Build only build scripts and proc-macros for rust-analyzer when requested.
+            cargo.arg("-Zunstable-options");
+            cargo.arg("--compile-time-deps");
+        }
 
         // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
         // Force cargo to output binaries with disambiguating hashes in the name

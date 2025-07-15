@@ -77,7 +77,7 @@ impl<'tcx> GlobalId<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, HashStable)]
 pub struct LitToConstInput<'tcx> {
     /// The absolute value of the resultant constant.
-    pub lit: &'tcx LitKind,
+    pub lit: LitKind,
     /// The type of the constant.
     pub ty: Ty<'tcx>,
     /// If the constant is negative.
@@ -103,6 +103,7 @@ enum AllocDiscriminant {
     Fn,
     VTable,
     Static,
+    Type,
 }
 
 pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<'tcx>>(
@@ -126,6 +127,11 @@ pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<'tcx>>(
             AllocDiscriminant::VTable.encode(encoder);
             ty.encode(encoder);
             poly_trait_ref.encode(encoder);
+        }
+        GlobalAlloc::TypeId { ty } => {
+            trace!("encoding {alloc_id:?} with {ty:#?}");
+            AllocDiscriminant::Type.encode(encoder);
+            ty.encode(encoder);
         }
         GlobalAlloc::Static(did) => {
             assert!(!tcx.is_thread_local_static(did));
@@ -228,6 +234,12 @@ impl<'s> AllocDecodingSession<'s> {
                 trace!("decoded vtable alloc instance: {ty:?}, {poly_trait_ref:?}");
                 decoder.interner().reserve_and_set_vtable_alloc(ty, poly_trait_ref, CTFE_ALLOC_SALT)
             }
+            AllocDiscriminant::Type => {
+                trace!("creating typeid alloc ID");
+                let ty = Decodable::decode(decoder);
+                trace!("decoded typid: {ty:?}");
+                decoder.interner().reserve_and_set_type_id_alloc(ty)
+            }
             AllocDiscriminant::Static => {
                 trace!("creating extern static alloc ID");
                 let did = <DefId as Decodable<D>>::decode(decoder);
@@ -258,6 +270,9 @@ pub enum GlobalAlloc<'tcx> {
     Static(DefId),
     /// The alloc ID points to memory.
     Memory(ConstAllocation<'tcx>),
+    /// The first pointer-sized segment of a type id. On 64 bit systems, the 128 bit type id
+    /// is split into two segments, on 32 bit systems there are 4 segments, and so on.
+    TypeId { ty: Ty<'tcx> },
 }
 
 impl<'tcx> GlobalAlloc<'tcx> {
@@ -296,9 +311,10 @@ impl<'tcx> GlobalAlloc<'tcx> {
     pub fn address_space(&self, cx: &impl HasDataLayout) -> AddressSpace {
         match self {
             GlobalAlloc::Function { .. } => cx.data_layout().instruction_address_space,
-            GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) | GlobalAlloc::VTable(..) => {
-                AddressSpace::DATA
-            }
+            GlobalAlloc::TypeId { .. }
+            | GlobalAlloc::Static(..)
+            | GlobalAlloc::Memory(..)
+            | GlobalAlloc::VTable(..) => AddressSpace::ZERO,
         }
     }
 
@@ -334,7 +350,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
                 }
             }
             GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
-            GlobalAlloc::Function { .. } | GlobalAlloc::VTable(..) => {
+            GlobalAlloc::TypeId { .. } | GlobalAlloc::Function { .. } | GlobalAlloc::VTable(..) => {
                 // These are immutable.
                 Mutability::Not
             }
@@ -380,8 +396,10 @@ impl<'tcx> GlobalAlloc<'tcx> {
             GlobalAlloc::Function { .. } => (Size::ZERO, Align::ONE),
             GlobalAlloc::VTable(..) => {
                 // No data to be accessed here. But vtables are pointer-aligned.
-                return (Size::ZERO, tcx.data_layout.pointer_align.abi);
+                (Size::ZERO, tcx.data_layout.pointer_align().abi)
             }
+            // Fake allocation, there's nothing to access here
+            GlobalAlloc::TypeId { .. } => (Size::ZERO, Align::ONE),
         }
     }
 }
@@ -485,6 +503,11 @@ impl<'tcx> TyCtxt<'tcx> {
         salt: usize,
     ) -> AllocId {
         self.reserve_and_set_dedup(GlobalAlloc::VTable(ty, dyn_ty), salt)
+    }
+
+    /// Generates an [AllocId] for a [core::any::TypeId]. Will get deduplicated.
+    pub fn reserve_and_set_type_id_alloc(self, ty: Ty<'tcx>) -> AllocId {
+        self.reserve_and_set_dedup(GlobalAlloc::TypeId { ty }, 0)
     }
 
     /// Interns the `Allocation` and return a new `AllocId`, even if there's already an identical

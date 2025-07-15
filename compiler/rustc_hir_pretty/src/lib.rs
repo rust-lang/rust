@@ -405,7 +405,7 @@ impl<'a> State<'a> {
                 }
                 self.pclose();
             }
-            hir::TyKind::BareFn(f) => {
+            hir::TyKind::FnPtr(f) => {
                 self.print_ty_fn(f.abi, f.safety, f.decl, None, f.generic_params, f.param_idents);
             }
             hir::TyKind::UnsafeBinder(unsafe_binder) => {
@@ -420,7 +420,6 @@ impl<'a> State<'a> {
                 let syntax = lifetime.tag();
                 match syntax {
                     ast::TraitObjectSyntax::Dyn => self.word_nbsp("dyn"),
-                    ast::TraitObjectSyntax::DynStar => self.word_nbsp("dyn*"),
                     ast::TraitObjectSyntax::None => {}
                 }
                 let mut first = true;
@@ -655,8 +654,8 @@ impl<'a> State<'a> {
                 let (cb, ib) = self.head("extern");
                 self.word_nbsp(abi.to_string());
                 self.bopen(ib);
-                for item in items {
-                    self.ann.nested(self, Nested::ForeignItem(item.id));
+                for &foreign_item in items {
+                    self.ann.nested(self, Nested::ForeignItem(foreign_item));
                 }
                 self.bclose(item.span, cb);
             }
@@ -731,8 +730,8 @@ impl<'a> State<'a> {
 
                 self.space();
                 self.bopen(ib);
-                for impl_item in items {
-                    self.ann.nested(self, Nested::ImplItem(impl_item.id));
+                for &impl_item in items {
+                    self.ann.nested(self, Nested::ImplItem(impl_item));
                 }
                 self.bclose(item.span, cb);
             }
@@ -747,8 +746,8 @@ impl<'a> State<'a> {
                 self.print_where_clause(generics);
                 self.word(" ");
                 self.bopen(ib);
-                for trait_item in trait_items {
-                    self.ann.nested(self, Nested::TraitItem(trait_item.id));
+                for &trait_item in trait_items {
+                    self.ann.nested(self, Nested::TraitItem(trait_item));
                 }
                 self.bclose(item.span, cb);
             }
@@ -1480,7 +1479,7 @@ impl<'a> State<'a> {
                 self.print_expr_addr_of(k, m, expr);
             }
             hir::ExprKind::Lit(lit) => {
-                self.print_literal(lit);
+                self.print_literal(&lit);
             }
             hir::ExprKind::Cast(expr, ty) => {
                 self.print_expr_cond_paren(expr, self.precedence(expr) < ExprPrecedence::Cast);

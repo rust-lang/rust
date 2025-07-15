@@ -146,11 +146,17 @@ pub struct StepMetadata {
     target: TargetSelection,
     built_by: Option<Compiler>,
     stage: Option<u32>,
+    /// Additional opaque string printed in the metadata
+    metadata: Option<String>,
 }
 
 impl StepMetadata {
     pub fn build(name: &'static str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Build)
+    }
+
+    pub fn check(name: &'static str, target: TargetSelection) -> Self {
+        Self::new(name, target, Kind::Check)
     }
 
     pub fn doc(name: &'static str, target: TargetSelection) -> Self {
@@ -166,7 +172,7 @@ impl StepMetadata {
     }
 
     fn new(name: &'static str, target: TargetSelection, kind: Kind) -> Self {
-        Self { name, kind, target, built_by: None, stage: None }
+        Self { name, kind, target, built_by: None, stage: None, metadata: None }
     }
 
     pub fn built_by(mut self, compiler: Compiler) -> Self {
@@ -177,6 +183,19 @@ impl StepMetadata {
     pub fn stage(mut self, stage: u32) -> Self {
         self.stage = Some(stage);
         self
+    }
+
+    pub fn with_metadata(mut self, metadata: String) -> Self {
+        self.metadata = Some(metadata);
+        self
+    }
+
+    pub fn get_stage(&self) -> Option<u32> {
+        self.stage.or(self
+            .built_by
+            // For std, its stage corresponds to the stage of the compiler that builds it.
+            // For everything else, a stage N things gets built by a stage N-1 compiler.
+            .map(|compiler| if self.name == "std" { compiler.stage } else { compiler.stage + 1 }))
     }
 }
 
@@ -1025,6 +1044,7 @@ impl<'a> Builder<'a> {
             Kind::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,
                 test::Tidy,
+                test::Bootstrap,
                 test::Ui,
                 test::Crashes,
                 test::Coverage,
@@ -1079,8 +1099,6 @@ impl<'a> Builder<'a> {
                 test::RustInstaller,
                 test::TestFloatParse,
                 test::CollectLicenseMetadata,
-                // Run bootstrap close to the end as it's unlikely to fail
-                test::Bootstrap,
                 // Run run-make last, since these won't pass without make on Windows
                 test::RunMake,
             ),
@@ -1587,7 +1605,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             cmd.arg("-Dwarnings");
         }
         cmd.arg("-Znormalize-docs");
-        cmd.args(linker_args(self, compiler.host, LldThreads::Yes));
+        cmd.args(linker_args(self, compiler.host, LldThreads::Yes, compiler.stage));
         cmd
     }
 

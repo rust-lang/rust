@@ -87,7 +87,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     //
     // This function is opt-in for back ends.
     //
-    // The default implementation calls `self.expect()` before emiting the branch
+    // The default implementation calls `self.expect()` before emitting the branch
     // by calling `self.cond_br()`
     fn cond_br_with_expect(
         &mut self,
@@ -135,6 +135,16 @@ pub trait BuilderMethods<'a, 'tcx>:
         instance: Option<Instance<'tcx>>,
     ) -> Self::Value;
     fn unreachable(&mut self);
+
+    /// Like [`Self::unreachable`], but for use in the middle of a basic block.
+    fn unreachable_nonterminator(&mut self) {
+        // This is the preferred LLVM incantation for this per
+        // https://llvm.org/docs/Frontend/PerformanceTips.html#other-things-to-consider
+        // Other backends may override if they have a better way.
+        let const_true = self.cx().const_bool(true);
+        let poison_ptr = self.const_poison(self.cx().type_ptr());
+        self.store(const_true, poison_ptr, Align::ONE);
+    }
 
     fn add(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
@@ -224,7 +234,6 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn to_immediate_scalar(&mut self, val: Self::Value, scalar: Scalar) -> Self::Value;
 
     fn alloca(&mut self, size: Size, align: Align) -> Self::Value;
-    fn dynamic_alloca(&mut self, size: Self::Value, align: Align) -> Self::Value;
 
     fn load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align) -> Self::Value;
     fn volatile_load(&mut self, ty: Self::Type, ptr: Self::Value) -> Self::Value;
@@ -555,12 +564,33 @@ pub trait BuilderMethods<'a, 'tcx>:
     /// Called for `StorageDead`
     fn lifetime_end(&mut self, ptr: Self::Value, size: Size);
 
+    /// "Finally codegen the call"
+    ///
+    /// ## Arguments
+    ///
+    /// The `fn_attrs`, `fn_abi`, and `instance` arguments are Options because they are advisory.
+    /// They relate to optional codegen enhancements like LLVM CFI, and do not affect ABI per se.
+    /// Any ABI-related transformations should be handled by different, earlier stages of codegen.
+    /// For instance, in the caller of `BuilderMethods::call`.
+    ///
+    /// This means that a codegen backend which disregards `fn_attrs`, `fn_abi`, and `instance`
+    /// should still do correct codegen, and code should not be miscompiled if they are omitted.
+    /// It is not a miscompilation in this sense if it fails to run under CFI, other sanitizers, or
+    /// in the context of other compiler-enhanced security features.
+    ///
+    /// The typical case that they are None is during the codegen of intrinsics and lang-items,
+    /// as those are "fake functions" with only a trivial ABI if any, et cetera.
+    ///
+    /// ## Return
+    ///
+    /// Must return the value the function will return so it can be written to the destination,
+    /// assuming the function does not explicitly pass the destination as a pointer in `args`.
     fn call(
         &mut self,
         llty: Self::Type,
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
-        llfn: Self::Value,
+        fn_val: Self::Value,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
         instance: Option<Instance<'tcx>>,

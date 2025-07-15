@@ -103,23 +103,25 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::minnumf64 => ("llvm.minnum", &[bx.type_f64()]),
         sym::minnumf128 => ("llvm.minnum", &[bx.type_f128()]),
 
-        sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
-        sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
-        sym::minimumf64 => ("llvm.minimum", &[bx.type_f64()]),
-        // There are issues on x86_64 and aarch64 with the f128 variant,
-        // let's instead use the instrinsic fallback body.
-        // sym::minimumf128 => ("llvm.minimum", &[cx.type_f128()]),
+        // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
+        // when llvm/llvm-project#{139380,139381,140445} are fixed.
+        //sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
+        //sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
+        //sym::minimumf64 => ("llvm.minimum", &[bx.type_f64()]),
+        //sym::minimumf128 => ("llvm.minimum", &[cx.type_f128()]),
+        //
         sym::maxnumf16 => ("llvm.maxnum", &[bx.type_f16()]),
         sym::maxnumf32 => ("llvm.maxnum", &[bx.type_f32()]),
         sym::maxnumf64 => ("llvm.maxnum", &[bx.type_f64()]),
         sym::maxnumf128 => ("llvm.maxnum", &[bx.type_f128()]),
 
-        sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
-        sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
-        sym::maximumf64 => ("llvm.maximum", &[bx.type_f64()]),
-        // There are issues on x86_64 and aarch64 with the f128 variant,
-        // let's instead use the instrinsic fallback body.
-        // sym::maximumf128 => ("llvm.maximum", &[cx.type_f128()]),
+        // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
+        // when llvm/llvm-project#{139380,139381,140445} are fixed.
+        //sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
+        //sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
+        //sym::maximumf64 => ("llvm.maximum", &[bx.type_f64()]),
+        //sym::maximumf128 => ("llvm.maximum", &[cx.type_f128()]),
+        //
         sym::copysignf16 => ("llvm.copysign", &[bx.type_f16()]),
         sym::copysignf32 => ("llvm.copysign", &[bx.type_f32()]),
         sym::copysignf64 => ("llvm.copysign", &[bx.type_f64()]),
@@ -456,7 +458,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
                         // so we re-use that same threshold here.
-                        layout.size() <= self.data_layout().pointer_size * 2
+                        layout.size() <= self.data_layout().pointer_size() * 2
                     }
                 };
 
@@ -756,8 +758,8 @@ fn codegen_msvc_try<'ll, 'tcx>(
         //      }
         //
         // More information can be found in libstd's seh.rs implementation.
-        let ptr_size = bx.tcx().data_layout.pointer_size;
-        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
+        let ptr_size = bx.tcx().data_layout.pointer_size();
+        let ptr_align = bx.tcx().data_layout.pointer_align().abi;
         let slot = bx.alloca(ptr_size, ptr_align);
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
         bx.invoke(try_func_ty, None, None, try_func, &[data], normal, catchswitch, None, None);
@@ -1029,8 +1031,8 @@ fn codegen_emcc_try<'ll, 'tcx>(
 
         // We need to pass two values to catch_func (ptr and is_rust_panic), so
         // create an alloca and pass a pointer to that.
-        let ptr_size = bx.tcx().data_layout.pointer_size;
-        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
+        let ptr_size = bx.tcx().data_layout.pointer_size();
+        let ptr_align = bx.tcx().data_layout.pointer_align().abi;
         let i8_align = bx.tcx().data_layout.i8_align.abi;
         // Required in order for there to be no padding between the fields.
         assert!(i8_align <= ptr_align);
@@ -1156,9 +1158,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     macro_rules! require_int_or_uint_ty {
         ($ty: expr, $diag: expr) => {
             match $ty {
-                ty::Int(i) => i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size.bits()),
+                ty::Int(i) => {
+                    i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size().bits())
+                }
                 ty::Uint(i) => {
-                    i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size.bits())
+                    i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size().bits())
                 }
                 _ => {
                     return_error!($diag);
@@ -2012,10 +2016,10 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 } else {
                     let bitwidth = match in_elem.kind() {
                         ty::Int(i) => {
-                            i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size.bits())
+                            i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size().bits())
                         }
                         ty::Uint(i) => {
-                            i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size.bits())
+                            i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size().bits())
                         }
                         _ => return_error!(InvalidMonomorphization::UnsupportedSymbol {
                             span,

@@ -328,8 +328,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 let module_did = mod_prefix.as_ref().and_then(Res::mod_def_id);
 
                 let mod_prefix =
-                    mod_prefix.map_or_else(String::new, |res| (format!("{} ", res.descr())));
-
+                    mod_prefix.map_or_else(String::new, |res| format!("{} ", res.descr()));
                 (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)), module_did, None)
             };
 
@@ -881,8 +880,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn lookup_doc_alias_name(&mut self, path: &[Segment], ns: Namespace) -> Option<(DefId, Ident)> {
         let find_doc_alias_name = |r: &mut Resolver<'ra, '_>, m: Module<'ra>, item_name: Symbol| {
             for resolution in r.resolutions(m).borrow().values() {
-                let Some(did) =
-                    resolution.borrow().binding.and_then(|binding| binding.res().opt_def_id())
+                let Some(did) = resolution
+                    .borrow()
+                    .best_binding()
+                    .and_then(|binding| binding.res().opt_def_id())
                 else {
                     continue;
                 };
@@ -1183,15 +1184,23 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 _ => "`self` value is a keyword only available in methods with a `self` parameter",
             },
         );
+
+        // using `let self` is wrong even if we're not in an associated method or if we're in a macro expansion.
+        // So, we should return early if we're in a pattern, see issue #143134.
+        if matches!(source, PathSource::Pat) {
+            return true;
+        }
+
         let is_assoc_fn = self.self_type_is_available();
         let self_from_macro = "a `self` parameter, but a macro invocation can only \
                                access identifiers it receives from parameters";
-        if let Some((fn_kind, span)) = &self.diag_metadata.current_function {
+        if let Some((fn_kind, fn_span)) = &self.diag_metadata.current_function {
             // The current function has a `self` parameter, but we were unable to resolve
             // a reference to `self`. This can only happen if the `self` identifier we
-            // are resolving came from a different hygiene context.
+            // are resolving came from a different hygiene context or a variable binding.
+            // But variable binding error is returned early above.
             if fn_kind.decl().inputs.get(0).is_some_and(|p| p.is_self()) {
-                err.span_label(*span, format!("this function has {self_from_macro}"));
+                err.span_label(*fn_span, format!("this function has {self_from_macro}"));
             } else {
                 let doesnt = if is_assoc_fn {
                     let (span, sugg) = fn_kind
@@ -1204,7 +1213,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             // This avoids placing the suggestion into the visibility specifier.
                             let span = fn_kind
                                 .ident()
-                                .map_or(*span, |ident| span.with_lo(ident.span.hi()));
+                                .map_or(*fn_span, |ident| fn_span.with_lo(ident.span.hi()));
                             (
                                 self.r
                                     .tcx
@@ -1457,15 +1466,16 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 self.resolve_path(mod_path, None, None)
             {
                 let resolutions = self.r.resolutions(module).borrow();
-                let targets: Vec<_> =
-                    resolutions
-                        .iter()
-                        .filter_map(|(key, resolution)| {
-                            resolution.borrow().binding.map(|binding| binding.res()).and_then(
-                                |res| if filter_fn(res) { Some((key, res)) } else { None },
-                            )
-                        })
-                        .collect();
+                let targets: Vec<_> = resolutions
+                    .iter()
+                    .filter_map(|(key, resolution)| {
+                        resolution
+                            .borrow()
+                            .best_binding()
+                            .map(|binding| binding.res())
+                            .and_then(|res| if filter_fn(res) { Some((key, res)) } else { None })
+                    })
+                    .collect();
                 if let [target] = targets.as_slice() {
                     return Some(TypoSuggestion::single_item_from_ident(target.0.ident, target.1));
                 }
@@ -2298,7 +2308,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let targets = resolutions
             .borrow()
             .iter()
-            .filter_map(|(key, res)| res.borrow().binding.map(|binding| (key, binding.res())))
+            .filter_map(|(key, res)| {
+                res.borrow().best_binding().map(|binding| (key, binding.res()))
+            })
             .filter(|(_, res)| match (kind, res) {
                 (AssocItemKind::Const(..), Res::Def(DefKind::AssocConst, _)) => true,
                 (AssocItemKind::Fn(_), Res::Def(DefKind::AssocFn, _)) => true,
@@ -2940,7 +2952,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         let span = if let [.., bound] = &param.bounds[..] {
                             bound.span()
                         } else if let GenericParam {
-                            kind: GenericParamKind::Const { ty, kw_span: _, default  }, ..
+                            kind: GenericParamKind::Const { ty, span: _, default  }, ..
                         } = param {
                             default.as_ref().map(|def| def.value.span).unwrap_or(ty.span)
                         } else {
@@ -3177,7 +3189,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
                     let higher_ranked = matches!(
                         kind,
-                        LifetimeBinderKind::BareFnType
+                        LifetimeBinderKind::FnPtrType
                             | LifetimeBinderKind::PolyTrait
                             | LifetimeBinderKind::WhereBound
                     );
@@ -3832,6 +3844,7 @@ fn mk_where_bound_predicate(
                 ref_id: DUMMY_NODE_ID,
             },
             span: DUMMY_SP,
+            parens: ast::Parens::No,
         })],
     };
 

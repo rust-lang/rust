@@ -41,7 +41,7 @@ impl Test9 {
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
 
     fn test10(&self, _x : _) { }
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
 }
 
 fn test11(x: &usize) -> &_ {
@@ -56,10 +56,10 @@ unsafe fn test12(x: *const usize) -> *const *const _ {
 
 impl Clone for Test9 {
     fn clone(&self) -> _ { Test9 }
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
 
     fn clone_from(&mut self, other: _) { *self = Test9; }
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
 }
 
 struct Test10 {
@@ -108,15 +108,15 @@ pub fn main() {
         //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
 
         fn fn_test10(&self, _x : _) { }
-        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
     }
 
     impl Clone for FnTest9 {
         fn clone(&self) -> _ { FnTest9 }
-        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
 
         fn clone_from(&mut self, other: _) { *self = FnTest9; }
-        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
     }
 
     struct FnTest10 {
@@ -140,19 +140,19 @@ pub fn main() {
 
 trait T {
     fn method_test1(&self, x: _);
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
     fn method_test2(&self, x: _) -> _;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
-    //~| ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
+    //~| ERROR the placeholder `_` is not allowed within types on item signatures for methods
     fn method_test3(&self) -> _;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for methods
     fn assoc_fn_test1(x: _);
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated functions
     fn assoc_fn_test2(x: _) -> _;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
-    //~| ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated functions
+    //~| ERROR the placeholder `_` is not allowed within types on item signatures for associated functions
     fn assoc_fn_test3() -> _;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated functions
 }
 
 struct BadStruct<_>(_);

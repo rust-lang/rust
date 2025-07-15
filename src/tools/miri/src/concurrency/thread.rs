@@ -97,13 +97,13 @@ pub enum BlockReason {
     /// Blocked on a mutex.
     Mutex,
     /// Blocked on a condition variable.
-    Condvar(CondvarId),
+    Condvar,
     /// Blocked on a reader-writer lock.
     RwLock,
     /// Blocked on a Futex variable.
     Futex,
     /// Blocked on an InitOnce.
-    InitOnce(InitOnceId),
+    InitOnce,
     /// Blocked on epoll.
     Epoll,
     /// Blocked on eventfd.
@@ -894,7 +894,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             start_abi,
             &[func_arg],
             Some(&ret_place),
-            StackPopCleanup::Root { cleanup: true },
+            ReturnContinuation::Stop { cleanup: true },
         )?;
 
         // Restore the old active thread frame.

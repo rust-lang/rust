@@ -392,16 +392,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     #[instrument(level = "debug", skip(self), ret)]
     pub fn lower_resolved_lifetime(&self, resolved: rbv::ResolvedArg) -> ty::Region<'tcx> {
         let tcx = self.tcx();
-        let lifetime_name = |def_id| tcx.hir_name(tcx.local_def_id_to_hir_id(def_id));
 
         match resolved {
             rbv::ResolvedArg::StaticLifetime => tcx.lifetimes.re_static,
 
             rbv::ResolvedArg::LateBound(debruijn, index, def_id) => {
-                let name = lifetime_name(def_id);
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_u32(index),
-                    kind: ty::BoundRegionKind::Named(def_id.to_def_id(), name),
+                    kind: ty::BoundRegionKind::Named(def_id.to_def_id()),
                 };
                 ty::Region::new_bound(tcx, debruijn, br)
             }
@@ -415,11 +413,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
 
             rbv::ResolvedArg::Free(scope, id) => {
-                let name = lifetime_name(id);
                 ty::Region::new_late_param(
                     tcx,
                     scope.to_def_id(),
-                    ty::LateParamRegionKind::Named(id.to_def_id(), name),
+                    ty::LateParamRegionKind::Named(id.to_def_id()),
                 )
 
                 // (*) -- not late-bound, won't change
@@ -1088,7 +1085,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             // FIXME(#97583): Print associated item bindings properly (i.e., not as equality
             // predicates!).
-            // FIXME: Turn this into a structured, translateable & more actionable suggestion.
+            // FIXME: Turn this into a structured, translatable & more actionable suggestion.
             let mut where_bounds = vec![];
             for bound in [bound, bound2].into_iter().chain(matching_candidates) {
                 let bound_id = bound.def_id();
@@ -1588,7 +1585,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             &infcx_
         };
 
-        tcx.all_traits()
+        tcx.all_traits_including_private()
             .filter(|trait_def_id| {
                 // Consider only traits with the associated type
                 tcx.associated_items(*trait_def_id)
@@ -2070,10 +2067,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
         match tcx.named_bound_var(hir_id) {
             Some(rbv::ResolvedArg::LateBound(debruijn, index, def_id)) => {
-                let name = tcx.item_name(def_id.to_def_id());
                 let br = ty::BoundTy {
                     var: ty::BoundVar::from_u32(index),
-                    kind: ty::BoundTyKind::Param(def_id.to_def_id(), name),
+                    kind: ty::BoundTyKind::Param(def_id.to_def_id()),
                 };
                 Ty::new_bound(tcx, debruijn, br)
             }
@@ -2364,9 +2360,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         let lit_input = match expr.kind {
-            hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
+            hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: lit.node, ty, neg: false }),
             hir::ExprKind::Unary(hir::UnOp::Neg, expr) => match expr.kind {
-                hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: true }),
+                hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: lit.node, ty, neg: true }),
                 _ => None,
             },
             _ => None,
@@ -2406,7 +2402,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::TyKind::Tup(fields) => {
                 Ty::new_tup_from_iter(tcx, fields.iter().map(|t| self.lower_ty(t)))
             }
-            hir::TyKind::BareFn(bf) => {
+            hir::TyKind::FnPtr(bf) => {
                 require_c_abi_if_c_variadic(tcx, bf.decl, bf.abi, hir_ty.span);
 
                 Ty::new_fn_ptr(
@@ -2433,7 +2429,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 } else {
                     let repr = match repr {
                         TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
-                        TraitObjectSyntax::DynStar => ty::DynStar,
                     };
                     self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime, repr)
                 }
@@ -2460,13 +2455,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // type a projection.
                 let in_trait = match opaque_ty.origin {
                     hir::OpaqueTyOrigin::FnReturn {
+                        parent,
                         in_trait_or_impl: Some(hir::RpitContext::Trait),
                         ..
                     }
                     | hir::OpaqueTyOrigin::AsyncFn {
+                        parent,
                         in_trait_or_impl: Some(hir::RpitContext::Trait),
                         ..
-                    } => true,
+                    } => Some(parent),
                     hir::OpaqueTyOrigin::FnReturn {
                         in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
                         ..
@@ -2475,7 +2472,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         in_trait_or_impl: None | Some(hir::RpitContext::TraitImpl),
                         ..
                     }
-                    | hir::OpaqueTyOrigin::TyAlias { .. } => false,
+                    | hir::OpaqueTyOrigin::TyAlias { .. } => None,
                 };
 
                 self.lower_opaque_ty(opaque_ty.def_id, in_trait)
@@ -2595,17 +2592,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     /// Lower an opaque type (i.e., an existential impl-Trait type) from the HIR.
     #[instrument(level = "debug", skip(self), ret)]
-    fn lower_opaque_ty(&self, def_id: LocalDefId, in_trait: bool) -> Ty<'tcx> {
+    fn lower_opaque_ty(&self, def_id: LocalDefId, in_trait: Option<LocalDefId>) -> Ty<'tcx> {
         let tcx = self.tcx();
 
         let lifetimes = tcx.opaque_captured_lifetimes(def_id);
         debug!(?lifetimes);
 
-        // If this is an RPITIT and we are using the new RPITIT lowering scheme, we
-        // generate the def_id of an associated type for the trait and return as
-        // type a projection.
-        let def_id = if in_trait {
-            tcx.associated_type_for_impl_trait_in_trait(def_id).to_def_id()
+        // If this is an RPITIT and we are using the new RPITIT lowering scheme,
+        // do a linear search to map this to the synthetic associated type that
+        // it will be lowered to.
+        let def_id = if let Some(parent_def_id) = in_trait {
+            *tcx.associated_types_for_impl_traits_in_associated_fn(parent_def_id.to_def_id())
+                .iter()
+                .find(|rpitit| match tcx.opt_rpitit_info(**rpitit) {
+                    Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
+                        opaque_def_id.expect_local() == def_id
+                    }
+                    _ => unreachable!(),
+                })
+                .unwrap()
         } else {
             def_id.to_def_id()
         };
@@ -2628,7 +2633,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         });
         debug!(?args);
 
-        if in_trait {
+        if in_trait.is_some() {
             Ty::new_projection_from_args(tcx, def_id, args)
         } else {
             Ty::new_opaque(tcx, def_id, args)
@@ -2655,28 +2660,28 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?output_ty);
 
         let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, safety, abi);
-        let bare_fn_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
+        let fn_ptr_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
 
-        if let hir::Node::Ty(hir::Ty { kind: hir::TyKind::BareFn(bare_fn_ty), span, .. }) =
+        if let hir::Node::Ty(hir::Ty { kind: hir::TyKind::FnPtr(fn_ptr_ty), span, .. }) =
             tcx.hir_node(hir_id)
         {
-            check_abi(tcx, hir_id, *span, bare_fn_ty.abi);
+            check_abi(tcx, hir_id, *span, fn_ptr_ty.abi);
         }
 
         // reject function types that violate cmse ABI requirements
-        cmse::validate_cmse_abi(self.tcx(), self.dcx(), hir_id, abi, bare_fn_ty);
+        cmse::validate_cmse_abi(self.tcx(), self.dcx(), hir_id, abi, fn_ptr_ty);
 
-        if !bare_fn_ty.references_error() {
+        if !fn_ptr_ty.references_error() {
             // Find any late-bound regions declared in return type that do
             // not appear in the arguments. These are not well-formed.
             //
             // Example:
             //     for<'a> fn() -> &'a str <-- 'a is bad
             //     for<'a> fn(&'a String) -> &'a str <-- 'a is ok
-            let inputs = bare_fn_ty.inputs();
+            let inputs = fn_ptr_ty.inputs();
             let late_bound_in_args =
                 tcx.collect_constrained_late_bound_regions(inputs.map_bound(|i| i.to_owned()));
-            let output = bare_fn_ty.output();
+            let output = fn_ptr_ty.output();
             let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(output);
 
             self.validate_late_bound_regions(late_bound_in_args, late_bound_in_ret, |br_name| {
@@ -2690,7 +2695,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             });
         }
 
-        bare_fn_ty
+        fn_ptr_ty
     }
 
     /// Given a fn_hir_id for a impl function, suggest the type that is found on the
@@ -2740,18 +2745,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         generate_err: impl Fn(&str) -> Diag<'cx>,
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
-            let br_name = match *br {
-                ty::BoundRegionKind::Named(_, kw::UnderscoreLifetime)
-                | ty::BoundRegionKind::Anon
-                | ty::BoundRegionKind::ClosureEnv => "an anonymous lifetime".to_string(),
-                ty::BoundRegionKind::Named(_, name) => format!("lifetime `{name}`"),
+            let br_name = if let Some(name) = br.get_name(self.tcx()) {
+                format!("lifetime `{name}`")
+            } else {
+                "an anonymous lifetime".to_string()
             };
 
             let mut err = generate_err(&br_name);
 
-            if let ty::BoundRegionKind::Named(_, kw::UnderscoreLifetime)
-            | ty::BoundRegionKind::Anon = *br
-            {
+            if !br.is_named(self.tcx()) {
                 // The only way for an anonymous lifetime to wind up
                 // in the return type but **also** be unconstrained is
                 // if it only appears in "associated types" in the

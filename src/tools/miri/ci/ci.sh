@@ -143,28 +143,13 @@ case $HOST_TARGET in
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
     MANY_SEEDS=64 TEST_TARGET=i686-unknown-linux-gnu run_tests
-    MANY_SEEDS=64 TEST_TARGET=aarch64-unknown-linux-gnu run_tests
     MANY_SEEDS=64 TEST_TARGET=x86_64-apple-darwin run_tests
     MANY_SEEDS=64 TEST_TARGET=x86_64-pc-windows-gnu run_tests
-    # Extra tier 1 candidate
-    MANY_SEEDS=64 TEST_TARGET=aarch64-pc-windows-msvc run_tests
     ;;
-  aarch64-apple-darwin)
+  i686-unknown-linux-gnu)
     # Host
-    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
-    # Extra tier 1
-    MANY_SEEDS=64 TEST_TARGET=i686-pc-windows-gnu run_tests
-    MANY_SEEDS=64 TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
-    # Extra tier 2
-    MANY_SEEDS=16 TEST_TARGET=arm-unknown-linux-gnueabi run_tests # 32bit ARM
-    MANY_SEEDS=16 TEST_TARGET=aarch64-pc-windows-gnullvm run_tests # gnullvm ABI
-    MANY_SEEDS=16 TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture of choice
-    # Not officially supported tier 2
-    MANY_SEEDS=16 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
-    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-illumos run_tests
-    MANY_SEEDS=16 TEST_TARGET=x86_64-pc-solaris run_tests
-    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-freebsd run_tests
-    MANY_SEEDS=16 TEST_TARGET=i686-unknown-freebsd run_tests
+    # Without GC_STRESS as this is a slow runner.
+    MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Partially supported targets (tier 2)
     BASIC="empty_main integer heap_alloc libc-mem vec string btreemap" # ensures we have the basics: pre-main code, system allocator
     UNIX="hello panic/panic panic/unwind concurrency/simple atomic libc-mem libc-misc libc-random env num_cpus" # the things that are very similar across all Unixes, and hence easily supported there
@@ -172,13 +157,39 @@ case $HOST_TARGET in
     TEST_TARGET=wasm32-wasip2          run_tests_minimal $BASIC wasm
     TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std empty_main wasm # this target doesn't really have std
     TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std
+    ;;
+  aarch64-unknown-linux-gnu)
+    # Host
+    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
+    # Extra tier 1 candidate
+    MANY_SEEDS=64 TEST_TARGET=aarch64-pc-windows-msvc run_tests
+    # Extra tier 2
+    MANY_SEEDS=16 TEST_TARGET=arm-unknown-linux-gnueabi run_tests # 32bit ARM
+    MANY_SEEDS=16 TEST_TARGET=aarch64-pc-windows-gnullvm run_tests # gnullvm ABI
+    MANY_SEEDS=16 TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture of choice
     # Custom target JSON file
     TEST_TARGET=tests/x86_64-unknown-kernel.json MIRI_NO_STD=1 run_tests_minimal no_std
     ;;
+  armv7-unknown-linux-gnueabihf)
+    # Host
+    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
+    ;;
+  aarch64-apple-darwin)
+    # Host
+    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
+    # Extra tier 1
+    MANY_SEEDS=64 TEST_TARGET=i686-pc-windows-gnu run_tests
+    MANY_SEEDS=64 TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
+    # Not officially supported tier 2
+    MANY_SEEDS=16 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
+    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-illumos run_tests
+    MANY_SEEDS=16 TEST_TARGET=x86_64-pc-solaris run_tests
+    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-freebsd run_tests
+    MANY_SEEDS=16 TEST_TARGET=i686-unknown-freebsd run_tests
+    ;;
   i686-pc-windows-msvc)
     # Host
-    # Without GC_STRESS and with reduced many-seeds count as this is the slowest runner.
-    # (The macOS runner checks windows-msvc with full many-seeds count.)
+    # Without GC_STRESS as this is the slowest runner.
     MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 run_tests
     # Extra tier 1
     # We really want to ensure a Linux target works on a Windows host,

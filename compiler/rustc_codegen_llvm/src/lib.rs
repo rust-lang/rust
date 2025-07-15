@@ -113,7 +113,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     ) -> ModuleLlvm {
         let module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
         let cx =
-            SimpleCx::new(module_llvm.llmod(), &module_llvm.llcx, tcx.data_layout.pointer_size);
+            SimpleCx::new(module_llvm.llmod(), &module_llvm.llcx, tcx.data_layout.pointer_size());
         unsafe {
             allocator::codegen(tcx, cx, module_name, kind, alloc_error_handler_kind);
         }

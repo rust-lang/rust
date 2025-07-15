@@ -198,7 +198,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut libffi_args = Vec::<CArg>::with_capacity(args.len());
         for arg in args.iter() {
             if !matches!(arg.layout.backend_repr, BackendRepr::Scalar(_)) {
-                throw_unsup_format!("only scalar argument types are support for native calls")
+                throw_unsup_format!("only scalar argument types are supported for native calls")
             }
             let imm = this.read_immediate(arg)?;
             libffi_args.push(imm_to_carg(&imm, this)?);
@@ -224,15 +224,42 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.expose_provenance(prov)?;
             }
         }
-
-        // Prepare all exposed memory.
-        this.prepare_exposed_for_native_call()?;
-
-        // Convert them to `libffi::high::Arg` type.
+        // Convert arguments to `libffi::high::Arg` type.
         let libffi_args = libffi_args
             .iter()
             .map(|arg| arg.arg_downcast())
             .collect::<Vec<libffi::high::Arg<'_>>>();
+
+        // Prepare all exposed memory (both previously exposed, and just newly exposed since a
+        // pointer was passed as argument). Uninitialised memory is left as-is, but any data
+        // exposed this way is garbage anyway.
+        this.visit_reachable_allocs(this.exposed_allocs(), |this, alloc_id, info| {
+            // If there is no data behind this pointer, skip this.
+            if !matches!(info.kind, AllocKind::LiveData) {
+                return interp_ok(());
+            }
+            // It's okay to get raw access, what we do does not correspond to any actual
+            // AM operation, it just approximates the state to account for the native call.
+            let alloc = this.get_alloc_raw(alloc_id)?;
+            // Also expose the provenance of the interpreter-level allocation, so it can
+            // be read by FFI. The `black_box` is defensive programming as LLVM likes
+            // to (incorrectly) optimize away ptr2int casts whose result is unused.
+            std::hint::black_box(alloc.get_bytes_unchecked_raw().expose_provenance());
+            // Expose all provenances in this allocation, since the native code can do $whatever.
+            for prov in alloc.provenance().provenances() {
+                this.expose_provenance(prov)?;
+            }
+
+            // Prepare for possible write from native code if mutable.
+            if info.mutbl.is_mut() {
+                let (alloc, cx) = this.get_alloc_raw_mut(alloc_id)?;
+                alloc.process_native_write(&cx.tcx, None);
+                // Also expose *mutable* provenance for the interpreter-level allocation.
+                std::hint::black_box(alloc.get_bytes_unchecked_raw_mut().expose_provenance());
+            }
+
+            interp_ok(())
+        })?;
 
         // Call the function and store output, depending on return type in the function signature.
         let (ret, maybe_memevents) =
@@ -321,7 +348,8 @@ fn imm_to_carg<'tcx>(v: &ImmTy<'tcx>, cx: &impl HasDataLayout) -> InterpResult<'
             CArg::USize(v.to_scalar().to_target_usize(cx)?.try_into().unwrap()),
         ty::RawPtr(..) => {
             let s = v.to_scalar().to_pointer(cx)?.addr();
-            // This relies on the `expose_provenance` in `prepare_for_native_call`.
+            // This relies on the `expose_provenance` in the `visit_reachable_allocs` callback
+            // above.
             CArg::RawPtr(std::ptr::with_exposed_provenance_mut(s.bytes_usize()))
         }
         _ => throw_unsup_format!("unsupported argument type for native call: {}", v.layout.ty),

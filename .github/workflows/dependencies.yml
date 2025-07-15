@@ -19,6 +19,7 @@ env:
   PR_TITLE: Weekly `cargo update`
   PR_MESSAGE: |
     Automation to keep dependencies in `Cargo.lock` current.
+    r? dep-bumps
 
     The following is the output from `cargo update`:
   COMMIT_MESSAGE: "cargo update \n\n"

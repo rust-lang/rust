@@ -35,6 +35,17 @@ error[E0207]: the type parameter `U` is not constrained by the impl trait, self 
 LL | impl<T, U> Foo<T> for [isize; 1] {
    |         ^ unconstrained type parameter
 
+error[E0119]: conflicting implementations of trait `Bar`
+  --> $DIR/constrained-type-params-trait-impl.rs:48:1
+   |
+LL |   impl<T, U> Bar for T {
+   |   -------------------- first implementation here
+...
+LL | / impl<T, U> Bar for T
+LL | | where
+LL | |     T: Bar<Out = U>,
+   | |____________________^ conflicting implementation
+
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
   --> $DIR/constrained-type-params-trait-impl.rs:42:9
    |
@@ -58,17 +69,6 @@ error[E0207]: the type parameter `V` is not constrained by the impl trait, self 
    |
 LL | impl<T, U, V> Foo<T> for T
    |            ^ unconstrained type parameter
-
-error[E0119]: conflicting implementations of trait `Bar`
-  --> $DIR/constrained-type-params-trait-impl.rs:48:1
-   |
-LL |   impl<T, U> Bar for T {
-   |   -------------------- first implementation here
-...
-LL | / impl<T, U> Bar for T
-LL | | where
-LL | |     T: Bar<Out = U>,
-   | |____________________^ conflicting implementation
 
 error: aborting due to 9 previous errors
 

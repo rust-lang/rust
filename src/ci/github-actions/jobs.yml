@@ -46,6 +46,10 @@ runners:
     os: windows-2025-8core-32gb
     <<: *base-job
 
+  - &job-windows-aarch64
+    os: windows-11-arm
+    <<: *base-job
+
   - &job-aarch64-linux
     # Free some disk space to avoid running out of space during the build.
     free_disk: true
@@ -122,11 +126,11 @@ jobs:
 # These jobs automatically inherit envs.pr, to avoid repeating
 # it in each job definition.
 pr:
-  - name: mingw-check-1
+  - name: pr-check-1
     <<: *job-linux-4c
-  - name: mingw-check-2
+  - name: pr-check-2
     <<: *job-linux-4c
-  - name: mingw-check-tidy
+  - name: tidy
     continue_on_error: true
     free_disk: false
     env:
@@ -159,6 +163,17 @@ pr:
 # it in each job definition.
 try:
   - <<: *job-dist-x86_64-linux
+
+# Jobs that only run when explicitly invoked in one of the following ways:
+# - comment `@bors2 try jobs=<job-name>`
+# - `try-job: <job-name>` in the PR description and comment `@bors try` or `@bors2 try`.
+optional:
+  # This job is used just to test optional jobs.
+  # It will be replaced by tier 2 and tier 3 jobs in the future.
+  - name: optional-mingw-check-1
+    env:
+      IMAGE: mingw-check-1
+    <<: *job-linux-4c
 
 # Main CI jobs that have to be green to merge a commit into master
 # These jobs automatically inherit envs.auto, to avoid repeating
@@ -312,13 +327,13 @@ auto:
         /scripts/stage_2_test_set2.sh
     <<: *job-linux-4c
 
-  - name: mingw-check-1
+  - name: pr-check-1
     <<: *job-linux-4c
 
-  - name: mingw-check-2
+  - name: pr-check-2
     <<: *job-linux-4c
 
-  - name: mingw-check-tidy
+  - name: tidy
     free_disk: false
     <<: *job-linux-4c
 
@@ -550,6 +565,19 @@ auto:
       SCRIPT: make ci-msvc-ps1
     <<: *job-windows
 
+  # aarch64-msvc is split into two jobs to run tests in parallel.
+  - name: aarch64-msvc-1
+    env:
+      RUST_CONFIGURE_ARGS: --build=aarch64-pc-windows-msvc
+      SCRIPT: make ci-msvc-py
+    <<: *job-windows-aarch64
+
+  - name: aarch64-msvc-2
+    env:
+      RUST_CONFIGURE_ARGS: --build=aarch64-pc-windows-msvc
+      SCRIPT: make ci-msvc-ps1
+    <<: *job-windows-aarch64
+
   # x86_64-msvc-ext is split into multiple jobs to run tests in parallel.
   - name: x86_64-msvc-ext1
     env:
@@ -645,14 +673,14 @@ auto:
   - name: dist-aarch64-msvc
     env:
       RUST_CONFIGURE_ARGS: >-
-        --build=x86_64-pc-windows-msvc
+        --build=aarch64-pc-windows-msvc
         --host=aarch64-pc-windows-msvc
         --target=aarch64-pc-windows-msvc,arm64ec-pc-windows-msvc
         --enable-full-tools
         --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
-    <<: *job-windows
+    <<: *job-windows-aarch64
 
   - name: dist-i686-mingw
     env:

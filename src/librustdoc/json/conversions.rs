@@ -2,13 +2,12 @@
 //! the `clean` types but with some fields removed or stringified to simplify the output and not
 //! expose unstable compiler internals.
 
-#![allow(rustc::default_hash_types)]
-
 use rustc_abi::ExternAbi;
 use rustc_ast::ast;
 use rustc_attr_data_structures::{self as attrs, DeprecatedSince};
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{HeaderSafety, Safety};
 use rustc_metadata::rendered_const;
 use rustc_middle::{bug, ty};
 use rustc_span::{Pos, kw, sym};
@@ -383,10 +382,22 @@ impl FromClean<clean::Union> for Union {
 
 impl FromClean<rustc_hir::FnHeader> for FunctionHeader {
     fn from_clean(header: &rustc_hir::FnHeader, renderer: &JsonRenderer<'_>) -> Self {
+        let is_unsafe = match header.safety {
+            HeaderSafety::SafeTargetFeatures => {
+                // The type system's internal implementation details consider
+                // safe functions with the `#[target_feature]` attribute to be analogous
+                // to unsafe functions: `header.is_unsafe()` returns `true` for them.
+                // For rustdoc, this isn't the right decision, so we explicitly return `false`.
+                // Context: https://github.com/rust-lang/rust/issues/142655
+                false
+            }
+            HeaderSafety::Normal(Safety::Safe) => false,
+            HeaderSafety::Normal(Safety::Unsafe) => true,
+        };
         FunctionHeader {
             is_async: header.is_async(),
             is_const: header.is_const(),
-            is_unsafe: header.is_unsafe(),
+            is_unsafe,
             abi: header.abi.into_json(renderer),
         }
     }

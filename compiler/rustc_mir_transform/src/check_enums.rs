@@ -120,6 +120,7 @@ enum EnumCheckType<'tcx> {
     },
 }
 
+#[derive(Debug, Copy, Clone)]
 struct TyAndSize<'tcx> {
     pub ty: Ty<'tcx>,
     pub size: Size,
@@ -230,11 +231,11 @@ fn split_block(
     let block_data = &mut basic_blocks[location.block];
 
     // Drain every statement after this one and move the current terminator to a new basic block.
-    let new_block = BasicBlockData {
-        statements: block_data.statements.split_off(location.statement_index),
-        terminator: block_data.terminator.take(),
-        is_cleanup: block_data.is_cleanup,
-    };
+    let new_block = BasicBlockData::new_stmts(
+        block_data.statements.split_off(location.statement_index),
+        block_data.terminator.take(),
+        block_data.is_cleanup,
+    );
 
     basic_blocks.push(new_block)
 }
@@ -270,10 +271,9 @@ fn insert_discr_cast_to_u128<'tcx>(
         let mu_array =
             local_decls.push(LocalDecl::with_source_info(mu_array_ty, source_info)).into();
         let rvalue = Rvalue::Cast(CastKind::Transmute, source_op, mu_array_ty);
-        block_data.statements.push(Statement {
-            source_info,
-            kind: StatementKind::Assign(Box::new((mu_array, rvalue))),
-        });
+        block_data
+            .statements
+            .push(Statement::new(source_info, StatementKind::Assign(Box::new((mu_array, rvalue)))));
 
         // Index into the array of MaybeUninit to get something that is actually
         // as wide as the discriminant.
@@ -294,10 +294,10 @@ fn insert_discr_cast_to_u128<'tcx>(
         let op_as_int =
             local_decls.push(LocalDecl::with_source_info(operand_int_ty, source_info)).into();
         let rvalue = Rvalue::Cast(CastKind::Transmute, source_op, operand_int_ty);
-        block_data.statements.push(Statement {
+        block_data.statements.push(Statement::new(
             source_info,
-            kind: StatementKind::Assign(Box::new((op_as_int, rvalue))),
-        });
+            StatementKind::Assign(Box::new((op_as_int, rvalue))),
+        ));
 
         (CastKind::IntToInt, Operand::Copy(op_as_int))
     };
@@ -306,18 +306,18 @@ fn insert_discr_cast_to_u128<'tcx>(
     let rvalue = Rvalue::Cast(cast_kind, discr_ty_bits, discr.ty);
     let discr_in_discr_ty =
         local_decls.push(LocalDecl::with_source_info(discr.ty, source_info)).into();
-    block_data.statements.push(Statement {
+    block_data.statements.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((discr_in_discr_ty, rvalue))),
-    });
+        StatementKind::Assign(Box::new((discr_in_discr_ty, rvalue))),
+    ));
 
-    // Cast the discriminant to a u128 (base for comparisions of enum discriminants).
+    // Cast the discriminant to a u128 (base for comparisons of enum discriminants).
     let const_u128 = Ty::new_uint(tcx, ty::UintTy::U128);
     let rvalue = Rvalue::Cast(CastKind::IntToInt, Operand::Copy(discr_in_discr_ty), const_u128);
     let discr = local_decls.push(LocalDecl::with_source_info(const_u128, source_info)).into();
     block_data
         .statements
-        .push(Statement { source_info, kind: StatementKind::Assign(Box::new((discr, rvalue))) });
+        .push(Statement::new(source_info, StatementKind::Assign(Box::new((discr, rvalue)))));
 
     discr
 }
@@ -338,7 +338,7 @@ fn insert_direct_enum_check<'tcx>(
     let invalid_discr_block_data = BasicBlockData::new(None, false);
     let invalid_discr_block = basic_blocks.push(invalid_discr_block_data);
     let block_data = &mut basic_blocks[current_block];
-    let discr = insert_discr_cast_to_u128(
+    let discr_place = insert_discr_cast_to_u128(
         tcx,
         local_decls,
         block_data,
@@ -349,13 +349,34 @@ fn insert_direct_enum_check<'tcx>(
         source_info,
     );
 
+    // Mask out the bits of the discriminant type.
+    let mask = discr.size.unsigned_int_max();
+    let discr_masked =
+        local_decls.push(LocalDecl::with_source_info(tcx.types.u128, source_info)).into();
+    let rvalue = Rvalue::BinaryOp(
+        BinOp::BitAnd,
+        Box::new((
+            Operand::Copy(discr_place),
+            Operand::Constant(Box::new(ConstOperand {
+                span: source_info.span,
+                user_ty: None,
+                const_: Const::Val(ConstValue::from_u128(mask), tcx.types.u128),
+            })),
+        )),
+    );
+    block_data
+        .statements
+        .push(Statement::new(source_info, StatementKind::Assign(Box::new((discr_masked, rvalue)))));
+
     // Branch based on the discriminant value.
     block_data.terminator = Some(Terminator {
         source_info,
         kind: TerminatorKind::SwitchInt {
-            discr: Operand::Copy(discr),
+            discr: Operand::Copy(discr_masked),
             targets: SwitchTargets::new(
-                discriminants.into_iter().map(|discr| (discr, new_block)),
+                discriminants
+                    .into_iter()
+                    .map(|discr_val| (discr.size.truncate(discr_val), new_block)),
                 invalid_discr_block,
             ),
         },
@@ -372,7 +393,7 @@ fn insert_direct_enum_check<'tcx>(
             })),
             expected: true,
             target: new_block,
-            msg: Box::new(AssertKind::InvalidEnumConstruction(Operand::Copy(discr))),
+            msg: Box::new(AssertKind::InvalidEnumConstruction(Operand::Copy(discr_masked))),
             // This calls panic_invalid_enum_construction, which is #[rustc_nounwind].
             // We never want to insert an unwind into unsafe code, because unwinding could
             // make a failing UB check turn into much worse UB when we start unwinding.
@@ -390,9 +411,9 @@ fn insert_uninhabited_enum_check<'tcx>(
 ) {
     let is_ok: Place<'_> =
         local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
-    block_data.statements.push(Statement {
+    block_data.statements.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             is_ok,
             Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
                 span: source_info.span,
@@ -400,7 +421,7 @@ fn insert_uninhabited_enum_check<'tcx>(
                 const_: Const::Val(ConstValue::from_bool(false), tcx.types.bool),
             }))),
         ))),
-    });
+    ));
 
     block_data.terminator = Some(Terminator {
         source_info,
@@ -446,7 +467,7 @@ fn insert_niche_check<'tcx>(
         source_info,
     );
 
-    // Compare the discriminant agains the valid_range.
+    // Compare the discriminant against the valid_range.
     let start_const = Operand::Constant(Box::new(ConstOperand {
         span: source_info.span,
         user_ty: None,
@@ -463,19 +484,19 @@ fn insert_niche_check<'tcx>(
 
     let discr_diff: Place<'_> =
         local_decls.push(LocalDecl::with_source_info(tcx.types.u128, source_info)).into();
-    block_data.statements.push(Statement {
+    block_data.statements.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             discr_diff,
             Rvalue::BinaryOp(BinOp::Sub, Box::new((Operand::Copy(discr), start_const))),
         ))),
-    });
+    ));
 
     let is_ok: Place<'_> =
         local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
-    block_data.statements.push(Statement {
+    block_data.statements.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             is_ok,
             Rvalue::BinaryOp(
                 // This is a `WrappingRange`, so make sure to get the wrapping right.
@@ -483,7 +504,7 @@ fn insert_niche_check<'tcx>(
                 Box::new((Operand::Copy(discr_diff), end_start_diff_const)),
             ),
         ))),
-    });
+    ));
 
     block_data.terminator = Some(Terminator {
         source_info,

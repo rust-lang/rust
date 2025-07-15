@@ -306,7 +306,7 @@ fn generate_enzyme_call<'ll>(
     // add outer_fn name to ad_name to make it unique, in case users apply autodiff to multiple
     // functions. Unwrap will only panic, if LLVM gave us an invalid string.
     let name = llvm::get_value_name(outer_fn);
-    let outer_fn_name = std::str::from_utf8(name).unwrap();
+    let outer_fn_name = std::str::from_utf8(&name).unwrap();
     ad_name.push_str(outer_fn_name);
 
     // Let us assume the user wrote the following function square:

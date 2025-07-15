@@ -11,24 +11,23 @@
 #![feature(assert_matches)]
 
 extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_smir;
+
 extern crate rustc_driver;
 extern crate rustc_interface;
-extern crate stable_mir;
+extern crate rustc_public;
 
 use std::collections::HashSet;
 use std::io::Write;
 use std::ops::ControlFlow;
 
-use stable_mir::ty::*;
-use stable_mir::{CrateDef, *};
+use rustc_public::ty::*;
+use rustc_public::{CrateDef, *};
 
 const CRATE_NAME: &str = "crate_assoc_items";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_assoc_items() -> ControlFlow<()> {
-    let local_crate = stable_mir::local_crate();
+    let local_crate = rustc_public::local_crate();
     check_items(
         &local_crate.fn_defs(),
         &[

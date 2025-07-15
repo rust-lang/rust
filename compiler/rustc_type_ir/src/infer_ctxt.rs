@@ -13,7 +13,7 @@ use crate::{self as ty, Interner};
 /// slightly different typing rules depending on the current context. See the
 /// doc comment for each variant for how and why they are used.
 ///
-/// In most cases you can get the correct typing mode automically via:
+/// In most cases you can get the correct typing mode automatically via:
 /// - `mir::Body::typing_mode`
 /// - `rustc_lint::LateContext::typing_mode`
 ///

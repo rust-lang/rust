@@ -1,4 +1,4 @@
-use rustc_abi::{Align, FieldIdx, Size};
+use rustc_abi::{Align, Size};
 use rustc_middle::mir::interpret::{InterpResult, Pointer};
 use rustc_middle::ty::{self, ExistentialPredicateStableCmpExt, Ty, TyCtxt, VtblEntry};
 use tracing::trace;
@@ -124,25 +124,5 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self,
         )?;
         interp_ok(mplace)
-    }
-
-    /// Turn a `dyn* Trait` type into an value with the actual dynamic type.
-    pub(super) fn unpack_dyn_star<P: Projectable<'tcx, M::Provenance>>(
-        &self,
-        val: &P,
-        expected_trait: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ) -> InterpResult<'tcx, P> {
-        assert!(
-            matches!(val.layout().ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
-            "`unpack_dyn_star` only makes sense on `dyn*` types"
-        );
-        let data = self.project_field(val, FieldIdx::ZERO)?;
-        let vtable = self.project_field(val, FieldIdx::ONE)?;
-        let vtable = self.read_pointer(&vtable.to_op(self)?)?;
-        let ty = self.get_ptr_vtable_ty(vtable, Some(expected_trait))?;
-        // `data` is already the right thing but has the wrong type. So we transmute it.
-        let layout = self.layout_of(ty)?;
-        let data = data.transmute(layout, self)?;
-        interp_ok(data)
     }
 }

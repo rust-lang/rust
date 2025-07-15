@@ -16,18 +16,17 @@ use regex::{Captures, Regex};
 use tracing::*;
 
 use crate::common::{
-    Assembly, Codegen, CodegenUnits, CompareMode, Config, CoverageMap, CoverageRun, Crashes,
-    DebugInfo, Debugger, FailMode, Incremental, MirOpt, PassMode, Pretty, RunMake, Rustdoc,
-    RustdocJs, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
-    UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path, incremental_dir,
-    output_base_dir, output_base_name, output_testname_unique,
+    CompareMode, Config, Debugger, FailMode, PassMode, TestMode, TestPaths, TestSuite,
+    UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG,
+    UI_WINDOWS_SVG, expected_output_path, incremental_dir, output_base_dir, output_base_name,
+    output_testname_unique,
 };
 use crate::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
+use crate::directives::TestProps;
 use crate::errors::{Error, ErrorKind, load_errors};
-use crate::header::TestProps;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::util::{Utf8PathBufExt, add_dylib_path, logv, static_regex};
-use crate::{ColorConfig, json, stamp_file_path};
+use crate::{ColorConfig, help, json, stamp_file_path, warning};
 
 mod debugger;
 
@@ -121,6 +120,8 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
         }
 
         _ => {
+            // FIXME: this logic seems strange as well.
+
             // android has its own gdb handling
             if config.debugger == Some(Debugger::Gdb) && config.gdb.is_none() {
                 panic!("gdb not available but debuginfo gdb debuginfo test requested");
@@ -152,7 +153,7 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
         cx.init_incremental_test();
     }
 
-    if config.mode == Incremental {
+    if config.mode == TestMode::Incremental {
         // Incremental tests are special because they cannot be run in
         // parallel.
         assert!(!props.revisions.is_empty(), "Incremental tests require revisions.");
@@ -201,7 +202,7 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         None => {}
     }
 
-    if let Ui = config.mode {
+    if config.mode == TestMode::Ui {
         config.force_pass_mode.hash(&mut hash);
     }
 
@@ -249,25 +250,28 @@ impl<'test> TestCx<'test> {
     /// Code executed for each revision in turn (or, if there are no
     /// revisions, exactly once, with revision == None).
     fn run_revision(&self) {
-        if self.props.should_ice && self.config.mode != Incremental && self.config.mode != Crashes {
+        if self.props.should_ice
+            && self.config.mode != TestMode::Incremental
+            && self.config.mode != TestMode::Crashes
+        {
             self.fatal("cannot use should-ice in a test that is not cfail");
         }
         match self.config.mode {
-            Pretty => self.run_pretty_test(),
-            DebugInfo => self.run_debuginfo_test(),
-            Codegen => self.run_codegen_test(),
-            Rustdoc => self.run_rustdoc_test(),
-            RustdocJson => self.run_rustdoc_json_test(),
-            CodegenUnits => self.run_codegen_units_test(),
-            Incremental => self.run_incremental_test(),
-            RunMake => self.run_rmake_test(),
-            Ui => self.run_ui_test(),
-            MirOpt => self.run_mir_opt_test(),
-            Assembly => self.run_assembly_test(),
-            RustdocJs => self.run_rustdoc_js_test(),
-            CoverageMap => self.run_coverage_map_test(), // see self::coverage
-            CoverageRun => self.run_coverage_run_test(), // see self::coverage
-            Crashes => self.run_crash_test(),
+            TestMode::Pretty => self.run_pretty_test(),
+            TestMode::DebugInfo => self.run_debuginfo_test(),
+            TestMode::Codegen => self.run_codegen_test(),
+            TestMode::Rustdoc => self.run_rustdoc_test(),
+            TestMode::RustdocJson => self.run_rustdoc_json_test(),
+            TestMode::CodegenUnits => self.run_codegen_units_test(),
+            TestMode::Incremental => self.run_incremental_test(),
+            TestMode::RunMake => self.run_rmake_test(),
+            TestMode::Ui => self.run_ui_test(),
+            TestMode::MirOpt => self.run_mir_opt_test(),
+            TestMode::Assembly => self.run_assembly_test(),
+            TestMode::RustdocJs => self.run_rustdoc_js_test(),
+            TestMode::CoverageMap => self.run_coverage_map_test(), // see self::coverage
+            TestMode::CoverageRun => self.run_coverage_run_test(), // see self::coverage
+            TestMode::Crashes => self.run_crash_test(),
         }
     }
 
@@ -277,9 +281,13 @@ impl<'test> TestCx<'test> {
 
     fn should_run(&self, pm: Option<PassMode>) -> WillExecute {
         let test_should_run = match self.config.mode {
-            Ui if pm == Some(PassMode::Run) || self.props.fail_mode == Some(FailMode::Run) => true,
-            MirOpt if pm == Some(PassMode::Run) => true,
-            Ui | MirOpt => false,
+            TestMode::Ui
+                if pm == Some(PassMode::Run) || self.props.fail_mode == Some(FailMode::Run) =>
+            {
+                true
+            }
+            TestMode::MirOpt if pm == Some(PassMode::Run) => true,
+            TestMode::Ui | TestMode::MirOpt => false,
             mode => panic!("unimplemented for mode {:?}", mode),
         };
         if test_should_run { self.run_if_enabled() } else { WillExecute::No }
@@ -291,17 +299,17 @@ impl<'test> TestCx<'test> {
 
     fn should_run_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
-            Ui | MirOpt => pm == Some(PassMode::Run),
+            TestMode::Ui | TestMode::MirOpt => pm == Some(PassMode::Run),
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
 
     fn should_compile_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
-            RustdocJs => true,
-            Ui => pm.is_some() || self.props.fail_mode > Some(FailMode::Build),
-            Crashes => false,
-            Incremental => {
+            TestMode::RustdocJs => true,
+            TestMode::Ui => pm.is_some() || self.props.fail_mode > Some(FailMode::Build),
+            TestMode::Crashes => false,
+            TestMode::Incremental => {
                 let revision =
                     self.revision.expect("incremental tests require a list of revisions");
                 if revision.starts_with("cpass")
@@ -347,7 +355,7 @@ impl<'test> TestCx<'test> {
             if proc_res.status.success() {
                 {
                     self.error(&format!("{} test did not emit an error", self.config.mode));
-                    if self.config.mode == crate::common::Mode::Ui {
+                    if self.config.mode == crate::common::TestMode::Ui {
                         println!("note: by default, ui tests are expected not to compile");
                     }
                     proc_res.fatal(None, || ());
@@ -485,12 +493,15 @@ impl<'test> TestCx<'test> {
                 .windows(2)
                 .any(|args| args == cfg_arg || args[0] == arg || args[1] == arg)
             {
-                panic!(
-                    "error: redundant cfg argument `{normalized_revision}` is already created by the revision"
+                error!(
+                    "redundant cfg argument `{normalized_revision}` is already created by the \
+                    revision"
                 );
+                panic!("redundant cfg argument");
             }
             if self.config.builtin_cfg_names().contains(&normalized_revision) {
-                panic!("error: revision `{normalized_revision}` collides with a builtin cfg");
+                error!("revision `{normalized_revision}` collides with a built-in cfg");
+                panic!("revision collides with built-in cfg");
             }
             cmd.args(cfg_arg);
         }
@@ -887,7 +898,9 @@ impl<'test> TestCx<'test> {
 
     fn should_emit_metadata(&self, pm: Option<PassMode>) -> Emit {
         match (pm, self.props.fail_mode, self.config.mode) {
-            (Some(PassMode::Check), ..) | (_, Some(FailMode::Check), Ui) => Emit::Metadata,
+            (Some(PassMode::Check), ..) | (_, Some(FailMode::Check), TestMode::Ui) => {
+                Emit::Metadata
+            }
             _ => Emit::None,
         }
     }
@@ -921,7 +934,7 @@ impl<'test> TestCx<'test> {
         };
 
         let allow_unused = match self.config.mode {
-            Ui => {
+            TestMode::Ui => {
                 // UI tests tend to have tons of unused code as
                 // it's just testing various pieces of the compile, but we don't
                 // want to actually assert warnings about all this code. Instead
@@ -1016,7 +1029,7 @@ impl<'test> TestCx<'test> {
             .args(&self.props.compile_flags)
             .args(&self.props.doc_flags);
 
-        if self.config.mode == RustdocJson {
+        if self.config.mode == TestMode::RustdocJson {
             rustdoc.arg("--output-format").arg("json").arg("-Zunstable-options");
         }
 
@@ -1052,18 +1065,20 @@ impl<'test> TestCx<'test> {
         let proc_res = match &*self.config.target {
             // This is pretty similar to below, we're transforming:
             //
-            //      program arg1 arg2
+            // ```text
+            // program arg1 arg2
+            // ```
             //
             // into
             //
-            //      remote-test-client run program 2 support-lib.so support-lib2.so arg1 arg2
+            // ```text
+            // remote-test-client run program 2 support-lib.so support-lib2.so arg1 arg2
+            // ```
             //
-            // The test-client program will upload `program` to the emulator
-            // along with all other support libraries listed (in this case
-            // `support-lib.so` and `support-lib2.so`. It will then execute
-            // the program on the emulator with the arguments specified
-            // (in the environment we give the process) and then report back
-            // the same result.
+            // The test-client program will upload `program` to the emulator along with all other
+            // support libraries listed (in this case `support-lib.so` and `support-lib2.so`. It
+            // will then execute the program on the emulator with the arguments specified (in the
+            // environment we give the process) and then report back the same result.
             _ if self.config.remote_test_client.is_some() => {
                 let aux_dir = self.aux_output_dir_name();
                 let ProcArgs { prog, args } = self.make_run_args();
@@ -1365,7 +1380,7 @@ impl<'test> TestCx<'test> {
             || self.is_vxworks_pure_static()
             || self.config.target.contains("bpf")
             || !self.config.target_cfg().dynamic_linking
-            || matches!(self.config.mode, CoverageMap | CoverageRun)
+            || matches!(self.config.mode, TestMode::CoverageMap | TestMode::CoverageRun)
         {
             // We primarily compile all auxiliary libraries as dynamic libraries
             // to avoid code size bloat and large binaries as much as possible
@@ -1479,7 +1494,10 @@ impl<'test> TestCx<'test> {
     }
 
     fn is_rustdoc(&self) -> bool {
-        matches!(self.config.suite.as_str(), "rustdoc-ui" | "rustdoc-js" | "rustdoc-json")
+        matches!(
+            self.config.suite,
+            TestSuite::RustdocUi | TestSuite::RustdocJs | TestSuite::RustdocJson
+        )
     }
 
     fn make_compile_args(
@@ -1529,6 +1547,8 @@ impl<'test> TestCx<'test> {
         ));
 
         // Optionally prevent default --sysroot if specified in test compile-flags.
+        //
+        // FIXME: I feel like this logic is fairly sus.
         if !self.props.compile_flags.iter().any(|flag| flag.starts_with("--sysroot"))
             && !self.config.host_rustcflags.iter().any(|flag| flag == "--sysroot")
         {
@@ -1553,14 +1573,14 @@ impl<'test> TestCx<'test> {
                 rustc.args(&["-Z", "incremental-verify-ich"]);
             }
 
-            if self.config.mode == CodegenUnits {
+            if self.config.mode == TestMode::CodegenUnits {
                 rustc.args(&["-Z", "human_readable_cgu_names"]);
             }
         }
 
         if self.config.optimize_tests && !is_rustdoc {
             match self.config.mode {
-                Ui => {
+                TestMode::Ui => {
                     // If optimize-tests is true we still only want to optimize tests that actually get
                     // executed and that don't specify their own optimization levels.
                     // Note: aux libs don't have a pass-mode, so they won't get optimized
@@ -1576,8 +1596,8 @@ impl<'test> TestCx<'test> {
                         rustc.arg("-O");
                     }
                 }
-                DebugInfo => { /* debuginfo tests must be unoptimized */ }
-                CoverageMap | CoverageRun => {
+                TestMode::DebugInfo => { /* debuginfo tests must be unoptimized */ }
+                TestMode::CoverageMap | TestMode::CoverageRun => {
                     // Coverage mappings and coverage reports are affected by
                     // optimization level, so they ignore the optimize-tests
                     // setting and set an optimization level in their mode's
@@ -1598,7 +1618,7 @@ impl<'test> TestCx<'test> {
         };
 
         match self.config.mode {
-            Incremental => {
+            TestMode::Incremental => {
                 // If we are extracting and matching errors in the new
                 // fashion, then you want JSON mode. Old-skool error
                 // patterns still match the raw compiler output.
@@ -1611,7 +1631,7 @@ impl<'test> TestCx<'test> {
                 rustc.arg("-Zui-testing");
                 rustc.arg("-Zdeduplicate-diagnostics=no");
             }
-            Ui => {
+            TestMode::Ui => {
                 if !self.props.compile_flags.iter().any(|s| s.starts_with("--error-format")) {
                     rustc.args(&["--error-format", "json"]);
                     rustc.args(&["--json", "future-incompat"]);
@@ -1624,7 +1644,7 @@ impl<'test> TestCx<'test> {
                 // FIXME: use this for other modes too, for perf?
                 rustc.arg("-Cstrip=debuginfo");
             }
-            MirOpt => {
+            TestMode::MirOpt => {
                 // We check passes under test to minimize the mir-opt test dump
                 // if files_for_miropt_test parses the passes, we dump only those passes
                 // otherwise we conservatively pass -Zdump-mir=all
@@ -1654,7 +1674,7 @@ impl<'test> TestCx<'test> {
 
                 set_mir_dump_dir(&mut rustc);
             }
-            CoverageMap => {
+            TestMode::CoverageMap => {
                 rustc.arg("-Cinstrument-coverage");
                 // These tests only compile to LLVM IR, so they don't need the
                 // profiler runtime to be present.
@@ -1664,23 +1684,28 @@ impl<'test> TestCx<'test> {
                 // by `compile-flags`.
                 rustc.arg("-Copt-level=2");
             }
-            CoverageRun => {
+            TestMode::CoverageRun => {
                 rustc.arg("-Cinstrument-coverage");
                 // Coverage reports are sometimes sensitive to optimizations,
                 // and the current snapshots assume `opt-level=2` unless
                 // overridden by `compile-flags`.
                 rustc.arg("-Copt-level=2");
             }
-            Assembly | Codegen => {
+            TestMode::Assembly | TestMode::Codegen => {
                 rustc.arg("-Cdebug-assertions=no");
             }
-            Crashes => {
+            TestMode::Crashes => {
                 set_mir_dump_dir(&mut rustc);
             }
-            CodegenUnits => {
+            TestMode::CodegenUnits => {
                 rustc.arg("-Zprint-mono-items");
             }
-            Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake | RustdocJs => {
+            TestMode::Pretty
+            | TestMode::DebugInfo
+            | TestMode::Rustdoc
+            | TestMode::RustdocJson
+            | TestMode::RunMake
+            | TestMode::RustdocJs => {
                 // do not use JSON output
             }
         }
@@ -1767,6 +1792,12 @@ impl<'test> TestCx<'test> {
 
         // Allow tests to use internal features.
         rustc.args(&["-A", "internal_features"]);
+
+        // Allow tests to have unused parens and braces.
+        // Add #![deny(unused_parens, unused_braces)] to the test file if you want to
+        // test that these lints are working.
+        rustc.args(&["-A", "unused_parens"]);
+        rustc.args(&["-A", "unused_braces"]);
 
         if self.props.force_host {
             self.maybe_add_external_args(&mut rustc, &self.config.host_rustcflags);
@@ -1915,7 +1946,8 @@ impl<'test> TestCx<'test> {
 
     fn dump_output_file(&self, out: &str, extension: &str) {
         let outfile = self.make_out_name(extension);
-        fs::write(outfile.as_std_path(), out).unwrap();
+        fs::write(outfile.as_std_path(), out)
+            .unwrap_or_else(|err| panic!("failed to write {outfile}: {err:?}"));
     }
 
     /// Creates a filename for output with the given extension.
@@ -1946,7 +1978,7 @@ impl<'test> TestCx<'test> {
     /// The revision, ignored for incremental compilation since it wants all revisions in
     /// the same directory.
     fn safe_revision(&self) -> Option<&str> {
-        if self.config.mode == Incremental { None } else { self.revision }
+        if self.config.mode == TestMode::Incremental { None } else { self.revision }
     }
 
     /// Gets the absolute path to the directory where all output for the given
@@ -2036,7 +2068,7 @@ impl<'test> TestCx<'test> {
         // Provide more context on failures.
         filecheck.args(&["--dump-input-context", "100"]);
 
-        // Add custom flags supplied by the `filecheck-flags:` test header.
+        // Add custom flags supplied by the `filecheck-flags:` test directive.
         filecheck.args(&self.props.filecheck_flags);
 
         // FIXME(jieyouxu): don't pass an empty Path
@@ -2167,9 +2199,10 @@ impl<'test> TestCx<'test> {
             println!("{}", String::from_utf8_lossy(&output.stdout));
             eprintln!("{}", String::from_utf8_lossy(&output.stderr));
         } else {
-            eprintln!("warning: no pager configured, falling back to unified diff");
-            eprintln!(
-                "help: try configuring a git pager (e.g. `delta`) with `git config --global core.pager delta`"
+            warning!("no pager configured, falling back to unified diff");
+            help!(
+                "try configuring a git pager (e.g. `delta`) with \
+                `git config --global core.pager delta`"
             );
             let mut out = io::stdout();
             let mut diff = BufReader::new(File::open(&diff_filename).unwrap());

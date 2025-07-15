@@ -4,10 +4,10 @@
 
 use std::assert_matches::assert_matches;
 
-use rustc_abi::Size;
+use rustc_abi::{FieldIdx, Size};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
-use rustc_middle::ty::layout::{TyAndLayout, ValidityRequirement};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_span::{Symbol, sym};
@@ -17,8 +17,8 @@ use super::memory::MemoryKind;
 use super::util::ensure_monomorphic_enough;
 use super::{
     Allocation, CheckInAllocMsg, ConstAllocation, ImmTy, InterpCx, InterpResult, Machine, OpTy,
-    PlaceTy, Pointer, PointerArithmetic, Provenance, Scalar, err_inval, err_ub_custom,
-    err_unsup_format, interp_ok, throw_inval, throw_ub_custom, throw_ub_format,
+    PlaceTy, Pointer, PointerArithmetic, Provenance, Scalar, err_ub_custom, err_unsup_format,
+    interp_ok, throw_inval, throw_ub_custom, throw_ub_format,
 };
 use crate::fluent_generated as fluent;
 
@@ -28,8 +28,35 @@ pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAll
     let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes(), ());
     tcx.mk_const_alloc(alloc)
 }
-
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
+    /// Generates a value of `TypeId` for `ty` in-place.
+    pub(crate) fn write_type_id(
+        &mut self,
+        ty: Ty<'tcx>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()> {
+        let tcx = self.tcx;
+        let type_id_hash = tcx.type_id_hash(ty).as_u128();
+        let op = self.const_val_to_op(
+            ConstValue::Scalar(Scalar::from_u128(type_id_hash)),
+            tcx.types.u128,
+            None,
+        )?;
+        self.copy_op_allow_transmute(&op, dest)?;
+
+        // Give the first pointer-size bytes provenance that knows about the type id.
+        // Here we rely on `TypeId` being a newtype around an array of pointers, so we
+        // first project to its only field and then the first array element.
+        let alloc_id = tcx.reserve_and_set_type_id_alloc(ty);
+        let first = self.project_field(dest, FieldIdx::ZERO)?;
+        let first = self.project_index(&first, 0)?;
+        let offset = self.read_scalar(&first)?.to_target_usize(&tcx)?;
+        let ptr = Pointer::new(alloc_id.into(), Size::from_bytes(offset));
+        let ptr = self.global_root_pointer(ptr)?;
+        let val = Scalar::from_pointer(ptr, &tcx);
+        self.write_scalar(val, &first)
+    }
+
     /// Returns `true` if emulation happened.
     /// Here we implement the intrinsics that are common to all Miri instances; individual machines can add their own
     /// intrinsic handling.
@@ -63,9 +90,48 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::type_id => {
                 let tp_ty = instance.args.type_at(0);
                 ensure_monomorphic_enough(tcx, tp_ty)?;
-                let val = ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128());
-                let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
-                self.copy_op(&val, dest)?;
+                self.write_type_id(tp_ty, dest)?;
+            }
+            sym::type_id_eq => {
+                // Both operands are `TypeId`, which is a newtype around an array of pointers.
+                // Project until we have the array elements.
+                let a_fields = self.project_field(&args[0], FieldIdx::ZERO)?;
+                let b_fields = self.project_field(&args[1], FieldIdx::ZERO)?;
+
+                let mut a_fields = self.project_array_fields(&a_fields)?;
+                let mut b_fields = self.project_array_fields(&b_fields)?;
+
+                let (_idx, a) = a_fields
+                    .next(self)?
+                    .expect("we know the layout of TypeId has at least 2 array elements");
+                let a = self.deref_pointer(&a)?;
+                let (a, offset_a) = self.get_ptr_type_id(a.ptr())?;
+
+                let (_idx, b) = b_fields
+                    .next(self)?
+                    .expect("we know the layout of TypeId has at least 2 array elements");
+                let b = self.deref_pointer(&b)?;
+                let (b, offset_b) = self.get_ptr_type_id(b.ptr())?;
+
+                let provenance_matches = a == b;
+
+                let mut eq_id = offset_a == offset_b;
+
+                while let Some((_, a)) = a_fields.next(self)? {
+                    let (_, b) = b_fields.next(self)?.unwrap();
+
+                    let a = self.read_target_usize(&a)?;
+                    let b = self.read_target_usize(&b)?;
+                    eq_id &= a == b;
+                }
+
+                if !eq_id && provenance_matches {
+                    throw_ub_format!(
+                        "type_id_eq: one of the TypeId arguments is invalid, the hash does not match the type it represents"
+                    )
+                }
+
+                self.write_scalar(Scalar::from_bool(provenance_matches), dest)?;
             }
             sym::variant_count => {
                 let tp_ty = instance.args.type_at(0);
@@ -372,41 +438,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.exact_div(&val, &size, dest)?;
             }
 
-            sym::assert_inhabited
-            | sym::assert_zero_valid
-            | sym::assert_mem_uninitialized_valid => {
-                let ty = instance.args.type_at(0);
-                let requirement = ValidityRequirement::from_intrinsic(intrinsic_name).unwrap();
-
-                let should_panic = !self
-                    .tcx
-                    .check_validity_requirement((requirement, self.typing_env.as_query_input(ty)))
-                    .map_err(|_| err_inval!(TooGeneric))?;
-
-                if should_panic {
-                    let layout = self.layout_of(ty)?;
-
-                    let msg = match requirement {
-                        // For *all* intrinsics we first check `is_uninhabited` to give a more specific
-                        // error message.
-                        _ if layout.is_uninhabited() => format!(
-                            "aborted execution: attempted to instantiate uninhabited type `{ty}`"
-                        ),
-                        ValidityRequirement::Inhabited => bug!("handled earlier"),
-                        ValidityRequirement::Zero => format!(
-                            "aborted execution: attempted to zero-initialize type `{ty}`, which is invalid"
-                        ),
-                        ValidityRequirement::UninitMitigated0x01Fill => format!(
-                            "aborted execution: attempted to leave type `{ty}` uninitialized, which is invalid"
-                        ),
-                        ValidityRequirement::Uninit => bug!("assert_uninit_valid doesn't exist"),
-                    };
-
-                    M::panic_nounwind(self, &msg)?;
-                    // Skip the `return_to_block` at the end (we panicked, we do not return).
-                    return interp_ok(true);
-                }
-            }
             sym::simd_insert => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
                 let elem = &args[2];

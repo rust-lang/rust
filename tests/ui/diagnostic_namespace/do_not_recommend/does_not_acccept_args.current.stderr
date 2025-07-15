@@ -4,7 +4,7 @@ warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
 LL | #[diagnostic::do_not_recommend(not_accepted)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
+   = note: `#[warn(malformed_diagnostic_attributes)]` on by default
 
 warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
   --> $DIR/does_not_acccept_args.rs:15:1

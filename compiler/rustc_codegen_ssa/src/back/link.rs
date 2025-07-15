@@ -1379,7 +1379,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
         }
     }
 
-    let features = sess.opts.unstable_opts.linker_features;
+    let features = sess.opts.cg.linker_features;
 
     // linker and linker flavor specified via command line have precedence over what the target
     // specification specifies
@@ -2767,7 +2767,7 @@ fn add_upstream_rust_crates(
 
     if sess.target.is_like_aix {
         // Unlike ELF linkers, AIX doesn't feature `DT_SONAME` to override
-        // the dependency name when outputing a shared library. Thus, `ld` will
+        // the dependency name when outputting a shared library. Thus, `ld` will
         // use the full path to shared libraries as the dependency if passed it
         // by default unless `noipath` is passed.
         // https://www.ibm.com/docs/en/aix/7.3?topic=l-ld-command.
@@ -3051,7 +3051,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
     // Supported architecture names can be found in the source:
     // https://github.com/apple-oss-distributions/ld64/blob/ld64-951.9/src/abstraction/MachOFileAbstraction.hpp#L578-L648
     //
-    // Intentially verbose to ensure that the list always matches correctly
+    // Intentionally verbose to ensure that the list always matches correctly
     // with the list in the source above.
     let ld64_arch = match llvm_arch {
         "armv7k" => "armv7k",
@@ -3118,7 +3118,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         // We do not currently know the actual SDK version though, so we have a few options:
         // 1. Use the minimum version supported by rustc.
         // 2. Use the same as the deployment target.
-        // 3. Use an arbitary recent version.
+        // 3. Use an arbitrary recent version.
         // 4. Omit the version.
         //
         // The first option is too low / too conservative, and means that users will not get the
@@ -3327,35 +3327,6 @@ fn add_lld_args(
     // this, `wasm-component-ld`, which is overridden if this option is passed.
     if !sess.target.is_like_wasm {
         cmd.cc_arg("-fuse-ld=lld");
-
-        // On ELF platforms like at least x64 linux, GNU ld and LLD have opposite defaults on some
-        // section garbage-collection features. For example, the somewhat popular `linkme` crate and
-        // its dependents rely in practice on this difference: when using lld, they need `-z
-        // nostart-stop-gc` to prevent encapsulation symbols and sections from being
-        // garbage-collected.
-        //
-        // More information about all this can be found in:
-        // - https://maskray.me/blog/2021-01-31-metadata-sections-comdat-and-shf-link-order
-        // - https://lld.llvm.org/ELF/start-stop-gc
-        //
-        // So when using lld, we restore, for now, the traditional behavior to help migration, but
-        // will remove it in the future.
-        // Since this only disables an optimization, it shouldn't create issues, but is in theory
-        // slightly suboptimal. However, it:
-        // - doesn't have any visible impact on our benchmarks
-        // - reduces the need to disable lld for the crates that depend on this
-        //
-        // Note that lld can detect some cases where this difference is relied on, and emits a
-        // dedicated error to add this link arg. We could make use of this error to emit an FCW. As
-        // of writing this, we don't do it, because lld is already enabled by default on nightly
-        // without this mitigation: no working project would see the FCW, so we do this to help
-        // stabilization.
-        //
-        // FIXME: emit an FCW if linking fails due its absence, and then remove this link-arg in the
-        // future.
-        if sess.target.llvm_target == "x86_64-unknown-linux-gnu" {
-            cmd.link_arg("-znostart-stop-gc");
-        }
     }
 
     if !flavor.is_gnu() {

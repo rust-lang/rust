@@ -1,0 +1,14 @@
+error[E0425]: cannot find value `abcdef` in this scope
+  --> $DIR/concat-hygiene.rs:5:10
+   |
+LL |         ${concat($lhs, $rhs)}
+   |          ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+...
+LL |     let _another = join!(abc, def);
+   |                    --------------- in this macro invocation
+   |
+   = note: this error originates in the macro `join` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

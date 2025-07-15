@@ -28,31 +28,6 @@ LL | #[macro_use]
    | ^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:47:1
-   |
-LL | #[path = "bar.rs"]
-   | ^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:46:1
-   |
-LL | #[path = "auxiliary/lint_unused_extern_crate.rs"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:53:1
-   |
-LL | #[ignore = "some text"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:52:1
-   |
-LL | #[ignore]
-   | ^^^^^^^^^
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:55:1
    |
 LL | #[should_panic(expected = "values don't match")]
@@ -64,30 +39,6 @@ note: attribute also specified here
 LL | #[should_panic]
    | ^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:66:1
-   |
-LL | #[non_exhaustive]
-   | ^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:65:1
-   |
-LL | #[non_exhaustive]
-   | ^^^^^^^^^^^^^^^^^
-
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:70:1
-   |
-LL | #[automatically_derived]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:69:1
-   |
-LL | #[automatically_derived]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:14:1
@@ -141,18 +92,6 @@ LL | #![no_std]
    | ^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:25:1
-   |
-LL | #![no_implicit_prelude]
-   | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:24:1
-   |
-LL | #![no_implicit_prelude]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:27:1
    |
 LL | #![windows_subsystem = "windows"]
@@ -190,6 +129,31 @@ LL |     #[macro_export]
    |     ^^^^^^^^^^^^^^^
 
 error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:47:1
+   |
+LL | #[path = "bar.rs"]
+   | ^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:46:1
+   |
+LL | #[path = "auxiliary/lint_unused_extern_crate.rs"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:53:1
+   |
+LL | #[ignore = "some text"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:52:1
+   |
+LL | #[ignore]
+   | ^^^^^^^^^
+
+error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:60:1
    |
 LL | #[must_use = "some message"]
@@ -201,6 +165,30 @@ note: attribute also specified here
 LL | #[must_use]
    | ^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:66:1
+   |
+LL | #[non_exhaustive]
+   | ^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:65:1
+   |
+LL | #[non_exhaustive]
+   | ^^^^^^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:70:1
+   |
+LL | #[automatically_derived]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:69:1
+   |
+LL | #[automatically_derived]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:74:1
@@ -289,5 +277,30 @@ note: attribute also specified here
 LL | #[used]
    | ^^^^^^^
 
-error: aborting due to 23 previous errors
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:105:1
+   |
+LL | #[link_section = ".text"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:108:1
+   |
+LL | #[link_section = ".bss"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:25:1
+   |
+LL | #![no_implicit_prelude]
+   | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:24:1
+   |
+LL | #![no_implicit_prelude]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 24 previous errors
 

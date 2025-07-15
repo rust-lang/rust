@@ -62,6 +62,10 @@ codegen_ssa_failed_to_get_layout = failed to get layout for {$ty}: {$err}
 
 codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 
+codegen_ssa_feature_not_valid = the feature named `{$feature}` is not valid for this target
+    .label = `{$feature}` is not valid for this target
+    .help = consider removing the leading `+` in the feature name
+
 codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
 
 codegen_ssa_forbidden_ctarget_feature =
@@ -76,9 +80,6 @@ codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extensio
 
 codegen_ssa_ignoring_output = ignoring -o because multiple .{$extension} files were produced
 
-codegen_ssa_illegal_link_ordinal_format = illegal ordinal format in `link_ordinal`
-    .note = an unsuffixed integer value, e.g., `1`, is expected
-
 codegen_ssa_incorrect_cgu_reuse_type =
     CGU-reuse for `{$cgu_user_name}` is `{$actual_reuse}` but should be {$at_least ->
     [one] {"at least "}
@@ -88,9 +89,6 @@ codegen_ssa_incorrect_cgu_reuse_type =
 codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient.
 
 codegen_ssa_invalid_instruction_set = invalid instruction set specified
-
-codegen_ssa_invalid_link_ordinal_nargs = incorrect number of arguments to `#[link_ordinal]`
-    .note = the attribute requires exactly one argument
 
 codegen_ssa_invalid_literal_value = invalid literal value
     .label = value must be an integer between `0` and `255`
@@ -289,7 +287,7 @@ codegen_ssa_thorin_missing_referenced_unit = unit {$unit} referenced by executab
 
 codegen_ssa_thorin_missing_required_section = input object missing required section `{$section}`
 
-codegen_ssa_thorin_mixed_input_encodings = input objects haved mixed encodings
+codegen_ssa_thorin_mixed_input_encodings = input objects have mixed encodings
 
 codegen_ssa_thorin_multiple_debug_info_section = multiple `.debug_info.dwo` sections
 

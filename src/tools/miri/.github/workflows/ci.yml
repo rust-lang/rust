@@ -13,34 +13,81 @@ defaults:
     shell: bash
 
 jobs:
-  build:
+  test:
+    name: test (${{ matrix.host_target }})
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            host_target: x86_64-unknown-linux-gnu
-          - os: macos-14
-            host_target: aarch64-apple-darwin
-          - os: windows-latest
-            host_target: i686-pc-windows-msvc
+          - host_target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - host_target: i686-unknown-linux-gnu
+            os: ubuntu-latest
+            multiarch: i386
+            gcc_cross: i686-linux-gnu
+          - host_target: aarch64-unknown-linux-gnu
+            os: ubuntu-24.04-arm
+          - host_target: armv7-unknown-linux-gnueabihf
+            os: ubuntu-24.04-arm
+            multiarch: armhf
+            gcc_cross: arm-linux-gnueabihf
+          - host_target: riscv64gc-unknown-linux-gnu
+            os: ubuntu-latest
+            multiarch: riscv64
+            gcc_cross: riscv64-linux-gnu
+            qemu: true
+          - host_target: s390x-unknown-linux-gnu
+            os: ubuntu-latest
+            multiarch: s390x
+            gcc_cross: s390x-linux-gnu
+            qemu: true
+          - host_target: aarch64-apple-darwin
+            os: macos-latest
+          - host_target: i686-pc-windows-msvc
+            os: windows-latest
     runs-on: ${{ matrix.os }}
     env:
       HOST_TARGET: ${{ matrix.host_target }}
     steps:
       - uses: actions/checkout@v4
+      - name: install qemu
+        if: ${{ matrix.qemu }}
+        run: sudo apt install qemu-user qemu-user-binfmt
+      - name: install multiarch
+        if: ${{ matrix.multiarch != '' }}
+        run: |
+          # s390x, ppc64el need Ubuntu Ports to be in the mirror list
+          sudo bash -c "echo 'https://ports.ubuntu.com/	priority:4' >> /etc/apt/apt-mirrors.txt"
+          # Add architecture
+          sudo dpkg --add-architecture ${{ matrix.multiarch }}
+          sudo apt update
+          # Install needed packages
+          sudo apt install $(echo "libatomic1: zlib1g-dev:" | sed 's/:/:${{ matrix.multiarch }}/g')
       - uses: ./.github/workflows/setup
         with:
           toolchain_flags: "--host ${{ matrix.host_target }}"
 
-      # The `style` job only runs on Linux; this makes sure the Windows-host-specific
-      # code is also covered by clippy.
-      - name: Check clippy
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: ./miri clippy -- -D warnings
+      # We set up the cross-compiler *after* the basic setup as setting CC would otherwise
+      # cause confusion.
+      - name: install gcc-cross
+        if: ${{ matrix.gcc_cross != '' }}
+        run: |
+          sudo apt install gcc-${{ matrix.gcc_cross }}
+          echo "Setting environment variables:"
+          echo "CC_${{ matrix.host_target }}=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
+          TARGET_UPPERCASE=$(echo ${{ matrix.host_target }} | tr '[:lower:]-' '[:upper:]_')
+          echo "CARGO_TARGET_${TARGET_UPPERCASE}_LINKER=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
 
-      - name: Test Miri
+      # The main test job! We don't run this in qemu as that is quite slow,
+      # so those targets only get the clippy check below.
+      - name: test Miri
+        if: ${{ !matrix.qemu }}
         run: ./ci/ci.sh
+
+      # The `style` job only runs on Linux; this makes sure the host-specific
+      # code is also covered by clippy.
+      - name: clippy
+        run: ./miri clippy -- -D warnings
 
   style:
     name: style checks
@@ -51,8 +98,6 @@ jobs:
 
       - name: rustfmt
         run: ./miri fmt --check
-      - name: clippy
-        run: ./miri clippy -- -D warnings
       - name: clippy (no features)
         run: ./miri clippy --no-default-features -- -D warnings
       - name: clippy (all features)
@@ -73,7 +118,7 @@ jobs:
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
   # And they should be added below in `cron-fail-notify` as well.
   conclusion:
-    needs: [build, style, coverage]
+    needs: [test, style, coverage]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
@@ -135,7 +180,7 @@ jobs:
   cron-fail-notify:
     name: cronjob failure notification
     runs-on: ubuntu-latest
-    needs: [build, style, coverage]
+    needs: [test, style, coverage]
     if: ${{ github.event_name == 'schedule' && failure() }}
     steps:
       # Send a Zulip notification

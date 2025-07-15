@@ -1,5 +1,3 @@
-#![feature(let_chains)]
-
 mod enums;
 mod parse;
 mod shared;

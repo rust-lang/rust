@@ -49,7 +49,7 @@ impl TestCx<'_> {
             std::fs::remove_file(pdb_file).unwrap();
         }
 
-        // compile test file (it should have 'compile-flags:-g' in the header)
+        // compile test file (it should have 'compile-flags:-g' in the directive)
         let should_run = self.run_if_enabled();
         let compile_result = self.compile_test(should_run, Emit::None);
         if !compile_result.status.success() {
@@ -135,7 +135,7 @@ impl TestCx<'_> {
             .unwrap_or_else(|e| self.fatal(&e));
         let mut cmds = dbg_cmds.commands.join("\n");
 
-        // compile test file (it should have 'compile-flags:-g' in the header)
+        // compile test file (it should have 'compile-flags:-g' in the directive)
         let should_run = self.run_if_enabled();
         let compiler_run_result = self.compile_test(should_run, Emit::None);
         if !compiler_run_result.status.success() {
@@ -322,6 +322,8 @@ impl TestCx<'_> {
                 &["-quiet".as_ref(), "-batch".as_ref(), "-nx".as_ref(), &debugger_script];
 
             let mut gdb = Command::new(self.config.gdb.as_ref().unwrap());
+
+            // FIXME: we are propagating `PYTHONPATH` from the environment, not a compiletest flag!
             let pythonpath = if let Ok(pp) = std::env::var("PYTHONPATH") {
                 format!("{pp}:{rust_pp_module_abs_path}")
             } else {
@@ -359,7 +361,7 @@ impl TestCx<'_> {
     }
 
     fn run_debuginfo_lldb_test_no_opt(&self) {
-        // compile test file (it should have 'compile-flags:-g' in the header)
+        // compile test file (it should have 'compile-flags:-g' in the directive)
         let should_run = self.run_if_enabled();
         let compile_result = self.compile_test(should_run, Emit::None);
         if !compile_result.status.success() {
@@ -443,6 +445,8 @@ impl TestCx<'_> {
     fn run_lldb(&self, test_executable: &Utf8Path, debugger_script: &Utf8Path) -> ProcRes {
         // Prepare the lldb_batchmode which executes the debugger script
         let lldb_script_path = self.config.src_root.join("src/etc/lldb_batchmode.py");
+
+        // FIXME: `PYTHONPATH` takes precedence over the flag...?
         let pythonpath = if let Ok(pp) = std::env::var("PYTHONPATH") {
             format!("{pp}:{}", self.config.lldb_python_dir.as_ref().unwrap())
         } else {

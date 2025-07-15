@@ -203,7 +203,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let adjusted_ty =
             self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
 
-        // If the callee is a bare function or a closure, then we're all set.
+        // If the callee is a function pointer or a closure, then we're all set.
         match *adjusted_ty.kind() {
             ty::FnDef(..) | ty::FnPtr(..) => {
                 let adjustments = self.adjust_steps(autoderef);
@@ -575,29 +575,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.require_type_is_sized(ty, sp, ObligationCauseCode::RustCall);
             } else {
                 self.dcx().emit_err(errors::RustCallIncorrectArgs { span: sp });
-            }
-        }
-
-        if let Some(def_id) = def_id
-            && self.tcx.def_kind(def_id) == hir::def::DefKind::Fn
-            && self.tcx.is_intrinsic(def_id, sym::const_eval_select)
-        {
-            let fn_sig = self.resolve_vars_if_possible(fn_sig);
-            for idx in 0..=1 {
-                let arg_ty = fn_sig.inputs()[idx + 1];
-                let span = arg_exprs.get(idx + 1).map_or(call_expr.span, |arg| arg.span);
-                // Check that second and third argument of `const_eval_select` must be `FnDef`, and additionally that
-                // the second argument must be `const fn`. The first argument must be a tuple, but this is already expressed
-                // in the function signature (`F: FnOnce<ARG>`), so I did not bother to add another check here.
-                //
-                // This check is here because there is currently no way to express a trait bound for `FnDef` types only.
-                if let ty::FnDef(def_id, _args) = *arg_ty.kind() {
-                    if idx == 0 && !self.tcx.is_const_fn(def_id) {
-                        self.dcx().emit_err(errors::ConstSelectMustBeConst { span });
-                    }
-                } else {
-                    self.dcx().emit_err(errors::ConstSelectMustBeFn { span, ty: arg_ty });
-                }
             }
         }
 

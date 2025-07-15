@@ -41,6 +41,7 @@ rustc_parse = { path = "../rustc_parse" }
 rustc_passes = { path = "../rustc_passes" }
 rustc_pattern_analysis = { path = "../rustc_pattern_analysis" }
 rustc_privacy = { path = "../rustc_privacy" }
+rustc_public = { path = "../rustc_public", features = ["rustc_internal"] }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_resolve = { path = "../rustc_resolve" }
 rustc_session = { path = "../rustc_session" }
@@ -50,7 +51,6 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
 serde_json = "1.0.59"
 shlex = "1.0"
-stable_mir = { path = "../stable_mir", features = ["rustc_internal"] }
 tracing = { version = "0.1.35" }
 # tidy-alphabetical-end
 
@@ -72,6 +72,7 @@ ctrlc = "3.4.4"
 
 [features]
 # tidy-alphabetical-start
+check_only = ['rustc_interface/check_only']
 llvm = ['rustc_interface/llvm']
 max_level_info = ['rustc_log/max_level_info']
 rustc_randomized_layouts = [

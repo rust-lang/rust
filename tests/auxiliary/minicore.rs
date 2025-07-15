@@ -5,7 +5,8 @@
 //! # Important notes
 //!
 //! - `minicore` is **only** intended for `core` items, and the stubs should match the actual `core`
-//!   items.
+//!   items. For identical error output, any `diagnostic` attributes (e.g. `on_unimplemented`)
+//!   should also be replicated here.
 //! - Be careful of adding new features and things that are only available for a subset of targets.
 //!
 //! # References
@@ -41,12 +42,24 @@ macro_rules! impl_marker_trait {
 }
 
 #[lang = "pointee_sized"]
+#[diagnostic::on_unimplemented(
+    message = "values of type `{Self}` may or may not have a size",
+    label = "may or may not have a known size"
+)]
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[diagnostic::on_unimplemented(
+    message = "the size for values of type `{Self}` cannot be known",
+    label = "doesn't have a known size"
+)]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[diagnostic::on_unimplemented(
+    message = "the size for values of type `{Self}` cannot be known at compilation time",
+    label = "doesn't have a size known at compile-time"
+)]
 pub trait Sized: MetaSized {}
 
 #[lang = "legacy_receiver"]
@@ -64,6 +77,10 @@ pub trait BikeshedGuaranteedNoDrop {}
 pub unsafe auto trait Freeze {}
 
 #[lang = "unpin"]
+#[diagnostic::on_unimplemented(
+    note = "consider using the `pin!` macro\nconsider using `Box::pin` if you need to access the pinned value outside of the current scope",
+    message = "`{Self}` cannot be unpinned"
+)]
 pub auto trait Unpin {}
 
 impl_marker_trait!(
@@ -110,6 +127,7 @@ pub struct UnsafeCell<T: PointeeSized> {
 impl<T: PointeeSized> !Freeze for UnsafeCell<T> {}
 
 #[lang = "tuple_trait"]
+#[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
 pub trait Tuple {}
 
 #[rustc_builtin_macro]
@@ -122,6 +140,10 @@ pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?)
 }
 #[rustc_builtin_macro]
 pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
+    /* compiler built-in */
+}
+#[rustc_builtin_macro]
+pub macro cfg_select($($tt:tt)*) {
     /* compiler built-in */
 }
 

@@ -5,9 +5,12 @@ LL | fn get_name() -> String {
    |                  ------ expected `String` because of return type
 ...
 LL |     your_name.trim()
-   |     ^^^^^^^^^^^^^^^^- help: try using a conversion method: `.to_string()`
-   |     |
-   |     expected `String`, found `&str`
+   |     ^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+   |
+help: try using a conversion method
+   |
+LL |     your_name.trim().to_string()
+   |                     ++++++++++++
 
 error: aborting due to 1 previous error
 

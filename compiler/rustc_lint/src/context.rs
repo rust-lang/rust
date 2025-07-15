@@ -504,6 +504,7 @@ pub trait LintContext {
     ///
     /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
+    #[track_caller]
     fn opt_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
@@ -542,6 +543,7 @@ pub trait LintContext {
     ///
     /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
+    #[track_caller]
     fn span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,

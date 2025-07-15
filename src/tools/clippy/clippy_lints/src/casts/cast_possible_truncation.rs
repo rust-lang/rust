@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{get_discriminant_value, is_isize_or_usize};
-use clippy_utils::{expr_or_init, sym};
+use clippy_utils::{expr_or_init, is_in_const_context, sym};
 use rustc_abi::IntegerType;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::{DefKind, Res};
@@ -168,7 +168,9 @@ pub(super) fn check(
 
     span_lint_and_then(cx, CAST_POSSIBLE_TRUNCATION, expr.span, msg, |diag| {
         diag.help("if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...");
-        if !cast_from.is_floating_point() {
+        // TODO: Remove the condition for const contexts when `try_from` and other commonly used methods
+        // become const fn.
+        if !is_in_const_context(cx) && !cast_from.is_floating_point() {
             offer_suggestion(cx, expr, cast_expr, cast_to_span, diag);
         }
     });

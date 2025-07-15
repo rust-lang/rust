@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/type-inference-none-in-generic-ref.rs:8:5
+   |
+LL |     S { o: &None };
+   |     ^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `S`
+   |
+help: consider specifying the generic argument
+   |
+LL |     S::<T> { o: &None };
+   |      +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

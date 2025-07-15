@@ -24,7 +24,6 @@ use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -723,7 +722,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This is maximally flexible, allowing e.g., `Some(mut x) | &Some(mut x)`.
             // In that example, `Some(mut x)` results in `Peel` whereas `&Some(mut x)` in `Reset`.
             | PatKind::Or(_)
-            // Like or-patterns, guard patterns just propogate to their subpatterns.
+            // Like or-patterns, guard patterns just propagate to their subpatterns.
             | PatKind::Guard(..) => AdjustMode::Pass,
         }
     }
@@ -902,16 +901,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // then that's equivalent to there existing a LUB.
         let cause = self.pattern_cause(ti, span);
         if let Err(err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
-            err.emit_unless(
-                ti.span
-                    .filter(|&s| {
-                        // In the case of `if`- and `while`-expressions we've already checked
-                        // that `scrutinee: bool`. We know that the pattern is `true`,
-                        // so an error here would be a duplicate and from the wrong POV.
-                        s.is_desugaring(DesugaringKind::CondTemporary)
-                    })
-                    .is_some(),
-            );
+            err.emit();
         }
 
         pat_ty
