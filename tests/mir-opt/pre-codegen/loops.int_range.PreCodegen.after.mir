@@ -63,9 +63,7 @@ fn int_range(_1: usize, _2: usize) -> () {
         StorageLive(_10);
         // DBG: _13 = &_4;
         StorageLive(_7);
-        StorageLive(_14);
         // DBG: _14 = &(_4.0: usize);
-        StorageLive(_15);
         // DBG: _15 = &(_4.1: usize);
         StorageLive(_5);
         _5 = copy (_4.0: usize);
@@ -78,8 +76,6 @@ fn int_range(_1: usize, _2: usize) -> () {
     }
 
     bb2: {
-        StorageDead(_15);
-        StorageDead(_14);
         StorageDead(_7);
         StorageDead(_10);
         StorageDead(_4);
@@ -87,8 +83,6 @@ fn int_range(_1: usize, _2: usize) -> () {
     }
 
     bb3: {
-        StorageDead(_15);
-        StorageDead(_14);
         _8 = copy (_4.0: usize);
         StorageLive(_9);
         _9 = AddUnchecked(copy _8, const 1_usize);
