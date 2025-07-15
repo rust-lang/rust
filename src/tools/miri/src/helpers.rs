@@ -13,7 +13,7 @@ use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
-use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, MaybeResult, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutOf, MaybeResult, TyAndLayout};
 use rustc_middle::ty::{self, Binder, FloatTy, FnSig, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
