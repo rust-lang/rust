@@ -81,7 +81,7 @@ pub struct QueryResponse<'tcx, R> {
 #[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct QueryRegionConstraints<'tcx> {
     pub outlives: Vec<QueryOutlivesConstraint<'tcx>>,
-    pub assumptions: Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>>,
+    pub assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
 }
 
 impl QueryRegionConstraints<'_> {
@@ -135,8 +135,7 @@ impl<'tcx, R> QueryResponse<'tcx, R> {
     }
 }
 
-pub type QueryOutlivesConstraint<'tcx> =
-    (ty::OutlivesPredicate<'tcx, GenericArg<'tcx>>, ConstraintCategory<'tcx>);
+pub type QueryOutlivesConstraint<'tcx> = (ty::ArgOutlivesPredicate<'tcx>, ConstraintCategory<'tcx>);
 
 #[derive(Default)]
 pub struct CanonicalParamEnvCache<'tcx> {

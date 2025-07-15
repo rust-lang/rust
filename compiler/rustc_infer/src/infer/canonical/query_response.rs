@@ -590,7 +590,7 @@ pub fn make_query_region_constraints<'tcx>(
     tcx: TyCtxt<'tcx>,
     outlives_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
-    assumptions: Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>>,
+    assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
 ) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData { constraints, verifys } = region_constraints;
 

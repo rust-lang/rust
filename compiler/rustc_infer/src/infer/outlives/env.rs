@@ -41,7 +41,7 @@ pub struct OutlivesEnvironment<'tcx> {
     known_type_outlives: Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
     /// Assumptions that come from the well-formedness of coroutines that we prove
     /// auto trait bounds for during the type checking of this body.
-    higher_ranked_assumptions: FxHashSet<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>>,
+    higher_ranked_assumptions: FxHashSet<ty::ArgOutlivesPredicate<'tcx>>,
 }
 
 /// "Region-bound pairs" tracks outlives relations that are known to
@@ -55,7 +55,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         known_type_outlives: Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
         extra_bounds: impl IntoIterator<Item = OutlivesBound<'tcx>>,
-        higher_ranked_assumptions: FxHashSet<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>>,
+        higher_ranked_assumptions: FxHashSet<ty::ArgOutlivesPredicate<'tcx>>,
     ) -> Self {
         let mut region_relation = TransitiveRelationBuilder::default();
         let mut region_bound_pairs = RegionBoundPairs::default();
@@ -108,9 +108,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
         &self.known_type_outlives
     }
 
-    pub fn higher_ranked_assumptions(
-        &self,
-    ) -> &FxHashSet<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>> {
+    pub fn higher_ranked_assumptions(&self) -> &FxHashSet<ty::ArgOutlivesPredicate<'tcx>> {
         &self.higher_ranked_assumptions
     }
 }

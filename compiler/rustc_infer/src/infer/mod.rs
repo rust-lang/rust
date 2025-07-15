@@ -154,7 +154,7 @@ pub struct InferCtxtInner<'tcx> {
     /// are deduced from the well-formedness of the witness's types, and are
     /// necessary because of the way we anonymize the regions in a coroutine,
     /// which may cause types to no longer be considered well-formed.
-    region_assumptions: Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>>,
+    region_assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
 
     /// Caches for opaque type inference.
     opaque_type_storage: OpaqueTypeStorage<'tcx>,
@@ -183,7 +183,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    pub fn region_assumptions(&self) -> &[ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>] {
+    pub fn region_assumptions(&self) -> &[ty::ArgOutlivesPredicate<'tcx>] {
         &self.region_assumptions
     }
 

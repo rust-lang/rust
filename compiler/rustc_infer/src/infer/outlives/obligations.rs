@@ -84,7 +84,7 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 impl<'tcx> InferCtxt<'tcx> {
     pub fn register_outlives_constraint(
         &self,
-        ty::OutlivesPredicate(arg, r2): ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
+        ty::OutlivesPredicate(arg, r2): ty::ArgOutlivesPredicate<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) {
         match arg.kind() {
@@ -170,18 +170,13 @@ impl<'tcx> InferCtxt<'tcx> {
         std::mem::take(&mut self.inner.borrow_mut().region_obligations)
     }
 
-    pub fn register_region_assumption(
-        &self,
-        assumption: ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
-    ) {
+    pub fn register_region_assumption(&self, assumption: ty::ArgOutlivesPredicate<'tcx>) {
         let mut inner = self.inner.borrow_mut();
         inner.undo_log.push(UndoLog::PushRegionAssumption);
         inner.region_assumptions.push(assumption);
     }
 
-    pub fn take_registered_region_assumptions(
-        &self,
-    ) -> Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>> {
+    pub fn take_registered_region_assumptions(&self) -> Vec<ty::ArgOutlivesPredicate<'tcx>> {
         std::mem::take(&mut self.inner.borrow_mut().region_assumptions)
     }
 

@@ -126,9 +126,9 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     fn convert(
         &mut self,
-        predicate: ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
+        predicate: ty::ArgOutlivesPredicate<'tcx>,
         constraint_category: ConstraintCategory<'tcx>,
-        higher_ranked_assumptions: &FxHashSet<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>>,
+        higher_ranked_assumptions: &FxHashSet<ty::ArgOutlivesPredicate<'tcx>>,
     ) {
         let tcx = self.infcx.tcx;
         debug!("generate: constraints at: {:#?}", self.locations);
@@ -282,7 +282,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         next_outlives_predicates: &mut Vec<(
-            ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
+            ty::ArgOutlivesPredicate<'tcx>,
             ConstraintCategory<'tcx>,
         )>,
     ) -> Ty<'tcx> {

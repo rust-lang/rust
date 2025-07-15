@@ -47,7 +47,7 @@ fn compute_assumptions<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     bound_tys: &'tcx ty::List<Ty<'tcx>>,
-) -> &'tcx ty::List<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>> {
+) -> &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>> {
     let infcx = tcx.infer_ctxt().build(ty::TypingMode::Analysis {
         defining_opaque_types_and_generators: ty::List::empty(),
     });

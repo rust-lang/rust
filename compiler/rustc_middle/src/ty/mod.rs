@@ -88,7 +88,7 @@ pub use self::opaque_types::OpaqueTypeKey;
 pub use self::parameterized::ParameterizedOverTcx;
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
-    AliasTerm, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
+    AliasTerm, ArgOutlivesPredicate, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
     ExistentialPredicateStableCmpExt, ExistentialProjection, ExistentialTraitRef,
     HostEffectPredicate, NormalizesTo, OutlivesPredicate, PolyCoercePredicate,
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,

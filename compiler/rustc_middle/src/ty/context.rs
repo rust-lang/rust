@@ -162,7 +162,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type BoundRegion = ty::BoundRegion;
     type PlaceholderRegion = ty::PlaceholderRegion;
 
-    type RegionAssumptions = &'tcx ty::List<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>>;
+    type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>;
 
     type ParamEnv = ty::ParamEnv<'tcx>;
     type Predicate = Predicate<'tcx>;
@@ -876,7 +876,7 @@ pub struct CtxtInterners<'tcx> {
     offset_of: InternedSet<'tcx, List<(VariantIdx, FieldIdx)>>,
     valtree: InternedSet<'tcx, ty::ValTreeKind<'tcx>>,
     patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
-    outlives: InternedSet<'tcx, List<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>>>,
+    outlives: InternedSet<'tcx, List<ty::ArgOutlivesPredicate<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -2696,7 +2696,7 @@ slice_interners!(
     captures: intern_captures(&'tcx ty::CapturedPlace<'tcx>),
     offset_of: pub mk_offset_of((VariantIdx, FieldIdx)),
     patterns: pub mk_patterns(Pattern<'tcx>),
-    outlives: pub mk_outlives(ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>),
+    outlives: pub mk_outlives(ty::ArgOutlivesPredicate<'tcx>),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -3116,8 +3116,8 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         I: Iterator<Item = T>,
         T: CollectAndApply<
-                ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
-                &'tcx ty::List<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>>,
+                ty::ArgOutlivesPredicate<'tcx>,
+                &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>,
             >,
     {
         T::collect_and_apply(iter, |xs| self.mk_outlives(xs))
