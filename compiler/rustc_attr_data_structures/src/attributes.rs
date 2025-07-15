@@ -3,7 +3,7 @@ use rustc_ast::token::CommentKind;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::hygiene::Transparency;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 use thin_vec::ThinVec;
 
 use crate::{DefaultBodyStability, PartialConstStability, PrintAttribute, RustcVersion, Stability};
@@ -69,6 +69,7 @@ pub enum ReprAttr {
     ReprAlign(Align),
 }
 pub use ReprAttr::*;
+use rustc_span::def_id::DefId;
 
 pub enum TransparencyError {
     UnknownTransparency(Symbol, Span),
@@ -138,6 +139,30 @@ impl Deprecation {
 pub enum UsedBy {
     Compiler,
     Linker,
+}
+
+#[derive(Debug, Clone, Encodable, Decodable, HashStable_Generic)]
+pub struct StrippedCfgItem<ModId = DefId> {
+    pub parent_module: ModId,
+    pub ident: Ident,
+    pub cfg: (CfgEntry, Span),
+}
+
+impl<ModId> StrippedCfgItem<ModId> {
+    pub fn map_mod_id<New>(self, f: impl FnOnce(ModId) -> New) -> StrippedCfgItem<New> {
+        StrippedCfgItem { parent_module: f(self.parent_module), ident: self.ident, cfg: self.cfg }
+    }
+}
+
+#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum CfgEntry {
+    All(ThinVec<CfgEntry>, Span),
+    Any(ThinVec<CfgEntry>, Span),
+    Not(Box<CfgEntry>, Span),
+    Bool(bool, Span),
+    NameValue { name: Symbol, name_span: Span, value: Option<(Symbol, Span)>, span: Span },
+    Version(Option<RustcVersion>, Span),
 }
 
 /// Represents parsed *built-in* inert attributes.

@@ -36,12 +36,12 @@ use late::{
 };
 use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use rustc_arena::{DroplessArena, TypedArena};
-use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{
     self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, Expr, ExprKind, GenericArg, GenericArgs,
     LitKind, NodeId, Path, attr,
 };
+use rustc_attr_data_structures::StrippedCfgItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;

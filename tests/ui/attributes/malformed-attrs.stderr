@@ -1,8 +1,11 @@
-error: `cfg` is not followed by parentheses
+error[E0539]: malformed `cfg` attribute input
   --> $DIR/malformed-attrs.rs:102:1
    |
 LL | #[cfg]
-   | ^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   | ^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[cfg(predicate)]`
 
 error: malformed `cfg_attr` attribute input
   --> $DIR/malformed-attrs.rs:104:1

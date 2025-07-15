@@ -5,10 +5,9 @@ use std::cell::Cell;
 use std::mem;
 use std::sync::Arc;
 
-use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, Crate, NodeId, attr};
 use rustc_ast_pretty::pprust;
-use rustc_attr_data_structures::StabilityLevel;
+use rustc_attr_data_structures::{CfgEntry, StabilityLevel, StrippedCfgItem};
 use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
@@ -485,8 +484,18 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         self.proc_macros.push(self.local_def_id(id))
     }
 
-    fn append_stripped_cfg_item(&mut self, parent_node: NodeId, ident: Ident, cfg: ast::MetaItem) {
-        self.stripped_cfg_items.push(StrippedCfgItem { parent_module: parent_node, ident, cfg });
+    fn append_stripped_cfg_item(
+        &mut self,
+        parent_node: NodeId,
+        ident: Ident,
+        cfg: CfgEntry,
+        cfg_span: Span,
+    ) {
+        self.stripped_cfg_items.push(StrippedCfgItem {
+            parent_module: parent_node,
+            ident,
+            cfg: (cfg, cfg_span),
+        });
     }
 
     fn registered_tools(&self) -> &RegisteredTools {
