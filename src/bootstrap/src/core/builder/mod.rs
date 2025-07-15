@@ -420,6 +420,7 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
             "tests/debuginfo",
             "tests/incremental",
             "tests/mir-opt",
+            "tests/parallel",
             "tests/pretty",
             "tests/run-make",
             "tests/rustdoc",
