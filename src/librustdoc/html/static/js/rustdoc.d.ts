@@ -227,6 +227,11 @@ declare namespace rustdoc {
         path: string,
         ty: number,
         type: FunctionSearchType | null,
+        descIndex: number,
+        bitIndex: number,
+        implDisambiguator: String | null,
+        is_alias?: boolean,
+        original?: Row,
     }
 
     /**
