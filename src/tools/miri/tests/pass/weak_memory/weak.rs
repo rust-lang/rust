@@ -24,7 +24,7 @@ fn static_atomic(val: usize) -> &'static AtomicUsize {
 }
 
 // Spins until it reads the given value
-fn reads_value(loc: &AtomicUsize, val: usize) -> usize {
+fn spin_until(loc: &AtomicUsize, val: usize) -> usize {
     while loc.load(Relaxed) != val {
         std::hint::spin_loop();
     }
@@ -85,7 +85,7 @@ fn initialization_write(add_fence: bool) -> bool {
     });
 
     let j2 = spawn(move || {
-        reads_value(wait, 1);
+        spin_until(wait, 1);
         if add_fence {
             fence(AcqRel);
         }
@@ -119,12 +119,12 @@ fn faa_replaced_by_load() -> bool {
     let go = static_atomic(0);
 
     let t1 = spawn(move || {
-        reads_value(go, 1);
+        spin_until(go, 1);
         rdmw(y, x, z)
     });
 
     let t2 = spawn(move || {
-        reads_value(go, 1);
+        spin_until(go, 1);
         rdmw(z, x, y)
     });
 

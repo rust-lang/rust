@@ -41,7 +41,7 @@ fn static_atomic_bool(val: bool) -> &'static AtomicBool {
 }
 
 /// Spins until it acquires a pre-determined value.
-fn loads_value(loc: &AtomicI32, ord: Ordering, val: i32) -> i32 {
+fn spin_until_i32(loc: &AtomicI32, ord: Ordering, val: i32) -> i32 {
     while loc.load(ord) != val {
         std::hint::spin_loop();
     }
@@ -49,7 +49,7 @@ fn loads_value(loc: &AtomicI32, ord: Ordering, val: i32) -> i32 {
 }
 
 /// Spins until it acquires a pre-determined boolean.
-fn loads_bool(loc: &AtomicBool, ord: Ordering, val: bool) -> bool {
+fn spin_until_bool(loc: &AtomicBool, ord: Ordering, val: bool) -> bool {
     while loc.load(ord) != val {
         std::hint::spin_loop();
     }
@@ -73,7 +73,7 @@ fn test_corr() {
     }); //                                           |                    |
     #[rustfmt::skip] //                              |synchronizes-with   |happens-before
     let j3 = spawn(move || { //                      |                    |
-        loads_value(&y, Acquire, 1); // <------------+                    |
+        spin_until_i32(&y, Acquire, 1); // <---------+                    |
         x.load(Relaxed) // <----------------------------------------------+
         // The two reads on x are ordered by hb, so they cannot observe values
         // differently from the modification order. If the first read observed
@@ -98,12 +98,12 @@ fn test_wrc() {
     }); //                                           |                     |
     #[rustfmt::skip] //                              |synchronizes-with    |
     let j2 = spawn(move || { //                      |                     |
-        loads_value(&x, Acquire, 1); // <------------+                     |
+        spin_until_i32(&x, Acquire, 1); // <---------+                     |
         y.store(1, Release); // ---------------------+                     |happens-before
     }); //                                           |                     |
     #[rustfmt::skip] //                              |synchronizes-with    |
     let j3 = spawn(move || { //                      |                     |
-        loads_value(&y, Acquire, 1); // <------------+                     |
+        spin_until_i32(&y, Acquire, 1); // <---------+                     |
         x.load(Relaxed) // <-----------------------------------------------+
     });
 
@@ -129,7 +129,7 @@ fn test_message_passing() {
     #[rustfmt::skip] //                              |synchronizes-with  | happens-before
     let j2 = spawn(move || { //                      |                   |
         let x = x; // avoid field capturing          |                   |
-        loads_value(&y, Acquire, 1); // <------------+                   |
+        spin_until_i32(&y, Acquire, 1); // <---------+                   |
         unsafe { *x.0 } // <---------------------------------------------+
     });
 
@@ -224,12 +224,12 @@ fn test_sync_through_rmw_and_fences() {
     let go = static_atomic_bool(false);
 
     let t1 = spawn(move || {
-        loads_bool(go, Relaxed, true);
+        spin_until_bool(go, Relaxed, true);
         rdmw(y, x, z)
     });
 
     let t2 = spawn(move || {
-        loads_bool(go, Relaxed, true);
+        spin_until_bool(go, Relaxed, true);
         rdmw(z, x, y)
     });
 

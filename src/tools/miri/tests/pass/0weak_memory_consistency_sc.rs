@@ -20,7 +20,7 @@ fn static_atomic_bool(val: bool) -> &'static AtomicBool {
 }
 
 /// Spins until it acquires a pre-determined value.
-fn loads_value(loc: &AtomicI32, ord: Ordering, val: i32) -> i32 {
+fn spin_until_i32(loc: &AtomicI32, ord: Ordering, val: i32) -> i32 {
     while loc.load(ord) != val {
         std::hint::spin_loop();
     }
@@ -28,7 +28,7 @@ fn loads_value(loc: &AtomicI32, ord: Ordering, val: i32) -> i32 {
 }
 
 /// Spins until it acquires a pre-determined boolean.
-fn loads_bool(loc: &AtomicBool, ord: Ordering, val: bool) -> bool {
+fn spin_until_bool(loc: &AtomicBool, ord: Ordering, val: bool) -> bool {
     while loc.load(ord) != val {
         std::hint::spin_loop();
     }
@@ -68,11 +68,11 @@ fn test_iriw_sc_rlx() {
     let a = spawn(move || x.store(true, Relaxed));
     let b = spawn(move || y.store(true, Relaxed));
     let c = spawn(move || {
-        loads_bool(x, SeqCst, true);
+        spin_until_bool(x, SeqCst, true);
         y.load(SeqCst)
     });
     let d = spawn(move || {
-        loads_bool(y, SeqCst, true);
+        spin_until_bool(y, SeqCst, true);
         x.load(SeqCst)
     });
 
@@ -144,7 +144,7 @@ fn test_cpp20_rwc_syncs() {
     });
 
     let j2 = spawn(move || {
-        loads_value(&x, Relaxed, 1);
+        spin_until_i32(&x, Relaxed, 1);
         fence(SeqCst);
         y.load(Relaxed)
     });
