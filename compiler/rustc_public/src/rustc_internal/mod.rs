@@ -191,7 +191,7 @@ macro_rules! run_driver {
         use rustc_public::CompilerError;
         use std::ops::ControlFlow;
 
-        pub struct StableMir<B = (), C = (), F = fn($($crate::optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C>>
+        pub struct RustcPublic<B = (), C = (), F = fn($($crate::optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C>>
         where
             B: Send,
             C: Send,
@@ -201,15 +201,15 @@ macro_rules! run_driver {
             result: Option<ControlFlow<B, C>>,
         }
 
-        impl<B, C, F> StableMir<B, C, F>
+        impl<B, C, F> RustcPublic<B, C, F>
         where
             B: Send,
             C: Send,
             F: FnOnce($($crate::optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C> + Send,
         {
-            /// Creates a new `StableMir` instance, with given test_function and arguments.
+            /// Creates a new `RustcPublic` instance, with given test_function and arguments.
             pub fn new(callback: F) -> Self {
-                StableMir { callback: Some(callback), result: None }
+                RustcPublic { callback: Some(callback), result: None }
             }
 
             /// Runs the compiler against given target and tests it with `test_function`
@@ -236,7 +236,7 @@ macro_rules! run_driver {
             }
         }
 
-        impl<B, C, F> Callbacks for StableMir<B, C, F>
+        impl<B, C, F> Callbacks for RustcPublic<B, C, F>
         where
             B: Send,
             C: Send,
@@ -265,6 +265,6 @@ macro_rules! run_driver {
             }
         }
 
-        StableMir::new($callback).run($args)
+        RustcPublic::new($callback).run($args)
     }};
 }
