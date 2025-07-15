@@ -9,7 +9,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 
-use crate::context::{AcceptContext, Stage};
+use crate::context::{AcceptContext, ShouldEmit, Stage};
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser};
 use crate::{
     CfgMatchesLintEmitter, fluent_generated, parse_version, session_diagnostics, try_gate_cfg,
@@ -90,7 +90,7 @@ fn parse_cfg_entry_version<S: Stage>(
     list: &MetaItemListParser<'_>,
     meta_span: Span,
 ) -> Option<CfgEntry> {
-    try_gate_cfg(sym::version, meta_span, cx.sess(), Some(cx.features()));
+    try_gate_cfg(sym::version, meta_span, cx.sess(), cx.features_option());
     let Some(version) = list.single() else {
         cx.emit_err(session_diagnostics::ExpectedSingleVersionLiteral { span: list.span });
         return None;
@@ -119,7 +119,9 @@ fn parse_cfg_entry_target<S: Stage>(
     list: &MetaItemListParser<'_>,
     meta_span: Span,
 ) -> Option<CfgEntry> {
-    if !cx.features().cfg_target_compact() {
+    if let Some(features) = cx.features_option()
+        && !features.cfg_target_compact()
+    {
         feature_err(
             cx.sess(),
             sym::cfg_target_compact,
@@ -186,12 +188,13 @@ pub fn eval_config_entry(
     cfg_entry: &CfgEntry,
     id: NodeId,
     features: Option<&Features>,
+    emit_lints: ShouldEmit,
 ) -> EvalConfigResult {
     match cfg_entry {
         CfgEntry::All(subs, ..) => {
             let mut all = None;
             for sub in subs {
-                let res = eval_config_entry(sess, sub, id, features);
+                let res = eval_config_entry(sess, sub, id, features, emit_lints);
                 // We cannot short-circuit because `eval_config_entry` emits some lints
                 if !res.as_bool() {
                     all.get_or_insert(res);
@@ -202,7 +205,7 @@ pub fn eval_config_entry(
         CfgEntry::Any(subs, span) => {
             let mut any = None;
             for sub in subs {
-                let res = eval_config_entry(sess, sub, id, features);
+                let res = eval_config_entry(sess, sub, id, features, emit_lints);
                 // We cannot short-circuit because `eval_config_entry` emits some lints
                 if res.as_bool() {
                     any.get_or_insert(res);
@@ -214,7 +217,7 @@ pub fn eval_config_entry(
             })
         }
         CfgEntry::Not(sub, span) => {
-            if eval_config_entry(sess, sub, id, features).as_bool() {
+            if eval_config_entry(sess, sub, id, features, emit_lints).as_bool() {
                 EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
             } else {
                 EvalConfigResult::True
@@ -228,24 +231,28 @@ pub fn eval_config_entry(
             }
         }
         CfgEntry::NameValue { name, name_span, value, span } => {
-            match sess.psess.check_config.expecteds.get(name) {
-                Some(ExpectedValues::Some(values)) if !values.contains(&value.map(|(v, _)| v)) => {
-                    id.emit_span_lint(
-                        sess,
-                        UNEXPECTED_CFGS,
-                        *span,
-                        BuiltinLintDiag::UnexpectedCfgValue((*name, *name_span), *value),
-                    );
+            if let ShouldEmit::ErrorsAndLints = emit_lints {
+                match sess.psess.check_config.expecteds.get(name) {
+                    Some(ExpectedValues::Some(values))
+                        if !values.contains(&value.map(|(v, _)| v)) =>
+                    {
+                        id.emit_span_lint(
+                            sess,
+                            UNEXPECTED_CFGS,
+                            *span,
+                            BuiltinLintDiag::UnexpectedCfgValue((*name, *name_span), *value),
+                        );
+                    }
+                    None if sess.psess.check_config.exhaustive_names => {
+                        id.emit_span_lint(
+                            sess,
+                            UNEXPECTED_CFGS,
+                            *span,
+                            BuiltinLintDiag::UnexpectedCfgName((*name, *name_span), *value),
+                        );
+                    }
+                    _ => { /* not unexpected */ }
                 }
-                None if sess.psess.check_config.exhaustive_names => {
-                    id.emit_span_lint(
-                        sess,
-                        UNEXPECTED_CFGS,
-                        *span,
-                        BuiltinLintDiag::UnexpectedCfgName((*name, *name_span), *value),
-                    );
-                }
-                _ => { /* not unexpected */ }
             }
 
             if sess.psess.config.contains(&(*name, value.map(|(v, _)| v))) {

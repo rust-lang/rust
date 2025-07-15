@@ -12,7 +12,7 @@ use rustc_ast::{
 };
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::{
-    AttributeParser, CFG_TEMPLATE, EvalConfigResult, eval_config_entry, parse_cfg_attr,
+    AttributeParser, CFG_TEMPLATE, EvalConfigResult, ShouldEmit, eval_config_entry, parse_cfg_attr,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::{
@@ -167,7 +167,9 @@ pub fn pre_configure_attrs(sess: &Session, attrs: &[Attribute]) -> ast::AttrVec 
         .flat_map(|attr| strip_unconfigured.process_cfg_attr(attr))
         .take_while(|attr| {
             !is_cfg(attr)
-                || strip_unconfigured.cfg_true(attr, strip_unconfigured.lint_node_id).as_bool()
+                || strip_unconfigured
+                    .cfg_true(attr, strip_unconfigured.lint_node_id, ShouldEmit::Nothing)
+                    .as_bool()
         })
         .collect()
 }
@@ -401,10 +403,18 @@ impl<'a> StripUnconfigured<'a> {
 
     /// Determines if a node with the given attributes should be included in this configuration.
     fn in_cfg(&self, attrs: &[Attribute]) -> bool {
-        attrs.iter().all(|attr| !is_cfg(attr) || self.cfg_true(attr, self.lint_node_id).as_bool())
+        attrs.iter().all(|attr| {
+            !is_cfg(attr)
+                || self.cfg_true(attr, self.lint_node_id, ShouldEmit::ErrorsAndLints).as_bool()
+        })
     }
 
-    pub(crate) fn cfg_true(&self, attr: &Attribute, node: NodeId) -> EvalConfigResult {
+    pub(crate) fn cfg_true(
+        &self,
+        attr: &Attribute,
+        node: NodeId,
+        emit_errors: ShouldEmit,
+    ) -> EvalConfigResult {
         // We need to run this to do basic validation of the attribute, such as that lits are valid, etc
         // FIXME(jdonszelmann) this should not be necessary in the future
         match validate_attr::parse_meta(&self.sess.psess, attr) {
@@ -428,7 +438,7 @@ impl<'a> StripUnconfigured<'a> {
             attr.span,
             node,
             self.features,
-            true,
+            emit_errors,
             parse_cfg_attr,
             &CFG_TEMPLATE,
         ) else {
@@ -436,7 +446,7 @@ impl<'a> StripUnconfigured<'a> {
             return EvalConfigResult::True;
         };
 
-        eval_config_entry(self.sess, &cfg, self.lint_node_id, self.features)
+        eval_config_entry(self.sess, &cfg, self.lint_node_id, self.features, emit_errors)
     }
 
     /// If attributes are not allowed on expressions, emit an error for `attr`
