@@ -53,6 +53,32 @@ impl TestMode {
     }
 }
 
+// Note that coverage tests use the same test files for multiple test modes.
+string_enum! {
+    #[derive(Clone, Copy, PartialEq, Debug)]
+    pub enum TestSuite {
+        Assembly => "assembly",
+        Codegen => "codegen",
+        CodegenUnits => "codegen-units",
+        Coverage => "coverage",
+        CoverageRunRustdoc => "coverage-run-rustdoc",
+        Crashes => "crashes",
+        Debuginfo => "debuginfo",
+        Incremental => "incremental",
+        MirOpt => "mir-opt",
+        Pretty => "pretty",
+        RunMake => "run-make",
+        Rustdoc => "rustdoc",
+        RustdocGui => "rustdoc-gui",
+        RustdocJs => "rustdoc-js",
+        RustdocJsStd=> "rustdoc-js-std",
+        RustdocJson => "rustdoc-json",
+        RustdocUi => "rustdoc-ui",
+        Ui => "ui",
+        UiFullDeps => "ui-fulldeps",
+    }
+}
+
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug, Hash)]
     pub enum PassMode {
@@ -276,15 +302,13 @@ pub struct Config {
 
     /// The test suite.
     ///
-    /// Example: `tests/ui/` is the "UI" test *suite*, which happens to also be of the
+    /// Example: `tests/ui/` is [`TestSuite::Ui`] test *suite*, which happens to also be of the
     /// [`TestMode::Ui`] test *mode*.
     ///
-    /// Note that the same test directory (e.g. `tests/coverage/`) may correspond to multiple test
+    /// Note that the same test suite (e.g. `tests/coverage/`) may correspond to multiple test
     /// modes, e.g. `tests/coverage/` can be run under both [`TestMode::CoverageRun`] and
     /// [`TestMode::CoverageMap`].
-    ///
-    /// FIXME: stop using stringly-typed test suites!
-    pub suite: String,
+    pub suite: TestSuite,
 
     /// When specified, **only** the specified [`Debugger`] will be used to run against the
     /// `tests/debuginfo` test suite. When unspecified, `compiletest` will attempt to find all three
@@ -537,8 +561,8 @@ pub struct Config {
     // Configuration for various run-make tests frobbing things like C compilers or querying about
     // various LLVM component information.
     //
-    // FIXME: this really should be better packaged together. FIXME: these need better docs, e.g.
-    // for *host*, or for *target*?
+    // FIXME: this really should be better packaged together.
+    // FIXME: these need better docs, e.g. for *host*, or for *target*?
     pub cc: String,
     pub cxx: String,
     pub cflags: String,
@@ -617,6 +641,8 @@ impl Config {
         // For instance, `//@ ignore-stage1` will not work at all.
         Config {
             mode: TestMode::Rustdoc,
+            // E.g. this has no sensible default tbh.
+            suite: TestSuite::Ui,
 
             // Dummy values.
             edition: Default::default(),
@@ -642,7 +668,6 @@ impl Config {
             sysroot_base: Utf8PathBuf::default(),
             stage: Default::default(),
             stage_id: String::default(),
-            suite: Default::default(),
             debugger: Default::default(),
             run_ignored: Default::default(),
             with_rustc_debug_assertions: Default::default(),

@@ -7,7 +7,7 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::{fmt, io};
 
-use rustc_smir::bridge::SmirError;
+use rustc_public_bridge::bridge::SmirError;
 
 macro_rules! error {
      ($fmt: literal $(,)?) => { Error(format!($fmt)) };

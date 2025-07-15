@@ -22,12 +22,6 @@ error[E0463]: can't find crate for `wloop`
 LL | extern crate wloop;
    | ^^^^^^^^^^^^^^^^^^^ can't find crate
 
-error: malformed `omit_gdb_pretty_printer_section` attribute input
-  --> $DIR/malformed-attrs.rs:26:1
-   |
-LL | #![omit_gdb_pretty_printer_section = 1]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![omit_gdb_pretty_printer_section]`
-
 error: malformed `windows_subsystem` attribute input
   --> $DIR/malformed-attrs.rs:29:1
    |
@@ -116,12 +110,6 @@ error: malformed `cfi_encoding` attribute input
 LL | #[cfi_encoding]
    | ^^^^^^^^^^^^^^^ help: must be of the form: `#[cfi_encoding = "encoding"]`
 
-error: malformed `link_ordinal` attribute input
-  --> $DIR/malformed-attrs.rs:167:5
-   |
-LL |     #[link_ordinal]
-   |     ^^^^^^^^^^^^^^^ help: must be of the form: `#[link_ordinal(ordinal)]`
-
 error: malformed `linkage` attribute input
   --> $DIR/malformed-attrs.rs:173:5
    |
@@ -163,12 +151,6 @@ error: malformed `debugger_visualizer` attribute input
    |
 LL | #[debugger_visualizer]
    | ^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[debugger_visualizer(natvis_file = "...", gdb_script_file = "...")]`
-
-error: malformed `automatically_derived` attribute input
-  --> $DIR/malformed-attrs.rs:191:1
-   |
-LL | #[automatically_derived = 18]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[automatically_derived]`
 
 error: malformed `thread_local` attribute input
   --> $DIR/malformed-attrs.rs:203:1
@@ -282,6 +264,15 @@ LL | #[debugger_visualizer]
    = note: expected: `natvis_file = "..."`
    = note: OR
    = note: expected: `gdb_script_file = "..."`
+
+error[E0565]: malformed `omit_gdb_pretty_printer_section` attribute input
+  --> $DIR/malformed-attrs.rs:26:1
+   |
+LL | #![omit_gdb_pretty_printer_section = 1]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^
+   | |                                  |
+   | |                                  didn't expect any arguments here
+   | help: must be of the form: `#[omit_gdb_pretty_printer_section]`
 
 error[E0539]: malformed `export_name` attribute input
   --> $DIR/malformed-attrs.rs:32:1
@@ -537,6 +528,15 @@ LL |     #[unsafe(ffi_pure = 1)]
    |     |                 didn't expect any arguments here
    |     help: must be of the form: `#[ffi_pure]`
 
+error[E0539]: malformed `link_ordinal` attribute input
+  --> $DIR/malformed-attrs.rs:167:5
+   |
+LL |     #[link_ordinal]
+   |     ^^^^^^^^^^^^^^^
+   |     |
+   |     expected this to be a list
+   |     help: must be of the form: `#[link_ordinal(ordinal)]`
+
 error[E0565]: malformed `ffi_const` attribute input
   --> $DIR/malformed-attrs.rs:171:5
    |
@@ -545,6 +545,15 @@ LL |     #[unsafe(ffi_const = 1)]
    |     |                  |
    |     |                  didn't expect any arguments here
    |     help: must be of the form: `#[ffi_const]`
+
+error[E0565]: malformed `automatically_derived` attribute input
+  --> $DIR/malformed-attrs.rs:191:1
+   |
+LL | #[automatically_derived = 18]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^----^
+   | |                       |
+   | |                       didn't expect any arguments here
+   | help: must be of the form: `#[automatically_derived]`
 
 error[E0565]: malformed `non_exhaustive` attribute input
   --> $DIR/malformed-attrs.rs:197:1

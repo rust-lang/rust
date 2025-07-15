@@ -785,7 +785,7 @@ fn threads_support() {
 
 fn run_path(poisoned: &mut bool, path: &Utf8Path, buf: &[u8]) {
     let rdr = std::io::Cursor::new(&buf);
-    iter_directives(TestMode::Ui, "ui", poisoned, path, rdr, &mut |_| {});
+    iter_directives(TestMode::Ui, poisoned, path, rdr, &mut |_| {});
 }
 
 #[test]

@@ -69,6 +69,23 @@ impl<'data> From<&'data mut [MaybeUninit<u8>]> for BorrowedBuf<'data> {
     }
 }
 
+/// Creates a new `BorrowedBuf` from a cursor.
+///
+/// Use `BorrowedCursor::with_unfilled_buf` instead for a safer alternative.
+impl<'data> From<BorrowedCursor<'data>> for BorrowedBuf<'data> {
+    #[inline]
+    fn from(mut buf: BorrowedCursor<'data>) -> BorrowedBuf<'data> {
+        let init = buf.init_mut().len();
+        BorrowedBuf {
+            // SAFETY: no initialized byte is ever uninitialized as per
+            // `BorrowedBuf`'s invariant
+            buf: unsafe { buf.buf.buf.get_unchecked_mut(buf.buf.filled..) },
+            filled: 0,
+            init,
+        }
+    }
+}
+
 impl<'data> BorrowedBuf<'data> {
     /// Returns the total capacity of the buffer.
     #[inline]
@@ -352,5 +369,39 @@ impl<'a> BorrowedCursor<'a> {
             self.set_init(buf.len());
         }
         self.buf.filled += buf.len();
+    }
+
+    /// Runs the given closure with a `BorrowedBuf` containing the unfilled part
+    /// of the cursor.
+    ///
+    /// This enables inspecting what was written to the cursor.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `BorrowedBuf` given to the closure is replaced by another
+    /// one.
+    pub fn with_unfilled_buf<T>(&mut self, f: impl FnOnce(&mut BorrowedBuf<'_>) -> T) -> T {
+        let mut buf = BorrowedBuf::from(self.reborrow());
+        let prev_ptr = buf.buf as *const _;
+        let res = f(&mut buf);
+
+        // Check that the caller didn't replace the `BorrowedBuf`.
+        // This is necessary for the safety of the code below: if the check wasn't
+        // there, one could mark some bytes as initialized even though there aren't.
+        assert!(core::ptr::addr_eq(prev_ptr, buf.buf));
+
+        let filled = buf.filled;
+        let init = buf.init;
+
+        // Update `init` and `filled` fields with what was written to the buffer.
+        // `self.buf.filled` was the starting length of the `BorrowedBuf`.
+        //
+        // SAFETY: These amounts of bytes were initialized/filled in the `BorrowedBuf`,
+        // and therefore they are initialized/filled in the cursor too, because the
+        // buffer wasn't replaced.
+        self.buf.init = self.buf.filled + init;
+        self.buf.filled += filled;
+
+        res
     }
 }

@@ -9,6 +9,7 @@
 //! Each Rust tool **MUST** utilize `ToolBuild` inside their `Step` logic,
 //! return `ToolBuildResult` and should never prepare `cargo` invocations manually.
 
+use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::{env, fs};
 
@@ -136,19 +137,6 @@ impl Step for ToolBuild {
             _ => panic!("unexpected Mode for tool build"),
         }
 
-        // build.tool.TOOL_NAME.features in bootstrap.toml allows specifying which features to
-        // enable for a specific tool. `extra_features` instead is not controlled by the toml and
-        // provides features that are always enabled for a specific tool (e.g. "in-rust-tree" for
-        // rust-analyzer). Finally, `prepare_tool_cargo` might add more features to adapt the build
-        // to the chosen flags (e.g. "all-static" for cargo if `cargo_native_static` is true).
-        let mut features = builder
-            .config
-            .tool
-            .get(self.tool)
-            .and_then(|tool| tool.features.clone())
-            .unwrap_or_default();
-        features.extend(self.extra_features.clone());
-
         let mut cargo = prepare_tool_cargo(
             builder,
             self.compiler,
@@ -157,7 +145,7 @@ impl Step for ToolBuild {
             Kind::Build,
             path,
             self.source_type,
-            &features,
+            &self.extra_features,
         );
 
         // The stage0 compiler changes infrequently and does not directly depend on code
@@ -244,7 +232,8 @@ pub fn prepare_tool_cargo(
 ) -> CargoCommand {
     let mut cargo = builder::Cargo::new(builder, compiler, mode, source_type, target, cmd_kind);
 
-    let dir = builder.src.join(path);
+    let path = PathBuf::from(path);
+    let dir = builder.src.join(&path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
     let mut features = extra_features.to_vec();
@@ -260,6 +249,18 @@ pub fn prepare_tool_cargo(
             features.push("all-static".to_string());
         }
     }
+
+    // build.tool.TOOL_NAME.features in bootstrap.toml allows specifying which features to enable
+    // for a specific tool. `extra_features` instead is not controlled by the toml and provides
+    // features that are always enabled for a specific tool (e.g. "in-rust-tree" for rust-analyzer).
+    // Finally, `prepare_tool_cargo` above here might add more features to adapt the build
+    // to the chosen flags (e.g. "all-static" for cargo if `cargo_native_static` is true).
+    builder
+        .config
+        .tool
+        .iter()
+        .filter(|(tool_name, _)| path.file_name().and_then(OsStr::to_str) == Some(tool_name))
+        .for_each(|(_, tool)| features.extend(tool.features.clone().unwrap_or_default()));
 
     // clippy tests need to know about the stage sysroot. Set them consistently while building to
     // avoid rebuilding when running tests.
@@ -1140,6 +1141,7 @@ macro_rules! tool_extended {
             stable: $stable:expr
             $( , add_bins_to_sysroot: $add_bins_to_sysroot:expr )?
             $( , add_features: $add_features:expr )?
+            $( , cargo_args: $cargo_args:expr )?
             $( , )?
         }
     ) => {
@@ -1180,6 +1182,7 @@ macro_rules! tool_extended {
                     $path,
                     None $( .or(Some(&$add_bins_to_sysroot)) )?,
                     None $( .or(Some($add_features)) )?,
+                    None $( .or(Some($cargo_args)) )?,
                 )
             }
 
@@ -1219,6 +1222,7 @@ fn should_run_tool_build_step<'a>(
     )
 }
 
+#[expect(clippy::too_many_arguments)] // silence overeager clippy lint
 fn run_tool_build_step(
     builder: &Builder<'_>,
     compiler: Compiler,
@@ -1227,6 +1231,7 @@ fn run_tool_build_step(
     path: &'static str,
     add_bins_to_sysroot: Option<&[&str]>,
     add_features: Option<fn(&Builder<'_>, TargetSelection, &mut Vec<String>)>,
+    cargo_args: Option<&[&'static str]>,
 ) -> ToolBuildResult {
     let mut extra_features = Vec::new();
     if let Some(func) = add_features {
@@ -1243,7 +1248,7 @@ fn run_tool_build_step(
             extra_features,
             source_type: SourceType::InTree,
             allow_features: "",
-            cargo_args: vec![],
+            cargo_args: cargo_args.unwrap_or_default().iter().map(|s| String::from(*s)).collect(),
             artifact_kind: ToolArtifactKind::Binary,
         });
 
@@ -1294,7 +1299,9 @@ tool_extended!(Miri {
     path: "src/tools/miri",
     tool_name: "miri",
     stable: false,
-    add_bins_to_sysroot: ["miri"]
+    add_bins_to_sysroot: ["miri"],
+    // Always compile also tests when building miri. Otherwise feature unification can cause rebuilds between building and testing miri.
+    cargo_args: &["--all-targets"],
 });
 tool_extended!(CargoMiri {
     path: "src/tools/miri/cargo-miri",

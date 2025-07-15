@@ -15,15 +15,15 @@ extern crate rustc_middle;
 extern crate rustc_driver;
 extern crate rustc_interface;
 #[macro_use]
-extern crate stable_mir;
+extern crate rustc_public;
 
 use std::io::Write;
 use std::ops::ControlFlow;
 
-use stable_mir::CrateItem;
-use stable_mir::crate_def::CrateDef;
-use stable_mir::mir::{AggregateKind, Rvalue, Statement, StatementKind};
-use stable_mir::ty::{IntTy, RigidTy, Ty};
+use rustc_public::CrateItem;
+use rustc_public::crate_def::CrateDef;
+use rustc_public::mir::{AggregateKind, Rvalue, Statement, StatementKind};
+use rustc_public::ty::{IntTy, RigidTy, Ty};
 
 const CRATE_NAME: &str = "crate_variant_ty";
 
@@ -97,7 +97,7 @@ fn check_adt_poly2() {
 }
 
 fn get_fn(name: &str) -> CrateItem {
-    stable_mir::all_local_items().into_iter().find(|it| it.name().eq(name)).unwrap()
+    rustc_public::all_local_items().into_iter().find(|it| it.name().eq(name)).unwrap()
 }
 
 fn check_statement_is_aggregate_assign(

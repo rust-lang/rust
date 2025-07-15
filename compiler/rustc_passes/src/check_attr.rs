@@ -45,6 +45,7 @@ use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
 
+use crate::errors::AlignOnFields;
 use crate::{errors, fluent_generated as fluent};
 
 #[derive(LintDiagnostic)]
@@ -154,6 +155,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Confusables { first_span, .. }) => {
                     self.check_confusables(*first_span, target);
                 }
+                Attribute::Parsed(AttributeKind::AutomaticallyDerived(attr_span)) => self
+                    .check_generic_attr(
+                        hir_id,
+                        sym::automatically_derived,
+                        *attr_span,
+                        target,
+                        Target::Impl,
+                    ),
                 Attribute::Parsed(
                     AttributeKind::Stability { span, .. }
                     | AttributeKind::ConstStability { span, .. },
@@ -199,8 +208,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::ExportName { span: attr_span, .. }) => {
                     self.check_export_name(hir_id, *attr_span, span, target)
                 }
-                Attribute::Parsed(AttributeKind::Align { align, span: repr_span }) => {
-                    self.check_align(span, target, *align, *repr_span)
+                Attribute::Parsed(AttributeKind::Align { align, span: attr_span }) => {
+                    self.check_align(span, hir_id, target, *align, *attr_span)
                 }
                 Attribute::Parsed(AttributeKind::LinkSection { span: attr_span, .. }) => {
                     self.check_link_section(hir_id, *attr_span, span, target)
@@ -242,13 +251,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_)
-                    | AttributeKind::Dummy,
+                    | AttributeKind::Dummy
+                    | AttributeKind::OmitGdbPrettyPrinterSection,
                 ) => { /* do nothing  */ }
                 Attribute::Parsed(AttributeKind::AsPtr(attr_span)) => {
                     self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)
                 }
                 Attribute::Parsed(AttributeKind::LinkName { span: attr_span, name }) => {
                     self.check_link_name(hir_id, *attr_span, *name, span, target)
+                }
+                Attribute::Parsed(AttributeKind::LinkOrdinal { span: attr_span, .. }) => {
+                    self.check_link_ordinal(*attr_span, span, target)
                 }
                 Attribute::Parsed(AttributeKind::MayDangle(attr_span)) => {
                     self.check_may_dangle(hir_id, *attr_span)
@@ -327,7 +340,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::rustc_has_incoherent_inherent_impls, ..] => {
                             self.check_has_incoherent_inherent_impls(attr, span, target)
                         }
-                        [sym::link_ordinal, ..] => self.check_link_ordinal(attr, span, target),
+                        [sym::ffi_pure, ..] => self.check_ffi_pure(attr.span(), attrs, target),
+                        [sym::ffi_const, ..] => self.check_ffi_const(attr.span(), target),
                         [sym::link, ..] => self.check_link(hir_id, attr, span, target),
                         [sym::macro_use, ..] | [sym::macro_escape, ..] => {
                             self.check_macro_use(hir_id, attr, target)
@@ -336,9 +350,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::macro_export, ..] => self.check_macro_export(hir_id, attr, target),
                         [sym::should_panic, ..] => {
                             self.check_generic_attr_unparsed(hir_id, attr, target, Target::Fn)
-                        }
-                        [sym::automatically_derived, ..] => {
-                            self.check_generic_attr_unparsed(hir_id, attr, target, Target::Impl)
                         }
                         [sym::proc_macro, ..] => {
                             self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
@@ -371,7 +382,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             // need to be fixed
                             | sym::cfi_encoding // FIXME(cfi_encoding)
                             | sym::pointee // FIXME(derive_coerce_pointee)
-                            | sym::omit_gdb_pretty_printer_section // FIXME(omit_gdb_pretty_printer_section)
                             | sym::instruction_set // broken on stable!!!
                             | sym::windows_subsystem // broken on stable!!!
                             | sym::patchable_function_entry // FIXME(patchable_function_entry)
@@ -1944,22 +1954,37 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[align]` attributes on `item` are valid.
-    fn check_align(&self, span: Span, target: Target, align: Align, repr_span: Span) {
+    fn check_align(
+        &self,
+        span: Span,
+        hir_id: HirId,
+        target: Target,
+        align: Align,
+        attr_span: Span,
+    ) {
         match target {
             Target::Fn | Target::Method(_) | Target::ForeignFn => {}
+            Target::Field => {
+                self.tcx.emit_node_span_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr_span,
+                    AlignOnFields { span },
+                );
+            }
             Target::Struct | Target::Union | Target::Enum => {
                 self.dcx().emit_err(errors::AlignShouldBeReprAlign {
-                    span: repr_span,
+                    span: attr_span,
                     item: target.name(),
                     align_bytes: align.bytes(),
                 });
             }
             _ => {
-                self.dcx().emit_err(errors::AlignAttrApplication { hint_span: repr_span, span });
+                self.dcx().emit_err(errors::AlignAttrApplication { hint_span: attr_span, span });
             }
         }
 
-        self.check_align_value(align, repr_span);
+        self.check_align_value(align, attr_span);
     }
 
     /// Checks if the `#[repr]` attributes on `item` are valid.
@@ -2260,11 +2285,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_link_ordinal(&self, attr: &Attribute, _span: Span, target: Target) {
+    fn check_link_ordinal(&self, attr_span: Span, _span: Span, target: Target) {
         match target {
             Target::ForeignFn | Target::ForeignStatic => {}
             _ => {
-                self.dcx().emit_err(errors::LinkOrdinal { attr_span: attr.span() });
+                self.dcx().emit_err(errors::LinkOrdinal { attr_span });
             }
         }
     }
@@ -2826,7 +2851,6 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
     // resolution for the attribute macro error.
     const ATTRS_TO_CHECK: &[Symbol] = &[
         sym::macro_export,
-        sym::automatically_derived,
         sym::rustc_main,
         sym::derive,
         sym::test,
@@ -2849,6 +2873,8 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
             (*first_attr_span, sym::repr)
         } else if let Attribute::Parsed(AttributeKind::Path(.., span)) = attr {
             (*span, sym::path)
+        } else if let Attribute::Parsed(AttributeKind::AutomaticallyDerived(span)) = attr {
+            (*span, sym::automatically_derived)
         } else {
             continue;
         };

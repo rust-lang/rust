@@ -15,13 +15,13 @@ extern crate rustc_middle;
 extern crate rustc_driver;
 extern crate rustc_interface;
 #[macro_use]
-extern crate stable_mir;
+extern crate rustc_public;
 
-use stable_mir::mir::{
+use rustc_public::mir::{
     Body, FieldIdx, MirVisitor, Place, ProjectionElem,
     visit::{Location, PlaceContext},
 };
-use stable_mir::ty::{RigidTy, Ty, TyKind};
+use rustc_public::ty::{RigidTy, Ty, TyKind};
 use std::io::Write;
 use std::ops::ControlFlow;
 
@@ -29,7 +29,7 @@ const CRATE_NAME: &str = "input";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_stable_mir() -> ControlFlow<()> {
-    let main_fn = stable_mir::entry_fn();
+    let main_fn = rustc_public::entry_fn();
     let body = main_fn.unwrap().expect_body();
     let mut visitor = PlaceVisitor { body: &body, tested: false };
     visitor.visit_body(&body);

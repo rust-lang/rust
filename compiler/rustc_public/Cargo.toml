@@ -1,5 +1,5 @@
 [package]
-name = "stable_mir"
+name = "rustc_public"
 version = "0.1.0-preview"
 edition = "2024"
 
@@ -8,8 +8,8 @@ edition = "2024"
 rustc_abi = { path = "../rustc_abi" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_middle = { path = "../rustc_middle" }
+rustc_public_bridge = { path = "../rustc_public_bridge" }
 rustc_session = { path = "../rustc_session" }
-rustc_smir = { path = "../rustc_smir" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 scoped-tls = "1.0"

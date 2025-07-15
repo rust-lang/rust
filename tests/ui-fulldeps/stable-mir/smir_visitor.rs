@@ -13,11 +13,11 @@ extern crate rustc_middle;
 
 extern crate rustc_driver;
 extern crate rustc_interface;
-extern crate stable_mir;
+extern crate rustc_public;
 
-use stable_mir::mir::MirVisitor;
-use stable_mir::mir::MutMirVisitor;
-use stable_mir::*;
+use rustc_public::mir::MirVisitor;
+use rustc_public::mir::MutMirVisitor;
+use rustc_public::*;
 use std::collections::HashSet;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -25,7 +25,7 @@ use std::ops::ControlFlow;
 const CRATE_NAME: &str = "input";
 
 fn test_visitor() -> ControlFlow<()> {
-    let main_fn = stable_mir::entry_fn();
+    let main_fn = rustc_public::entry_fn();
     let main_body = main_fn.unwrap().expect_body();
     let main_visitor = TestVisitor::collect(&main_body);
     assert!(main_visitor.ret_val.is_some());
@@ -99,7 +99,7 @@ impl<'a> mir::MirVisitor for TestVisitor<'a> {
 }
 
 fn test_mut_visitor() -> ControlFlow<()> {
-    let main_fn = stable_mir::entry_fn();
+    let main_fn = rustc_public::entry_fn();
     let mut main_body = main_fn.unwrap().expect_body();
     let locals = main_body.locals().to_vec();
     let mut main_visitor = TestMutVisitor::collect(locals);

@@ -3,10 +3,10 @@
 //! This module will only include a few constructs to allow users to invoke internal rustc APIs
 //! due to incomplete stable coverage.
 
-// Prefer importing stable_mir over internal rustc constructs to make this file more readable.
+// Prefer importing rustc_public over internal rustc constructs to make this file more readable.
 
 use rustc_middle::ty::{self as rustc_ty, Const as InternalConst, Ty as InternalTy};
-use rustc_smir::Tables;
+use rustc_public_bridge::Tables;
 
 use crate::abi::Layout;
 use crate::compiler_interface::BridgeTys;

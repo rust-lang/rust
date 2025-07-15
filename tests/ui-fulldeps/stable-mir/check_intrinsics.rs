@@ -18,12 +18,12 @@ extern crate rustc_hir;
 extern crate rustc_driver;
 extern crate rustc_interface;
 #[macro_use]
-extern crate stable_mir;
+extern crate rustc_public;
 
-use stable_mir::mir::mono::{Instance, InstanceKind};
-use stable_mir::mir::visit::{Location, MirVisitor};
-use stable_mir::mir::{LocalDecl, Terminator, TerminatorKind};
-use stable_mir::ty::{FnDef, GenericArgs, RigidTy, TyKind};
+use rustc_public::mir::mono::{Instance, InstanceKind};
+use rustc_public::mir::visit::{Location, MirVisitor};
+use rustc_public::mir::{LocalDecl, Terminator, TerminatorKind};
+use rustc_public::ty::{FnDef, GenericArgs, RigidTy, TyKind};
 use std::assert_matches::assert_matches;
 use std::convert::TryFrom;
 use std::io::Write;
@@ -32,7 +32,7 @@ use std::ops::ControlFlow;
 /// This function tests that we can correctly get type information from binary operations.
 fn test_intrinsics() -> ControlFlow<()> {
     // Find items in the local crate.
-    let main_def = stable_mir::all_local_items()[0];
+    let main_def = rustc_public::all_local_items()[0];
     let main_instance = Instance::try_from(main_def).unwrap();
     let main_body = main_instance.body().unwrap();
     let mut visitor = CallsVisitor { locals: main_body.locals(), calls: Default::default() };

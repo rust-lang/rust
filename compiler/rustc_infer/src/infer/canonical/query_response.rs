@@ -13,7 +13,6 @@ use std::iter;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::bug;
-use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable};
 use tracing::{debug, instrument};
 
@@ -23,7 +22,9 @@ use crate::infer::canonical::{
     QueryRegionConstraints, QueryResponse,
 };
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult, SubregionOrigin};
+use crate::infer::{
+    DefineOpaqueTypes, InferCtxt, InferOk, InferResult, SubregionOrigin, TypeOutlivesConstraint,
+};
 use crate::traits::query::NoSolution;
 use crate::traits::{ObligationCause, PredicateObligations, ScrubbedTraitError, TraitEngine};
 
@@ -117,13 +118,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let region_obligations = self.take_registered_region_obligations();
         debug!(?region_obligations);
         let region_constraints = self.with_region_constraints(|region_constraints| {
-            make_query_region_constraints(
-                tcx,
-                region_obligations
-                    .iter()
-                    .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())),
-                region_constraints,
-            )
+            make_query_region_constraints(tcx, region_obligations, region_constraints)
         });
         debug!(?region_constraints);
 
@@ -570,7 +565,7 @@ impl<'tcx> InferCtxt<'tcx> {
 /// creates query region constraints.
 pub fn make_query_region_constraints<'tcx>(
     tcx: TyCtxt<'tcx>,
-    outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>, ConstraintCategory<'tcx>)>,
+    outlives_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
 ) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData { constraints, verifys } = region_constraints;
@@ -599,8 +594,11 @@ pub fn make_query_region_constraints<'tcx>(
             };
             (constraint, origin.to_constraint_category())
         })
-        .chain(outlives_obligations.map(|(ty, r, constraint_category)| {
-            (ty::OutlivesPredicate(ty.into(), r), constraint_category)
+        .chain(outlives_obligations.into_iter().map(|obl| {
+            (
+                ty::OutlivesPredicate(obl.sup_type.into(), obl.sub_region),
+                obl.origin.to_constraint_category(),
+            )
         }))
         .collect();
 
