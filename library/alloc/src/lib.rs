@@ -155,6 +155,7 @@
 #![feature(try_trait_v2)]
 #![feature(try_with_capacity)]
 #![feature(tuple_trait)]
+#![feature(ub_checks)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]

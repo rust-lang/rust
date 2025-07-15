@@ -64,7 +64,7 @@ use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
-use core::{fmt, intrinsics};
+use core::{fmt, intrinsics, ub_checks};
 
 #[stable(feature = "extract_if", since = "1.87.0")]
 pub use self::extract_if::ExtractIf;
@@ -1058,6 +1058,11 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {
+        ub_checks::assert_unsafe_precondition!(
+            check_library_ub,
+            "Vec::from_raw_parts_in requires that length <= capacity",
+            (length: usize = length, capacity: usize = capacity) => length <= capacity
+        );
         unsafe { Vec { buf: RawVec::from_raw_parts_in(ptr, capacity, alloc), len: length } }
     }
 
@@ -1174,6 +1179,11 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "allocator_api", reason = "new API", issue = "32838")]
     // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     pub unsafe fn from_parts_in(ptr: NonNull<T>, length: usize, capacity: usize, alloc: A) -> Self {
+        ub_checks::assert_unsafe_precondition!(
+            check_library_ub,
+            "Vec::from_parts_in requires that length <= capacity",
+            (length: usize = length, capacity: usize = capacity) => length <= capacity
+        );
         unsafe { Vec { buf: RawVec::from_nonnull_in(ptr, capacity, alloc), len: length } }
     }
 
@@ -1950,7 +1960,11 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn set_len(&mut self, new_len: usize) {
-        debug_assert!(new_len <= self.capacity());
+        ub_checks::assert_unsafe_precondition!(
+            check_library_ub,
+            "Vec::set_len requires that new_len <= capacity()",
+            (new_len: usize = new_len, capacity: usize = self.capacity()) => new_len <= capacity
+        );
 
         self.len = new_len;
     }
@@ -3695,7 +3709,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// This is optimal if:
     ///
     /// * The tail (elements in the vector after `range`) is empty,
-    /// * or `replace_with` yields fewer or equal elements than `range`’s length
+    /// * or `replace_with` yields fewer or equal elements than `range`'s length
     /// * or the lower bound of its `size_hint()` is exact.
     ///
     /// Otherwise, a temporary vector is allocated and the tail is moved twice.
