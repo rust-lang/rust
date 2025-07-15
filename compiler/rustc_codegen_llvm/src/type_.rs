@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
 use std::{fmt, ptr};
 
-use libc::{c_char, c_uint};
+use libc::c_uint;
 use rustc_abi::{AddressSpace, Align, Integer, Reg, Size};
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
@@ -298,8 +298,8 @@ impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> TypeMembershipCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn add_type_metadata(&self, function: &'ll Value, typeid: String) {
-        let typeid_metadata = self.typeid_metadata(typeid).unwrap();
+    fn add_type_metadata(&self, function: &'ll Value, typeid: &[u8]) {
+        let typeid_metadata = self.create_metadata(typeid);
         unsafe {
             let v = [llvm::LLVMValueAsMetadata(self.const_usize(0)), typeid_metadata];
             llvm::LLVMRustGlobalAddMetadata(
@@ -310,8 +310,8 @@ impl<'ll, 'tcx> TypeMembershipCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn set_type_metadata(&self, function: &'ll Value, typeid: String) {
-        let typeid_metadata = self.typeid_metadata(typeid).unwrap();
+    fn set_type_metadata(&self, function: &'ll Value, typeid: &[u8]) {
+        let typeid_metadata = self.create_metadata(typeid);
         unsafe {
             let v = [llvm::LLVMValueAsMetadata(self.const_usize(0)), typeid_metadata];
             llvm::LLVMGlobalSetMetadata(
@@ -322,10 +322,8 @@ impl<'ll, 'tcx> TypeMembershipCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn typeid_metadata(&self, typeid: String) -> Option<&'ll Metadata> {
-        Some(unsafe {
-            llvm::LLVMMDStringInContext2(self.llcx, typeid.as_ptr() as *const c_char, typeid.len())
-        })
+    fn typeid_metadata(&self, typeid: &[u8]) -> Option<&'ll Metadata> {
+        Some(self.create_metadata(typeid))
     }
 
     fn add_kcfi_type_metadata(&self, function: &'ll Value, kcfi_typeid: u32) {
