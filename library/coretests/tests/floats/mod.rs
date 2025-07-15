@@ -1,28 +1,40 @@
-use std::fmt;
 use std::num::FpCategory as Fp;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
-/// Set the default tolerance for float comparison based on the type.
-trait Approx {
-    const LIM: Self;
+trait TestableFloat {
+    /// Set the default tolerance for float comparison based on the type.
+    const APPROX: Self;
+    const MIN_POSITIVE_NORMAL: Self;
+    const MAX_SUBNORMAL: Self;
 }
 
-impl Approx for f16 {
-    const LIM: Self = 1e-3;
+impl TestableFloat for f16 {
+    const APPROX: Self = 1e-3;
+    const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
+    const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
 }
-impl Approx for f32 {
-    const LIM: Self = 1e-6;
+
+impl TestableFloat for f32 {
+    const APPROX: Self = 1e-6;
+    const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
+    const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
 }
-impl Approx for f64 {
-    const LIM: Self = 1e-6;
+
+impl TestableFloat for f64 {
+    const APPROX: Self = 1e-6;
+    const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
+    const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
 }
-impl Approx for f128 {
-    const LIM: Self = 1e-9;
+
+impl TestableFloat for f128 {
+    const APPROX: Self = 1e-9;
+    const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
+    const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
 }
 
 /// Determine the tolerance for values of the argument type.
-const fn lim_for_ty<T: Approx + Copy>(_x: T) -> T {
-    T::LIM
+const fn lim_for_ty<T: TestableFloat + Copy>(_x: T) -> T {
+    T::APPROX
 }
 
 // We have runtime ("rt") and const versions of these macros.
@@ -187,9 +199,11 @@ macro_rules! float_test {
             $( $( #[$const_meta] )+ )?
             mod const_ {
                 #[allow(unused)]
-                use super::Approx;
+                use super::TestableFloat;
                 #[allow(unused)]
                 use std::num::FpCategory as Fp;
+                #[allow(unused)]
+                use std::ops::{Add, Div, Mul, Rem, Sub};
                 // Shadow the runtime versions of the macro with const-compatible versions.
                 #[allow(unused)]
                 use $crate::floats::{
@@ -229,29 +243,41 @@ macro_rules! float_test {
     };
 }
 
-/// Helper function for testing numeric operations
-pub fn test_num<T>(ten: T, two: T)
-where
-    T: PartialEq
-        + Add<Output = T>
-        + Sub<Output = T>
-        + Mul<Output = T>
-        + Div<Output = T>
-        + Rem<Output = T>
-        + fmt::Debug
-        + Copy,
-{
-    assert_eq!(ten.add(two), ten + two);
-    assert_eq!(ten.sub(two), ten - two);
-    assert_eq!(ten.mul(two), ten * two);
-    assert_eq!(ten.div(two), ten / two);
-    assert_eq!(ten.rem(two), ten % two);
-}
-
 mod f128;
 mod f16;
 mod f32;
 mod f64;
+
+float_test! {
+    name: num,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let two: Float = 2.0;
+        let ten: Float = 10.0;
+        assert_biteq!(ten.add(two), ten + two);
+        assert_biteq!(ten.sub(two), ten - two);
+        assert_biteq!(ten.mul(two), ten * two);
+        assert_biteq!(ten.div(two), ten / two);
+    }
+}
+
+// FIXME(f16_f128): merge into `num` once the required `fmodl`/`fmodf128` function is available on
+// all platforms.
+float_test! {
+    name: num_rem,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+    },
+    test<Float> {
+        let two: Float = 2.0;
+        let ten: Float = 10.0;
+        assert_biteq!(ten.rem(two), ten % two);
+    }
+}
 
 float_test! {
     name: nan,
@@ -270,6 +296,213 @@ float_test! {
         assert!(matches!(nan.classify(), Fp::Nan));
         // Ensure the quiet bit is set.
         assert!(nan.to_bits() & (1 << (Float::MANTISSA_DIGITS - 2)) != 0);
+    }
+}
+
+float_test! {
+    name: infinity,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let inf: Float = Float::INFINITY;
+        assert!(inf.is_infinite());
+        assert!(!inf.is_finite());
+        assert!(inf.is_sign_positive());
+        assert!(!inf.is_sign_negative());
+        assert!(!inf.is_nan());
+        assert!(!inf.is_normal());
+        assert!(matches!(inf.classify(), Fp::Infinite));
+    }
+}
+
+float_test! {
+    name: neg_infinity,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert!(neg_inf.is_infinite());
+        assert!(!neg_inf.is_finite());
+        assert!(!neg_inf.is_sign_positive());
+        assert!(neg_inf.is_sign_negative());
+        assert!(!neg_inf.is_nan());
+        assert!(!neg_inf.is_normal());
+        assert!(matches!(neg_inf.classify(), Fp::Infinite));
+    }
+}
+
+float_test! {
+    name: zero,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let zero: Float = 0.0;
+        assert_biteq!(0.0, zero);
+        assert!(!zero.is_infinite());
+        assert!(zero.is_finite());
+        assert!(zero.is_sign_positive());
+        assert!(!zero.is_sign_negative());
+        assert!(!zero.is_nan());
+        assert!(!zero.is_normal());
+        assert!(matches!(zero.classify(), Fp::Zero));
+    }
+}
+
+float_test! {
+    name: neg_zero,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let neg_zero: Float = -0.0;
+        assert!(0.0 == neg_zero);
+        assert_biteq!(-0.0, neg_zero);
+        assert!(!neg_zero.is_infinite());
+        assert!(neg_zero.is_finite());
+        assert!(!neg_zero.is_sign_positive());
+        assert!(neg_zero.is_sign_negative());
+        assert!(!neg_zero.is_nan());
+        assert!(!neg_zero.is_normal());
+        assert!(matches!(neg_zero.classify(), Fp::Zero));
+    }
+}
+
+float_test! {
+    name: one,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let one: Float = 1.0;
+        assert_biteq!(1.0, one);
+        assert!(!one.is_infinite());
+        assert!(one.is_finite());
+        assert!(one.is_sign_positive());
+        assert!(!one.is_sign_negative());
+        assert!(!one.is_nan());
+        assert!(one.is_normal());
+        assert!(matches!(one.classify(), Fp::Normal));
+    }
+}
+
+float_test! {
+    name: is_nan,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        let zero: Float = 0.0;
+        let pos: Float = 5.3;
+        let neg: Float = -10.732;
+        assert!(nan.is_nan());
+        assert!(!zero.is_nan());
+        assert!(!pos.is_nan());
+        assert!(!neg.is_nan());
+        assert!(!inf.is_nan());
+        assert!(!neg_inf.is_nan());
+    }
+}
+
+float_test! {
+    name: is_infinite,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        let zero: Float = 0.0;
+        let pos: Float = 42.8;
+        let neg: Float = -109.2;
+        assert!(!nan.is_infinite());
+        assert!(inf.is_infinite());
+        assert!(neg_inf.is_infinite());
+        assert!(!zero.is_infinite());
+        assert!(!pos.is_infinite());
+        assert!(!neg.is_infinite());
+    }
+}
+
+float_test! {
+    name: is_finite,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        let zero: Float = 0.0;
+        let pos: Float = 42.8;
+        let neg: Float = -109.2;
+        assert!(!nan.is_finite());
+        assert!(!inf.is_finite());
+        assert!(!neg_inf.is_finite());
+        assert!(zero.is_finite());
+        assert!(pos.is_finite());
+        assert!(neg.is_finite());
+    }
+}
+
+float_test! {
+    name: is_normal,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        let zero: Float = 0.0;
+        let neg_zero: Float = -0.0;
+        let one : Float = 1.0;
+        assert!(!nan.is_normal());
+        assert!(!inf.is_normal());
+        assert!(!neg_inf.is_normal());
+        assert!(!zero.is_normal());
+        assert!(!neg_zero.is_normal());
+        assert!(one.is_normal());
+        assert!(Float::MIN_POSITIVE_NORMAL.is_normal());
+        assert!(!Float::MAX_SUBNORMAL.is_normal());
+    }
+}
+
+float_test! {
+    name: classify,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        let zero: Float = 0.0;
+        let neg_zero: Float = -0.0;
+        let one: Float = 1.0;
+        assert!(matches!(nan.classify(), Fp::Nan));
+        assert!(matches!(inf.classify(), Fp::Infinite));
+        assert!(matches!(neg_inf.classify(), Fp::Infinite));
+        assert!(matches!(zero.classify(), Fp::Zero));
+        assert!(matches!(neg_zero.classify(), Fp::Zero));
+        assert!(matches!(one.classify(), Fp::Normal));
+        assert!(matches!(Float::MIN_POSITIVE_NORMAL.classify(), Fp::Normal));
+        assert!(matches!(Float::MAX_SUBNORMAL.classify(), Fp::Subnormal));
     }
 }
 
