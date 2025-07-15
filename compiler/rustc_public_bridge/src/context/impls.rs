@@ -1,4 +1,4 @@
-//! Implementation of StableMIR Context.
+//! Implementation of CompilerCtxt.
 
 #![allow(rustc::usage_of_qualified_ty)]
 
@@ -85,7 +85,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     /// Return whether the item has a body defined by the user.
     ///
     /// Note that intrinsics may have a placeholder body that shouldn't be used in practice.
-    /// In StableMIR, we handle this case as if the body is not available.
+    /// In rustc_public, we handle this case as if the body is not available.
     pub(crate) fn item_has_body(&self, def_id: DefId) -> bool {
         let must_override = if let Some(intrinsic) = self.tcx.intrinsic(def_id) {
             intrinsic.must_be_overridden
