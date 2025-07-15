@@ -83,6 +83,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) {
         assert!(!parent.is_local());
         assert!(!res.opt_def_id().is_some_and(|def_id| def_id.is_local()), "res: {res:?} is local");
+        let vis = vis.map_id(|def_id| {
+            assert!(!def_id.is_local());
+            def_id
+        });
         let binding = self.arenas.new_res_binding(res, vis, span, expn_id);
         let key = self.new_disambiguated_key(ident, ns);
         let resolution = &mut *self.resolution(parent, key).borrow_mut();
