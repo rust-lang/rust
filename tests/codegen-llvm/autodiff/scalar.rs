@@ -2,7 +2,7 @@
 //@ no-prefer-dynamic
 //@ needs-enzyme
 #![feature(autodiff)]
-#![feature(intrinsics)]
+#![feature(core_intrinsics)]
 
 use std::autodiff::autodiff_reverse;
 

@@ -8,7 +8,7 @@
 // We therefore use this test to verify some of our sret handling.
 
 #![feature(autodiff)]
-#![feature(intrinsics)]
+#![feature(core_intrinsics)]
 
 use std::autodiff::autodiff_reverse;
 
