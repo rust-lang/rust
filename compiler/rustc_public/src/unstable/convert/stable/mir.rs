@@ -821,7 +821,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        use rustc_public_bridge::context::SmirAllocRange;
+        use rustc_public_bridge::context::AllocRangeHelpers;
         alloc::allocation_filter(
             self,
             cx.alloc_range(rustc_abi::Size::ZERO, self.size()),

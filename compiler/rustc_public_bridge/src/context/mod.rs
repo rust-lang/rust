@@ -12,9 +12,9 @@ use rustc_middle::ty::{Ty, TyCtxt};
 use crate::{Bridge, SmirError};
 
 mod impls;
-mod traits;
+mod helpers;
 
-pub use traits::*;
+pub use helpers::*;
 
 /// Provides direct access to rustc's internal queries.
 ///

@@ -2,13 +2,13 @@
 
 use rustc_middle::ty::{List, Ty, TyCtxt};
 use rustc_middle::{mir, ty};
-pub(crate) use traits::*;
+pub(crate) use helpers::*;
 
 use super::InternalCx;
 
-pub(crate) mod traits;
+pub(crate) mod helpers;
 
-impl<'tcx, T: InternalCx<'tcx>> SmirExistentialProjection<'tcx> for T {
+impl<'tcx, T: InternalCx<'tcx>> ExistentialProjectionHelpers<'tcx> for T {
     fn new_from_args(
         &self,
         def_id: rustc_span::def_id::DefId,
@@ -19,7 +19,7 @@ impl<'tcx, T: InternalCx<'tcx>> SmirExistentialProjection<'tcx> for T {
     }
 }
 
-impl<'tcx, T: InternalCx<'tcx>> SmirExistentialTraitRef<'tcx> for T {
+impl<'tcx, T: InternalCx<'tcx>> ExistentialTraitRefHelpers<'tcx> for T {
     fn new_from_args(
         &self,
         trait_def_id: rustc_span::def_id::DefId,
@@ -29,7 +29,7 @@ impl<'tcx, T: InternalCx<'tcx>> SmirExistentialTraitRef<'tcx> for T {
     }
 }
 
-impl<'tcx, T: InternalCx<'tcx>> SmirTraitRef<'tcx> for T {
+impl<'tcx, T: InternalCx<'tcx>> TraitRefHelpers<'tcx> for T {
     fn new_from_args(
         &self,
         trait_def_id: rustc_span::def_id::DefId,
