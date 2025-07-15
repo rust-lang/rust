@@ -167,6 +167,7 @@ pub mod error_codes;
 pub mod ext_tool_checks;
 pub mod extdeps;
 pub mod features;
+pub mod filenames;
 pub mod fluent_alphabetical;
 pub mod fluent_period;
 mod fluent_used;
