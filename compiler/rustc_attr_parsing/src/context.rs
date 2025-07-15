@@ -5,7 +5,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::LazyLock;
 
 use private::Sealed;
-use rustc_ast::{self as ast, MetaItemLit, NodeId};
+use rustc_ast::{self as ast, LitKind, MetaItemLit, NodeId};
 use rustc_attr_data_structures::AttributeKind;
 use rustc_attr_data_structures::lints::{AttributeLint, AttributeLintKind};
 use rustc_errors::{DiagCtxtHandle, Diagnostic};
@@ -16,18 +16,20 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
 use crate::attributes::codegen_attrs::{
-    ColdParser, ExportNameParser, NakedParser, NoMangleParser, OptimizeParser, TargetFeatureParser,
-    TrackCallerParser, UsedParser,
+    ColdParser, ExportNameParser, NakedParser, NoMangleParser, OmitGdbPrettyPrinterSectionParser,
+    OptimizeParser, TargetFeatureParser, TrackCallerParser, UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::dummy::DummyParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
 use crate::attributes::link_attrs::{
-    ExportStableParser, FfiConstParser, FfiPureParser, LinkNameParser, LinkSectionParser,
-    StdInternalSymbolParser,
+    ExportStableParser, FfiConstParser, FfiPureParser, LinkNameParser, LinkOrdinalParser,
+    LinkSectionParser, StdInternalSymbolParser,
 };
-use crate::attributes::lint_helpers::{AsPtrParser, PassByValueParser, PubTransparentParser};
+use crate::attributes::lint_helpers::{
+    AsPtrParser, AutomaticallyDerivedParser, PassByValueParser, PubTransparentParser,
+};
 use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
 use crate::attributes::must_use::MustUseParser;
 use crate::attributes::no_implicit_prelude::NoImplicitPreludeParser;
@@ -141,6 +143,7 @@ attribute_parsers!(
         Single<IgnoreParser>,
         Single<InlineParser>,
         Single<LinkNameParser>,
+        Single<LinkOrdinalParser>,
         Single<LinkSectionParser>,
         Single<MustUseParser>,
         Single<OptimizeParser>,
@@ -153,6 +156,7 @@ attribute_parsers!(
         Single<TransparencyParser>,
         Single<WithoutArgs<AllowIncoherentImplParser>>,
         Single<WithoutArgs<AsPtrParser>>,
+        Single<WithoutArgs<AutomaticallyDerivedParser>>,
         Single<WithoutArgs<CoherenceIsCoreParser>>,
         Single<WithoutArgs<CoinductiveParser>>,
         Single<WithoutArgs<ColdParser>>,
@@ -171,6 +175,7 @@ attribute_parsers!(
         Single<WithoutArgs<NoImplicitPreludeParser>>,
         Single<WithoutArgs<NoMangleParser>>,
         Single<WithoutArgs<NonExhaustiveParser>>,
+        Single<WithoutArgs<OmitGdbPrettyPrinterSectionParser>>,
         Single<WithoutArgs<ParenSugarParser>>,
         Single<WithoutArgs<PassByValueParser>>,
         Single<WithoutArgs<PubTransparentParser>>,
@@ -771,4 +776,33 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
             }
         }
     }
+}
+
+/// Parse a single integer.
+///
+/// Used by attributes that take a single integer as argument, such as
+/// `#[link_ordinal]` and `#[rustc_layout_scalar_valid_range_start]`.
+/// `cx` is the context given to the attribute.
+/// `args` is the parser for the attribute arguments.
+pub(crate) fn parse_single_integer<S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    args: &ArgParser<'_>,
+) -> Option<u128> {
+    let Some(list) = args.list() else {
+        cx.expected_list(cx.attr_span);
+        return None;
+    };
+    let Some(single) = list.single() else {
+        cx.expected_single_argument(list.span);
+        return None;
+    };
+    let Some(lit) = single.lit() else {
+        cx.expected_integer_literal(single.span());
+        return None;
+    };
+    let LitKind::Int(num, _ty) = lit.kind else {
+        cx.expected_integer_literal(single.span());
+        return None;
+    };
+    Some(num.0)
 }

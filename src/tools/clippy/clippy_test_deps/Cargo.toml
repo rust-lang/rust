@@ -15,3 +15,6 @@ futures = "0.3"
 parking_lot = "0.12"
 tokio = { version = "1", features = ["io-util"] }
 itertools = "0.12"
+
+# Make sure we are not part of the rustc workspace.
+[workspace]

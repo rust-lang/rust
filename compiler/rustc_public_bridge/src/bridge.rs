@@ -1,8 +1,8 @@
 //! Defines a set of traits that is used for abstracting
-//! stable_mir's components that are needed in rustc_smir.
+//! rustc_public's components that are needed in rustc_public_bridge.
 //!
 //! These traits are really useful when programming
-//! in stable_mir-agnostic settings.
+//! in rustc_public-agnostic settings.
 
 use std::fmt::Debug;
 

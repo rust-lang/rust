@@ -1,15 +1,15 @@
 //! This module holds the logic to convert rustc internal ADTs into stable mir ADTs.
 //!
 //! The conversion from stable to internal is not meant to be complete,
-//! and it should be added as when needed to be passed as input to rustc_smir functions.
+//! and it should be added as when needed to be passed as input to rustc_public_bridge functions.
 //!
 //! For contributors, please make sure to avoid calling rustc's internal functions and queries.
-//! These should be done via `rustc_smir` APIs, but it's possible to access ADT fields directly.
+//! These should be done via `rustc_public_bridge` APIs, but it's possible to access ADT fields directly.
 
 use std::ops::RangeInclusive;
 
-use rustc_smir::Tables;
-use rustc_smir::context::SmirCtxt;
+use rustc_public_bridge::Tables;
+use rustc_public_bridge::context::SmirCtxt;
 
 use super::Stable;
 use crate::compiler_interface::BridgeTys;

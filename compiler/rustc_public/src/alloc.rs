@@ -2,14 +2,14 @@
 //!
 //! This module is responsible for constructing stable components.
 //! All operations requiring rustc queries must be delegated
-//! to `rustc_smir::alloc` to maintain stability guarantees.
+//! to `rustc_public_bridge::alloc` to maintain stability guarantees.
 
 use rustc_abi::Align;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::AllocRange;
-use rustc_smir::bridge::SmirError;
-use rustc_smir::context::SmirCtxt;
-use rustc_smir::{Tables, alloc};
+use rustc_public_bridge::bridge::SmirError;
+use rustc_public_bridge::context::SmirCtxt;
+use rustc_public_bridge::{Tables, alloc};
 
 use super::Error;
 use super::compiler_interface::BridgeTys;
@@ -59,7 +59,7 @@ pub(crate) fn try_new_allocation<'tcx>(
         }
         ConstValue::Indirect { alloc_id, offset } => {
             let alloc = alloc::try_new_indirect(alloc_id, cx);
-            use rustc_smir::context::SmirAllocRange;
+            use rustc_public_bridge::context::SmirAllocRange;
             Ok(allocation_filter(&alloc.0, cx.alloc_range(offset, layout.size), tables, cx))
         }
     }

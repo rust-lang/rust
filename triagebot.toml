@@ -1050,8 +1050,8 @@ cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 message = "`rustc_macros::diagnostics` was changed"
 cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 
-[mentions."compiler/stable_mir"]
-message = "This PR changes Stable MIR"
+[mentions."compiler/rustc_public"]
+message = "This PR changes rustc_public"
 cc = ["@oli-obk", "@celinval", "@ouz-a"]
 
 [mentions."compiler/rustc_target/src/spec"]
@@ -1445,7 +1445,7 @@ dep-bumps = [
 "/compiler/rustc_const_eval/src/interpret" =             ["compiler", "mir"]
 "/compiler/rustc_mir_build/src/builder" =                ["compiler", "mir"]
 "/compiler/rustc_mir_transform" =                        ["compiler", "mir", "mir-opt"]
-"/compiler/rustc_smir" =                                 ["project-stable-mir"]
+"/compiler/rustc_public_bridge" =                        ["project-stable-mir"]
 "/compiler/rustc_parse" =                                ["compiler", "parser"]
 "/compiler/rustc_parse/src/lexer" =                      ["compiler", "lexer"]
 "/compiler/rustc_query_impl" =                           ["compiler", "query-system"]
@@ -1455,7 +1455,7 @@ dep-bumps = [
 "/compiler/rustc_trait_selection" =                      ["compiler", "types"]
 "/compiler/rustc_traits" =                               ["compiler", "types"]
 "/compiler/rustc_type_ir" =                              ["compiler", "types"]
-"/compiler/stable_mir" =                                 ["project-stable-mir"]
+"/compiler/rustc_public" =                               ["project-stable-mir"]
 "/library/alloc" =                                       ["libs"]
 "/library/core" =                                        ["libs", "@scottmcm"]
 "/library/panic_abort" =                                 ["libs"]
