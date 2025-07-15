@@ -3,8 +3,6 @@
 //@ revisions: assume no_assume
 //@ [assume]compile-flags: -Z assume-incomplete-release
 
-#![feature(cfg_version)]
-
 extern crate ver_cfg_rel;
 
 use ver_cfg_rel::ver_cfg_rel;
