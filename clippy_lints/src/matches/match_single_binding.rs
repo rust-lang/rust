@@ -2,10 +2,8 @@ use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::HirNode;
-use clippy_utils::source::{
-    RelativeIndent, indent_of, reindent_multiline_relative, snippet, snippet_block_with_context, snippet_with_context,
-};
-use clippy_utils::{is_refutable, peel_blocks};
+use clippy_utils::source::{indent_of, reindent_multiline, snippet, snippet_block_with_context, snippet_with_context};
+use clippy_utils::{is_expr_identity_of_pat, is_refutable, peel_blocks};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -86,6 +84,18 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         snippet_with_context(cx, pat_span, ctxt, "..", &mut app).0
                     ),
                 ),
+                None if is_expr_identity_of_pat(cx, arms[0].pat, ex, false) => {
+                    span_lint_and_sugg(
+                        cx,
+                        MATCH_SINGLE_BINDING,
+                        expr.span,
+                        "this match could be replaced by its body itself",
+                        "consider using the match body instead",
+                        snippet_body,
+                        Applicability::MachineApplicable,
+                    );
+                    return;
+                },
                 None => {
                     let sugg = sugg_with_curlies(
                         cx,
@@ -302,7 +312,7 @@ fn expr_in_nested_block(cx: &LateContext<'_>, match_expr: &Expr<'_>) -> bool {
 fn expr_must_have_curlies(cx: &LateContext<'_>, match_expr: &Expr<'_>) -> bool {
     let parent = cx.tcx.parent_hir_node(match_expr.hir_id);
     if let Node::Expr(Expr {
-        kind: ExprKind::Closure { .. },
+        kind: ExprKind::Closure(..) | ExprKind::Binary(..),
         ..
     })
     | Node::AnonConst(..) = parent
@@ -319,15 +329,23 @@ fn expr_must_have_curlies(cx: &LateContext<'_>, match_expr: &Expr<'_>) -> bool {
     false
 }
 
+fn indent_of_nth_line(snippet: &str, nth: usize) -> Option<usize> {
+    snippet
+        .lines()
+        .nth(nth)
+        .and_then(|s| s.find(|c: char| !c.is_whitespace()))
+}
+
 fn reindent_snippet_if_in_block(snippet_body: &str, has_assignment: bool) -> String {
     if has_assignment || !snippet_body.starts_with('{') {
-        return reindent_multiline_relative(snippet_body, true, RelativeIndent::Add(0));
+        return reindent_multiline(snippet_body, true, indent_of_nth_line(snippet_body, 1));
     }
 
-    reindent_multiline_relative(
-        snippet_body.trim_start_matches('{').trim_end_matches('}').trim(),
+    let snippet_body = snippet_body.trim_start_matches('{').trim_end_matches('}').trim();
+    reindent_multiline(
+        snippet_body,
         false,
-        RelativeIndent::Sub(4),
+        indent_of_nth_line(snippet_body, 0).map(|indent| indent.saturating_sub(4)),
     )
 }
 

@@ -328,3 +328,18 @@ mod issue15018 {
         }
     }
 }
+
+#[allow(clippy::short_circuit_statement)]
+fn issue15269(a: usize, b: usize, c: usize) -> bool {
+    a < b
+        && match b {
+            //~^ match_single_binding
+            b => b < c,
+        };
+
+    a < b
+        && match (a, b) {
+            //~^ match_single_binding
+            (a, b) => b < c,
+        }
+}

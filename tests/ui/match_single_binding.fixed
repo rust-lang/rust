@@ -257,3 +257,12 @@ mod issue15018 {
         }
     }
 }
+
+#[allow(clippy::short_circuit_statement)]
+fn issue15269(a: usize, b: usize, c: usize) -> bool {
+    a < b
+        && b < c;
+
+    a < b
+        && b < c
+}
