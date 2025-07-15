@@ -27,6 +27,14 @@ fn loads_value(loc: &AtomicI32, ord: Ordering, val: i32) -> i32 {
     val
 }
 
+/// Spins until it acquires a pre-determined boolean.
+fn loads_bool(loc: &AtomicBool, ord: Ordering, val: bool) -> bool {
+    while loc.load(ord) != val {
+        std::hint::spin_loop();
+    }
+    val
+}
+
 // Test case SB taken from Repairing Sequential Consistency in C/C++11
 // by Lahav et al.
 // https://plv.mpi-sws.org/scfix/paper.pdf
@@ -60,11 +68,11 @@ fn test_iriw_sc_rlx() {
     let a = spawn(move || x.store(true, Relaxed));
     let b = spawn(move || y.store(true, Relaxed));
     let c = spawn(move || {
-        while !x.load(SeqCst) {}
+        loads_bool(x, SeqCst, true);
         y.load(SeqCst)
     });
     let d = spawn(move || {
-        while !y.load(SeqCst) {}
+        loads_bool(y, SeqCst, true);
         x.load(SeqCst)
     });
 

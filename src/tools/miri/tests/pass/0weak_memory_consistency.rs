@@ -48,6 +48,14 @@ fn loads_value(loc: &AtomicI32, ord: Ordering, val: i32) -> i32 {
     val
 }
 
+/// Spins until it acquires a pre-determined boolean.
+fn loads_bool(loc: &AtomicBool, ord: Ordering, val: bool) -> bool {
+    while loc.load(ord) != val {
+        std::hint::spin_loop();
+    }
+    val
+}
+
 fn test_corr() {
     let x = static_atomic(0);
     let y = static_atomic(0);
@@ -216,12 +224,12 @@ fn test_sync_through_rmw_and_fences() {
     let go = static_atomic_bool(false);
 
     let t1 = spawn(move || {
-        while !go.load(Relaxed) {}
+        loads_bool(go, Relaxed, true);
         rdmw(y, x, z)
     });
 
     let t2 = spawn(move || {
-        while !go.load(Relaxed) {}
+        loads_bool(go, Relaxed, true);
         rdmw(z, x, y)
     });
 

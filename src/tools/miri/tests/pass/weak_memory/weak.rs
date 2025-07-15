@@ -119,12 +119,12 @@ fn faa_replaced_by_load() -> bool {
     let go = static_atomic(0);
 
     let t1 = spawn(move || {
-        while go.load(Relaxed) == 0 {}
+        reads_value(go, 1);
         rdmw(y, x, z)
     });
 
     let t2 = spawn(move || {
-        while go.load(Relaxed) == 0 {}
+        reads_value(go, 1);
         rdmw(z, x, y)
     });
 
