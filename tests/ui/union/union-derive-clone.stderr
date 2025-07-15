@@ -29,6 +29,9 @@ note: trait bound `CloneNoCopy: Copy` was not satisfied
    |
 LL | #[derive(Clone, Copy)]
    |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+LL | union U5<T> {
+   |          - implicit unsatisfied bound on this type parameter
+   = note: `#[derive(Clone)]` introduces `where`-bounds requiring every type parameter to implement `Clone`
 help: consider annotating `CloneNoCopy` with `#[derive(Clone, Copy)]`
    |
 LL + #[derive(Clone, Copy)]

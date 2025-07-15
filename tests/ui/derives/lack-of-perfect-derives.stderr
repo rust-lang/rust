@@ -1,0 +1,240 @@
+error[E0369]: binary operation `==` cannot be applied to type `S<X, X, X>`
+  --> $DIR/lack-of-perfect-derives.rs:23:15
+   |
+LL |     let _ = s == s2;
+   |             - ^^ -- S<X, X, X>
+   |             |
+   |             S<X, X, X>
+   |
+note: an implementation of `PartialEq` might be missing for `X`
+  --> $DIR/lack-of-perfect-derives.rs:15:1
+   |
+LL | struct X;
+   | ^^^^^^^^ must implement `PartialEq`
+help: consider annotating `X` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct X;
+   |
+
+error[E0599]: the method `clone` exists for struct `S<X, X, Y>`, but its trait bounds were not satisfied
+  --> $DIR/lack-of-perfect-derives.rs:27:16
+   |
+LL | struct S<T, K, V>(Arc<T>, Rc<K>, Arc<V>, ());
+   | ----------------- method `clone` not found for this struct because it doesn't satisfy `S<X, X, Y>: Clone`
+...
+LL | struct X;
+   | -------- doesn't satisfy `X: Clone`
+...
+LL |     let s2 = s.clone();
+   |                ^^^^^ method cannot be called on `S<X, X, Y>` due to unsatisfied trait bounds
+   |
+note: trait bound `X: Clone` was not satisfied
+  --> $DIR/lack-of-perfect-derives.rs:4:10
+   |
+LL | #[derive(Clone, PartialEq)]
+   |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+LL | struct S<T, K, V>(Arc<T>, Rc<K>, Arc<V>, ());
+   |          -  - implicit unsatisfied bound on this type parameter
+   |          |
+   |          implicit unsatisfied bound on this type parameter
+   = note: `#[derive(Clone)]` introduces `where`-bounds requiring every type parameter to implement `Clone`, even when not strictly necessary
+   = help: you can manually implement `Clone` with more targeted bounds: `impl<T, K, V> Clone for S<T, K, V> where V: Clone { /* .. */ }`
+help: consider annotating `X` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct X;
+   |
+
+error[E0599]: the method `clone` exists for struct `S<X, X, X>`, but its trait bounds were not satisfied
+  --> $DIR/lack-of-perfect-derives.rs:29:16
+   |
+LL | struct S<T, K, V>(Arc<T>, Rc<K>, Arc<V>, ());
+   | ----------------- method `clone` not found for this struct because it doesn't satisfy `S<X, X, X>: Clone`
+...
+LL | struct X;
+   | -------- doesn't satisfy `X: Clone`
+...
+LL |     let s2 = s.clone();
+   |                ^^^^^ method cannot be called on `S<X, X, X>` due to unsatisfied trait bounds
+   |
+note: trait bound `X: Clone` was not satisfied
+  --> $DIR/lack-of-perfect-derives.rs:4:10
+   |
+LL | #[derive(Clone, PartialEq)]
+   |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+LL | struct S<T, K, V>(Arc<T>, Rc<K>, Arc<V>, ());
+   |          -  -  - implicit unsatisfied bound on this type parameter
+   |          |  |
+   |          |  implicit unsatisfied bound on this type parameter
+   |          implicit unsatisfied bound on this type parameter
+   = note: `#[derive(Clone)]` introduces `where`-bounds requiring every type parameter to implement `Clone`, even when not strictly necessary
+   = help: you can manually implement `Clone` with more targeted bounds: `impl<T, K, V> Clone for S<T, K, V> { /* .. */ }`
+help: consider annotating `X` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct X;
+   |
+
+error[E0599]: the method `eq` exists for struct `S<X, X, X>`, but its trait bounds were not satisfied
+  --> $DIR/lack-of-perfect-derives.rs:32:7
+   |
+LL | struct S<T, K, V>(Arc<T>, Rc<K>, Arc<V>, ());
+   | ----------------- method `eq` not found for this struct because it doesn't satisfy `S<X, X, X>: Iterator` or `S<X, X, X>: PartialEq`
+...
+LL | struct X;
+   | -------- doesn't satisfy `X: PartialEq`
+...
+LL |     s.eq(s2);
+   |       ^^ method cannot be called on `S<X, X, X>` due to unsatisfied trait bounds
+   |
+note: trait bound `X: PartialEq` was not satisfied
+  --> $DIR/lack-of-perfect-derives.rs:4:17
+   |
+LL | #[derive(Clone, PartialEq)]
+   |                 ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+LL | struct S<T, K, V>(Arc<T>, Rc<K>, Arc<V>, ());
+   |          -  -  - implicit unsatisfied bound on this type parameter
+   |          |  |
+   |          |  implicit unsatisfied bound on this type parameter
+   |          implicit unsatisfied bound on this type parameter
+   = note: `#[derive(PartialEq)]` introduces `where`-bounds requiring every type parameter to implement `PartialEq`, even when not strictly necessary
+   = help: you can manually implement `PartialEq` with more targeted bounds: `impl<T, K, V> PartialEq for S<T, K, V> where Arc<T>: PartialEq, Rc<K>: PartialEq, Arc<V>: PartialEq { /* .. */ }`
+   = note: the following trait bounds were not satisfied:
+           `S<X, X, X>: Iterator`
+           which is required by `&mut S<X, X, X>: Iterator`
+note: the trait `Iterator` must be implemented
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider annotating `X` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct X;
+   |
+
+error[E0599]: the method `clone` exists for struct `N<X, Y, X>`, but its trait bounds were not satisfied
+  --> $DIR/lack-of-perfect-derives.rs:34:16
+   |
+LL | struct N<T, K, V>(Arc<T>, T, Rc<K>, K, Arc<V>, V, ());
+   | ----------------- method `clone` not found for this struct because it doesn't satisfy `N<X, Y, X>: Clone`
+...
+LL | struct X;
+   | -------- doesn't satisfy `X: Clone`
+...
+LL |     let n2 = n.clone();
+   |                ^^^^^ method cannot be called on `N<X, Y, X>` due to unsatisfied trait bounds
+   |
+note: trait bound `X: Clone` was not satisfied
+  --> $DIR/lack-of-perfect-derives.rs:8:10
+   |
+LL | #[derive(Clone, PartialEq)]
+   |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+LL | struct N<T, K, V>(Arc<T>, T, Rc<K>, K, Arc<V>, V, ());
+   |          -     - implicit unsatisfied bound on this type parameter
+   |          |
+   |          implicit unsatisfied bound on this type parameter
+   = note: `#[derive(Clone)]` introduces `where`-bounds requiring every type parameter to implement `Clone`
+help: consider annotating `X` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct X;
+   |
+
+error[E0599]: the method `eq` exists for struct `N<X, Y, X>`, but its trait bounds were not satisfied
+  --> $DIR/lack-of-perfect-derives.rs:35:7
+   |
+LL | struct N<T, K, V>(Arc<T>, T, Rc<K>, K, Arc<V>, V, ());
+   | ----------------- method `eq` not found for this struct because it doesn't satisfy `N<X, Y, X>: Iterator` or `N<X, Y, X>: PartialEq`
+...
+LL | struct X;
+   | -------- doesn't satisfy `X: PartialEq`
+...
+LL |     n.eq(n2);
+   |       ^^ method cannot be called on `N<X, Y, X>` due to unsatisfied trait bounds
+   |
+note: trait bound `X: PartialEq` was not satisfied
+  --> $DIR/lack-of-perfect-derives.rs:8:17
+   |
+LL | #[derive(Clone, PartialEq)]
+   |                 ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+LL | struct N<T, K, V>(Arc<T>, T, Rc<K>, K, Arc<V>, V, ());
+   |          -     - implicit unsatisfied bound on this type parameter
+   |          |
+   |          implicit unsatisfied bound on this type parameter
+   = note: `#[derive(PartialEq)]` introduces `where`-bounds requiring every type parameter to implement `PartialEq`
+   = note: the following trait bounds were not satisfied:
+           `N<X, Y, X>: Iterator`
+           which is required by `&mut N<X, Y, X>: Iterator`
+note: the trait `Iterator` must be implemented
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider annotating `X` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct X;
+   |
+
+error[E0599]: the method `clone` exists for struct `Z<X, Y, X>`, but its trait bounds were not satisfied
+  --> $DIR/lack-of-perfect-derives.rs:37:16
+   |
+LL | struct Z<T, K, V>(T, K, Option<V>);
+   | ----------------- method `clone` not found for this struct because it doesn't satisfy `Z<X, Y, X>: Clone`
+LL |
+LL | struct X;
+   | -------- doesn't satisfy `X: Clone`
+...
+LL |     let z2 = z.clone();
+   |                ^^^^^ method cannot be called on `Z<X, Y, X>` due to unsatisfied trait bounds
+   |
+note: trait bound `X: Clone` was not satisfied
+  --> $DIR/lack-of-perfect-derives.rs:12:10
+   |
+LL | #[derive(Clone, PartialEq)]
+   |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+LL | struct Z<T, K, V>(T, K, Option<V>);
+   |          -     - implicit unsatisfied bound on this type parameter
+   |          |
+   |          implicit unsatisfied bound on this type parameter
+   = note: `#[derive(Clone)]` introduces `where`-bounds requiring every type parameter to implement `Clone`, even when not strictly necessary
+   = help: you can manually implement `Clone` with more targeted bounds: `impl<T, K, V> Clone for Z<T, K, V> where T: Clone, K: Clone, Option<V>: Clone { /* .. */ }`
+help: consider annotating `X` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct X;
+   |
+
+error[E0599]: the method `eq` exists for struct `N<X, Y, X>`, but its trait bounds were not satisfied
+  --> $DIR/lack-of-perfect-derives.rs:38:7
+   |
+LL | struct N<T, K, V>(Arc<T>, T, Rc<K>, K, Arc<V>, V, ());
+   | ----------------- method `eq` not found for this struct because it doesn't satisfy `N<X, Y, X>: Iterator` or `N<X, Y, X>: PartialEq`
+...
+LL | struct X;
+   | -------- doesn't satisfy `X: PartialEq`
+...
+LL |     n.eq(z2);
+   |       ^^ method cannot be called on `N<X, Y, X>` due to unsatisfied trait bounds
+   |
+note: trait bound `X: PartialEq` was not satisfied
+  --> $DIR/lack-of-perfect-derives.rs:8:17
+   |
+LL | #[derive(Clone, PartialEq)]
+   |                 ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+LL | struct N<T, K, V>(Arc<T>, T, Rc<K>, K, Arc<V>, V, ());
+   |          -     - implicit unsatisfied bound on this type parameter
+   |          |
+   |          implicit unsatisfied bound on this type parameter
+   = note: `#[derive(PartialEq)]` introduces `where`-bounds requiring every type parameter to implement `PartialEq`
+   = note: the following trait bounds were not satisfied:
+           `N<X, Y, X>: Iterator`
+           which is required by `&mut N<X, Y, X>: Iterator`
+note: the trait `Iterator` must be implemented
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider annotating `X` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct X;
+   |
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0369, E0599.
+For more information about an error, try `rustc --explain E0369`.
