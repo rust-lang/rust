@@ -1678,10 +1678,7 @@ pub struct Drain<'a, K, A: Allocator = Global> {
 /// [`extract_if`]: struct.HashSet.html#method.extract_if
 /// [`HashSet`]: struct.HashSet.html
 #[must_use = "Iterators are lazy unless consumed"]
-pub struct ExtractIf<'a, K, F, A: Allocator = Global>
-where
-    F: FnMut(&K) -> bool,
-{
+pub struct ExtractIf<'a, K, F, A: Allocator = Global> {
     f: F,
     inner: RawExtractIf<'a, (K, ()), A>,
 }
@@ -2751,6 +2748,22 @@ mod test_set {
         let mut i = 0;
         let expected = [-2, 1, 5, 11, 14, 22];
         for x in a.symmetric_difference(&b) {
+            assert!(expected.contains(x));
+            i += 1;
+        }
+        assert_eq!(i, expected.len());
+    }
+
+    #[test]
+    fn test_sub_assign() {
+        let mut a: HashSet<_> = vec![1, 2, 3, 4, 5].into_iter().collect();
+        let b: HashSet<_> = vec![4, 5, 6].into_iter().collect();
+
+        a -= &b;
+
+        let mut i = 0;
+        let expected = [1, 2, 3];
+        for x in &a {
             assert!(expected.contains(x));
             i += 1;
         }

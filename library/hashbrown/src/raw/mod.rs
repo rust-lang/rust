@@ -12,6 +12,8 @@ use core::slice;
 use core::{hint, ptr};
 
 mod alloc;
+#[cfg(test)]
+pub(crate) use self::alloc::AllocError;
 pub(crate) use self::alloc::{do_alloc, Allocator, Global};
 
 #[inline]
@@ -98,16 +100,51 @@ impl ProbeSeq {
 // Workaround for emscripten bug emscripten-core/emscripten-fastcomp#258
 #[cfg_attr(target_os = "emscripten", inline(never))]
 #[cfg_attr(not(target_os = "emscripten"), inline)]
-fn capacity_to_buckets(cap: usize) -> Option<usize> {
+fn capacity_to_buckets(cap: usize, table_layout: TableLayout) -> Option<usize> {
     debug_assert_ne!(cap, 0);
 
     // For small tables we require at least 1 empty bucket so that lookups are
     // guaranteed to terminate if an element doesn't exist in the table.
-    if cap < 8 {
+    if cap < 15 {
+        // Consider a small TableLayout like { size: 1, ctrl_align: 16 } on a
+        // platform with Group::WIDTH of 16 (like x86_64 with SSE2). For small
+        // bucket sizes, this ends up wasting quite a few bytes just to pad to
+        // the relatively larger ctrl_align:
+        //
+        // | capacity | buckets | bytes allocated | bytes per item |
+        // | -------- | ------- | --------------- | -------------- |
+        // |        3 |       4 |              36 | (Yikes!)  12.0 |
+        // |        7 |       8 |              40 | (Poor)     5.7 |
+        // |       14 |      16 |              48 |            3.4 |
+        // |       28 |      32 |              80 |            3.3 |
+        //
+        // In general, buckets * table_layout.size >= table_layout.ctrl_align
+        // must be true to avoid these edges. This is implemented by adjusting
+        // the minimum capacity upwards for small items. This code only needs
+        // to handle ctrl_align which are less than or equal to Group::WIDTH,
+        // because valid layout sizes are always a multiple of the alignment,
+        // so anything with alignment over the Group::WIDTH won't hit this edge
+        // case.
+
+        // This is brittle, e.g. if we ever add 32 byte groups, it will select
+        // 3 regardless of the table_layout.size.
+        let min_cap = match (Group::WIDTH, table_layout.size) {
+            (16, 0..=1) => 14,
+            (16, 2..=3) => 7,
+            (8, 0..=1) => 7,
+            _ => 3,
+        };
+        let cap = min_cap.max(cap);
         // We don't bother with a table size of 2 buckets since that can only
-        // hold a single element. Instead we skip directly to a 4 bucket table
+        // hold a single element. Instead, we skip directly to a 4 bucket table
         // which can hold 3 elements.
-        return Some(if cap < 4 { 4 } else { 8 });
+        return Some(if cap < 4 {
+            4
+        } else if cap < 8 {
+            8
+        } else {
+            16
+        });
     }
 
     // Otherwise require 1/8 buckets to be empty (87.5% load)
@@ -849,7 +886,7 @@ impl<T, A: Allocator> RawTable<T, A> {
         // elements. If the calculation overflows then the requested bucket
         // count must be larger than what we have right and nothing needs to be
         // done.
-        let min_buckets = match capacity_to_buckets(min_size) {
+        let min_buckets = match capacity_to_buckets(min_size, Self::TABLE_LAYOUT) {
             Some(buckets) => buckets,
             None => return,
         };
@@ -980,14 +1017,8 @@ impl<T, A: Allocator> RawTable<T, A> {
     /// * If `self.table.items != 0`, calling of this function with `capacity`
     ///   equal to 0 (`capacity == 0`) results in [`undefined behavior`].
     ///
-    /// * If `capacity_to_buckets(capacity) < Group::WIDTH` and
-    ///   `self.table.items > capacity_to_buckets(capacity)`
-    ///   calling this function results in [`undefined behavior`].
-    ///
-    /// * If `capacity_to_buckets(capacity) >= Group::WIDTH` and
-    ///   `self.table.items > capacity_to_buckets(capacity)`
-    ///   calling this function are never return (will go into an
-    ///   infinite loop).
+    /// * If `self.table.items > capacity_to_buckets(capacity, Self::TABLE_LAYOUT)`
+    ///   calling this function are never return (will loop infinitely).
     ///
     /// See [`RawTableInner::find_insert_slot`] for more information.
     ///
@@ -1477,8 +1508,8 @@ impl RawTableInner {
             // SAFETY: We checked that we could successfully allocate the new table, and then
             // initialized all control bytes with the constant `Tag::EMPTY` byte.
             unsafe {
-                let buckets =
-                    capacity_to_buckets(capacity).ok_or_else(|| fallibility.capacity_overflow())?;
+                let buckets = capacity_to_buckets(capacity, table_layout)
+                    .ok_or_else(|| fallibility.capacity_overflow())?;
 
                 let mut result =
                     Self::new_uninitialized(alloc, table_layout, buckets, fallibility)?;
@@ -1687,18 +1718,20 @@ impl RawTableInner {
                 insert_slot = self.find_insert_slot_in_group(&group, &probe_seq);
             }
 
-            // Only stop the search if the group contains at least one empty element.
-            // Otherwise, the element that we are looking for might be in a following group.
-            if likely(group.match_empty().any_bit_set()) {
-                // We must have found a insert slot by now, since the current group contains at
-                // least one. For tables smaller than the group width, there will still be an
-                // empty element in the current (and only) group due to the load factor.
-                unsafe {
-                    // SAFETY:
-                    // * Caller of this function ensures that the control bytes are properly initialized.
-                    //
-                    // * We use this function with the slot / index found by `self.find_insert_slot_in_group`
-                    return Err(self.fix_insert_slot(insert_slot.unwrap_unchecked()));
+            if let Some(insert_slot) = insert_slot {
+                // Only stop the search if the group contains at least one empty element.
+                // Otherwise, the element that we are looking for might be in a following group.
+                if likely(group.match_empty().any_bit_set()) {
+                    // We must have found a insert slot by now, since the current group contains at
+                    // least one. For tables smaller than the group width, there will still be an
+                    // empty element in the current (and only) group due to the load factor.
+                    unsafe {
+                        // SAFETY:
+                        // * Caller of this function ensures that the control bytes are properly initialized.
+                        //
+                        // * We use this function with the slot / index found by `self.find_insert_slot_in_group`
+                        return Err(self.fix_insert_slot(insert_slot));
+                    }
                 }
             }
 
@@ -4135,6 +4168,26 @@ impl<T, A: Allocator> RawExtractIf<'_, T, A> {
 mod test_map {
     use super::*;
 
+    #[test]
+    fn test_minimum_capacity_for_small_types() {
+        #[track_caller]
+        fn test_t<T>() {
+            let raw_table: RawTable<T> = RawTable::with_capacity(1);
+            let actual_buckets = raw_table.buckets();
+            let min_buckets = Group::WIDTH / core::mem::size_of::<T>();
+            assert!(
+                actual_buckets >= min_buckets,
+                "expected at least {min_buckets} buckets, got {actual_buckets} buckets"
+            );
+        }
+
+        test_t::<u8>();
+
+        // This is only "small" for some platforms, like x86_64 with SSE2, but
+        // there's no harm in running it on other platforms.
+        test_t::<u16>();
+    }
+
     fn rehash_in_place<T>(table: &mut RawTable<T>, hasher: impl Fn(&T) -> u64) {
         unsafe {
             table.table.rehash_in_place(
@@ -4238,9 +4291,9 @@ mod test_map {
     /// ARE ZERO, EVEN IF WE HAVE `FULL` CONTROL BYTES.
     #[test]
     fn test_catch_panic_clone_from() {
+        use super::{AllocError, Allocator, Global};
         use ::alloc::sync::Arc;
         use ::alloc::vec::Vec;
-        use allocator_api2::alloc::{AllocError, Allocator, Global};
         use core::sync::atomic::{AtomicI8, Ordering};
         use std::thread;
 
