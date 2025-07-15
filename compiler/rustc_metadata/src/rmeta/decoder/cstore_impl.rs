@@ -628,15 +628,20 @@ impl CStore {
     }
 
     /// Track how an extern crate has been loaded. Called after resolving an import in the local crate.
+    ///
+    /// * the `name` is for [`Self::set_resolved_extern_crate_name`] saving `--extern name=`
+    /// * `extern_crate` is for diagnostics
     pub(crate) fn update_extern_crate(
         &mut self,
         cnum: CrateNum,
+        name: Symbol,
         extern_crate: ExternCrate,
     ) {
         debug_assert_eq!(
             extern_crate.dependency_of, LOCAL_CRATE,
             "this function should not be called on transitive dependencies"
         );
+        self.set_resolved_extern_crate_name(name, cnum);
         self.update_transitive_extern_crate_diagnostics(cnum, extern_crate);
     }
 
