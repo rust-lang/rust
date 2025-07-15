@@ -153,7 +153,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                             if fx.clif_comments.enabled() {
                                 fx.add_comment(local_data_id, format!("{:?}", alloc_id));
                             }
-                            fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
+                            fx.bcx.ins().symbol_value(fx.pointer_type, local_data_id)
                         }
                     }
                     GlobalAlloc::Function { instance, .. } => {
@@ -174,7 +174,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                         );
                         let local_data_id =
                             fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-                        fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
+                        fx.bcx.ins().symbol_value(fx.pointer_type, local_data_id)
                     }
                     GlobalAlloc::TypeId { .. } => {
                         return CValue::const_val(
@@ -195,7 +195,16 @@ pub(crate) fn codegen_const_value<'tcx>(
                         if fx.clif_comments.enabled() {
                             fx.add_comment(local_data_id, format!("{:?}", def_id));
                         }
-                        fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
+                        if fx
+                            .tcx
+                            .codegen_fn_attrs(def_id)
+                            .flags
+                            .contains(CodegenFnAttrFlags::THREAD_LOCAL)
+                        {
+                            fx.bcx.ins().tls_value(fx.pointer_type, local_data_id)
+                        } else {
+                            fx.bcx.ins().symbol_value(fx.pointer_type, local_data_id)
+                        }
                     }
                 };
                 let val = if offset.bytes() != 0 {
@@ -229,7 +238,7 @@ fn pointer_for_allocation<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, alloc_id: All
     if fx.clif_comments.enabled() {
         fx.add_comment(local_data_id, format!("{:?}", alloc_id));
     }
-    fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
+    fx.bcx.ins().symbol_value(fx.pointer_type, local_data_id)
 }
 
 fn data_id_for_alloc_id(
