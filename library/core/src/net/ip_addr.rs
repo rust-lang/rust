@@ -2,7 +2,6 @@ use super::display_buffer::DisplayBuffer;
 use crate::cmp::Ordering;
 use crate::fmt::{self, Write};
 use crate::hash::{Hash, Hasher};
-use crate::iter;
 use crate::mem::transmute;
 use crate::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
@@ -2348,20 +2347,24 @@ impl const From<[u16; 8]> for IpAddr {
 }
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
-impl Not for Ipv4Addr {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Not for Ipv4Addr {
     type Output = Ipv4Addr;
 
     #[inline]
     fn not(mut self) -> Ipv4Addr {
-        for octet in &mut self.octets {
-            *octet = !*octet;
+        let mut idx = 0;
+        while idx < 4 {
+            self.octets[idx] = !self.octets[idx];
+            idx += 1;
         }
         self
     }
 }
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
-impl Not for &'_ Ipv4Addr {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Not for &'_ Ipv4Addr {
     type Output = Ipv4Addr;
 
     #[inline]
@@ -2371,20 +2374,24 @@ impl Not for &'_ Ipv4Addr {
 }
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
-impl Not for Ipv6Addr {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Not for Ipv6Addr {
     type Output = Ipv6Addr;
 
     #[inline]
     fn not(mut self) -> Ipv6Addr {
-        for octet in &mut self.octets {
-            *octet = !*octet;
+        let mut idx = 0;
+        while idx < 16 {
+            self.octets[idx] = !self.octets[idx];
+            idx += 1;
         }
         self
     }
 }
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
-impl Not for &'_ Ipv6Addr {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Not for &'_ Ipv6Addr {
     type Output = Ipv6Addr;
 
     #[inline]
@@ -2400,23 +2407,25 @@ macro_rules! bitop_impls {
     )*) => {
         $(
             $(#[$attr])*
-            impl $BitOpAssign for $ty {
+            impl const $BitOpAssign for $ty {
                 fn $bitop_assign(&mut self, rhs: $ty) {
-                    for (lhs, rhs) in iter::zip(&mut self.octets, rhs.octets) {
-                        lhs.$bitop_assign(rhs);
+                    let mut idx = 0;
+                    while idx < self.octets.len() {
+                        self.octets[idx].$bitop_assign(rhs.octets[idx]);
+                        idx += 1;
                     }
                 }
             }
 
             $(#[$attr])*
-            impl $BitOpAssign<&'_ $ty> for $ty {
+            impl const $BitOpAssign<&'_ $ty> for $ty {
                 fn $bitop_assign(&mut self, rhs: &'_ $ty) {
                     self.$bitop_assign(*rhs);
                 }
             }
 
             $(#[$attr])*
-            impl $BitOp for $ty {
+            impl const $BitOp for $ty {
                 type Output = $ty;
 
                 #[inline]
@@ -2427,7 +2436,7 @@ macro_rules! bitop_impls {
             }
 
             $(#[$attr])*
-            impl $BitOp<&'_ $ty> for $ty {
+            impl const $BitOp<&'_ $ty> for $ty {
                 type Output = $ty;
 
                 #[inline]
@@ -2438,7 +2447,7 @@ macro_rules! bitop_impls {
             }
 
             $(#[$attr])*
-            impl $BitOp<$ty> for &'_ $ty {
+            impl const $BitOp<$ty> for &'_ $ty {
                 type Output = $ty;
 
                 #[inline]
@@ -2450,7 +2459,7 @@ macro_rules! bitop_impls {
             }
 
             $(#[$attr])*
-            impl $BitOp<&'_ $ty> for &'_ $ty {
+            impl const $BitOp<&'_ $ty> for &'_ $ty {
                 type Output = $ty;
 
                 #[inline]
@@ -2466,12 +2475,16 @@ macro_rules! bitop_impls {
 
 bitop_impls! {
     #[stable(feature = "ip_bitops", since = "1.75.0")]
+    #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
     impl (BitAnd, BitAndAssign) for Ipv4Addr = (bitand, bitand_assign);
     #[stable(feature = "ip_bitops", since = "1.75.0")]
+    #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
     impl (BitOr, BitOrAssign) for Ipv4Addr = (bitor, bitor_assign);
 
     #[stable(feature = "ip_bitops", since = "1.75.0")]
+    #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
     impl (BitAnd, BitAndAssign) for Ipv6Addr = (bitand, bitand_assign);
     #[stable(feature = "ip_bitops", since = "1.75.0")]
+    #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
     impl (BitOr, BitOrAssign) for Ipv6Addr = (bitor, bitor_assign);
 }
