@@ -31,7 +31,7 @@ runners:
     <<: *base-job
 
   - &job-windows
-    os: windows-2022
+    os: windows-2025
     <<: *base-job
 
   - &job-windows-25
@@ -39,7 +39,7 @@ runners:
     <<: *base-job
 
   - &job-windows-8c
-    os: windows-2022-8core-32gb
+    os: windows-2025-8core-32gb
     <<: *base-job
 
   - &job-windows-25-8c
