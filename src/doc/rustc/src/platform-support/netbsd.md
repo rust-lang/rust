@@ -32,10 +32,11 @@ are built for NetBSD 8.x but also work on newer OS versions).
 ## Target Maintainers
 
 [@he32](https://github.com/he32)
+[@0323pin](https://github.com/0323pin)
 
 Further contacts:
 
-- [NetBSD/pkgsrc-wip's rust](https://github.com/NetBSD/pkgsrc-wip/blob/master/rust185/Makefile) maintainer (see MAINTAINER variable). This package is part of "pkgsrc work-in-progress" and is used for deployment and testing of new versions of rust
+- [NetBSD/pkgsrc-wip's rust](https://github.com/NetBSD/pkgsrc-wip/blob/master/rust188/Makefile) maintainer (see MAINTAINER variable). This package is part of "pkgsrc work-in-progress" and is used for deployment and testing of new versions of rust.  Note that we have the convention of having multiple rust versions active in pkgsrc-wip at any one time, so the version number is part of the directory name, and from time to time old versions are culled so this is not a fully "stable" link.
 - [NetBSD's pkgsrc lang/rust](https://github.com/NetBSD/pkgsrc/tree/trunk/lang/rust) for the "proper" package in pkgsrc.
 - [NetBSD's pkgsrc lang/rust-bin](https://github.com/NetBSD/pkgsrc/tree/trunk/lang/rust-bin) which re-uses the bootstrap kit as a binary distribution and therefore avoids the rather protracted native build time of rust itself
 

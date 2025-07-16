@@ -302,10 +302,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        let id_str = "branch_weights";
-        let id = unsafe {
-            llvm::LLVMMDStringInContext2(self.cx.llcx, id_str.as_ptr().cast(), id_str.len())
-        };
+        let id = self.cx.create_metadata(b"branch_weights");
 
         // For switch instructions with 2 targets, the `llvm.expect` intrinsic is used.
         // This function handles switch instructions with more than 2 targets and it needs to
@@ -637,17 +634,16 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         } else if place.layout.is_llvm_immediate() {
             let mut const_llval = None;
             let llty = place.layout.llvm_type(self);
-            unsafe {
-                if let Some(global) = llvm::LLVMIsAGlobalVariable(place.val.llval) {
-                    if llvm::LLVMIsGlobalConstant(global) == llvm::True {
-                        if let Some(init) = llvm::LLVMGetInitializer(global) {
-                            if self.val_ty(init) == llty {
-                                const_llval = Some(init);
-                            }
+            if let Some(global) = llvm::LLVMIsAGlobalVariable(place.val.llval) {
+                if llvm::LLVMIsGlobalConstant(global) == llvm::True {
+                    if let Some(init) = llvm::LLVMGetInitializer(global) {
+                        if self.val_ty(init) == llty {
+                            const_llval = Some(init);
                         }
                     }
                 }
             }
+
             let llval = const_llval.unwrap_or_else(|| {
                 let load = self.load(llty, place.val.llval, place.val.align);
                 if let abi::BackendRepr::Scalar(scalar) = place.layout.backend_repr {
@@ -1721,7 +1717,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             } else {
                 cfi::typeid_for_fnabi(self.tcx, fn_abi, options)
             };
-            let typeid_metadata = self.cx.typeid_metadata(typeid).unwrap();
+            let typeid_metadata = self.cx.create_metadata(typeid.as_bytes());
             let dbg_loc = self.get_dbg_loc();
 
             // Test whether the function pointer is associated with the type identifier using the

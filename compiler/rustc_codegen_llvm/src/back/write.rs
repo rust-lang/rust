@@ -879,9 +879,7 @@ pub(crate) fn codegen(
                     .generic_activity_with_arg("LLVM_module_codegen_embed_bitcode", &*module.name);
                 let thin_bc =
                     module.thin_lto_buffer.as_deref().expect("cannot find embedded bitcode");
-                unsafe {
-                    embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, &thin_bc);
-                }
+                embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, &thin_bc);
             }
         }
 
@@ -945,7 +943,7 @@ pub(crate) fn codegen(
             // binaries. So we must clone the module to produce the asm output
             // if we are also producing object code.
             let llmod = if let EmitObj::ObjectCode(_) = config.emit_obj {
-                unsafe { llvm::LLVMCloneModule(llmod) }
+                llvm::LLVMCloneModule(llmod)
             } else {
                 llmod
             };
@@ -1073,7 +1071,7 @@ pub(crate) fn bitcode_section_name(cgcx: &CodegenContext<LlvmCodegenBackend>) ->
 }
 
 /// Embed the bitcode of an LLVM module for LTO in the LLVM module itself.
-unsafe fn embed_bitcode(
+fn embed_bitcode(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     llcx: &llvm::Context,
     llmod: &llvm::Module,
@@ -1115,43 +1113,40 @@ unsafe fn embed_bitcode(
     // Unfortunately, LLVM provides no way to set custom section flags. For ELF
     // and COFF we emit the sections using module level inline assembly for that
     // reason (see issue #90326 for historical background).
-    unsafe {
-        if cgcx.target_is_like_darwin
-            || cgcx.target_is_like_aix
-            || cgcx.target_arch == "wasm32"
-            || cgcx.target_arch == "wasm64"
-        {
-            // We don't need custom section flags, create LLVM globals.
-            let llconst = common::bytes_in_context(llcx, bitcode);
-            let llglobal =
-                llvm::add_global(llmod, common::val_ty(llconst), c"rustc.embedded.module");
-            llvm::set_initializer(llglobal, llconst);
 
-            llvm::set_section(llglobal, bitcode_section_name(cgcx));
-            llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
-            llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
+    if cgcx.target_is_like_darwin
+        || cgcx.target_is_like_aix
+        || cgcx.target_arch == "wasm32"
+        || cgcx.target_arch == "wasm64"
+    {
+        // We don't need custom section flags, create LLVM globals.
+        let llconst = common::bytes_in_context(llcx, bitcode);
+        let llglobal = llvm::add_global(llmod, common::val_ty(llconst), c"rustc.embedded.module");
+        llvm::set_initializer(llglobal, llconst);
 
-            let llconst = common::bytes_in_context(llcx, cmdline.as_bytes());
-            let llglobal =
-                llvm::add_global(llmod, common::val_ty(llconst), c"rustc.embedded.cmdline");
-            llvm::set_initializer(llglobal, llconst);
-            let section = if cgcx.target_is_like_darwin {
-                c"__LLVM,__cmdline"
-            } else if cgcx.target_is_like_aix {
-                c".info"
-            } else {
-                c".llvmcmd"
-            };
-            llvm::set_section(llglobal, section);
-            llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
+        llvm::set_section(llglobal, bitcode_section_name(cgcx));
+        llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
+        llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
+
+        let llconst = common::bytes_in_context(llcx, cmdline.as_bytes());
+        let llglobal = llvm::add_global(llmod, common::val_ty(llconst), c"rustc.embedded.cmdline");
+        llvm::set_initializer(llglobal, llconst);
+        let section = if cgcx.target_is_like_darwin {
+            c"__LLVM,__cmdline"
+        } else if cgcx.target_is_like_aix {
+            c".info"
         } else {
-            // We need custom section flags, so emit module-level inline assembly.
-            let section_flags = if cgcx.is_pe_coff { "n" } else { "e" };
-            let asm = create_section_with_flags_asm(".llvmbc", section_flags, bitcode);
-            llvm::append_module_inline_asm(llmod, &asm);
-            let asm = create_section_with_flags_asm(".llvmcmd", section_flags, cmdline.as_bytes());
-            llvm::append_module_inline_asm(llmod, &asm);
-        }
+            c".llvmcmd"
+        };
+        llvm::set_section(llglobal, section);
+        llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
+    } else {
+        // We need custom section flags, so emit module-level inline assembly.
+        let section_flags = if cgcx.is_pe_coff { "n" } else { "e" };
+        let asm = create_section_with_flags_asm(".llvmbc", section_flags, bitcode);
+        llvm::append_module_inline_asm(llmod, &asm);
+        let asm = create_section_with_flags_asm(".llvmcmd", section_flags, cmdline.as_bytes());
+        llvm::append_module_inline_asm(llmod, &asm);
     }
 }
 
