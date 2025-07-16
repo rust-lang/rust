@@ -153,8 +153,8 @@ pub trait FromIterator<A>: Sized {
 }
 
 // 为同时实现 Default 和 Extend 的类型实现 FromIterator
+#[stable(feature = "from_iter_default", since = "CURRENT_RUSTC_VERSION")]
 impl<T, A: Default + Extend<T>> FromIterator<T> for A {
-    #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "from_iter_default"]
     default fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut collection = A::default();
