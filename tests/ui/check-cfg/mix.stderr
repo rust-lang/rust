@@ -1,54 +1,4 @@
 warning: unexpected `cfg` condition name: `widnows`
-  --> $DIR/mix.rs:13:7
-   |
-LL | #[cfg(widnows)]
-   |       ^^^^^^^ help: there is a config with a similar name: `windows`
-   |
-   = help: to expect this configuration use `--check-cfg=cfg(widnows)`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-   = note: `#[warn(unexpected_cfgs)]` on by default
-
-warning: unexpected `cfg` condition value: (none)
-  --> $DIR/mix.rs:17:7
-   |
-LL | #[cfg(feature)]
-   |       ^^^^^^^- help: specify a config value: `= "foo"`
-   |
-   = note: expected values for `feature` are: `foo`
-   = help: to expect this configuration use `--check-cfg=cfg(feature)`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-
-warning: unexpected `cfg` condition value: `bar`
-  --> $DIR/mix.rs:24:7
-   |
-LL | #[cfg(feature = "bar")]
-   |       ^^^^^^^^^^^^^^^
-   |
-   = note: expected values for `feature` are: `foo`
-   = help: to expect this configuration use `--check-cfg=cfg(feature, values("bar"))`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-
-warning: unexpected `cfg` condition value: `zebra`
-  --> $DIR/mix.rs:28:7
-   |
-LL | #[cfg(feature = "zebra")]
-   |       ^^^^^^^^^^^^^^^^^
-   |
-   = note: expected values for `feature` are: `foo`
-   = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-
-warning: unexpected `cfg` condition name: `uu`
-  --> $DIR/mix.rs:32:12
-   |
-LL | #[cfg_attr(uu, unix)]
-   |            ^^
-   |
-   = help: expected names are: `feature` and 31 more
-   = help: to expect this configuration use `--check-cfg=cfg(uu)`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-
-warning: unexpected `cfg` condition name: `widnows`
   --> $DIR/mix.rs:41:10
    |
 LL |     cfg!(widnows);
@@ -56,6 +6,7 @@ LL |     cfg!(widnows);
    |
    = help: to expect this configuration use `--check-cfg=cfg(widnows)`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition value: `bar`
   --> $DIR/mix.rs:44:10
@@ -83,6 +34,7 @@ warning: unexpected `cfg` condition name: `xxx`
 LL |     cfg!(xxx = "foo");
    |          ^^^^^^^^^^^
    |
+   = help: expected names are: `feature` and 31 more
    = help: to expect this configuration use `--check-cfg=cfg(xxx, values("foo"))`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
@@ -243,6 +195,54 @@ LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
    |
    = note: expected values for `feature` are: `foo`
    = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `widnows`
+  --> $DIR/mix.rs:13:7
+   |
+LL | #[cfg(widnows)]
+   |       ^^^^^^^ help: there is a config with a similar name: `windows`
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(widnows)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: (none)
+  --> $DIR/mix.rs:17:7
+   |
+LL | #[cfg(feature)]
+   |       ^^^^^^^- help: specify a config value: `= "foo"`
+   |
+   = note: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(feature)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `bar`
+  --> $DIR/mix.rs:24:7
+   |
+LL | #[cfg(feature = "bar")]
+   |       ^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("bar"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `zebra`
+  --> $DIR/mix.rs:28:7
+   |
+LL | #[cfg(feature = "zebra")]
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `uu`
+  --> $DIR/mix.rs:32:12
+   |
+LL | #[cfg_attr(uu, unix)]
+   |            ^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(uu)`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: 26 warnings emitted

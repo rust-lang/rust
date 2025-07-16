@@ -32,19 +32,19 @@ LL |     () => { mod test { fn gen() {} } }
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/gen-keyword.html>
 
 error: `gen` is a keyword in the 2024 edition
-  --> $DIR/gen-kw.rs:25:9
+  --> $DIR/gen-kw.rs:25:19
    |
 LL | fn test<'gen>(_: &'gen i32) {}
-   |         ^^^^ help: you can use a raw identifier to stay compatible: `'r#gen`
+   |                   ^^^^ help: you can use a raw identifier to stay compatible: `'r#gen`
    |
    = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2024!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/gen-keyword.html>
 
 error: `gen` is a keyword in the 2024 edition
-  --> $DIR/gen-kw.rs:25:19
+  --> $DIR/gen-kw.rs:25:9
    |
 LL | fn test<'gen>(_: &'gen i32) {}
-   |                   ^^^^ help: you can use a raw identifier to stay compatible: `'r#gen`
+   |         ^^^^ help: you can use a raw identifier to stay compatible: `'r#gen`
    |
    = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2024!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/gen-keyword.html>

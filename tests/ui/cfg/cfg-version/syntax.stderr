@@ -95,21 +95,6 @@ LL |     assert!(cfg!(version("1.20.0-stable")));
    |                          ^^^^^^^^^^^^^^^
 
 warning: unexpected `cfg` condition name: `version`
-  --> $DIR/syntax.rs:30:7
-   |
-LL | #[cfg(version = "1.43")]
-   |       ^^^^^^^^^^^^^^^^
-   |
-   = help: to expect this configuration use `--check-cfg=cfg(version, values("1.43"))`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-   = note: `#[warn(unexpected_cfgs)]` on by default
-help: there is a similar config predicate: `version("..")`
-   |
-LL - #[cfg(version = "1.43")]
-LL + #[cfg(version("1.43"))]
-   |
-
-warning: unexpected `cfg` condition name: `version`
   --> $DIR/syntax.rs:130:18
    |
 LL |     assert!(cfg!(version = "1.43"));
@@ -117,10 +102,25 @@ LL |     assert!(cfg!(version = "1.43"));
    |
    = help: to expect this configuration use `--check-cfg=cfg(version, values("1.43"))`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
 help: there is a similar config predicate: `version("..")`
    |
 LL -     assert!(cfg!(version = "1.43"));
 LL +     assert!(cfg!(version("1.43")));
+   |
+
+warning: unexpected `cfg` condition name: `version`
+  --> $DIR/syntax.rs:30:7
+   |
+LL | #[cfg(version = "1.43")]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(version, values("1.43"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: there is a similar config predicate: `version("..")`
+   |
+LL - #[cfg(version = "1.43")]
+LL + #[cfg(version("1.43"))]
    |
 
 error[E0425]: cannot find function `key_value_form` in this scope

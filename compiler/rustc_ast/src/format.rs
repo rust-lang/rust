@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_macros::{Decodable, Encodable};
+use rustc_macros::{Decodable, Encodable, Walkable};
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::Expr;
@@ -41,7 +41,7 @@ use crate::token::LitKind;
 /// Basically the "AST" for a complete `format_args!()`.
 ///
 /// E.g., `format_args!("hello {name}");`.
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct FormatArgs {
     pub span: Span,
     pub template: Vec<FormatArgsPiece>,
@@ -63,7 +63,7 @@ pub struct FormatArgs {
 /// A piece of a format template string.
 ///
 /// E.g. "hello" or "{name}".
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum FormatArgsPiece {
     Literal(Symbol),
     Placeholder(FormatPlaceholder),
@@ -73,7 +73,7 @@ pub enum FormatArgsPiece {
 ///
 /// E.g. `1, 2, name="ferris", n=3`,
 /// but also implicit captured arguments like `x` in `format_args!("{x}")`.
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct FormatArguments {
     arguments: Vec<FormatArgument>,
     num_unnamed_args: usize,
@@ -144,13 +144,13 @@ impl FormatArguments {
     }
 }
 
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct FormatArgument {
     pub kind: FormatArgumentKind,
     pub expr: P<Expr>,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum FormatArgumentKind {
     /// `format_args(…, arg)`
     Normal,
@@ -170,24 +170,28 @@ impl FormatArgumentKind {
     }
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq)]
+#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, Walkable)]
 pub struct FormatPlaceholder {
     /// Index into [`FormatArgs::arguments`].
     pub argument: FormatArgPosition,
     /// The span inside the format string for the full `{…}` placeholder.
     pub span: Option<Span>,
     /// `{}`, `{:?}`, or `{:x}`, etc.
+    #[visitable(ignore)]
     pub format_trait: FormatTrait,
     /// `{}` or `{:.5}` or `{:-^20}`, etc.
+    #[visitable(ignore)]
     pub format_options: FormatOptions,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq)]
+#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, Walkable)]
 pub struct FormatArgPosition {
     /// Which argument this position refers to (Ok),
     /// or would've referred to if it existed (Err).
+    #[visitable(ignore)]
     pub index: Result<usize, usize>,
     /// What kind of position this is. See [`FormatArgPositionKind`].
+    #[visitable(ignore)]
     pub kind: FormatArgPositionKind,
     /// The span of the name or number.
     pub span: Option<Span>,
