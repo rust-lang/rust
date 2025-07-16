@@ -41,67 +41,23 @@ enum AnnotationKind {
     Container,
 }
 
-/// Whether to inherit deprecation flags for nested items. In most cases, we do want to inherit
-/// deprecation, because nested items rarely have individual deprecation attributes, and so
-/// should be treated as deprecated if their parent is. However, default generic parameters
-/// have separate deprecation attributes from their parents, so we do not wish to inherit
-/// deprecation in this case. For example, inheriting deprecation for `T` in `Foo<T>`
-/// would cause a duplicate warning arising from both `Foo` and `T` being deprecated.
-#[derive(Clone)]
-enum InheritDeprecation {
-    Yes,
-    No,
-}
-
-impl InheritDeprecation {
-    fn yes(&self) -> bool {
-        matches!(self, InheritDeprecation::Yes)
-    }
-}
-
-/// Whether to inherit const stability flags for nested items. In most cases, we do not want to
-/// inherit const stability: just because an enclosing `fn` is const-stable does not mean
-/// all `extern` imports declared in it should be const-stable! However, trait methods
-/// inherit const stability attributes from their parent and do not have their own.
-enum InheritConstStability {
-    Yes,
-    No,
-}
-
-impl InheritConstStability {
-    fn yes(&self) -> bool {
-        matches!(self, InheritConstStability::Yes)
-    }
-}
-
-enum InheritStability {
-    Yes,
-    No,
-}
-
-impl InheritStability {
-    fn yes(&self) -> bool {
-        matches!(self, InheritStability::Yes)
-    }
-}
-
-fn inherit_deprecation(def_kind: DefKind) -> InheritDeprecation {
+fn inherit_deprecation(def_kind: DefKind) -> bool {
     match def_kind {
-        DefKind::LifetimeParam | DefKind::TyParam | DefKind::ConstParam => InheritDeprecation::No,
-        _ => InheritDeprecation::Yes,
+        DefKind::LifetimeParam | DefKind::TyParam | DefKind::ConstParam => false,
+        _ => true,
     }
 }
 
-fn inherit_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> InheritConstStability {
+fn inherit_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let def_kind = tcx.def_kind(def_id);
     match def_kind {
         DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
             match tcx.def_kind(tcx.local_parent(def_id)) {
-                DefKind::Impl { of_trait: true } => InheritConstStability::Yes,
-                _ => InheritConstStability::No,
+                DefKind::Impl { of_trait: true } => true,
+                _ => false,
             }
         }
-        _ => InheritConstStability::No,
+        _ => false,
     }
 }
 
@@ -145,7 +101,7 @@ fn lookup_deprecation_entry(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Depre
     );
 
     let Some(depr) = depr else {
-        if inherit_deprecation(tcx.def_kind(def_id)).yes() {
+        if inherit_deprecation(tcx.def_kind(def_id)) {
             let parent_id = tcx.opt_local_parent(def_id)?;
             let parent_depr = tcx.lookup_deprecation_entry(parent_id)?;
             return Some(parent_depr);
@@ -158,10 +114,10 @@ fn lookup_deprecation_entry(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Depre
     Some(DeprecationEntry::local(depr, def_id))
 }
 
-fn inherit_stability(def_kind: DefKind) -> InheritStability {
+fn inherit_stability(def_kind: DefKind) -> bool {
     match def_kind {
-        DefKind::Field | DefKind::Variant | DefKind::Ctor(..) => InheritStability::Yes,
-        _ => InheritStability::No,
+        DefKind::Field | DefKind::Variant | DefKind::Ctor(..) => true,
+        _ => false,
     }
 }
 
@@ -193,7 +149,7 @@ fn lookup_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Stability> {
 
         let Some(parent) = tcx.opt_local_parent(def_id) else { return Some(FORCE_UNSTABLE) };
 
-        if inherit_deprecation(tcx.def_kind(def_id)).yes() {
+        if inherit_deprecation(tcx.def_kind(def_id)) {
             let parent = tcx.lookup_stability(parent)?;
             if parent.is_unstable() {
                 return Some(parent);
@@ -212,7 +168,7 @@ fn lookup_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Stability> {
         return Some(stab);
     }
 
-    if inherit_deprecation(tcx.def_kind(def_id)).yes() {
+    if inherit_deprecation(tcx.def_kind(def_id)) {
         let Some(parent) = tcx.opt_local_parent(def_id) else {
             return tcx
                 .sess
@@ -222,7 +178,7 @@ fn lookup_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Stability> {
                 .then_some(FORCE_UNSTABLE);
         };
         let parent = tcx.lookup_stability(parent)?;
-        if parent.is_unstable() || inherit_stability(tcx.def_kind(def_id)).yes() {
+        if parent.is_unstable() || inherit_stability(tcx.def_kind(def_id)) {
             return Some(parent);
         }
     }
@@ -249,7 +205,7 @@ fn lookup_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ConstSt
     if !tcx.features().staged_api() {
         // Propagate unstability. This can happen even for non-staged-api crates in case
         // -Zforce-unstable-if-unmarked is set.
-        if inherit_deprecation(tcx.def_kind(def_id)).yes() {
+        if inherit_deprecation(tcx.def_kind(def_id)) {
             let parent = tcx.opt_local_parent(def_id)?;
             let parent_stab = tcx.lookup_stability(parent)?;
             if parent_stab.is_unstable()
@@ -301,7 +257,7 @@ fn lookup_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ConstSt
     // immediate children.
     // FIXME(const_trait_impl): how is this supposed to interact with `#[rustc_const_stable_indirect]`?
     // Currently, once that is set, we do not inherit anything from the parent any more.
-    if inherit_const_stability(tcx, def_id).yes() {
+    if inherit_const_stability(tcx, def_id) {
         let parent = tcx.opt_local_parent(def_id)?;
         let parent = tcx.lookup_const_stability(parent)?;
         if parent.is_const_unstable() {
