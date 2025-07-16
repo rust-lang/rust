@@ -25,10 +25,10 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::CRATE_HIR_ID;
+use rustc_hir::attrs::{CfgEntry, NativeLibKind};
 use rustc_hir::def_id::CrateNum;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_metadata::EncodedMetadata;
@@ -45,7 +45,6 @@ use rustc_session::Session;
 use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc_session::cstore::{self, CrateSource};
 use rustc_session::lint::builtin::LINKER_MESSAGES;
-use rustc_session::utils::NativeLibKind;
 use rustc_span::Symbol;
 
 pub mod assert_module_sources;
@@ -187,7 +186,7 @@ pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Symbol,
     pub filename: Option<Symbol>,
-    pub cfg: Option<ast::MetaItemInner>,
+    pub cfg: Option<CfgEntry>,
     pub verbatim: bool,
     pub dll_imports: Vec<cstore::DllImport>,
 }
