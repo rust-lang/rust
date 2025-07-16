@@ -123,7 +123,6 @@
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(formatting_options)]
-#![feature(from_iter_default)]
 #![feature(generic_atomic)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
