@@ -3,6 +3,7 @@
 use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
+use std::path::PathBuf;
 
 use itertools::{EitherOrBoth, Itertools};
 use rustc_abi::ExternAbi;
@@ -1369,6 +1370,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 let self_ty_str =
                     self.tcx.short_string(old_pred.self_ty().skip_binder(), err.long_ty_path());
+                let trait_path = self
+                    .tcx
+                    .short_string(old_pred.print_modifiers_and_trait_path(), err.long_ty_path());
+
                 if has_custom_message {
                     err.note(msg);
                 } else {
@@ -1376,10 +1381,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 err.span_label(
                     span,
-                    format!(
-                        "the trait `{}` is not implemented for `{self_ty_str}`",
-                        old_pred.print_modifiers_and_trait_path()
-                    ),
+                    format!("the trait `{trait_path}` is not implemented for `{self_ty_str}`"),
                 );
             };
 
@@ -5366,6 +5368,7 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
     obligation: &PredicateObligation<'tcx>,
     trait_predicate: ty::PolyTraitPredicate<'tcx>,
     pre_message: String,
+    file: &mut Option<PathBuf>,
 ) -> String {
     if let ObligationCauseCode::MainFunctionType = obligation.cause.code() {
         "consider using `()`, or a `Result`".to_owned()
@@ -5384,7 +5387,7 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
             format!(
                 "{pre_message}the trait `{}` is not implemented for{desc} `{}`",
                 trait_predicate.print_modifiers_and_trait_path(),
-                tcx.short_string(trait_predicate.self_ty().skip_binder(), &mut None),
+                tcx.short_string(trait_predicate.self_ty().skip_binder(), file),
             )
         } else {
             // "the trait bound `T: !Send` is not satisfied" reads better than "`!Send` is

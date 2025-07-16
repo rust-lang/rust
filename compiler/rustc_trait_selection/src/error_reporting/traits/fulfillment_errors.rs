@@ -312,6 +312,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             &obligation,
                             leaf_trait_predicate,
                             pre_message,
+                            err.long_ty_path(),
                         );
 
                         self.check_for_binding_assigned_block_without_tail_expression(
