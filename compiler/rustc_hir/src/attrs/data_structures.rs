@@ -351,6 +351,17 @@ impl NativeLibKind {
         )
     }
 }
+
+#[derive(Debug, Encodable, Decodable, Clone, HashStable_Generic, PrintAttribute)]
+pub struct LinkEntry {
+    pub span: Span,
+    pub kind: NativeLibKind,
+    pub name: Symbol,
+    pub cfg: Option<CfgEntry>,
+    pub verbatim: Option<bool>,
+    pub import_name_type: Option<(PeImportNameType, Span)>,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -520,6 +531,9 @@ pub enum AttributeKind {
 
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
+
+    /// Represents `#[link]`.
+    Link(ThinVec<LinkEntry>, Span),
 
     /// Represents `#[link_name]`.
     LinkName { name: Symbol, span: Span },

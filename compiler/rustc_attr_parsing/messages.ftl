@@ -195,3 +195,55 @@ attr_parsing_invalid_meta_item = expected a literal (`1u8`, `1.0f32`, `"string"`
 
 attr_parsing_suffixed_literal_in_attribute = suffixed literals are not allowed in attributes
     .help = instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+attr_parsing_as_needed_compatibility =
+    linking modifier `as-needed` is only compatible with `dylib` and `framework` linking kinds
+
+attr_parsing_bundle_needs_static =
+    linking modifier `bundle` is only compatible with `static` linking kind
+
+attr_parsing_empty_link_name =
+    link name must not be empty
+    .label = empty link name
+
+attr_parsing_import_name_type_raw =
+    import name type can only be used with link kind `raw-dylib`
+
+attr_parsing_import_name_type_x86 =
+    import name type is only supported on x86
+
+attr_parsing_incompatible_wasm_link =
+    `wasm_import_module` is incompatible with other arguments in `#[link]` attributes
+
+attr_parsing_invalid_link_modifier =
+    invalid linking modifier syntax, expected '+' or '-' prefix before one of: bundle, verbatim, whole-archive, as-needed
+
+attr_parsing_link_arg_unstable =
+    link kind `link-arg` is unstable
+
+attr_parsing_link_cfg_unstable =
+    link cfg is unstable
+
+attr_parsing_link_framework_apple =
+    link kind `framework` is only supported on Apple targets
+
+attr_parsing_link_requires_name =
+    `#[link]` attribute requires a `name = "string"` argument
+    .label = missing `name` argument
+
+attr_parsing_multiple_modifiers =
+    multiple `{$modifier}` modifiers in a single `modifiers` argument
+
+attr_parsing_multiple_renamings =
+    multiple renamings were specified for library `{$lib_name}`
+attr_parsing_raw_dylib_no_nul =
+    link name must not contain NUL characters if link kind is `raw-dylib`
+
+attr_parsing_raw_dylib_elf_unstable =
+    link kind `raw-dylib` is unstable on ELF platforms
+
+attr_parsing_raw_dylib_only_windows =
+    link kind `raw-dylib` is only supported on Windows targets
+
+attr_parsing_whole_archive_needs_static =
+    linking modifier `whole-archive` is only compatible with `static` linking kind
