@@ -1176,6 +1176,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             self.body.source_info(location).span
                         }
                     });
+
+                let is_rhs_map_index = self.is_rhs_index_from_hashmap_or_btreemap(local);
                 match opt_assignment_rhs_span.and_then(|s| s.desugaring_kind()) {
                     // on for loops, RHS points to the iterator part
                     Some(DesugaringKind::ForLoop) => {
@@ -1203,6 +1205,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                 decl_span,
                                 opt_assignment_rhs_span,
                                 opt_ty_info,
+                                is_rhs_map_index,
                             )
                         } else {
                             match local_decl.local_info() {
@@ -1226,6 +1229,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     decl_span,
                                     opt_assignment_rhs_span,
                                     opt_ty_info,
+                                    is_rhs_map_index,
                                 ),
                             }
                         }
@@ -1414,6 +1418,36 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             None => {}
         }
     }
+
+    /// check if the RHS is an overloaded index expression from hashmap or btreemap,
+    /// if so, suggest using .get_mut() instead of &mut, see issue #143732
+    /// For example
+    /// ```text
+    /// let mut map = HashMap::new();
+    /// let value = &map["key"];
+    /// ```
+    fn is_rhs_index_from_hashmap_or_btreemap(&self, local: Local) -> bool {
+        self.find_assignments(local)
+            .first()
+            .map(|&location| {
+                if let Some(mir::Statement {
+                    source_info: _,
+                    kind: mir::StatementKind::Assign(box (_, mir::Rvalue::Ref(_, _, place))),
+                    ..
+                }) = self.body[location.block].statements.get(location.statement_index)
+                    && let BorrowedContentSource::OverloadedIndex(ty) =
+                        self.borrowed_content_source(place.as_ref())
+                    && let Some(def) = ty.ty_adt_def()
+                    && (self.infcx.tcx.is_diagnostic_item(sym::HashMap, def.did())
+                        || self.infcx.tcx.is_diagnostic_item(sym::BTreeMap, def.did()))
+                {
+                    true
+                } else {
+                    false
+                }
+            })
+            .unwrap_or(false)
+    }
 }
 
 struct BindingFinder {
@@ -1507,6 +1541,7 @@ fn suggest_ampmut<'tcx>(
     decl_span: Span,
     opt_assignment_rhs_span: Option<Span>,
     opt_ty_info: Option<Span>,
+    is_rhs_map_index: bool,
 ) -> Option<AmpMutSugg> {
     // if there is a RHS and it starts with a `&` from it, then check if it is
     // mutable, and if not, put suggest putting `mut ` to make it mutable.
@@ -1553,6 +1588,28 @@ fn suggest_ampmut<'tcx>(
         // if the reference is already mutable then there is nothing we can do
         // here.
         if !is_mut {
+            // If this is an overloaded index expression, suggest using .get_mut() instead of &mut
+            if is_rhs_map_index {
+                // Try to extract the expression from &expr[key] to suggest expr.get_mut(key).unwrap()
+                let content = rhs_str.strip_prefix('&')?;
+                if content.contains('[') && content.contains(']') {
+                    let bracket_start = content.find('[')?;
+                    let bracket_end = content.rfind(']')?;
+
+                    if bracket_start < bracket_end {
+                        let map_part = &content[..bracket_start];
+                        let key_part = &content[bracket_start + 1..bracket_end];
+
+                        return Some(AmpMutSugg {
+                            has_sugg: true,
+                            span: rhs_span,
+                            suggestion: format!("{}.get_mut({}).unwrap()", map_part, key_part),
+                            additional: None,
+                        });
+                    }
+                }
+            }
+
             // shrink the span to just after the `&` in `&variable`
             let span = rhs_span.with_lo(rhs_span.lo() + BytePos(1)).shrink_to_lo();
 
