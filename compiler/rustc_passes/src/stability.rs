@@ -124,7 +124,7 @@ fn inherit_stability(def_kind: DefKind) -> bool {
 /// If the `-Z force-unstable-if-unmarked` flag is passed then we provide
 /// a parent stability annotation which indicates that this is private
 /// with the `rustc_private` feature. This is intended for use when
-/// compiling `librustc_*` crates themselves so we can leverage crates.io
+/// compiling library and `rustc_*` crates themselves so we can leverage crates.io
 /// while maintaining the invariant that all sysroot crates are unstable
 /// by default and are unable to be used.
 const FORCE_UNSTABLE: Stability = Stability {
@@ -248,13 +248,11 @@ fn lookup_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ConstSt
         });
     }
 
-    // Now that everything is computed, insert it into the table.
     if let Some(const_stab) = const_stab {
         return Some(const_stab);
     }
 
-    // `impl const Trait for Type` items forward their const stability to their
-    // immediate children.
+    // `impl const Trait for Type` items forward their const stability to their immediate children.
     // FIXME(const_trait_impl): how is this supposed to interact with `#[rustc_const_stable_indirect]`?
     // Currently, once that is set, we do not inherit anything from the parent any more.
     if inherit_const_stability(tcx, def_id) {
