@@ -1,3 +1,4 @@
+//@ compile-flags: -Zwrite-long-types-to-disk=yes
 // `S` is infinitely recursing so it's not possible to generate a finite
 // drop impl.
 //

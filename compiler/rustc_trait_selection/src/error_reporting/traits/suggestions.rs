@@ -3441,7 +3441,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 let self_ty_str =
                     tcx.short_string(parent_trait_pred.skip_binder().self_ty(), err.long_ty_path());
-                let trait_name = parent_trait_pred.print_modifiers_and_trait_path().to_string();
+                let trait_name = tcx.short_string(
+                    parent_trait_pred.print_modifiers_and_trait_path(),
+                    err.long_ty_path(),
+                );
                 let msg = format!("required for `{self_ty_str}` to implement `{trait_name}`");
                 let mut is_auto_trait = false;
                 match tcx.hir_get_if_local(data.impl_or_alias_def_id) {
@@ -3539,10 +3542,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         parent_trait_pred.skip_binder().self_ty(),
                         err.long_ty_path(),
                     );
-                    err.note(format!(
-                        "required for `{self_ty}` to implement `{}`",
-                        parent_trait_pred.print_modifiers_and_trait_path()
-                    ));
+                    let trait_path = tcx.short_string(
+                        parent_trait_pred.print_modifiers_and_trait_path(),
+                        err.long_ty_path(),
+                    );
+                    err.note(format!("required for `{self_ty}` to implement `{trait_path}`"));
                 }
                 // #74711: avoid a stack overflow
                 ensure_sufficient_stack(|| {
@@ -3558,15 +3562,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 });
             }
             ObligationCauseCode::ImplDerivedHost(ref data) => {
-                let self_ty =
-                    self.resolve_vars_if_possible(data.derived.parent_host_pred.self_ty());
-                let msg = format!(
-                    "required for `{self_ty}` to implement `{} {}`",
-                    data.derived.parent_host_pred.skip_binder().constness,
+                let self_ty = tcx.short_string(
+                    self.resolve_vars_if_possible(data.derived.parent_host_pred.self_ty()),
+                    err.long_ty_path(),
+                );
+                let trait_path = tcx.short_string(
                     data.derived
                         .parent_host_pred
                         .map_bound(|pred| pred.trait_ref)
                         .print_only_trait_path(),
+                    err.long_ty_path(),
+                );
+                let msg = format!(
+                    "required for `{self_ty}` to implement `{} {trait_path}`",
+                    data.derived.parent_host_pred.skip_binder().constness,
                 );
                 match tcx.hir_get_if_local(data.impl_def_id) {
                     Some(Node::Item(hir::Item {

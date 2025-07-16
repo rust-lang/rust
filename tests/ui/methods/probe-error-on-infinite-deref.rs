@@ -1,3 +1,4 @@
+//@ compile-flags: -Zwrite-long-types-to-disk=yes
 use std::ops::Deref;
 
 // Make sure that method probe error reporting doesn't get too tangled up
