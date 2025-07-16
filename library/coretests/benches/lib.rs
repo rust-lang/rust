@@ -8,6 +8,8 @@
 #![feature(iter_array_chunks)]
 #![feature(iter_next_chunk)]
 #![feature(iter_advance_by)]
+#![feature(str_internals)]
+#![allow(internal_features)]
 
 extern crate test;
 
