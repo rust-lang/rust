@@ -25,7 +25,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{DEPRECATED, INEFFECTIVE_UNSTABLE_TRAIT_IMPL};
 use rustc_span::{Span, Symbol, sym};
-use tracing::{info, instrument};
+use tracing::instrument;
 
 use crate::errors;
 
@@ -148,7 +148,6 @@ fn lookup_deprecation_entry(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Depre
         if inherit_deprecation(tcx.def_kind(def_id)).yes() {
             let parent_id = tcx.opt_local_parent(def_id)?;
             let parent_depr = tcx.lookup_deprecation_entry(parent_id)?;
-            info!("tagging child {:?} as deprecated from parent", def_id);
             return Some(parent_depr);
         }
 
