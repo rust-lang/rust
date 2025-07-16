@@ -614,6 +614,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // RFC 2632
+    // FIXME(const_trait_impl) remove this
     gated!(
         const_trait, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No, const_trait_impl,
         "`const_trait` is a temporary placeholder for marking a trait that is suitable for `const` \

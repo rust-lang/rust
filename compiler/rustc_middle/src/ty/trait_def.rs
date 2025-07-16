@@ -20,7 +20,7 @@ pub struct TraitDef {
 
     pub safety: hir::Safety,
 
-    /// Whether this trait has been annotated with `#[const_trait]`.
+    /// Whether this trait is `const`.
     pub constness: hir::Constness,
 
     /// If `true`, then this trait had the `#[rustc_paren_sugar]`
