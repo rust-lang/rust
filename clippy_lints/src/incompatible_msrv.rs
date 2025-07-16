@@ -1,9 +1,10 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_in_test;
 use clippy_utils::msrvs::Msrv;
-use rustc_attr_data_structures::{RustcVersion, Stability, StableSince};
+use clippy_utils::{is_in_const_context, is_in_test};
+use rustc_attr_data_structures::{RustcVersion, StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
@@ -80,7 +81,7 @@ enum Availability {
 
 pub struct IncompatibleMsrv {
     msrv: Msrv,
-    availability_cache: FxHashMap<DefId, Availability>,
+    availability_cache: FxHashMap<(DefId, bool), Availability>,
     check_in_tests: bool,
 }
 
@@ -96,18 +97,32 @@ impl IncompatibleMsrv {
     }
 
     /// Returns the availability of `def_id`, whether it is enabled through a feature or
-    /// available since a given version (the default being Rust 1.0.0).
-    fn get_def_id_availability(&mut self, tcx: TyCtxt<'_>, def_id: DefId) -> Availability {
-        if let Some(availability) = self.availability_cache.get(&def_id) {
+    /// available since a given version (the default being Rust 1.0.0). `needs_const` requires
+    /// the `const`-stability to be looked up instead of the stability in non-`const` contexts.
+    fn get_def_id_availability(&mut self, tcx: TyCtxt<'_>, def_id: DefId, needs_const: bool) -> Availability {
+        if let Some(availability) = self.availability_cache.get(&(def_id, needs_const)) {
             return *availability;
         }
-        let stability = tcx.lookup_stability(def_id);
-        let version = if stability.is_some_and(|stability| tcx.features().enabled(stability.feature)) {
+        let (feature, stability_level) = if needs_const {
+            tcx.lookup_const_stability(def_id)
+                .map(|stability| (stability.feature, stability.level))
+                .unzip()
+        } else {
+            tcx.lookup_stability(def_id)
+                .map(|stability| (stability.feature, stability.level))
+                .unzip()
+        };
+        let version = if feature.is_some_and(|feature| tcx.features().enabled(feature)) {
             Availability::FeatureEnabled
-        } else if let Some(StableSince::Version(version)) = stability.as_ref().and_then(Stability::stable_since) {
+        } else if let Some(StableSince::Version(version)) =
+            stability_level.as_ref().and_then(StabilityLevel::stable_since)
+        {
             Availability::Since(version)
+        } else if needs_const {
+            // Fallback to regular stability
+            self.get_def_id_availability(tcx, def_id, false)
         } else if let Some(parent_def_id) = tcx.opt_parent(def_id) {
-            self.get_def_id_availability(tcx, parent_def_id)
+            self.get_def_id_availability(tcx, parent_def_id, needs_const)
         } else {
             Availability::Since(RustcVersion {
                 major: 1,
@@ -115,10 +130,11 @@ impl IncompatibleMsrv {
                 patch: 0,
             })
         };
-        self.availability_cache.insert(def_id, version);
+        self.availability_cache.insert((def_id, needs_const), version);
         version
     }
 
+    /// Emit lint if `def_id`, associated with `node` and `span`, is below the current MSRV.
     fn emit_lint_if_under_msrv(&mut self, cx: &LateContext<'_>, def_id: DefId, node: HirId, span: Span) {
         if def_id.is_local() {
             // We don't check local items since their MSRV is supposed to always be valid.
@@ -144,9 +160,13 @@ impl IncompatibleMsrv {
             return;
         }
 
+        let needs_const = cx.enclosing_body.is_some()
+            && is_in_const_context(cx)
+            && matches!(cx.tcx.def_kind(def_id), DefKind::AssocFn | DefKind::Fn);
+
         if (self.check_in_tests || !is_in_test(cx.tcx, node))
             && let Some(current) = self.msrv.current(cx)
-            && let Availability::Since(version) = self.get_def_id_availability(cx.tcx, def_id)
+            && let Availability::Since(version) = self.get_def_id_availability(cx.tcx, def_id, needs_const)
             && version > current
         {
             span_lint_and_then(
@@ -154,7 +174,8 @@ impl IncompatibleMsrv {
                 INCOMPATIBLE_MSRV,
                 span,
                 format!(
-                    "current MSRV (Minimum Supported Rust Version) is `{current}` but this item is stable since `{version}`"
+                    "current MSRV (Minimum Supported Rust Version) is `{current}` but this item is stable{} since `{version}`",
+                    if needs_const { " in a `const` context" } else { "" },
                 ),
                 |diag| {
                     if is_under_cfg_attribute(cx, node) {
@@ -168,7 +189,6 @@ impl IncompatibleMsrv {
 
 impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        // TODO: check for const stability when in const context
         match expr.kind {
             ExprKind::MethodCall(_, _, _, span) => {
                 if let Some(method_did) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {

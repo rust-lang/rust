@@ -4,6 +4,7 @@
 #![feature(strict_provenance)] // For use in test
 #![clippy::msrv = "1.3.0"]
 
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::future::Future;
@@ -126,6 +127,45 @@ fn feature_enable_14425(ptr: *const u8) -> usize {
 fn non_fn_items() {
     let _ = std::io::ErrorKind::CrossesDevices;
     //~^ incompatible_msrv
+}
+
+#[clippy::msrv = "1.87.0"]
+fn msrv_non_ok_in_const() {
+    {
+        let c = Cell::new(42);
+        _ = c.get();
+    }
+    const {
+        let c = Cell::new(42);
+        _ = c.get();
+        //~^ incompatible_msrv
+    }
+}
+
+#[clippy::msrv = "1.88.0"]
+fn msrv_ok_in_const() {
+    {
+        let c = Cell::new(42);
+        _ = c.get();
+    }
+    const {
+        let c = Cell::new(42);
+        _ = c.get();
+    }
+}
+
+#[clippy::msrv = "1.86.0"]
+fn enum_variant_not_ok() {
+    let _ = std::io::ErrorKind::InvalidFilename;
+    //~^ incompatible_msrv
+    let _ = const { std::io::ErrorKind::InvalidFilename };
+    //~^ incompatible_msrv
+}
+
+#[clippy::msrv = "1.87.0"]
+fn enum_variant_ok() {
+    let _ = std::io::ErrorKind::InvalidFilename;
+    let _ = const { std::io::ErrorKind::InvalidFilename };
 }
 
 fn main() {}
