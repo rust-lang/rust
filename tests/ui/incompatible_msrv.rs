@@ -1,6 +1,7 @@
 #![warn(clippy::incompatible_msrv)]
 #![feature(custom_inner_attributes)]
-#![feature(panic_internals)]
+#![allow(stable_features)]
+#![feature(strict_provenance)] // For use in test
 #![clippy::msrv = "1.3.0"]
 
 use std::collections::HashMap;
@@ -13,6 +14,8 @@ fn foo() {
     let mut map: HashMap<&str, u32> = HashMap::new();
     assert_eq!(map.entry("poneyland").key(), &"poneyland");
     //~^ incompatible_msrv
+    //~| NOTE: `-D clippy::incompatible-msrv` implied by `-D warnings`
+    //~| HELP: to override `-D warnings` add `#[allow(clippy::incompatible_msrv)]`
 
     if let Entry::Vacant(v) = map.entry("poneyland") {
         v.into_key();
@@ -43,21 +46,22 @@ fn core_special_treatment(p: bool) {
 
     // But still lint code calling `core` functions directly
     if p {
-        core::panicking::panic("foo");
-        //~^ ERROR: is `1.3.0` but this item is stable since `1.6.0`
+        let _ = core::iter::once_with(|| 0);
+        //~^ incompatible_msrv
     }
 
     // Lint code calling `core` from non-`core` macros
     macro_rules! my_panic {
         ($msg:expr) => {
-            core::panicking::panic($msg)
-        }; //~^ ERROR: is `1.3.0` but this item is stable since `1.6.0`
+            let _ = core::iter::once_with(|| $msg);
+            //~^ incompatible_msrv
+        };
     }
     my_panic!("foo");
 
     // Lint even when the macro comes from `core` and calls `core` functions
-    assert!(core::panicking::panic("out of luck"));
-    //~^ ERROR: is `1.3.0` but this item is stable since `1.6.0`
+    assert!(core::iter::once_with(|| 0).next().is_some());
+    //~^ incompatible_msrv
 }
 
 #[clippy::msrv = "1.26.0"]
@@ -70,7 +74,40 @@ fn lang_items() {
 #[clippy::msrv = "1.80.0"]
 fn issue14212() {
     let _ = std::iter::repeat_n((), 5);
-    //~^ ERROR: is `1.80.0` but this item is stable since `1.82.0`
+    //~^ incompatible_msrv
+}
+
+fn local_msrv_change_suggestion() {
+    let _ = std::iter::repeat_n((), 5);
+    //~^ incompatible_msrv
+
+    #[cfg(any(test, not(test)))]
+    {
+        let _ = std::iter::repeat_n((), 5);
+        //~^ incompatible_msrv
+        //~| NOTE: you may want to conditionally increase the MSRV
+
+        // Emit the additional note only once
+        let _ = std::iter::repeat_n((), 5);
+        //~^ incompatible_msrv
+    }
+}
+
+#[clippy::msrv = "1.78.0"]
+fn feature_enable_14425(ptr: *const u8) -> usize {
+    // Do not warn, because it is enabled through a feature even though
+    // it is stabilized only since Rust 1.84.0.
+    let r = ptr.addr();
+
+    // Warn about this which has been introduced in the same Rust version
+    // but is not allowed through a feature.
+    r.isqrt()
+    //~^ incompatible_msrv
+}
+
+fn non_fn_items() {
+    let _ = std::io::ErrorKind::CrossesDevices;
+    //~^ incompatible_msrv
 }
 
 fn main() {}
