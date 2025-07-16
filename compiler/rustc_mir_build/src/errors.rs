@@ -1113,6 +1113,7 @@ pub(crate) struct Rust2024IncompatiblePatSugg {
     pub(crate) suggestion: Vec<(Span, String)>,
     pub(crate) ref_pattern_count: usize,
     pub(crate) binding_mode_count: usize,
+    pub(crate) bad_modifiers: bool,
     /// Labels for where incompatibility-causing by-ref default binding modes were introduced.
     pub(crate) default_mode_labels: FxIndexMap<Span, ty::Mutability>,
 }
@@ -1124,12 +1125,19 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
         for (span, def_br_mutbl) in self.default_mode_labels.into_iter().rev() {
             // Don't point to a macro call site.
             if !span.from_expansion() {
-                let note_msg = "matching on a reference type with a non-reference pattern changes the default binding mode";
-                let label_msg =
-                    format!("this matches on type `{}_`", def_br_mutbl.ref_prefix_str());
-                let mut label = MultiSpan::from(span);
-                label.push_span_label(span, label_msg);
-                diag.span_note(label, note_msg);
+                let label_msg = format!(
+                    "this matches on a reference type `{}_` without a reference pattern",
+                    def_br_mutbl.ref_prefix_str()
+                );
+                if self.bad_modifiers {
+                    // Only explain default binding modes if pointing to redundant/conflicting modifiers.
+                    let note_msg = "matching on a reference type with a non-reference pattern makes variables within bind by reference";
+                    let mut label = MultiSpan::from(span);
+                    label.push_span_label(span, label_msg);
+                    diag.span_note(label, note_msg);
+                } else {
+                    diag.span_label(span, label_msg);
+                }
             }
         }
 
@@ -1150,7 +1158,7 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
             } else {
                 String::new()
             };
-            format!("make the implied reference pattern{plural_derefs}{and_modes} explicit")
+            format!("make the elided reference pattern{plural_derefs}{and_modes} explicit")
         };
         // FIXME(dianne): for peace of mind, don't risk emitting a 0-part suggestion (that panics!)
         if !self.suggestion.is_empty() {

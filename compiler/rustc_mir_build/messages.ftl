@@ -318,13 +318,13 @@ mir_build_pointer_pattern = function pointers and raw pointers not derived from 
 
 mir_build_privately_uninhabited = pattern `{$witness_1}` is currently uninhabited, but this variant contains private fields which may become inhabited in the future
 
-mir_build_rust_2024_incompatible_pat = {$bad_modifiers ->
+mir_build_rust_2024_incompatible_pat = explicit {$bad_modifiers ->
         *[true] binding modifiers{$bad_ref_pats ->
             *[true] {" "}and reference patterns
             [false] {""}
         }
         [false] reference patterns
-    } may only be written when the default binding mode is `move`{$is_hard_error ->
+    } may not be written within elided reference patterns{$is_hard_error ->
         *[true] {""}
         [false] {" "}in Rust 2024
     }

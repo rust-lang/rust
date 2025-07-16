@@ -54,6 +54,7 @@ impl<'a> PatMigration<'a> {
             suggestion: self.suggestion,
             ref_pattern_count: self.ref_pattern_count,
             binding_mode_count: self.binding_mode_count,
+            bad_modifiers: self.info.bad_modifiers,
             default_mode_labels: self.default_mode_labels,
         };
         // If a relevant span is from at least edition 2024, this is a hard error.
