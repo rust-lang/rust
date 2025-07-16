@@ -16,17 +16,12 @@ allow-unauthenticated = [
 # Enables assigning users to issues and PRs.
 [assign]
 warn_non_default_branch = true
-contributing_url = "https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md"
+contributing_url = "https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#pr-review-process"
 [assign.custom_welcome_messages]
-welcome-message = """
-Welcome, and thank you for contributing to Miri!
-To ensure a smooth reviewing experience, please read https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#pr-review-process.
-In particular, please do not force-push to the PR branch except when you need to rebase due to a conflict or when the reviewer asks you for it.
-"""
+welcome-message = "(unused)"
 welcome-message-no-reviewer = """
-Welcome, and thank you for contributing to Miri!
-To ensure a smooth reviewing experience, please read https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#pr-review-process.
-In particular, please do not force-push to the PR branch except when you need to rebase due to a conflict or when the reviewer asks you for it.
+Thank you for contributing to Miri!
+Please remember to not force-push to the PR branch except when you need to rebase due to a conflict or when the reviewer asks you for it.
 """
 
 [no-merges]
