@@ -1483,7 +1483,11 @@ impl UnusedDelimLint for UnusedBraces {
     ) {
         match value.kind {
             ast::ExprKind::Block(ref inner, None)
-                if inner.rules == ast::BlockCheckMode::Default =>
+                if inner.rules == ast::BlockCheckMode::Default
+                    && ctx != UnusedDelimsCtx::ClosureBody
+                    && value.attrs.is_empty()
+                    && !value.span.from_expansion()
+                    && !inner.span.from_expansion() =>
             {
                 // emit a warning under the following conditions:
                 //
@@ -1515,11 +1519,7 @@ impl UnusedDelimLint for UnusedBraces {
                             && (ctx != UnusedDelimsCtx::AnonConst
                                 || (matches!(expr.kind, ast::ExprKind::Lit(_))
                                     && !expr.span.from_expansion()))
-                            && ctx != UnusedDelimsCtx::ClosureBody
                             && !cx.sess().source_map().is_multiline(value.span)
-                            && value.attrs.is_empty()
-                            && !value.span.from_expansion()
-                            && !inner.span.from_expansion()
                         {
                             self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos, is_kw)
                         }
