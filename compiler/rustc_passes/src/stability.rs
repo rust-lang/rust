@@ -421,7 +421,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
                                 .emit_err(errors::CannotStabilizeDeprecated { span, item_sp });
                         }
                     }
-                    StableSince::Err => {
+                    StableSince::Err(_) => {
                         // An error already reported. Assume the unparseable stabilization
                         // version is older than the deprecation version.
                     }

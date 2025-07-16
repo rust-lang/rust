@@ -1,7 +1,7 @@
 use std::num::NonZero;
 
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
-use rustc_span::{Symbol, sym};
+use rustc_span::{ErrorGuaranteed, Symbol, sym};
 
 use crate::{PrintAttribute, RustcVersion};
 
@@ -153,7 +153,7 @@ pub enum StableSince {
     /// Stabilized in the upcoming version, whatever number that is.
     Current,
     /// Failed to parse a stabilization version.
-    Err,
+    Err(ErrorGuaranteed),
 }
 
 impl StabilityLevel {

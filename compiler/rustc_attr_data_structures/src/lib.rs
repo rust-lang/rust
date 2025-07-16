@@ -24,7 +24,7 @@ use rustc_ast::token::CommentKind;
 use rustc_ast::{AttrStyle, IntTy, UintTy};
 use rustc_ast_pretty::pp::Printer;
 use rustc_span::hygiene::Transparency;
-use rustc_span::{Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Span, Symbol};
 pub use stability::*;
 use thin_vec::ThinVec;
 pub use version::*;
@@ -170,7 +170,7 @@ macro_rules! print_tup {
 }
 
 print_tup!(A B C D E F G H);
-print_skip!(Span, ());
+print_skip!(Span, (), ErrorGuaranteed);
 print_disp!(u16, bool, NonZero<u32>);
 print_debug!(Symbol, UintTy, IntTy, Align, AttrStyle, CommentKind, Transparency);
 

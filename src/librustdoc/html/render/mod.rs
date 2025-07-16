@@ -1110,7 +1110,7 @@ fn since_to_string(since: &StableSince) -> Option<String> {
     match since {
         StableSince::Version(since) => Some(since.to_string()),
         StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
-        StableSince::Err => None,
+        StableSince::Err(_) => None,
     }
 }
 
