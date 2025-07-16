@@ -14,6 +14,7 @@ use std::slice;
 
 use itertools::{Either, Itertools};
 use rustc_abi::ExternAbi;
+use rustc_ast::join_path_syms;
 use rustc_attr_data_structures::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -25,7 +26,7 @@ use rustc_span::symbol::kw;
 use rustc_span::{Symbol, sym};
 use tracing::{debug, trace};
 
-use super::url_parts_builder::{UrlPartsBuilder, estimate_item_path_byte_length};
+use super::url_parts_builder::UrlPartsBuilder;
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::find_nearest_parent_module;
 use crate::clean::{self, ExternalCrate, PrimitiveType};
@@ -369,18 +370,6 @@ pub(crate) enum HrefError {
     NotInExternalCache,
 }
 
-// Panics if `syms` is empty.
-pub(crate) fn join_with_double_colon(syms: &[Symbol]) -> String {
-    let mut s = String::with_capacity(estimate_item_path_byte_length(syms.len()));
-    // NOTE: using `Joined::joined` here causes a noticeable perf regression
-    s.push_str(syms[0].as_str());
-    for sym in &syms[1..] {
-        s.push_str("::");
-        s.push_str(sym.as_str());
-    }
-    s
-}
-
 /// This function is to get the external macro path because they are not in the cache used in
 /// `href_with_root_path`.
 fn generate_macro_def_id_path(
@@ -672,7 +661,7 @@ pub(crate) fn link_tooltip(
             write!(f, "{}", cx.tcx().item_name(id))?;
         } else if !fqp.is_empty() {
             write!(f, "{shortty} ")?;
-            fqp.iter().joined("::", f)?;
+            write!(f, "{}", join_path_syms(fqp))?;
         }
         Ok(())
     })
@@ -703,7 +692,7 @@ fn resolved_path(
                     write!(
                         f,
                         "{path}::{anchor}",
-                        path = join_with_double_colon(&fqp[..fqp.len() - 1]),
+                        path = join_path_syms(&fqp[..fqp.len() - 1]),
                         anchor = print_anchor(did, *fqp.last().unwrap(), cx)
                     )
                 } else {
@@ -835,7 +824,7 @@ pub(crate) fn print_anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl D
             write!(
                 f,
                 r#"<a class="{short_ty}" href="{url}" title="{short_ty} {path}">{text}</a>"#,
-                path = join_with_double_colon(&fqp),
+                path = join_path_syms(fqp),
                 text = EscapeBodyText(text.as_str()),
             )
         } else {
@@ -1095,7 +1084,7 @@ impl clean::QPathData {
                                     title=\"type {path}::{name}\">{name}</a>",
                         shortty = ItemType::AssocType,
                         name = assoc.name,
-                        path = join_with_double_colon(&path),
+                        path = join_path_syms(path),
                     )
                 } else {
                     write!(f, "{}", assoc.name)

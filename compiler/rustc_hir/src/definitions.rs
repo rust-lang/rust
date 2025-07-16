@@ -181,29 +181,23 @@ pub struct DisambiguatedDefPathData {
 }
 
 impl DisambiguatedDefPathData {
-    pub fn fmt_maybe_verbose(&self, writer: &mut impl Write, verbose: bool) -> fmt::Result {
+    pub fn as_sym(&self, verbose: bool) -> Symbol {
         match self.data.name() {
             DefPathDataName::Named(name) => {
                 if verbose && self.disambiguator != 0 {
-                    write!(writer, "{}#{}", name, self.disambiguator)
+                    Symbol::intern(&format!("{}#{}", name, self.disambiguator))
                 } else {
-                    writer.write_str(name.as_str())
+                    name
                 }
             }
             DefPathDataName::Anon { namespace } => {
                 if let DefPathData::AnonAssocTy(method) = self.data {
-                    write!(writer, "{}::{{{}#{}}}", method, namespace, self.disambiguator)
+                    Symbol::intern(&format!("{}::{{{}#{}}}", method, namespace, self.disambiguator))
                 } else {
-                    write!(writer, "{{{}#{}}}", namespace, self.disambiguator)
+                    Symbol::intern(&format!("{{{}#{}}}", namespace, self.disambiguator))
                 }
             }
         }
-    }
-}
-
-impl fmt::Display for DisambiguatedDefPathData {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.fmt_maybe_verbose(f, true)
     }
 }
 
@@ -250,7 +244,7 @@ impl DefPath {
         let mut s = String::with_capacity(self.data.len() * 16);
 
         for component in &self.data {
-            write!(s, "::{component}").unwrap();
+            write!(s, "::{}", component.as_sym(true)).unwrap();
         }
 
         s
@@ -266,7 +260,7 @@ impl DefPath {
         for component in &self.data {
             s.extend(opt_delimiter);
             opt_delimiter = Some('-');
-            write!(s, "{component}").unwrap();
+            write!(s, "{}", component.as_sym(true)).unwrap();
         }
 
         s
