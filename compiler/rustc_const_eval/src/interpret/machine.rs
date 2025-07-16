@@ -649,6 +649,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
 
     type ExtraFnVal = !;
 
+    type MemoryKind = $crate::const_eval::MemoryKind;
     type MemoryMap =
         rustc_data_structures::fx::FxIndexMap<AllocId, (MemoryKind<Self::MemoryKind>, Allocation)>;
     const GLOBAL_KIND: Option<Self::MemoryKind> = None; // no copying of globals from `tcx` to machine memory
