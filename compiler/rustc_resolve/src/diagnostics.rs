@@ -1,6 +1,8 @@
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
-use rustc_ast::{self as ast, CRATE_NODE_ID, Crate, ItemKind, ModKind, NodeId, Path};
+use rustc_ast::{
+    self as ast, CRATE_NODE_ID, Crate, ItemKind, ModKind, NodeId, Path, join_path_idents,
+};
 use rustc_ast_pretty::pprust;
 use rustc_attr_data_structures::{
     self as attr, AttributeKind, CfgEntry, Stability, StrippedCfgItem, find_attr,
@@ -2018,7 +2020,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        let mut sugg_paths = vec![];
+        let mut sugg_paths: Vec<(Vec<Ident>, bool)> = vec![];
         if let Some(mut def_id) = res.opt_def_id() {
             // We can't use `def_path_str` in resolve.
             let mut path = vec![def_id];
@@ -2031,16 +2033,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             }
             // We will only suggest importing directly if it is accessible through that path.
-            let path_names: Option<Vec<String>> = path
+            let path_names: Option<Vec<Ident>> = path
                 .iter()
                 .rev()
                 .map(|def_id| {
-                    self.tcx.opt_item_name(*def_id).map(|n| {
-                        if def_id.is_top_level_module() {
-                            "crate".to_string()
+                    self.tcx.opt_item_name(*def_id).map(|name| {
+                        Ident::with_dummy_span(if def_id.is_top_level_module() {
+                            kw::Crate
                         } else {
-                            n.to_string()
-                        }
+                            name
+                        })
                     })
                 })
                 .collect();
@@ -2084,13 +2086,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             match binding.kind {
                 NameBindingKind::Import { import, .. } => {
                     for segment in import.module_path.iter().skip(1) {
-                        path.push(segment.ident.to_string());
+                        path.push(segment.ident);
                     }
                     sugg_paths.push((
-                        path.iter()
-                            .cloned()
-                            .chain(vec![ident.to_string()].into_iter())
-                            .collect::<Vec<_>>(),
+                        path.iter().cloned().chain(std::iter::once(ident)).collect::<Vec<_>>(),
                         true, // re-export
                     ));
                 }
@@ -2126,7 +2125,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             err.subdiagnostic(note);
         }
         // We prioritize shorter paths, non-core imports and direct imports over the alternatives.
-        sugg_paths.sort_by_key(|(p, reexport)| (p.len(), p[0] == "core", *reexport));
+        sugg_paths.sort_by_key(|(p, reexport)| (p.len(), p[0].name == sym::core, *reexport));
         for (sugg, reexport) in sugg_paths {
             if not_publicly_reexported {
                 break;
@@ -2136,7 +2135,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // `tests/ui/imports/issue-55884-2.rs`
                 continue;
             }
-            let path = sugg.join("::");
+            let path = join_path_idents(sugg);
             let sugg = if reexport {
                 errors::ImportIdent::ThroughReExport { span: dedup_span, ident, path }
             } else {

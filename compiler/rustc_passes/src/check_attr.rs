@@ -10,7 +10,7 @@ use std::collections::hash_map::Entry;
 use std::slice;
 
 use rustc_abi::{Align, ExternAbi, Size};
-use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, ast};
+use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, ast, join_path_syms};
 use rustc_attr_data_structures::{AttributeKind, InlineAttr, ReprAttr, find_attr};
 use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
@@ -680,9 +680,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         allowed_target: Target,
     ) {
         if target != allowed_target {
-            let path = attr.path();
-            let path: Vec<_> = path.iter().map(|s| s.as_str()).collect();
-            let attr_name = path.join("::");
+            let attr_name = join_path_syms(attr.path());
             self.tcx.emit_node_span_lint(
                 UNUSED_ATTRIBUTES,
                 hir_id,
