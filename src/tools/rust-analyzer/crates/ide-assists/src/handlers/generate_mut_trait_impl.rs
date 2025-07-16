@@ -1,4 +1,4 @@
-use ide_db::famous_defs::FamousDefs;
+use ide_db::{famous_defs::FamousDefs, traits::resolve_target_trait};
 use syntax::{
     AstNode,
     ast::{self, edit_in_place::Indent, make},
@@ -48,27 +48,19 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
     let impl_def = ctx.find_node_at_offset::<ast::Impl>()?.clone_for_update();
     let indent = impl_def.indent_level();
 
-    let (apply_trait, new_apply_trait) = impl_def
-        .syntax()
-        .descendants()
-        .filter_map(ast::NameRef::cast)
-        .find_map(process_trait_name)?;
+    let ast::Type::PathType(path) = impl_def.trait_()? else {
+        return None;
+    };
+    let trait_name = path.path()?.segment()?.name_ref()?;
 
-    let trait_ = impl_def.trait_()?;
-    if let ast::Type::PathType(trait_path) = trait_ {
-        let trait_type = ctx.sema.resolve_trait(&trait_path.path()?)?;
-        let scope = ctx.sema.scope(trait_path.syntax())?;
-        let famous_defs = FamousDefs(&ctx.sema, scope.krate());
-        if trait_type != get_famous(&apply_trait.text(), famous_defs)? {
-            return None;
-        }
-    }
+    let scope = ctx.sema.scope(impl_def.trait_()?.syntax())?;
+    let famous = FamousDefs(&ctx.sema, scope.krate());
+
+    let trait_ = resolve_target_trait(&ctx.sema, &impl_def)?;
+    let trait_new = get_trait_mut(&trait_, famous)?;
 
     // Index -> IndexMut
-    ted::replace(
-        apply_trait.syntax(),
-        make::path_segment(make::name_ref(new_apply_trait)).clone_for_update().syntax(),
-    );
+    ted::replace(trait_name.syntax(), make::name_ref(trait_new).clone_for_update().syntax());
 
     // index -> index_mut
     let (trait_method_name, new_trait_method_name) = impl_def
@@ -108,7 +100,7 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
     let target = impl_def.syntax().text_range();
     acc.add(
         AssistId::generate("generate_mut_trait_impl"),
-        format!("Generate `{new_apply_trait}` impl from this `{apply_trait}` trait"),
+        format!("Generate `{trait_new}` impl from this `{trait_name}` trait"),
         target,
         |edit| {
             edit.insert(target.start(), format!("$0{impl_def}\n\n{indent}"));
@@ -116,23 +108,18 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
     )
 }
 
-fn get_famous(apply_trait: &str, famous: FamousDefs<'_, '_>) -> Option<hir::Trait> {
-    match apply_trait {
-        "Index" => famous.core_convert_Index(),
-        "AsRef" => famous.core_convert_AsRef(),
-        "Borrow" => famous.core_borrow_Borrow(),
-        _ => None,
+fn get_trait_mut(apply_trait: &hir::Trait, famous: FamousDefs<'_, '_>) -> Option<&'static str> {
+    let trait_ = Some(apply_trait);
+    if trait_ == famous.core_convert_Index().as_ref() {
+        return Some("IndexMut");
     }
-}
-
-fn process_trait_name(name: ast::NameRef) -> Option<(ast::NameRef, &'static str)> {
-    let new_name = match &*name.text() {
-        "Index" => "IndexMut",
-        "AsRef" => "AsMut",
-        "Borrow" => "BorrowMut",
-        _ => return None,
-    };
-    Some((name, new_name))
+    if trait_ == famous.core_convert_AsRef().as_ref() {
+        return Some("AsMut");
+    }
+    if trait_ == famous.core_borrow_Borrow().as_ref() {
+        return Some("BorrowMut");
+    }
+    None
 }
 
 fn process_method_name(name: ast::Name) -> Option<(ast::Name, &'static str)> {
