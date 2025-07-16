@@ -1,6 +1,6 @@
 use ide_db::{famous_defs::FamousDefs, traits::resolve_target_trait};
 use syntax::{
-    AstNode,
+    AstNode, T,
     ast::{self, edit_in_place::Indent, make},
     ted,
 };
@@ -32,7 +32,7 @@ use crate::{AssistContext, AssistId, Assists};
 //
 // $0impl<T> core::ops::IndexMut<Axis> for [T; 3] {
 //     fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
-//         &self[index as usize]
+//         &mut self[index as usize]
 //     }
 // }
 //
@@ -92,6 +92,7 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
         ast::AssocItem::Fn(f) => Some(f),
         _ => None,
     })?;
+    let _ = process_ref_mut(&fn_);
 
     let assoc_list = make::assoc_item_list().clone_for_update();
     ted::replace(impl_def.assoc_item_list()?.syntax(), assoc_list.syntax());
@@ -106,6 +107,20 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
             edit.insert(target.start(), format!("$0{impl_def}\n\n{indent}"));
         },
     )
+}
+
+fn process_ref_mut(fn_: &ast::Fn) -> Option<()> {
+    let expr = fn_.body()?.tail_expr()?;
+    match &expr {
+        ast::Expr::RefExpr(ref_expr) if ref_expr.mut_token().is_none() => {
+            ted::insert_all_raw(
+                ted::Position::after(ref_expr.amp_token()?),
+                vec![make::token(T![mut]).into(), make::tokens::whitespace(" ").into()],
+            );
+        }
+        _ => {}
+    }
+    None
 }
 
 fn get_trait_mut(apply_trait: &hir::Trait, famous: FamousDefs<'_, '_>) -> Option<&'static str> {
@@ -167,7 +182,7 @@ pub enum Axis { X = 0, Y = 1, Z = 2 }
 
 $0impl<T> core::ops::IndexMut<Axis> for [T; 3] {
     fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
-        &self[index as usize]
+        &mut self[index as usize]
     }
 }
 
@@ -234,7 +249,7 @@ struct Foo(i32);
 
 $0impl core::convert::AsMut<i32> for Foo {
     fn as_mut(&mut self) -> &mut i32 {
-        &self.0
+        &mut self.0
     }
 }
 
