@@ -350,7 +350,7 @@ impl Step for CodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
-        rustc_cargo_env(builder, &mut cargo, target, build_compiler.stage);
+        rustc_cargo_env(builder, &mut cargo, target);
 
         let _guard = builder.msg_check(format!("rustc_codegen_{backend}"), target, None);
 

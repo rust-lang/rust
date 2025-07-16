@@ -1316,15 +1316,10 @@ pub fn rustc_cargo(
         cargo.env("RUSTC_WRAPPER", ccache);
     }
 
-    rustc_cargo_env(builder, cargo, target, build_compiler.stage);
+    rustc_cargo_env(builder, cargo, target);
 }
 
-pub fn rustc_cargo_env(
-    builder: &Builder<'_>,
-    cargo: &mut Cargo,
-    target: TargetSelection,
-    _build_stage: u32,
-) {
+pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo
@@ -1674,7 +1669,7 @@ impl Step for CodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
-        rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
+        rustc_cargo_env(builder, &mut cargo, target);
 
         // Ideally, we'd have a separate step for the individual codegen backends,
         // like we have in tests (test::CodegenGCC) but that would require a lot of restructuring.
