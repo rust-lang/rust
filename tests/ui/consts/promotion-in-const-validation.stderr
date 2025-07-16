@@ -1,15 +1,11 @@
-error[E0080]: constructing invalid value at .<deref>: encountered a pointer, but expected an integer
-  --> $DIR/promotion-in-const-validation.rs:3:1
+error[E0080]: constructing invalid value: encountered a pointer, but expected an integer
+  --> $DIR/promotion-in-const-validation.rs:3:29
    |
 LL | const _: &usize = unsafe { &std::mem::transmute(foo as fn()) };
-   | ^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾ALLOC0<imm>╼                         │ ╾──────╼
-           }
 
 note: erroneous constant encountered
   --> $DIR/promotion-in-const-validation.rs:3:28
@@ -17,11 +13,11 @@ note: erroneous constant encountered
 LL | const _: &usize = unsafe { &std::mem::transmute(foo as fn()) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0080]: unable to turn pointer into integer
-  --> $DIR/promotion-in-const-validation.rs:6:1
+error[E0080]: constructing invalid value: encountered a pointer, but expected an integer
+  --> $DIR/promotion-in-const-validation.rs:6:27
    |
 LL | const _: usize = unsafe { std::mem::transmute(foo as fn()) };
-   | ^^^^^^^^^^^^^^ evaluation of `_` failed here
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported

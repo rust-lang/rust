@@ -93,7 +93,7 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
     // Since evaluation had no errors, validate the resulting constant.
     const_validate_mplace(ecx, &ret, cid)?;
 
-    // Only report this after validation, as validaiton produces much better diagnostics.
+    // Only report this after validation, as validation produces much better diagnostics.
     // FIXME: ensure validation always reports this and stop making interning care about it.
 
     match intern_result {
