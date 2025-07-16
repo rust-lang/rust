@@ -1,0 +1,47 @@
+error[E0596]: cannot borrow `*string` as mutable, as it is behind a `&` reference
+  --> $DIR/suggest-use-as-mut-for-map.rs:28:5
+   |
+LL |     string.push_str("test");
+   |     ^^^^^^ `string` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     let string = &mut map[&0];
+   |                   +++
+
+error[E0596]: cannot borrow `*string` as mutable, as it is behind a `&` reference
+  --> $DIR/suggest-use-as-mut-for-map.rs:34:5
+   |
+LL |     string.push_str("test");
+   |     ^^^^^^ `string` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     let string = &mut map[&0];
+   |                   +++
+
+error[E0596]: cannot borrow `*string` as mutable, as it is behind a `&` reference
+  --> $DIR/suggest-use-as-mut-for-map.rs:38:5
+   |
+LL |     string.push_str("test");
+   |     ^^^^^^ `string` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     let string = &mut vec[0];
+   |                   +++
+
+error[E0596]: cannot borrow `*string_ref` as mutable, as it is behind a `&` reference
+  --> $DIR/suggest-use-as-mut-for-map.rs:43:5
+   |
+LL |     string_ref.push_str("test");
+   |     ^^^^^^^^^^ `string_ref` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     let string_ref = &mut read_only_vec[0];
+   |                       +++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0596`.
