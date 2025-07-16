@@ -1,5 +1,3 @@
-// FIXME(estebank): diagnostics with long type paths that don't print out the full path anywhere
-// still prints the note explaining where the type was written to.
 //@ compile-flags: -Zwrite-long-types-to-disk=yes
 use std::cell::Cell;
 use std::rc::Rc;
@@ -24,15 +22,11 @@ fn main() {
     //~^ ERROR `Rc<Cell<i32>>` cannot be sent between threads safely
     //~| NOTE `Rc<Cell<i32>>` cannot be sent between threads safely
     //~| NOTE required by a bound
-    //~| NOTE the full name for the type has been written
-    //~| NOTE consider using `--verbose`
 
     send(after());
     //~^ ERROR `Rc<Cell<i32>>` cannot be sent between threads safely
     //~| NOTE `Rc<Cell<i32>>` cannot be sent between threads safely
     //~| NOTE required by a bound
-    //~| NOTE the full name for the type has been written
-    //~| NOTE consider using `--verbose`
 }
 
 // Deferred path, main has to wait until typeck finishes,
