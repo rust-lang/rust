@@ -52,7 +52,7 @@ impl<'tcx> GlobalCtorState<'tcx> {
 
                         // Read the standard `.init_array` section on platforms that use ELF, or WASM,
                         // which supports the same linker directive.
-                        // FIXME: Add support for `.init_array.N`.
+                        // FIXME: Add support for `.init_array.N` and `.ctors`?
                         BinaryFormat::Elf | BinaryFormat::Wasm =>
                             this.lookup_link_section(|section| section == ".init_array")?,
 
