@@ -20,7 +20,7 @@ use rustc_expand::expand::{
 use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
-use rustc_middle::ty::{RegisteredTools, TyCtxt, Visibility};
+use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
@@ -41,7 +41,7 @@ use crate::imports::Import;
 use crate::{
     BindingKey, DeriveData, Determinacy, Finalize, InvocationParent, MacroData, ModuleKind,
     ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult, ResolutionError,
-    Resolver, ScopeSet, Segment, ToNameBinding, Used,
+    Resolver, ScopeSet, Segment, Used,
 };
 
 type Res = def::Res<NodeId>;
@@ -436,8 +436,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             .iter()
             .map(|(_, ident)| {
                 let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
-                let binding = (res, Visibility::<DefId>::Public, ident.span, expn_id)
-                    .to_name_binding(self.arenas);
+                let binding = self.arenas.new_pub_res_binding(res, ident.span, expn_id);
                 (*ident, binding)
             })
             .collect();

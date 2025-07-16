@@ -2656,18 +2656,17 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 if result.is_some() || !name_binding.vis.is_visible_locally() {
                     return;
                 }
-                if let Some(module) = name_binding.module() {
+                if let Some(module_def_id) = name_binding.res().module_like_def_id() {
                     // form the path
                     let mut path_segments = path_segments.clone();
                     path_segments.push(ast::PathSegment::from_ident(ident));
-                    let module_def_id = module.def_id();
                     let doc_visible = doc_visible
                         && (module_def_id.is_local() || !r.tcx.is_doc_hidden(module_def_id));
                     if module_def_id == def_id {
                         let path =
                             Path { span: name_binding.span, segments: path_segments, tokens: None };
                         result = Some((
-                            module,
+                            r.expect_module(module_def_id),
                             ImportSuggestion {
                                 did: Some(def_id),
                                 descr: "module",
@@ -2682,6 +2681,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     } else {
                         // add the module to the lookup
                         if seen_modules.insert(module_def_id) {
+                            let module = r.expect_module(module_def_id);
                             worklist.push((module, path_segments, doc_visible));
                         }
                     }

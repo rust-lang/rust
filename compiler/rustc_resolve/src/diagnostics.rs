@@ -232,12 +232,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return;
         }
 
-        let old_kind = match (ns, old_binding.module()) {
+        let old_kind = match (ns, old_binding.res()) {
             (ValueNS, _) => "value",
             (MacroNS, _) => "macro",
             (TypeNS, _) if old_binding.is_extern_crate() => "extern crate",
-            (TypeNS, Some(module)) if module.is_normal() => "module",
-            (TypeNS, Some(module)) if module.is_trait() => "trait",
+            (TypeNS, Res::Def(DefKind::Mod, _)) => "module",
+            (TypeNS, Res::Def(DefKind::Trait, _)) => "trait",
             (TypeNS, _) => "type",
         };
 
@@ -1319,7 +1319,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
 
                 // collect submodules to explore
-                if let Some(module) = name_binding.module() {
+                if let Some(def_id) = name_binding.res().module_like_def_id() {
                     // form the path
                     let mut path_segments = path_segments.clone();
                     path_segments.push(ast::PathSegment::from_ident(ident));
@@ -1339,14 +1339,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                     if !is_extern_crate_that_also_appears_in_prelude || alias_import {
                         // add the module to the lookup
-                        if seen_modules.insert(module.def_id()) {
+                        if seen_modules.insert(def_id) {
                             if via_import { &mut worklist_via_import } else { &mut worklist }.push(
                                 (
-                                    module,
+                                    this.expect_module(def_id),
                                     path_segments,
                                     child_accessible,
                                     child_doc_visible,
-                                    is_stable && this.is_stable(module.def_id(), name_binding.span),
+                                    is_stable && this.is_stable(def_id, name_binding.span),
                                 ),
                             );
                         }
@@ -2094,7 +2094,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         true, // re-export
                     ));
                 }
-                NameBindingKind::Res(_) | NameBindingKind::Module(_) => {}
+                NameBindingKind::Res(_) => {}
             }
             let first = binding == first_binding;
             let def_span = self.tcx.sess.source_map().guess_head_span(binding.span);
@@ -2306,25 +2306,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .ok()
                 };
                 if let Some(binding) = binding {
-                    let mut found = |what| {
-                        msg = format!(
-                            "expected {}, found {} `{}` in {}",
-                            ns.descr(),
-                            what,
-                            ident,
-                            parent
-                        )
-                    };
-                    if binding.module().is_some() {
-                        found("module")
-                    } else {
-                        match binding.res() {
-                            // Avoid using TyCtxt::def_kind_descr in the resolver, because it
-                            // indirectly *calls* the resolver, and would cause a query cycle.
-                            Res::Def(kind, id) => found(kind.descr(id)),
-                            _ => found(ns_to_try.descr()),
-                        }
-                    }
+                    msg = format!(
+                        "expected {}, found {} `{ident}` in {parent}",
+                        ns.descr(),
+                        binding.res().descr(),
+                    );
                 };
             }
             (msg, None)
