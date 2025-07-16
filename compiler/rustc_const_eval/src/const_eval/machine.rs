@@ -320,8 +320,6 @@ impl<'tcx> CompileTimeMachine<'tcx> {
 impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     compile_time_machine!(<'tcx>);
 
-    type MemoryKind = MemoryKind;
-
     const PANIC_ON_ALLOC_FAIL: bool = false; // will be raised as a proper error
 
     #[inline(always)]

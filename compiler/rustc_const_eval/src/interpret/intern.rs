@@ -30,14 +30,14 @@ use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceT
 use crate::const_eval::DummyMachine;
 use crate::{const_eval, errors};
 
-pub trait CompileTimeMachine<'tcx, T> = Machine<
+pub trait CompileTimeMachine<'tcx> = Machine<
         'tcx,
-        MemoryKind = T,
+        MemoryKind = const_eval::MemoryKind,
         Provenance = CtfeProvenance,
         ExtraFnVal = !,
         FrameExtra = (),
         AllocExtra = (),
-        MemoryMap = FxIndexMap<AllocId, (MemoryKind<T>, Allocation)>,
+        MemoryMap = FxIndexMap<AllocId, (MemoryKind<const_eval::MemoryKind>, Allocation)>,
     > + HasStaticRootDefId;
 
 pub trait HasStaticRootDefId {
@@ -52,35 +52,6 @@ impl HasStaticRootDefId for const_eval::CompileTimeMachine<'_> {
     }
 }
 
-pub enum DisallowInternReason {
-    ConstHeap,
-}
-
-/// A trait for controlling whether memory allocated in the interpreter can be interned.
-///
-/// This prevents us from interning `const_allocate` pointers that have not been made
-/// global through `const_make_global`.
-pub trait CanIntern: Copy {
-    fn disallows_intern(&self) -> Option<DisallowInternReason>;
-}
-
-impl CanIntern for const_eval::MemoryKind {
-    fn disallows_intern(&self) -> Option<DisallowInternReason> {
-        match self {
-            const_eval::MemoryKind::Heap { was_made_global: false } => {
-                Some(DisallowInternReason::ConstHeap)
-            }
-            const_eval::MemoryKind::Heap { was_made_global: true } => None,
-        }
-    }
-}
-
-impl CanIntern for ! {
-    fn disallows_intern(&self) -> Option<DisallowInternReason> {
-        *self
-    }
-}
-
 /// Intern an allocation. Returns `Err` if the allocation does not exist in the local memory.
 ///
 /// `mutability` can be used to force immutable interning: if it is `Mutability::Not`, the
@@ -88,7 +59,7 @@ impl CanIntern for ! {
 /// already mutable (as a sanity check).
 ///
 /// Returns an iterator over all relocations referred to by this allocation.
-fn intern_shallow<'tcx, T: CanIntern, M: CompileTimeMachine<'tcx, T>>(
+fn intern_shallow<'tcx, M: CompileTimeMachine<'tcx>>(
     ecx: &mut InterpCx<'tcx, M>,
     alloc_id: AllocId,
     mutability: Mutability,
@@ -102,16 +73,16 @@ fn intern_shallow<'tcx, T: CanIntern, M: CompileTimeMachine<'tcx, T>>(
     };
 
     match kind {
-        MemoryKind::Machine(x) if let Some(reason) = x.disallows_intern() => match reason {
-            DisallowInternReason::ConstHeap => {
+        MemoryKind::Machine(const_eval::MemoryKind::Heap { was_made_global }) => {
+            if !was_made_global {
                 // Attempting to intern a `const_allocate`d pointer that was not made global via
                 // `const_make_global`. We want to error here, but we have to first put the
                 // allocation back into the `alloc_map` to keep things in a consistent state.
                 ecx.memory.alloc_map.insert(alloc_id, (kind, alloc));
                 return Err(InternError::ConstAllocNotGlobal);
             }
-        },
-        MemoryKind::Machine(_) | MemoryKind::Stack | MemoryKind::CallerLocation => {}
+        }
+        MemoryKind::Stack | MemoryKind::CallerLocation => {}
     }
 
     // Set allocation mutability as appropriate. This is used by LLVM to put things into
@@ -204,7 +175,7 @@ pub enum InternError {
 ///
 /// For `InternKind::Static` the root allocation will not be interned, but must be handled by the caller.
 #[instrument(level = "debug", skip(ecx))]
-pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval::MemoryKind>>(
+pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx>>(
     ecx: &mut InterpCx<'tcx, M>,
     intern_kind: InternKind,
     ret: &MPlaceTy<'tcx>,
@@ -365,7 +336,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
 
 /// Intern `ret`. This function assumes that `ret` references no other allocation.
 #[instrument(level = "debug", skip(ecx))]
-pub fn intern_const_alloc_for_constprop<'tcx, T: CanIntern, M: CompileTimeMachine<'tcx, T>>(
+pub fn intern_const_alloc_for_constprop<'tcx, M: CompileTimeMachine<'tcx>>(
     ecx: &mut InterpCx<'tcx, M>,
     alloc_id: AllocId,
 ) -> InterpResult<'tcx, ()> {
