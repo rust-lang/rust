@@ -81,8 +81,7 @@
 #[export_stable = 1]
 //~^ ERROR malformed
 #[link]
-//~^ ERROR attribute must be of the form
-//~| WARN this was previously accepted by the compiler
+//~^ ERROR malformed
 #[link_name]
 //~^ ERROR malformed
 #[link_section]

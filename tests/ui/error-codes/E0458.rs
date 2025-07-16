@@ -1,4 +1,4 @@
-#[link(kind = "wonderful_unicorn")] extern "C" {} //~ ERROR E0458
+#[link(kind = "wonderful_unicorn")] extern "C" {} //~ ERROR malformed `link` attribute input [E0539]
                                                   //~| ERROR E0459
 
 fn main() {
