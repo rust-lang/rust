@@ -182,6 +182,11 @@ jobs:
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
 
+      # Workaround for spurious ci failures after mingw install
+      # see https://rust-lang.zulipchat.com/#narrow/channel/242791-t-infra/topic/Spurious.20bors.20CI.20failures/near/528915775
+      - name: ensure home dir exists
+        run: mkdir -p ~
+
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
 

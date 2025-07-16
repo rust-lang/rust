@@ -43,8 +43,4 @@ if isWindows && isKnownToBeMingwBuild; then
     curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
     7z x -y mingw.7z > /dev/null
     ciCommandAddPath "$(cygpath -m "$(pwd)/${mingw_dir}/bin")"
-
-    # Workaround for spurious ci failures
-    # see https://rust-lang.zulipchat.com/#narrow/channel/242791-t-infra/topic/Spurious.20bors.20CI.20failures/near/528915775
-    mkdir /c/msys64/home/runneradmin 
 fi
