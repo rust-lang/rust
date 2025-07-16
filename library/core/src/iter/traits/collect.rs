@@ -152,6 +152,17 @@ pub trait FromIterator<A>: Sized {
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
 }
 
+// 为同时实现 Default 和 Extend 的类型实现 FromIterator
+#[unstable(feature = "from_iter_default", issue = "58659")]
+impl<T, A: Default + Extend<T>> FromIterator<T> for A {
+    #[rustc_diagnostic_item = "from_iter_default"]
+    default fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut collection = A::default();
+        collection.extend(iter);
+        collection
+    }
+}
+
 /// Conversion into an [`Iterator`].
 ///
 /// By implementing `IntoIterator` for a type, you define how it will be
