@@ -26,6 +26,18 @@ fn foo() {
     //~^ incompatible_msrv
 }
 
+#[clippy::msrv = "1.2.0"]
+static NO_BODY_BAD_MSRV: Option<Duration> = None;
+//~^ incompatible_msrv
+
+static NO_BODY_GOOD_MSRV: Option<Duration> = None;
+
+#[clippy::msrv = "1.2.0"]
+fn bad_type_msrv() {
+    let _: Option<Duration> = None;
+    //~^ incompatible_msrv
+}
+
 #[test]
 fn test() {
     sleep(Duration::new(1, 0));
@@ -75,6 +87,12 @@ fn lang_items() {
 fn issue14212() {
     let _ = std::iter::repeat_n((), 5);
     //~^ incompatible_msrv
+}
+
+#[clippy::msrv = "1.0.0"]
+fn cstr_and_cstring_ok() {
+    let _: Option<&'static std::ffi::CStr> = None;
+    let _: Option<std::ffi::CString> = None;
 }
 
 fn local_msrv_change_suggestion() {
