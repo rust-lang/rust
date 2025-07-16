@@ -89,6 +89,7 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use itertools::Itertools;
 use rustc_abi::Integer;
+use rustc_ast::join_path_syms;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxHashMap;
@@ -3245,8 +3246,8 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
                 // a::b::c  ::d::sym refers to
                 // e::f::sym:: ::
                 // result should be super::super::super::super::e::f
-                if let DefPathData::TypeNs(s) = l {
-                    path.push(s.to_string());
+                if let DefPathData::TypeNs(sym) = l {
+                    path.push(sym);
                 }
                 if let DefPathData::TypeNs(_) = r {
                     go_up_by += 1;
@@ -3256,7 +3257,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
             // a::b::sym:: ::    refers to
             // c::d::e  ::f::sym
             // when looking at `f`
-            Left(DefPathData::TypeNs(sym)) => path.push(sym.to_string()),
+            Left(DefPathData::TypeNs(sym)) => path.push(sym),
             // consider:
             // a::b::c  ::d::sym refers to
             // e::f::sym:: ::
@@ -3268,17 +3269,17 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
 
     if go_up_by > max_super {
         // `super` chain would be too long, just use the absolute path instead
-        once(String::from("crate"))
-            .chain(to.data.iter().filter_map(|el| {
+        join_path_syms(
+            once(kw::Crate).chain(to.data.iter().filter_map(|el| {
                 if let DefPathData::TypeNs(sym) = el.data {
-                    Some(sym.to_string())
+                    Some(sym)
                 } else {
                     None
                 }
             }))
-            .join("::")
+        )
     } else {
-        repeat_n(String::from("super"), go_up_by).chain(path).join("::")
+        join_path_syms(repeat_n(kw::Super, go_up_by).chain(path))
     }
 }
 
