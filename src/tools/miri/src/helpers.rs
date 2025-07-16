@@ -1235,8 +1235,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    /// Lookup an array of immediates stored as a linker section of name `name`.
-    fn lookup_link_section(&mut self, name: &str) -> InterpResult<'tcx, Vec<ImmTy<'tcx>>> {
+    /// Lookup an array of immediates from any linker sections matching the provided predicate.
+    fn lookup_link_section(
+        &mut self,
+        include_name: impl Fn(&str) -> bool,
+    ) -> InterpResult<'tcx, Vec<ImmTy<'tcx>>> {
         let this = self.eval_context_mut();
         let tcx = this.tcx.tcx;
 
@@ -1247,7 +1250,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let Some(link_section) = attrs.link_section else {
                 return interp_ok(());
             };
-            if link_section.as_str() == name {
+            if include_name(link_section.as_str()) {
                 let instance = ty::Instance::mono(tcx, def_id);
                 let const_val = this.eval_global(instance).unwrap_or_else(|err| {
                     panic!(
