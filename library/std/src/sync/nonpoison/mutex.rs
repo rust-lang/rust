@@ -8,8 +8,8 @@ use crate::sys::sync as sys;
 
 /// A mutual exclusion primitive useful for protecting shared data.
 ///
-/// For more information about mutexes, check out the documentation for the
-/// poisoning variant of this lock found at [std::sync::poison::Mutex](crate::sync::poison::Mutex).
+/// For more information about mutexes, check out the documentation for the poisoning variant of
+/// this lock (which can be found at [`poison::Mutex`])
 ///
 /// # Example
 ///
@@ -47,6 +47,7 @@ use crate::sys::sync as sys;
 /// rx.recv().unwrap();
 /// ```
 ///
+/// [`poison::Mutex`]: crate::sync::poison::Mutex
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "NonPoisonMutex")]
 pub struct Mutex<T: ?Sized> {
@@ -54,10 +55,29 @@ pub struct Mutex<T: ?Sized> {
     data: UnsafeCell<T>,
 }
 
-// these are the only places where `T: Send` matters; all other
-// functionality works fine on a single thread.
+/// `T` must be `Send` for a [`Mutex`] to be `Send` because it is possible to acquire
+/// the owned `T` from the `Mutex` via [`into_inner`].
+///
+/// [`into_inner`]: Mutex::into_inner
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 unsafe impl<T: ?Sized + Send> Send for Mutex<T> {}
+
+/// `T` must be `Send` for [`Mutex`] to be `Sync`.
+/// This ensures that the protected data can be accessed safely from multiple threads
+/// without causing data races or other unsafe behavior.
+///
+/// [`Mutex<T>`] provides mutable access to `T` to one thread at a time. However, it's essential
+/// for `T` to be `Send` because it's not safe for non-`Send` structures to be accessed in
+/// this manner. For instance, consider [`Rc`], a non-atomic reference counted smart pointer,
+/// which is not `Send`. With `Rc`, we can have multiple copies pointing to the same heap
+/// allocation with a non-atomic reference count. If we were to use `Mutex<Rc<_>>`, it would
+/// only protect one instance of `Rc` from shared access, leaving other copies vulnerable
+/// to potential data races.
+///
+/// Also note that it is not necessary for `T` to be `Sync` as `&T` is only made available
+/// to one thread at a time if `T` is not `Sync`.
+///
+/// [`Rc`]: crate::rc::Rc
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 
@@ -83,9 +103,18 @@ pub struct MutexGuard<'a, T: ?Sized + 'a> {
     lock: &'a Mutex<T>,
 }
 
+/// A [`MutexGuard`] is not `Send` to maximize platform portablity.
+///
+/// On platforms that use POSIX threads (commonly referred to as pthreads) there is a requirement to
+/// release mutex locks on the same thread they were acquired.
+/// For this reason, [`MutexGuard`] must not implement `Send` to prevent it being dropped from
+/// another thread.
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 impl<T: ?Sized> !Send for MutexGuard<'_, T> {}
-#[stable(feature = "mutexguard", since = "1.19.0")]
+
+/// `T` must be `Sync` for a [`MutexGuard<T>`] to be `Sync`
+/// because it is possible to get a `&T` from `&MutexGuard` (via `Deref`).
+#[unstable(feature = "nonpoison_mutex", issue = "134645")]
 unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
 
 /// An RAII mutex guard returned by `MutexGuard::map`, which can point to a
@@ -110,6 +139,7 @@ unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
 #[must_not_suspend = "holding a MappedMutexGuard across suspend \
                       points can cause deadlocks, delays, \
                       and cause Futures to not implement `Send`"]
+// #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 #[clippy::has_significant_drop]
 pub struct MappedMutexGuard<'a, T: ?Sized + 'a> {
@@ -122,8 +152,10 @@ pub struct MappedMutexGuard<'a, T: ?Sized + 'a> {
     _variance: PhantomData<&'a mut T>,
 }
 
+// #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 impl<T: ?Sized> !Send for MappedMutexGuard<'_, T> {}
+// #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 unsafe impl<T: ?Sized + Sync> Sync for MappedMutexGuard<'_, T> {}
 
@@ -143,6 +175,8 @@ impl<T> Mutex<T> {
     pub const fn new(t: T) -> Mutex<T> {
         Mutex { inner: sys::Mutex::new(), data: UnsafeCell::new(t) }
     }
+
+    // TODO(connor): Add `lock_value_accessors` feature methods.
 }
 
 impl<T: ?Sized> Mutex<T> {
@@ -198,6 +232,9 @@ impl<T: ?Sized> Mutex<T> {
     /// If the mutex could not be acquired because it is already locked, then
     /// this call will return [`None`].
     ///
+    /// TODO(connor): This should return a `TryLockResult` as specified in
+    /// <https://github.com/rust-lang/rust/issues/134645>
+    ///
     /// # Examples
     ///
     /// ```
@@ -235,7 +272,6 @@ impl<T: ?Sized> Mutex<T> {
     /// assert_eq!(mutex.into_inner(), 0);
     /// ```
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
-    #[inline]
     pub fn into_inner(self) -> T
     where
         T: Sized,
@@ -259,10 +295,11 @@ impl<T: ?Sized> Mutex<T> {
     /// assert_eq!(*mutex.lock(), 10);
     /// ```
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
-    #[inline]
     pub fn get_mut(&mut self) -> &mut T {
         self.data.get_mut()
     }
+
+    // TODO(connor): Add `mutex_data_ptr` feature method.
 }
 
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
@@ -330,14 +367,14 @@ impl<T: ?Sized> Drop for MutexGuard<'_, T> {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[unstable(feature = "nonpoison_mutex", issue = "134645")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for MutexGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
-#[stable(feature = "std_guard_impls", since = "1.20.0")]
+#[unstable(feature = "nonpoison_mutex", issue = "134645")]
 impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
@@ -353,6 +390,7 @@ impl<'a, T: ?Sized> MutexGuard<'a, T> {
     /// This is an associated function that needs to be used as
     /// `MutexGuard::map(...)`. A method would interfere with methods of the
     /// same name on the contents of the `MutexGuard` used through `Deref`.
+    // #[unstable(feature = "mapped_lock_guards", issue = "117108")]
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
     pub fn map<U, F>(orig: Self, f: F) -> MappedMutexGuard<'a, U>
     where
@@ -378,6 +416,7 @@ impl<'a, T: ?Sized> MutexGuard<'a, T> {
     /// `MutexGuard::try_map(...)`. A method would interfere with methods of the
     /// same name on the contents of the `MutexGuard` used through `Deref`.
     #[doc(alias = "filter_map")]
+    // #[unstable(feature = "mapped_lock_guards", issue = "117108")]
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
     pub fn try_map<U, F>(orig: Self, f: F) -> Result<MappedMutexGuard<'a, U>, Self>
     where
@@ -399,6 +438,7 @@ impl<'a, T: ?Sized> MutexGuard<'a, T> {
     }
 }
 
+// #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 impl<T: ?Sized> Deref for MappedMutexGuard<'_, T> {
     type Target = T;
@@ -408,6 +448,7 @@ impl<T: ?Sized> Deref for MappedMutexGuard<'_, T> {
     }
 }
 
+// #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 impl<T: ?Sized> DerefMut for MappedMutexGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
@@ -415,6 +456,7 @@ impl<T: ?Sized> DerefMut for MappedMutexGuard<'_, T> {
     }
 }
 
+// #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 impl<T: ?Sized> Drop for MappedMutexGuard<'_, T> {
     #[inline]
@@ -425,6 +467,7 @@ impl<T: ?Sized> Drop for MappedMutexGuard<'_, T> {
     }
 }
 
+// #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for MappedMutexGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -432,6 +475,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for MappedMutexGuard<'_, T> {
     }
 }
 
+// #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 impl<T: ?Sized + fmt::Display> fmt::Display for MappedMutexGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -448,6 +492,7 @@ impl<'a, T: ?Sized> MappedMutexGuard<'a, T> {
     /// This is an associated function that needs to be used as
     /// `MappedMutexGuard::map(...)`. A method would interfere with methods of the
     /// same name on the contents of the `MutexGuard` used through `Deref`.
+    // #[unstable(feature = "mapped_lock_guards", issue = "117108")]
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
     pub fn map<U, F>(mut orig: Self, f: F) -> MappedMutexGuard<'a, U>
     where
