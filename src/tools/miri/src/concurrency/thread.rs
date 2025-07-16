@@ -677,6 +677,8 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     fn run_on_stack_empty(&mut self) -> InterpResult<'tcx, Poll<()>> {
         let this = self.eval_context_mut();
         // Inform GenMC that a thread has finished all user code. GenMC needs to know this for scheduling.
+        // FIXME(GenMC): Thread-local destructors *are* user code, so this is odd. Also now that we
+        // support pre-main constructors, it can get called there as well.
         if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
             let thread_id = this.active_thread();
             genmc_ctx.handle_thread_stack_empty(thread_id);

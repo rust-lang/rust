@@ -6,6 +6,7 @@ unsafe extern "C" fn ctor() {
     COUNT.fetch_add(1, Ordering::Relaxed);
 }
 
+#[rustfmt::skip]
 macro_rules! ctor {
     ($ident:ident = $ctor:ident) => {
         #[cfg_attr(
@@ -27,6 +28,8 @@ macro_rules! ctor {
         #[cfg_attr(windows, link_section = ".CRT$XCU")]
         #[cfg_attr(
             any(target_os = "macos", target_os = "ios"),
+            // We do not set the `mod_init_funcs` flag here since ctor/inventory also do not do
+            // that. See <https://github.com/rust-lang/miri/pull/4459#discussion_r2200115629>.
             link_section = "__DATA,__mod_init_func"
         )]
         #[used]

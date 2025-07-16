@@ -18,7 +18,7 @@ use rustc_session::config::EntryFnType;
 use crate::concurrency::GenmcCtx;
 use crate::concurrency::thread::TlsAllocAction;
 use crate::diagnostics::report_leaks;
-use crate::shims::{ctor, tls};
+use crate::shims::{global_ctor, tls};
 use crate::*;
 
 #[derive(Copy, Clone, Debug)]
@@ -219,9 +219,11 @@ impl Default for MiriConfig {
 #[derive(Debug)]
 enum MainThreadState<'tcx> {
     GlobalCtors {
-        ctor_state: ctor::GlobalCtorState<'tcx>,
+        ctor_state: global_ctor::GlobalCtorState<'tcx>,
+        /// The main function to call.
         entry_id: DefId,
         entry_type: MiriEntryFnType,
+        /// Arguments passed to `main`.
         argc: ImmTy<'tcx>,
         argv: ImmTy<'tcx>,
     },
@@ -324,12 +326,19 @@ pub fn create_ecx<'tcx>(
         MiriMachine::new(config, layout_cx, genmc_ctx),
     );
 
-    // First argument is constructed later, because it's skipped for `miri_start.`
+    // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
+    let sentinel =
+        helpers::try_resolve_path(tcx, &["core", "ascii", "escape_default"], Namespace::ValueNS);
+    if !matches!(sentinel, Some(s) if tcx.is_mir_available(s.def.def_id())) {
+        tcx.dcx().fatal(
+            "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing. \
+            Use `cargo miri setup` to prepare a sysroot that is suitable for Miri."
+        );
+    }
 
-    // Second argument (argc): length of `config.args`.
+    // Compute argc and argv from `config.args`.
     let argc =
         ImmTy::from_int(i64::try_from(config.args.len()).unwrap(), ecx.machine.layouts.isize);
-    // Third argument (`argv`): created from `config.args`.
     let argv = {
         // Put each argument in memory, collect pointers.
         let mut argvs = Vec::<Immediate<Provenance>>::with_capacity(config.args.len());
@@ -354,7 +363,7 @@ pub fn create_ecx<'tcx>(
             ecx.write_immediate(arg, &place)?;
         }
         ecx.mark_immutable(&argvs_place);
-        // Store `argc` and `argv` for macOS `_NSGetArg{c,v}`.
+        // Store `argc` and `argv` for macOS `_NSGetArg{c,v}`, and for the GC to see them.
         {
             let argc_place =
                 ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
@@ -369,7 +378,7 @@ pub fn create_ecx<'tcx>(
             ecx.machine.argv = Some(argv_place.ptr());
         }
         // Store command line as UTF-16 for Windows `GetCommandLineW`.
-        {
+        if tcx.sess.target.os == "windows" {
             // Construct a command string with all the arguments.
             let cmd_utf16: Vec<u16> = args_to_utf16_command_string(config.args.iter());
 
@@ -392,27 +401,19 @@ pub fn create_ecx<'tcx>(
 
     // Some parts of initialization require a full `InterpCx`.
     MiriMachine::late_init(&mut ecx, config, {
-        let mut state = MainThreadState::GlobalCtors {
+        let mut main_thread_state = MainThreadState::GlobalCtors {
             entry_id,
             entry_type,
             argc,
             argv,
-            ctor_state: ctor::GlobalCtorState::default(),
+            ctor_state: global_ctor::GlobalCtorState::default(),
         };
 
         // Cannot capture anything GC-relevant here.
-        Box::new(move |m| state.on_main_stack_empty(m))
+        // `argc` and `argv` *are* GC_relevant, but they also get stored in `machine.argc` and
+        // `machine.argv` so we are good.
+        Box::new(move |m| main_thread_state.on_main_stack_empty(m))
     })?;
-
-    // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
-    let sentinel =
-        helpers::try_resolve_path(tcx, &["core", "ascii", "escape_default"], Namespace::ValueNS);
-    if !matches!(sentinel, Some(s) if tcx.is_mir_available(s.def.def_id())) {
-        tcx.dcx().fatal(
-            "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing. \
-            Use `cargo miri setup` to prepare a sysroot that is suitable for Miri."
-        );
-    }
 
     interp_ok(ecx)
 }

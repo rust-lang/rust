@@ -11,10 +11,10 @@ mod wasi;
 mod windows;
 mod x86;
 
-pub mod ctor;
 pub mod env;
 pub mod extern_static;
 pub mod foreign_items;
+pub mod global_ctor;
 pub mod io_error;
 pub mod os_str;
 pub mod panic;

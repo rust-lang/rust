@@ -45,8 +45,12 @@ impl<'tcx> GlobalCtorState<'tcx> {
 
                                 segment_name == Some("__DATA")
                                     && section_name == Some("__mod_init_func")
-                                    // The `mod_init_funcs` directive ensures that the `S_MOD_INIT_FUNC_POINTERS` flag
-                                    // is set on the section, but it is not strictly required.
+                                    // The `mod_init_funcs` directive ensures that the
+                                    // `S_MOD_INIT_FUNC_POINTERS` flag is set on the section. LLVM
+                                    // adds this automatically so we currently do not require it.
+                                    // FIXME: is this guaranteed LLVM behavior? If not, we shouldn't
+                                    // implicitly add it here. Also see
+                                    // <https://github.com/rust-lang/miri/pull/4459#discussion_r2200115629>.
                                     && matches!(section_type, None | Some("mod_init_funcs"))
                             })?,
 
