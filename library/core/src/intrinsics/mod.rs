@@ -2533,6 +2533,15 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
     // Runtime NOP
 }
 
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[miri::intrinsic_fallback_is_spec]
+pub const unsafe fn const_make_global(ptr: *mut u8) -> *const u8 {
+    // const eval overrides this function; at runtime, it is a NOP.
+    ptr
+}
+
 /// Returns whether we should perform contract-checking at runtime.
 ///
 /// This is meant to be similar to the ub_checks intrinsic, in terms
