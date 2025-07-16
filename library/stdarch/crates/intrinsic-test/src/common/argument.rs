@@ -76,7 +76,7 @@ where
         Argument {
             pos,
             name: String::from(var_name),
-            ty: *ty,
+            ty: ty,
             constraint,
         }
     }
