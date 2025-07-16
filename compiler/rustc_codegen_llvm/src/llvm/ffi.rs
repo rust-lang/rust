@@ -1009,7 +1009,7 @@ unsafe extern "C" {
         ModuleID: *const c_char,
         C: &Context,
     ) -> &Module;
-    pub(crate) fn LLVMCloneModule(M: &Module) -> &Module;
+    pub(crate) safe fn LLVMCloneModule(M: &Module) -> &Module;
 
     /// Data layout. See Module::getDataLayout.
     pub(crate) fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
@@ -1168,18 +1168,18 @@ unsafe extern "C" {
     pub(crate) fn LLVMGlobalGetValueType(Global: &Value) -> &Type;
 
     // Operations on global variables
-    pub(crate) fn LLVMIsAGlobalVariable(GlobalVar: &Value) -> Option<&Value>;
+    pub(crate) safe fn LLVMIsAGlobalVariable(GlobalVar: &Value) -> Option<&Value>;
     pub(crate) fn LLVMAddGlobal<'a>(M: &'a Module, Ty: &'a Type, Name: *const c_char) -> &'a Value;
     pub(crate) fn LLVMGetNamedGlobal(M: &Module, Name: *const c_char) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstGlobal(M: &Module) -> Option<&Value>;
     pub(crate) fn LLVMGetNextGlobal(GlobalVar: &Value) -> Option<&Value>;
     pub(crate) fn LLVMDeleteGlobal(GlobalVar: &Value);
-    pub(crate) fn LLVMGetInitializer(GlobalVar: &Value) -> Option<&Value>;
+    pub(crate) safe fn LLVMGetInitializer(GlobalVar: &Value) -> Option<&Value>;
     pub(crate) fn LLVMSetInitializer<'a>(GlobalVar: &'a Value, ConstantVal: &'a Value);
-    pub(crate) fn LLVMIsThreadLocal(GlobalVar: &Value) -> Bool;
+    pub(crate) safe fn LLVMIsThreadLocal(GlobalVar: &Value) -> Bool;
     pub(crate) fn LLVMSetThreadLocalMode(GlobalVar: &Value, Mode: ThreadLocalMode);
-    pub(crate) fn LLVMIsGlobalConstant(GlobalVar: &Value) -> Bool;
-    pub(crate) fn LLVMSetGlobalConstant(GlobalVar: &Value, IsConstant: Bool);
+    pub(crate) safe fn LLVMIsGlobalConstant(GlobalVar: &Value) -> Bool;
+    pub(crate) safe fn LLVMSetGlobalConstant(GlobalVar: &Value, IsConstant: Bool);
     pub(crate) safe fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
 
     // Operations on attributes
@@ -1718,7 +1718,7 @@ unsafe extern "C" {
 
     pub(crate) safe fn LLVMMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
 
-    pub(crate) fn LLVMSetUnnamedAddress(Global: &Value, UnnamedAddr: UnnamedAddr);
+    pub(crate) safe fn LLVMSetUnnamedAddress(Global: &Value, UnnamedAddr: UnnamedAddr);
 
     pub(crate) fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&ConstantInt>;
 
