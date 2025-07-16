@@ -3,6 +3,7 @@ use std::num::NonZero;
 
 use rustc_abi::{Align, Size};
 use rustc_errors::{Diag, DiagMessage, Level};
+use rustc_log::tracing;
 use rustc_span::{DUMMY_SP, SpanData, Symbol};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;

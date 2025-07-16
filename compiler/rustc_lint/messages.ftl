@@ -207,6 +207,9 @@ lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as i
 
 lint_custom_inner_attribute_unstable = custom inner attributes are unstable
 
+lint_dangerous_extern_crate = dangerous use of `extern crate {$name}` which is not guaranteed to exist exactly once in the sysroot
+    .help = try using a cargo dependency or using a re-export of the dependency provided by a rustc_* crate
+
 lint_dangling_pointers_from_temporaries = a dangling pointer will be produced because the temporary `{$ty}` will be dropped
     .label_ptr = this pointer will immediately be invalid
     .label_temporary = this `{$ty}` is deallocated at the end of the statement, bind it to a variable to extend its lifetime

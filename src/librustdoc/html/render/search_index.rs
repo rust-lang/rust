@@ -5,12 +5,12 @@ use std::collections::{BTreeMap, VecDeque};
 
 use encode::{bitmap_to_string, write_vlqhex_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
 use rustc_span::symbol::{Symbol, kw};
 use serde::ser::{Serialize, SerializeSeq, SerializeStruct, Serializer};
-use thin_vec::ThinVec;
 use tracing::instrument;
 
 use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};

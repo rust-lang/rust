@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: Copyright (c) 2020 Thoren Paulson
 //! This file is taken unmodified from the following link, except for file attributes and
-//! `extern crate` at the top.
+//! some imports at the top.
 //! https://github.com/thoren-d/tracing-chrome/blob/7e2625ab4aeeef2f0ef9bde9d6258dd181c04472/src/lib.rs
 //! Depending on the tracing-chrome crate from crates.io is unfortunately not possible, since it
 //! depends on `tracing_core` which conflicts with rustc_private's `tracing_core` (meaning it would
@@ -10,12 +10,9 @@
 #![allow(warnings)]
 #![cfg(feature = "tracing")]
 
-// This is here and not in src/lib.rs since it is a direct dependency of tracing_chrome.rs and
-// should not be included if the "tracing" feature is disabled.
-extern crate tracing_core;
-
-use tracing_core::{field::Field, span, Event, Subscriber};
-use tracing_subscriber::{
+use rustc_log::tracing_core::{field::Field, span, Event, Subscriber};
+use rustc_log::tracing_subscriber::{
+    self,
     layer::Context,
     registry::{LookupSpan, SpanRef},
     Layer,

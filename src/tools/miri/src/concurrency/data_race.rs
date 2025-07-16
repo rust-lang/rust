@@ -48,6 +48,7 @@ use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::{Idx, IndexVec};
+use rustc_log::tracing;
 use rustc_middle::mir;
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
