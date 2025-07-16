@@ -68,8 +68,20 @@ impl clean::GenericParamDef {
 
                 Ok(())
             }
-            clean::GenericParamDefKind::Type { bounds, default, .. } => {
+            clean::GenericParamDefKind::Type { bounds, default, allow_unsized, .. } => {
                 f.write_str(self.name.as_str())?;
+
+                let filtered: Vec<_>;
+                let bounds = if !allow_unsized {
+                    filtered = bounds
+                        .iter()
+                        .filter(|b| !b.is_maybe_sized_bound(cx.tcx()))
+                        .cloned()
+                        .collect();
+                    filtered.as_slice()
+                } else {
+                    bounds.as_slice()
+                };
 
                 if !bounds.is_empty() {
                     f.write_str(": ")?;
@@ -127,14 +139,45 @@ pub(crate) enum Ending {
     NoNewline,
 }
 
-fn print_where_predicate(predicate: &clean::WherePredicate, cx: &Context<'_>) -> impl Display {
+fn print_where_predicate(
+    predicate: &clean::WherePredicate,
+    disallow_unsized: &FxHashSet<Symbol>,
+    cx: &Context<'_>,
+) -> impl Display {
     fmt::from_fn(move |f| {
         match predicate {
             clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
-                print_higher_ranked_params_with_space(bound_params, cx, "for").fmt(f)?;
-                ty.print(cx).fmt(f)?;
-                f.write_str(":")?;
+                let filtered: Vec<_>;
+                let mut bounds_slice = bounds.as_slice();
+                // Check if the bound is on a generic type parameter that
+                // does not accept unsized types.
+                if let clean::Type::Generic(symbol) = ty
+                    && disallow_unsized.contains(symbol)
+                {
+                    // Check if the predicate contains a `?Sized` bound on that generic type.
+                    // Even though the bound is syntactically present, we know that
+                    // another bound requires this generic to be `Sized`.
+                    // We omit the `?Sized` bound from the representation.
+                    // See: https://github.com/rust-lang/rust/issues/143197
+                    //
+                    // We do two passes to avoid allocating a new `Vec` and copying it
+                    // in the most common case: when `?Sized` is *not* present.
+                    if bounds.iter().any(|b| b.is_maybe_sized_bound(cx.tcx())) {
+                        filtered = bounds
+                            .iter()
+                            .filter(|b| !b.is_maybe_sized_bound(cx.tcx()))
+                            .cloned()
+                            .collect();
+                        bounds_slice = filtered.as_slice();
+                    }
+                };
+                let bounds = bounds_slice;
+
                 if !bounds.is_empty() {
+                    print_higher_ranked_params_with_space(bound_params, cx, "for").fmt(f)?;
+                    ty.print(cx).fmt(f)?;
+                    f.write_str(":")?;
+
                     f.write_str(" ")?;
                     print_generic_bounds(bounds, cx).fmt(f)?;
                 }
@@ -172,6 +215,8 @@ pub(crate) fn print_where_clause(
     if gens.where_predicates.is_empty() {
         return None;
     }
+    let disallow_unsized: FxHashSet<_> =
+        gens.params.iter().filter(|p| p.is_type() && !p.allow_unsized()).map(|p| p.name).collect();
 
     Some(fmt::from_fn(move |f| {
         let where_preds = fmt::from_fn(|f| {
@@ -184,7 +229,7 @@ pub(crate) fn print_where_clause(
                         } else {
                             f.write_str("\n")?;
                         }
-                        print_where_predicate(predicate, cx).fmt(f)
+                        print_where_predicate(predicate, &disallow_unsized, cx).fmt(f)
                     })
                 })
                 .joined(",", f)
@@ -1017,6 +1062,8 @@ fn fmt_type(
         }
         clean::ImplTrait(bounds) => {
             f.write_str("impl ")?;
+            // TODO: Figure out if one of the bounds here is `?Sized`
+            //       and whether another bound implies `Sized`.
             print_generic_bounds(bounds, cx).fmt(f)
         }
         clean::QPath(qpath) => qpath.print(cx).fmt(f),

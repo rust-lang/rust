@@ -37,8 +37,8 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
 // are deliberately not in a doc comment, because they need not be in public docs.)
 //
-// Latest feature: Pretty printing of no_mangle attributes changed
-pub const FORMAT_VERSION: u32 = 53;
+// Latest feature: add `allow_unsized` field to `GenericParamDefKind::Type`
+pub const FORMAT_VERSION: u32 = 54;
 
 /// The root of the emitted JSON blob.
 ///
@@ -893,6 +893,11 @@ pub enum GenericParamDefKind {
         /// is bound by `Trait`) is synthetic, because it was not originally in
         /// the Rust source text.
         is_synthetic: bool,
+        /// Whether this type parameter can be instantiated with an unsized type.
+        ///
+        /// This is `true` if the parameter has a `?Sized` bound without any
+        /// additional bounds that imply `Sized`.
+        allow_unsized: bool,
     },
 
     /// Denotes a constant parameter.
