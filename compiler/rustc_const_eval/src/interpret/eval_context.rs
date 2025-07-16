@@ -7,8 +7,8 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
-    self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
-    TyAndLayout,
+    self, FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf,
+    LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypingEnv, Variance};
 use rustc_middle::{mir, span_bug};
@@ -92,20 +92,6 @@ impl<'tcx, M: Machine<'tcx>> LayoutOfHelpers<'tcx> for InterpCx<'tcx, M> {
     }
 }
 
-impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
-    /// This inherent method takes priority over the trait method with the same name in LayoutOf,
-    /// and allows wrapping the actual [LayoutOf::layout_of] with a tracing span.
-    /// See [LayoutOf::layout_of] for the original documentation.
-    #[inline(always)]
-    pub fn layout_of(
-        &self,
-        ty: Ty<'tcx>,
-    ) -> <InterpCx<'tcx, M> as LayoutOfHelpers<'tcx>>::LayoutOfResult {
-        let _span = enter_trace_span!(M, "InterpCx::layout_of", "ty = {:?}", ty.kind());
-        LayoutOf::layout_of(self, ty)
-    }
-}
-
 impl<'tcx, M: Machine<'tcx>> FnAbiOfHelpers<'tcx> for InterpCx<'tcx, M> {
     type FnAbiOfResult = Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, InterpErrorKind<'tcx>>;
 
@@ -118,6 +104,43 @@ impl<'tcx, M: Machine<'tcx>> FnAbiOfHelpers<'tcx> for InterpCx<'tcx, M> {
         match err {
             FnAbiError::Layout(err) => err_inval!(Layout(err)),
         }
+    }
+}
+
+impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
+    /// This inherent method takes priority over the trait method with the same name in LayoutOf,
+    /// and allows wrapping the actual [LayoutOf::layout_of] with a tracing span.
+    /// See [LayoutOf::layout_of] for the original documentation.
+    #[inline(always)]
+    pub fn layout_of(&self, ty: Ty<'tcx>) -> <Self as LayoutOfHelpers<'tcx>>::LayoutOfResult {
+        let _span = enter_trace_span!(M, "InterpCx::layout_of", ty = ?ty.kind());
+        LayoutOf::layout_of(self, ty)
+    }
+
+    /// This inherent method takes priority over the trait method with the same name in FnAbiOf,
+    /// and allows wrapping the actual [FnAbiOf::fn_abi_of_fn_ptr] with a tracing span.
+    /// See [FnAbiOf::fn_abi_of_fn_ptr] for the original documentation.
+    #[inline(always)]
+    pub fn fn_abi_of_fn_ptr(
+        &self,
+        sig: ty::PolyFnSig<'tcx>,
+        extra_args: &'tcx ty::List<Ty<'tcx>>,
+    ) -> <Self as FnAbiOfHelpers<'tcx>>::FnAbiOfResult {
+        let _span = enter_trace_span!(M, "InterpCx::fn_abi_of_fn_ptr", ?sig, ?extra_args);
+        FnAbiOf::fn_abi_of_fn_ptr(self, sig, extra_args)
+    }
+
+    /// This inherent method takes priority over the trait method with the same name in FnAbiOf,
+    /// and allows wrapping the actual [FnAbiOf::fn_abi_of_instance] with a tracing span.
+    /// See [FnAbiOf::fn_abi_of_instance] for the original documentation.
+    #[inline(always)]
+    pub fn fn_abi_of_instance(
+        &self,
+        instance: ty::Instance<'tcx>,
+        extra_args: &'tcx ty::List<Ty<'tcx>>,
+    ) -> <Self as FnAbiOfHelpers<'tcx>>::FnAbiOfResult {
+        let _span = enter_trace_span!(M, "InterpCx::fn_abi_of_instance", ?instance, ?extra_args);
+        FnAbiOf::fn_abi_of_instance(self, instance, extra_args)
     }
 }
 
