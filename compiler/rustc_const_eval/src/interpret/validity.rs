@@ -558,7 +558,15 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 {
                     // Everything should be already interned.
                     let Some(global_alloc) = self.ecx.tcx.try_get_global_alloc(alloc_id) else {
-                        assert!(self.ecx.memory.alloc_map.get(alloc_id).is_none());
+                        if self.ecx.memory.alloc_map.contains_key(&alloc_id) {
+                            // This can happen when interning didn't complete due to, e.g.
+                            // missing `make_global`. This must mean other errors are already
+                            // being reported.
+                            self.ecx.tcx.dcx().delayed_bug(
+                                "interning did not complete, there should be an error",
+                            );
+                            return interp_ok(());
+                        }
                         // We can't have *any* references to non-existing allocations in const-eval
                         // as the rest of rustc isn't happy with them... so we throw an error, even
                         // though for zero-sized references this isn't really UB.

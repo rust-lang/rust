@@ -49,7 +49,6 @@ impl HasStaticRootDefId for DummyMachine {
 
 impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
     interpret::compile_time_machine!(<'tcx>);
-    type MemoryKind = !;
     const PANIC_ON_ALLOC_FAIL: bool = true;
 
     // We want to just eval random consts in the program, so `eval_mir_const` can fail.
