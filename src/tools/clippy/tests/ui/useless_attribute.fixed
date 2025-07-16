@@ -13,7 +13,7 @@
 #[allow(unused_imports)]
 #[allow(unused_extern_crates)]
 #[macro_use]
-extern crate rustc_middle;
+extern crate regex as regex_crate;
 
 #[macro_use]
 extern crate proc_macro_derive;
