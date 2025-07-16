@@ -27,9 +27,7 @@ fn main() {
 
     assert_sized::<Bar<A>>();
     //~^ ERROR the size for values of type
-    //~| ERROR the size for values of type
 
     assert_sized::<Bar<Bar<A>>>();
     //~^ ERROR the size for values of type
-    //~| ERROR the size for values of type
 }
