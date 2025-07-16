@@ -997,12 +997,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn get_ptr_type_id(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
-    ) -> InterpResult<'tcx, (Ty<'tcx>, Size)> {
+    ) -> InterpResult<'tcx, (Ty<'tcx>, u64)> {
         let (alloc_id, offset, _meta) = self.ptr_get_alloc_id(ptr, 0)?;
         let GlobalAlloc::TypeId { ty } = self.tcx.global_alloc(alloc_id) else {
-            throw_ub_format!("type_id_eq: `TypeId` provenance is not a type id")
+            throw_ub_format!("invalid `TypeId` value: not all bytes carry type id metadata")
         };
-        interp_ok((ty, offset))
+        interp_ok((ty, offset.bytes()))
     }
 
     pub fn get_ptr_fn(

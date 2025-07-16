@@ -10,7 +10,7 @@ const _: () = {
         std::ptr::write(ptr.offset(0), main as fn() as *const ());
     }
     assert!(a == b);
-    //~^ ERROR: type_id_eq: `TypeId` provenance is not a type id
+    //~^ ERROR: invalid `TypeId` value
 };
 
 fn main() {}

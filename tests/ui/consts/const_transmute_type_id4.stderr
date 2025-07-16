@@ -1,4 +1,4 @@
-error[E0080]: type_id_eq: `TypeId` provenance is not a type id
+error[E0080]: invalid `TypeId` value: not all bytes carry type id metadata
   --> $DIR/const_transmute_type_id4.rs:12:13
    |
 LL |     assert!(a == b);
