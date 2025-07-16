@@ -23,10 +23,9 @@ use smallvec::SmallVec;
 use crate::attributes::{self, llfn_attrs_from_instance};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::llvm::{self, Attribute, AttributePlace};
+use crate::llvm::{self, Attribute, AttributePlace, Value};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
 
 trait ArgAttributesExt {
     fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value);
@@ -644,8 +643,12 @@ impl AbiBuilderMethods for Builder<'_, '_, '_> {
     }
 }
 
-impl llvm::CallConv {
-    pub(crate) fn from_conv(conv: CanonAbi, arch: &str) -> Self {
+pub(crate) trait CallConvExt {
+    fn from_conv(conv: CanonAbi, arch: &str) -> llvm::CallConv;
+}
+
+impl CallConvExt for llvm::CallConv {
+    fn from_conv(conv: CanonAbi, arch: &str) -> Self {
         match conv {
             CanonAbi::C | CanonAbi::Rust => llvm::CCallConv,
             CanonAbi::RustCold => llvm::PreserveMost,

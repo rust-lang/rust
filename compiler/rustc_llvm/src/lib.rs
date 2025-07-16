@@ -11,6 +11,9 @@ use std::{ptr, slice};
 
 use libc::size_t;
 
+pub mod ffi;
+mod impls;
+
 unsafe extern "C" {
     /// Opaque type that allows C++ code to write bytes to a Rust-side buffer,
     /// in conjunction with `RawRustStringOstream`. Use this as `&RustString`

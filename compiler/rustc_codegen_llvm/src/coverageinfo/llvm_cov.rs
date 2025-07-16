@@ -2,8 +2,9 @@
 
 use std::ffi::CString;
 
+use rustc_llvm::ffi;
+
 use crate::common::AsCCharPtr;
-use crate::coverageinfo::ffi;
 use crate::llvm;
 
 pub(crate) fn covmap_var_name() -> CString {

@@ -29,7 +29,7 @@ use rustc_target::spec::SanitizerSet;
 use super::ModuleLlvm;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::value::Value;
+use crate::llvm::Value;
 use crate::{attributes, llvm};
 
 pub(crate) struct ValueIter<'ll> {

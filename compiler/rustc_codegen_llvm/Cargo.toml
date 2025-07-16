@@ -8,7 +8,6 @@ test = false
 
 [dependencies]
 # tidy-alphabetical-start
-bitflags = "2.4.1"
 # To avoid duplicate dependencies, this should match the version of gimli used
 # by `rustc_codegen_ssa` via its `thorin-dwp` dependency.
 gimli = "0.31"
@@ -38,7 +37,7 @@ rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_target = { path = "../rustc_target" }
-serde = { version = "1", features = [ "derive" ]}
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing = "0.1"

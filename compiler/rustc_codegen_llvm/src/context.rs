@@ -32,13 +32,13 @@ use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel};
 use smallvec::SmallVec;
 
+use crate::abi::CallConvExt as _;
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::common::AsCCharPtr;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
-use crate::llvm::Metadata;
-use crate::type_::Type;
-use crate::value::Value;
+use crate::llvm::{Metadata, Value};
+use crate::type_::{Type, type_ix_llcx};
 use crate::{attributes, common, coverageinfo, debuginfo, llvm, llvm_util};
 
 /// `TyCtxt` (and related cache datastructures) can't be move between threads.
@@ -669,7 +669,7 @@ impl<'ll> SimpleCx<'ll> {
         llcx: &'ll llvm::Context,
         pointer_size: Size,
     ) -> Self {
-        let isize_ty = llvm::Type::ix_llcx(llcx, pointer_size.bits());
+        let isize_ty = type_ix_llcx(llcx, pointer_size.bits());
         Self(SCx { llmod, llcx, isize_ty }, PhantomData)
     }
 }

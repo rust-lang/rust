@@ -21,11 +21,10 @@ use tracing::debug;
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::llvm::{self, Metadata};
+use crate::llvm::{self, Metadata, Value};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
-use crate::value::Value;
 
 fn call_simple_intrinsic<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
