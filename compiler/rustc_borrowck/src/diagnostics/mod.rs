@@ -889,7 +889,7 @@ pub(super) enum BorrowedContentSource<'tcx> {
     DerefMutableRef,
     DerefSharedRef,
     OverloadedDeref(Ty<'tcx>),
-    OverloadedIndex(Ty<'tcx>),
+    OverloadedIndex(Ty<'tcx>, Ty<'tcx>),
 }
 
 impl<'tcx> BorrowedContentSource<'tcx> {
@@ -905,7 +905,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
                     _ => None,
                 })
                 .unwrap_or_else(|| format!("dereference of `{ty}`")),
-            BorrowedContentSource::OverloadedIndex(ty) => format!("index of `{ty}`"),
+            BorrowedContentSource::OverloadedIndex(ty, _) => format!("index of `{ty}`"),
         }
     }
 
@@ -917,7 +917,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
             // Overloaded deref and index operators should be evaluated into a
             // temporary. So we don't need a description here.
             BorrowedContentSource::OverloadedDeref(_)
-            | BorrowedContentSource::OverloadedIndex(_) => None,
+            | BorrowedContentSource::OverloadedIndex(_, _) => None,
         }
     }
 
@@ -935,7 +935,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
                     _ => None,
                 })
                 .unwrap_or_else(|| format!("dereference of `{ty}`")),
-            BorrowedContentSource::OverloadedIndex(ty) => format!("an index of `{ty}`"),
+            BorrowedContentSource::OverloadedIndex(ty, _) => format!("an index of `{ty}`"),
         }
     }
 
@@ -951,7 +951,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
                 } else if tcx.is_lang_item(trait_id, LangItem::Index)
                     || tcx.is_lang_item(trait_id, LangItem::IndexMut)
                 {
-                    Some(BorrowedContentSource::OverloadedIndex(args.type_at(0)))
+                    Some(BorrowedContentSource::OverloadedIndex(args.type_at(0), args.type_at(1)))
                 } else {
                     None
                 }

@@ -1,0 +1,9 @@
+error[E0596]: cannot borrow `*string_ref` as mutable, as it is behind a `&` reference
+  --> $DIR/suggest-use-as-mut-for-map-2.rs:26:5
+   |
+LL |     string_ref.push_str("test");
+   |     ^^^^^^^^^^ `string_ref` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

@@ -519,7 +519,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                              but it is not implemented for `{ty}`",
                         ));
                     }
-                    Some(BorrowedContentSource::OverloadedIndex(ty)) => {
+                    Some(BorrowedContentSource::OverloadedIndex(ty, _)) => {
                         err.help(format!(
                             "trait `IndexMut` is required to modify indexed content, \
                              but it is not implemented for `{ty}`",
@@ -1158,24 +1158,28 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 opt_ty_info,
                 ..
             })) => {
-                // check if the RHS is from desugaring
-                let opt_assignment_rhs_span =
-                    self.find_assignments(local).first().map(|&location| {
+                // check if the RHS is from desugaring, and return rhs of assignment
+                let (opt_assignment_rhs, opt_assignment_rhs_span) = self
+                    .find_assignments(local)
+                    .first()
+                    .map(|&location| {
+                        let mut rhs = None;
+                        let mut span = self.body.source_info(location).span;
                         if let Some(mir::Statement {
                             source_info: _,
-                            kind:
-                                mir::StatementKind::Assign(box (
-                                    _,
-                                    mir::Rvalue::Use(mir::Operand::Copy(place)),
-                                )),
+                            kind: mir::StatementKind::Assign(box (_, rvalue)),
                             ..
                         }) = self.body[location.block].statements.get(location.statement_index)
                         {
-                            self.body.local_decls[place.local].source_info.span
-                        } else {
-                            self.body.source_info(location).span
+                            // If there is a assignment, we should return the rhs
+                            rhs = Some(rvalue);
+                            if let mir::Rvalue::Use(mir::Operand::Copy(place)) = rvalue {
+                                span = self.body.local_decls[place.local].source_info.span;
+                            }
                         }
-                    });
+                        (rhs, Some(span))
+                    })
+                    .unwrap_or((None, None));
                 match opt_assignment_rhs_span.and_then(|s| s.desugaring_kind()) {
                     // on for loops, RHS points to the iterator part
                     Some(DesugaringKind::ForLoop) => {
@@ -1196,7 +1200,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         None
                     }
                     None => {
-                        if name != kw::SelfLower {
+                        let result = self.suggest_get_mut_or_ref_mut(
+                            opt_assignment_rhs,
+                            opt_assignment_rhs_span,
+                        );
+                        if let ControlFlow::Break(suggest_get_mut) = result {
+                            suggest_get_mut
+                        } else if name != kw::SelfLower {
                             suggest_ampmut(
                                 self.infcx.tcx,
                                 local_decl.ty,
@@ -1412,6 +1422,64 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
             }
             None => {}
+        }
+    }
+
+    /// check if the RHS is an overloaded index expression whose source type
+    /// doesn't implement `IndexMut`. This category contains two sub-categories:
+    /// 1. HashMap or BTreeMap
+    /// 2. Other types
+    /// For the first sub-category, we suggest using `.get_mut()` instead of `&mut`,
+    /// For the second sub-category, we still suggest use `&mut`.
+    /// See issue #143732.
+    ///
+    /// Break indicates we should not suggest use `&mut`
+    /// Continue indicates we continue to try suggesting use `&mut`
+    fn suggest_get_mut_or_ref_mut(
+        &self,
+        opt_assignment_rhs: Option<&mir::Rvalue<'tcx>>,
+        opt_assignment_rhs_span: Option<Span>,
+    ) -> ControlFlow<Option<AmpMutSugg>, ()> {
+        if let Some(mir::Rvalue::Ref(_, _, place)) = opt_assignment_rhs
+            && let BorrowedContentSource::OverloadedIndex(ty, index_ty) =
+                self.borrowed_content_source(place.as_ref())
+            && let Some(index_mut_trait) = self.infcx.tcx.lang_items().index_mut_trait()
+            && !self
+                .infcx
+                .type_implements_trait(index_mut_trait, [ty, index_ty], self.infcx.param_env)
+                .must_apply_modulo_regions()
+        {
+            if let Some(adt) = ty.ty_adt_def()
+                && (self.infcx.tcx.is_diagnostic_item(sym::HashMap, adt.did())
+                    || self.infcx.tcx.is_diagnostic_item(sym::BTreeMap, adt.did()))
+                && let Some(rhs_span) = opt_assignment_rhs_span
+                && let Ok(rhs_str) = self.infcx.tcx.sess.source_map().span_to_snippet(rhs_span)
+                && let Some(content) = rhs_str.strip_prefix('&')
+                && content.contains('[')
+                && content.contains(']')
+                && let Some(bracket_start) = content.find('[')
+                && let Some(bracket_end) = content.rfind(']')
+                && bracket_start < bracket_end
+            {
+                let map_part = &content[..bracket_start];
+                let key_part = &content[bracket_start + 1..bracket_end];
+
+                // We only suggest use `.get_mut()` for HashMap or BTreeMap
+                // We don't try suggesting use `&mut`, so break
+                ControlFlow::Break(Some(AmpMutSugg {
+                    has_sugg: true,
+                    span: rhs_span,
+                    suggestion: format!("{}.get_mut({}).unwrap()", map_part, key_part),
+                    additional: None,
+                }))
+            } else {
+                // Type not implemented `IndexMut` but not HashMap or BTreeMap or error
+                // and we did not suggest either `.get_mut()` or `&mut`, so break
+                ControlFlow::Break(None)
+            }
+        } else {
+            // Type Impl IndexMut, we should continue to try suggesting use `&mut`
+            ControlFlow::Continue(())
         }
     }
 }
