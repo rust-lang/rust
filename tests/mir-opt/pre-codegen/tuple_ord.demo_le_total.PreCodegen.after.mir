@@ -7,7 +7,6 @@ fn demo_le_total(_1: &(u16, i16), _2: &(u16, i16)) -> bool {
     scope 1 (inlined std::cmp::impls::<impl PartialOrd for &(u16, i16)>::le) {
         scope 2 (inlined core::tuple::<impl PartialOrd for (u16, i16)>::le) {
             let mut _7: std::ops::ControlFlow<bool>;
-            let _8: bool;
             scope 3 {
             }
             scope 4 (inlined std::cmp::impls::<impl PartialOrd for u16>::__chaining_le) {
@@ -19,8 +18,8 @@ fn demo_le_total(_1: &(u16, i16), _2: &(u16, i16)) -> bool {
                 }
             }
             scope 6 (inlined std::cmp::impls::<impl PartialOrd for i16>::le) {
+                let mut _8: i16;
                 let mut _9: i16;
-                let mut _10: i16;
             }
         }
     }
@@ -44,10 +43,7 @@ fn demo_le_total(_1: &(u16, i16), _2: &(u16, i16)) -> bool {
         StorageDead(_5);
         StorageDead(_4);
         StorageDead(_3);
-        StorageLive(_8);
-        _8 = copy ((_7 as Break).0: bool);
-        _0 = copy _8;
-        StorageDead(_8);
+        _0 = copy ((_7 as Break).0: bool);
         goto -> bb3;
     }
 
@@ -55,13 +51,13 @@ fn demo_le_total(_1: &(u16, i16), _2: &(u16, i16)) -> bool {
         StorageDead(_5);
         StorageDead(_4);
         StorageDead(_3);
+        StorageLive(_8);
+        _8 = copy ((*_1).1: i16);
         StorageLive(_9);
-        _9 = copy ((*_1).1: i16);
-        StorageLive(_10);
-        _10 = copy ((*_2).1: i16);
-        _0 = Le(move _9, move _10);
-        StorageDead(_10);
+        _9 = copy ((*_2).1: i16);
+        _0 = Le(move _8, move _9);
         StorageDead(_9);
+        StorageDead(_8);
         goto -> bb3;
     }
 
