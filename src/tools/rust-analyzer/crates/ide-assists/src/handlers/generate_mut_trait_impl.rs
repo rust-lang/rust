@@ -236,7 +236,7 @@ impl<T> core::ops::Index<Axis> for [T; 3] where T: Copy {
 //- minicore: as_ref
 struct Foo(i32);
 
-impl<T> core::convert::AsRef$0<i32> for Foo {
+impl core::convert::AsRef$0<i32> for Foo {
     fn as_ref(&self) -> &i32 {
         &self.0
     }
@@ -245,13 +245,13 @@ impl<T> core::convert::AsRef$0<i32> for Foo {
             r#"
 struct Foo(i32);
 
-$0impl<T> core::convert::AsMut<i32> for Foo {
+$0impl core::convert::AsMut<i32> for Foo {
     fn as_mut(&mut self) -> &mut i32 {
         &self.0
     }
 }
 
-impl<T> core::convert::AsRef<i32> for Foo {
+impl core::convert::AsRef<i32> for Foo {
     fn as_ref(&self) -> &i32 {
         &self.0
     }
@@ -362,7 +362,7 @@ impl<T> Index$0<i32> for [T; 3] {}
             r#"
 pub trait AsRef<T: ?Sized> {}
 
-impl<T> AsRef$0<i32> for [T; 3] {}
+impl AsRef$0<i32> for [T; 3] {}
 "#,
         );
     }
