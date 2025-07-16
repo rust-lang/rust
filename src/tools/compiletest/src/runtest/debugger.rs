@@ -47,10 +47,14 @@ impl DebuggerCommands {
                 continue;
             };
 
-            if let Some(command) = config.parse_name_value_directive(&line, &command_directive) {
+            if let Some(command) =
+                config.parse_name_value_directive(&line, &command_directive, file, line_no)
+            {
                 commands.push(command);
             }
-            if let Some(pattern) = config.parse_name_value_directive(&line, &check_directive) {
+            if let Some(pattern) =
+                config.parse_name_value_directive(&line, &check_directive, file, line_no)
+            {
                 check_lines.push((line_no, pattern));
             }
         }

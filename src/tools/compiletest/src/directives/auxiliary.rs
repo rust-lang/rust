@@ -3,6 +3,8 @@
 
 use std::iter;
 
+use camino::Utf8Path;
+
 use super::directives::{AUX_BIN, AUX_BUILD, AUX_CODEGEN_BACKEND, AUX_CRATE, PROC_MACRO};
 use crate::common::Config;
 
@@ -41,17 +43,42 @@ impl AuxProps {
 
 /// If the given test directive line contains an `aux-*` directive, parse it
 /// and update [`AuxProps`] accordingly.
-pub(super) fn parse_and_update_aux(config: &Config, ln: &str, aux: &mut AuxProps) {
+pub(super) fn parse_and_update_aux(
+    config: &Config,
+    ln: &str,
+    testfile: &Utf8Path,
+    line_number: usize,
+    aux: &mut AuxProps,
+) {
     if !(ln.starts_with("aux-") || ln.starts_with("proc-macro")) {
         return;
     }
 
-    config.push_name_value_directive(ln, AUX_BUILD, &mut aux.builds, |r| r.trim().to_string());
-    config.push_name_value_directive(ln, AUX_BIN, &mut aux.bins, |r| r.trim().to_string());
-    config.push_name_value_directive(ln, AUX_CRATE, &mut aux.crates, parse_aux_crate);
-    config
-        .push_name_value_directive(ln, PROC_MACRO, &mut aux.proc_macros, |r| r.trim().to_string());
-    if let Some(r) = config.parse_name_value_directive(ln, AUX_CODEGEN_BACKEND) {
+    config.push_name_value_directive(ln, AUX_BUILD, testfile, line_number, &mut aux.builds, |r| {
+        r.trim().to_string()
+    });
+    config.push_name_value_directive(ln, AUX_BIN, testfile, line_number, &mut aux.bins, |r| {
+        r.trim().to_string()
+    });
+    config.push_name_value_directive(
+        ln,
+        AUX_CRATE,
+        testfile,
+        line_number,
+        &mut aux.crates,
+        parse_aux_crate,
+    );
+    config.push_name_value_directive(
+        ln,
+        PROC_MACRO,
+        testfile,
+        line_number,
+        &mut aux.proc_macros,
+        |r| r.trim().to_string(),
+    );
+    if let Some(r) =
+        config.parse_name_value_directive(ln, AUX_CODEGEN_BACKEND, testfile, line_number)
+    {
         aux.codegen_backend = Some(r.trim().to_owned());
     }
 }
