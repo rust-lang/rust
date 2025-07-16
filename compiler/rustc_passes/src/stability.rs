@@ -231,13 +231,14 @@ fn lookup_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ConstSt
     let mut const_stab = const_stab
         .map(|const_stab| ConstStability::from_partial(const_stab, const_stability_indirect));
 
-    // If this is a const fn but not annotated with stability markers, see if we can inherit regular stability.
+    // If this is a const fn but not annotated with stability markers, see if we can inherit
+    // regular stability.
     if let Some(fn_sig) = tcx.hir_node_by_def_id(def_id).fn_sig()
-            && fn_sig.header.is_const()
-            && const_stab.is_none()
-            // We only ever inherit unstable features.
-            && let Some(inherit_regular_stab) = tcx.lookup_stability(def_id)
-            && inherit_regular_stab.is_unstable()
+        && fn_sig.header.is_const()
+        && const_stab.is_none()
+        // We only ever inherit unstable features.
+        && let Some(inherit_regular_stab) = tcx.lookup_stability(def_id)
+        && inherit_regular_stab.is_unstable()
     {
         const_stab = Some(ConstStability {
             // We subject these implicitly-const functions to recursive const stability.
