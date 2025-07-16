@@ -3524,6 +3524,38 @@ impl<'a, K, V, S, A: Allocator> Entry<'a, K, V, S, A> {
         }
     }
 
+    /// Ensures a value is in the entry by inserting the default if empty,
+    /// and returns an [`OccupiedEntry`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    ///
+    /// // nonexistent key
+    /// let entry = map.entry("poneyland").or_insert_entry(3);
+    /// assert_eq!(entry.key(), &"poneyland");
+    /// assert_eq!(entry.get(), &3);
+    ///
+    /// // existing key
+    /// let mut entry = map.entry("poneyland").or_insert_entry(10);
+    /// assert_eq!(entry.key(), &"poneyland");
+    /// assert_eq!(entry.get(), &3);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn or_insert_entry(self, default: V) -> OccupiedEntry<'a, K, V, S, A>
+    where
+        K: Hash,
+        S: BuildHasher,
+    {
+        match self {
+            Entry::Occupied(entry) => entry,
+            Entry::Vacant(entry) => entry.insert_entry(default),
+        }
+    }
+
     /// Ensures a value is in the entry by inserting the result of the default function if empty,
     /// and returns a mutable reference to the value in the entry.
     ///
@@ -4328,6 +4360,39 @@ impl<'a, 'b, K, Q: ?Sized, V: Default, S, A: Allocator> EntryRef<'a, 'b, K, Q, V
         match self {
             EntryRef::Occupied(entry) => entry.into_mut(),
             EntryRef::Vacant(entry) => entry.insert(Default::default()),
+        }
+    }
+
+    /// Ensures a value is in the entry by inserting the default value if empty,
+    /// and returns an [`OccupiedEntry`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<String, Option<u32>> = HashMap::new();
+    ///
+    /// // nonexistent key
+    /// let entry = map.entry_ref("poneyland").or_default_entry();
+    /// assert_eq!(entry.key(), &"poneyland");
+    /// assert_eq!(entry.get(), &None);
+    ///
+    /// // existing key
+    /// map.insert("horseland".to_string(), Some(3));
+    /// let entry = map.entry_ref("horseland").or_default_entry();
+    /// assert_eq!(entry.key(), &"horseland");
+    /// assert_eq!(entry.get(), &Some(3));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn or_default_entry(self) -> OccupiedEntry<'a, K, V, S, A>
+    where
+        K: Hash + From<&'b Q>,
+        S: BuildHasher,
+    {
+        match self {
+            EntryRef::Occupied(entry) => entry,
+            EntryRef::Vacant(entry) => entry.insert_entry(Default::default()),
         }
     }
 }
@@ -6164,7 +6229,7 @@ mod test_map {
             }
 
             for (k, v) in map {
-                println!("{}, {}", k, v);
+                println!("{k}, {v}");
             }
         }
 
@@ -6269,8 +6334,7 @@ mod test_map {
             for ((key, value), (panic_in_clone, panic_in_drop)) in guard.iter().zip(iter) {
                 if *key != check_count {
                     return Err(format!(
-                        "key != check_count,\nkey: `{}`,\ncheck_count: `{}`",
-                        key, check_count
+                        "key != check_count,\nkey: `{key}`,\ncheck_count: `{check_count}`"
                     ));
                 }
                 if value.dropped
@@ -6297,8 +6361,7 @@ mod test_map {
 
             if count != check_count {
                 return Err(format!(
-                    "count != check_count,\ncount: `{}`,\ncheck_count: `{}`",
-                    count, check_count
+                    "count != check_count,\ncount: `{count}`,\ncheck_count: `{check_count}`"
                 ));
             }
             core::mem::forget(guard);
