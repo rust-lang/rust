@@ -117,15 +117,15 @@ hir_analysis_coercion_between_struct_same_note = expected coercion between the s
 
 hir_analysis_coercion_between_struct_single_note = expected a single field to be coerced, none found
 
-hir_analysis_const_bound_for_non_const_trait = `{$modifier}` can only be applied to `#[const_trait]` traits
+hir_analysis_const_bound_for_non_const_trait = `{$modifier}` can only be applied to `const` traits
     .label = can't be applied to `{$trait_name}`
-    .note = `{$trait_name}` can't be used with `{$modifier}` because it isn't annotated with `#[const_trait]`
-    .suggestion = {$suggestion_pre}mark `{$trait_name}` as `#[const_trait]` to allow it to have `const` implementations
+    .note = `{$trait_name}` can't be used with `{$modifier}` because it isn't `const`
+    .suggestion = {$suggestion_pre}mark `{$trait_name}` as `const` to allow it to have `const` implementations
 
-hir_analysis_const_impl_for_non_const_trait = const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`
+hir_analysis_const_impl_for_non_const_trait = const `impl` for trait `{$trait_name}` which is not `const`
     .label = this trait is not `const`
-    .suggestion = {$suggestion_pre}mark `{$trait_name}` as `#[const_trait]` to allow it to have `const` implementations
-    .note = marking a trait with `#[const_trait]` ensures all default method bodies are `const`
+    .suggestion = {$suggestion_pre}mark `{$trait_name}` as `const` to allow it to have `const` implementations
+    .note = marking a trait with `const` ensures all default method bodies are `const`
     .adding = adding a non-const method body in the future would be a breaking change
 
 hir_analysis_const_param_ty_impl_on_non_adt =
