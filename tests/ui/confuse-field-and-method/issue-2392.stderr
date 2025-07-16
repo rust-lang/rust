@@ -1,5 +1,5 @@
-error[E0599]: no method named `closure` found for struct `Obj` in the current scope
-  --> $DIR/issue-2392.rs:40:15
+error[E0599]: no method named `closure` found for struct `Obj<{closure@issue-2392.rs:37:36}>` in the current scope
+  --> $DIR/issue-2392.rs:38:15
    |
 LL | struct Obj<F> where F: FnOnce() -> u32 {
    | ------------- method `closure` not found for this struct
@@ -14,8 +14,8 @@ help: to call the closure stored in `closure`, surround the field access with pa
 LL |     (o_closure.closure)();
    |     +                 +
 
-error[E0599]: no method named `not_closure` found for struct `Obj` in the current scope
-  --> $DIR/issue-2392.rs:42:15
+error[E0599]: no method named `not_closure` found for struct `Obj<{closure@issue-2392.rs:37:36}>` in the current scope
+  --> $DIR/issue-2392.rs:40:15
    |
 LL | struct Obj<F> where F: FnOnce() -> u32 {
    | ------------- method `not_closure` not found for this struct
@@ -28,8 +28,8 @@ LL |     o_closure.not_closure();
    = note: the full name for the type has been written to '$TEST_BUILD_DIR/issue-2392.long-type-$LONG_TYPE_HASH.txt'
    = note: consider using `--verbose` to print the full type name to the console
 
-error[E0599]: no method named `closure` found for struct `Obj` in the current scope
-  --> $DIR/issue-2392.rs:46:12
+error[E0599]: no method named `closure` found for struct `Obj<fn() -> u32 {func}>` in the current scope
+  --> $DIR/issue-2392.rs:44:12
    |
 LL | struct Obj<F> where F: FnOnce() -> u32 {
    | ------------- method `closure` not found for this struct
@@ -43,7 +43,7 @@ LL |     (o_func.closure)();
    |     +              +
 
 error[E0599]: no method named `boxed_closure` found for struct `BoxedObj` in the current scope
-  --> $DIR/issue-2392.rs:49:14
+  --> $DIR/issue-2392.rs:47:14
    |
 LL | struct BoxedObj {
    | --------------- method `boxed_closure` not found for this struct
@@ -57,7 +57,7 @@ LL |     (boxed_fn.boxed_closure)();
    |     +                      +
 
 error[E0599]: no method named `boxed_closure` found for struct `BoxedObj` in the current scope
-  --> $DIR/issue-2392.rs:52:19
+  --> $DIR/issue-2392.rs:50:19
    |
 LL | struct BoxedObj {
    | --------------- method `boxed_closure` not found for this struct
@@ -70,8 +70,8 @@ help: to call the trait object stored in `boxed_closure`, surround the field acc
 LL |     (boxed_closure.boxed_closure)();
    |     +                           +
 
-error[E0599]: no method named `closure` found for struct `Obj` in the current scope
-  --> $DIR/issue-2392.rs:57:12
+error[E0599]: no method named `closure` found for struct `Obj<fn() -> u32 {func}>` in the current scope
+  --> $DIR/issue-2392.rs:55:12
    |
 LL | struct Obj<F> where F: FnOnce() -> u32 {
    | ------------- method `closure` not found for this struct
@@ -84,8 +84,8 @@ help: to call the function stored in `closure`, surround the field access with p
 LL |     (w.wrap.closure)();
    |     +              +
 
-error[E0599]: no method named `not_closure` found for struct `Obj` in the current scope
-  --> $DIR/issue-2392.rs:59:12
+error[E0599]: no method named `not_closure` found for struct `Obj<fn() -> u32 {func}>` in the current scope
+  --> $DIR/issue-2392.rs:57:12
    |
 LL | struct Obj<F> where F: FnOnce() -> u32 {
    | ------------- method `not_closure` not found for this struct
@@ -95,8 +95,8 @@ LL |     w.wrap.not_closure();
    |            |
    |            field, not a method
 
-error[E0599]: no method named `closure` found for struct `Obj` in the current scope
-  --> $DIR/issue-2392.rs:62:24
+error[E0599]: no method named `closure` found for struct `Obj<Box<(dyn FnOnce() -> u32 + 'static)>>` in the current scope
+  --> $DIR/issue-2392.rs:60:24
    |
 LL | struct Obj<F> where F: FnOnce() -> u32 {
    | ------------- method `closure` not found for this struct
@@ -110,7 +110,7 @@ LL |     (check_expression().closure)();
    |     +                          +
 
 error[E0599]: no method named `f1` found for struct `FuncContainer` in the current scope
-  --> $DIR/issue-2392.rs:68:31
+  --> $DIR/issue-2392.rs:66:31
    |
 LL | struct FuncContainer {
    | -------------------- method `f1` not found for this struct
@@ -124,7 +124,7 @@ LL |             ((*self.container).f1)(1);
    |             +                    +
 
 error[E0599]: no method named `f2` found for struct `FuncContainer` in the current scope
-  --> $DIR/issue-2392.rs:69:31
+  --> $DIR/issue-2392.rs:67:31
    |
 LL | struct FuncContainer {
    | -------------------- method `f2` not found for this struct
@@ -138,7 +138,7 @@ LL |             ((*self.container).f2)(1);
    |             +                    +
 
 error[E0599]: no method named `f3` found for struct `FuncContainer` in the current scope
-  --> $DIR/issue-2392.rs:70:31
+  --> $DIR/issue-2392.rs:68:31
    |
 LL | struct FuncContainer {
    | -------------------- method `f3` not found for this struct
