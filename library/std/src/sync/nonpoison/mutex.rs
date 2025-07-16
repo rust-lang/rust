@@ -12,10 +12,11 @@ use crate::sys::sync as sys;
 /// For more information about mutexes, check out the documentation for the poisoning variant of
 /// this lock (which can be found at [`poison::Mutex`])
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// #![feature(nonpoison_mutex)]
+///
 /// use std::sync::{Arc, nonpoison::Mutex};
 /// use std::thread;
 /// use std::sync::mpsc::channel;
@@ -46,6 +47,100 @@ use crate::sys::sync as sys;
 /// }
 ///
 /// rx.recv().unwrap();
+/// ```
+///
+/// Note that this `Mutex` does **not** propagate threads that panic while holding the lock via
+/// poisoning. If you need this functionality, see [`poison::Mutex`].
+///
+/// ```
+/// #![feature(nonpoison_mutex)]
+///
+/// use std::thread;
+/// use std::sync::{Arc, nonpoison::Mutex};
+///
+/// let mutex = Arc::new(Mutex::new(0u32));
+/// let mut handles = Vec::new();
+///
+/// for n in 0..10 {
+///     let m = Arc::clone(&mutex);
+///     let handle = thread::spawn(move || {
+///         let mut guard = m.lock();
+///         *guard += 1;
+///         panic!("panic from thread {n} {guard}")
+///     });
+///     handles.push(handle);
+/// }
+///
+/// for h in handles {
+///     let _ = h.join();
+/// }
+///
+/// println!("Finished, locked {} times", mutex.lock());
+/// ```
+///
+/// To unlock a mutex guard sooner than the end of the enclosing scope,
+/// either create an inner scope or drop the guard manually.
+///
+/// ```
+/// #![feature(nonpoison_mutex)]
+///
+/// use std::sync::{Arc, nonpoison::Mutex};
+/// use std::thread;
+///
+/// const N: usize = 3;
+///
+/// let data_mutex = Arc::new(Mutex::new(vec![1, 2, 3, 4]));
+/// let res_mutex = Arc::new(Mutex::new(0));
+///
+/// let mut threads = Vec::with_capacity(N);
+/// (0..N).for_each(|_| {
+///     let data_mutex_clone = Arc::clone(&data_mutex);
+///     let res_mutex_clone = Arc::clone(&res_mutex);
+///
+///     threads.push(thread::spawn(move || {
+///         // Here we use a block to limit the lifetime of the lock guard.
+///         let result = {
+///             let mut data = data_mutex_clone.lock();
+///             // This is the result of some important and long-ish work.
+///             let result = data.iter().fold(0, |acc, x| acc + x * 2);
+///             data.push(result);
+///             result
+///             // The mutex guard gets dropped here, together with any other values
+///             // created in the critical section.
+///         };
+///         // The guard created here is a temporary dropped at the end of the statement, i.e.
+///         // the lock would not remain being held even if the thread did some additional work.
+///         *res_mutex_clone.lock() += result;
+///     }));
+/// });
+///
+/// let mut data = data_mutex.lock();
+/// // This is the result of some important and long-ish work.
+/// let result = data.iter().fold(0, |acc, x| acc + x * 2);
+/// data.push(result);
+/// // We drop the `data` explicitly because it's not necessary anymore and the
+/// // thread still has work to do. This allows other threads to start working on
+/// // the data immediately, without waiting for the rest of the unrelated work
+/// // to be done here.
+/// //
+/// // It's even more important here than in the threads because we `.join` the
+/// // threads after that. If we had not dropped the mutex guard, a thread could
+/// // be waiting forever for it, causing a deadlock.
+/// // As in the threads, a block could have been used instead of calling the
+/// // `drop` function.
+/// drop(data);
+/// // Here the mutex guard is not assigned to a variable and so, even if the
+/// // scope does not end after this line, the mutex is still released: there is
+/// // no deadlock.
+/// *res_mutex.lock() += result;
+///
+/// threads.into_iter().for_each(|thread| {
+///     thread
+///         .join()
+///         .expect("The thread creating or execution failed !")
+/// });
+///
+/// assert_eq!(*res_mutex.lock(), 800);
 /// ```
 ///
 /// [`poison::Mutex`]: crate::sync::poison::Mutex
@@ -177,7 +272,7 @@ impl<T> Mutex<T> {
         Mutex { inner: sys::Mutex::new(), data: UnsafeCell::new(t) }
     }
 
-    // TODO(connor): Add `lock_value_accessors` feature methods.
+    // FIXME(connor): Add `lock_value_accessors` feature methods.
 }
 
 impl<T: ?Sized> Mutex<T> {
@@ -233,9 +328,6 @@ impl<T: ?Sized> Mutex<T> {
     /// If the mutex could not be acquired because it is already locked, then
     /// this call will return [`None`].
     ///
-    /// TODO(connor): This should return a `TryLockResult` as specified in
-    /// <https://github.com/rust-lang/rust/issues/134645>
-    ///
     /// # Examples
     ///
     /// ```
@@ -248,7 +340,7 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// thread::spawn(move || {
     ///     let mut lock = c_mutex.try_lock();
-    ///     if let Some(ref mut mutex) = lock {
+    ///     if let Ok(ref mut mutex) = lock {
     ///         **mutex = 10;
     ///     } else {
     ///         println!("try_lock failed");
@@ -300,7 +392,7 @@ impl<T: ?Sized> Mutex<T> {
         self.data.get_mut()
     }
 
-    // TODO(connor): Add `mutex_data_ptr` feature method.
+    // FIXME(connor): Add `mutex_data_ptr` feature method.
 }
 
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
@@ -325,10 +417,10 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut d = f.debug_struct("Mutex");
         match self.try_lock() {
-            Some(guard) => {
+            Ok(guard) => {
                 d.field("data", &&*guard);
             }
-            None => {
+            Err(WouldBlock) => {
                 d.field("data", &format_args!("<locked>"));
             }
         }
