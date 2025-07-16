@@ -284,6 +284,8 @@ fn compute_replacement<'tcx>(
     where
         F: FnMut(Place<'tcx>, Location) -> bool,
     {
+        const VISIT_DEBUG_INFO: bool = true;
+
         fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, loc: Location) {
             if matches!(ctxt, PlaceContext::NonUse(_)) {
                 // There is no need to check liveness for non-uses.
@@ -354,6 +356,8 @@ struct Replacer<'tcx> {
 }
 
 impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
+    const VISIT_DEBUG_INFO: bool = true;
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

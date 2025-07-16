@@ -104,6 +104,8 @@ struct Replacer<'a, 'tcx> {
 }
 
 impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
+    const VISIT_DEBUG_INFO: bool = true;
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

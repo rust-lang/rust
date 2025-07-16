@@ -282,6 +282,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
+    const VISIT_DEBUG_INFO: bool = true;
     fn visit_local(&mut self, local: Local, _context: PlaceContext, location: Location) {
         if self.body.local_decls.get(local).is_none() {
             self.fail(
@@ -629,6 +630,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
+    const VISIT_DEBUG_INFO: bool = true;
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         // This check is somewhat expensive, so only run it when -Zvalidate-mir is passed.
         if self.tcx.sess.opts.unstable_opts.validate_mir
