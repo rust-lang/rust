@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `for<'a> F: Output<'a>` is not satisfied
-  --> $DIR/filter-relevant-fn-bounds.rs:8:5
+  --> $DIR/filter-relevant-fn-bounds.rs:11:5
    |
 LL | /     fn do_something_wrapper<O, F>(self, _: F)
 LL | |
@@ -13,7 +13,7 @@ LL |         F: for<'a> FnOnce(<F as Output<'a>>::Type) + for<'a> Output<'a>,
    |                                                    ++++++++++++++++++++
 
 error[E0277]: the trait bound `for<'a> F: Output<'a>` is not satisfied
-  --> $DIR/filter-relevant-fn-bounds.rs:11:12
+  --> $DIR/filter-relevant-fn-bounds.rs:14:12
    |
 LL |         F: for<'a> FnOnce(<F as Output<'a>>::Type),
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Output<'a>` is not implemented for `F`
@@ -24,7 +24,7 @@ LL |         F: for<'a> FnOnce(<F as Output<'a>>::Type) + for<'a> Output<'a>,
    |                                                    ++++++++++++++++++++
 
 error[E0277]: the trait bound `for<'a> F: Output<'a>` is not satisfied
-  --> $DIR/filter-relevant-fn-bounds.rs:11:20
+  --> $DIR/filter-relevant-fn-bounds.rs:14:20
    |
 LL |         F: for<'a> FnOnce(<F as Output<'a>>::Type),
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Output<'a>` is not implemented for `F`
@@ -34,28 +34,30 @@ help: consider further restricting type parameter `F` with trait `Output`
 LL |         F: for<'a> FnOnce(<F as Output<'a>>::Type) + for<'a> Output<'a>,
    |                                                    ++++++++++++++++++++
 
-error[E0277]: expected a `FnOnce(<{closure@$DIR/filter-relevant-fn-bounds.rs:20:34: 20:41} as Output<'a>>::Type)` closure, found `{closure@$DIR/filter-relevant-fn-bounds.rs:20:34: 20:41}`
-  --> $DIR/filter-relevant-fn-bounds.rs:20:34
+error[E0277]: expected a `FnOnce(<{closure@$DIR/filter-relevant-fn-bounds.rs:23:34: 23:41} as Output<'a>>::Type)` closure, found `{closure@$DIR/filter-relevant-fn-bounds.rs:23:34: 23:41}`
+  --> $DIR/filter-relevant-fn-bounds.rs:23:34
    |
 LL |     wrapper.do_something_wrapper(|value| ());
-   |             -------------------- ^^^^^^^^^^ expected an `FnOnce(<{closure@$DIR/filter-relevant-fn-bounds.rs:20:34: 20:41} as Output<'a>>::Type)` closure, found `{closure@$DIR/filter-relevant-fn-bounds.rs:20:34: 20:41}`
+   |             -------------------- ^^^^^^^^^^ expected an `FnOnce(<{closure@$DIR/filter-relevant-fn-bounds.rs:23:34: 23:41} as Output<'a>>::Type)` closure, found `{closure@$DIR/filter-relevant-fn-bounds.rs:23:34: 23:41}`
    |             |
    |             required by a bound introduced by this call
    |
-   = help: the trait `for<'a> Output<'a>` is not implemented for closure `{closure@$DIR/filter-relevant-fn-bounds.rs:20:34: 20:41}`
+   = help: the trait `for<'a> Output<'a>` is not implemented for closure `{closure@$DIR/filter-relevant-fn-bounds.rs:23:34: 23:41}`
 help: this trait has no implementations, consider adding one
-  --> $DIR/filter-relevant-fn-bounds.rs:1:1
+  --> $DIR/filter-relevant-fn-bounds.rs:4:1
    |
 LL | trait Output<'a> {
    | ^^^^^^^^^^^^^^^^
 note: required by a bound in `Wrapper::do_something_wrapper`
-  --> $DIR/filter-relevant-fn-bounds.rs:11:12
+  --> $DIR/filter-relevant-fn-bounds.rs:14:12
    |
 LL |     fn do_something_wrapper<O, F>(self, _: F)
    |        -------------------- required by a bound in this associated function
 ...
 LL |         F: for<'a> FnOnce(<F as Output<'a>>::Type),
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Wrapper::do_something_wrapper`
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/filter-relevant-fn-bounds.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
 
 error: aborting due to 4 previous errors
 
