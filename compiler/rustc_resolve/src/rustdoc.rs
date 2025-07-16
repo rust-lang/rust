@@ -7,6 +7,7 @@ use pulldown_cmark::{
 };
 use rustc_ast as ast;
 use rustc_ast::attr::AttributeExt;
+use rustc_ast::join_path_syms;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordSet;
@@ -259,7 +260,7 @@ pub fn main_body_opts() -> Options {
         | Options::ENABLE_SMART_PUNCTUATION
 }
 
-fn strip_generics_from_path_segment(segment: Vec<char>) -> Result<String, MalformedGenerics> {
+fn strip_generics_from_path_segment(segment: Vec<char>) -> Result<Symbol, MalformedGenerics> {
     let mut stripped_segment = String::new();
     let mut param_depth = 0;
 
@@ -284,7 +285,7 @@ fn strip_generics_from_path_segment(segment: Vec<char>) -> Result<String, Malfor
     }
 
     if param_depth == 0 {
-        Ok(stripped_segment)
+        Ok(Symbol::intern(&stripped_segment))
     } else {
         // The segment has unbalanced angle brackets, e.g. `Vec<T` or `Vec<T>>`
         Err(MalformedGenerics::UnbalancedAngleBrackets)
@@ -346,9 +347,8 @@ pub fn strip_generics_from_path(path_str: &str) -> Result<Box<str>, MalformedGen
 
     debug!("path_str: {path_str:?}\nstripped segments: {stripped_segments:?}");
 
-    let stripped_path = stripped_segments.join("::");
-
-    if !stripped_path.is_empty() {
+    if !stripped_segments.is_empty() {
+        let stripped_path = join_path_syms(stripped_segments);
         Ok(stripped_path.into())
     } else {
         Err(MalformedGenerics::MissingType)

@@ -18,7 +18,7 @@
 //! - [`Attribute`]: Metadata associated with item.
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
 use std::{cmp, fmt};
 
 pub use GenericArgs::*;
@@ -153,6 +153,59 @@ impl Path {
         allow_mgca_arg
             || self.segments.len() == 1 && self.segments.iter().all(|seg| seg.args.is_none())
     }
+}
+
+/// Joins multiple symbols with "::" into a path, e.g. "a::b::c". If the first
+/// segment is `kw::PathRoot` it will be printed as empty, e.g. "::b::c".
+///
+/// The generics on the `path` argument mean it can accept many forms, such as:
+/// - `&[Symbol]`
+/// - `Vec<Symbol>`
+/// - `Vec<&Symbol>`
+/// - `impl Iterator<Item = Symbol>`
+/// - `impl Iterator<Item = &Symbol>`
+///
+/// Panics if `path` is empty or a segment after the first is `kw::PathRoot`.
+pub fn join_path_syms(path: impl IntoIterator<Item = impl Borrow<Symbol>>) -> String {
+    // This is a guess at the needed capacity that works well in practice. It is slightly faster
+    // than (a) starting with an empty string, or (b) computing the exact capacity required.
+    // `8` works well because it's about the right size and jemalloc's size classes are all
+    // multiples of 8.
+    let mut iter = path.into_iter();
+    let len_hint = iter.size_hint().1.unwrap_or(1);
+    let mut s = String::with_capacity(len_hint * 8);
+
+    let first_sym = *iter.next().unwrap().borrow();
+    if first_sym != kw::PathRoot {
+        s.push_str(first_sym.as_str());
+    }
+    for sym in iter {
+        let sym = *sym.borrow();
+        debug_assert_ne!(sym, kw::PathRoot);
+        s.push_str("::");
+        s.push_str(sym.as_str());
+    }
+    s
+}
+
+/// Like `join_path_syms`, but for `Ident`s. This function is necessary because
+/// `Ident::to_string` does more than just print the symbol in the `name` field.
+pub fn join_path_idents(path: impl IntoIterator<Item = impl Borrow<Ident>>) -> String {
+    let mut iter = path.into_iter();
+    let len_hint = iter.size_hint().1.unwrap_or(1);
+    let mut s = String::with_capacity(len_hint * 8);
+
+    let first_ident = *iter.next().unwrap().borrow();
+    if first_ident.name != kw::PathRoot {
+        s.push_str(&first_ident.to_string());
+    }
+    for ident in iter {
+        let ident = *ident.borrow();
+        debug_assert_ne!(ident.name, kw::PathRoot);
+        s.push_str("::");
+        s.push_str(&ident.to_string());
+    }
+    s
 }
 
 /// A segment of a path: an identifier, an optional lifetime, and a set of types.
