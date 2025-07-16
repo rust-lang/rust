@@ -6,6 +6,7 @@ edition = "2021"
 # Add dependencies here to make them available in ui tests.
 
 [dependencies]
+libc = "0.2"
 regex = "1.5.5"
 serde = { version = "1.0.145", features = ["derive"] }
 if_chain = "1.0"
