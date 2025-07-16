@@ -18,7 +18,7 @@ use tracing::{debug, instrument, trace};
 use super::{CanAccessMutGlobal, CompileTimeInterpCx, CompileTimeMachine};
 use crate::const_eval::CheckAlignment;
 use crate::interpret::{
-    CtfeValidationMode, GlobalId, Immediate, InternKind, InternResult, InterpCx, InterpErrorKind,
+    CtfeValidationMode, GlobalId, Immediate, InternError, InternKind, InterpCx, InterpErrorKind,
     InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, ReturnContinuation, create_static_alloc,
     intern_const_alloc_recursive, interp_ok, throw_exhaust,
 };
@@ -98,18 +98,23 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
 
     match intern_result {
         Ok(()) => {}
-        Err(InternResult::FoundDanglingPointer) => {
+        Err(InternError::DanglingPointer) => {
             throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
                 ecx.tcx
                     .dcx()
                     .emit_err(errors::DanglingPtrInFinal { span: ecx.tcx.span, kind: intern_kind }),
             )));
         }
-        Err(InternResult::FoundBadMutablePointer) => {
+        Err(InternError::BadMutablePointer) => {
             throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
                 ecx.tcx
                     .dcx()
                     .emit_err(errors::MutablePtrInFinal { span: ecx.tcx.span, kind: intern_kind }),
+            )));
+        }
+        Err(InternError::ConstAllocNotGlobal) => {
+            throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
+                ecx.tcx.dcx().emit_err(errors::ConstHeapPtrInFinal { span: ecx.tcx.span }),
             )));
         }
     }

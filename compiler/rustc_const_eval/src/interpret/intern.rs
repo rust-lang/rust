@@ -26,12 +26,9 @@ use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::def_id::LocalDefId;
 use tracing::{instrument, trace};
 
-use super::{
-    AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, err_ub, interp_ok,
-};
-use crate::const_eval;
+use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, interp_ok};
 use crate::const_eval::DummyMachine;
-use crate::errors::{ConstHeapPtrInFinal, NestedStaticInThreadLocal};
+use crate::{const_eval, errors};
 
 pub trait CompileTimeMachine<'tcx, T> = Machine<
         'tcx,
@@ -63,7 +60,7 @@ pub enum DisallowInternReason {
 ///
 /// This prevents us from interning `const_allocate` pointers that have not been made
 /// global through `const_make_global`.
-pub trait CanIntern {
+pub trait CanIntern: Copy {
     fn disallows_intern(&self) -> Option<DisallowInternReason>;
 }
 
@@ -96,24 +93,22 @@ fn intern_shallow<'tcx, T: CanIntern, M: CompileTimeMachine<'tcx, T>>(
     alloc_id: AllocId,
     mutability: Mutability,
     disambiguator: Option<&mut DisambiguatorState>,
-) -> Result<impl Iterator<Item = CtfeProvenance> + 'tcx, ()> {
+) -> Result<impl Iterator<Item = CtfeProvenance> + 'tcx, InternError> {
     trace!("intern_shallow {:?}", alloc_id);
     // remove allocation
     // FIXME(#120456) - is `swap_remove` correct?
     let Some((kind, mut alloc)) = ecx.memory.alloc_map.swap_remove(&alloc_id) else {
-        return Err(());
+        return Err(InternError::DanglingPointer);
     };
 
     match kind {
         MemoryKind::Machine(x) if let Some(reason) = x.disallows_intern() => match reason {
-            // Attempting to intern a `const_allocate`d pointer that was not made global via
-            // `const_make_global`. This is an error, but if we return `Err` now, things
-            // become inconsistent because we already removed the allocation from `alloc_map`.
-            // So instead we just emit an error and then continue interning as usual.
-            // We *could* do this check before removing the allocation from `alloc_map`, but then
-            // it would be much harder to ensure that we only error once for each allocation.
             DisallowInternReason::ConstHeap => {
-                ecx.tcx.dcx().emit_err(ConstHeapPtrInFinal { span: ecx.tcx.span });
+                // Attempting to intern a `const_allocate`d pointer that was not made global via
+                // `const_make_global`. We want to error here, but we have to first put the
+                // allocation back into the `alloc_map` to keep things in a consistent state.
+                ecx.memory.alloc_map.insert(alloc_id, (kind, alloc));
+                return Err(InternError::ConstAllocNotGlobal);
             }
         },
         MemoryKind::Machine(_) | MemoryKind::Stack | MemoryKind::CallerLocation => {}
@@ -170,7 +165,7 @@ fn intern_as_new_static<'tcx>(
     tcx.set_nested_alloc_id_static(alloc_id, feed.def_id());
 
     if tcx.is_thread_local_static(static_id.into()) {
-        tcx.dcx().emit_err(NestedStaticInThreadLocal { span: tcx.def_span(static_id) });
+        tcx.dcx().emit_err(errors::NestedStaticInThreadLocal { span: tcx.def_span(static_id) });
     }
 
     // These do not inherit the codegen attrs of the parent static allocation, since
@@ -196,9 +191,10 @@ pub enum InternKind {
 }
 
 #[derive(Debug)]
-pub enum InternResult {
-    FoundBadMutablePointer,
-    FoundDanglingPointer,
+pub enum InternError {
+    BadMutablePointer,
+    DanglingPointer,
+    ConstAllocNotGlobal,
 }
 
 /// Intern `ret` and everything it references.
@@ -212,7 +208,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
     ecx: &mut InterpCx<'tcx, M>,
     intern_kind: InternKind,
     ret: &MPlaceTy<'tcx>,
-) -> Result<(), InternResult> {
+) -> Result<(), InternError> {
     let mut disambiguator = DisambiguatorState::new();
 
     // We are interning recursively, and for mutability we are distinguishing the "root" allocation
@@ -269,6 +265,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
     // We want to first report "dangling" and then "mutable", so we need to delay reporting these
     // errors.
     let mut result = Ok(());
+    let mut found_bad_mutable_ptr = false;
 
     // Keep interning as long as there are things to intern.
     // We show errors if there are dangling pointers, or mutable pointers in immutable contexts
@@ -323,18 +320,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
             // when there is memory there that someone might expect to be mutable, but we make it immutable.
             let dangling = !is_already_global && !ecx.memory.alloc_map.contains_key(&alloc_id);
             if !dangling {
-                // Found a mutable pointer inside a const where inner allocations should be
-                // immutable.
-                if !ecx.tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you {
-                    span_bug!(
-                        ecx.tcx.span,
-                        "the static const safety checks accepted a mutable pointer they should not have accepted"
-                    );
-                }
-                // Prefer dangling pointer errors over mutable pointer errors
-                if result.is_ok() {
-                    result = Err(InternResult::FoundBadMutablePointer);
-                }
+                found_bad_mutable_ptr = true;
             }
         }
         if ecx.tcx.try_get_global_alloc(alloc_id).is_some() {
@@ -355,10 +341,23 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
         just_interned.insert(alloc_id);
         match intern_shallow(ecx, alloc_id, inner_mutability, Some(&mut disambiguator)) {
             Ok(nested) => todo.extend(nested),
-            Err(()) => {
-                ecx.tcx.dcx().delayed_bug("found dangling pointer during const interning");
-                result = Err(InternResult::FoundDanglingPointer);
+            Err(err) => {
+                ecx.tcx.dcx().delayed_bug("error during const interning");
+                result = Err(err);
             }
+        }
+    }
+    if found_bad_mutable_ptr && result.is_ok() {
+        // We found a mutable pointer inside a const where inner allocations should be immutable,
+        // and there was no other error. This should usually never happen! However, this can happen
+        // in unleash-miri mode, so report it as a normal error then.
+        if ecx.tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you {
+            result = Err(InternError::BadMutablePointer);
+        } else {
+            span_bug!(
+                ecx.tcx.span,
+                "the static const safety checks accepted a mutable pointer they should not have accepted"
+            );
         }
     }
     result
@@ -375,10 +374,7 @@ pub fn intern_const_alloc_for_constprop<'tcx, T: CanIntern, M: CompileTimeMachin
         return interp_ok(());
     }
     // Move allocation to `tcx`.
-    if let Some(_) = intern_shallow(ecx, alloc_id, Mutability::Not, None)
-        .map_err(|()| err_ub!(DeadLocal))?
-        .next()
-    {
+    if let Some(_) = intern_shallow(ecx, alloc_id, Mutability::Not, None).unwrap().next() {
         // We are not doing recursive interning, so we don't currently support provenance.
         // (If this assertion ever triggers, we should just implement a
         // proper recursive interning loop -- or just call `intern_const_alloc_recursive`.
