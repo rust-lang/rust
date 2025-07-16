@@ -13,7 +13,7 @@ for a list of Miri maintainers.
 
 [Rust Zulip]: https://rust-lang.zulipchat.com
 
-### Pull review process
+### PR review process
 
 When you get a review, please take care of the requested changes in new commits. Do not amend
 existing commits. Generally avoid force-pushing. The only time you should force push is when there
