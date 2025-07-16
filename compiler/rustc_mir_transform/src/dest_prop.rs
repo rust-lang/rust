@@ -292,6 +292,7 @@ struct Merger<'tcx> {
 }
 
 impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
+    const VISIT_DEBUG_INFO: bool = true;
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

@@ -68,6 +68,8 @@ use crate::ty::CanonicalUserTypeAnnotation;
 macro_rules! make_mir_visitor {
     ($visitor_trait_name:ident, $($mutability:ident)?) => {
         pub trait $visitor_trait_name<'tcx> {
+            const VISIT_DEBUG_INFO: bool = false;
+
             // Override these, and call `self.super_xxx` to revert back to the
             // default behavior.
 
@@ -100,7 +102,9 @@ macro_rules! make_mir_visitor {
                 stmt_debuginfo: & $($mutability)? [StmtDebugInfo<'tcx>],
                 location: Location
             ) {
-                self.super_statement_debuginfos(stmt_debuginfo, location);
+                if Self::VISIT_DEBUG_INFO {
+                    self.super_statement_debuginfos(stmt_debuginfo, location);
+                }
             }
 
             fn visit_statement_debuginfo(

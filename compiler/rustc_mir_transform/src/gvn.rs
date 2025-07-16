@@ -1749,6 +1749,8 @@ impl<'tcx> VnState<'_, 'tcx> {
 }
 
 impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
+    const VISIT_DEBUG_INFO: bool = true;
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

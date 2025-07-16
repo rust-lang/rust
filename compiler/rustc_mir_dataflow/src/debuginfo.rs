@@ -12,6 +12,8 @@ pub fn debuginfo_locals(body: &Body<'_>) -> DenseBitSet<Local> {
 struct DebuginfoLocals(DenseBitSet<Local>);
 
 impl Visitor<'_> for DebuginfoLocals {
+    const VISIT_DEBUG_INFO: bool = true;
+
     fn visit_local(&mut self, local: Local, place_context: PlaceContext, _: Location) {
         if place_context == PlaceContext::NonUse(NonUseContext::VarDebugInfo) {
             self.0.insert(local);

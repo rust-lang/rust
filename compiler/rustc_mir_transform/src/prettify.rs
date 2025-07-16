@@ -148,6 +148,8 @@ struct LocalUpdater<'tcx> {
 }
 
 impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
+    const VISIT_DEBUG_INFO: bool = true;
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

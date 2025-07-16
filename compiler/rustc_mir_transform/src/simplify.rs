@@ -669,6 +669,8 @@ struct LocalUpdater<'tcx> {
 }
 
 impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
+    const VISIT_DEBUG_INFO: bool = true;
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -709,6 +711,8 @@ impl UsedInStmtLocals {
 }
 
 impl<'tcx> Visitor<'tcx> for UsedInStmtLocals {
+    const VISIT_DEBUG_INFO: bool = true;
+
     fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
         if matches!(context, PlaceContext::NonUse(_)) {
             return;

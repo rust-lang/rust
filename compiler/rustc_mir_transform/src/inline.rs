@@ -1230,6 +1230,8 @@ impl Integrator<'_, '_> {
 }
 
 impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
+    const VISIT_DEBUG_INFO: bool = true;
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
