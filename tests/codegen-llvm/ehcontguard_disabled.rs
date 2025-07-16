@@ -1,5 +1,3 @@
-//@ compile-flags:
-
 #![crate_type = "lib"]
 
 // A basic test function.
