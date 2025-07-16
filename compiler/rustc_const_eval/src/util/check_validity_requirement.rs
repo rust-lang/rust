@@ -52,9 +52,9 @@ fn check_validity_requirement_strict<'tcx>(
 
     let mut cx = InterpCx::new(cx.tcx(), DUMMY_SP, cx.typing_env, machine);
 
-    let allocated = cx
-        .allocate(ty, MemoryKind::Machine(crate::const_eval::MemoryKind::Heap))
-        .expect("OOM: failed to allocate for uninit check");
+    // It doesn't really matter which `MemoryKind` we use here, `Stack` is the least wrong.
+    let allocated =
+        cx.allocate(ty, MemoryKind::Stack).expect("OOM: failed to allocate for uninit check");
 
     if kind == ValidityRequirement::Zero {
         cx.write_bytes_ptr(
@@ -184,9 +184,10 @@ pub(crate) fn validate_scalar_in_layout<'tcx>(
     let Ok(layout) = cx.layout_of(ty) else {
         bug!("could not compute layout of {scalar:?}:{ty:?}")
     };
-    let allocated = cx
-        .allocate(layout, MemoryKind::Machine(crate::const_eval::MemoryKind::Heap))
-        .expect("OOM: failed to allocate for uninit check");
+
+    // It doesn't really matter which `MemoryKind` we use here, `Stack` is the least wrong.
+    let allocated =
+        cx.allocate(layout, MemoryKind::Stack).expect("OOM: failed to allocate for uninit check");
 
     cx.write_scalar(scalar, &allocated).unwrap();
 
