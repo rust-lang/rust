@@ -40,6 +40,7 @@ impl AttributeKind {
             Fundamental { .. } => Yes,
             Ignore { .. } => No,
             Inline(..) => No,
+            Link(..) => No,
             LinkName { .. } => Yes,
             LinkOrdinal { .. } => No,
             LinkSection { .. } => No,
