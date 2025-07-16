@@ -517,8 +517,52 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                         bx.cx().const_uint(cast_to, niche_variants.start().as_u32() as u64);
                     (is_niche, tagged_discr, 0)
                 } else {
-                    // The special cases don't apply, so we'll have to go with
-                    // the general algorithm.
+                    // With multiple niched variants we'll have to actually compute
+                    // the variant index from the stored tag.
+                    //
+                    // However, there's still one small optimization we can often do for
+                    // determining *whether* a tag value is a natural value or a niched
+                    // variant. The general algorithm involves a subtraction that often
+                    // wraps in practice, making it tricky to analyse. However, in cases
+                    // where there are few enough possible values of the tag that it doesn't
+                    // need to wrap around, we can instead just look for the contiguous
+                    // tag values on the end of the range with a single comparison.
+                    //
+                    // For example, take the type `enum Demo { A, B, Untagged(bool) }`.
+                    // The `bool` is {0, 1}, and the two other variants are given the
+                    // tags {2, 3} respectively. That means the `tag_range` is
+                    // `[0, 3]`, which doesn't wrap as unsigned (nor as signed), so
+                    // we can test for the niched variants with just `>= 2`.
+                    //
+                    // That means we're looking either for the niche values *above*
+                    // the natural values of the untagged variant:
+                    //
+                    //             niche_start                  niche_end
+                    //                  |                           |
+                    //                  v                           v
+                    // MIN -------------+---------------------------+---------- MAX
+                    //         ^        |         is niche          |
+                    //         |        +---------------------------+
+                    //         |                                    |
+                    //   tag_range.start                      tag_range.end
+                    //
+                    // Or *below* the natural values:
+                    //
+                    //    niche_start              niche_end
+                    //         |                       |
+                    //         v                       v
+                    // MIN ----+-----------------------+---------------------- MAX
+                    //         |       is niche        |           ^
+                    //         +-----------------------+           |
+                    //         |                                   |
+                    //   tag_range.start                      tag_range.end
+                    //
+                    // With those two options and having the flexibility to choose
+                    // between a signed or unsigned comparison on the tag, that
+                    // covers most realistic scenarios. The tests have a (contrived)
+                    // example of a 1-byte enum with over 128 niched variants which
+                    // wraps both as signed as unsigned, though, and for something
+                    // like that we're stuck with the general algorithm.
 
                     let tag_range = tag_scalar.valid_range(&dl);
                     let tag_size = tag_scalar.size(&dl);
