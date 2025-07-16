@@ -302,23 +302,20 @@ impl IsolatedAlloc {
         }
     }
 
-    /// Returns a vector of page addresses managed by the allocator.
-    pub fn pages(&self) -> Vec<usize> {
-        let mut pages: Vec<usize> =
-            self.page_ptrs.iter().map(|p| p.expose_provenance().get()).collect();
-        for (ptr, size) in self.huge_ptrs.iter() {
-            for i in 0..size / self.page_size {
-                pages.push(ptr.expose_provenance().get().strict_add(i * self.page_size));
-            }
-        }
-        pages
+    /// Returns a list of page addresses managed by the allocator.
+    pub fn pages(&self) -> impl Iterator<Item = usize> {
+        let pages = self.page_ptrs.iter().map(|p| p.expose_provenance().get());
+        pages.chain(self.huge_ptrs.iter().flat_map(|(ptr, size)| {
+            (0..size / self.page_size)
+                .map(|i| ptr.expose_provenance().get().strict_add(i * self.page_size))
+        }))
     }
 
     /// Protects all owned memory as `PROT_NONE`, preventing accesses.
     ///
     /// SAFETY: Accessing memory after this point will result in a segfault
     /// unless it is first unprotected.
-    pub unsafe fn prepare_ffi(&mut self) -> Result<(), nix::errno::Errno> {
+    pub unsafe fn start_ffi(&mut self) -> Result<(), nix::errno::Errno> {
         let prot = mman::ProtFlags::PROT_NONE;
         unsafe { self.mprotect(prot) }
     }
@@ -326,7 +323,7 @@ impl IsolatedAlloc {
     /// Deprotects all owned memory by setting it to RW. Erroring here is very
     /// likely unrecoverable, so it may panic if applying those permissions
     /// fails.
-    pub fn unprep_ffi(&mut self) {
+    pub fn end_ffi(&mut self) {
         let prot = mman::ProtFlags::PROT_READ | mman::ProtFlags::PROT_WRITE;
         unsafe {
             self.mprotect(prot).unwrap();

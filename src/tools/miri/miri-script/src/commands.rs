@@ -702,7 +702,6 @@ impl Command {
         let mut early_flags = Vec::<OsString>::new();
 
         // In `dep` mode, the target is already passed via `MIRI_TEST_TARGET`
-        #[expect(clippy::collapsible_if)] // we need to wait until this is stable
         if !dep {
             if let Some(target) = &target {
                 early_flags.push("--target".into());
@@ -735,7 +734,6 @@ impl Command {
         // Add Miri flags
         let mut cmd = cmd.args(&miri_flags).args(&early_flags).args(&flags);
         // For `--dep` we also need to set the target in the env var.
-        #[expect(clippy::collapsible_if)] // we need to wait until this is stable
         if dep {
             if let Some(target) = &target {
                 cmd = cmd.env("MIRI_TEST_TARGET", target);

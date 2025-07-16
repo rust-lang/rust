@@ -997,7 +997,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
 #[derive(Debug, Clone)]
 pub struct VClockAlloc {
     /// Assigning each byte a MemoryCellClocks.
-    alloc_ranges: RefCell<RangeMap<MemoryCellClocks>>,
+    alloc_ranges: RefCell<DedupRangeMap<MemoryCellClocks>>,
 }
 
 impl VisitProvenance for VClockAlloc {
@@ -1045,7 +1045,7 @@ impl VClockAlloc {
                 (VTimestamp::ZERO, global.thread_index(ThreadId::MAIN_THREAD)),
         };
         VClockAlloc {
-            alloc_ranges: RefCell::new(RangeMap::new(
+            alloc_ranges: RefCell::new(DedupRangeMap::new(
                 len,
                 MemoryCellClocks::new(alloc_timestamp, alloc_index),
             )),

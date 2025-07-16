@@ -1235,8 +1235,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    /// Lookup an array of immediates stored as a linker section of name `name`.
-    fn lookup_link_section(&mut self, name: &str) -> InterpResult<'tcx, Vec<ImmTy<'tcx>>> {
+    /// Lookup an array of immediates from any linker sections matching the provided predicate.
+    fn lookup_link_section(
+        &mut self,
+        include_name: impl Fn(&str) -> bool,
+    ) -> InterpResult<'tcx, Vec<ImmTy<'tcx>>> {
         let this = self.eval_context_mut();
         let tcx = this.tcx.tcx;
 
@@ -1247,7 +1250,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let Some(link_section) = attrs.link_section else {
                 return interp_ok(());
             };
-            if link_section.as_str() == name {
+            if include_name(link_section.as_str()) {
                 let instance = ty::Instance::mono(tcx, def_id);
                 let const_val = this.eval_global(instance).unwrap_or_else(|err| {
                     panic!(
@@ -1430,4 +1433,45 @@ impl ToU64 for usize {
     fn to_u64(self) -> u64 {
         self.try_into().unwrap()
     }
+}
+
+/// This struct is needed to enforce `#[must_use]` on values produced by [enter_trace_span] even
+/// when the "tracing" feature is not enabled.
+#[must_use]
+pub struct MaybeEnteredTraceSpan {
+    #[cfg(feature = "tracing")]
+    pub _entered_span: tracing::span::EnteredSpan,
+}
+
+/// Enters a [tracing::info_span] only if the "tracing" feature is enabled, otherwise does nothing.
+/// This is like [rustc_const_eval::enter_trace_span] except that it does not depend on the
+/// [Machine] trait to check if tracing is enabled, because from the Miri codebase we can directly
+/// check whether the "tracing" feature is enabled, unlike from the rustc_const_eval codebase.
+///
+/// In addition to the syntax accepted by [tracing::span!], this macro optionally allows passing
+/// the span name (i.e. the first macro argument) in the form `NAME::SUBNAME` (without quotes) to
+/// indicate that the span has name "NAME" (usually the name of the component) and has an additional
+/// more specific name "SUBNAME" (usually the function name). The latter is passed to the [tracing]
+/// infrastructure as a span field with the name "NAME". This allows not being distracted by
+/// subnames when looking at the trace in <https://ui.perfetto.dev>, but when deeper introspection
+/// is needed within a component, it's still possible to view the subnames directly in the UI by
+/// selecting a span, clicking on the "NAME" argument on the right, and clicking on "Visualize
+/// argument values".
+/// ```rust
+/// // for example, the first will expand to the second
+/// enter_trace_span!(borrow_tracker::on_stack_pop, /* ... */)
+/// enter_trace_span!("borrow_tracker", borrow_tracker = "on_stack_pop", /* ... */)
+/// ```
+#[macro_export]
+macro_rules! enter_trace_span {
+    ($name:ident :: $subname:ident $($tt:tt)*) => {{
+        enter_trace_span!(stringify!($name), $name = %stringify!(subname) $($tt)*)
+    }};
+
+    ($($tt:tt)*) => {
+        $crate::MaybeEnteredTraceSpan {
+            #[cfg(feature = "tracing")]
+            _entered_span: tracing::info_span!($($tt)*).entered()
+        }
+    };
 }
