@@ -1,7 +1,7 @@
 use crate::common::argument::ArgumentList;
 use crate::common::indentation::Indentation;
 use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
-use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, TypeKind};
+use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, Sign, TypeKind};
 use std::ops::Deref;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -73,8 +73,9 @@ impl IntrinsicDefinition<ArmIntrinsicType> for Intrinsic<ArmIntrinsicType> {
                     TypeKind::Float if self.results().inner_size() == 16 => "float16_t".to_string(),
                     TypeKind::Float if self.results().inner_size() == 32 => "float".to_string(),
                     TypeKind::Float if self.results().inner_size() == 64 => "double".to_string(),
-                    TypeKind::Int => format!("int{}_t", self.results().inner_size()),
-                    TypeKind::UInt => format!("uint{}_t", self.results().inner_size()),
+                    TypeKind::Int(Sign::Signed) => format!("int{}_t", self.results().inner_size()),
+                    TypeKind::Int(Sign::Unsigned) =>
+                        format!("uint{}_t", self.results().inner_size()),
                     TypeKind::Poly => format!("poly{}_t", self.results().inner_size()),
                     ty => todo!("print_result_c - Unknown type: {:#?}", ty),
                 },

@@ -1,6 +1,6 @@
 use super::intrinsic::ArmIntrinsicType;
 use crate::common::cli::Language;
-use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, TypeKind};
+use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, Sign, TypeKind};
 
 impl IntrinsicTypeDefinition for ArmIntrinsicType {
     /// Gets a string containing the typename for this type in C format.
@@ -73,8 +73,8 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
             format!(
                 "vld{len}{quad}_{type}{size}",
                 type = match k {
-                    TypeKind::UInt => "u",
-                    TypeKind::Int => "s",
+                    TypeKind::Int(Sign::Unsigned) => "u",
+                    TypeKind::Int(Sign::Signed) => "s",
                     TypeKind::Float => "f",
                     // The ACLE doesn't support 64-bit polynomial loads on Armv7
                     // if armv7 and bl == 64, use "s", else "p"
@@ -107,8 +107,8 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
             format!(
                 "vget{quad}_lane_{type}{size}",
                 type = match k {
-                    TypeKind::UInt => "u",
-                    TypeKind::Int => "s",
+                    TypeKind::Int(Sign::Unsigned) => "u",
+                    TypeKind::Int(Sign::Signed) => "s",
                     TypeKind::Float => "f",
                     TypeKind::Poly => "p",
                     x => todo!("get_load_function TypeKind: {:#?}", x),
@@ -176,7 +176,7 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
             } else {
                 let kind = start.parse::<TypeKind>()?;
                 let bit_len = match kind {
-                    TypeKind::Int => Some(32),
+                    TypeKind::Int(_) => Some(32),
                     _ => None,
                 };
                 Ok(Box::new(ArmIntrinsicType(IntrinsicType {
