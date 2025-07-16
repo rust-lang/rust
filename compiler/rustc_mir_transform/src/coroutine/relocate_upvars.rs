@@ -1,16 +1,42 @@
-//! MIR rewrite pass to promote upvars into native locals in the coroutine body
+//! MIR rewrite pass to relocate upvars into native locals in the coroutine body
 //!
 //! # Summary
+//! The current contract of coroutine upvars is as follows.
+//! Coroutines are constructed, initially in state UNRESUMED, by copying or moving
+//! captures into the `struct`-fields, which are also called prefix fields,
+//! taking necessary references as per capture specification.
+//!
+//! ```text
+//!  Low address                                                                                               High address
+//!  ┌─────────┬─────────┬─────┬─────────────────────┬───────────────────────────────────────────────────────┬──────────────┐
+//!  │         │         │     │                     │                                                       │              │
+//!  │ Upvar 1 │ Upvar 2 │ ... │ Coroutine State Tag │ Ineligibles, aka. saved locals alive across 2+ states │ Other states │
+//!  │         │         │     │                     │                                                       │              │
+//!  └─────────┴─────────┴─────┴─────────────────────┴───────────────────────────────────────────────────────┴──────────────┘
+//! ```
+//!
+//! In case some upvars are large and short-lived, the classic layout scheme can be wasteful.
+//! One way to reduce the memory footprint is to
+//!
 //! This pass performs the following transformations.
 //! 1. It generates a fresh batch of locals for each captured upvars.
 //!
 //! For each upvar, whether used or not, a fresh local is created with the same type.
+//! The types respect the nature of the captures, being by-ref, by-ref-mut or by-value.
+//! This is reflected in the results in the upvar analysis conducted in the HIR type-checking phase.
 //!
 //! 2. It replaces the places pointing into those upvars with places pointing into those locals instead
 //!
 //! Each place that starts with access into the coroutine structure `_1` is replaced with the fresh local as
-//! the base. For instance, `(_1.4 as Some).0` is rewritten into `(_34 as Some).0` when `_34` is the fresh local
+//! the base.
+//! For instance, `(_1.4 as Some).0` is rewritten into `(_34 as Some).0` when `_34` is the fresh local
 //! corresponding to the captured upvar stored in `_1.4`.
+//!
+//! This phase assumes that the initial built MIR respects the nature of captures.
+//! For instance, if the upvar `_1.4` is instead a by-ref-mut capture of a value of type `T`,
+//! this phase assumes that all access correctly built as operating on the place `(*_1.4)`.
+//! Based on the assumption, this phase replaces `_1.4` with a fresh local `_34: &mut T` and
+//! the correctness is still upheld.
 //!
 //! 3. It assembles an prologue to replace the current entry block.
 //!
@@ -18,10 +44,14 @@
 //! The upvars are first completely moved into the scratch locals in batch, and then moved into the destination
 //! locals in batch.
 //! The reason is that it is possible that coroutine layout may change and the source memory location of
-//! an upvar may not necessarily be mapped exactly to the same place as in the `Unresumed` state.
-//! While coroutine layout ensures that the same saved local has stable offsets throughout its lifetime,
-//! technically the upvar in `Unresumed` state and their fresh locals are different saved locals.
-//! This scratch locals re-estabilish safety so that the correct data permutation can take place.
+//! an upvar may not necessarily be mapped exactly to the same place as in the `UNRESUMED` state.
+//! This is very possible, because the coroutine layout scheme at this moment remains opaque,
+//! other than the contract that a saved local has a stable internal offset throughout its liveness span.
+//!
+//! While the current coroutine layout ensures that the same saved local has stable offsets throughout its lifetime,
+//! technically the upvar in `UNRESUMED` state and their fresh locals are different saved locals.
+//! This scratch locals re-establish safety so that the correct data permutation can take place,
+//! when a future coroutine layout calculator sees the permutation fit.
 
 use std::borrow::Cow;
 

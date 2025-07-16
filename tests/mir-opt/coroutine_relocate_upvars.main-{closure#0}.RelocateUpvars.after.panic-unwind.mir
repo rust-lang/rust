@@ -1,0 +1,138 @@
+// MIR for `main::{closure#0}` after RelocateUpvars
+
+fn main::{closure#0}(_1: {coroutine@$DIR/coroutine-relocate-upvars.rs:12:5: 12:7}, _2: ()) -> ()
+yields ()
+ {
+    debug x => (*_6);
+    debug x => _6;
+    let mut _0: ();
+    let mut _3: std::string::String;
+    let _4: ();
+    let mut _5: ();
+    let mut _6: &mut std::string::String;
+    let _7: &mut std::string::String;
+
+    bb0: {
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = move (_1.0: &mut std::string::String);
+        _6 = move _7;
+        StorageDead(_7);
+        goto -> bb24;
+    }
+
+    bb1: {
+        drop((*_6)) -> [return: bb2, unwind: bb3];
+    }
+
+    bb2: {
+        (*_6) = move _3;
+        drop(_3) -> [return: bb4, unwind: bb11, drop: bb8];
+    }
+
+    bb3 (cleanup): {
+        (*_6) = move _3;
+        drop(_3) -> [return: bb11, unwind terminate(cleanup)];
+    }
+
+    bb4: {
+        StorageDead(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = ();
+        _4 = yield(move _5) -> [resume: bb5, drop: bb7];
+    }
+
+    bb5: {
+        StorageDead(_5);
+        StorageDead(_4);
+        _0 = const ();
+        goto -> bb16;
+    }
+
+    bb6: {
+        return;
+    }
+
+    bb7: {
+        StorageDead(_5);
+        StorageDead(_4);
+        goto -> bb9;
+    }
+
+    bb8: {
+        StorageDead(_3);
+        goto -> bb9;
+    }
+
+    bb9: {
+        goto -> bb20;
+    }
+
+    bb10: {
+        coroutine_drop;
+    }
+
+    bb11 (cleanup): {
+        StorageDead(_3);
+        goto -> bb23;
+    }
+
+    bb12 (cleanup): {
+        resume;
+    }
+
+    bb13 (cleanup): {
+        StorageDead(_6);
+        goto -> bb12;
+    }
+
+    bb14 (cleanup): {
+        drop(_6) -> [return: bb13, unwind terminate(cleanup)];
+    }
+
+    bb15: {
+        StorageDead(_6);
+        goto -> bb6;
+    }
+
+    bb16: {
+        drop(_6) -> [return: bb15, unwind: bb12, drop: bb10];
+    }
+
+    bb17 (cleanup): {
+        StorageDead(_6);
+        goto -> bb12;
+    }
+
+    bb18 (cleanup): {
+        drop(_6) -> [return: bb17, unwind terminate(cleanup)];
+    }
+
+    bb19: {
+        StorageDead(_6);
+        goto -> bb10;
+    }
+
+    bb20: {
+        drop(_6) -> [return: bb19, unwind: bb12];
+    }
+
+    bb21 (cleanup): {
+        terminate(cleanup);
+    }
+
+    bb22 (cleanup): {
+        StorageDead(_6);
+        goto -> bb12;
+    }
+
+    bb23 (cleanup): {
+        drop(_6) -> [return: bb22, unwind terminate(cleanup)];
+    }
+
+    bb24: {
+        StorageLive(_3);
+        _3 = String::new() -> [return: bb1, unwind: bb11];
+    }
+}
