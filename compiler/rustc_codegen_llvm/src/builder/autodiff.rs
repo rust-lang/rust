@@ -76,12 +76,18 @@ fn match_args_from_caller_to_enzyme<'ll>(
         outer_pos = 1;
     }
 
+    // Autodiff activities
     let enzyme_const = cx.create_metadata("enzyme_const".to_string()).unwrap();
     let enzyme_out = cx.create_metadata("enzyme_out".to_string()).unwrap();
     let enzyme_dup = cx.create_metadata("enzyme_dup".to_string()).unwrap();
     let enzyme_dupv = cx.create_metadata("enzyme_dupv".to_string()).unwrap();
     let enzyme_dupnoneed = cx.create_metadata("enzyme_dupnoneed".to_string()).unwrap();
     let enzyme_dupnoneedv = cx.create_metadata("enzyme_dupnoneedv".to_string()).unwrap();
+
+    // Batching activities
+    let enzyme_scalar = cx.create_metadata("enzyme_scalar".to_string()).unwrap();
+    let enzyme_vector = cx.create_metadata("enzyme_vector".to_string()).unwrap();
+    let enzyme_buffer = cx.create_metadata("enzyme_buffer".to_string()).unwrap();
 
     while activity_pos < inputs.len() {
         let diff_activity = inputs[activity_pos as usize];
@@ -99,14 +105,18 @@ fn match_args_from_caller_to_enzyme<'ll>(
             DiffActivity::Duplicated => (enzyme_dup, true),
             DiffActivity::DuplicatedOnly => (enzyme_dupnoneed, true),
             DiffActivity::FakeActivitySize(_) => (enzyme_const, false),
+            DiffActivity::Vector => (enzyme_vector, true),
+            DiffActivity::Buffer => (enzyme_buffer, false),
+            DiffActivity::Scalar => (enzyme_scalar, true),
         };
+        let no_autodiff_only_batching = matches!(diff_activity, DiffActivity::Scalar | DiffActivity::Vector | DiffActivity::Buffer);
         let outer_arg = outer_args[outer_pos];
         args.push(cx.get_metadata_value(activity));
         if matches!(diff_activity, DiffActivity::Dualv) {
             let next_outer_arg = outer_args[outer_pos + 1];
             let elem_bytes_size: u64 = match inputs[activity_pos + 1] {
                 DiffActivity::FakeActivitySize(Some(s)) => s.into(),
-                _ => bug!("incorrect Dualv handling recognized."),
+                _ => bug!("incorrect Dualv/Batching handling recognized."),
             };
             // stride: sizeof(T) * n_elems.
             // n_elems is the next integer.
@@ -121,7 +131,53 @@ fn match_args_from_caller_to_enzyme<'ll>(
             };
             args.push(mul);
         }
+        if matches!(diff_activity, DiffActivity::Buffer) {
+            // There are various cases.
+            // A) We look at a scalar float.
+            // B) We look at a Vector/Array of floats (byVal). Not sure if this is valid.
+            // C) We look at a ptr as part of a slice.
+            // D) We look at a ptr as part of a raw pointer or reference.
+
+            let mut elem_offset = cx.get_const_i64(width.into());
+            let outer_ty = cx.val_ty(outer_arg);
+            dbg!(&outer_ty);
+            let bit_width = if cx.is_float_type(outer_ty) {
+                cx.float_width(outer_ty)
+            } else if cx.is_vec_or_array_type(outer_ty) {
+                let elem_ty = cx.element_type(outer_ty);
+                assert!(cx.is_float_type(elem_ty));
+                let num_vec_elements = cx.vector_length(outer_ty);
+                assert!(num_vec_elements == width as usize);
+                dbg!(&num_vec_elements);
+                cx.float_width(elem_ty)
+            } else if cx.is_ptr_type(outer_ty) {
+                if is_slice(activity_pos, inputs) {
+                    elem_offset = outer_args[outer_pos + 1];
+                    let elem_bytes_size: u64 = match inputs[activity_pos + 1] {
+                        DiffActivity::FakeActivitySize(Some(s)) => s.into(),
+                        _ => bug!("incorrect Dualv/Buffer handling recognized."),
+                    };
+                    elem_bytes_size as usize * 8
+                } else {
+                    // raw pointer or ref, hence `num_elem` = 1
+                    unimplemented!()
+                }
+            } else {
+                bug!("expected float or vector type, found {:?}", outer_ty);
+            };
+            let elem_bytes_size = bit_width as u64 / 8;
+            let mul = unsafe {
+                llvm::LLVMBuildMul(
+                    builder.llbuilder,
+                    cx.get_const_i64(elem_bytes_size),
+                    elem_offset,
+                    UNNAMED,
+                )
+            };
+            args.push(mul);
+        }
         args.push(outer_arg);
+        dbg!(&args);
         if duplicated {
             // We know that duplicated args by construction have a following argument,
             // so this can not be out of bounds.
@@ -130,17 +186,7 @@ fn match_args_from_caller_to_enzyme<'ll>(
             // FIXME(ZuseZ4): We should add support for Vec here too, but it's less urgent since
             // vectors behind references (&Vec<T>) are already supported. Users can not pass a
             // Vec by value for reverse mode, so this would only help forward mode autodiff.
-            let slice = {
-                if activity_pos + 1 >= inputs.len() {
-                    // If there is no arg following our ptr, it also can't be a slice,
-                    // since that would lead to a ptr, int pair.
-                    false
-                } else {
-                    let next_activity = inputs[activity_pos + 1];
-                    // We analyze the MIR types and add this dummy activity if we visit a slice.
-                    matches!(next_activity, DiffActivity::FakeActivitySize(_))
-                }
-            };
+            let slice = is_slice(activity_pos, &inputs);
             if slice {
                 // A duplicated slice will have the following two outer_fn arguments:
                 // (..., ptr1, int1, ptr2, int2, ...). We add the following llvm-ir to our __enzyme call:
@@ -178,8 +224,19 @@ fn match_args_from_caller_to_enzyme<'ll>(
                 outer_pos += 2;
                 activity_pos += 1;
 
+                dbg!(&width);
+                dbg!(&outer_pos);
+                dbg!(&activity_pos);
+                dbg!(&args);
+                let limit = if no_autodiff_only_batching {
+                    // Usually we have one primal arg + width shadow args.
+                    // Here we have `width` primal args, so one less than normal.
+                    width as usize - 1
+                } else {
+                    width as usize
+                };
                 // Now, if width > 1, we need to account for that
-                for _ in 1..width {
+                for _ in 1..limit {
                     let next_outer_arg = outer_args[outer_pos];
                     args.push(next_outer_arg);
                     outer_pos += 1;
@@ -192,6 +249,19 @@ fn match_args_from_caller_to_enzyme<'ll>(
             activity_pos += 1;
         }
     }
+    dbg!("ending");
+}
+
+fn is_slice(activity_pos: usize, inputs: &[DiffActivity]) -> bool {
+     if activity_pos + 1 >= inputs.len() {
+         // If there is no arg following our ptr, it also can't be a slice,
+         // since that would lead to a ptr, int pair.
+         false
+     } else {
+         let next_activity = inputs[activity_pos + 1];
+         // We analyze the MIR types and add this dummy activity if we visit a slice.
+         matches!(next_activity, DiffActivity::FakeActivitySize(_))
+     }
 }
 
 // On LLVM-IR, we can luckily declare __enzyme_ functions without specifying the input
@@ -269,6 +339,12 @@ fn compute_enzyme_fn_ty<'ll>(
                 DiffMode::Reverse => {
                     todo!("Handle sret for reverse mode");
                 }
+                DiffMode::Batch => {
+                    let arr_ty = unsafe {
+                        llvm::LLVMArrayType2(inner_ret_ty, attrs.width as u64)
+                    };
+                    ret_ty = arr_ty;
+                }
                 _ => {
                     bug!("unreachable");
                 }
@@ -299,6 +375,7 @@ fn generate_enzyme_call<'ll>(
     let mut ad_name: String = match attrs.mode {
         DiffMode::Forward => "__enzyme_fwddiff",
         DiffMode::Reverse => "__enzyme_autodiff",
+        DiffMode::Batch => "__enzyme_batch",
         _ => panic!("logic bug in autodiff, unrecognized mode"),
     }
     .to_string();
@@ -402,6 +479,7 @@ fn generate_enzyme_call<'ll>(
 
         let call = builder.call(enzyme_ty, ad_fn, &args, None);
 
+        dbg!(&call);
         // This part is a bit iffy. LLVM requires that a call to an inlineable function has some
         // metadata attached to it, but we just created this code oota. Given that the
         // differentiated function already has partly confusing metadata, and given that this
@@ -448,6 +526,7 @@ fn generate_enzyme_call<'ll>(
         } else {
             builder.ret(call);
         }
+        dbg!("Still alive");
 
         // Let's crash in case that we messed something up above and generated invalid IR.
         llvm::LLVMRustVerifyFunction(
@@ -507,6 +586,7 @@ pub(crate) fn differentiate<'ll>(
 
         generate_enzyme_call(&cx, fn_def, fn_target, item.attrs.clone());
     }
+    dbg!("lowered all");
 
     // FIXME(ZuseZ4): support SanitizeHWAddress and prevent illegal/unsupported opts
 

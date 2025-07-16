@@ -156,6 +156,23 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
             )
         }
     }
+
+    pub(crate) fn is_float_type(&self, ty: &'ll Type) -> bool {
+        matches!(
+            self.type_kind(ty),
+            TypeKind::Half | TypeKind::Float | TypeKind::Double | TypeKind::X86_FP80
+                | TypeKind::FP128 | TypeKind::PPC_FP128
+        )
+    }
+
+    pub(crate) fn is_vec_or_array_type(&self, ty: &'ll Type) -> bool {
+        matches!(self.type_kind(ty),
+            TypeKind::Array | TypeKind::Vector | TypeKind::ScalableVector)
+    }
+
+    pub(crate) fn is_ptr_type(&self, ty: &'ll Type) -> bool {
+        matches!(self.type_kind(ty), TypeKind::Pointer)
+    }
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
