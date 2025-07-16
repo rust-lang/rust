@@ -194,14 +194,19 @@ LL |     const { read_as::<*const u8>(1i32) };
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0080]: memory access failed: ALLOC0 has been freed, so this pointer is dangling
-  --> $DIR/c-variadic-fail.rs:75:13
+error[E0080]: constructing invalid value of type [u8; 24]: at [8], encountered a pointer, but expected an integer
+  --> $DIR/c-variadic-fail.rs:73:22
    |
-LL |             ap.arg::<i32>();
-   |             ^^^^^^^^^^^^^^^ evaluation of `use_after_free::{constant#0}` failed inside this call
+LL |             let ap = helper(1, 2, 3);
+   |                      ^^^^^^^^^^^^^^^ evaluation of `use_after_free::{constant#0}` failed inside this call
    |
-note: inside `VaList::<'_>::arg::<i32>`
-  --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+note: inside `use_after_free::helper`
+  --> $DIR/c-variadic-fail.rs:68:18
+   |
+LL |         unsafe { std::mem::transmute(ap) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
 
 note: erroneous constant encountered
   --> $DIR/c-variadic-fail.rs:71:5
@@ -209,7 +214,6 @@ note: erroneous constant encountered
 LL | /     const {
 LL | |         unsafe {
 LL | |             let ap = helper(1, 2, 3);
-LL | |             let mut ap = std::mem::transmute::<_, VaList>(ap);
 ...  |
 LL | |     };
    | |_____^
@@ -220,14 +224,13 @@ note: erroneous constant encountered
 LL | /     const {
 LL | |         unsafe {
 LL | |             let ap = helper(1, 2, 3);
-LL | |             let mut ap = std::mem::transmute::<_, VaList>(ap);
 ...  |
 LL | |     };
    | |_____^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0080]: using ALLOC1 as variable argument list pointer but it does not point to a variable argument list
+error[E0080]: using ALLOC0 as variable argument list pointer but it does not point to a variable argument list
   --> $DIR/c-variadic-fail.rs:97:22
    |
 LL |     const { unsafe { helper(1, 2, 3) } };
@@ -259,7 +262,7 @@ LL |     const { unsafe { helper(1, 2, 3) } };
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0080]: using ALLOC2 as variable argument list pointer but it does not point to a variable argument list
+error[E0080]: using ALLOC1 as variable argument list pointer but it does not point to a variable argument list
   --> $DIR/c-variadic-fail.rs:113:22
    |
 LL |     const { unsafe { helper(1, 2, 3) } };
@@ -291,7 +294,7 @@ LL |     const { unsafe { helper(1, 2, 3) } };
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0080]: using ALLOC3 as variable argument list pointer but it does not point to a variable argument list
+error[E0080]: using ALLOC2 as variable argument list pointer but it does not point to a variable argument list
   --> $DIR/c-variadic-fail.rs:126:22
    |
 LL |     const { unsafe { helper(1, 2, 3) } };

@@ -76,10 +76,10 @@ const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
 //~^ ERROR constructing invalid value
 
 const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
-    //~^ ERROR constructing invalid value
     let x: &dyn Send = &42;
     let meta = std::ptr::metadata(x);
     mem::transmute((0_usize, meta))
+    //~^ ERROR constructing invalid value
 };
 
 const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };

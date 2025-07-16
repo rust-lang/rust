@@ -1,5 +1,4 @@
 //@ revisions: no_flag with_flag
-//@ [no_flag] check-pass
 //@ [with_flag] compile-flags: -Zextra-const-ub-checks
 #![feature(never_type)]
 #![allow(unnecessary_transmutes)]
@@ -28,34 +27,34 @@ enum UninhDiscriminant {
 
 const INVALID_BOOL: () = unsafe {
     let _x: bool = transmute(3u8);
-    //[with_flag]~^ ERROR: invalid value
+    //~^ ERROR: invalid value
 };
 
 const INVALID_PTR_IN_INT: () = unsafe {
     let _x: usize = transmute(&3u8);
-    //[with_flag]~^ ERROR: invalid value
+    //~^ ERROR: invalid value
 };
 
 const INVALID_PTR_IN_ENUM: () = unsafe {
     let _x: PtrSizedEnum = transmute(&3u8);
-    //[with_flag]~^ ERROR: invalid value
+    //~^ ERROR: invalid value
 };
 
 const INVALID_SLICE_TO_USIZE_TRANSMUTE: () = unsafe {
     let x: &[u8] = &[0; 32];
     let _x: (usize, usize) = transmute(x);
-    //[with_flag]~^ ERROR: invalid value
+    //~^ ERROR: invalid value
 };
 
 const UNALIGNED_PTR: () = unsafe {
     let _x: &u32 = transmute(&[0u8; 4]);
-    //[with_flag]~^ ERROR: invalid value
+    //~^ ERROR: invalid value
 };
 
 // A function pointer offset to be maybe-null.
 const MAYBE_NULL_FN_PTR: () = unsafe {
     let _x: fn() = transmute({
-    //[with_flag]~^ ERROR: invalid value
+    //~^ ERROR: invalid value
         fn fun() {}
         let ptr = fun as fn();
         (ptr as *const u8).wrapping_add(10)

@@ -146,6 +146,10 @@ pub trait Machine<'tcx>: Sized {
     /// already been checked before.
     const ALL_CONSTS_ARE_PRECHECKED: bool = true;
 
+    /// Whether to validate the result of various operations like transmutes
+    /// irrespective of [Machine::enforce_validity]
+    const VALIDATE_UNSAFE_OUTPUTS: bool = true;
+
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(ecx: &InterpCx<'tcx, Self>) -> bool;
 

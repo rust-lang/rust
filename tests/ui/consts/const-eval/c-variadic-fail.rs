@@ -71,9 +71,9 @@ fn use_after_free() {
     const {
         unsafe {
             let ap = helper(1, 2, 3);
+            //~^ ERROR constructing invalid value of type [u8; 24]: at [8], encountered a pointer, but expected an integer
             let mut ap = std::mem::transmute::<_, VaList>(ap);
             ap.arg::<i32>();
-            //~^ ERROR memory access failed: ALLOC0 has been freed, so this pointer is dangling [E0080]
         }
     };
 }

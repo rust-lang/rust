@@ -18,8 +18,9 @@ const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
 
 const OUT_OF_BOUNDS_PTR: NonNull<u8> = { unsafe {
     let ptr: &[u8; 256] = mem::transmute(&0u8); // &0 gets promoted so it does not dangle
+    //~^ ERROR going beyond the bounds of its allocation
     // Use address-of-element for pointer arithmetic. This could wrap around to null!
-    let out_of_bounds_ptr = &ptr[255]; //~ ERROR in-bounds pointer arithmetic failed
+    let out_of_bounds_ptr = &ptr[255];
     mem::transmute(out_of_bounds_ptr)
 } };
 
@@ -51,10 +52,10 @@ const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
 //~^ ERROR invalid value
 
 const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
-//~^ ERROR invalid value
     let x: &dyn Send = &42;
     let meta = std::ptr::metadata(x);
     mem::transmute((0_usize, meta))
+//~^ ERROR invalid value
 };
 
 static S: u32 = 0; // just a static to construct a maybe-null pointer off of
