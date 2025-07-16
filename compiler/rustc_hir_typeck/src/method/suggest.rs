@@ -376,8 +376,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_missing_writer(&self, rcvr_ty: Ty<'tcx>, rcvr_expr: &hir::Expr<'tcx>) -> Diag<'_> {
-        let mut file = None;
+    fn suggest_missing_writer(
+        &self,
+        rcvr_ty: Ty<'tcx>,
+        rcvr_expr: &hir::Expr<'tcx>,
+        mut file: Option<PathBuf>,
+    ) -> Diag<'_> {
         let mut err = struct_span_code_err!(
             self.dcx(),
             rcvr_expr.span,
@@ -683,7 +687,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 || tcx.is_diagnostic_item(sym::writeln_macro, def_id)
         }) && item_ident.name == sym::write_fmt;
         let mut err = if is_write && let SelfSource::MethodCall(rcvr_expr) = source {
-            self.suggest_missing_writer(rcvr_ty, rcvr_expr)
+            self.suggest_missing_writer(rcvr_ty, rcvr_expr, ty_file)
         } else {
             let mut err = self.dcx().create_err(NoAssociatedItem {
                 span,
@@ -698,6 +702,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty_str: ty_str_reported.clone(),
                 trait_missing_method,
             });
+            *err.long_ty_path() = ty_file;
 
             if is_method {
                 self.suggest_use_shadowed_binding_with_method(
@@ -1339,7 +1344,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                             let OnUnimplementedNote { message, label, notes, .. } = self
                                 .err_ctxt()
-                                .on_unimplemented_note(trait_ref, &obligation, &mut ty_file);
+                                .on_unimplemented_note(trait_ref, &obligation, err.long_ty_path());
                             (message, label, notes)
                         })
                         .unwrap()
