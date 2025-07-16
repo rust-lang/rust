@@ -4,6 +4,7 @@ use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr::NonNull;
+use crate::sync::nonpoison::{TryLockResult, WouldBlock};
 use crate::sys::sync as sys;
 
 /// A mutual exclusion primitive useful for protecting shared data.
@@ -256,8 +257,8 @@ impl<T: ?Sized> Mutex<T> {
     /// assert_eq!(*mutex.lock(), 10);
     /// ```
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
-    pub fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
-        unsafe { if self.inner.try_lock() { Some(MutexGuard::new(self)) } else { None } }
+    pub fn try_lock(&self) -> TryLockResult<MutexGuard<'_, T>> {
+        unsafe { if self.inner.try_lock() { Ok(MutexGuard::new(self)) } else { Err(WouldBlock) } }
     }
 
     /// Consumes this mutex, returning the underlying data.
