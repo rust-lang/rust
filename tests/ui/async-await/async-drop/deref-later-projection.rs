@@ -3,7 +3,7 @@
 //@ build-pass
 //@ edition:2021
 #![crate_type = "lib"]
-#![feature(async_drop)]
+#![feature(async_drop, async_drop_lib)]
 #![allow(incomplete_features)]
 
 use std::{future::AsyncDrop, pin::Pin};

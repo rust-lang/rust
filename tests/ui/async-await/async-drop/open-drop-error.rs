@@ -1,7 +1,7 @@
 //@ compile-flags: -Zmir-enable-passes=+DataflowConstProp
 //@ edition: 2021
 //@ build-pass
-#![feature(async_drop)]
+#![feature(async_drop, async_drop_lib)]
 #![allow(incomplete_features)]
 
 use std::mem::ManuallyDrop;

@@ -3,7 +3,7 @@
 //! Fixed when re-work async drop to shim drop glue coroutine scheme.
 //@ compile-flags: -Zvalidate-mir -Zinline-mir=yes
 //@ edition: 2018
-#![feature(async_drop)]
+#![feature(async_drop, async_drop_lib)]
 #![allow(incomplete_features)]
 
 use core::future::{async_drop_in_place, Future};

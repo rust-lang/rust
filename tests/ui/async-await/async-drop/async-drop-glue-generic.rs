@@ -2,7 +2,7 @@
 //@ check-run-results
 // struct `Foo` has both sync and async drop.
 
-#![feature(async_drop)]
+#![feature(async_drop, async_drop_lib)]
 #![allow(incomplete_features)]
 
 use std::mem::ManuallyDrop;

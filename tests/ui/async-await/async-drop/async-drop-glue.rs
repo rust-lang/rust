@@ -3,7 +3,7 @@
 // struct `Foo` has both sync and async drop.
 // Struct `Complex` contains three `Foo` fields and has complex async drop glue.
 
-#![feature(async_drop)]
+#![feature(async_drop, async_drop_lib)]
 #![allow(incomplete_features)]
 
 use std::mem::ManuallyDrop;

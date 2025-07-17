@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature `async_drop_lib`
-  --> $DIR/feature-gate-async-drop.rs:3:5
+  --> $DIR/feature-gate-async-drop-lib.rs:3:5
    |
 LL | use std::future::AsyncDrop;
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -9,17 +9,17 @@ LL | use std::future::AsyncDrop;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `async_drop_lib`
-  --> $DIR/feature-gate-async-drop.rs:13:5
+  --> $DIR/feature-gate-async-drop-lib.rs:13:5
    |
 LL |     async fn drop(self: Pin<&mut Self>) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #126482 <https://github.com/rust-lang/rust/issues/126482> for more information
    = help: add `#![feature(async_drop_lib)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `async_drop_lib`
-  --> $DIR/feature-gate-async-drop.rs:12:6
+  --> $DIR/feature-gate-async-drop-lib.rs:12:6
    |
 LL | impl AsyncDrop for Foo {
    |      ^^^^^^^^^

@@ -3,7 +3,7 @@
 #![crate_type = "lib"]
 #![allow(incomplete_features)]
 #![allow(non_camel_case_types)]
-#![feature(async_drop)]
+#![feature(async_drop_lib)]
 use std::future::AsyncDrop;
 struct a;
 impl Drop for a { //~ ERROR: not all trait items implemented, missing: `drop`

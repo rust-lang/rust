@@ -6,7 +6,7 @@
 // please consider modifying rustc's async drop test at
 // `tests/ui/async-await/async-drop/async-drop-initial.rs`.
 
-#![feature(async_drop, impl_trait_in_assoc_type)]
+#![feature(async_drop, async_drop_lib, impl_trait_in_assoc_type)]
 #![allow(incomplete_features, dead_code)]
 
 // FIXME(zetanumbers): consider AsyncDestruct::async_drop cleanup tests

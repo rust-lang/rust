@@ -1648,7 +1648,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             && let hir::ItemKind::Impl(impl_) = item.kind
             && let Some(trait_) = impl_.of_trait
             && let Some(def_id) = trait_.trait_def_id()
-            && self.tcx.is_lang_item(def_id, hir::LangItem::Drop)
+            && (self.tcx.is_lang_item(def_id, hir::LangItem::Drop)
+                || self.tcx.is_lang_item(def_id, hir::LangItem::AsyncDrop))
         {
             return;
         }

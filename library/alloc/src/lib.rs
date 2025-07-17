@@ -164,6 +164,7 @@
 // tidy-alphabetical-start
 #![feature(allocator_internals)]
 #![feature(allow_internal_unstable)]
+#![feature(async_drop_lib)]
 #![feature(cfg_sanitize)]
 #![feature(const_precise_live_drops)]
 #![feature(coroutine_trait)]

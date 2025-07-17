@@ -1,7 +1,7 @@
 //@ edition: 2024
 // ex-ice: #140500
 #![crate_type = "lib"]
-#![feature(async_drop)]
+#![feature(async_drop, async_drop_lib)]
 #![expect(incomplete_features)]
 use std::future::AsyncDrop;
 struct A;

@@ -3,7 +3,7 @@
 // Future `bar` with internal async drop `Foo` will have async drop itself.
 // And we trying to drop this future in sync context (`block_on` func)
 
-#![feature(async_drop)]
+#![feature(async_drop, async_drop_lib)]
 #![allow(incomplete_features)]
 
 use std::mem::ManuallyDrop;

@@ -1,9 +1,8 @@
 //@ run-pass
 //@ check-run-results
-// struct `Foo` has both sync and async drop.
-// Sync version is called in sync context, async version is called in async function.
 
-#![feature(async_drop, async_drop_lib)]
+#![feature(async_drop)]
+#![feature(async_drop_lib)]
 #![allow(incomplete_features)]
 
 use std::mem::ManuallyDrop;
@@ -50,7 +49,8 @@ impl AsyncDrop for Foo {
 
 fn main() {
     {
-        let _ = Foo::new(7);
+        // added box here
+        let _ = Box::new(Foo::new(7));
     }
     println!("Middle");
     block_on(bar(10));
@@ -58,7 +58,8 @@ fn main() {
 }
 
 async fn bar(ident_base: usize) {
-    let mut _first = Foo::new(ident_base);
+    // added box here
+    let _ = Box::new(Foo::new(ident_base));
 }
 
 fn block_on<F>(fut_unpin: F) -> F::Output

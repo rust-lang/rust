@@ -20,7 +20,7 @@ mod pending;
 mod poll_fn;
 mod ready;
 
-#[unstable(feature = "async_drop", issue = "126482")]
+#[unstable(feature = "async_drop_lib", issue = "126482")]
 pub use async_drop::{AsyncDrop, async_drop_in_place};
 #[stable(feature = "into_future", since = "1.64.0")]
 pub use into_future::IntoFuture;

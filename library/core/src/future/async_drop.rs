@@ -1,4 +1,4 @@
-#![unstable(feature = "async_drop", issue = "126482")]
+#![unstable(feature = "async_drop_lib", issue = "126482")]
 
 #[allow(unused_imports)]
 use core::future::Future;
@@ -24,7 +24,7 @@ use crate::task::{Context, Poll};
 /// are `Copy` get implicitly duplicated by the compiler, making it very
 /// hard to predict when, and how often destructors will be executed. As such,
 /// these types cannot have destructors.
-#[unstable(feature = "async_drop", issue = "126482")]
+#[unstable(feature = "async_drop_lib", issue = "126482")]
 #[lang = "async_drop"]
 pub trait AsyncDrop {
     /// Executes the async destructor for this type.
@@ -41,7 +41,7 @@ pub trait AsyncDrop {
 }
 
 /// Async drop.
-#[unstable(feature = "async_drop", issue = "126482")]
+#[unstable(feature = "async_drop_lib", issue = "126482")]
 #[lang = "async_drop_in_place"]
 pub async unsafe fn async_drop_in_place<T: ?Sized>(_to_drop: *mut T) {
     // Code here does not matter - this is replaced by the

@@ -3,7 +3,7 @@
 //@ edition:2024
 //@ check-pass
 
-#![feature(async_drop)]
+#![feature(async_drop, async_drop_lib)]
 #![allow(incomplete_features)]
 #![allow(non_snake_case)]
 

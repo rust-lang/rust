@@ -2,7 +2,7 @@
 // Ex-ICE: #140974
 #![crate_type = "lib"]
 #![allow(incomplete_features)]
-#![feature(async_drop)]
+#![feature(async_drop, async_drop_lib)]
 use core::future::AsyncDrop;
 
 async fn fun(_: HasIncompleteAsyncDrop) {}

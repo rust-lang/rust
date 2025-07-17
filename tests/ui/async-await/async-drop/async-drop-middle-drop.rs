@@ -3,7 +3,7 @@
 // Test async drop of coroutine `bar` (with internal async drop),
 // stopped at the middle of execution, with AsyncDrop object Foo active.
 
-#![feature(async_drop)]
+#![feature(async_drop, async_drop_lib)]
 #![allow(incomplete_features)]
 
 //@ edition: 2021

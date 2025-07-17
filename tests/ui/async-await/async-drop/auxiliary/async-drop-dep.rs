@@ -1,6 +1,6 @@
 //@ edition:2021
 
-#![feature(async_drop)]
+#![feature(async_drop, async_drop_lib)]
 #![allow(incomplete_features)]
 
 pub struct HasDrop;

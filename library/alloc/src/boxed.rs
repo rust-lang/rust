@@ -189,7 +189,7 @@ use core::clone::CloneToUninit;
 use core::cmp::Ordering;
 use core::error::{self, Error};
 use core::fmt;
-use core::future::Future;
+use core::future::{AsyncDrop, Future};
 use core::hash::{Hash, Hasher};
 use core::marker::{Tuple, Unsize};
 use core::mem::{self, SizedTypeProperties};
@@ -1656,6 +1656,23 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
 unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Box<T, A> {
     #[inline]
     fn drop(&mut self) {
+        // the T in the Box is dropped by the compiler before the destructor is run
+
+        let ptr = self.0;
+
+        unsafe {
+            let layout = Layout::for_value_raw(ptr.as_ptr());
+            if layout.size() != 0 {
+                self.1.deallocate(From::from(ptr.cast()), layout);
+            }
+        }
+    }
+}
+
+#[unstable(feature = "async_drop_lib", issue = "126482")]
+unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> AsyncDrop for Box<T, A> {
+    #[inline]
+    async fn drop(self: Pin<&mut Self>) {
         // the T in the Box is dropped by the compiler before the destructor is run
 
         let ptr = self.0;

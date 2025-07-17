@@ -1,6 +1,6 @@
 //@compile-flags: -Zvalidate-mir -Zinline-mir=yes --crate-type=lib
 
-#![feature(async_drop)]
+#![feature(async_drop, async_drop_lib)]
 #![allow(incomplete_features)]
 
 use std::{
