@@ -229,6 +229,27 @@ pub trait Analysis<'tcx> {
         unreachable!();
     }
 
+    #[inline]
+    fn iterate_to_fixpoint<'mir>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+        pass_name: Option<&'static str>,
+    ) -> AnalysisAndResults<'tcx, Self>
+    where
+        Self: Sized,
+        Self::Domain: DebugWithContext<Self>,
+    {
+        // Computing dataflow over the SCCs is only supported in forward analyses. It's also
+        // unnecessary to use it on acyclic graphs, as the condensation graph is of course the same
+        // as the CFG itself.
+        if Self::Direction::IS_BACKWARD || !body.basic_blocks.is_cfg_cyclic() {
+            self.iterate_to_fixpoint_per_block(tcx, body, pass_name)
+        } else {
+            self.iterate_to_fixpoint_per_scc(tcx, body, pass_name)
+        }
+    }
+
     /* Extension methods */
 
     /// Finds the fixpoint for this dataflow problem.
@@ -244,7 +265,7 @@ pub trait Analysis<'tcx> {
     /// dataflow analysis. Some analyses are run multiple times in the compilation pipeline.
     /// Without a `pass_name` to differentiates them, only the results for the latest run will be
     /// saved.
-    fn iterate_to_fixpoint<'mir>(
+    fn iterate_to_fixpoint_per_block<'mir>(
         mut self,
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
@@ -303,6 +324,92 @@ pub trait Analysis<'tcx> {
             let res = write_graphviz_results(tcx, body, &mut self, &results, pass_name);
             if let Err(e) = res {
                 error!("Failed to write graphviz dataflow results: {}", e);
+            }
+        }
+
+        AnalysisAndResults { analysis: self, results }
+    }
+
+    fn iterate_to_fixpoint_per_scc<'mir>(
+        mut self,
+        _tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+        _pass_name: Option<&'static str>,
+    ) -> AnalysisAndResults<'tcx, Self>
+    where
+        Self: Sized,
+        Self::Domain: DebugWithContext<Self>,
+    {
+        assert!(Self::Direction::IS_FORWARD);
+
+        let sccs = body.basic_blocks.sccs();
+
+        struct VecQueue<T: Idx> {
+            queue: Vec<T>,
+            set: DenseBitSet<T>,
+        }
+
+        impl<T: Idx> VecQueue<T> {
+            #[inline]
+            fn with_none(len: usize) -> Self {
+                VecQueue { queue: Vec::with_capacity(len), set: DenseBitSet::new_empty(len) }
+            }
+
+            #[inline]
+            fn insert(&mut self, element: T) {
+                if self.set.insert(element) {
+                    self.queue.push(element);
+                }
+            }
+        }
+
+        let mut scc_queue = VecQueue::with_none(sccs.component_count);
+        for &bb in body.basic_blocks.reverse_postorder().iter() {
+            // let scc = sccs.components[bb.as_usize()];
+            let scc = sccs.components[bb];
+            scc_queue.insert(scc);
+        }
+        // assert_eq!(scc_queue.queue, sccs.queue);
+
+        let mut results = IndexVec::from_fn_n(|_| self.bottom_value(body), body.basic_blocks.len());
+        self.initialize_start_block(body, &mut results[mir::START_BLOCK]);
+
+        // Worklist for per-SCC iterations
+        let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
+
+        let mut state = self.bottom_value(body);
+
+        for &scc in &scc_queue.queue {
+            // les blocks doivent être ajoutés en RPO
+            // for block in sccs.blocks_in_rpo(scc as usize) {
+            for block in sccs.sccs[scc as usize].iter().copied() {
+                dirty_queue.insert(block);
+            }
+
+            while let Some(bb) = dirty_queue.pop() {
+                // Set the state to the entry state of the block. This is equivalent to `state =
+                // results[bb].clone()`, but it saves an allocation, thus improving compile times.
+                state.clone_from(&results[bb]);
+
+                Self::Direction::apply_effects_in_block(
+                    &mut self,
+                    body,
+                    &mut state,
+                    bb,
+                    &body[bb],
+                    |target: BasicBlock, state: &Self::Domain| {
+                        let set_changed = results[target].join(state);
+                        // let target_scc = sccs.components[target.as_usize()];
+                        let target_scc = sccs.components[target];
+                        if set_changed && target_scc == scc {
+                            // The target block is in the SCC we're currently processing, and we
+                            // want to process this block until fixpoint. Otherwise, the target
+                            // block is in a successor SCC and it will be processed when that SCC is
+                            // encountered later.
+                            dirty_queue.insert(target);
+                        }
+                    },
+                );
             }
         }
 
