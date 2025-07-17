@@ -56,18 +56,16 @@ pub fn result_match(x: Result<u64, i64>) -> u16 {
     }
 }
 
-// CHECK-LABEL: @option_bool_match(
+// CHECK-LABEL: @option_bool_match(i8{{.+}}%x)
 #[no_mangle]
 pub fn option_bool_match(x: Option<bool>) -> char {
-    // CHECK: %[[RAW:.+]] = load i8, ptr %x
-    // CHECK: %[[IS_NONE:.+]] = icmp eq i8 %[[RAW]], 2
+    // CHECK: %[[IS_NONE:.+]] = icmp eq i8 %x, 2
     // CHECK: %[[OPT_DISCR:.+]] = select i1 %[[IS_NONE]], i64 0, i64 1
     // CHECK: %[[OPT_DISCR_T:.+]] = trunc nuw i64 %[[OPT_DISCR]] to i1
     // CHECK: br i1 %[[OPT_DISCR_T]], label %[[BB_SOME:.+]], label %[[BB_NONE:.+]]
 
     // CHECK: [[BB_SOME]]:
-    // CHECK: %[[FIELD:.+]] = load i8, ptr %x
-    // CHECK: %[[FIELD_T:.+]] = trunc nuw i8 %[[FIELD]] to i1
+    // CHECK: %[[FIELD_T:.+]] = trunc nuw i8 %x to i1
     // CHECK: br i1 %[[FIELD_T]]
     match x {
         None => 'n',
@@ -77,18 +75,16 @@ pub fn option_bool_match(x: Option<bool>) -> char {
 }
 
 use std::cmp::Ordering::{self, *};
-// CHECK-LABEL: @option_ordering_match(
+// CHECK-LABEL: @option_ordering_match(i8{{.+}}%x)
 #[no_mangle]
 pub fn option_ordering_match(x: Option<Ordering>) -> char {
-    // CHECK: %[[RAW:.+]] = load i8, ptr %x
-    // CHECK: %[[IS_NONE:.+]] = icmp eq i8 %[[RAW]], 2
+    // CHECK: %[[IS_NONE:.+]] = icmp eq i8 %x, 2
     // CHECK: %[[OPT_DISCR:.+]] = select i1 %[[IS_NONE]], i64 0, i64 1
     // CHECK: %[[OPT_DISCR_T:.+]] = trunc nuw i64 %[[OPT_DISCR]] to i1
     // CHECK: br i1 %[[OPT_DISCR_T]], label %[[BB_SOME:.+]], label %[[BB_NONE:.+]]
 
     // CHECK: [[BB_SOME]]:
-    // CHECK: %[[FIELD:.+]] = load i8, ptr %x
-    // CHECK: switch i8 %[[FIELD]], label %[[UNREACHABLE:.+]] [
+    // CHECK: switch i8 %x, label %[[UNREACHABLE:.+]] [
     // CHECK-NEXT: i8 -1, label
     // CHECK-NEXT: i8 0, label
     // CHECK-NEXT: i8 1, label

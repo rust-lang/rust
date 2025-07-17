@@ -39,6 +39,10 @@ pub fn array_of_tuple_le(a: &[(i16, u16); 2], b: &[(i16, u16); 2]) -> bool {
     // CHECK: %[[EQ00:.+]] = icmp eq i16 %[[A00]], %[[B00]]
     // CHECK-NEXT: br i1 %[[EQ00]], label %[[L01:.+]], label %[[EXIT_S:.+]]
 
+    // CHECK: [[EXIT_S]]:
+    // CHECK: %[[RET_S:.+]] = icmp sle i16
+    // CHECK: br label
+
     // CHECK: [[L01]]:
     // CHECK: %[[PA01:.+]] = getelementptr{{.+}}i8, ptr %a, {{i32|i64}} 2
     // CHECK: %[[PB01:.+]] = getelementptr{{.+}}i8, ptr %b, {{i32|i64}} 2
@@ -66,8 +70,12 @@ pub fn array_of_tuple_le(a: &[(i16, u16); 2], b: &[(i16, u16); 2]) -> bool {
     // CHECK: %[[EQ11:.+]] = icmp eq i16 %[[A11]], %[[B11]]
     // CHECK-NEXT: br i1 %[[EQ11]], label %[[DONE:.+]], label %[[EXIT_U]]
 
+    // CHECK: [[EXIT_U]]:
+    // CHECK: %[[RET_U:.+]] = icmp ule i16
+    // CHECK: br label
+
     // CHECK: [[DONE]]:
-    // CHECK: %[[RET:.+]] = phi i1 [ %{{.+}}, %[[EXIT_S]] ], [ %{{.+}}, %[[EXIT_U]] ], [ true, %[[L11]] ]
+    // CHECK: %[[RET:.+]] = phi i1 [ true, %[[L11]] ], [ %[[RET_S]], %[[EXIT_S]] ], [ %[[RET_U]], %[[EXIT_U]] ]
     // CHECK: ret i1 %[[RET]]
 
     a <= b
