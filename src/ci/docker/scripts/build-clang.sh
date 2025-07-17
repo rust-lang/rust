@@ -5,7 +5,7 @@ set -ex
 source shared.sh
 
 # Try to keep the LLVM version here in sync with src/ci/scripts/install-clang.sh
-LLVM=llvmorg-20.1.0-rc2
+LLVM=38158a93d8d9598fb3b827b8513f67771b8fcbfd
 
 mkdir llvm-project
 cd llvm-project
