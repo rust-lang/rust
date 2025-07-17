@@ -187,7 +187,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr: [*neon-stable]
-    assert_instr: [sabdl]
+    assert_instr: [sabdl2]
     safety: safe
     types:
       - [int8x16_t, int16x8_t, int8x8_t, uint8x8_t]
@@ -230,7 +230,7 @@ intrinsics:
           - stable
           - - 'feature = "neon_intrinsics"'
             - 'since = "1.59.0"'
-    assert_instr: [sabdl]
+    assert_instr: [sabdl2]
     safety: safe
     types:
       - [int16x8_t, int32x4_t, int16x4_t, uint16x4_t]
@@ -273,7 +273,7 @@ intrinsics:
           - stable
           - - 'feature = "neon_intrinsics"'
             - 'since = "1.59.0"'
-    assert_instr: [sabdl]
+    assert_instr: [sabdl2]
     safety: safe
     types:
       - [int32x4_t, int64x2_t, int32x2_t, uint32x2_t]
@@ -1462,7 +1462,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtl]]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtl2]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     safety: safe
     types:
@@ -1530,7 +1530,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtn]]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtn2]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     safety: safe
     types:
@@ -1582,7 +1582,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
     return_type: "{type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtxn]]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtxn2]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     safety: safe
     types:
@@ -5147,7 +5147,7 @@ intrinsics:
     attr:
       - *neon-stable
     safety: safe
-    assert_instr: [pmull]
+    assert_instr: [pmull2]
     types:
       - [poly8x16_t, poly8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', poly16x8_t]
     compose:
@@ -5169,7 +5169,7 @@ intrinsics:
       - *neon-aes
       - *neon-stable
     safety: safe
-    assert_instr: [pmull]
+    assert_instr: [pmull2]
     types:
       - [poly64x2_t, "p128"]
     compose:
@@ -5741,7 +5741,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
     attr: [*neon-stable]
-    assert_instr: [ssubw]
+    assert_instr: [ssubw2]
     safety: safe
     types:
       - [int16x8_t, int8x16_t, int8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -5762,7 +5762,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
     attr: [*neon-stable]
-    assert_instr: [usubw]
+    assert_instr: [usubw2]
     safety: safe
     types:
       - [uint16x8_t, uint8x16_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -5783,7 +5783,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr: [*neon-stable]
-    assert_instr: [ssubl]
+    assert_instr: [ssubl2]
     safety: safe
     types:
       - [int8x16_t, int16x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', int8x8_t]
@@ -5813,7 +5813,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr: [*neon-stable]
-    assert_instr: [usubl]
+    assert_instr: [usubl2]
     safety: safe
     types:
       - [uint8x16_t, uint16x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', uint8x8_t]
@@ -9909,7 +9909,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [uabal]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [uabal2]]}]]
     safety: safe
     types:
       - [uint16x8_t, uint8x16_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -9936,7 +9936,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - *neon-stable
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [sabal]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [sabal2]]}]]
     safety: safe
     types:
       - [int16x8_t, int8x16_t, int8x16_t, '[8, 9, 10, 11, 12, 13, 14, 15]', int8x8_t, uint8x8_t]
@@ -11345,7 +11345,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uabdl]]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uabdl2]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     safety: safe
     types:
