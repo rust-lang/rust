@@ -1505,6 +1505,15 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Returns the `CodegenFnAttrs` for the item at `def_id`.
+    ///
+    /// If possible, use `tcx.codegen_instance_attrs` instead. That function takes the
+    /// instance kind into account.
+    ///
+    /// For example, the `#[naked]` attribute should be applied for `InstanceKind::Item`,
+    /// but should not be applied if the instance kind is `InstanceKind::ReifyShim`.
+    /// Using this query would include the attribute regardless of the actual instance
+    /// kind at the call site.
     query codegen_fn_attrs(def_id: DefId) -> &'tcx CodegenFnAttrs {
         desc { |tcx| "computing codegen attributes of `{}`", tcx.def_path_str(def_id) }
         arena_cache
