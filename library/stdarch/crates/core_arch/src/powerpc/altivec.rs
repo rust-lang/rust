@@ -360,25 +360,6 @@ unsafe extern "C" {
     #[link_name = "llvm.ppc.altivec.vsrv"]
     fn vsrv(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
 
-    #[link_name = "llvm.fshl.v16i8"]
-    fn fshlb(
-        a: vector_unsigned_char,
-        b: vector_unsigned_char,
-        c: vector_unsigned_char,
-    ) -> vector_unsigned_char;
-    #[link_name = "llvm.fshl.v8i16"]
-    fn fshlh(
-        a: vector_unsigned_short,
-        b: vector_unsigned_short,
-        c: vector_unsigned_short,
-    ) -> vector_unsigned_short;
-    #[link_name = "llvm.fshl.v4i32"]
-    fn fshlw(
-        a: vector_unsigned_int,
-        b: vector_unsigned_int,
-        c: vector_unsigned_int,
-    ) -> vector_unsigned_int;
-
     #[link_name = "llvm.nearbyint.v4f32"]
     fn vrfin(a: vector_float) -> vector_float;
 }
@@ -3193,19 +3174,19 @@ mod sealed {
     impl_vec_cntlz! { vec_vcntlzw(vector_unsigned_int) }
 
     macro_rules! impl_vrl {
-        ($fun:ident $intr:ident $ty:ident) => {
+        ($fun:ident $ty:ident) => {
             #[inline]
             #[target_feature(enable = "altivec")]
             #[cfg_attr(test, assert_instr($fun))]
             unsafe fn $fun(a: t_t_l!($ty), b: t_t_l!($ty)) -> t_t_l!($ty) {
-                transmute($intr(transmute(a), transmute(a), transmute(b)))
+                simd_funnel_shl(a, a, b)
             }
         };
     }
 
-    impl_vrl! { vrlb fshlb u8 }
-    impl_vrl! { vrlh fshlh u16 }
-    impl_vrl! { vrlw fshlw u32 }
+    impl_vrl! { vrlb u8 }
+    impl_vrl! { vrlh u16 }
+    impl_vrl! { vrlw u32 }
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorRl {

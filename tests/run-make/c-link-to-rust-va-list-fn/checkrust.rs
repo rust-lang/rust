@@ -1,7 +1,8 @@
 #![crate_type = "staticlib"]
 #![feature(c_variadic)]
+#![feature(cfg_select)]
 
-use std::ffi::{CStr, CString, VaList, c_char, c_double, c_int, c_long, c_longlong};
+use std::ffi::{CStr, CString, VaList, VaListImpl, c_char, c_double, c_int, c_long, c_longlong};
 
 macro_rules! continue_if {
     ($cond:expr) => {
@@ -19,7 +20,7 @@ unsafe fn compare_c_str(ptr: *const c_char, val: &str) -> bool {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_list_0(mut ap: VaList) -> usize {
     continue_if!(ap.arg::<c_longlong>() == 1);
     continue_if!(ap.arg::<c_int>() == 2);
@@ -27,7 +28,7 @@ pub unsafe extern "C" fn check_list_0(mut ap: VaList) -> usize {
     0
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_list_1(mut ap: VaList) -> usize {
     continue_if!(ap.arg::<c_int>() == -1);
     continue_if!(ap.arg::<c_int>() == 'A' as c_int);
@@ -39,7 +40,7 @@ pub unsafe extern "C" fn check_list_1(mut ap: VaList) -> usize {
     0
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_list_2(mut ap: VaList) -> usize {
     continue_if!(ap.arg::<c_double>().floor() == 3.14f64.floor());
     continue_if!(ap.arg::<c_long>() == 12);
@@ -51,7 +52,7 @@ pub unsafe extern "C" fn check_list_2(mut ap: VaList) -> usize {
     0
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_list_copy_0(mut ap: VaList) -> usize {
     continue_if!(ap.arg::<c_double>().floor() == 6.28f64.floor());
     continue_if!(ap.arg::<c_int>() == 16);
@@ -64,14 +65,14 @@ pub unsafe extern "C" fn check_list_copy_0(mut ap: VaList) -> usize {
     )
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_varargs_0(_: c_int, mut ap: ...) -> usize {
     continue_if!(ap.arg::<c_int>() == 42);
     continue_if!(compare_c_str(ap.arg::<*const c_char>(), "Hello, World!"));
     0
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_varargs_1(_: c_int, mut ap: ...) -> usize {
     continue_if!(ap.arg::<c_double>().floor() == 3.14f64.floor());
     continue_if!(ap.arg::<c_long>() == 12);
@@ -80,12 +81,12 @@ pub unsafe extern "C" fn check_varargs_1(_: c_int, mut ap: ...) -> usize {
     0
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_varargs_2(_: c_int, _ap: ...) -> usize {
     0
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_varargs_3(_: c_int, mut ap: ...) -> usize {
     continue_if!(ap.arg::<c_int>() == 1);
     continue_if!(ap.arg::<c_int>() == 2);
@@ -100,7 +101,7 @@ pub unsafe extern "C" fn check_varargs_3(_: c_int, mut ap: ...) -> usize {
     0
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_varargs_4(_: c_double, mut ap: ...) -> usize {
     continue_if!(ap.arg::<c_double>() == 1.0);
     continue_if!(ap.arg::<c_double>() == 2.0);
@@ -118,7 +119,7 @@ pub unsafe extern "C" fn check_varargs_4(_: c_double, mut ap: ...) -> usize {
     0
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_varargs_5(_: c_int, mut ap: ...) -> usize {
     continue_if!(ap.arg::<c_double>() == 1.0);
     continue_if!(ap.arg::<c_int>() == 1);
@@ -147,4 +148,43 @@ pub unsafe extern "C" fn check_varargs_5(_: c_int, mut ap: ...) -> usize {
     continue_if!(ap.arg::<c_int>() == 13);
     continue_if!(ap.arg::<c_double>() == 13.0);
     0
+}
+
+unsafe extern "C" {
+    fn test_variadic(_: c_int, ...) -> usize;
+    fn test_va_list_by_value(_: VaList) -> usize;
+    fn test_va_list_by_pointer(_: *mut VaListImpl) -> usize;
+    fn test_va_list_by_pointer_pointer(_: *mut *mut VaListImpl) -> usize;
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn run_test_variadic() -> usize {
+    return unsafe { test_variadic(0, 1 as c_longlong, 2 as c_int, 3 as c_longlong) };
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn run_test_va_list_by_value() -> usize {
+    unsafe extern "C" fn helper(mut ap: ...) -> usize {
+        unsafe { test_va_list_by_value(ap.as_va_list()) }
+    }
+
+    unsafe { helper(1 as c_longlong, 2 as c_int, 3 as c_longlong) }
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn run_test_va_list_by_pointer() -> usize {
+    unsafe extern "C" fn helper(mut ap: ...) -> usize {
+        unsafe { test_va_list_by_pointer(&mut ap) }
+    }
+
+    unsafe { helper(1 as c_longlong, 2 as c_int, 3 as c_longlong) }
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn run_test_va_list_by_pointer_pointer() -> usize {
+    unsafe extern "C" fn helper(mut ap: ...) -> usize {
+        unsafe { test_va_list_by_pointer_pointer(&mut (&mut ap as *mut _)) }
+    }
+
+    unsafe { helper(1 as c_longlong, 2 as c_int, 3 as c_longlong) }
 }

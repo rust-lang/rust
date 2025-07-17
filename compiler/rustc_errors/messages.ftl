@@ -41,5 +41,8 @@ errors_target_invalid_bits =
 
 errors_target_invalid_bits_size = {$err}
 
+errors_target_invalid_datalayout_pointer_spec =
+    unknown pointer specification `{$err}` in datalayout string
+
 errors_target_missing_alignment =
     missing alignment for `{$cause}` in "data-layout"

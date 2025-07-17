@@ -51,12 +51,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         match span.desugaring_kind() {
-            // If span arose from a desugaring of `if` or `while`, then it is the condition
-            // itself, which diverges, that we are about to lint on. This gives suboptimal
-            // diagnostics. Instead, stop here so that the `if`- or `while`-expression's
-            // block is linted instead.
-            Some(DesugaringKind::CondTemporary) => return,
-
             // Don't lint if the result of an async block or async function is `!`.
             // This does not affect the unreachable lints *within* the body.
             Some(DesugaringKind::Async) => return,

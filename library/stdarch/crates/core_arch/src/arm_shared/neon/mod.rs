@@ -777,8 +777,8 @@ pub struct float16x8x2_t(pub float16x8_t, pub float16x8_t);
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
-
 pub struct float16x8x3_t(pub float16x8_t, pub float16x8_t, pub float16x8_t);
+
 /// Arm-specific type containing four `float16x8_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]

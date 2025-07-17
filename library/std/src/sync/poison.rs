@@ -13,7 +13,7 @@
 //! depend on the primitive. See [#Overview] bellow.
 //!
 //! For the alternative implementations that do not employ poisoning,
-//! see `std::sys::nonpoisoning`.
+//! see `std::sync::nonpoisoning`.
 //!
 //! # Overview
 //!

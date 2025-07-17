@@ -2,14 +2,18 @@
 // If you find a bug or want to improve the output open a issue at https://github.com/rust-lang/project-stable-mir.
 fn foo(_1: i32) -> i32 {
     let mut _0: i32;
-    let mut _2: (i32, bool);
+    let mut _2: i32;
+    let mut _3: (i32, bool);
     debug i => _1;
     bb0: {
-        _2 = CheckedAdd(_1, 1_i32);
-        assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", _1, 1_i32) -> [success: bb1, unwind continue];
+        StorageLive(_2);
+        _2 = _1;
+        _3 = CheckedAdd(_2, 1_i32);
+        assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", move _2, 1_i32) -> [success: bb1, unwind continue];
     }
     bb1: {
-        _0 = move (_2.0: i32);
+        _0 = move (_3.0: i32);
+        StorageDead(_2);
         return;
     }
 }
@@ -22,15 +26,23 @@ fn bar(_1: &mut Vec<i32>) -> Vec<i32> {
     debug vec => _1;
     debug new_vec => _2;
     bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
         _3 = &(*_1);
         _2 = <Vec<i32> as Clone>::clone(move _3) -> [return: bb1, unwind continue];
     }
     bb1: {
+        StorageDead(_3);
+        StorageLive(_4);
+        StorageLive(_5);
         _5 = &mut _2;
         _4 = Vec::<i32>::push(move _5, 1_i32) -> [return: bb2, unwind: bb3];
     }
     bb2: {
+        StorageDead(_5);
+        StorageDead(_4);
         _0 = move _2;
+        StorageDead(_2);
         return;
     }
     bb3: {
@@ -69,6 +81,7 @@ fn demux(_1: u8) -> u8 {
 fn main() -> () {
     let mut _0: ();
     bb0: {
+        _0 = ();
         return;
     }
 }

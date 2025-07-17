@@ -10,10 +10,10 @@ note: found an item that was configured out
 LL |     pub fn x() {}
    |            ^
 note: the item is gated here
-  --> $DIR/diagnostics-reexport.rs:17:5
+  --> $DIR/diagnostics-reexport.rs:17:11
    |
 LL |     #[cfg(false)]
-   |     ^^^^^^^^^^^^^
+   |           ^^^^^
 
 error[E0432]: unresolved imports `b::x`, `b::y`
   --> $DIR/diagnostics-reexport.rs:22:13
@@ -29,20 +29,20 @@ note: found an item that was configured out
 LL |     pub fn x() {}
    |            ^
 note: the item is gated here
-  --> $DIR/diagnostics-reexport.rs:28:5
+  --> $DIR/diagnostics-reexport.rs:28:11
    |
 LL |     #[cfg(false)]
-   |     ^^^^^^^^^^^^^
+   |           ^^^^^
 note: found an item that was configured out
   --> $DIR/diagnostics-reexport.rs:32:12
    |
 LL |     pub fn y() {}
    |            ^
 note: the item is gated here
-  --> $DIR/diagnostics-reexport.rs:31:5
+  --> $DIR/diagnostics-reexport.rs:31:11
    |
 LL |     #[cfg(false)]
-   |     ^^^^^^^^^^^^^
+   |           ^^^^^
 
 error[E0425]: cannot find function `uwu` in module `inner`
   --> $DIR/diagnostics-reexport.rs:38:12
@@ -56,10 +56,10 @@ note: found an item that was configured out
 LL |     pub use super::uwu;
    |                    ^^^
 note: the item is gated here
-  --> $DIR/diagnostics-reexport.rs:7:5
+  --> $DIR/diagnostics-reexport.rs:7:11
    |
 LL |     #[cfg(false)]
-   |     ^^^^^^^^^^^^^
+   |           ^^^^^
 
 error: aborting due to 3 previous errors
 

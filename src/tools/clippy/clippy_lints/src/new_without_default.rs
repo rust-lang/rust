@@ -6,6 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::HirIdSet;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::ty::AssocKind;
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 
@@ -61,18 +62,18 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
             of_trait: None,
             generics,
             self_ty: impl_self_ty,
-            items,
             ..
         }) = item.kind
         {
-            for assoc_item in *items {
-                if assoc_item.kind == (hir::AssocItemKind::Fn { has_self: false }) {
-                    let impl_item = cx.tcx.hir_impl_item(assoc_item.id);
+            for assoc_item in cx.tcx.associated_items(item.owner_id.def_id)
+                .filter_by_name_unhygienic(sym::new)
+            {
+                if let AssocKind::Fn { has_self: false, .. } = assoc_item.kind {
+                    let impl_item = cx.tcx.hir_node_by_def_id(assoc_item.def_id.expect_local()).expect_impl_item();
                     if impl_item.span.in_external_macro(cx.sess().source_map()) {
                         return;
                     }
                     if let hir::ImplItemKind::Fn(ref sig, _) = impl_item.kind {
-                        let name = impl_item.ident.name;
                         let id = impl_item.owner_id;
                         if sig.header.is_unsafe() {
                             // can't be implemented for unsafe new
@@ -88,11 +89,9 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             return;
                         }
                         if sig.decl.inputs.is_empty()
-                            && name == sym::new
                             && cx.effective_visibilities.is_reachable(impl_item.owner_id.def_id)
-                            && let self_def_id = cx.tcx.hir_get_parent_item(id.into())
-                            && let self_ty = cx.tcx.type_of(self_def_id).instantiate_identity()
-                            && self_ty == return_ty(cx, id)
+                            && let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+                            && self_ty == return_ty(cx, impl_item.owner_id)
                             && let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)
                         {
                             if self.impling_types.is_none() {
@@ -111,7 +110,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             // Check if a Default implementation exists for the Self type, regardless of
                             // generics
                             if let Some(ref impling_types) = self.impling_types
-                                && let self_def = cx.tcx.type_of(self_def_id).instantiate_identity()
+                                && let self_def = cx.tcx.type_of(item.owner_id).instantiate_identity()
                                 && let Some(self_def) = self_def.ty_adt_def()
                                 && let Some(self_local_did) = self_def.did().as_local()
                                 && let self_id = cx.tcx.local_def_id_to_hir_id(self_local_did)

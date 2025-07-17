@@ -2058,9 +2058,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> {
-        // Create a dependency to the red node to be sure we re-execute this when the amount of
-        // definitions change.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        // Depend on the `analysis` query to ensure compilation if finished.
+        self.ensure_ok().analysis(());
 
         let definitions = &self.untracked.definitions;
         gen {
@@ -2080,9 +2079,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn def_path_table(self) -> &'tcx rustc_hir::definitions::DefPathTable {
-        // Create a dependency to the crate to be sure we re-execute this when the amount of
-        // definitions change.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        // Depend on the `analysis` query to ensure compilation if finished.
+        self.ensure_ok().analysis(());
 
         // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
@@ -3281,10 +3279,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     return ty::Region::new_late_param(
                         self,
                         new_parent.to_def_id(),
-                        ty::LateParamRegionKind::Named(
-                            lbv.to_def_id(),
-                            self.item_name(lbv.to_def_id()),
-                        ),
+                        ty::LateParamRegionKind::Named(lbv.to_def_id()),
                     );
                 }
                 resolve_bound_vars::ResolvedArg::Error(guar) => {
@@ -3366,6 +3361,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolver_for_lowering_raw(()).0
     }
 
+    pub fn metadata_dep_node(self) -> crate::dep_graph::DepNode {
+        crate::dep_graph::make_metadata(self)
+    }
+
     /// Given an `impl_id`, return the trait it implements.
     /// Return `None` if this is an inherent impl.
     pub fn impl_trait_ref(
@@ -3415,10 +3414,6 @@ pub struct DeducedParamAttrs {
 pub fn provide(providers: &mut Providers) {
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
-    providers.names_imported_by_glob_use = |tcx, id| {
-        tcx.arena.alloc(tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default())
-    };
-
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
     providers.is_panic_runtime =

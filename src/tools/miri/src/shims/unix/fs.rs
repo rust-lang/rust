@@ -132,12 +132,12 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let buf = this.deref_pointer_as(buf_op, this.libc_ty_layout("stat"))?;
         this.write_int_fields_named(
             &[
-                ("st_dev", 0),
+                ("st_dev", metadata.dev.into()),
                 ("st_mode", mode.try_into().unwrap()),
                 ("st_nlink", 0),
                 ("st_ino", 0),
-                ("st_uid", 0),
-                ("st_gid", 0),
+                ("st_uid", metadata.uid.into()),
+                ("st_gid", metadata.gid.into()),
                 ("st_rdev", 0),
                 ("st_atime", access_sec.into()),
                 ("st_mtime", modified_sec.into()),
@@ -1544,6 +1544,9 @@ struct FileMetadata {
     created: Option<(u64, u32)>,
     accessed: Option<(u64, u32)>,
     modified: Option<(u64, u32)>,
+    dev: u64,
+    uid: u32,
+    gid: u32,
 }
 
 impl FileMetadata {
@@ -1601,6 +1604,21 @@ impl FileMetadata {
         let modified = extract_sec_and_nsec(metadata.modified())?;
 
         // FIXME: Provide more fields using platform specific methods.
-        interp_ok(Ok(FileMetadata { mode, size, created, accessed, modified }))
+
+        cfg_select! {
+            unix => {
+                use std::os::unix::fs::MetadataExt;
+                let dev = metadata.dev();
+                let uid = metadata.uid();
+                let gid = metadata.gid();
+            }
+            _ => {
+                let dev = 0;
+                let uid = 0;
+                let gid = 0;
+            }
+        }
+
+        interp_ok(Ok(FileMetadata { mode, size, created, accessed, modified, dev, uid, gid }))
     }
 }

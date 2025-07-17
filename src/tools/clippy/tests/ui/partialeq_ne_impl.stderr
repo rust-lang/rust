@@ -1,12 +1,8 @@
 error: re-implementing `PartialEq::ne` is unnecessary
   --> tests/ui/partialeq_ne_impl.rs:9:5
    |
-LL | /     fn ne(&self, _: &Foo) -> bool {
-LL | |
-LL | |
-LL | |         false
-LL | |     }
-   | |_____^
+LL |     fn ne(&self, _: &Foo) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::partialeq-ne-impl` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::partialeq_ne_impl)]`

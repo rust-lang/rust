@@ -30,7 +30,7 @@ LL + use std::fmt::Display;
    |
 LL + use std::fmt::LowerExp;
    |
-     and 5 other candidates
+   = and 5 other candidates
 
 error: aborting due to 2 previous errors
 

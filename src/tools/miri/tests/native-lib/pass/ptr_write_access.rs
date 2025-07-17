@@ -1,6 +1,6 @@
-// Only works on Unix targets
-//@ignore-target: windows wasm
-//@only-on-host
+//@revisions: trace notrace
+//@[trace] only-target: x86_64-unknown-linux-gnu i686-unknown-linux-gnu
+//@[trace] compile-flags: -Zmiri-native-lib-enable-tracing
 //@compile-flags: -Zmiri-permissive-provenance
 
 #![feature(box_as_ptr)]

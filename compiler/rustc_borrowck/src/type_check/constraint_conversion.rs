@@ -159,6 +159,9 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                     }
 
                     GenericArgKind::Type(mut t1) => {
+                        // Scraped constraints may have had inference vars.
+                        t1 = self.infcx.resolve_vars_if_possible(t1);
+
                         // Normalize the type we receive from a `TypeOutlives` obligation
                         // in the new trait solver.
                         if infcx.next_trait_solver() {

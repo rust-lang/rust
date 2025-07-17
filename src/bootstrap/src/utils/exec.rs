@@ -10,11 +10,17 @@
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Formatter};
+use std::fs::File;
 use std::hash::Hash;
+use std::io::{BufWriter, Write};
 use std::panic::Location;
 use std::path::Path;
-use std::process::{Child, Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
+use std::process;
+use std::process::{
+    Child, ChildStderr, ChildStdout, Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio,
+};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use build_helper::ci::CiEnv;
 use build_helper::drop_bomb::DropBomb;
@@ -63,11 +69,157 @@ impl OutputMode {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Default)]
-pub struct CommandCacheKey {
+pub struct CommandFingerprint {
     program: OsString,
     args: Vec<OsString>,
     envs: Vec<(OsString, Option<OsString>)>,
     cwd: Option<PathBuf>,
+}
+
+impl CommandFingerprint {
+    /// Helper method to format both Command and BootstrapCommand as a short execution line,
+    /// without all the other details (e.g. environment variables).
+    pub fn format_short_cmd(&self) -> String {
+        let program = Path::new(&self.program);
+        let mut line = vec![program.file_name().unwrap().to_str().unwrap().to_owned()];
+        line.extend(self.args.iter().map(|arg| arg.to_string_lossy().into_owned()));
+        line.extend(self.cwd.iter().map(|p| p.to_string_lossy().into_owned()));
+        line.join(" ")
+    }
+}
+
+#[derive(Default, Clone)]
+pub struct CommandProfile {
+    pub traces: Vec<ExecutionTrace>,
+}
+
+#[derive(Default)]
+pub struct CommandProfiler {
+    stats: Mutex<HashMap<CommandFingerprint, CommandProfile>>,
+}
+
+impl CommandProfiler {
+    pub fn record_execution(&self, key: CommandFingerprint, start_time: Instant) {
+        let mut stats = self.stats.lock().unwrap();
+        let entry = stats.entry(key).or_default();
+        entry.traces.push(ExecutionTrace::Executed { duration: start_time.elapsed() });
+    }
+
+    pub fn record_cache_hit(&self, key: CommandFingerprint) {
+        let mut stats = self.stats.lock().unwrap();
+        let entry = stats.entry(key).or_default();
+        entry.traces.push(ExecutionTrace::CacheHit);
+    }
+
+    pub fn report_summary(&self, start_time: Instant) {
+        let pid = process::id();
+        let filename = format!("bootstrap-profile-{pid}.txt");
+
+        let file = match File::create(&filename) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("Failed to create profiler output file: {e}");
+                return;
+            }
+        };
+
+        let mut writer = BufWriter::new(file);
+        let stats = self.stats.lock().unwrap();
+
+        let mut entries: Vec<_> = stats
+            .iter()
+            .map(|(key, profile)| {
+                let max_duration = profile
+                    .traces
+                    .iter()
+                    .filter_map(|trace| match trace {
+                        ExecutionTrace::Executed { duration, .. } => Some(*duration),
+                        _ => None,
+                    })
+                    .max();
+
+                (key, profile, max_duration)
+            })
+            .collect();
+
+        entries.sort_by(|a, b| b.2.cmp(&a.2));
+
+        let total_bootstrap_duration = start_time.elapsed();
+
+        let total_fingerprints = entries.len();
+        let mut total_cache_hits = 0;
+        let mut total_execution_duration = Duration::ZERO;
+        let mut total_saved_duration = Duration::ZERO;
+
+        for (key, profile, max_duration) in &entries {
+            writeln!(writer, "Command: {:?}", key.format_short_cmd()).unwrap();
+
+            let mut hits = 0;
+            let mut runs = 0;
+            let mut command_total_duration = Duration::ZERO;
+
+            for trace in &profile.traces {
+                match trace {
+                    ExecutionTrace::CacheHit => {
+                        hits += 1;
+                    }
+                    ExecutionTrace::Executed { duration, .. } => {
+                        runs += 1;
+                        command_total_duration += *duration;
+                    }
+                }
+            }
+
+            total_cache_hits += hits;
+            total_execution_duration += command_total_duration;
+            // This makes sense only in our current setup, where:
+            // - If caching is enabled, we record the timing for the initial execution,
+            //   and all subsequent runs will be cache hits.
+            // - If caching is disabled or unused, there will be no cache hits,
+            //   and we'll record timings for all executions.
+            total_saved_duration += command_total_duration * hits as u32;
+
+            let command_vs_bootstrap = if total_bootstrap_duration > Duration::ZERO {
+                100.0 * command_total_duration.as_secs_f64()
+                    / total_bootstrap_duration.as_secs_f64()
+            } else {
+                0.0
+            };
+
+            let duration_str = match max_duration {
+                Some(d) => format!("{d:.2?}"),
+                None => "-".into(),
+            };
+
+            writeln!(
+                writer,
+                "Summary: {runs} run(s), {hits} hit(s), max_duration={duration_str} total_duration: {command_total_duration:.2?} ({command_vs_bootstrap:.2?}% of total)\n"
+            )
+            .unwrap();
+        }
+
+        let overhead_time = total_bootstrap_duration
+            .checked_sub(total_execution_duration)
+            .unwrap_or(Duration::ZERO);
+
+        writeln!(writer, "\n=== Aggregated Summary ===").unwrap();
+        writeln!(writer, "Total unique commands (fingerprints): {total_fingerprints}").unwrap();
+        writeln!(writer, "Total time spent in command executions: {total_execution_duration:.2?}")
+            .unwrap();
+        writeln!(writer, "Total bootstrap time: {total_bootstrap_duration:.2?}").unwrap();
+        writeln!(writer, "Time spent outside command executions: {overhead_time:.2?}").unwrap();
+        writeln!(writer, "Total cache hits: {total_cache_hits}").unwrap();
+        writeln!(writer, "Estimated time saved due to cache hits: {total_saved_duration:.2?}")
+            .unwrap();
+
+        println!("Command profiler report saved to {filename}");
+    }
+}
+
+#[derive(Clone)]
+pub enum ExecutionTrace {
+    CacheHit,
+    Executed { duration: Duration },
 }
 
 /// Wrapper around `std::process::Command`.
@@ -209,15 +361,14 @@ impl<'a> BootstrapCommand {
         exec_ctx.as_ref().start(self, OutputMode::Capture, OutputMode::Print)
     }
 
-    /// Provides access to the stdlib Command inside.
-    /// FIXME: This function should be eventually removed from bootstrap.
-    pub fn as_command_mut(&mut self) -> &mut Command {
-        // We proactively mark this command as executed since we can't be certain how the returned
-        // command will be handled. Caching must also be avoided here, as the inner command could be
-        // modified externally without us being aware.
-        self.mark_as_executed();
-        self.do_not_cache();
-        &mut self.command
+    /// Spawn the command in background, while capturing and returning stdout, and printing stderr.
+    /// Returns None in dry-mode
+    #[track_caller]
+    pub fn stream_capture_stdout(
+        &'a mut self,
+        exec_ctx: impl AsRef<ExecutionContext>,
+    ) -> Option<StreamingCommand> {
+        exec_ctx.as_ref().stream(self, OutputMode::Capture, OutputMode::Print)
     }
 
     /// Mark the command as being executed, disarming the drop bomb.
@@ -243,12 +394,9 @@ impl<'a> BootstrapCommand {
         }
     }
 
-    pub fn cache_key(&self) -> Option<CommandCacheKey> {
-        if !self.should_cache {
-            return None;
-        }
+    pub fn fingerprint(&self) -> CommandFingerprint {
         let command = &self.command;
-        Some(CommandCacheKey {
+        CommandFingerprint {
             program: command.get_program().into(),
             args: command.get_args().map(OsStr::to_os_string).collect(),
             envs: command
@@ -256,7 +404,7 @@ impl<'a> BootstrapCommand {
                 .map(|(k, v)| (k.to_os_string(), v.map(|val| val.to_os_string())))
                 .collect(),
             cwd: command.get_current_dir().map(Path::to_path_buf),
-        })
+        }
     }
 }
 
@@ -399,30 +547,6 @@ impl Default for CommandOutput {
     }
 }
 
-/// Helper trait to format both Command and BootstrapCommand as a short execution line,
-/// without all the other details (e.g. environment variables).
-#[cfg(feature = "tracing")]
-pub trait FormatShortCmd {
-    fn format_short_cmd(&self) -> String;
-}
-
-#[cfg(feature = "tracing")]
-impl FormatShortCmd for BootstrapCommand {
-    fn format_short_cmd(&self) -> String {
-        self.command.format_short_cmd()
-    }
-}
-
-#[cfg(feature = "tracing")]
-impl FormatShortCmd for Command {
-    fn format_short_cmd(&self) -> String {
-        let program = Path::new(self.get_program());
-        let mut line = vec![program.file_name().unwrap().to_str().unwrap()];
-        line.extend(self.get_args().map(|arg| arg.to_str().unwrap()));
-        line.join(" ")
-    }
-}
-
 #[derive(Clone, Default)]
 pub struct ExecutionContext {
     dry_run: DryRun,
@@ -430,11 +554,12 @@ pub struct ExecutionContext {
     pub fail_fast: bool,
     delayed_failures: Arc<Mutex<Vec<String>>>,
     command_cache: Arc<CommandCache>,
+    profiler: Arc<CommandProfiler>,
 }
 
 #[derive(Default)]
 pub struct CommandCache {
-    cache: Mutex<HashMap<CommandCacheKey, CommandOutput>>,
+    cache: Mutex<HashMap<CommandFingerprint, CommandOutput>>,
 }
 
 enum CommandState<'a> {
@@ -445,8 +570,21 @@ enum CommandState<'a> {
         stdout: OutputMode,
         stderr: OutputMode,
         executed_at: &'a Location<'a>,
-        cache_key: Option<CommandCacheKey>,
+        fingerprint: CommandFingerprint,
+        start_time: Instant,
+        #[cfg(feature = "tracing")]
+        _span_guard: tracing::span::EnteredSpan,
     },
+}
+
+pub struct StreamingCommand {
+    child: Child,
+    pub stdout: Option<ChildStdout>,
+    pub stderr: Option<ChildStderr>,
+    fingerprint: CommandFingerprint,
+    start_time: Instant,
+    #[cfg(feature = "tracing")]
+    _span_guard: tracing::span::EnteredSpan,
 }
 
 #[must_use]
@@ -455,11 +593,11 @@ pub struct DeferredCommand<'a> {
 }
 
 impl CommandCache {
-    pub fn get(&self, key: &CommandCacheKey) -> Option<CommandOutput> {
+    pub fn get(&self, key: &CommandFingerprint) -> Option<CommandOutput> {
         self.cache.lock().unwrap().get(key).cloned()
     }
 
-    pub fn insert(&self, key: CommandCacheKey, output: CommandOutput) {
+    pub fn insert(&self, key: CommandFingerprint, output: CommandOutput) {
         self.cache.lock().unwrap().insert(key, output);
     }
 }
@@ -474,6 +612,10 @@ impl ExecutionContext {
             DryRun::Disabled => false,
             DryRun::SelfCheck | DryRun::UserSelected => true,
         }
+    }
+
+    pub fn profiler(&self) -> &CommandProfiler {
+        &self.profiler
     }
 
     pub fn get_dry_run(&self) -> &DryRun {
@@ -532,12 +674,15 @@ impl ExecutionContext {
         stdout: OutputMode,
         stderr: OutputMode,
     ) -> DeferredCommand<'a> {
-        let cache_key = command.cache_key();
+        let fingerprint = command.fingerprint();
 
-        if let Some(cached_output) = cache_key.as_ref().and_then(|key| self.command_cache.get(key))
-        {
+        #[cfg(feature = "tracing")]
+        let span_guard = trace_cmd!(command);
+
+        if let Some(cached_output) = self.command_cache.get(&fingerprint) {
             command.mark_as_executed();
             self.verbose(|| println!("Cache hit: {command:?}"));
+            self.profiler.record_cache_hit(fingerprint);
             return DeferredCommand { state: CommandState::Cached(cached_output) };
         }
 
@@ -552,13 +697,13 @@ impl ExecutionContext {
                     stdout,
                     stderr,
                     executed_at,
-                    cache_key,
+                    fingerprint,
+                    start_time: Instant::now(),
+                    #[cfg(feature = "tracing")]
+                    _span_guard: span_guard,
                 },
             };
         }
-
-        #[cfg(feature = "tracing")]
-        let _run_span = trace_cmd!(command);
 
         self.verbose(|| {
             println!("running: {command:?} (created at {created_at}, executed at {executed_at})")
@@ -567,6 +712,8 @@ impl ExecutionContext {
         let cmd = &mut command.command;
         cmd.stdout(stdout.stdio());
         cmd.stderr(stderr.stdio());
+
+        let start_time = Instant::now();
 
         let child = cmd.spawn();
 
@@ -577,7 +724,10 @@ impl ExecutionContext {
                 stdout,
                 stderr,
                 executed_at,
-                cache_key,
+                fingerprint,
+                start_time,
+                #[cfg(feature = "tracing")]
+                _span_guard: span_guard,
             },
         }
     }
@@ -617,6 +767,47 @@ impl ExecutionContext {
         }
         exit!(1);
     }
+
+    /// Spawns the command with configured stdout and stderr handling.
+    ///
+    /// Returns None if in dry-run mode or Panics if the command fails to spawn.
+    pub fn stream(
+        &self,
+        command: &mut BootstrapCommand,
+        stdout: OutputMode,
+        stderr: OutputMode,
+    ) -> Option<StreamingCommand> {
+        command.mark_as_executed();
+        if !command.run_in_dry_run && self.dry_run() {
+            return None;
+        }
+
+        #[cfg(feature = "tracing")]
+        let span_guard = trace_cmd!(command);
+
+        let start_time = Instant::now();
+        let fingerprint = command.fingerprint();
+        let cmd = &mut command.command;
+        cmd.stdout(stdout.stdio());
+        cmd.stderr(stderr.stdio());
+        let child = cmd.spawn();
+        let mut child = match child {
+            Ok(child) => child,
+            Err(e) => panic!("failed to execute command: {cmd:?}\nERROR: {e}"),
+        };
+
+        let stdout = child.stdout.take();
+        let stderr = child.stderr.take();
+        Some(StreamingCommand {
+            child,
+            stdout,
+            stderr,
+            fingerprint,
+            start_time,
+            #[cfg(feature = "tracing")]
+            _span_guard: span_guard,
+        })
+    }
 }
 
 impl AsRef<ExecutionContext> for ExecutionContext {
@@ -625,20 +816,47 @@ impl AsRef<ExecutionContext> for ExecutionContext {
     }
 }
 
+impl StreamingCommand {
+    pub fn wait(
+        mut self,
+        exec_ctx: impl AsRef<ExecutionContext>,
+    ) -> Result<ExitStatus, std::io::Error> {
+        let exec_ctx = exec_ctx.as_ref();
+        let output = self.child.wait();
+        exec_ctx.profiler().record_execution(self.fingerprint, self.start_time);
+        output
+    }
+}
+
 impl<'a> DeferredCommand<'a> {
     pub fn wait_for_output(self, exec_ctx: impl AsRef<ExecutionContext>) -> CommandOutput {
         match self.state {
             CommandState::Cached(output) => output,
-            CommandState::Deferred { process, command, stdout, stderr, executed_at, cache_key } => {
+            CommandState::Deferred {
+                process,
+                command,
+                stdout,
+                stderr,
+                executed_at,
+                fingerprint,
+                start_time,
+                #[cfg(feature = "tracing")]
+                _span_guard,
+            } => {
                 let exec_ctx = exec_ctx.as_ref();
 
                 let output =
                     Self::finish_process(process, command, stdout, stderr, executed_at, exec_ctx);
 
+                #[cfg(feature = "tracing")]
+                drop(_span_guard);
+
                 if (!exec_ctx.dry_run() || command.run_in_dry_run)
-                    && let (Some(cache_key), Some(_)) = (&cache_key, output.status())
+                    && output.status().is_some()
+                    && command.should_cache
                 {
-                    exec_ctx.command_cache.insert(cache_key.clone(), output.clone());
+                    exec_ctx.command_cache.insert(fingerprint.clone(), output.clone());
+                    exec_ctx.profiler.record_execution(fingerprint.clone(), start_time);
                 }
 
                 output

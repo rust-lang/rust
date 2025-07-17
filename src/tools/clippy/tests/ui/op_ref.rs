@@ -110,3 +110,37 @@ mod issue_2597 {
         &array[idx] < val
     }
 }
+
+#[allow(clippy::needless_if)]
+fn issue15063() {
+    use std::ops::BitAnd;
+
+    macro_rules! mac {
+        ($e:expr) => {
+            $e.clone()
+        };
+    }
+
+    let x = 1;
+    if &x == &mac!(1) {}
+    //~^ op_ref
+
+    #[derive(Copy, Clone)]
+    struct Y(i32);
+    impl BitAnd for Y {
+        type Output = Y;
+        fn bitand(self, rhs: Y) -> Y {
+            Y(self.0 & rhs.0)
+        }
+    }
+    impl<'a> BitAnd<&'a Y> for Y {
+        type Output = Y;
+        fn bitand(self, rhs: &'a Y) -> Y {
+            Y(self.0 & rhs.0)
+        }
+    }
+    let x = Y(1);
+    let y = Y(2);
+    let z = x & &mac!(y);
+    //~^ op_ref
+}

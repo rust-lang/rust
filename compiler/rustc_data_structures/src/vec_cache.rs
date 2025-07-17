@@ -76,8 +76,8 @@ impl SlotIndex {
                 index_in_bucket: idx as usize,
             };
         }
-        // SAFETY: We already ruled out idx 0, so `checked_ilog2` can't return `None`.
-        let bucket = unsafe { idx.checked_ilog2().unwrap_unchecked() as usize };
+        // We already ruled out idx 0, so this `ilog2` never panics (and the check optimizes away)
+        let bucket = idx.ilog2() as usize;
         let entries = 1 << bucket;
         SlotIndex {
             bucket_idx: bucket - FIRST_BUCKET_SHIFT + 1,

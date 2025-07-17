@@ -1239,7 +1239,7 @@ fn check_region_late_boundedness<'tcx>(
                 .unwrap_region_constraints()
                 .opportunistic_resolve_var(tcx, vid)
             && let ty::ReLateParam(ty::LateParamRegion {
-                kind: ty::LateParamRegionKind::Named(trait_param_def_id, _),
+                kind: ty::LateParamRegionKind::Named(trait_param_def_id),
                 ..
             }) = r.kind()
             && let ty::ReEarlyParam(ebr) = id_arg.expect_region().kind()
@@ -1264,7 +1264,7 @@ fn check_region_late_boundedness<'tcx>(
                 .unwrap_region_constraints()
                 .opportunistic_resolve_var(tcx, vid)
             && let ty::ReLateParam(ty::LateParamRegion {
-                kind: ty::LateParamRegionKind::Named(impl_param_def_id, _),
+                kind: ty::LateParamRegionKind::Named(impl_param_def_id),
                 ..
             }) = r.kind()
             && let ty::ReEarlyParam(ebr) = id_arg.expect_region().kind()
@@ -2468,7 +2468,7 @@ fn param_env_with_gat_bounds<'tcx>(
         let normalize_impl_ty_args = ty::GenericArgs::identity_for_item(tcx, container_id)
             .extend_to(tcx, impl_ty.def_id, |param, _| match param.kind {
                 GenericParamDefKind::Type { .. } => {
-                    let kind = ty::BoundTyKind::Param(param.def_id, param.name);
+                    let kind = ty::BoundTyKind::Param(param.def_id);
                     let bound_var = ty::BoundVariableKind::Ty(kind);
                     bound_vars.push(bound_var);
                     Ty::new_bound(
@@ -2479,7 +2479,7 @@ fn param_env_with_gat_bounds<'tcx>(
                     .into()
                 }
                 GenericParamDefKind::Lifetime => {
-                    let kind = ty::BoundRegionKind::Named(param.def_id, param.name);
+                    let kind = ty::BoundRegionKind::Named(param.def_id);
                     let bound_var = ty::BoundVariableKind::Region(kind);
                     bound_vars.push(bound_var);
                     ty::Region::new_bound(

@@ -106,6 +106,18 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:convert:AsRef")
     }
 
+    pub fn core_convert_AsMut(&self) -> Option<Trait> {
+        self.find_trait("core:convert:AsMut")
+    }
+
+    pub fn core_borrow_Borrow(&self) -> Option<Trait> {
+        self.find_trait("core:borrow:Borrow")
+    }
+
+    pub fn core_borrow_BorrowMut(&self) -> Option<Trait> {
+        self.find_trait("core:borrow:BorrowMut")
+    }
+
     pub fn core_ops_ControlFlow(&self) -> Option<Enum> {
         self.find_enum("core:ops:ControlFlow")
     }

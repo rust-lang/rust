@@ -4,7 +4,7 @@
 
 use std::assert_matches::assert_matches;
 
-use rustc_abi::Size;
+use rustc_abi::{FieldIdx, Size};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
@@ -28,8 +28,39 @@ pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAll
     let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes(), ());
     tcx.mk_const_alloc(alloc)
 }
-
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
+    /// Generates a value of `TypeId` for `ty` in-place.
+    pub(crate) fn write_type_id(
+        &mut self,
+        ty: Ty<'tcx>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()> {
+        let tcx = self.tcx;
+        let type_id_hash = tcx.type_id_hash(ty).as_u128();
+        let op = self.const_val_to_op(
+            ConstValue::Scalar(Scalar::from_u128(type_id_hash)),
+            tcx.types.u128,
+            None,
+        )?;
+        self.copy_op_allow_transmute(&op, dest)?;
+
+        // Give the each pointer-sized chunk provenance that knows about the type id.
+        // Here we rely on `TypeId` being a newtype around an array of pointers, so we
+        // first project to its only field and then the array elements.
+        let alloc_id = tcx.reserve_and_set_type_id_alloc(ty);
+        let first = self.project_field(dest, FieldIdx::ZERO)?;
+        let mut elem_iter = self.project_array_fields(&first)?;
+        while let Some((_, elem)) = elem_iter.next(self)? {
+            // Decorate this part of the hash with provenance; leave the integer part unchanged.
+            let hash_fragment = self.read_scalar(&elem)?.to_target_usize(&tcx)?;
+            let ptr = Pointer::new(alloc_id.into(), Size::from_bytes(hash_fragment));
+            let ptr = self.global_root_pointer(ptr)?;
+            let val = Scalar::from_pointer(ptr, &tcx);
+            self.write_scalar(val, &elem)?;
+        }
+        interp_ok(())
+    }
+
     /// Returns `true` if emulation happened.
     /// Here we implement the intrinsics that are common to all Miri instances; individual machines can add their own
     /// intrinsic handling.
@@ -63,9 +94,50 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::type_id => {
                 let tp_ty = instance.args.type_at(0);
                 ensure_monomorphic_enough(tcx, tp_ty)?;
-                let val = ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128());
-                let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
-                self.copy_op(&val, dest)?;
+                self.write_type_id(tp_ty, dest)?;
+            }
+            sym::type_id_eq => {
+                // Both operands are `TypeId`, which is a newtype around an array of pointers.
+                // Project until we have the array elements.
+                let a_fields = self.project_field(&args[0], FieldIdx::ZERO)?;
+                let b_fields = self.project_field(&args[1], FieldIdx::ZERO)?;
+
+                let mut a_fields = self.project_array_fields(&a_fields)?;
+                let mut b_fields = self.project_array_fields(&b_fields)?;
+
+                let mut provenance_a = None;
+                let mut provenance_b = None;
+                let mut provenance_matches = true;
+
+                while let Some((i, a)) = a_fields.next(self)? {
+                    let (_, b) = b_fields.next(self)?.unwrap();
+
+                    let a = self.deref_pointer(&a)?;
+                    let (a, offset_a) = self.get_ptr_type_id(a.ptr())?;
+
+                    let b = self.deref_pointer(&b)?;
+                    let (b, offset_b) = self.get_ptr_type_id(b.ptr())?;
+
+                    if *provenance_a.get_or_insert(a) != a {
+                        throw_ub_format!(
+                            "type_id_eq: the first TypeId argument is invalid, the provenance of chunk {i} does not match the first chunk's"
+                        )
+                    }
+                    if *provenance_b.get_or_insert(b) != b {
+                        throw_ub_format!(
+                            "type_id_eq: the second TypeId argument is invalid, the provenance of chunk {i} does not match the first chunk's"
+                        )
+                    }
+                    provenance_matches &= a == b;
+
+                    if offset_a != offset_b && provenance_matches {
+                        throw_ub_format!(
+                            "type_id_eq: one of the TypeId arguments is invalid, chunk {i} of the hash does not match the type it represents"
+                        )
+                    }
+                }
+
+                self.write_scalar(Scalar::from_bool(provenance_matches), dest)?;
             }
             sym::variant_count => {
                 let tp_ty = instance.args.type_at(0);

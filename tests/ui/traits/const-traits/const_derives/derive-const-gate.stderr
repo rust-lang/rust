@@ -1,21 +1,30 @@
 error[E0658]: use of unstable library feature `derive_const`
   --> $DIR/derive-const-gate.rs:1:3
    |
-LL | #[derive_const(Default)]
+LL | #[derive_const(Debug)]
    |   ^^^^^^^^^^^^
    |
    = help: add `#![feature(derive_const)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: const `impl` for trait `Default` which is not marked with `#[const_trait]`
+error: const `impl` for trait `Debug` which is not marked with `#[const_trait]`
   --> $DIR/derive-const-gate.rs:1:16
    |
-LL | #[derive_const(Default)]
-   |                ^^^^^^^ this trait is not `const`
+LL | #[derive_const(Debug)]
+   |                ^^^^^ this trait is not `const`
    |
    = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
    = note: adding a non-const method body in the future would be a breaking change
 
-error: aborting due to 2 previous errors
+error[E0015]: cannot call non-const method `Formatter::<'_>::write_str` in constant functions
+  --> $DIR/derive-const-gate.rs:1:16
+   |
+LL | #[derive_const(Debug)]
+   |                ^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-For more information about this error, try `rustc --explain E0658`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0015, E0658.
+For more information about an error, try `rustc --explain E0015`.

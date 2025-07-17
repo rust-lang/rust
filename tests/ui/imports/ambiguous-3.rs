@@ -1,10 +1,9 @@
-//@ check-pass
 // https://github.com/rust-lang/rust/issues/47525
 
 fn main() {
     use a::*;
     x();
-    //~^ WARNING `x` is ambiguous
+    //~^ ERROR `x` is ambiguous
     //~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 }
 

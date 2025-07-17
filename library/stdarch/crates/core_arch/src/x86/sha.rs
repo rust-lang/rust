@@ -146,7 +146,7 @@ pub fn _mm_sha256rnds2_epu32(a: __m128i, b: __m128i, k: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sha512,avx")]
 #[cfg_attr(test, assert_instr(vsha512msg1))]
-#[stable(feature = "sha512_sm_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "sha512_sm_x86", since = "1.89.0")]
 pub fn _mm256_sha512msg1_epi64(a: __m256i, b: __m128i) -> __m256i {
     unsafe { transmute(vsha512msg1(a.as_i64x4(), b.as_i64x2())) }
 }
@@ -159,7 +159,7 @@ pub fn _mm256_sha512msg1_epi64(a: __m256i, b: __m128i) -> __m256i {
 #[inline]
 #[target_feature(enable = "sha512,avx")]
 #[cfg_attr(test, assert_instr(vsha512msg2))]
-#[stable(feature = "sha512_sm_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "sha512_sm_x86", since = "1.89.0")]
 pub fn _mm256_sha512msg2_epi64(a: __m256i, b: __m256i) -> __m256i {
     unsafe { transmute(vsha512msg2(a.as_i64x4(), b.as_i64x4())) }
 }
@@ -175,7 +175,7 @@ pub fn _mm256_sha512msg2_epi64(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "sha512,avx")]
 #[cfg_attr(test, assert_instr(vsha512rnds2))]
-#[stable(feature = "sha512_sm_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "sha512_sm_x86", since = "1.89.0")]
 pub fn _mm256_sha512rnds2_epi64(a: __m256i, b: __m256i, k: __m128i) -> __m256i {
     unsafe { transmute(vsha512rnds2(a.as_i64x4(), b.as_i64x4(), k.as_i64x2())) }
 }
@@ -188,7 +188,7 @@ pub fn _mm256_sha512rnds2_epi64(a: __m256i, b: __m256i, k: __m128i) -> __m256i {
 #[inline]
 #[target_feature(enable = "sm3,avx")]
 #[cfg_attr(test, assert_instr(vsm3msg1))]
-#[stable(feature = "sha512_sm_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "sha512_sm_x86", since = "1.89.0")]
 pub fn _mm_sm3msg1_epi32(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
     unsafe { transmute(vsm3msg1(a.as_i32x4(), b.as_i32x4(), c.as_i32x4())) }
 }
@@ -201,7 +201,7 @@ pub fn _mm_sm3msg1_epi32(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sm3,avx")]
 #[cfg_attr(test, assert_instr(vsm3msg2))]
-#[stable(feature = "sha512_sm_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "sha512_sm_x86", since = "1.89.0")]
 pub fn _mm_sm3msg2_epi32(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
     unsafe { transmute(vsm3msg2(a.as_i32x4(), b.as_i32x4(), c.as_i32x4())) }
 }
@@ -219,7 +219,7 @@ pub fn _mm_sm3msg2_epi32(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
 #[target_feature(enable = "sm3,avx")]
 #[cfg_attr(test, assert_instr(vsm3rnds2, IMM8 = 0))]
 #[rustc_legacy_const_generics(3)]
-#[stable(feature = "sha512_sm_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "sha512_sm_x86", since = "1.89.0")]
 pub fn _mm_sm3rnds2_epi32<const IMM8: i32>(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
     static_assert!(
         IMM8 == (IMM8 & 0x3e),
@@ -235,7 +235,7 @@ pub fn _mm_sm3rnds2_epi32<const IMM8: i32>(a: __m128i, b: __m128i, c: __m128i) -
 #[inline]
 #[target_feature(enable = "sm4,avx")]
 #[cfg_attr(test, assert_instr(vsm4key4))]
-#[stable(feature = "sha512_sm_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "sha512_sm_x86", since = "1.89.0")]
 pub fn _mm_sm4key4_epi32(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(vsm4key4128(a.as_i32x4(), b.as_i32x4())) }
 }
@@ -247,7 +247,7 @@ pub fn _mm_sm4key4_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sm4,avx")]
 #[cfg_attr(test, assert_instr(vsm4key4))]
-#[stable(feature = "sha512_sm_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "sha512_sm_x86", since = "1.89.0")]
 pub fn _mm256_sm4key4_epi32(a: __m256i, b: __m256i) -> __m256i {
     unsafe { transmute(vsm4key4256(a.as_i32x8(), b.as_i32x8())) }
 }
@@ -259,7 +259,7 @@ pub fn _mm256_sm4key4_epi32(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "sm4,avx")]
 #[cfg_attr(test, assert_instr(vsm4rnds4))]
-#[stable(feature = "sha512_sm_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "sha512_sm_x86", since = "1.89.0")]
 pub fn _mm_sm4rnds4_epi32(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(vsm4rnds4128(a.as_i32x4(), b.as_i32x4())) }
 }
@@ -271,7 +271,7 @@ pub fn _mm_sm4rnds4_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sm4,avx")]
 #[cfg_attr(test, assert_instr(vsm4rnds4))]
-#[stable(feature = "sha512_sm_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "sha512_sm_x86", since = "1.89.0")]
 pub fn _mm256_sm4rnds4_epi32(a: __m256i, b: __m256i) -> __m256i {
     unsafe { transmute(vsm4rnds4256(a.as_i32x8(), b.as_i32x8())) }
 }

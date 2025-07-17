@@ -6,7 +6,7 @@ use crate::command::Command;
 use crate::env::env_var;
 use crate::path_helpers::cwd;
 use crate::util::set_host_compiler_dylib_path;
-use crate::{is_aix, is_darwin, is_msvc, is_windows, target, uname};
+use crate::{is_aix, is_darwin, is_windows, is_windows_msvc, target, uname};
 
 /// Construct a new `rustc` invocation. This will automatically set the library
 /// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.
@@ -377,7 +377,7 @@ impl Rustc {
             // So we end up with the following hack: we link use static:-bundle to only
             // link the parts of libstdc++ that we actually use, which doesn't include
             // the dependency on the pthreads DLL.
-            if !is_msvc() {
+            if !is_windows_msvc() {
                 self.cmd.arg("-lstatic:-bundle=stdc++");
             };
         } else if is_darwin() {

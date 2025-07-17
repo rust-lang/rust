@@ -6,7 +6,7 @@ use std::{
 
 use ide_db::base_db::{
     DbPanicContext,
-    salsa::{self, Cancelled, UnexpectedCycle},
+    salsa::{self, Cancelled},
 };
 use lsp_server::{ExtractError, Response, ResponseError};
 use serde::{Serialize, de::DeserializeOwned};
@@ -350,9 +350,6 @@ where
             if let Some(panic_message) = panic_message {
                 message.push_str(": ");
                 message.push_str(panic_message);
-            } else if let Some(cycle) = panic.downcast_ref::<UnexpectedCycle>() {
-                tracing::error!("{cycle}");
-                message.push_str(": unexpected cycle");
             } else if let Ok(cancelled) = panic.downcast::<Cancelled>() {
                 tracing::error!("Cancellation propagated out of salsa! This is a bug");
                 return Err(HandlerCancelledError::Inner(*cancelled));

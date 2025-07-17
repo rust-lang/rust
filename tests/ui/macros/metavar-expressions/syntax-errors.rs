@@ -30,7 +30,7 @@ macro_rules! metavar_with_literal_suffix {
 
 macro_rules! mve_without_parens {
     ( $( $i:ident ),* ) => { ${ count } };
-    //~^ ERROR meta-variable expression parameter must be wrapped in parentheses
+    //~^ ERROR expected `(`
 }
 
 #[rustfmt::skip]
@@ -45,9 +45,14 @@ macro_rules! open_brackets_with_lit {
      //~^ ERROR expected identifier
  }
 
+macro_rules! mvs_missing_paren {
+    ( $( $i:ident ),* ) => { ${ count $i ($i) } };
+    //~^ ERROR expected `(`
+}
+
 macro_rules! mve_wrong_delim {
     ( $( $i:ident ),* ) => { ${ count{i} } };
-    //~^ ERROR meta-variable expression parameter must be wrapped in parentheses
+    //~^ ERROR expected `(`
 }
 
 macro_rules! invalid_metavar {
@@ -64,28 +69,30 @@ macro_rules! open_brackets_with_group {
 macro_rules! extra_garbage_after_metavar {
     ( $( $i:ident ),* ) => {
         ${count() a b c}
-        //~^ ERROR unexpected token: a
+        //~^ ERROR unexpected trailing tokens
         ${count($i a b c)}
-        //~^ ERROR unexpected token: a
+        //~^ ERROR unexpected trailing tokens
         ${count($i, 1 a b c)}
-        //~^ ERROR unexpected token: a
+        //~^ ERROR unexpected trailing tokens
         ${count($i) a b c}
-        //~^ ERROR unexpected token: a
+        //~^ ERROR unexpected trailing tokens
 
         ${ignore($i) a b c}
-        //~^ ERROR unexpected token: a
+        //~^ ERROR unexpected trailing tokens
         ${ignore($i a b c)}
-        //~^ ERROR unexpected token: a
+        //~^ ERROR unexpected trailing tokens
 
         ${index() a b c}
-        //~^ ERROR unexpected token: a
+        //~^ ERROR unexpected trailing tokens
         ${index(1 a b c)}
-        //~^ ERROR unexpected token: a
+        //~^ ERROR unexpected trailing tokens
 
         ${index() a b c}
-        //~^ ERROR unexpected token: a
+        //~^ ERROR unexpected trailing tokens
         ${index(1 a b c)}
-        //~^ ERROR unexpected token: a
+        //~^ ERROR unexpected trailing tokens
+        ${index(1, a b c)}
+        //~^ ERROR unexpected trailing tokens
     };
 }
 
@@ -111,7 +118,7 @@ macro_rules! unknown_ignore_ident {
 
 macro_rules! unknown_metavar {
     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
-    //~^ ERROR unrecognized meta-variable expression
+    //~^ ERROR unrecognized metavariable expression
 }
 
 fn main() {}

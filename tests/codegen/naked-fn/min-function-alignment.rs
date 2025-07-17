@@ -1,6 +1,7 @@
 //@ compile-flags: -C no-prepopulate-passes -Copt-level=0 -Zmin-function-alignment=16
 //@ needs-asm-support
 //@ ignore-arm no "ret" mnemonic
+//@ ignore-wasm32 aligning functions is not currently supported on wasm (#143368)
 
 #![feature(fn_align)]
 #![crate_type = "lib"]

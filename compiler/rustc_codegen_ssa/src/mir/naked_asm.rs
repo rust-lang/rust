@@ -326,7 +326,7 @@ fn prefix_and_suffix<'tcx>(
 fn wasm_functype<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> String {
     let mut signature = String::with_capacity(64);
 
-    let ptr_type = match tcx.data_layout.pointer_size.bits() {
+    let ptr_type = match tcx.data_layout.pointer_size().bits() {
         32 => "i32",
         64 => "i64",
         other => bug!("wasm pointer size cannot be {other} bits"),

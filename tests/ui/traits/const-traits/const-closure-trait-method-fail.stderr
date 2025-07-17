@@ -1,30 +1,9 @@
-error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closure-trait-method-fail.rs:14:32
+error[E0277]: the trait bound `(): const Tr` is not satisfied
+  --> $DIR/const-closure-trait-method-fail.rs:18:23
    |
-LL | const fn need_const_closure<T: [const] FnOnce(()) -> i32>(x: T) -> i32 {
-   |                                ^^^^^^^ can't be applied to `FnOnce`
-   |
-note: `FnOnce` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
-  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+LL | const _: () = assert!(need_const_closure(Tr::a) == 42);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closure-trait-method-fail.rs:14:32
-   |
-LL | const fn need_const_closure<T: [const] FnOnce(()) -> i32>(x: T) -> i32 {
-   |                                ^^^^^^^ can't be applied to `FnOnce`
-   |
-note: `FnOnce` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
-  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+error: aborting due to 1 previous error
 
-error[E0015]: cannot call non-const closure in constant functions
-  --> $DIR/const-closure-trait-method-fail.rs:15:5
-   |
-LL |     x(())
-   |     ^^^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0277`.

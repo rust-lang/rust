@@ -10927,3 +10927,34 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn keyword_inside_link() {
+    check(
+        r#"
+enum Foo {
+    MacroExpansion,
+}
+
+/// I return a [macro expansion](Foo::MacroExpansion).
+fn bar$0() -> Foo {
+    Foo::MacroExpansion
+}
+    "#,
+        expect![[r#"
+            *bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn bar() -> Foo
+            ```
+
+            ---
+
+            I return a [macro expansion](https://docs.rs/ra_test_fixture/*/ra_test_fixture/enum.Foo.html#variant.MacroExpansion).
+        "#]],
+    );
+}

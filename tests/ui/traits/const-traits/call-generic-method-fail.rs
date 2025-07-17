@@ -1,5 +1,5 @@
 //@ compile-flags: -Znext-solver
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, const_cmp)]
 
 pub const fn equals_self<T: PartialEq>(t: &T) -> bool {
     *t == *t

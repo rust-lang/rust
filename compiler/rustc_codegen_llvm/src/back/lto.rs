@@ -680,7 +680,7 @@ pub(crate) fn run_pass_manager(
             if attributes::has_string_attr(function, enzyme_marker) {
                 // Sanity check: Ensure 'noinline' is present before replacing it.
                 assert!(
-                    !attributes::has_attr(function, Function, llvm::AttributeKind::NoInline),
+                    attributes::has_attr(function, Function, llvm::AttributeKind::NoInline),
                     "Expected __enzyme function to have 'noinline' before adding 'alwaysinline'"
                 );
 

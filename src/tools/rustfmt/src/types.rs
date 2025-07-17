@@ -1009,7 +1009,7 @@ impl Rewrite for ast::Ty {
                     })
                 }
             }
-            ast::TyKind::BareFn(ref bare_fn) => rewrite_bare_fn(bare_fn, self.span, context, shape),
+            ast::TyKind::FnPtr(ref fn_ptr) => rewrite_fn_ptr(fn_ptr, self.span, context, shape),
             ast::TyKind::Never => Ok(String::from("!")),
             ast::TyKind::MacCall(ref mac) => {
                 rewrite_macro(mac, context, shape, MacroPosition::Expression)
@@ -1105,8 +1105,8 @@ impl Rewrite for ast::TyPat {
     }
 }
 
-fn rewrite_bare_fn(
-    bare_fn: &ast::BareFnTy,
+fn rewrite_fn_ptr(
+    fn_ptr: &ast::FnPtrTy,
     span: Span,
     context: &RewriteContext<'_>,
     shape: Shape,
@@ -1115,7 +1115,7 @@ fn rewrite_bare_fn(
 
     let mut result = String::with_capacity(128);
 
-    if let Some(ref lifetime_str) = rewrite_bound_params(context, shape, &bare_fn.generic_params) {
+    if let Some(ref lifetime_str) = rewrite_bound_params(context, shape, &fn_ptr.generic_params) {
         result.push_str("for<");
         // 6 = "for<> ".len(), 4 = "for<".
         // This doesn't work out so nicely for multiline situation with lots of
@@ -1124,10 +1124,10 @@ fn rewrite_bare_fn(
         result.push_str("> ");
     }
 
-    result.push_str(crate::utils::format_safety(bare_fn.safety));
+    result.push_str(crate::utils::format_safety(fn_ptr.safety));
 
     result.push_str(&format_extern(
-        bare_fn.ext,
+        fn_ptr.ext,
         context.config.force_explicit_abi(),
     ));
 
@@ -1145,9 +1145,9 @@ fn rewrite_bare_fn(
     };
 
     let rewrite = format_function_type(
-        bare_fn.decl.inputs.iter(),
-        &bare_fn.decl.output,
-        bare_fn.decl.c_variadic(),
+        fn_ptr.decl.inputs.iter(),
+        &fn_ptr.decl.output,
+        fn_ptr.decl.c_variadic(),
         span,
         context,
         func_ty_shape,

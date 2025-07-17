@@ -17,7 +17,7 @@ LL |     t.a2.bar();
    |       +++
 LL |     t.a3.bar();
    |       +++
-     and 6 other candidates
+   = and 6 other candidates
 
 error[E0609]: no field `field` on type `Thing`
   --> $DIR/too-many-field-suggestions.rs:26:7
@@ -35,7 +35,7 @@ LL |     t.a2.field;
    |       +++
 LL |     t.a3.field;
    |       +++
-     and 6 other candidates
+   = and 6 other candidates
 
 error: aborting due to 2 previous errors
 

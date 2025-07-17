@@ -892,6 +892,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`unnested_or_patterns`](https://rust-lang.github.io/rust-clippy/master/index.html#unnested_or_patterns)
 * [`unused_trait_names`](https://rust-lang.github.io/rust-clippy/master/index.html#unused_trait_names)
 * [`use_self`](https://rust-lang.github.io/rust-clippy/master/index.html#use_self)
+* [`zero_ptr`](https://rust-lang.github.io/rust-clippy/master/index.html#zero_ptr)
 
 
 ## `pass-by-value-size-limit`

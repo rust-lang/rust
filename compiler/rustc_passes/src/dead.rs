@@ -18,7 +18,7 @@ use rustc_hir::{self as hir, ImplItem, ImplItemKind, Node, PatKind, QPath, TyKin
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::DEAD_CODE;
 use rustc_session::lint::{self, LintExpectationId};
@@ -115,7 +115,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn handle_res(&mut self, res: Res) {
         match res {
-            Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::TyAlias, def_id) => {
+            Res::Def(
+                DefKind::Const | DefKind::AssocConst | DefKind::AssocTy | DefKind::TyAlias,
+                def_id,
+            ) => {
                 self.check_def_id(def_id);
             }
             _ if self.in_pat => {}
@@ -415,8 +418,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 hir::ItemKind::Trait(.., trait_item_refs) => {
                     // mark assoc ty live if the trait is live
                     for trait_item in trait_item_refs {
-                        if matches!(trait_item.kind, hir::AssocItemKind::Type) {
-                            self.check_def_id(trait_item.id.owner_id.to_def_id());
+                        if matches!(self.tcx.def_kind(trait_item.owner_id), DefKind::AssocTy) {
+                            self.check_def_id(trait_item.owner_id.to_def_id());
                         }
                     }
                     intravisit::walk_item(self, item)
@@ -482,7 +485,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     ) -> bool {
         let trait_def_id = match self.tcx.def_kind(local_def_id) {
             // assoc impl items of traits are live if the corresponding trait items are live
-            DefKind::AssocFn => self
+            DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => self
                 .tcx
                 .associated_item(local_def_id)
                 .trait_item_def_id
@@ -647,6 +650,31 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
 
         self.in_pat = in_pat;
     }
+
+    fn visit_trait_ref(&mut self, t: &'tcx hir::TraitRef<'tcx>) {
+        if let Some(trait_def_id) = t.path.res.opt_def_id()
+            && let Some(segment) = t.path.segments.last()
+            && let Some(args) = segment.args
+        {
+            for constraint in args.constraints {
+                if let Some(local_def_id) = self
+                    .tcx
+                    .associated_items(trait_def_id)
+                    .find_by_ident_and_kind(
+                        self.tcx,
+                        constraint.ident,
+                        AssocTag::Const,
+                        trait_def_id,
+                    )
+                    .and_then(|item| item.def_id.as_local())
+                {
+                    self.worklist.push((local_def_id, ComesFromAllowExpect::No));
+                }
+            }
+        }
+
+        intravisit::walk_trait_ref(self, t);
+    }
 }
 
 fn has_allow_dead_code_or_lang_attr(
@@ -744,18 +772,12 @@ fn check_item<'tcx>(
                 {
                     worklist.push((local_def_id, comes_from_allow));
                 } else if of_trait {
-                    // FIXME: This condition can be removed
-                    // if we support dead check for assoc consts and tys.
-                    if !matches!(tcx.def_kind(local_def_id), DefKind::AssocFn) {
-                        worklist.push((local_def_id, ComesFromAllowExpect::No));
-                    } else {
-                        // We only care about associated items of traits,
-                        // because they cannot be visited directly,
-                        // so we later mark them as live if their corresponding traits
-                        // or trait items and self types are both live,
-                        // but inherent associated items can be visited and marked directly.
-                        unsolved_items.push((id, local_def_id));
-                    }
+                    // We only care about associated items of traits,
+                    // because they cannot be visited directly,
+                    // so we later mark them as live if their corresponding traits
+                    // or trait items and self types are both live,
+                    // but inherent associated items can be visited and marked directly.
+                    unsolved_items.push((id, local_def_id));
                 }
             }
         }
@@ -791,15 +813,14 @@ fn check_trait_item(
     worklist: &mut Vec<(LocalDefId, ComesFromAllowExpect)>,
     id: hir::TraitItemId,
 ) {
-    use hir::TraitItemKind::{Const, Fn};
-    if matches!(tcx.def_kind(id.owner_id), DefKind::AssocConst | DefKind::AssocFn) {
-        let trait_item = tcx.hir_trait_item(id);
-        if matches!(trait_item.kind, Const(_, Some(_)) | Fn(..))
-            && let Some(comes_from_allow) =
-                has_allow_dead_code_or_lang_attr(tcx, trait_item.owner_id.def_id)
-        {
-            worklist.push((trait_item.owner_id.def_id, comes_from_allow));
-        }
+    use hir::TraitItemKind::{Const, Fn, Type};
+
+    let trait_item = tcx.hir_trait_item(id);
+    if matches!(trait_item.kind, Const(_, Some(_)) | Type(_, Some(_)) | Fn(..))
+        && let Some(comes_from_allow) =
+            has_allow_dead_code_or_lang_attr(tcx, trait_item.owner_id.def_id)
+    {
+        worklist.push((trait_item.owner_id.def_id, comes_from_allow));
     }
 }
 
@@ -1163,6 +1184,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         }
         match self.tcx.def_kind(def_id) {
             DefKind::AssocConst
+            | DefKind::AssocTy
             | DefKind::AssocFn
             | DefKind::Fn
             | DefKind::Static { .. }

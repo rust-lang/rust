@@ -147,7 +147,7 @@ mod float_div {
         f64, __divdf3, Double, all();
     }
 
-    #[cfg(not(feature = "no-f16-f128"))]
+    #[cfg(f128_enabled)]
     #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     float! {
         f128, __divtf3, Quad,
@@ -156,7 +156,7 @@ mod float_div {
         not(any(feature = "no-sys-f128", all(target_arch = "aarch64", target_os = "linux")));
     }
 
-    #[cfg(not(feature = "no-f16-f128"))]
+    #[cfg(f128_enabled)]
     #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
     float! {
         f128, __divkf3, Quad, not(feature = "no-sys-f128");

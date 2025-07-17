@@ -10,22 +10,22 @@
 #![feature(assert_matches)]
 
 extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_smir;
+
 extern crate rustc_driver;
 extern crate rustc_interface;
-extern crate stable_mir;
+#[macro_use]
+extern crate rustc_public;
 
 use std::io::Write;
 use std::ops::ControlFlow;
 
-use stable_mir::mir::{Body, ConstOperand, Operand, TerminatorKind};
-use stable_mir::ty::{FnDef, RigidTy, TyKind};
+use rustc_public::mir::{Body, ConstOperand, Operand, TerminatorKind};
+use rustc_public::ty::{FnDef, RigidTy, TyKind};
 
 const CRATE_NAME: &str = "crate_closure_body";
 
 fn test_closure_body() -> ControlFlow<()> {
-    let crate_items = stable_mir::all_local_items();
+    let crate_items = rustc_public::all_local_items();
     for item in crate_items {
         let item_ty = item.ty();
         match &item_ty.kind() {

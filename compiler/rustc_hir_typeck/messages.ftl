@@ -82,13 +82,6 @@ hir_typeck_cast_unknown_pointer = cannot cast {$to ->
 hir_typeck_const_continue_bad_label =
     `#[const_continue]` must break to a labeled block that participates in a `#[loop_match]`
 
-hir_typeck_const_select_must_be_const = this argument must be a `const fn`
-    .help = consult the documentation on `const_eval_select` for more information
-
-hir_typeck_const_select_must_be_fn = this argument must be a function item
-    .note = expected a function item, found {$ty}
-    .help = consult the documentation on `const_eval_select` for more information
-
 hir_typeck_continue_labeled_block =
     `continue` pointing to a labeled block
     .label = labeled blocks cannot be `continue`'d

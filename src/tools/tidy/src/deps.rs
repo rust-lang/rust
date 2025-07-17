@@ -624,7 +624,7 @@ fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, bad: &mut b
     let is_proc_macro_pkg = |pkg: &Package| pkg.targets.iter().any(|target| target.is_proc_macro());
 
     let mut proc_macro_deps = HashSet::new();
-    for pkg in metadata.packages.iter().filter(|pkg| is_proc_macro_pkg(*pkg)) {
+    for pkg in metadata.packages.iter().filter(|pkg| is_proc_macro_pkg(pkg)) {
         deps_of(&metadata, &pkg.id, &mut proc_macro_deps);
     }
     // Remove the proc-macro crates themselves

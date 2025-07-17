@@ -49,3 +49,9 @@ typedef struct Static {
 EXPORT int32_t access_static(const Static *s_ptr) {
   return s_ptr->recurse->recurse->value;
 }
+
+/* Test: unexposed_reachable_alloc */
+
+EXPORT uintptr_t do_one_deref(const int32_t ***ptr) {
+  return (uintptr_t)*ptr;
+}

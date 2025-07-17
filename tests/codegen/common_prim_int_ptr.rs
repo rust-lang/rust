@@ -11,9 +11,9 @@
 #[no_mangle]
 pub fn insert_int(x: usize) -> Result<usize, Box<()>> {
     // CHECK: start:
-    // CHECK-NEXT: inttoptr i{{[0-9]+}} %x to ptr
-    // CHECK-NEXT: insertvalue
-    // CHECK-NEXT: ret { i{{[0-9]+}}, ptr }
+    // CHECK-NEXT: %[[WO_PROV:.+]] = getelementptr i8, ptr null, [[USIZE:i[0-9]+]] %x
+    // CHECK-NEXT: %[[R:.+]] = insertvalue { [[USIZE]], ptr } { [[USIZE]] 0, ptr poison }, ptr %[[WO_PROV]], 1
+    // CHECK-NEXT: ret { [[USIZE]], ptr } %[[R]]
     Ok(x)
 }
 

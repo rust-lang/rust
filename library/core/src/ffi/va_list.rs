@@ -5,6 +5,7 @@
 use crate::ffi::c_void;
 #[allow(unused_imports)]
 use crate::fmt;
+use crate::intrinsics::{va_arg, va_copy, va_end};
 use crate::marker::{PhantomData, PhantomInvariantLifetime};
 use crate::ops::{Deref, DerefMut};
 
@@ -280,20 +281,3 @@ impl<'f> Drop for VaListImpl<'f> {
         // This works for now, since `va_end` is a no-op on all current LLVM targets.
     }
 }
-
-/// Destroy the arglist `ap` after initialization with `va_start` or
-/// `va_copy`.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-unsafe fn va_end(ap: &mut VaListImpl<'_>);
-
-/// Copies the current location of arglist `src` to the arglist `dst`.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-unsafe fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
-
-/// Loads an argument of type `T` from the `va_list` `ap` and increment the
-/// argument `ap` points to.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;

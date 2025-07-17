@@ -844,7 +844,7 @@ pub(crate) fn orig_range_with_focus_r(
                             // *should* contain the name
                             _ => {
                                 let kind = call_kind();
-                                let range = kind.clone().original_call_range_with_body(db);
+                                let range = kind.clone().original_call_range_with_input(db);
                                 //If the focus range is in the attribute/derive body, we
                                 // need to point the call site to the entire body, if not, fall back
                                 // to the name range of the attribute/derive call

@@ -1432,10 +1432,10 @@ impl HirDisplay for Ty {
                 match f.closure_style {
                     ClosureStyle::Hide => return write!(f, "{TYPE_HINT_TRUNCATION}"),
                     ClosureStyle::ClosureWithId => {
-                        return write!(f, "{{closure#{:?}}}", id.0.as_u32());
+                        return write!(f, "{{closure#{:?}}}", id.0.index());
                     }
                     ClosureStyle::ClosureWithSubst => {
-                        write!(f, "{{closure#{:?}}}", id.0.as_u32())?;
+                        write!(f, "{{closure#{:?}}}", id.0.index())?;
                         return hir_fmt_generics(f, substs.as_slice(Interner), None, None);
                     }
                     _ => (),

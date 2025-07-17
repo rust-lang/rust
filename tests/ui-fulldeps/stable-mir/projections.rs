@@ -11,16 +11,16 @@
 
 extern crate rustc_hir;
 extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_smir;
+
 extern crate rustc_driver;
 extern crate rustc_interface;
-extern crate stable_mir;
+#[macro_use]
+extern crate rustc_public;
 
-use stable_mir::ItemKind;
-use stable_mir::crate_def::CrateDef;
-use stable_mir::mir::{ProjectionElem, Rvalue, StatementKind};
-use stable_mir::ty::{RigidTy, TyKind, UintTy};
+use rustc_public::ItemKind;
+use rustc_public::crate_def::CrateDef;
+use rustc_public::mir::{ProjectionElem, Rvalue, StatementKind};
+use rustc_public::ty::{RigidTy, TyKind, UintTy};
 use std::assert_matches::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -29,15 +29,15 @@ const CRATE_NAME: &str = "input";
 
 /// Tests projections within Place objects
 fn test_place_projections() -> ControlFlow<()> {
-    let items = stable_mir::all_local_items();
+    let items = rustc_public::all_local_items();
     let body = get_item(&items, (ItemKind::Fn, "projections")).unwrap().expect_body();
     assert_eq!(body.blocks.len(), 4);
     // The first statement assigns `&s.c` to a local. The projections include a deref for `s`, since
     // `s` is passed as a reference argument, and a field access for field `c`.
     match &body.blocks[0].statements[0].kind {
         StatementKind::Assign(
-            place @ stable_mir::mir::Place { local: _, projection: local_proj },
-            Rvalue::Ref(_, _, stable_mir::mir::Place { local: _, projection: r_proj }),
+            place @ rustc_public::mir::Place { local: _, projection: local_proj },
+            Rvalue::Ref(_, _, rustc_public::mir::Place { local: _, projection: r_proj }),
         ) => {
             // We can't match on vecs, only on slices. Comparing statements for equality wouldn't be
             // any easier since we'd then have to add in the expected local and region values
@@ -48,7 +48,7 @@ fn test_place_projections() -> ControlFlow<()> {
                 [ProjectionElem::Deref, ProjectionElem::Field(2, ty)] => {
                     assert_matches!(
                         ty.kind(),
-                        TyKind::RigidTy(RigidTy::Uint(stable_mir::ty::UintTy::U8))
+                        TyKind::RigidTy(RigidTy::Uint(rustc_public::ty::UintTy::U8))
                     );
                     let ty = place.ty(body.locals()).unwrap();
                     assert_matches!(ty.kind().rigid(), Some(RigidTy::Ref(..)));
@@ -70,8 +70,8 @@ fn test_place_projections() -> ControlFlow<()> {
     // since `slice` is a reference, and an index.
     match &body.blocks[2].statements[0].kind {
         StatementKind::Assign(
-            place @ stable_mir::mir::Place { local: _, projection: local_proj },
-            Rvalue::Use(stable_mir::mir::Operand::Copy(stable_mir::mir::Place {
+            place @ rustc_public::mir::Place { local: _, projection: local_proj },
+            Rvalue::Use(rustc_public::mir::Operand::Copy(rustc_public::mir::Place {
                 local: _,
                 projection: r_proj,
             })),
@@ -93,18 +93,18 @@ fn test_place_projections() -> ControlFlow<()> {
     // The first terminator gets a slice of an array via the Index operation. Specifically it
     // performs `&vals[1..3]`. There are no projections in this case, the arguments are just locals.
     match &body.blocks[0].terminator.kind {
-        stable_mir::mir::TerminatorKind::Call { args, .. } =>
+        rustc_public::mir::TerminatorKind::Call { args, .. } =>
         // We can't match on vecs, only on slices. Comparing for equality wouldn't be any easier
         // since we'd then have to add in the expected local values instead of matching on
         // wildcards.
         {
             match &args[..] {
                 [
-                    stable_mir::mir::Operand::Move(stable_mir::mir::Place {
+                    rustc_public::mir::Operand::Move(rustc_public::mir::Place {
                         local: _,
                         projection: arg1_proj,
                     }),
-                    stable_mir::mir::Operand::Move(stable_mir::mir::Place {
+                    rustc_public::mir::Operand::Move(rustc_public::mir::Place {
                         local: _,
                         projection: arg2_proj,
                     }),
@@ -133,9 +133,9 @@ fn test_place_projections() -> ControlFlow<()> {
 
 // Use internal API to find a function in a crate.
 fn get_item<'a>(
-    items: &'a stable_mir::CrateItems,
+    items: &'a rustc_public::CrateItems,
     item: (ItemKind, &str),
-) -> Option<&'a stable_mir::CrateItem> {
+) -> Option<&'a rustc_public::CrateItem> {
     items.iter().find(|crate_item| crate_item.kind() == item.0 && crate_item.name() == item.1)
 }
 
