@@ -190,5 +190,23 @@ LL |         // This is a comment, do not collapse code to it
 LL ~     ; 3
    |
 
-error: aborting due to 11 previous errors
+error: this `if` statement can be collapsed
+  --> tests/ui/collapsible_if.rs:178:5
+   |
+LL | /     if true {
+LL | |         (if true {
+LL | |             println!("In parens, linted");
+LL | |         })
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if true
+LL ~         && true {
+LL |             println!("In parens, linted");
+LL ~         }
+   |
+
+error: aborting due to 12 previous errors
 

@@ -187,7 +187,8 @@ impl CollapsibleIf {
                             .with_leading_whitespace(cx)
                             .into_span()
                     };
-                    let inner_if = inner.span.split_at(2).0;
+                    let (paren_start, inner_if_span, paren_end) = peel_parens(cx.tcx.sess.source_map(), inner.span);
+                    let inner_if = inner_if_span.split_at(2).0;
                     let mut sugg = vec![
                         // Remove the outer then block `{`
                         (then_open_bracket, String::new()),
@@ -196,6 +197,17 @@ impl CollapsibleIf {
                         // Replace inner `if` by `&&`
                         (inner_if, String::from("&&")),
                     ];
+
+                    if !paren_start.is_empty() {
+                        // Remove any leading parentheses '('
+                        sugg.push((paren_start, String::new()));
+                    }
+
+                    if !paren_end.is_empty() {
+                        // Remove any trailing parentheses ')'
+                        sugg.push((paren_end, String::new()));
+                    }
+
                     sugg.extend(parens_around(check));
                     sugg.extend(parens_around(check_inner));
 
@@ -284,4 +296,41 @@ fn span_extract_keyword(sm: &SourceMap, span: Span, keyword: &str) -> Option<Spa
                 .0
         })
         .next()
+}
+
+fn peel_parens(sm: &SourceMap, mut span: Span) -> (Span, Span, Span) {
+    use crate::rustc_span::Pos;
+    use rustc_span::SpanData;
+
+    let start = span.shrink_to_lo();
+    let end = span.shrink_to_hi();
+
+    loop {
+        let data = span.data();
+        let snippet = sm.span_to_snippet(span).unwrap();
+
+        let trim_start = snippet.len() - snippet.trim_start().len();
+        let trim_end = snippet.len() - snippet.trim_end().len();
+
+        let trimmed = snippet.trim();
+
+        if trimmed.starts_with('(') && trimmed.ends_with(')') {
+            // Try to remove one layer of parens by adjusting the span
+            span = SpanData {
+                lo: data.lo + BytePos::from_usize(trim_start + 1),
+                hi: data.hi - BytePos::from_usize(trim_end + 1),
+                ctxt: data.ctxt,
+                parent: data.parent,
+            }
+            .span();
+
+            continue;
+        }
+
+        break;
+    }
+
+    (start.with_hi(span.lo()),
+    span,
+    end.with_lo(span.hi()))
 }
