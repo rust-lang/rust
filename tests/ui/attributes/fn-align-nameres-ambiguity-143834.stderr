@@ -1,0 +1,22 @@
+error[E0659]: `align` is ambiguous
+  --> $DIR/fn-align-nameres-ambiguity-143834.rs:16:16
+   |
+LL | pub(crate) use align;
+   |                ^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a builtin attribute
+   = note: `align` could refer to a built-in attribute
+note: `align` could also refer to the macro defined here
+  --> $DIR/fn-align-nameres-ambiguity-143834.rs:9:1
+   |
+LL | / macro_rules! align {
+LL | |
+LL | |     () => {
+LL | |         /* .. */
+LL | |     };
+LL | | }
+   | |_^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.
