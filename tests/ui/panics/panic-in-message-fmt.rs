@@ -1,6 +1,6 @@
 // Checks what happens when formatting the panic message panics.
 
-//@ run-fail
+//@ run-crash
 //@ exec-env:RUST_BACKTRACE=0
 //@ check-run-results
 //@ error-pattern: panicked while processing panic
