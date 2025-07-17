@@ -1,36 +1,64 @@
 //! Macros used by iterators of slice.
 
-/// Convenience & performance macro for consuming the `end_or_len` field, by
+/// Convenience macro for updating the `end_addr_or_len` field for non-ZSTs.
+macro_rules! set_end {
+    ($this:ident . end = $new_end:expr) => {{
+        $this.end_addr_or_len = addr_usize($new_end);
+    }};
+}
+
+/// Convenience & performance macro for consuming the `end_addr_or_len` field, by
 /// giving a `(&mut) usize` or `(&mut) NonNull<T>` depending whether `T` is
 /// or is not a ZST respectively.
 ///
-/// Internally, this reads the `end` through a pointer-to-`NonNull` so that
-/// it'll get the appropriate non-null metadata in the backend without needing
-/// to call `assume` manually.
+/// When giving a `NonNull<T>` for the end, it creates it by offsetting from the
+/// `ptr` so that the backend knows that both pointers have the same provenance.
 macro_rules! if_zst {
     (mut $this:ident, $len:ident => $zst_body:expr, $end:ident => $other_body:expr,) => {{
         #![allow(unused_unsafe)] // we're sometimes used within an unsafe block
 
+        let ptr = $this.ptr;
         if T::IS_ZST {
-            // SAFETY: for ZSTs, the pointer is storing a provenance-free length,
-            // so consuming and updating it as a `usize` is fine.
-            let $len = unsafe { &mut *(&raw mut $this.end_or_len).cast::<usize>() };
+            let $len = &mut $this.end_addr_or_len;
             $zst_body
         } else {
-            // SAFETY: for non-ZSTs, the type invariant ensures it cannot be null
-            let $end = unsafe { &mut *(&raw mut $this.end_or_len).cast::<NonNull<T>>() };
+            let $len;
+            #[allow(unused_unsafe)] // we're sometimes used within an unsafe block
+            // SAFETY: By type invariant `end >= ptr`, and thus the subtraction
+            // cannot overflow, and the iter represents a single allocated
+            // object so the `add` will also be in-range.
+            let $end = unsafe {
+                // Need to load as `NonNull` to get `!nonnull` metadata
+                // (Transmuting gets an assume instead)
+                let end: NonNull<T> = *ptr::addr_of!($this.end_addr_or_len).cast();
+                // Not using `with_addr` because we have ordering information that
+                // we can take advantage of here that `with_addr` cannot.
+                $len = intrinsics::ptr_offset_from_unsigned(end.as_ptr(), ptr.as_ptr());
+                ptr.add($len)
+            };
             $other_body
         }
     }};
     ($this:ident, $len:ident => $zst_body:expr, $end:ident => $other_body:expr,) => {{
-        #![allow(unused_unsafe)] // we're sometimes used within an unsafe block
-
         if T::IS_ZST {
-            let $len = $this.end_or_len.addr();
+            let $len = $this.end_addr_or_len;
             $zst_body
         } else {
-            // SAFETY: for non-ZSTs, the type invariant ensures it cannot be null
-            let $end = unsafe { mem::transmute::<*const T, NonNull<T>>($this.end_or_len) };
+            let $len;
+            #[allow(unused_unsafe)] // we're sometimes used within an unsafe block
+            // SAFETY: By type invariant `end >= ptr`, and thus the subtraction
+            // cannot overflow, and the iter represents a single allocated
+            // object so the `add` will also be in-range.
+            let $end = unsafe {
+                let ptr = $this.ptr;
+                // Need to load as `NonNull` to get `!nonnull` metadata
+                // (Transmuting gets an assume instead)
+                let end: NonNull<T> = *ptr::addr_of!($this.end_addr_or_len).cast();
+                // Not using `with_addr` because we have ordering information that
+                // we can take advantage of here that `with_addr` cannot.
+                $len = intrinsics::ptr_offset_from_unsigned(end.as_ptr(), ptr.as_ptr());
+                ptr.add($len)
+            };
             $other_body
         }
     }};
@@ -50,12 +78,7 @@ macro_rules! len {
     ($self: ident) => {{
         if_zst!($self,
             len => len,
-            end => {
-                // To get rid of some bounds checks (see `position`), we use ptr_sub instead of
-                // offset_from (Tested by `codegen/slice-position-bounds-check`.)
-                // SAFETY: by the type invariant pointers are aligned and `start <= end`
-                unsafe { end.offset_from_unsigned($self.ptr) }
-            },
+            _end => len,
         )
     }};
 }
@@ -128,8 +151,9 @@ macro_rules! iterator {
                     // which is guaranteed to not overflow an `isize`. Also, the resulting pointer
                     // is in bounds of `slice`, which fulfills the other requirements for `offset`.
                     end => unsafe {
-                        *end = end.sub(offset);
-                        *end
+                        let new_end = end.sub(offset);
+                        set_end!(self.end = new_end);
+                        new_end
                     },
                 )
             }
@@ -158,12 +182,11 @@ macro_rules! iterator {
                 // one of the most mono'd things in the library.
 
                 let ptr = self.ptr;
-                let end_or_len = self.end_or_len;
                 // SAFETY: See inner comments. (For some reason having multiple
                 // block breaks inlining this -- if you can fix that please do!)
                 unsafe {
                     if T::IS_ZST {
-                        let len = end_or_len.addr();
+                        let len = self.end_addr_or_len;
                         if len == 0 {
                             return None;
                         }
@@ -171,12 +194,12 @@ macro_rules! iterator {
                         // cannot wrap.  (Ideally this would be `checked_sub`, which
                         // does the same thing internally, but as of 2025-02 that
                         // doesn't optimize quite as small in MIR.)
-                        self.end_or_len = without_provenance_mut(len.unchecked_sub(1));
+                        self.end_addr_or_len = intrinsics::unchecked_sub(len, 1);
                     } else {
-                        // SAFETY: by type invariant, the `end_or_len` field is always
+                        // SAFETY: by type invariant, the `end_addr_or_len` field is always
                         // non-null for a non-ZST pointee.  (This transmute ensures we
                         // get `!nonnull` metadata on the load of the field.)
-                        if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+                        if ptr == *(&raw const self.end_addr_or_len).cast::<NonNull<T>>() {
                             return None;
                         }
                         // SAFETY: since it's not empty, per the check above, moving
@@ -207,7 +230,7 @@ macro_rules! iterator {
                     // This iterator is now empty.
                     if_zst!(mut self,
                         len => *len = 0,
-                        end => self.ptr = *end,
+                        end => self.ptr = end,
                     );
                     return None;
                 }
@@ -432,7 +455,7 @@ macro_rules! iterator {
                     // This iterator is now empty.
                     if_zst!(mut self,
                         len => *len = 0,
-                        end => *end = self.ptr,
+                        _end => set_end!(self.end = self.ptr),
                     );
                     return None;
                 }
