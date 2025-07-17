@@ -215,6 +215,11 @@ rustc_queries! {
         desc { "getting the source span" }
     }
 
+    /// Used to handle incremental replays of [`TyCtxt::create_def`] invocations from tracked queries.
+    query create_def_raw(key: (LocalDefId, rustc_hir::definitions::DefPathData, u32)) -> LocalDefId {
+        desc { "generating a new def id" }
+    }
+
     /// Represents crate as a whole (as distinct from the top-level crate module).
     ///
     /// If you call `tcx.hir_crate(())` we will have to assume that any change
@@ -2116,6 +2121,7 @@ rustc_queries! {
         desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
         feedable
+        cache_on_disk_if { def_id.is_local() }
     }
 
     query inhabited_predicate_adt(key: DefId) -> ty::inhabitedness::InhabitedPredicate<'tcx> {

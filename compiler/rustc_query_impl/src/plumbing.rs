@@ -871,7 +871,7 @@ macro_rules! define_queries {
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
                     force_from_dep_node: Some(|tcx, _, prev_index| {
-                        tcx.dep_graph.force_diagnostic_node(QueryCtxt::new(tcx), prev_index);
+                        tcx.dep_graph.force_side_effect_node(QueryCtxt::new(tcx), prev_index);
                         true
                     }),
                     try_load_from_on_disk_cache: None,

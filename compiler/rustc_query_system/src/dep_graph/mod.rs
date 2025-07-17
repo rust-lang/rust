@@ -19,6 +19,7 @@ use tracing::instrument;
 
 use self::graph::{MarkFrame, print_markframe_trace};
 use crate::ich::StableHashingContext;
+use crate::query::DefIdInfo;
 
 pub trait DepContext: Copy {
     type Deps: Deps;
@@ -34,6 +35,8 @@ pub trait DepContext: Copy {
 
     /// Access the compiler session.
     fn sess(&self) -> &Session;
+
+    fn create_def(&self, def: &DefIdInfo);
 
     fn dep_kind_info(&self, dep_node: DepKind) -> &DepKindStruct<Self>;
 

@@ -525,7 +525,7 @@ where
         let dep_node =
             dep_node_opt.get_or_insert_with(|| query.construct_dep_node(*qcx.dep_context(), &key));
 
-        // The diagnostics for this query will be promoted to the current session during
+        // The side_effects for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         if let Some(ret) = qcx.start_query(job_id, false, || {
             try_load_from_disk_and_cache_in_memory(query, dep_graph_data, qcx, &key, dep_node)
