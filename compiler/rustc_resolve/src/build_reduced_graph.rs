@@ -82,7 +82,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         expn_id: LocalExpnId,
     ) {
         assert!(!parent.is_local());
-        assert!(!res.opt_def_id().is_some_and(|def_id| def_id.is_local()), "res: {res:?} is local");
+        assert!(!res.opt_def_id().is_some_and(|def_id| def_id.is_local()));
         let vis = vis.map_id(|def_id| {
             assert!(!def_id.is_local());
             def_id

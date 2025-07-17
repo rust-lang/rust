@@ -334,7 +334,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Define the name or return the existing binding if there is a collision.
-    /// `update` indicates if the definition is a redefinition of an existing binding.
     pub(crate) fn try_define_local(
         &mut self,
         module: Module<'ra>,
@@ -352,7 +351,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let key = BindingKey::new_disambiguated(ident, ns, || {
             (module.0.0.lazy_resolutions.borrow().len() + 1).try_into().unwrap()
         });
-        self.update_resolution(module, key, warn_ambiguity, |this, resolution| {
+        self.update_local_resolution(module, key, warn_ambiguity, |this, resolution| {
             if let Some(old_binding) = resolution.best_binding() {
                 if res == Res::Err && old_binding.res() != Res::Err {
                     // Do not override real bindings with `Res::Err`s from error recovery.
@@ -455,7 +454,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     // Use `f` to mutate the resolution of the name in the module.
     // If the resolution becomes a success, define it in the module's glob importers.
-    fn update_resolution<T, F>(
+    fn update_local_resolution<T, F>(
         &mut self,
         module: Module<'ra>,
         key: BindingKey,
@@ -465,6 +464,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     where
         F: FnOnce(&Resolver<'ra, 'tcx>, &mut NameResolution<'ra>) -> T,
     {
+        assert!(module.is_local());
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
         let (binding, t, warn_ambiguity) = {
@@ -526,7 +526,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // Don't remove underscores from `single_imports`, they were never added.
                 if target.name != kw::Underscore {
                     let key = BindingKey::new(target, ns);
-                    this.update_resolution(module, key, false, |_, resolution| {
+                    this.update_local_resolution(module, key, false, |_, resolution| {
                         resolution.single_imports.swap_remove(&import);
                     })
                 }
@@ -909,7 +909,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // Don't remove underscores from `single_imports`, they were never added.
                         if target.name != kw::Underscore {
                             let key = BindingKey::new(target, ns);
-                            this.update_resolution(parent, key, false, |_, resolution| {
+                            this.update_local_resolution(parent, key, false, |_, resolution| {
                                 resolution.single_imports.swap_remove(&import);
                             });
                         }
