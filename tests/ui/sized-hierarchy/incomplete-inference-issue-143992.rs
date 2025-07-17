@@ -1,7 +1,7 @@
 //@ compile-flags: --crate-type=lib
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
-//@[current] check-pass
+//@[current] check-fail
 //@[next] compile-flags: -Znext-solver
 //@[next] check-fail
 
@@ -25,5 +25,5 @@ where
     T::Assoc<[u32; 1]>: Clone,
 {
     let _x = T::Assoc::new(());
-//[next]~^ ERROR mismatched types
+//~^ ERROR: mismatched types
 }
