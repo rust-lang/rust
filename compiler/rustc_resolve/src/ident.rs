@@ -3,11 +3,10 @@ use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Namespace, NonMacroAttrKind, PartialRes, PerNS};
-use rustc_middle::{bug, ty};
+use rustc_middle::bug;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
-use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
 use rustc_span::{Ident, Span, kw, sym};
 use tracing::{debug, instrument};
@@ -20,10 +19,8 @@ use crate::{
     AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingKey, Determinacy, Finalize,
     ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot, NameBinding,
     NameBindingKind, ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope,
-    ScopeSet, Segment, ToNameBinding, Used, Weak, errors,
+    ScopeSet, Segment, Used, Weak, errors,
 };
-
-type Visibility = ty::Visibility<LocalDefId>;
 
 #[derive(Copy, Clone)]
 pub enum UsePrelude {
@@ -464,13 +461,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             ) {
                                 Ok((Some(ext), _)) => {
                                     if ext.helper_attrs.contains(&ident.name) {
-                                        let binding = (
+                                        let binding = this.arenas.new_pub_res_binding(
                                             Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat),
-                                            Visibility::Public,
                                             derive.span,
                                             LocalExpnId::ROOT,
-                                        )
-                                            .to_name_binding(this.arenas);
+                                        );
                                         result = Ok((binding, Flags::empty()));
                                         break;
                                     }
@@ -1637,11 +1632,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
 
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(res);
-                    if let Some(next_module) = binding.module() {
-                        if self.mods_with_parse_errors.contains(&next_module.def_id()) {
+                    if let Some(def_id) = binding.res().module_like_def_id() {
+                        if self.mods_with_parse_errors.contains(&def_id) {
                             module_had_parse_errors = true;
                         }
-                        module = Some(ModuleOrUniformRoot::Module(next_module));
+                        module = Some(ModuleOrUniformRoot::Module(self.expect_module(def_id)));
                         record_segment_res(self, res);
                     } else if res == Res::ToolMod && !is_last && opt_ns.is_some() {
                         if binding.is_import() {

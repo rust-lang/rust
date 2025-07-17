@@ -7,7 +7,7 @@ use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
 pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
 use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
-use rustc_ast::expand::StrippedCfgItem;
+use rustc_attr_data_structures::StrippedCfgItem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir::PreciseCapturingArgKind;

@@ -2338,7 +2338,6 @@ ui/issues/issue-50415.rs
 ui/issues/issue-50442.rs
 ui/issues/issue-50471.rs
 ui/issues/issue-50518.rs
-ui/issues/issue-50571.rs
 ui/issues/issue-50581.rs
 ui/issues/issue-50582.rs
 ui/issues/issue-50585.rs

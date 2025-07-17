@@ -476,4 +476,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Option `tool.TOOL_NAME.features` now works on any subcommand, not just `build`.",
     },
+    ChangeInfo {
+        change_id: 143630,
+        severity: ChangeSeverity::Warning,
+        summary: "The current `./x suggest` implementation has been removed due to it being quite broken and a lack of maintenance bandwidth, with no prejudice against re-implementing it in a more maintainable form.",
+    },
 ];

@@ -35,7 +35,6 @@
         - [Cranelift codegen backend](./tests/codegen-backend-tests/cg_clif.md)
         - [GCC codegen backend](./tests/codegen-backend-tests/cg_gcc.md)
     - [Performance testing](./tests/perf.md)
-    - [Suggest tests tool](./tests/suggest-tests.md)
     - [Misc info](./tests/misc.md)
 - [Debugging the compiler](./compiler-debugging.md)
     - [Using the tracing/logging instrumentation](./tracing.md)

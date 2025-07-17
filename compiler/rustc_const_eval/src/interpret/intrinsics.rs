@@ -44,17 +44,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         )?;
         self.copy_op_allow_transmute(&op, dest)?;
 
-        // Give the first pointer-size bytes provenance that knows about the type id.
+        // Give the each pointer-sized chunk provenance that knows about the type id.
         // Here we rely on `TypeId` being a newtype around an array of pointers, so we
-        // first project to its only field and then the first array element.
+        // first project to its only field and then the array elements.
         let alloc_id = tcx.reserve_and_set_type_id_alloc(ty);
         let first = self.project_field(dest, FieldIdx::ZERO)?;
-        let first = self.project_index(&first, 0)?;
-        let offset = self.read_scalar(&first)?.to_target_usize(&tcx)?;
-        let ptr = Pointer::new(alloc_id.into(), Size::from_bytes(offset));
-        let ptr = self.global_root_pointer(ptr)?;
-        let val = Scalar::from_pointer(ptr, &tcx);
-        self.write_scalar(val, &first)
+        let mut elem_iter = self.project_array_fields(&first)?;
+        while let Some((_, elem)) = elem_iter.next(self)? {
+            // Decorate this part of the hash with provenance; leave the integer part unchanged.
+            let hash_fragment = self.read_scalar(&elem)?.to_target_usize(&tcx)?;
+            let ptr = Pointer::new(alloc_id.into(), Size::from_bytes(hash_fragment));
+            let ptr = self.global_root_pointer(ptr)?;
+            let val = Scalar::from_pointer(ptr, &tcx);
+            self.write_scalar(val, &elem)?;
+        }
+        interp_ok(())
     }
 
     /// Returns `true` if emulation happened.
@@ -101,34 +105,36 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let mut a_fields = self.project_array_fields(&a_fields)?;
                 let mut b_fields = self.project_array_fields(&b_fields)?;
 
-                let (_idx, a) = a_fields
-                    .next(self)?
-                    .expect("we know the layout of TypeId has at least 2 array elements");
-                let a = self.deref_pointer(&a)?;
-                let (a, offset_a) = self.get_ptr_type_id(a.ptr())?;
+                let mut provenance_a = None;
+                let mut provenance_b = None;
+                let mut provenance_matches = true;
 
-                let (_idx, b) = b_fields
-                    .next(self)?
-                    .expect("we know the layout of TypeId has at least 2 array elements");
-                let b = self.deref_pointer(&b)?;
-                let (b, offset_b) = self.get_ptr_type_id(b.ptr())?;
-
-                let provenance_matches = a == b;
-
-                let mut eq_id = offset_a == offset_b;
-
-                while let Some((_, a)) = a_fields.next(self)? {
+                while let Some((i, a)) = a_fields.next(self)? {
                     let (_, b) = b_fields.next(self)?.unwrap();
 
-                    let a = self.read_target_usize(&a)?;
-                    let b = self.read_target_usize(&b)?;
-                    eq_id &= a == b;
-                }
+                    let a = self.deref_pointer(&a)?;
+                    let (a, offset_a) = self.get_ptr_type_id(a.ptr())?;
 
-                if !eq_id && provenance_matches {
-                    throw_ub_format!(
-                        "type_id_eq: one of the TypeId arguments is invalid, the hash does not match the type it represents"
-                    )
+                    let b = self.deref_pointer(&b)?;
+                    let (b, offset_b) = self.get_ptr_type_id(b.ptr())?;
+
+                    if *provenance_a.get_or_insert(a) != a {
+                        throw_ub_format!(
+                            "type_id_eq: the first TypeId argument is invalid, the provenance of chunk {i} does not match the first chunk's"
+                        )
+                    }
+                    if *provenance_b.get_or_insert(b) != b {
+                        throw_ub_format!(
+                            "type_id_eq: the second TypeId argument is invalid, the provenance of chunk {i} does not match the first chunk's"
+                        )
+                    }
+                    provenance_matches &= a == b;
+
+                    if offset_a != offset_b && provenance_matches {
+                        throw_ub_format!(
+                            "type_id_eq: one of the TypeId arguments is invalid, chunk {i} of the hash does not match the type it represents"
+                        )
+                    }
                 }
 
                 self.write_scalar(Scalar::from_bool(provenance_matches), dest)?;

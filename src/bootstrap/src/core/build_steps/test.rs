@@ -47,12 +47,11 @@ impl Step for CrateBootstrap {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        // This step is responsible for several different tool paths. By default
-        // it will test all of them, but requesting specific tools on the
-        // command-line (e.g. `./x test suggest-tests`) will test only the
-        // specified tools.
+        // This step is responsible for several different tool paths.
+        //
+        // By default, it will test all of them, but requesting specific tools on the command-line
+        // (e.g. `./x test src/tools/coverage-dump`) will test only the specified tools.
         run.path("src/tools/jsondoclint")
-            .path("src/tools/suggest-tests")
             .path("src/tools/replace-version-placeholder")
             .path("src/tools/coverage-dump")
             // We want `./x test tidy` to _run_ the tidy tool, not its tests.

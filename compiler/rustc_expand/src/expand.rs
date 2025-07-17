@@ -13,6 +13,7 @@ use rustc_ast::{
     MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
+use rustc_attr_parsing::EvalConfigResult;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::PResult;
 use rustc_feature::Features;
@@ -2166,19 +2167,19 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn expand_cfg_true(
         &mut self,
-        node: &mut impl HasAttrs,
+        node: &mut (impl HasAttrs + HasNodeId),
         attr: ast::Attribute,
         pos: usize,
-    ) -> (bool, Option<ast::MetaItem>) {
-        let (res, meta_item) = self.cfg().cfg_true(&attr);
-        if res {
+    ) -> EvalConfigResult {
+        let res = self.cfg().cfg_true(&attr, node.node_id());
+        if res.as_bool() {
             // A trace attribute left in AST in place of the original `cfg` attribute.
             // It can later be used by lints or other diagnostics.
             let trace_attr = attr_into_trace(attr, sym::cfg_trace);
             node.visit_attrs(|attrs| attrs.insert(pos, trace_attr));
         }
 
-        (res, meta_item)
+        res
     }
 
     fn expand_cfg_attr(&self, node: &mut impl HasAttrs, attr: &ast::Attribute, pos: usize) {
@@ -2199,20 +2200,21 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             return match self.take_first_attr(&mut node) {
                 Some((attr, pos, derives)) => match attr.name() {
                     Some(sym::cfg) => {
-                        let (res, meta_item) = self.expand_cfg_true(&mut node, attr, pos);
-                        if res {
-                            continue;
-                        }
-
-                        if let Some(meta_item) = meta_item {
-                            for ident in node.declared_idents() {
-                                self.cx.resolver.append_stripped_cfg_item(
-                                    self.cx.current_expansion.lint_node_id,
-                                    ident,
-                                    meta_item.clone(),
-                                )
+                        let res = self.expand_cfg_true(&mut node, attr, pos);
+                        match res {
+                            EvalConfigResult::True => continue,
+                            EvalConfigResult::False { reason, reason_span } => {
+                                for ident in node.declared_idents() {
+                                    self.cx.resolver.append_stripped_cfg_item(
+                                        self.cx.current_expansion.lint_node_id,
+                                        ident,
+                                        reason.clone(),
+                                        reason_span,
+                                    )
+                                }
                             }
                         }
+
                         Default::default()
                     }
                     Some(sym::cfg_attr) => {
@@ -2291,7 +2293,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 Some((attr, pos, derives)) => match attr.name() {
                     Some(sym::cfg) => {
                         let span = attr.span;
-                        if self.expand_cfg_true(node, attr, pos).0 {
+                        if self.expand_cfg_true(node, attr, pos).as_bool() {
                             continue;
                         }
 

@@ -715,51 +715,6 @@ _arguments "${_arguments_options[@]}" : \
 '*::paths -- paths for the subcommand:_files' \
 && ret=0
 ;;
-(suggest)
-_arguments "${_arguments_options[@]}" : \
-'--config=[TOML configuration file for build]:FILE:_files' \
-'--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[host target of the stage0 compiler]:BUILD:' \
-'--host=[host targets to build]:HOST:' \
-'--target=[target targets to build]:TARGET:' \
-'*--exclude=[build paths to exclude]:PATH:_files' \
-'*--skip=[build paths to skip]:PATH:_files' \
-'--rustc-error-format=[rustc error format]:RUSTC_ERROR_FORMAT:' \
-'--on-fail=[command to run on failure]:CMD:_cmdstring' \
-'--stage=[stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)]:N:' \
-'*--keep-stage=[stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)]:N:' \
-'*--keep-stage-std=[stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)]:N:' \
-'--src=[path to the root of the rust checkout]:DIR:_files -/' \
-'-j+[number of jobs to run in parallel]:JOBS:' \
-'--jobs=[number of jobs to run in parallel]:JOBS:' \
-'--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
-'--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
-'--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
-'--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
-'*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
-'*--set=[override options in bootstrap.toml]:section.option=value:' \
-'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
-'--run[run suggested tests]' \
-'*-v[use verbose output (-vv for very verbose)]' \
-'*--verbose[use verbose output (-vv for very verbose)]' \
-'-i[use incremental compilation]' \
-'--incremental[use incremental compilation]' \
-'--include-default-paths[include default paths in addition to the provided ones]' \
-'--dry-run[dry run; don'\''t build anything]' \
-'--dump-bootstrap-shims[Indicates whether to dump the work done from bootstrap shims]' \
-'--json-output[use message-format=json]' \
-'--compile-time-deps[only build proc-macros and build scripts (for rust-analyzer)]' \
-'--bypass-bootstrap-lock[Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)]' \
-'--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
-'--enable-bolt-settings[Enable BOLT link flags]' \
-'--skip-stage0-validation[Skip stage0 compiler validation]' \
-'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
-'-h[Print help (see more with '\''--help'\'')]' \
-'--help[Print help (see more with '\''--help'\'')]' \
-'*::paths -- paths for the subcommand:_files' \
-&& ret=0
-;;
 (vendor)
 _arguments "${_arguments_options[@]}" : \
 '*--sync=[Additional \`Cargo.toml\` to sync and vendor]:SYNC:_files' \
@@ -1120,7 +1075,6 @@ _x.py_commands() {
 'install:Install distribution artifacts' \
 'run:Run tools contained in this repository' \
 'setup:Set up the environment for development' \
-'suggest:Suggest a subset of tests to run, based on modified files' \
 'vendor:Vendor dependencies' \
 'perf:Perform profiling and benchmarking of the compiler using \`rustc-perf\`' \
     )
@@ -1226,11 +1180,6 @@ _x.py__run_commands() {
 _x.py__setup_commands() {
     local commands; commands=()
     _describe -t commands 'x.py setup commands' commands "$@"
-}
-(( $+functions[_x.py__suggest_commands] )) ||
-_x.py__suggest_commands() {
-    local commands; commands=()
-    _describe -t commands 'x.py suggest commands' commands "$@"
 }
 (( $+functions[_x.py__test_commands] )) ||
 _x.py__test_commands() {
