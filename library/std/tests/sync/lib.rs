@@ -6,6 +6,8 @@
 #![feature(reentrant_lock)]
 #![feature(rwlock_downgrade)]
 #![feature(std_internals)]
+#![feature(sync_nonpoison)]
+#![feature(nonpoison_mutex)]
 #![allow(internal_features)]
 
 mod barrier;
