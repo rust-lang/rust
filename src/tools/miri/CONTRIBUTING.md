@@ -348,6 +348,7 @@ https. Add the following to your `.gitconfig`:
 
 The following environment variables are relevant to `./miri`:
 
+* `CARGO` sets the binary used to execute Cargo; if none is specified, defaults to `cargo`.
 * `MIRI_AUTO_OPS` indicates whether the automatic execution of rustfmt, clippy and toolchain setup
   (as controlled by the `./auto-*` files) should be skipped. If it is set to `no`, they are skipped.
   This is used to allow automated IDE actions to avoid the auto ops.
