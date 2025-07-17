@@ -12,6 +12,11 @@ extern "stdcall" {
     //~^ ERROR: C-variadic functions with the "stdcall" calling convention are not supported
 }
 
+fn baz(f: extern "Rust" fn(usize, ...)) {
+    //~^ ERROR: C-variadic functions with the "Rust" calling convention are not supported
+    f(22, 44);
+}
+
 extern "C" {
     fn foo(f: isize, x: u8, ...);
 }
