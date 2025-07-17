@@ -56,7 +56,7 @@ types! {
     /// # if is_x86_feature_detected!("sse2") { unsafe { foo() } }
     /// # }
     /// ```
-    pub struct __m128i(2 x i64);
+    pub struct __m128i(2 x i64) feature=2;
 
     /// 128-bit wide set of four `f32` types, x86-specific
     ///
@@ -99,7 +99,7 @@ types! {
     /// # if is_x86_feature_detected!("sse") { unsafe { foo() } }
     /// # }
     /// ```
-    pub struct __m128(4 x f32);
+    pub struct __m128(4 x f32) feature=1;
 
     /// 128-bit wide set of two `f64` types, x86-specific
     ///
@@ -142,7 +142,7 @@ types! {
     /// # if is_x86_feature_detected!("sse2") { unsafe { foo() } }
     /// # }
     /// ```
-    pub struct __m128d(2 x f64);
+    pub struct __m128d(2 x f64) feature=1;
 
     /// 256-bit wide integer vector type, x86-specific
     ///
@@ -189,7 +189,7 @@ types! {
     /// # if is_x86_feature_detected!("avx") { unsafe { foo() } }
     /// # }
     /// ```
-    pub struct __m256i(4 x i64);
+    pub struct __m256i(4 x i64) feature=3;
 
     /// 256-bit wide set of eight `f32` types, x86-specific
     ///
@@ -232,7 +232,7 @@ types! {
     /// # if is_x86_feature_detected!("avx") { unsafe { foo() } }
     /// # }
     /// ```
-    pub struct __m256(8 x f32);
+    pub struct __m256(8 x f32) feature=3;
 
     /// 256-bit wide set of four `f64` types, x86-specific
     ///
@@ -275,7 +275,7 @@ types! {
     /// # if is_x86_feature_detected!("avx") { unsafe { foo() } }
     /// # }
     /// ```
-    pub struct __m256d(4 x f64);
+    pub struct __m256d(4 x f64) feature=3;
 }
 
 types! {
@@ -306,7 +306,7 @@ types! {
     ///
     /// Note that this means that an instance of `__m512i` typically just means
     /// a "bag of bits" which is left up to interpretation at the point of use.
-    pub struct __m512i(8 x i64);
+    pub struct __m512i(8 x i64) feature=4;
 
     /// 512-bit wide set of sixteen `f32` types, x86-specific
     ///
@@ -329,7 +329,7 @@ types! {
     /// Most intrinsics using `__m512` are prefixed with `_mm512_` and are
     /// suffixed with "ps" (or otherwise contain "ps"). Not to be confused with
     /// "pd" which is used for `__m512d`.
-    pub struct __m512(16 x f32);
+    pub struct __m512(16 x f32) feature=4;
 
     /// 512-bit wide set of eight `f64` types, x86-specific
     ///
@@ -352,7 +352,7 @@ types! {
     /// Most intrinsics using `__m512d` are prefixed with `_mm512_` and are
     /// suffixed with "pd" (or otherwise contain "pd"). Not to be confused with
     /// "ps" which is used for `__m512`.
-    pub struct __m512d(8 x f64);
+    pub struct __m512d(8 x f64) feature=4;
 }
 
 types! {
@@ -369,7 +369,7 @@ types! {
     /// there is no padding); however, the alignment is different and equal to
     /// the size of the type. Note that the ABI for function calls may *not* be
     /// the same.
-    pub struct __m128bh(8 x u16);
+    pub struct __m128bh(8 x u16) feature=2;
 
     /// 256-bit wide set of 16 `u16` types, x86-specific
     ///
@@ -383,7 +383,7 @@ types! {
     /// there is no padding); however, the alignment is different and equal to
     /// the size of the type. Note that the ABI for function calls may *not* be
     /// the same.
-    pub struct __m256bh(16 x u16);
+    pub struct __m256bh(16 x u16) feature=3;
 
     /// 512-bit wide set of 32 `u16` types, x86-specific
     ///
@@ -397,7 +397,7 @@ types! {
     /// there is no padding); however, the alignment is different and equal to
     /// the size of the type. Note that the ABI for function calls may *not* be
     /// the same.
-    pub struct __m512bh(32 x u16);
+    pub struct __m512bh(32 x u16) feature=5;
 }
 
 types! {
@@ -415,7 +415,7 @@ types! {
     /// there is no padding); however, the alignment is different and equal to
     /// the size of the type. Note that the ABI for function calls may *not* be
     /// the same.
-    pub struct __m128h(8 x f16);
+    pub struct __m128h(8 x f16) feature=2;
 
     /// 256-bit wide set of 16 `f16` types, x86-specific
     ///
@@ -429,7 +429,7 @@ types! {
     /// there is no padding); however, the alignment is different and equal to
     /// the size of the type. Note that the ABI for function calls may *not* be
     /// the same.
-    pub struct __m256h(16 x f16);
+    pub struct __m256h(16 x f16) feature=3;
 
     /// 512-bit wide set of 32 `f16` types, x86-specific
     ///
@@ -443,7 +443,7 @@ types! {
     /// there is no padding); however, the alignment is different and equal to
     /// the size of the type. Note that the ABI for function calls may *not* be
     /// the same.
-    pub struct __m512h(32 x f16);
+    pub struct __m512h(32 x f16) feature=5;
 }
 
 /// The BFloat16 type used in AVX-512 intrinsics.

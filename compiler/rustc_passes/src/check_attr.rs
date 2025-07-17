@@ -2065,7 +2065,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         continue;
                     }
                 }
-                ReprAttr::ReprSimd => {
+                ReprAttr::ReprSimd(_) => {
                     is_simd = true;
                     if target != Target::Struct {
                         self.dcx().emit_err(errors::AttrApplication::Struct {
