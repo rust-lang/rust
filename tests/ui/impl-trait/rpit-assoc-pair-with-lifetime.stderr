@@ -1,11 +1,12 @@
-warning: lifetime flowing from input to output with different syntax can be confusing
+warning: eliding a lifetime that's named elsewhere is confusing
   --> $DIR/rpit-assoc-pair-with-lifetime.rs:3:31
    |
 LL | pub fn iter<'a>(v: Vec<(u32, &'a u32)>) -> impl DoubleEndedIterator<Item = (u32, &u32)> {
-   |                               ^^ this lifetime flows to the output               ---- the lifetime gets resolved as `'a`
+   |                               ^^ the lifetime is named here                      ---- the same lifetime is elided here
    |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
    = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
-help: one option is to consistently use `'a`
+help: consistently use `'a`
    |
 LL | pub fn iter<'a>(v: Vec<(u32, &'a u32)>) -> impl DoubleEndedIterator<Item = (u32, &'a u32)> {
    |                                                                                   ++
