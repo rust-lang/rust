@@ -20,6 +20,7 @@ riscv-interrupt-m
 riscv-interrupt-s
 rust-call
 rust-cold
+rust-invalid
 stdcall
 stdcall-unwind
 system
