@@ -61,6 +61,7 @@ pub(super) fn build_custom_mir<'tcx>(
         pass_count: 0,
         coverage_info_hi: None,
         function_coverage_info: None,
+        local_upvar_map: IndexVec::new(),
     };
 
     body.local_decls.push(LocalDecl::new(return_ty, return_ty_span));

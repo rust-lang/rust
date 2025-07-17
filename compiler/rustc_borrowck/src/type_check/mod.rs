@@ -25,9 +25,9 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
-    GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, TypeVisitableExt,
-    UserArgs, UserTypeAnnotationIndex, fold_regions,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgsRef,
+    OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, TypeVisitableExt, UserArgs,
+    UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::move_paths::MoveData;
@@ -158,6 +158,7 @@ pub(crate) fn type_check<'tcx>(
         polonius_liveness,
     };
 
+    typeck.mark_upvar_locals_invariant(&normalized_inputs_and_output);
     typeck.check_user_type_annotations();
     typeck.visit_body(body);
     typeck.equate_inputs_and_outputs(&normalized_inputs_and_output);
@@ -391,6 +392,31 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_inline_const(inferred_ty, def.expect_local(), args, span);
             } else {
                 self.ascribe_user_type(inferred_ty, annotation, span);
+            }
+        }
+    }
+
+    /// In case that upvars are relocated into inner locals,
+    /// we should assert that the respective region variables are invariant
+    /// to each other.
+    ///
+    /// NOTE(@dingxiangfei2009): to implementers, invariant relations are built in order to
+    /// maintain parity with how the language has handled captures in view of lifetimes.
+    /// This may change depending on how #140132 would be resolved.
+    #[instrument(level = "debug", skip(self))]
+    fn mark_upvar_locals_invariant(&mut self, inputs_outputs: &[Ty<'tcx>]) {
+        let upvar_tys = self.universal_regions.defining_ty.upvar_tys();
+        let span = self.body.span;
+        for (local, upvar_ty) in self.body.local_upvar_map.iter().zip(upvar_tys) {
+            let &Some(local) = local else { continue };
+            let local_ty = self.body.local_decls[local].ty;
+            if let Err(_no_solution) =
+                self.eq_types(local_ty, upvar_ty, Locations::All(span), ConstraintCategory::Boring)
+            {
+                span_bug!(
+                    span,
+                    "upvars are relocated to locals equipped with unequatable types, upvar has type {upvar_ty:?} but local has {local_ty:?}"
+                );
             }
         }
     }
@@ -2152,14 +2178,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             AggregateKind::Coroutine(_, args) => {
-                // It doesn't make sense to look at a field beyond the prefix;
-                // these require a variant index, and are not initialized in
-                // aggregate rvalues.
-                match args.as_coroutine().prefix_tys().get(field_index.as_usize()) {
-                    Some(ty) => Ok(*ty),
-                    None => Err(FieldAccessError::OutOfRange {
-                        field_count: args.as_coroutine().prefix_tys().len(),
-                    }),
+                // It doesn't make sense to look at a field beyond the captured
+                // upvars.
+                // Otherwise it require a variant index, and are not initialized
+                // in aggregate rvalues.
+                let upvar_tys = &args.as_coroutine().upvar_tys();
+                if let Some(ty) = upvar_tys.get(field_index.as_usize()) {
+                    Ok(*ty)
+                } else {
+                    Err(FieldAccessError::OutOfRange { field_count: upvar_tys.len() })
                 }
             }
             AggregateKind::CoroutineClosure(_, args) => {

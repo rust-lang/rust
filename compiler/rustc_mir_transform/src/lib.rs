@@ -125,7 +125,7 @@ declare_passes! {
     pub mod cleanup_post_borrowck : CleanupPostBorrowck;
 
     mod copy_prop : CopyProp;
-    mod coroutine : StateTransform;
+    mod coroutine : RelocateUpvars, StateTransform;
     mod coverage : InstrumentCoverage;
     mod ctfe_limit : CtfeLimit;
     mod dataflow_const_prop : DataflowConstProp;
@@ -442,7 +442,15 @@ fn mir_promoted(
     pm::run_passes(
         tcx,
         &mut body,
-        &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage],
+        &[
+            &coroutine::RelocateUpvars::new(!matches!(
+                tcx.sess.opts.unstable_opts.pack_coroutine_layout,
+                rustc_session::config::PackCoroutineLayout::No
+            )),
+            &promote_pass,
+            &simplify::SimplifyCfg::PromoteConsts,
+            &coverage::InstrumentCoverage,
+        ],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
         pm::Optimizations::Allowed,
     );

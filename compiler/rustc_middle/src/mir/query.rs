@@ -9,7 +9,9 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_session::config::PackCoroutineLayout;
 use rustc_span::{Span, Symbol};
+use rustc_type_ir::data_structures::IndexMap;
 
 use super::{ConstValue, SourceInfo};
 use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty};
@@ -17,7 +19,7 @@ use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty};
 rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
-    #[debug_format = "_{}"]
+    #[debug_format = "corsl_{}"]
     pub struct CoroutineSavedLocal {}
 }
 
@@ -55,6 +57,18 @@ pub struct CoroutineLayout<'tcx> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
     pub storage_conflicts: BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal>,
+
+    /// This map `A -> B` allows later MIR passes, error reporters
+    /// and layout calculator to relate saved locals `A` sourced from upvars
+    /// and locals `B` that upvars are moved into.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub relocated_upvars: IndexMap<CoroutineSavedLocal, CoroutineSavedLocal>,
+
+    /// Coroutine layout packing
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub pack: PackCoroutineLayout,
 }
 
 impl Debug for CoroutineLayout<'_> {
@@ -80,6 +94,7 @@ impl Debug for CoroutineLayout<'_> {
                 map.finish()
             })
             .field("storage_conflicts", &self.storage_conflicts)
+            .field("relocated_upvars", &self.relocated_upvars)
             .finish()
     }
 }

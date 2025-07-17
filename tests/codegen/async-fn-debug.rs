@@ -38,17 +38,17 @@ async fn async_fn_test() {
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "3", scope: [[VARIANT]],
-// CHECK-SAME: file: [[FILE]], line: 13,
+// CHECK-SAME: file: [[FILE]], line: 14,
+// CHECK-NOT:  flags: DIFlagArtificial
+// CHECK-SAME: )
+// CHECK:      [[S0:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "Suspend0", scope: [[GEN]],
+// CHECK-NOT:  flags: DIFlagArtificial
+// CHECK-SAME: )
+// CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "s", scope: [[S0]]
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "4", scope: [[VARIANT]],
-// CHECK-SAME: file: [[FILE]], line: 15,
-// CHECK-NOT:  flags: DIFlagArtificial
-// CHECK-SAME: )
-// CHECK:      [[S1:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "Suspend1", scope: [[GEN]],
-// CHECK-NOT:  flags: DIFlagArtificial
-// CHECK-SAME: )
-// CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "s", scope: [[S1]]
+// CHECK-SAME: file: [[FILE]], line: 12,
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      [[DISC]] = !DIDerivedType(tag: DW_TAG_member, name: "__state", scope: [[GEN]],

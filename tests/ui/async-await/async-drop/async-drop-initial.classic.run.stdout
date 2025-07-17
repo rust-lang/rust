@@ -20,3 +20,4 @@ AsyncInt::Dropper::poll: 18
 AsyncInt::Dropper::poll: 19
 AsyncInt::Dropper::poll: 20
 AsyncUnion::Dropper::poll: 21, 21
+AsyncUnion::Dropper::poll: 21, 21

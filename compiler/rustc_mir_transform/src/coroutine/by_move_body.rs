@@ -69,7 +69,6 @@
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -78,7 +77,17 @@ use rustc_middle::bug;
 use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{self, dump_mir};
+use rustc_middle::ty::data_structures::IndexMap;
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
+
+struct CaptureInfo<'tcx> {
+    /// Field index of the capture in the parent coroutine structure
+    remapped_idx: FieldIdx,
+    /// Type of the capture in the parent coroutine structure
+    remapped_ty: Ty<'tcx>,
+    peel_deref: bool,
+    bridging_projections: Vec<Projection<'tcx>>,
+}
 
 pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -126,23 +135,27 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
         .tuple_fields()
         .len();
 
-    let field_remapping: UnordMap<_, _> = ty::analyze_coroutine_closure_captures(
+    let field_remapping: IndexMap<_, _> = ty::analyze_coroutine_closure_captures(
         tcx.closure_captures(parent_def_id).iter().copied(),
         tcx.closure_captures(coroutine_def_id).iter().skip(num_args).copied(),
         |(parent_field_idx, parent_capture), (child_field_idx, child_capture)| {
             // Store this set of additional projections (fields and derefs).
             // We need to re-apply them later.
-            let mut child_precise_captures =
-                child_capture.place.projections[parent_capture.place.projections.len()..].to_vec();
+            let child_precise_captures = child_capture.place.projections
+                [parent_capture.place.projections.len()..]
+                .iter()
+                .copied();
 
             // If the parent capture is by-ref, then we need to apply an additional
             // deref before applying any further projections to this place.
-            if parent_capture.is_by_ref() {
-                child_precise_captures.insert(
-                    0,
-                    Projection { ty: parent_capture.place.ty(), kind: ProjectionKind::Deref },
-                );
-            }
+            let bridging_projections = if parent_capture.is_by_ref() {
+                [Projection { ty: parent_capture.place.ty(), kind: ProjectionKind::Deref }]
+                    .into_iter()
+                    .chain(child_precise_captures)
+                    .collect()
+            } else {
+                child_precise_captures.collect()
+            };
             // If the child capture is by-ref, then we need to apply a "ref"
             // projection (i.e. `&`) at the end. But wait! We don't have that
             // as a projection kind. So instead, we can apply its dual and
@@ -168,8 +181,8 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
 
             // Finally, store the type of the parent's captured place. We need
             // this when building the field projection in the MIR body later on.
-            let mut parent_capture_ty = parent_capture.place.ty();
-            parent_capture_ty = match parent_capture.info.capture_kind {
+            let parent_capture_ty = parent_capture.place.ty();
+            let remapped_ty = match parent_capture.info.capture_kind {
                 ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => parent_capture_ty,
                 ty::UpvarCapture::ByRef(kind) => Ty::new_ref(
                     tcx,
@@ -181,19 +194,19 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
 
             Some((
                 FieldIdx::from_usize(child_field_idx + num_args),
-                (
-                    FieldIdx::from_usize(parent_field_idx + num_args),
-                    parent_capture_ty,
+                CaptureInfo {
+                    remapped_idx: FieldIdx::from_usize(parent_field_idx + num_args),
+                    remapped_ty,
                     peel_deref,
-                    child_precise_captures,
-                ),
+                    bridging_projections,
+                },
             ))
         },
     )
     .flatten()
     .collect();
 
-    if coroutine_kind == ty::ClosureKind::FnOnce {
+    if matches!(coroutine_kind, ty::ClosureKind::FnOnce) {
         assert_eq!(field_remapping.len(), tcx.closure_captures(parent_def_id).len());
         // The by-move body is just the body :)
         return coroutine_def_id.to_def_id();
@@ -212,6 +225,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
         );
 
     let mut by_move_body = body.clone();
+    dump_mir(tcx, false, "built", &"before", &by_move_body, |_, _| Ok(()));
     MakeByMoveBody { tcx, field_remapping, by_move_coroutine_ty }.visit_body(&mut by_move_body);
 
     // This path is unique since we're in a query so we'll only be called once with `parent_def_id`
@@ -251,7 +265,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
 
 struct MakeByMoveBody<'tcx> {
     tcx: TyCtxt<'tcx>,
-    field_remapping: UnordMap<FieldIdx, (FieldIdx, Ty<'tcx>, bool, Vec<Projection<'tcx>>)>,
+    field_remapping: IndexMap<FieldIdx, CaptureInfo<'tcx>>,
     by_move_coroutine_ty: Ty<'tcx>,
 }
 
@@ -272,8 +286,12 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
         if place.local == ty::CAPTURE_STRUCT_LOCAL
             && let Some((&mir::ProjectionElem::Field(idx, _), projection)) =
                 place.projection.split_first()
-            && let Some(&(remapped_idx, remapped_ty, peel_deref, ref bridging_projections)) =
-                self.field_remapping.get(&idx)
+            && let Some(&CaptureInfo {
+                remapped_idx,
+                remapped_ty,
+                peel_deref,
+                ref bridging_projections,
+            }) = self.field_remapping.get(&idx)
         {
             // As noted before, if the parent closure captures a field by value, and
             // the child captures a field by ref, then for the by-move body we're
@@ -350,7 +368,7 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
                 local: ty::CAPTURE_STRUCT_LOCAL,
                 projection: [mir::ProjectionElem::Field(idx, _)],
             } = place.as_ref()
-            && let Some(&(_, _, true, _)) = self.field_remapping.get(&idx)
+            && let Some(CaptureInfo { peel_deref: true, .. }) = self.field_remapping.get(idx)
         {
             statement.kind = mir::StatementKind::Nop;
         }

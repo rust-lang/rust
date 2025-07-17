@@ -454,15 +454,14 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
 // async_drop_in_place<T>::coroutine's poll function (through FutureDropPollShim proxy)
 fn resolve_async_drop_poll<'tcx>(mut cor_ty: Ty<'tcx>) -> Instance<'tcx> {
     let first_cor = cor_ty;
-    let ty::Coroutine(poll_def_id, proxy_args) = first_cor.kind() else {
+    let &ty::Coroutine(poll_def_id, proxy_args) = first_cor.kind() else {
         bug!();
     };
-    let poll_def_id = *poll_def_id;
     let mut child_ty = cor_ty;
     loop {
-        if let ty::Coroutine(child_def, child_args) = child_ty.kind() {
+        if let &ty::Coroutine(child_def, child_args) = child_ty.kind() {
             cor_ty = child_ty;
-            if *child_def == poll_def_id {
+            if child_def == poll_def_id {
                 child_ty = child_args.first().unwrap().expect_ty();
                 continue;
             } else {

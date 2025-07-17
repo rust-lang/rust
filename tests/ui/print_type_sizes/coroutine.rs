@@ -1,3 +1,6 @@
+//@ revisions: classic relocate
+//@ [classic] compile-flags: -Z pack-coroutine-layout=no
+//@ [relocate] compile-flags: -Z pack-coroutine-layout=captures-only
 //@ compile-flags: -Z print-type-sizes --crate-type=lib
 //@ build-pass
 //@ ignore-pass

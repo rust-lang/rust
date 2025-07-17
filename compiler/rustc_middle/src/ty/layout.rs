@@ -921,9 +921,10 @@ where
                     ),
                     Variants::Multiple { tag, tag_field, .. } => {
                         if FieldIdx::from_usize(i) == tag_field {
-                            return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
+                            TyMaybeWithLayout::TyAndLayout(tag_layout(tag))
+                        } else {
+                            TyMaybeWithLayout::Ty(args.as_coroutine().upvar_tys()[i])
                         }
-                        TyMaybeWithLayout::Ty(args.as_coroutine().prefix_tys()[i])
                     }
                 },
 

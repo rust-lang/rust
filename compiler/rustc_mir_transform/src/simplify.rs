@@ -430,8 +430,15 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
         // Only bother running the `LocalUpdater` if we actually found locals to remove.
         if map.iter().any(Option::is_none) {
             // Update references to all vars and tmps now
-            let mut updater = LocalUpdater { map, tcx };
+            let mut updater = LocalUpdater { map: &map, tcx };
             updater.visit_body_preserves_cfg(body);
+
+            // Update mapping for local to upvar
+            for local in &mut body.local_upvar_map {
+                if let Some(idx) = local {
+                    *local = *map.get(*idx).unwrap_or(&None);
+                }
+            }
 
             body.local_decls.shrink_to_fit();
         }
@@ -614,12 +621,12 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
     }
 }
 
-struct LocalUpdater<'tcx> {
-    map: IndexVec<Local, Option<Local>>,
+struct LocalUpdater<'tcx, 'a> {
+    map: &'a IndexSlice<Local, Option<Local>>,
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
+impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx, '_> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

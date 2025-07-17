@@ -1,4 +1,4 @@
-error: internal compiler error: broken MIR in Item(DefId(0:8 ~ storage_live[HASH]::multiple_storage)) (after pass CheckForceInline) at bb0[1]:
+error: internal compiler error: broken MIR in Item(DefId(0:8 ~ storage_live[HASH]::multiple_storage)) (after pass CheckForceInline 1-1-000) at bb0[1]:
                                 StorageLive(_1) which already has storage here
   --> $DIR/storage-live.rs:21:13
    |
