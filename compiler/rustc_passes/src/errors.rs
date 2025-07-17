@@ -687,6 +687,15 @@ pub(crate) struct RustcAllowConstFnUnstable {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_rustc_unstable_feature_bound)]
+pub(crate) struct RustcUnstableFeatureBound {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_rustc_std_internal_symbol)]
 pub(crate) struct RustcStdInternalSymbol {
     #[primary_span]

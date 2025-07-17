@@ -504,6 +504,14 @@ pub(crate) struct UnrecognizedReprHint {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_parsing_unstable_feature_bound_incompatible_stability)]
+#[help]
+pub(crate) struct UnstableFeatureBoundIncompatibleStability {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_parsing_naked_functions_incompatible_attribute, code = E0736)]
 pub(crate) struct NakedFunctionIncompatibleAttribute {
     #[primary_span]
