@@ -130,6 +130,12 @@ bitflags::bitflags! {
 
         /// Does this have any binders with bound vars (e.g. that need to be anonymized)?
         const HAS_BINDER_VARS             = 1 << 23;
+
+        /// Does this type have any coroutine witnesses in it?
+        // FIXME: This should probably be changed to track whether the type has any
+        // *coroutines* in it, though this will happen if we remove coroutine witnesses
+        // altogether.
+        const HAS_TY_CORO                 = 1 << 24;
     }
 }
 
@@ -240,10 +246,12 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_flags(TypeFlags::HAS_TY_PARAM);
             }
 
-            ty::Closure(_, args)
-            | ty::Coroutine(_, args)
-            | ty::CoroutineClosure(_, args)
-            | ty::CoroutineWitness(_, args) => {
+            ty::Closure(_, args) | ty::Coroutine(_, args) | ty::CoroutineClosure(_, args) => {
+                self.add_args(args.as_slice());
+            }
+
+            ty::CoroutineWitness(_, args) => {
+                self.add_flags(TypeFlags::HAS_TY_CORO);
                 self.add_args(args.as_slice());
             }
 

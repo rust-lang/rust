@@ -842,6 +842,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
+                ty::CoroutineWitness(def_id, _) => {
+                    if self.should_stall_coroutine_witness(def_id) {
+                        candidates.ambiguous = true;
+                    } else {
+                        candidates.vec.push(AutoImplCandidate);
+                    }
+                }
+
                 ty::Bool
                 | ty::Char
                 | ty::Int(_)
@@ -861,7 +869,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Coroutine(..)
                 | ty::Never
                 | ty::Tuple(_)
-                | ty::CoroutineWitness(..)
                 | ty::UnsafeBinder(_) => {
                     // Only consider auto impls of unsafe traits when there are
                     // no unsafe fields.
@@ -1119,12 +1126,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match *self_ty.kind() {
             // These impls are built-in because we cannot express sufficiently
             // generic impls in libcore.
-            ty::FnDef(..)
-            | ty::FnPtr(..)
-            | ty::Error(_)
-            | ty::Tuple(..)
-            | ty::CoroutineWitness(..)
-            | ty::Pat(..) => {
+            ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) | ty::Tuple(..) | ty::Pat(..) => {
                 candidates.vec.push(BuiltinCandidate);
             }
 
@@ -1192,6 +1194,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
+            ty::CoroutineWitness(coroutine_def_id, _) => {
+                if self.should_stall_coroutine_witness(coroutine_def_id) {
+                    candidates.ambiguous = true;
+                } else {
+                    candidates.vec.push(SizedCandidate);
+                }
+            }
+
             // Fallback to whatever user-defined impls or param-env clauses exist in this case.
             ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {}
 
@@ -1229,13 +1239,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Char
             | ty::Ref(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
             | ty::Error(_) => {
                 candidates.vec.push(SizedCandidate);
+            }
+
+            ty::CoroutineWitness(coroutine_def_id, _) => {
+                if self.should_stall_coroutine_witness(coroutine_def_id) {
+                    candidates.ambiguous = true;
+                } else {
+                    candidates.vec.push(SizedCandidate);
+                }
             }
 
             // Conditionally `Sized`.
