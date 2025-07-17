@@ -219,7 +219,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn hygienic_lexical_parent(
-        &mut self,
+        &self,
         module: Module<'ra>,
         ctxt: &mut SyntaxContext,
         derive_fallback_lint_id: Option<NodeId>,
@@ -841,7 +841,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 if ns == TypeNS {
                     if ident.name == kw::Crate || ident.name == kw::DollarCrate {
                         let module = self.resolve_crate_root(ident);
-                        return Ok(self.module_self_bindings[&module]);
+                        return Ok(module.self_binding.unwrap());
                     } else if ident.name == kw::Super || ident.name == kw::SelfLower {
                         // FIXME: Implement these with renaming requirements so that e.g.
                         // `use super;` doesn't work, but `use super as name;` does.
@@ -885,7 +885,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             );
         }
 
-        let check_usable = |this: &mut Self, binding: NameBinding<'ra>| {
+        let check_usable = |this: &Self, binding: NameBinding<'ra>| {
             let usable = this.is_accessible_from(binding.vis, parent_scope.module);
             if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
         };
