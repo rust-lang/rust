@@ -4,10 +4,10 @@ FIXME: This file talks about invariants of the type system as a whole, not only 
 
 There are a lot of invariants - things the type system guarantees to be true at all times -
 which are desirable or expected from other languages and type systems. Unfortunately, quite
-a few of them do not hold in Rust right now. This is either a fundamental to its design or
-caused by bugs and something that may change in the future.
+a few of them do not hold in Rust right now. This is either fundamental to its design or
+caused by bugs, and something that may change in the future.
 
-It is important to know about the things you can assume while working on - and with - the
+It is important to know about the things you can assume while working on, and with, the
 type system, so here's an incomplete and unofficial list of invariants of
 the core type system:
 
@@ -29,14 +29,15 @@ If you have a some type and equate it to itself after replacing any regions with
 inference variables in both the lhs and rhs, the now potentially structurally different
 types should still be equal to each other.
 
-Needed to prevent goals from succeeding in HIR typeck and then failing in MIR borrowck.
-If this invariant is broken MIR typeck ends up failing with an ICE.
+This is needed to prevent goals from succeeding in HIR typeck and then failing in MIR borrowck.
+If this invariant is broken, MIR typeck ends up failing with an ICE.
 
 ### Applying inference results from a goal does not change its result ❌
 
 TODO: this invariant is formulated in a weird way and needs to be elaborated.
 Pretty much: I would like this check to only fail if there's a solver bug:
-https://github.com/rust-lang/rust/blob/2ffeb4636b4ae376f716dc4378a7efb37632dc2d/compiler/rustc_trait_selection/src/solve/eval_ctxt.rs#L391-L407 We should readd this check and see where it breaks :3
+<https://github.com/rust-lang/rust/blob/2ffeb4636b4ae376f716dc4378a7efb37632dc2d/compiler/rustc_trait_selection/src/solve/eval_ctxt.rs#L391-L407>.
+We should readd this check and see where it breaks :3
 
 If we prove some goal/equate types/whatever, apply the resulting inference constraints,
 and then redo the original action, the result should be the same.
@@ -75,8 +76,8 @@ the issue is that the invariant is broken, not that we incorrectly rely on it.
 
 ### The type system is complete ❌
 
-The type system is not complete, it often adds unnecessary inference constraints, and errors
-even though the goal could hold.
+The type system is not complete.
+It often adds unnecessary inference constraints, and errors even though the goal could hold.
 
 - method selection
 - opaque type inference
@@ -95,11 +96,13 @@ It is interesting that we allow some incompleteness in the trait solver while st
 #### Normalization must not change results
 
 This invariant is relied on to allow the normalization of generic aliases. Breaking
-it can easily result in unsoundness, e.g. [#57893](https://github.com/rust-lang/rust/issues/57893)
+it can easily result in unsoundness, e.g. [#57893](https://github.com/rust-lang/rust/issues/57893).
 
 #### Goals may still overflow after instantiation
 
-As they start to hit the recursion limit. We also have diverging aliases which are scuffed. It's unclear how these should be handled :3
+This happens they start to hit the recursion limit.
+We also have diverging aliases which are scuffed.
+It's unclear how these should be handled :3
 
 ### Trait goals in empty environments are proven by a unique impl ✅
 
@@ -107,8 +110,7 @@ If a trait goal holds with an empty environment, there should be a unique `impl`
 either user-defined or builtin, which is used to prove that goal. This is
 necessary to select unique methods and associated items.
 
-We do however break this invariant in few cases, some of which are due to bugs,
-some by design:
+We do however break this invariant in a few cases, some of which are due to bugs, some by design:
 - *marker traits* are allowed to overlap as they do not have associated items
 - *specialization* allows specializing impls to overlap with their parent
 - the builtin trait object trait implementation can overlap with a user-defined impl:
@@ -117,11 +119,12 @@ some by design:
 
 #### The type system is complete during the implicit negative overlap check in coherence ✅
 
-For more on overlap checking: [coherence]
+For more on overlap checking, see [Coherence chapter].
 
-During the implicit negative overlap check in coherence we must never return *error* for
-goals which can be proven. This would allow for overlapping impls with potentially different
-associated items, breaking a bunch of other invariants.
+During the implicit negative overlap check in coherence,
+we must never return *error* for goals which can be proven.
+This would allow for overlapping impls with potentially different associated items,
+breaking a bunch of other invariants.
 
 This invariant is currently broken in many different ways while actually something we rely on.
 We have to be careful as it is quite easy to break:
@@ -147,8 +150,8 @@ This currently does not hold with the new solver: [trait-system-refactor-initiat
 Ideally we *should* not rely on ambiguity for things to compile.
 Not doing that will cause future improvements to be breaking changes.
 
-Due to *incompleteness* this is not the case and improving inference can result in inference
-changes, breaking existing projects.
+Due to *incompleteness* this is not the case,
+and improving inference can result in inference changes, breaking existing projects.
 
 ### Semantic equality implies structural equality ✅
 
@@ -166,4 +169,4 @@ Semantically different `'static` types need different `TypeId`s to avoid transmu
 for example `for<'a> fn(&'a str)` vs `fn(&'static str)` must have a different `TypeId`.
 
 
-[coherence]: ../coherence.md
+[coherence chapter]: ../coherence.md
