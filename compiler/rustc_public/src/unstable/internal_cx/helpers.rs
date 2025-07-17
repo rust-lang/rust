@@ -5,7 +5,7 @@
 
 use rustc_middle::ty;
 
-pub(crate) trait SmirExistentialProjection<'tcx> {
+pub(crate) trait ExistentialProjectionHelpers<'tcx> {
     fn new_from_args(
         &self,
         def_id: rustc_span::def_id::DefId,
@@ -14,7 +14,7 @@ pub(crate) trait SmirExistentialProjection<'tcx> {
     ) -> ty::ExistentialProjection<'tcx>;
 }
 
-pub(crate) trait SmirExistentialTraitRef<'tcx> {
+pub(crate) trait ExistentialTraitRefHelpers<'tcx> {
     fn new_from_args(
         &self,
         trait_def_id: rustc_span::def_id::DefId,
@@ -22,7 +22,7 @@ pub(crate) trait SmirExistentialTraitRef<'tcx> {
     ) -> ty::ExistentialTraitRef<'tcx>;
 }
 
-pub(crate) trait SmirTraitRef<'tcx> {
+pub(crate) trait TraitRefHelpers<'tcx> {
     fn new_from_args(
         &self,
         trait_def_id: rustc_span::def_id::DefId,
