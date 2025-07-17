@@ -1,8 +1,7 @@
+//@ check-pass
 //@ compile-flags: --crate-type=lib
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
-//@[current] check-fail
-//@[next] check-fail
 //@[next] compile-flags: -Znext-solver
 
 // Test that we avoid incomplete inference when normalizing. Without this,
@@ -25,5 +24,4 @@ where
     T::Assoc<[u32; 1]>: Clone,
 {
     let _x = T::Assoc::new(());
-//~^ ERROR: mismatched types
 }

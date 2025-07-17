@@ -4,7 +4,7 @@ use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
-use rustc_type_ir::solve::{CanonicalResponse, SizedTraitKind};
+use rustc_type_ir::solve::{CandidatePreferenceMode, CanonicalResponse, SizedTraitKind};
 use rustc_type_ir::{
     self as ty, Interner, Movability, PredicatePolarity, TraitPredicate, TraitRef,
     TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
@@ -1355,6 +1355,7 @@ where
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn merge_trait_candidates(
         &mut self,
+        candidate_preference_mode: CandidatePreferenceMode,
         mut candidates: Vec<Candidate<I>>,
         failed_candidate_info: FailedCandidateInfo,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
@@ -1378,6 +1379,24 @@ where
             // as they would otherwise overlap.
             assert!(trivial_builtin_impls.next().is_none());
             return Ok((candidate.result, Some(TraitGoalProvenVia::Misc)));
+        }
+
+        let potential_alias_bound_response =
+            candidates.iter().any(|c| matches!(c.source, CandidateSource::AliasBound)).then(|| {
+                let alias_bounds: Vec<_> = candidates
+                    .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound))
+                    .collect();
+                if let Some((response, _)) = self.try_merge_candidates(&alias_bounds) {
+                    (response, Some(TraitGoalProvenVia::AliasBound))
+                } else {
+                    (self.bail_with_ambiguity(&alias_bounds), None)
+                }
+            });
+
+        if matches!(candidate_preference_mode, CandidatePreferenceMode::Marker)
+            && let Some(alias_bound_response) = potential_alias_bound_response
+        {
+            return Ok(alias_bound_response);
         }
 
         // If there are non-global where-bounds, prefer where-bounds
@@ -1427,15 +1446,8 @@ where
             };
         }
 
-        if candidates.iter().any(|c| matches!(c.source, CandidateSource::AliasBound)) {
-            let alias_bounds: Vec<_> = candidates
-                .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound))
-                .collect();
-            return if let Some((response, _)) = self.try_merge_candidates(&alias_bounds) {
-                Ok((response, Some(TraitGoalProvenVia::AliasBound)))
-            } else {
-                Ok((self.bail_with_ambiguity(&alias_bounds), None))
-            };
+        if let Some(response) = potential_alias_bound_response {
+            return Ok(response);
         }
 
         self.filter_specialized_impls(AllowInferenceConstraints::No, &mut candidates);
@@ -1470,7 +1482,9 @@ where
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         let (candidates, failed_candidate_info) =
             self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
-        self.merge_trait_candidates(candidates, failed_candidate_info)
+        let candidate_preference_mode =
+            CandidatePreferenceMode::compute(self.cx(), goal.predicate.def_id());
+        self.merge_trait_candidates(candidate_preference_mode, candidates, failed_candidate_info)
     }
 
     fn try_stall_coroutine(&mut self, self_ty: I::Ty) -> Option<Result<Candidate<I>, NoSolution>> {

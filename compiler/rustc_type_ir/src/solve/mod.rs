@@ -109,6 +109,30 @@ pub struct QueryInput<I: Interner, P> {
 
 impl<I: Interner, P: Eq> Eq for QueryInput<I, P> {}
 
+/// Which trait candidates should be preferred over other candidates? By default, prefer where
+/// bounds over alias bounds. For marker traits, prefer alias bounds over where bounds.
+#[derive(Clone, Copy, Debug)]
+pub enum CandidatePreferenceMode {
+    /// Prefers where bounds over alias bounds
+    Default,
+    /// Prefers alias bounds over where bounds
+    Marker,
+}
+
+impl CandidatePreferenceMode {
+    /// Given `trait_def_id`, which candidate preference mode should be used?
+    pub fn compute<I: Interner>(cx: I, trait_id: I::TraitId) -> CandidatePreferenceMode {
+        let is_sizedness_or_auto_or_default_goal = cx.is_sizedness_trait(trait_id)
+            || cx.trait_is_auto(trait_id)
+            || cx.is_default_trait(trait_id);
+        if is_sizedness_or_auto_or_default_goal {
+            CandidatePreferenceMode::Marker
+        } else {
+            CandidatePreferenceMode::Default
+        }
+    }
+}
+
 /// Possible ways the given goal can be proven.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 pub enum CandidateSource<I: Interner> {
