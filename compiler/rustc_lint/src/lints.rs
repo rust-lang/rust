@@ -1747,6 +1747,20 @@ pub(crate) struct OverflowingLiteral<'a> {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_surrogate_char_cast)]
+#[note]
+pub(crate) struct SurrogateCharCast {
+    pub literal: u128,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_too_large_char_cast)]
+#[note]
+pub(crate) struct TooLargeCharCast {
+    pub literal: u128,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_uses_power_alignment)]
 pub(crate) struct UsesPowerAlignment;
 
@@ -3078,6 +3092,14 @@ pub(crate) struct HiddenGlobReexports {
     pub name: String,
     // FIXME: make this translatable
     pub namespace: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_reexport_private_dependency)]
+pub(crate) struct ReexportPrivateDependency {
+    pub name: String,
+    pub kind: String,
+    pub krate: Symbol,
 }
 
 #[derive(LintDiagnostic)]
