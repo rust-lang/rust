@@ -7,7 +7,7 @@ use rustc_ast::token::CommentKind;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{
     self as ast, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label, LitIntType,
-    LitKind, TraitObjectSyntax, UintTy, UnsafeBinderCastKind,
+    LitKind, TraitObjectSyntax, UintTy, UnsafeBinderCastKind, join_path_idents,
 };
 pub use rustc_ast::{
     AssignOp, AssignOpKind, AttrId, AttrStyle, BinOp, BinOpKind, BindingMode, BorrowKind,
@@ -1168,7 +1168,7 @@ impl AttrPath {
 
 impl fmt::Display for AttrPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.segments.iter().map(|i| i.to_string()).collect::<Vec<_>>().join("::"))
+        write!(f, "{}", join_path_idents(&self.segments))
     }
 }
 
