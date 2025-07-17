@@ -251,6 +251,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_)
+                    | AttributeKind::Pointee(..)
                     | AttributeKind::Dummy
                     | AttributeKind::OmitGdbPrettyPrinterSection,
                 ) => { /* do nothing  */ }
@@ -381,7 +382,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::cfg_attr_trace
                             // need to be fixed
                             | sym::cfi_encoding // FIXME(cfi_encoding)
-                            | sym::pointee // FIXME(derive_coerce_pointee)
                             | sym::instruction_set // broken on stable!!!
                             | sym::windows_subsystem // broken on stable!!!
                             | sym::patchable_function_entry // FIXME(patchable_function_entry)

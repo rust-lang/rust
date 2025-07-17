@@ -651,11 +651,9 @@ impl Build {
         // Handle hard-coded subcommands.
         {
             #[cfg(feature = "tracing")]
-            let _hardcoded_span = span!(
-                tracing::Level::DEBUG,
-                "handling hardcoded subcommands (Format, Suggest, Perf)"
-            )
-            .entered();
+            let _hardcoded_span =
+                span!(tracing::Level::DEBUG, "handling hardcoded subcommands (Format, Perf)")
+                    .entered();
 
             match &self.config.cmd {
                 Subcommand::Format { check, all } => {
@@ -665,9 +663,6 @@ impl Build {
                         *all,
                         &self.config.paths,
                     );
-                }
-                Subcommand::Suggest { run } => {
-                    return core::build_steps::suggest::suggest(&builder::Builder::new(self), *run);
                 }
                 Subcommand::Perf(args) => {
                     return core::build_steps::perf::perf(&builder::Builder::new(self), args);

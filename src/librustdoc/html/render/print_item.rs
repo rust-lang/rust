@@ -1487,12 +1487,11 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
                     self.cx.cache(),
                     self.def_id,
                     ItemType::Union,
-                    false,
                 ) {
                     writeln!(f, "{repr}")?;
                 };
             } else {
-                for a in self.it.attributes(self.cx.tcx(), self.cx.cache(), false) {
+                for a in self.it.attributes(self.cx.tcx(), self.cx.cache()) {
                     writeln!(f, "{a}")?;
                 }
             }

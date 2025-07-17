@@ -506,7 +506,6 @@ trigger_files = [
     "src/tools/remote-test-server",
     "src/tools/remote-test-client",
     "src/tools/rustdoc-gui-test",
-    "src/tools/suggest-tests",
 ]
 
 [autolabel."A-tidy"]

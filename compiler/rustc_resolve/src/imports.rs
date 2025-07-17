@@ -11,7 +11,8 @@ use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_hir::def_id::DefId;
 use rustc_middle::metadata::{ModChild, Reexport};
-use rustc_middle::{span_bug, ty};
+use rustc_middle::span_bug;
+use rustc_middle::ty::Visibility;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, HIDDEN_GLOB_REEXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE,
@@ -88,7 +89,7 @@ pub(crate) enum ImportKind<'ra> {
         is_prelude: bool,
         // The visibility of the greatest re-export.
         // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
-        max_vis: Cell<Option<ty::Visibility>>,
+        max_vis: Cell<Option<Visibility>>,
         id: NodeId,
     },
     ExternCrate {
@@ -185,7 +186,7 @@ pub(crate) struct ImportData<'ra> {
     /// |`use ::foo`      | `ModuleOrUniformRoot::CrateRootAndExternPrelude`    | a special case in 2015 edition |
     /// |`use foo`        | `ModuleOrUniformRoot::CurrentScope`                 | - |
     pub imported_module: Cell<Option<ModuleOrUniformRoot<'ra>>>,
-    pub vis: ty::Visibility,
+    pub vis: Visibility,
 }
 
 /// All imports are unique and allocated on a same arena,
@@ -679,9 +680,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             NameBindingKind::Res(res) => {
                                 Some(self.def_id_to_node_id(res.def_id().expect_local()))
                             }
-                            NameBindingKind::Module(module) => {
-                                Some(self.def_id_to_node_id(module.def_id().expect_local()))
-                            }
                             NameBindingKind::Import { import, .. } => import.id(),
                         };
                         if let Some(binding_id) = binding_id {
@@ -875,7 +873,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         // We need the `target`, `source` can be extracted.
                         let imported_binding = this.import(binding, import);
-                        this.define(parent, target, ns, imported_binding);
+                        this.define_binding(parent, target, ns, imported_binding);
                         PendingBinding::Ready(Some(imported_binding))
                     }
                     Err(Determinacy::Determined) => {
@@ -1283,7 +1281,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             if !binding.vis.is_at_least(import.vis, this.tcx) {
                 reexport_error = Some((ns, binding));
-                if let ty::Visibility::Restricted(binding_def_id) = binding.vis
+                if let Visibility::Restricted(binding_def_id) = binding.vis
                     && binding_def_id.is_top_level_module()
                 {
                     crate_private_reexport = true;

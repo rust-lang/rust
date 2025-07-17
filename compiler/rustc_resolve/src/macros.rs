@@ -5,10 +5,9 @@ use std::cell::Cell;
 use std::mem;
 use std::sync::Arc;
 
-use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, Crate, NodeId, attr};
 use rustc_ast_pretty::pprust;
-use rustc_attr_data_structures::StabilityLevel;
+use rustc_attr_data_structures::{CfgEntry, StabilityLevel, StrippedCfgItem};
 use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
@@ -21,7 +20,7 @@ use rustc_expand::expand::{
 use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
-use rustc_middle::ty::{RegisteredTools, TyCtxt, Visibility};
+use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
@@ -42,7 +41,7 @@ use crate::imports::Import;
 use crate::{
     BindingKey, DeriveData, Determinacy, Finalize, InvocationParent, MacroData, ModuleKind,
     ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult, ResolutionError,
-    Resolver, ScopeSet, Segment, ToNameBinding, Used,
+    Resolver, ScopeSet, Segment, Used,
 };
 
 type Res = def::Res<NodeId>;
@@ -437,8 +436,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             .iter()
             .map(|(_, ident)| {
                 let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
-                let binding = (res, Visibility::<DefId>::Public, ident.span, expn_id)
-                    .to_name_binding(self.arenas);
+                let binding = self.arenas.new_pub_res_binding(res, ident.span, expn_id);
                 (*ident, binding)
             })
             .collect();
@@ -485,8 +483,18 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         self.proc_macros.push(self.local_def_id(id))
     }
 
-    fn append_stripped_cfg_item(&mut self, parent_node: NodeId, ident: Ident, cfg: ast::MetaItem) {
-        self.stripped_cfg_items.push(StrippedCfgItem { parent_module: parent_node, ident, cfg });
+    fn append_stripped_cfg_item(
+        &mut self,
+        parent_node: NodeId,
+        ident: Ident,
+        cfg: CfgEntry,
+        cfg_span: Span,
+    ) {
+        self.stripped_cfg_items.push(StrippedCfgItem {
+            parent_module: parent_node,
+            ident,
+            cfg: (cfg, cfg_span),
+        });
     }
 
     fn registered_tools(&self) -> &RegisteredTools {
