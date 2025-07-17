@@ -246,8 +246,9 @@ pub(crate) fn target_machine_factory(
 
     // this makes LLVM add a hotpatch flag in the codeview S_COMPILE3 record,
     // which is required by linkers for the functionpadmin option
-    // aarch64 is always hotpatchable
-    let is_hotpatchable = sess.opts.unstable_opts.hotpatch || sess.target.arch.contains("aarch64");
+    // aarch64 is always hotpatchable, so we could unconditionally add it,
+    // but as this feature is currently unstable we better leave it off
+    let is_hotpatchable = sess.opts.unstable_opts.hotpatch;
 
     let path_mapping = sess.source_map().path_mapping().clone();
 
