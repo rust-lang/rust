@@ -171,3 +171,13 @@ fn in_parens() {
         }
     //~^^^^^ collapsible_if
 }
+
+fn in_brackets() {
+    if true {
+        {
+            if true {
+                println!("In brackets, not linted");
+            }
+        }
+    }
+}

@@ -136,6 +136,9 @@ impl CollapsibleIf {
                         return;
                     }
 
+                    // Peel off any parentheses.
+                    let (_, else_block_span, _) = peel_parens(cx.tcx.sess.source_map(), else_.span);
+
                     // Prevent "elseif"
                     // Check that the "else" is followed by whitespace
                     let requires_space = if let Some(c) = snippet(cx, up_to_else, "..").chars().last() {
@@ -152,7 +155,7 @@ impl CollapsibleIf {
                             if requires_space { " " } else { "" },
                             snippet_block_with_applicability(
                                 cx,
-                                else_.span,
+                                else_block_span,
                                 "..",
                                 Some(else_block.span),
                                 &mut applicability
@@ -298,39 +301,36 @@ fn span_extract_keyword(sm: &SourceMap, span: Span, keyword: &str) -> Option<Spa
         .next()
 }
 
+/// Peel the parentheses from an `if` expression, e.g. `((if true {} else {}))`.
 fn peel_parens(sm: &SourceMap, mut span: Span) -> (Span, Span, Span) {
     use crate::rustc_span::Pos;
-    use rustc_span::SpanData;
 
     let start = span.shrink_to_lo();
     let end = span.shrink_to_hi();
 
-    loop {
-        let data = span.data();
-        let snippet = sm.span_to_snippet(span).unwrap();
-
-        let trim_start = snippet.len() - snippet.trim_start().len();
-        let trim_end = snippet.len() - snippet.trim_end().len();
-
-        let trimmed = snippet.trim();
-
-        if trimmed.starts_with('(') && trimmed.ends_with(')') {
-            // Try to remove one layer of parens by adjusting the span
-            span = SpanData {
-                lo: data.lo + BytePos::from_usize(trim_start + 1),
-                hi: data.hi - BytePos::from_usize(trim_end + 1),
-                ctxt: data.ctxt,
-                parent: data.parent,
-            }
-            .span();
-
-            continue;
-        }
-
-        break;
+    let snippet = sm.span_to_snippet(span).unwrap();
+    if let Some((trim_start, _, trim_end)) = peel_parens_str(&snippet) {
+        let mut data = span.data();
+        data.lo = data.lo + BytePos::from_usize(trim_start);
+        data.hi = data.hi - BytePos::from_usize(trim_end);
+        span = data.span();
     }
 
-    (start.with_hi(span.lo()),
-    span,
-    end.with_lo(span.hi()))
+    (start.with_hi(span.lo()), span, end.with_lo(span.hi()))
+}
+
+fn peel_parens_str(snippet: &str) -> Option<(usize, &str, usize)> {
+    let trimmed = snippet.trim();
+    if !(trimmed.starts_with('(') && trimmed.ends_with(')')) {
+        return None;
+    }
+
+    let trim_start = (snippet.len() - snippet.trim_start().len()) + 1;
+    let trim_end = (snippet.len() - snippet.trim_end().len()) + 1;
+
+    let inner = snippet.get(trim_start..snippet.len() - trim_end)?;
+    Some(match peel_parens_str(inner) {
+        None => (trim_start, inner, trim_end),
+        Some((start, inner, end)) => (trim_start + start, inner, trim_end + end),
+    })
 }
