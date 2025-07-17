@@ -2,7 +2,8 @@
 //@ edition: 2021
 //@ revisions: assumptions no_assumptions
 //@[assumptions] compile-flags: -Zhigher-ranked-assumptions
-//@[assumptions] check-pass
+//@[assumptions] check-fail
+//@[assumptions] known-bug: #110338
 //@[no_assumptions] known-bug: #110338
 
 #![feature(impl_trait_in_assoc_type)]
