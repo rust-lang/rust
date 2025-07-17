@@ -1,0 +1,19 @@
+error[E0311]: the parameter type `T` may not live long enough
+  --> $DIR/issue-93262.rs:14:16
+   |
+LL | impl<T: Trait> Foo<T> for Type
+   |                ^^^^^^
+   |                |
+   |                the parameter type `T` must be valid for lifetime `'a`...
+   |                ...so that the type `T` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/issue-93262.rs:9:27
+   |
+LL |     for<'a> T::Assoc<'a>: Clone
+   |                           ^^^^^
+   = help: consider adding an explicit lifetime bound `T: 'a`...
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0311`.
