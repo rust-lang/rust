@@ -936,7 +936,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if let Some(fn_val) = self.get_fn_alloc(id) {
             let align = match fn_val {
                 FnVal::Instance(instance) => {
-                    self.tcx.codegen_fn_attrs(instance.def_id()).alignment.unwrap_or(Align::ONE)
+                    self.tcx.codegen_instance_attrs(instance.def).alignment.unwrap_or(Align::ONE)
                 }
                 // Machine-specific extra functions currently do not support alignment restrictions.
                 FnVal::Other(_) => Align::ONE,
