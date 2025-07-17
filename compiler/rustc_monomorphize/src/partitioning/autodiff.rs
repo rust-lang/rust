@@ -120,7 +120,8 @@ pub(crate) fn find_autodiff_source_functions<'tcx>(
             None => continue,
         };
 
-        debug!("source_id: {:?}", inst.def_id());
+        let source_def_id = inst.def_id();
+        debug!("source_id: {:?}", source_def_id);
         let fn_ty = inst.ty(tcx, ty::TypingEnv::fully_monomorphized());
         assert!(fn_ty.is_fn());
         adjust_activity_to_abi(tcx, fn_ty, &mut input_activities);
@@ -128,7 +129,7 @@ pub(crate) fn find_autodiff_source_functions<'tcx>(
 
         let mut new_target_attrs = target_attrs.clone();
         new_target_attrs.input_activity = input_activities;
-        let itm = new_target_attrs.into_item(symb, target_symbol);
+        let itm = new_target_attrs.into_item(symb, target_symbol, tcx.def_span(source_def_id));
         autodiff_items.push(itm);
     }
 

@@ -6,6 +6,8 @@
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
+use rustc_span::Span;
+
 use crate::expand::{Decodable, Encodable, HashStable_Generic};
 use crate::ptr::P;
 use crate::{Ty, TyKind};
@@ -85,6 +87,7 @@ pub struct AutoDiffItem {
     /// The name of the function being generated
     pub target: String,
     pub attrs: AutoDiffAttrs,
+    pub span: Span,
 }
 
 #[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -276,8 +279,8 @@ impl AutoDiffAttrs {
         !matches!(self.mode, DiffMode::Error | DiffMode::Source)
     }
 
-    pub fn into_item(self, source: String, target: String) -> AutoDiffItem {
-        AutoDiffItem { source, target, attrs: self }
+    pub fn into_item(self, source: String, target: String, span: Span) -> AutoDiffItem {
+        AutoDiffItem { source, target, attrs: self, span }
     }
 }
 
