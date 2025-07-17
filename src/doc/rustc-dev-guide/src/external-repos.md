@@ -60,7 +60,10 @@ Currently, we are migrating Josh repositories to it. So far, it is used in:
 - rustc-dev-guide
 - stdarch
 
-To use the tool, first install it with `cargo install --locked --git https://github.com/rust-lang/josh-sync`.
+To install the tool:
+```
+cargo install --locked --git https://github.com/rust-lang/josh-sync
+```
 
 Both pulls (synchronize changes from rust-lang/rust into the subtree) and pushes (synchronize
 changes from the subtree to rust-lang/rust) are performed from the subtree repository (so first
