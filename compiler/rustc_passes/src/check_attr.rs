@@ -662,7 +662,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             sym::naked,
             sym::instruction_set,
             sym::repr,
-            sym::align,
+            // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
+            sym::rustc_align,
             sym::rustc_std_internal_symbol,
             // documentation
             sym::doc,
@@ -1996,6 +1997,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[align]` attributes on `item` are valid.
+    // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     fn check_align(&self, span: Span, target: Target, align: Align, repr_span: Span) {
         match target {
             Target::Fn | Target::Method(_) => {}

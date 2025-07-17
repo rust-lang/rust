@@ -14,7 +14,7 @@ passes_abi_of =
     fn_abi_of({$fn_name}) = {$fn_abi}
 
 passes_align_should_be_repr_align =
-    `#[align(...)]` is not supported on {$item} items
+    `#[rustc_align(...)]` is not supported on {$item} items
     .suggestion = use `#[repr(align(...))]` instead
 
 passes_allow_incoherent_impl =
@@ -589,7 +589,7 @@ passes_repr_align_greater_than_target_max =
 
 passes_repr_align_should_be_align =
     `#[repr(align(...))]` is not supported on {$item} items
-    .help = use `#[align(...)]` instead
+    .help = use `#[rustc_align(...)]` instead
 
 passes_repr_conflicting =
     conflicting representation hints
