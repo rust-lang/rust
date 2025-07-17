@@ -940,7 +940,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }) => until_within(*outer_span, ty.span),
             // With generics and bounds.
             Node::Item(Item {
-                kind: ItemKind::Trait(_, _, _, generics, bounds, _),
+                kind: ItemKind::Trait(_, _, _, _, generics, bounds, _),
                 span: outer_span,
                 ..
             })

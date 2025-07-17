@@ -91,6 +91,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for DoNotImplementViaObjectParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::DoNotImplementViaObject;
 }
 
+// FIXME(const_trait_impl): remove this
 // Const traits
 
 pub(crate) struct ConstTraitParser;
