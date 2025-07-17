@@ -648,7 +648,7 @@ impl Item {
             let sig = tcx.fn_sig(def_id).skip_binder();
             let constness = if tcx.is_const_fn(def_id) {
                 // rustc's `is_const_fn` returns `true` for associated functions that have an `impl const` parent
-                // or that have a `#[const_trait]` parent. Do not display those as `const` in rustdoc because we
+                // or that have a `const trait` parent. Do not display those as `const` in rustdoc because we
                 // won't be printing correct syntax plus the syntax is unstable.
                 match tcx.opt_associated_item(def_id) {
                     Some(ty::AssocItem {

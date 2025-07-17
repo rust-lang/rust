@@ -67,10 +67,8 @@ in [`wfcheck::check_impl`].
 Here's an example:
 
 ```rust
-#[const_trait]
-trait Bar {}
-#[const_trait]
-trait Foo: ~const Bar {}
+const trait Bar {}
+const trait Foo: ~const Bar {}
 // `const_conditions` contains `HostEffect(Self: Bar, maybe)`
 
 impl const Bar for () {}
@@ -85,8 +83,7 @@ predicates of the trait method, and we attempt to prove the predicates of the
 impl method. We do the same for `const_conditions`:
 
 ```rust
-#[const_trait]
-trait Foo {
+const trait Foo {
     fn hi<T: ~const Default>();
 }
 

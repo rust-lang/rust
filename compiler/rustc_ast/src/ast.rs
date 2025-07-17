@@ -3690,6 +3690,7 @@ impl Default for FnHeader {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Trait {
+    pub constness: Const,
     pub safety: Safety,
     pub is_auto: IsAuto,
     pub ident: Ident,
