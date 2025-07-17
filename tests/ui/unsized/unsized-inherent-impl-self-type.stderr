@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized-inherent-impl-self-type.rs:7:17
+  --> $DIR/unsized-inherent-impl-self-type.rs:7:20
    |
 LL | impl<X: ?Sized> S5<X> {
-   |      -          ^^^^^ doesn't have a size known at compile-time
+   |      -             ^ doesn't have a size known at compile-time
    |      |
    |      this type parameter needs to be `Sized`
    |

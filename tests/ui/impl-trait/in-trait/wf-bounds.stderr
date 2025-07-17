@@ -1,18 +1,18 @@
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/wf-bounds.rs:12:22
+  --> $DIR/wf-bounds.rs:12:29
    |
 LL |     fn nya() -> impl Wf<Vec<[u8]>>;
-   |                      ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                             ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
 note: required by an implicit `Sized` bound in `Vec`
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/wf-bounds.rs:15:23
+  --> $DIR/wf-bounds.rs:15:26
    |
 LL |     fn nya2() -> impl Wf<[u8]>;
-   |                       ^^^^^^^^ doesn't have a size known at compile-time
+   |                          ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
 note: required by an implicit `Sized` bound in `Wf`
@@ -26,10 +26,10 @@ LL | trait Wf<T: ?Sized> {
    |           ++++++++
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/wf-bounds.rs:18:44
+  --> $DIR/wf-bounds.rs:18:51
    |
 LL |     fn nya3() -> impl Wf<(), Output = impl Wf<Vec<[u8]>>>;
-   |                                            ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                                                   ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
 note: required by an implicit `Sized` bound in `Vec`

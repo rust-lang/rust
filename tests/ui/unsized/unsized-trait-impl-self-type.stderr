@@ -8,10 +8,10 @@ LL | impl<X: ?Sized> T3<X> for S5<X> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized-trait-impl-self-type.rs:10:27
+  --> $DIR/unsized-trait-impl-self-type.rs:10:30
    |
 LL | impl<X: ?Sized> T3<X> for S5<X> {
-   |      -                    ^^^^^ doesn't have a size known at compile-time
+   |      -                       ^ doesn't have a size known at compile-time
    |      |
    |      this type parameter needs to be `Sized`
    |

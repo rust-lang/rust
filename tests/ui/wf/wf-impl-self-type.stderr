@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/wf-impl-self-type.rs:5:14
+  --> $DIR/wf-impl-self-type.rs:5:21
    |
 LL | impl Foo for Option<[u8]> {}
-   |              ^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                     ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
 note: required by an implicit `Sized` bound in `Option`
