@@ -1323,6 +1323,7 @@ infra-ci = [
     "@Kobzol",
     "@marcoieni",
     "@jdno",
+    "@jieyouxu",
 ]
 rustdoc = [
     "@GuillaumeGomez",
