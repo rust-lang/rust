@@ -8,7 +8,7 @@ use crate::{
     utils::{self, DefaultMethods, IgnoreAssocItems},
 };
 
-fn insert_impl(editor: &mut SyntaxEditor, impl_: &ast::Impl, nominal: &ast::Adt) {
+fn insert_impl(editor: &mut SyntaxEditor, impl_: &ast::Impl, nominal: &impl Indent) {
     let indent = nominal.indent_level();
 
     impl_.indent(indent);
@@ -158,6 +158,8 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_>) ->
         format!("Generate `{name}` impl for type"),
         target,
         |edit| {
+            let mut editor = edit.make_editor(trait_.syntax());
+
             let holder_arg = ast::GenericArg::TypeArg(make::type_arg(make::ty_placeholder()));
             let missing_items = utils::filter_assoc_items(
                 &ctx.sema,
@@ -182,8 +184,6 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             )
             .clone_for_update();
 
-            let trait_ = edit.make_mut(trait_);
-
             if !missing_items.is_empty() {
                 utils::add_trait_assoc_items_to_impl(
                     &ctx.sema,
@@ -198,26 +198,31 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             if let Some(cap) = ctx.config.snippet_cap {
                 if let Some(generics) = impl_.trait_().and_then(|it| it.generic_arg_list()) {
                     for generic in generics.generic_args() {
-                        edit.add_placeholder_snippet(cap, generic);
+                        let placeholder = edit.make_placeholder_snippet(cap);
+                        editor.add_annotation(generic.syntax(), placeholder);
                     }
                 }
 
                 if let Some(ty) = impl_.self_ty() {
-                    edit.add_placeholder_snippet(cap, ty);
+                    let placeholder = edit.make_placeholder_snippet(cap);
+                    editor.add_annotation(ty.syntax(), placeholder);
                 }
 
                 if let Some(expr) =
                     impl_.assoc_item_list().and_then(|it| it.assoc_items().find_map(extract_expr))
                 {
-                    edit.add_tabstop_before(cap, expr);
+                    let tabstop = edit.make_tabstop_before(cap);
+                    editor.add_annotation(expr.syntax(), tabstop);
                 } else if let Some(l_curly) =
                     impl_.assoc_item_list().and_then(|it| it.l_curly_token())
                 {
-                    edit.add_tabstop_after_token(cap, l_curly);
+                    let tabstop = edit.make_tabstop_after(cap);
+                    editor.add_annotation(l_curly, tabstop);
                 }
             }
 
-            insert_impl(impl_, &trait_);
+            insert_impl(&mut editor, &impl_, &trait_);
+            edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -749,6 +754,43 @@ mod tests {
 
                     fn foo(&self) -> Self::Output {
                         $0todo!()
+                    }
+                }
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_add_impl_trait_indent() {
+        check_assist(
+            generate_impl_trait,
+            r#"
+                mod foo {
+                    mod bar {
+                        trait $0Foo {
+                            type Output;
+
+                            fn foo(&self) -> Self::Output;
+                        }
+                    }
+                }
+            "#,
+            r#"
+                mod foo {
+                    mod bar {
+                        trait Foo {
+                            type Output;
+
+                            fn foo(&self) -> Self::Output;
+                        }
+
+                        impl Foo for ${1:_} {
+                            type Output;
+
+                            fn foo(&self) -> Self::Output {
+                                $0todo!()
+                            }
+                        }
                     }
                 }
             "#,
