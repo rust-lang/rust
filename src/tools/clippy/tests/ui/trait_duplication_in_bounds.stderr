@@ -59,19 +59,19 @@ LL | fn bad_trait_object(arg0: &(dyn Any + Send + Send)) {
    |                                 ^^^^^^^^^^^^^^^^^ help: try: `Any + Send`
 
 error: these bounds contain repeated elements
-  --> tests/ui/trait_duplication_in_bounds.rs:174:36
+  --> tests/ui/trait_duplication_in_bounds.rs:173:36
    |
 LL | const fn const_trait_bounds_bad<T: [const] ConstTrait + [const] ConstTrait>() {}
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `[const] ConstTrait`
 
 error: these where clauses contain repeated elements
-  --> tests/ui/trait_duplication_in_bounds.rs:181:8
+  --> tests/ui/trait_duplication_in_bounds.rs:180:8
    |
 LL |     T: IntoIterator<Item = U::Owned> + IntoIterator<Item = U::Owned>,
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `IntoIterator<Item = U::Owned>`
 
 error: these where clauses contain repeated elements
-  --> tests/ui/trait_duplication_in_bounds.rs:203:8
+  --> tests/ui/trait_duplication_in_bounds.rs:202:8
    |
 LL |     T: AssocConstTrait<ASSOC = 0> + AssocConstTrait<ASSOC = 0>,
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `AssocConstTrait<ASSOC = 0>`
