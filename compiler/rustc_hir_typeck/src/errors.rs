@@ -606,24 +606,6 @@ impl Subdiagnostic for RemoveSemiForCoerce {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_const_select_must_be_const)]
-#[help]
-pub(crate) struct ConstSelectMustBeConst {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_typeck_const_select_must_be_fn)]
-#[note]
-#[help]
-pub(crate) struct ConstSelectMustBeFn<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub ty: Ty<'a>,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_typeck_union_pat_multiple_fields)]
 pub(crate) struct UnionPatMultipleFields {
     #[primary_span]

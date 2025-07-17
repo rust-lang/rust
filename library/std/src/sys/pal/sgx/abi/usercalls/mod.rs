@@ -2,7 +2,7 @@ use crate::cmp;
 use crate::io::{
     BorrowedCursor, Error as IoError, ErrorKind, IoSlice, IoSliceMut, Result as IoResult,
 };
-use crate::random::{DefaultRandomSource, Random};
+use crate::random::random;
 use crate::time::{Duration, Instant};
 
 pub(crate) mod alloc;
@@ -179,7 +179,7 @@ pub fn wait(event_mask: u64, mut timeout: u64) -> IoResult<u64> {
         // trusted to ensure accurate timeouts.
         if let Ok(timeout_signed) = i64::try_from(timeout) {
             let tenth = timeout_signed / 10;
-            let deviation = i64::random(&mut DefaultRandomSource).checked_rem(tenth).unwrap_or(0);
+            let deviation = random::<i64>(..).checked_rem(tenth).unwrap_or(0);
             timeout = timeout_signed.saturating_add(deviation) as _;
         }
     }

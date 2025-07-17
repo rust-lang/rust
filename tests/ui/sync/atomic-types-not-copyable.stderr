@@ -1,0 +1,51 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/atomic-types-not-copyable.rs:11:13
+   |
+LL |     let x = *&x;
+   |             ^^^ move occurs because value has type `std::sync::atomic::AtomicBool`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let x = *&x;
+LL +     let x = &x;
+   |
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/atomic-types-not-copyable.rs:13:13
+   |
+LL |     let x = *&x;
+   |             ^^^ move occurs because value has type `std::sync::atomic::AtomicIsize`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let x = *&x;
+LL +     let x = &x;
+   |
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/atomic-types-not-copyable.rs:15:13
+   |
+LL |     let x = *&x;
+   |             ^^^ move occurs because value has type `std::sync::atomic::AtomicUsize`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let x = *&x;
+LL +     let x = &x;
+   |
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/atomic-types-not-copyable.rs:17:13
+   |
+LL |     let x = *&x;
+   |             ^^^ move occurs because value has type `std::sync::atomic::AtomicPtr<usize>`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let x = *&x;
+LL +     let x = &x;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

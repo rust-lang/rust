@@ -314,7 +314,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let span = this.machine.current_span();
 
         // Store initial permissions and their corresponding range.
-        let mut perms_map: RangeMap<LocationState> = RangeMap::new(
+        let mut perms_map: DedupRangeMap<LocationState> = DedupRangeMap::new(
             ptr_size,
             LocationState::new_accessed(Permission::new_disabled(), IdempotentForeignAccess::None), // this will be overwritten
         );

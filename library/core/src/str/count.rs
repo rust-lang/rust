@@ -52,7 +52,7 @@ fn do_count_chars(s: &str) -> usize {
     // Check the properties of `CHUNK_SIZE` and `UNROLL_INNER` that are required
     // for correctness.
     const _: () = assert!(CHUNK_SIZE < 256);
-    const _: () = assert!(CHUNK_SIZE % UNROLL_INNER == 0);
+    const _: () = assert!(CHUNK_SIZE.is_multiple_of(UNROLL_INNER));
 
     // SAFETY: transmuting `[u8]` to `[usize]` is safe except for size
     // differences which are handled by `align_to`.

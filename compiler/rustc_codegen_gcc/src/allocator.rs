@@ -1,6 +1,6 @@
-use gccjit::{Context, FunctionType, GlobalKind, ToRValue, Type};
 #[cfg(feature = "master")]
-use gccjit::{FnAttribute, VarAttribute};
+use gccjit::FnAttribute;
+use gccjit::{Context, FunctionType, RValue, ToRValue, Type};
 use rustc_ast::expand::allocator::{
     ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
     alloc_error_handler_name, default_fn_name, global_fn_name,
@@ -71,15 +71,13 @@ pub(crate) unsafe fn codegen(
         None,
     );
 
-    let name = mangle_internal_symbol(tcx, OomStrategy::SYMBOL);
-    let global = context.new_global(None, GlobalKind::Exported, i8, name);
-    #[cfg(feature = "master")]
-    global.add_attribute(VarAttribute::Visibility(symbol_visibility_to_gcc(
-        tcx.sess.default_visibility(),
-    )));
-    let value = tcx.sess.opts.unstable_opts.oom.should_panic();
-    let value = context.new_rvalue_from_int(i8, value as i32);
-    global.global_set_initializer_rvalue(value);
+    create_const_value_function(
+        tcx,
+        context,
+        &mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
+        i8,
+        context.new_rvalue_from_int(i8, tcx.sess.opts.unstable_opts.oom.should_panic() as i32),
+    );
 
     create_wrapper_function(
         tcx,
@@ -89,6 +87,30 @@ pub(crate) unsafe fn codegen(
         &[],
         None,
     );
+}
+
+fn create_const_value_function(
+    tcx: TyCtxt<'_>,
+    context: &Context<'_>,
+    name: &str,
+    output: Type<'_>,
+    value: RValue<'_>,
+) {
+    let func = context.new_function(None, FunctionType::Exported, output, &[], name, false);
+
+    #[cfg(feature = "master")]
+    func.add_attribute(FnAttribute::Visibility(symbol_visibility_to_gcc(
+        tcx.sess.default_visibility(),
+    )));
+
+    func.add_attribute(FnAttribute::AlwaysInline);
+
+    if tcx.sess.must_emit_unwind_tables() {
+        // TODO(antoyo): emit unwind tables.
+    }
+
+    let block = func.new_block("entry");
+    block.end_with_return(None, value);
 }
 
 fn create_wrapper_function(

@@ -15,7 +15,7 @@ pub(crate) struct OptimizeParser;
 
 impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     const PATH: &[Symbol] = &[sym::optimize];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(List: "size|speed|none");
 
@@ -56,7 +56,7 @@ pub(crate) struct ExportNameParser;
 
 impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
     const PATH: &[rustc_span::Symbol] = &[sym::export_name];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
@@ -298,6 +298,10 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
             cx.expected_list(cx.attr_span);
             return features;
         };
+        if list.is_empty() {
+            cx.warn_empty_attribute(cx.attr_span);
+            return features;
+        }
         for item in list.mixed() {
             let Some(name_value) = item.meta_item() else {
                 cx.expected_name_value(item.span(), Some(sym::enable));
@@ -329,4 +333,12 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
         }
         features
     }
+}
+
+pub(crate) struct OmitGdbPrettyPrinterSectionParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for OmitGdbPrettyPrinterSectionParser {
+    const PATH: &[Symbol] = &[sym::omit_gdb_pretty_printer_section];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::OmitGdbPrettyPrinterSection;
 }

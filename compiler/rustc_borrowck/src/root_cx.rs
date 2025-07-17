@@ -6,6 +6,7 @@ use rustc_middle::ty::{OpaqueHiddenType, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::ErrorGuaranteed;
 use smallvec::SmallVec;
 
+use crate::consumers::BorrowckConsumer;
 use crate::{ClosureRegionRequirements, ConcreteOpaqueTypes, PropagatedBorrowCheckResults};
 
 /// The shared context used by both the root as well as all its nested
@@ -16,16 +17,24 @@ pub(super) struct BorrowCheckRootCtxt<'tcx> {
     concrete_opaque_types: ConcreteOpaqueTypes<'tcx>,
     nested_bodies: FxHashMap<LocalDefId, PropagatedBorrowCheckResults<'tcx>>,
     tainted_by_errors: Option<ErrorGuaranteed>,
+    /// This should be `None` during normal compilation. See [`crate::consumers`] for more
+    /// information on how this is used.
+    pub(crate) consumer: Option<BorrowckConsumer<'tcx>>,
 }
 
 impl<'tcx> BorrowCheckRootCtxt<'tcx> {
-    pub(super) fn new(tcx: TyCtxt<'tcx>, root_def_id: LocalDefId) -> BorrowCheckRootCtxt<'tcx> {
+    pub(super) fn new(
+        tcx: TyCtxt<'tcx>,
+        root_def_id: LocalDefId,
+        consumer: Option<BorrowckConsumer<'tcx>>,
+    ) -> BorrowCheckRootCtxt<'tcx> {
         BorrowCheckRootCtxt {
             tcx,
             root_def_id,
             concrete_opaque_types: Default::default(),
             nested_bodies: Default::default(),
             tainted_by_errors: None,
+            consumer,
         }
     }
 
@@ -71,7 +80,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
             self.root_def_id.to_def_id()
         );
         if !self.nested_bodies.contains_key(&def_id) {
-            let result = super::do_mir_borrowck(self, def_id, None).0;
+            let result = super::do_mir_borrowck(self, def_id);
             if let Some(prev) = self.nested_bodies.insert(def_id, result) {
                 bug!("unexpected previous nested body: {prev:?}");
             }

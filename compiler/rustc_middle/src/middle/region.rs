@@ -7,7 +7,6 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
 use std::fmt;
-use std::ops::Deref;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordMap;
@@ -228,82 +227,6 @@ pub struct ScopeTree {
     /// This information is used later for linting to identify locals and
     /// temporary values that will receive backwards-incompatible drop orders.
     pub backwards_incompatible_scope: UnordMap<hir::ItemLocalId, Scope>,
-
-    /// If there are any `yield` nested within a scope, this map
-    /// stores the `Span` of the last one and its index in the
-    /// postorder of the Visitor traversal on the HIR.
-    ///
-    /// HIR Visitor postorder indexes might seem like a peculiar
-    /// thing to care about. but it turns out that HIR bindings
-    /// and the temporary results of HIR expressions are never
-    /// storage-live at the end of HIR nodes with postorder indexes
-    /// lower than theirs, and therefore don't need to be suspended
-    /// at yield-points at these indexes.
-    ///
-    /// For an example, suppose we have some code such as:
-    /// ```rust,ignore (example)
-    ///     foo(f(), yield y, bar(g()))
-    /// ```
-    ///
-    /// With the HIR tree (calls numbered for expository purposes)
-    ///
-    /// ```text
-    ///     Call#0(foo, [Call#1(f), Yield(y), Call#2(bar, Call#3(g))])
-    /// ```
-    ///
-    /// Obviously, the result of `f()` was created before the yield
-    /// (and therefore needs to be kept valid over the yield) while
-    /// the result of `g()` occurs after the yield (and therefore
-    /// doesn't). If we want to infer that, we can look at the
-    /// postorder traversal:
-    /// ```plain,ignore
-    ///     `foo` `f` Call#1 `y` Yield `bar` `g` Call#3 Call#2 Call#0
-    /// ```
-    ///
-    /// In which we can easily see that `Call#1` occurs before the yield,
-    /// and `Call#3` after it.
-    ///
-    /// To see that this method works, consider:
-    ///
-    /// Let `D` be our binding/temporary and `U` be our other HIR node, with
-    /// `HIR-postorder(U) < HIR-postorder(D)`. Suppose, as in our example,
-    /// U is the yield and D is one of the calls.
-    /// Let's show that `D` is storage-dead at `U`.
-    ///
-    /// Remember that storage-live/storage-dead refers to the state of
-    /// the *storage*, and does not consider moves/drop flags.
-    ///
-    /// Then:
-    ///
-    ///   1. From the ordering guarantee of HIR visitors (see
-    ///   `rustc_hir::intravisit`), `D` does not dominate `U`.
-    ///
-    ///   2. Therefore, `D` is *potentially* storage-dead at `U` (because
-    ///   we might visit `U` without ever getting to `D`).
-    ///
-    ///   3. However, we guarantee that at each HIR point, each
-    ///   binding/temporary is always either always storage-live
-    ///   or always storage-dead. This is what is being guaranteed
-    ///   by `terminating_scopes` including all blocks where the
-    ///   count of executions is not guaranteed.
-    ///
-    ///   4. By `2.` and `3.`, `D` is *statically* storage-dead at `U`,
-    ///   QED.
-    ///
-    /// This property ought to not on (3) in an essential way -- it
-    /// is probably still correct even if we have "unrestricted" terminating
-    /// scopes. However, why use the complicated proof when a simple one
-    /// works?
-    ///
-    /// A subtle thing: `box` expressions, such as `box (&x, yield 2, &y)`. It
-    /// might seem that a `box` expression creates a `Box<T>` temporary
-    /// when it *starts* executing, at `HIR-preorder(BOX-EXPR)`. That might
-    /// be true in the MIR desugaring, but it is not important in the semantics.
-    ///
-    /// The reason is that semantically, until the `box` expression returns,
-    /// the values are still owned by their containing expressions. So
-    /// we'll see that `&x`.
-    pub yield_in_scope: UnordMap<Scope, Vec<YieldData>>,
 }
 
 /// See the `rvalue_candidates` field for more information on rvalue
@@ -314,15 +237,6 @@ pub struct ScopeTree {
 pub struct RvalueCandidate {
     pub target: hir::ItemLocalId,
     pub lifetime: Option<Scope>,
-}
-
-#[derive(Debug, Copy, Clone, HashStable)]
-pub struct YieldData {
-    /// The `Span` of the yield.
-    pub span: Span,
-    /// The number of expressions and patterns appearing before the `yield` in the body, plus one.
-    pub expr_and_pat_count: usize,
-    pub source: hir::YieldSource,
 }
 
 impl ScopeTree {
@@ -379,11 +293,5 @@ impl ScopeTree {
         debug!("is_subscope_of({:?}, {:?})=true", subscope, superscope);
 
         true
-    }
-
-    /// Checks whether the given scope contains a `yield`. If so,
-    /// returns `Some(YieldData)`. If not, returns `None`.
-    pub fn yield_in_scope(&self, scope: Scope) -> Option<&[YieldData]> {
-        self.yield_in_scope.get(&scope).map(Deref::deref)
     }
 }

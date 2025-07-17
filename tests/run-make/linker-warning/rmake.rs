@@ -11,6 +11,7 @@ fn run_rustc() -> Rustc {
         .arg("-Clink-self-contained=-linker")
         .arg("-Zunstable-options")
         .arg("-Wlinker-messages")
+        .args(["--extern", "foo", "--extern", "bar"])
         .output("main")
         .linker("./fake-linker");
     if run_make_support::target() == "x86_64-unknown-linux-gnu" {
@@ -21,8 +22,10 @@ fn run_rustc() -> Rustc {
 }
 
 fn main() {
-    // first, compile our linker
+    // first, compile our linker and our dependencies
     rustc().arg("fake-linker.rs").output("fake-linker").run();
+    rustc().arg("foo.rs").crate_type("rlib").run();
+    rustc().arg("bar.rs").crate_type("rlib").run();
 
     // Run rustc with our fake linker, and make sure it shows warnings
     let warnings = run_rustc().link_arg("run_make_warn").run();
@@ -48,7 +51,8 @@ fn main() {
     let out = run_rustc().link_arg("run_make_error").run_fail();
     out.assert_stderr_contains("fake-linker")
         .assert_stderr_contains("object files omitted")
-        .assert_stderr_contains_regex(r"\{")
+        .assert_stderr_contains("/{libfoo,libbar}.rlib\"")
+        .assert_stderr_contains("-*}.rlib\"")
         .assert_stderr_not_contains(r".rcgu.o")
         .assert_stderr_not_contains_regex(r"lib(/|\\\\)libstd");
 
@@ -67,6 +71,10 @@ fn main() {
             .normalize(r#""[^"]*\/raw-dylibs""#, "\"/raw-dylibs\"")
             .run();
     }
+
+    // Make sure a single dependency doesn't use brace expansion.
+    let out1 = run_rustc().cfg("only_foo").link_arg("run_make_error").run_fail();
+    out1.assert_stderr_contains("fake-linker").assert_stderr_contains("/libfoo.rlib\"");
 
     // Make sure we show linker warnings even across `-Z no-link`
     rustc()

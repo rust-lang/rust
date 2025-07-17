@@ -1,5 +1,6 @@
 //@ignore-target: windows # no libc time APIs on Windows
 //@compile-flags: -Zmiri-disable-isolation
+use std::time::{Duration, Instant};
 use std::{env, mem, ptr};
 
 fn main() {
@@ -20,6 +21,19 @@ fn main() {
     test_localtime_r_future_32b();
     #[cfg(target_pointer_width = "64")]
     test_localtime_r_future_64b();
+
+    test_nanosleep();
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "solaris",
+        target_os = "illumos"
+    ))]
+    {
+        test_clock_nanosleep::absolute();
+        test_clock_nanosleep::relative();
+    }
 }
 
 /// Tests whether clock support exists at all
@@ -314,4 +328,104 @@ fn test_localtime_r_multiple_calls_deduplication() {
         unique_count,
         NUM_CALLS - 1
     );
+}
+
+fn test_nanosleep() {
+    let start_test_sleep = Instant::now();
+    let duration_zero = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+    let remainder = ptr::null_mut::<libc::timespec>();
+    let is_error = unsafe { libc::nanosleep(&duration_zero, remainder) };
+    assert_eq!(is_error, 0);
+    assert!(start_test_sleep.elapsed() < Duration::from_millis(10));
+
+    let start_test_sleep = Instant::now();
+    let duration_100_millis = libc::timespec { tv_sec: 0, tv_nsec: 1_000_000_000 / 10 };
+    let remainder = ptr::null_mut::<libc::timespec>();
+    let is_error = unsafe { libc::nanosleep(&duration_100_millis, remainder) };
+    assert_eq!(is_error, 0);
+    assert!(start_test_sleep.elapsed() > Duration::from_millis(100));
+}
+
+#[cfg(any(
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "android",
+    target_os = "solaris",
+    target_os = "illumos"
+))]
+mod test_clock_nanosleep {
+    use super::*;
+
+    /// Helper function used to create an instant in the future
+    fn add_100_millis(mut ts: libc::timespec) -> libc::timespec {
+        // While tv_nsec has type `c_long` tv_sec has type `time_t`. These might
+        // end up as different types (for example: like i32 and i64).
+        const SECOND: libc::c_long = 1_000_000_000;
+        ts.tv_nsec += SECOND / 10;
+        // If this pushes tv_nsec to SECOND or higher, we need to overflow to tv_sec.
+        ts.tv_sec += (ts.tv_nsec / SECOND) as libc::time_t;
+        ts.tv_nsec %= SECOND;
+        ts
+    }
+
+    /// Helper function to get the current time for testing relative sleeps
+    fn timespec_now(clock: libc::clockid_t) -> libc::timespec {
+        let mut timespec = mem::MaybeUninit::<libc::timespec>::uninit();
+        let is_error = unsafe { libc::clock_gettime(clock, timespec.as_mut_ptr()) };
+        assert_eq!(is_error, 0);
+        unsafe { timespec.assume_init() }
+    }
+
+    pub fn absolute() {
+        let start_test_sleep = Instant::now();
+        let before_start = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+        let remainder = ptr::null_mut::<libc::timespec>();
+        let error = unsafe {
+            // this will not sleep since unix time zero is in the past
+            libc::clock_nanosleep(
+                libc::CLOCK_MONOTONIC,
+                libc::TIMER_ABSTIME,
+                &before_start,
+                remainder,
+            )
+        };
+        assert_eq!(error, 0);
+        assert!(start_test_sleep.elapsed() < Duration::from_millis(10));
+
+        let start_test_sleep = Instant::now();
+        let hunderd_millis_after_start = add_100_millis(timespec_now(libc::CLOCK_MONOTONIC));
+        let remainder = ptr::null_mut::<libc::timespec>();
+        let error = unsafe {
+            libc::clock_nanosleep(
+                libc::CLOCK_MONOTONIC,
+                libc::TIMER_ABSTIME,
+                &hunderd_millis_after_start,
+                remainder,
+            )
+        };
+        assert_eq!(error, 0);
+        assert!(start_test_sleep.elapsed() > Duration::from_millis(100));
+    }
+
+    pub fn relative() {
+        const NO_FLAGS: i32 = 0;
+
+        let start_test_sleep = Instant::now();
+        let duration_zero = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+        let remainder = ptr::null_mut::<libc::timespec>();
+        let error = unsafe {
+            libc::clock_nanosleep(libc::CLOCK_MONOTONIC, NO_FLAGS, &duration_zero, remainder)
+        };
+        assert_eq!(error, 0);
+        assert!(start_test_sleep.elapsed() < Duration::from_millis(10));
+
+        let start_test_sleep = Instant::now();
+        let duration_100_millis = libc::timespec { tv_sec: 0, tv_nsec: 1_000_000_000 / 10 };
+        let remainder = ptr::null_mut::<libc::timespec>();
+        let error = unsafe {
+            libc::clock_nanosleep(libc::CLOCK_MONOTONIC, NO_FLAGS, &duration_100_millis, remainder)
+        };
+        assert_eq!(error, 0);
+        assert!(start_test_sleep.elapsed() > Duration::from_millis(100));
+    }
 }

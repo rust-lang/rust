@@ -367,12 +367,6 @@ warning: `#[should_panic]` only has an effect on functions
 LL | #![should_panic]
    | ^^^^^^^^^^^^^^^^
 
-warning: `#[ignore]` only has an effect on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:54:1
-   |
-LL | #![ignore]
-   | ^^^^^^^^^^
-
 warning: `#[proc_macro_derive]` only has an effect on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:60:1
    |
@@ -386,6 +380,12 @@ LL | #![link()]
    | ^^^^^^^^^^ not an `extern` block
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: `#[ignore]` only has an effect on functions
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:54:1
+   |
+LL | #![ignore]
+   | ^^^^^^^^^^
 
 warning: attribute should be applied to a foreign function or static
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:66:1

@@ -107,9 +107,10 @@ impl fmt::Debug for ErasedFileAstId {
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[repr(u8)]
 enum ErasedFileAstIdKind {
     /// This needs to not change because it's depended upon by the proc macro server.
-    Fixup,
+    Fixup = 0,
     // The following are associated with `ErasedHasNameFileAstId`.
     Enum,
     Struct,
@@ -413,9 +414,9 @@ impl ErasedAstIdNextIndexMap {
 }
 
 macro_rules! register_enum_ast_id {
-    (impl AstIdNode for $($ident:ident),+ ) => {
+    (impl $AstIdNode:ident for $($ident:ident),+ ) => {
         $(
-            impl AstIdNode for ast::$ident {}
+            impl $AstIdNode for ast::$ident {}
         )+
     };
 }
@@ -426,9 +427,9 @@ register_enum_ast_id! {
 }
 
 macro_rules! register_has_name_ast_id {
-    (impl AstIdNode for $($ident:ident = $name_method:ident),+ ) => {
+    (impl $AstIdNode:ident for $($ident:ident = $name_method:ident),+ ) => {
         $(
-            impl AstIdNode for ast::$ident {}
+            impl $AstIdNode for ast::$ident {}
         )+
 
         fn has_name_ast_id(node: &SyntaxNode, index_map: &mut ErasedAstIdNextIndexMap) -> Option<ErasedFileAstId> {
@@ -472,9 +473,9 @@ register_has_name_ast_id! {
 }
 
 macro_rules! register_assoc_item_ast_id {
-    (impl AstIdNode for $($ident:ident = $name_callback:expr),+ ) => {
+    (impl $AstIdNode:ident for $($ident:ident = $name_callback:expr),+ ) => {
         $(
-            impl AstIdNode for ast::$ident {}
+            impl $AstIdNode for ast::$ident {}
         )+
 
         fn assoc_item_ast_id(

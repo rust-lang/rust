@@ -41,8 +41,7 @@ declare_lint_pass!(ImplicitSaturatingAdd => [IMPLICIT_SATURATING_ADD]);
 impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::If(cond, then, None) = expr.kind
-            && let ExprKind::DropTemps(expr1) = cond.kind
-            && let Some((c, op_node, l)) = get_const(cx, expr1)
+            && let Some((c, op_node, l)) = get_const(cx, cond)
             && let BinOpKind::Ne | BinOpKind::Lt = op_node
             && let ExprKind::Block(block, None) = then.kind
             && let Block {
@@ -66,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
             && Some(c) == get_int_max(ty)
             && let ctxt = expr.span.ctxt()
             && ex.span.ctxt() == ctxt
-            && expr1.span.ctxt() == ctxt
+            && cond.span.ctxt() == ctxt
             && clippy_utils::SpanlessEq::new(cx).eq_expr(l, target)
             && AssignOpKind::AddAssign == op1.node
             && let ExprKind::Lit(lit) = value.kind

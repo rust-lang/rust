@@ -175,7 +175,7 @@ pub(crate) fn expand_rest_pattern(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             // ast::TuplePat(it) => (),
             // FIXME
             // ast::SlicePat(it) => (),
-            _ => return None,
+            _ => None,
         }
     }
 }

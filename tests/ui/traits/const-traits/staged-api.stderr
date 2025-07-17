@@ -21,7 +21,7 @@ error: trait implementations cannot be const stable yet
 LL | impl const U for u16 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
 
 error: const stability on the impl does not match the const stability on the trait
   --> $DIR/staged-api.rs:102:1
@@ -46,7 +46,7 @@ error: trait implementations cannot be const stable yet
 LL | impl const S for u16 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
 
 error: const stability on the impl does not match the const stability on the trait
   --> $DIR/staged-api.rs:117:1

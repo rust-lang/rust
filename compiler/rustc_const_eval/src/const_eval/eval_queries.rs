@@ -19,7 +19,7 @@ use super::{CanAccessMutGlobal, CompileTimeInterpCx, CompileTimeMachine};
 use crate::const_eval::CheckAlignment;
 use crate::interpret::{
     CtfeValidationMode, GlobalId, Immediate, InternKind, InternResult, InterpCx, InterpErrorKind,
-    InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, StackPopCleanup, create_static_alloc,
+    InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, ReturnContinuation, create_static_alloc,
     intern_const_alloc_recursive, interp_ok, throw_exhaust,
 };
 use crate::{CTRL_C_RECEIVED, errors};
@@ -76,7 +76,7 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
         cid.instance,
         body,
         &ret.clone().into(),
-        StackPopCleanup::Root { cleanup: false },
+        ReturnContinuation::Stop { cleanup: false },
     )?;
     ecx.storage_live_for_always_live_locals()?;
 

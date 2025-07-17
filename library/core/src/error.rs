@@ -447,28 +447,28 @@ where
 /// separated by API boundaries:
 ///
 /// * Consumer - the consumer requests objects using a Request instance; eg a crate that offers
-/// fancy `Error`/`Result` reporting to users wants to request a Backtrace from a given `dyn Error`.
+///   fancy `Error`/`Result` reporting to users wants to request a Backtrace from a given `dyn Error`.
 ///
 /// * Producer - the producer provides objects when requested via Request; eg. a library with an
-/// an `Error` implementation that automatically captures backtraces at the time instances are
-/// created.
+///   an `Error` implementation that automatically captures backtraces at the time instances are
+///   created.
 ///
 /// The consumer only needs to know where to submit their request and are expected to handle the
 /// request not being fulfilled by the use of `Option<T>` in the responses offered by the producer.
 ///
 /// * A Producer initializes the value of one of its fields of a specific type. (or is otherwise
-/// prepared to generate a value requested). eg, `backtrace::Backtrace` or
-/// `std::backtrace::Backtrace`
+///   prepared to generate a value requested). eg, `backtrace::Backtrace` or
+///   `std::backtrace::Backtrace`
 /// * A Consumer requests an object of a specific type (say `std::backtrace::Backtrace`). In the
-/// case of a `dyn Error` trait object (the Producer), there are functions called `request_ref` and
-/// `request_value` to simplify obtaining an `Option<T>` for a given type.
+///   case of a `dyn Error` trait object (the Producer), there are functions called `request_ref` and
+///   `request_value` to simplify obtaining an `Option<T>` for a given type.
 /// * The Producer, when requested, populates the given Request object which is given as a mutable
-/// reference.
+///   reference.
 /// * The Consumer extracts a value or reference to the requested type from the `Request` object
-/// wrapped in an `Option<T>`; in the case of `dyn Error` the aforementioned `request_ref` and `
-/// request_value` methods mean that `dyn Error` users don't have to deal with the `Request` type at
-/// all (but `Error` implementors do). The `None` case of the `Option` suggests only that the
-/// Producer cannot currently offer an instance of the requested type, not it can't or never will.
+///   wrapped in an `Option<T>`; in the case of `dyn Error` the aforementioned `request_ref` and `
+///   request_value` methods mean that `dyn Error` users don't have to deal with the `Request` type at
+///   all (but `Error` implementors do). The `None` case of the `Option` suggests only that the
+///   Producer cannot currently offer an instance of the requested type, not it can't or never will.
 ///
 /// # Examples
 ///

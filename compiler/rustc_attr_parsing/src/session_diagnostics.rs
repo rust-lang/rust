@@ -473,6 +473,13 @@ pub(crate) struct EmptyConfusables {
     pub span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(attr_parsing_empty_attribute)]
+pub(crate) struct EmptyAttributeList {
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub attr_span: Span,
+}
+
 #[derive(Diagnostic)]
 #[diag(attr_parsing_invalid_alignment_value, code = E0589)]
 pub(crate) struct InvalidAlignmentValue {
@@ -505,6 +512,15 @@ pub(crate) struct NakedFunctionIncompatibleAttribute {
     #[label(attr_parsing_naked_attribute)]
     pub naked_span: Span,
     pub attr: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_link_ordinal_out_of_range)]
+#[note]
+pub(crate) struct LinkOrdinalOutOfRange {
+    #[primary_span]
+    pub span: Span,
+    pub ordinal: u128,
 }
 
 pub(crate) enum AttributeParseErrorReason {
@@ -577,7 +593,13 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                 diag.code(E0565);
             }
             AttributeParseErrorReason::ExpectedNameValue(None) => {
-                // The suggestion we add below this match already contains enough information
+                // If the span is the entire attribute, the suggestion we add below this match already contains enough information
+                if self.span != self.attr_span {
+                    diag.span_label(
+                        self.span,
+                        format!("expected this to be of the form `... = \"...\"`"),
+                    );
+                }
             }
             AttributeParseErrorReason::ExpectedNameValue(Some(name)) => {
                 diag.span_label(

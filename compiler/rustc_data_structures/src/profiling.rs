@@ -142,7 +142,7 @@ const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
     ("generic-activity", EventFilter::GENERIC_ACTIVITIES),
     ("query-provider", EventFilter::QUERY_PROVIDERS),
     ("query-cache-hit", EventFilter::QUERY_CACHE_HITS),
-    ("query-cache-hit-count", EventFilter::QUERY_CACHE_HITS),
+    ("query-cache-hit-count", EventFilter::QUERY_CACHE_HIT_COUNTS),
     ("query-blocked", EventFilter::QUERY_BLOCKED),
     ("incr-cache-load", EventFilter::INCR_CACHE_LOADS),
     ("query-keys", EventFilter::QUERY_KEYS),

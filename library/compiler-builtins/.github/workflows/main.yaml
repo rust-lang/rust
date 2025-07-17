@@ -195,6 +195,25 @@ jobs:
       run: ./ci/update-musl.sh
     - run: cargo clippy --workspace --all-targets
 
+  build-custom:
+    name: Build custom target
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      run: |
+        rustup update nightly --no-self-update
+        rustup default nightly
+        rustup component add rust-src
+    - uses: Swatinem/rust-cache@v2
+    - run: |
+        # Ensure we can build with custom target.json files (these can interact
+        # poorly with build scripts)
+        cargo build -p compiler_builtins -p libm \
+          --target etc/thumbv7em-none-eabi-renamed.json \
+          -Zbuild-std=core
+
   benchmarks:
     name: Benchmarks
     timeout-minutes: 20
@@ -331,6 +350,7 @@ jobs:
   success:
     needs:
       - benchmarks
+      - build-custom
       - clippy
       - extensive
       - miri

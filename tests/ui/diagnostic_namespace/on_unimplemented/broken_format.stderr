@@ -4,7 +4,7 @@ warning: unmatched `}` found
 LL | #[diagnostic::on_unimplemented(message = "{{Test } thing")]
    |                                          ^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
+   = note: `#[warn(malformed_diagnostic_format_literals)]` on by default
 
 warning: positional format arguments are not allowed here
   --> $DIR/broken_format.rs:7:49

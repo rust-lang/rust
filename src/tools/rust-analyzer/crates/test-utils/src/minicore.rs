@@ -11,10 +11,13 @@
 //!     add:
 //!     asm:
 //!     assert:
+//!     as_mut: sized
 //!     as_ref: sized
 //!     async_fn: fn, tuple, future, copy
 //!     bool_impl: option, fn
 //!     builtin_impls:
+//!     borrow: sized
+//!     borrow_mut: borrow
 //!     cell: copy, drop
 //!     clone: sized
 //!     coerce_pointee: derive, sized, unsize, coerce_unsized, dispatch_from_dyn
@@ -228,8 +231,11 @@ pub mod hash {
     }
 
     // region:derive
-    #[rustc_builtin_macro]
-    pub macro Hash($item:item) {}
+    pub(crate) mod derive {
+        #[rustc_builtin_macro]
+        pub macro Hash($item:item) {}
+    }
+    pub use derive::Hash;
     // endregion:derive
 }
 // endregion:hash
@@ -377,9 +383,28 @@ pub mod convert {
         fn as_ref(&self) -> &T;
     }
     // endregion:as_ref
+    // region:as_mut
+    pub trait AsMut<T: crate::marker::PointeeSized>: crate::marker::PointeeSized {
+        fn as_mut(&mut self) -> &mut T;
+    }
+    // endregion:as_mut
     // region:infallible
     pub enum Infallible {}
     // endregion:infallible
+}
+
+pub mod borrow {
+    // region:borrow
+    pub trait Borrow<Borrowed: ?Sized> {
+        fn borrow(&self) -> &Borrowed;
+    }
+    // endregion:borrow
+
+    // region:borrow_mut
+    pub trait BorrowMut<Borrowed: ?Sized>: Borrow<Borrowed> {
+        fn borrow_mut(&mut self) -> &mut Borrowed;
+    }
+    // endregion:borrow_mut
 }
 
 pub mod mem {
@@ -1264,8 +1289,11 @@ pub mod fmt {
     }
 
     // region:derive
-    #[rustc_builtin_macro]
-    pub macro Debug($item:item) {}
+    pub(crate) mod derive {
+        #[rustc_builtin_macro]
+        pub macro Debug($item:item) {}
+    }
+    pub use derive::Debug;
     // endregion:derive
 
     // region:builtin_impls
@@ -1931,6 +1959,8 @@ pub mod prelude {
             panic,                                   // :panic
             result::Result::{self, Err, Ok},         // :result
             str::FromStr,                            // :str
+            fmt::derive::Debug,                      // :fmt, derive
+            hash::derive::Hash,                      // :hash, derive
         };
     }
 

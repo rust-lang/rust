@@ -2422,7 +2422,7 @@ impl Ty {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct BareFnTy {
+pub struct FnPtrTy {
     pub safety: Safety,
     pub ext: Extern,
     pub generic_params: ThinVec<GenericParam>,
@@ -2455,8 +2455,8 @@ pub enum TyKind {
     ///
     /// Desugars into `Pin<&'a T>` or `Pin<&'a mut T>`.
     PinnedRef(Option<Lifetime>, MutTy),
-    /// A bare function (e.g., `fn(usize) -> bool`).
-    BareFn(P<BareFnTy>),
+    /// A function pointer type (e.g., `fn(usize) -> bool`).
+    FnPtr(P<FnPtrTy>),
     /// An unsafe existential lifetime binder (e.g., `unsafe<'a> &'a ()`).
     UnsafeBinder(P<UnsafeBinderTy>),
     /// The never type (`!`).

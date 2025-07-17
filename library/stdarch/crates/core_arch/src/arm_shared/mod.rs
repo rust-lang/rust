@@ -20,10 +20,10 @@
 //! Section 10.1 of ACLE says:
 //!
 //! - "In the sequence of Arm architectures { v5, v5TE, v6, v6T2, v7 } each architecture includes
-//! its predecessor instruction set."
+//!   its predecessor's instruction set."
 //!
 //! - "In the sequence of Thumb-only architectures { v6-M, v7-M, v7E-M } each architecture includes
-//! its predecessor instruction set."
+//!   its predecessor's instruction set."
 //!
 //! From that info and from looking at how LLVM features work (using custom targets) we can identify
 //! features that are subsets of others:
@@ -38,7 +38,7 @@
 //! *NOTE*: Section 5.4.7 of ACLE says:
 //!
 //! - "__ARM_FEATURE_DSP is defined to 1 if the DSP (v5E) instructions are supported and the
-//! intrinsics defined in Saturating intrinsics are available."
+//!   intrinsics defined in Saturating intrinsics are available."
 //!
 //! This does *not* match how LLVM uses the '+dsp' feature; this feature is not set for v5te
 //! targets so we have to work around this difference.

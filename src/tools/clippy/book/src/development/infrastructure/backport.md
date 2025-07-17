@@ -109,4 +109,4 @@ worth backporting this.
 When a PR is backported to Rust `beta`, label the PR with `beta-accepted`. This
 will then get picked up when [writing the changelog].
 
-[writing the changelog]: changelog_update.md#31-include-beta-accepted-prs
+[writing the changelog]: changelog_update.md#4-include-beta-accepted-prs

@@ -880,11 +880,16 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 }
 
                 for impl_item_ref in *items {
-                    let impl_item = self.tcx.associated_item(impl_item_ref.id.owner_id);
+                    let impl_item = self.tcx.associated_item(impl_item_ref.owner_id);
 
                     if let Some(def_id) = impl_item.trait_item_def_id {
                         // Pass `None` to skip deprecation warnings.
-                        self.tcx.check_stability(def_id, None, impl_item_ref.span, None);
+                        self.tcx.check_stability(
+                            def_id,
+                            None,
+                            self.tcx.def_span(impl_item_ref.owner_id),
+                            None,
+                        );
                     }
                 }
             }
@@ -1070,7 +1075,7 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
         if let TyKind::Never = t.kind {
             self.fully_stable = false;
         }
-        if let TyKind::BareFn(function) = t.kind {
+        if let TyKind::FnPtr(function) = t.kind {
             if extern_abi_stability(function.abi).is_err() {
                 self.fully_stable = false;
             }

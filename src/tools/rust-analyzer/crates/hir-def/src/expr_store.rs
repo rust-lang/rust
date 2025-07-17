@@ -93,7 +93,7 @@ pub type TypeSource = InFile<TypePtr>;
 pub type LifetimePtr = AstPtr<ast::Lifetime>;
 pub type LifetimeSource = InFile<LifetimePtr>;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ExpressionStore {
     pub exprs: Arena<Expr>,
     pub pats: Arena<Pat>,
@@ -114,7 +114,7 @@ pub struct ExpressionStore {
     ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
 }
 
-#[derive(Debug, Eq, PartialEq, Default)]
+#[derive(Debug, Eq, Default)]
 pub struct ExpressionStoreSourceMap {
     // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
     // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
@@ -127,18 +127,19 @@ pub struct ExpressionStoreSourceMap {
     label_map: FxHashMap<LabelSource, LabelId>,
     label_map_back: ArenaMap<LabelId, LabelSource>,
 
-    binding_definitions: FxHashMap<BindingId, SmallVec<[PatId; 4]>>,
-
-    /// We don't create explicit nodes for record fields (`S { record_field: 92 }`).
-    /// Instead, we use id of expression (`92`) to identify the field.
-    field_map_back: FxHashMap<ExprId, FieldSource>,
-    pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
-
     types_map_back: ArenaMap<TypeRefId, TypeSource>,
     types_map: FxHashMap<TypeSource, TypeRefId>,
 
     lifetime_map_back: ArenaMap<LifetimeRefId, LifetimeSource>,
     lifetime_map: FxHashMap<LifetimeSource, LifetimeRefId>,
+
+    binding_definitions:
+        ArenaMap<BindingId, SmallVec<[PatId; 2 * size_of::<usize>() / size_of::<PatId>()]>>,
+
+    /// We don't create explicit nodes for record fields (`S { record_field: 92 }`).
+    /// Instead, we use id of expression (`92`) to identify the field.
+    field_map_back: FxHashMap<ExprId, FieldSource>,
+    pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
 
     template_map: Option<Box<FormatTemplate>>,
 
@@ -147,6 +148,43 @@ pub struct ExpressionStoreSourceMap {
     /// Diagnostics accumulated during lowering. These contain `AstPtr`s and so are stored in
     /// the source map (since they're just as volatile).
     pub diagnostics: Vec<ExpressionStoreDiagnostics>,
+}
+
+impl PartialEq for ExpressionStoreSourceMap {
+    fn eq(&self, other: &Self) -> bool {
+        // we only need to compare one of the two mappings
+        // as the other is a reverse mapping and thus will compare
+        // the same as normal mapping
+        let Self {
+            expr_map: _,
+            expr_map_back,
+            pat_map: _,
+            pat_map_back,
+            label_map: _,
+            label_map_back,
+            types_map_back,
+            types_map: _,
+            lifetime_map_back,
+            lifetime_map: _,
+            // If this changed, our pattern data must have changed
+            binding_definitions: _,
+            // If this changed, our expression data must have changed
+            field_map_back: _,
+            // If this changed, our pattern data must have changed
+            pat_field_map_back: _,
+            template_map,
+            expansions,
+            diagnostics,
+        } = self;
+        *expr_map_back == other.expr_map_back
+            && *pat_map_back == other.pat_map_back
+            && *label_map_back == other.label_map_back
+            && *types_map_back == other.types_map_back
+            && *lifetime_map_back == other.lifetime_map_back
+            && *template_map == other.template_map
+            && *expansions == other.expansions
+            && *diagnostics == other.diagnostics
+    }
 }
 
 /// The body of an item (function, const etc.).
@@ -698,7 +736,7 @@ impl ExpressionStoreSourceMap {
     }
 
     pub fn patterns_for_binding(&self, binding: BindingId) -> &[PatId] {
-        self.binding_definitions.get(&binding).map_or(&[], Deref::deref)
+        self.binding_definitions.get(binding).map_or(&[], Deref::deref)
     }
 
     pub fn node_label(&self, node: InFile<&ast::Label>) -> Option<LabelId> {

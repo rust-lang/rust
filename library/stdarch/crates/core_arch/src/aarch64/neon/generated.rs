@@ -7925,7 +7925,7 @@ pub fn vcvth_f16_u64(a: u64) -> f16 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 pub fn vcvth_n_f16_s16<const N: i32>(a: i16) -> f16 {
     static_assert!(N >= 1 && N <= 16);
-    vcvth_n_f16_s32::<N>(a as i32) as f16
+    vcvth_n_f16_s32::<N>(a as i32)
 }
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_f16_s32)"]
@@ -7972,7 +7972,7 @@ pub fn vcvth_n_f16_s64<const N: i32>(a: i64) -> f16 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 pub fn vcvth_n_f16_u16<const N: i32>(a: u16) -> f16 {
     static_assert!(N >= 1 && N <= 16);
-    vcvth_n_f16_u32::<N>(a as u32) as f16
+    vcvth_n_f16_u32::<N>(a as u32)
 }
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_f16_u32)"]
@@ -17158,7 +17158,7 @@ pub fn vqdmlalh_s16(a: i32, b: i16, c: i16) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmlals_s32(a: i64, b: i32, c: i32) -> i64 {
     let x: i64 = vqaddd_s64(a, vqdmulls_s32(b, c));
-    x as i64
+    x
 }
 #[doc = "Signed saturating doubling multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsl_high_lane_s16)"]
@@ -17324,7 +17324,7 @@ pub fn vqdmlslh_s16(a: i32, b: i16, c: i16) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmlsls_s32(a: i64, b: i32, c: i32) -> i64 {
     let x: i64 = vqsubd_s64(a, vqdmulls_s32(b, c));
-    x as i64
+    x
 }
 #[doc = "Vector saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_lane_s16)"]
@@ -19495,10 +19495,7 @@ pub fn vqtbl1q_s8(a: int8x16_t, b: uint8x16_t) -> int8x16_t {
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqtbl1_u8(a: uint8x16_t, b: uint8x8_t) -> uint8x8_t {
-    unsafe {
-        let x = transmute(vqtbl1(transmute(a), b));
-        x
-    }
+    unsafe { transmute(vqtbl1(transmute(a), b)) }
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl1q_u8)"]
@@ -19507,10 +19504,7 @@ pub fn vqtbl1_u8(a: uint8x16_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqtbl1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    unsafe {
-        let x = transmute(vqtbl1q(transmute(a), b));
-        x
-    }
+    unsafe { transmute(vqtbl1q(transmute(a), b)) }
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl1_p8)"]
@@ -19519,10 +19513,7 @@ pub fn vqtbl1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqtbl1_p8(a: poly8x16_t, b: uint8x8_t) -> poly8x8_t {
-    unsafe {
-        let x = transmute(vqtbl1(transmute(a), b));
-        x
-    }
+    unsafe { transmute(vqtbl1(transmute(a), b)) }
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl1q_p8)"]
@@ -19531,10 +19522,7 @@ pub fn vqtbl1_p8(a: poly8x16_t, b: uint8x8_t) -> poly8x8_t {
 #[cfg_attr(test, assert_instr(tbl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqtbl1q_p8(a: poly8x16_t, b: uint8x16_t) -> poly8x16_t {
-    unsafe {
-        let x = transmute(vqtbl1q(transmute(a), b));
-        x
-    }
+    unsafe { transmute(vqtbl1q(transmute(a), b)) }
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl2)"]
@@ -20397,10 +20385,7 @@ pub fn vqtbx1q_s8(a: int8x16_t, b: int8x16_t, c: uint8x16_t) -> int8x16_t {
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqtbx1_u8(a: uint8x8_t, b: uint8x16_t, c: uint8x8_t) -> uint8x8_t {
-    unsafe {
-        let x = transmute(vqtbx1(transmute(a), transmute(b), c));
-        x
-    }
+    unsafe { transmute(vqtbx1(transmute(a), transmute(b), c)) }
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx1q_u8)"]
@@ -20409,10 +20394,7 @@ pub fn vqtbx1_u8(a: uint8x8_t, b: uint8x16_t, c: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqtbx1q_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_t {
-    unsafe {
-        let x = transmute(vqtbx1q(transmute(a), transmute(b), c));
-        x
-    }
+    unsafe { transmute(vqtbx1q(transmute(a), transmute(b), c)) }
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx1_p8)"]
@@ -20421,10 +20403,7 @@ pub fn vqtbx1q_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqtbx1_p8(a: poly8x8_t, b: poly8x16_t, c: uint8x8_t) -> poly8x8_t {
-    unsafe {
-        let x = transmute(vqtbx1(transmute(a), transmute(b), c));
-        x
-    }
+    unsafe { transmute(vqtbx1(transmute(a), transmute(b), c)) }
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx1q_p8)"]
@@ -20433,10 +20412,7 @@ pub fn vqtbx1_p8(a: poly8x8_t, b: poly8x16_t, c: uint8x8_t) -> poly8x8_t {
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqtbx1q_p8(a: poly8x16_t, b: poly8x16_t, c: uint8x16_t) -> poly8x16_t {
-    unsafe {
-        let x = transmute(vqtbx1q(transmute(a), transmute(b), c));
-        x
-    }
+    unsafe { transmute(vqtbx1q(transmute(a), transmute(b), c)) }
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx2)"]
@@ -23785,14 +23761,7 @@ pub fn vrndph_f16(a: f16) -> f16 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndx_f16(a: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.rint.v4f16"
-        )]
-        fn _vrndx_f16(a: float16x4_t) -> float16x4_t;
-    }
-    unsafe { _vrndx_f16(a) }
+    unsafe { simd_round_ties_even(a) }
 }
 #[doc = "Floating-point round to integral exact, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndxq_f16)"]
@@ -23801,14 +23770,7 @@ pub fn vrndx_f16(a: float16x4_t) -> float16x4_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndxq_f16(a: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.rint.v8f16"
-        )]
-        fn _vrndxq_f16(a: float16x8_t) -> float16x8_t;
-    }
-    unsafe { _vrndxq_f16(a) }
+    unsafe { simd_round_ties_even(a) }
 }
 #[doc = "Floating-point round to integral exact, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndx_f32)"]
@@ -23817,14 +23779,7 @@ pub fn vrndxq_f16(a: float16x8_t) -> float16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndx_f32(a: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.rint.v2f32"
-        )]
-        fn _vrndx_f32(a: float32x2_t) -> float32x2_t;
-    }
-    unsafe { _vrndx_f32(a) }
+    unsafe { simd_round_ties_even(a) }
 }
 #[doc = "Floating-point round to integral exact, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndxq_f32)"]
@@ -23833,14 +23788,7 @@ pub fn vrndx_f32(a: float32x2_t) -> float32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndxq_f32(a: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.rint.v4f32"
-        )]
-        fn _vrndxq_f32(a: float32x4_t) -> float32x4_t;
-    }
-    unsafe { _vrndxq_f32(a) }
+    unsafe { simd_round_ties_even(a) }
 }
 #[doc = "Floating-point round to integral exact, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndx_f64)"]
@@ -23849,14 +23797,7 @@ pub fn vrndxq_f32(a: float32x4_t) -> float32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndx_f64(a: float64x1_t) -> float64x1_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.rint.v1f64"
-        )]
-        fn _vrndx_f64(a: float64x1_t) -> float64x1_t;
-    }
-    unsafe { _vrndx_f64(a) }
+    unsafe { simd_round_ties_even(a) }
 }
 #[doc = "Floating-point round to integral exact, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndxq_f64)"]
@@ -23865,14 +23806,7 @@ pub fn vrndx_f64(a: float64x1_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndxq_f64(a: float64x2_t) -> float64x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.rint.v2f64"
-        )]
-        fn _vrndxq_f64(a: float64x2_t) -> float64x2_t;
-    }
-    unsafe { _vrndxq_f64(a) }
+    unsafe { simd_round_ties_even(a) }
 }
 #[doc = "Floating-point round to integral, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndxh_f16)"]
@@ -24082,7 +24016,6 @@ pub fn vrsqrtes_f32(a: f32) -> f32 {
 #[doc = "Reciprocal square-root estimate."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrteh_f16)"]
 #[inline]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(test, assert_instr(frsqrte))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]

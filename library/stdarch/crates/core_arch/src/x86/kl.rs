@@ -127,7 +127,7 @@ unsafe extern "unadjusted" {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_loadiwkey)
 #[inline]
 #[target_feature(enable = "kl")]
-#[stable(feature = "keylocker_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "keylocker_x86", since = "1.89.0")]
 #[cfg_attr(test, assert_instr(loadiwkey))]
 pub unsafe fn _mm_loadiwkey(
     control: u32,
@@ -153,7 +153,7 @@ pub unsafe fn _mm_loadiwkey(
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_encodekey128_u32)
 #[inline]
 #[target_feature(enable = "kl")]
-#[stable(feature = "keylocker_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "keylocker_x86", since = "1.89.0")]
 #[cfg_attr(test, assert_instr(encodekey128))]
 pub unsafe fn _mm_encodekey128_u32(key_params: u32, key: __m128i, handle: *mut u8) -> u32 {
     let EncodeKey128Output(control, key0, key1, key2, _, _, _) = encodekey128(key_params, key);
@@ -176,7 +176,7 @@ pub unsafe fn _mm_encodekey128_u32(key_params: u32, key: __m128i, handle: *mut u
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_encodekey256_u32)
 #[inline]
 #[target_feature(enable = "kl")]
-#[stable(feature = "keylocker_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "keylocker_x86", since = "1.89.0")]
 #[cfg_attr(test, assert_instr(encodekey256))]
 pub unsafe fn _mm_encodekey256_u32(
     key_params: u32,
@@ -198,7 +198,7 @@ pub unsafe fn _mm_encodekey256_u32(
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesenc128kl_u8)
 #[inline]
 #[target_feature(enable = "kl")]
-#[stable(feature = "keylocker_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "keylocker_x86", since = "1.89.0")]
 #[cfg_attr(test, assert_instr(aesenc128kl))]
 pub unsafe fn _mm_aesenc128kl_u8(output: *mut __m128i, input: __m128i, handle: *const u8) -> u8 {
     let AesOutput(status, result) = aesenc128kl(input, handle);
@@ -214,7 +214,7 @@ pub unsafe fn _mm_aesenc128kl_u8(output: *mut __m128i, input: __m128i, handle: *
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesdec128kl_u8)
 #[inline]
 #[target_feature(enable = "kl")]
-#[stable(feature = "keylocker_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "keylocker_x86", since = "1.89.0")]
 #[cfg_attr(test, assert_instr(aesdec128kl))]
 pub unsafe fn _mm_aesdec128kl_u8(output: *mut __m128i, input: __m128i, handle: *const u8) -> u8 {
     let AesOutput(status, result) = aesdec128kl(input, handle);
@@ -230,7 +230,7 @@ pub unsafe fn _mm_aesdec128kl_u8(output: *mut __m128i, input: __m128i, handle: *
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesenc256kl_u8)
 #[inline]
 #[target_feature(enable = "kl")]
-#[stable(feature = "keylocker_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "keylocker_x86", since = "1.89.0")]
 #[cfg_attr(test, assert_instr(aesenc256kl))]
 pub unsafe fn _mm_aesenc256kl_u8(output: *mut __m128i, input: __m128i, handle: *const u8) -> u8 {
     let AesOutput(status, result) = aesenc256kl(input, handle);
@@ -246,7 +246,7 @@ pub unsafe fn _mm_aesenc256kl_u8(output: *mut __m128i, input: __m128i, handle: *
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesdec256kl_u8)
 #[inline]
 #[target_feature(enable = "kl")]
-#[stable(feature = "keylocker_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "keylocker_x86", since = "1.89.0")]
 #[cfg_attr(test, assert_instr(aesdec256kl))]
 pub unsafe fn _mm_aesdec256kl_u8(output: *mut __m128i, input: __m128i, handle: *const u8) -> u8 {
     let AesOutput(status, result) = aesdec256kl(input, handle);
@@ -262,7 +262,7 @@ pub unsafe fn _mm_aesdec256kl_u8(output: *mut __m128i, input: __m128i, handle: *
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesencwide128kl_u8)
 #[inline]
 #[target_feature(enable = "widekl")]
-#[stable(feature = "keylocker_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "keylocker_x86", since = "1.89.0")]
 #[cfg_attr(test, assert_instr(aesencwide128kl))]
 pub unsafe fn _mm_aesencwide128kl_u8(
     output: *mut __m128i,
@@ -285,7 +285,7 @@ pub unsafe fn _mm_aesencwide128kl_u8(
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesdecwide128kl_u8)
 #[inline]
 #[target_feature(enable = "widekl")]
-#[stable(feature = "keylocker_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "keylocker_x86", since = "1.89.0")]
 #[cfg_attr(test, assert_instr(aesdecwide128kl))]
 pub unsafe fn _mm_aesdecwide128kl_u8(
     output: *mut __m128i,
@@ -308,7 +308,7 @@ pub unsafe fn _mm_aesdecwide128kl_u8(
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesencwide256kl_u8)
 #[inline]
 #[target_feature(enable = "widekl")]
-#[stable(feature = "keylocker_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "keylocker_x86", since = "1.89.0")]
 #[cfg_attr(test, assert_instr(aesencwide256kl))]
 pub unsafe fn _mm_aesencwide256kl_u8(
     output: *mut __m128i,
@@ -331,7 +331,7 @@ pub unsafe fn _mm_aesencwide256kl_u8(
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesdecwide256kl_u8)
 #[inline]
 #[target_feature(enable = "widekl")]
-#[stable(feature = "keylocker_x86", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "keylocker_x86", since = "1.89.0")]
 #[cfg_attr(test, assert_instr(aesdecwide256kl))]
 pub unsafe fn _mm_aesdecwide256kl_u8(
     output: *mut __m128i,

@@ -435,14 +435,16 @@ impl MiniCore {
                 continue;
             }
 
-            let mut active_line_region = false;
-            let mut inactive_line_region = false;
+            let mut active_line_region = 0;
+            let mut inactive_line_region = 0;
             if let Some(idx) = trimmed.find("// :!") {
-                inactive_line_region = true;
-                inactive_regions.push(&trimmed[idx + "// :!".len()..]);
+                let regions = trimmed[idx + "// :!".len()..].split(", ");
+                inactive_line_region += regions.clone().count();
+                inactive_regions.extend(regions);
             } else if let Some(idx) = trimmed.find("// :") {
-                active_line_region = true;
-                active_regions.push(&trimmed[idx + "// :".len()..]);
+                let regions = trimmed[idx + "// :".len()..].split(", ");
+                active_line_region += regions.clone().count();
+                active_regions.extend(regions);
             }
 
             let mut keep = true;
@@ -462,11 +464,11 @@ impl MiniCore {
             if keep {
                 buf.push_str(line);
             }
-            if active_line_region {
-                active_regions.pop().unwrap();
+            if active_line_region > 0 {
+                active_regions.drain(active_regions.len() - active_line_region..);
             }
-            if inactive_line_region {
-                inactive_regions.pop().unwrap();
+            if inactive_line_region > 0 {
+                inactive_regions.drain(inactive_regions.len() - active_line_region..);
             }
         }
 

@@ -8,7 +8,7 @@ use crate::os::windows::io::{AsRawHandle, HandleOrNull};
 use crate::sys::handle::Handle;
 use crate::sys::{c, stack_overflow};
 use crate::sys_common::FromInner;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{io, ptr};
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
@@ -103,6 +103,14 @@ impl Thread {
         // Also preserves the zero duration behavior of `Sleep`.
         if dur.is_zero() || high_precision_sleep(dur).is_err() {
             unsafe { c::Sleep(super::dur2timeout(dur)) }
+        }
+    }
+
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
         }
     }
 

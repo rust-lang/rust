@@ -9,7 +9,7 @@
 // See https://github.com/rust-lang/rust/issues/37530
 
 use run_make_support::object::read::Object;
-use run_make_support::{bin_name, dynamic_lib_name, is_msvc, object, regex, rfs, rustc};
+use run_make_support::{bin_name, dynamic_lib_name, is_windows_msvc, object, regex, rfs, rustc};
 
 fn main() {
     let cdylib_name = dynamic_lib_name("a_cdylib");
@@ -64,7 +64,7 @@ fn main() {
     );
 
     // FIXME(nbdd0121): This is broken in MinGW, see https://github.com/rust-lang/rust/pull/95604#issuecomment-1101564032
-    if is_msvc() {
+    if is_windows_msvc() {
         // Check that an executable does not export any dynamic symbols
         symbols_check(&exe_name, SymbolCheckType::StrSymbol("public_c_function_from_rlib"), false);
         symbols_check(
@@ -130,7 +130,7 @@ fn main() {
     );
 
     // FIXME(nbdd0121): This is broken in MinGW, see https://github.com/rust-lang/rust/pull/95604#issuecomment-1101564032
-    if is_msvc() {
+    if is_windows_msvc() {
         // Check that an executable does not export any dynamic symbols
         symbols_check(&exe_name, SymbolCheckType::StrSymbol("public_c_function_from_rlib"), false);
         symbols_check(

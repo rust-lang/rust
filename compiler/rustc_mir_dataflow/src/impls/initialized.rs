@@ -9,9 +9,10 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{self, TyCtxt};
+use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
-use crate::drop_flag_effects::DropFlagState;
+use crate::drop_flag_effects::{DropFlagState, InactiveVariants};
 use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use crate::{
     Analysis, GenKill, MaybeReachable, drop_flag_effects, drop_flag_effects_for_function_entry,
@@ -26,6 +27,12 @@ pub struct MaybePlacesSwitchIntData<'tcx> {
 }
 
 impl<'tcx> MaybePlacesSwitchIntData<'tcx> {
+    /// Creates a `SmallVec` mapping each target in `targets` to its `VariantIdx`.
+    fn variants(&mut self, targets: &mir::SwitchTargets) -> SmallVec<[VariantIdx; 4]> {
+        self.index = 0;
+        targets.all_values().iter().map(|value| self.next_discr(value.get())).collect()
+    }
+
     // The discriminant order in the `SwitchInt` targets should match the order yielded by
     // `AdtDef::discriminants`. We rely on this to match each discriminant in the targets to its
     // corresponding variant in linear time.
@@ -131,12 +138,26 @@ pub struct MaybeInitializedPlaces<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
+    exclude_inactive_in_otherwise: bool,
     skip_unreachable_unwind: bool,
 }
 
 impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, move_data: &'a MoveData<'tcx>) -> Self {
-        MaybeInitializedPlaces { tcx, body, move_data, skip_unreachable_unwind: false }
+        MaybeInitializedPlaces {
+            tcx,
+            body,
+            move_data,
+            exclude_inactive_in_otherwise: false,
+            skip_unreachable_unwind: false,
+        }
+    }
+
+    /// Ensures definitely inactive variants are excluded from the set of initialized places for
+    /// blocks reached through an `otherwise` edge.
+    pub fn exclude_inactive_in_otherwise(mut self) -> Self {
+        self.exclude_inactive_in_otherwise = true;
+        self
     }
 
     pub fn skipping_unreachable_unwind(mut self) -> Self {
@@ -208,6 +229,7 @@ pub struct MaybeUninitializedPlaces<'a, 'tcx> {
     move_data: &'a MoveData<'tcx>,
 
     mark_inactive_variants_as_uninit: bool,
+    include_inactive_in_otherwise: bool,
     skip_unreachable_unwind: DenseBitSet<mir::BasicBlock>,
 }
 
@@ -218,6 +240,7 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
             body,
             move_data,
             mark_inactive_variants_as_uninit: false,
+            include_inactive_in_otherwise: false,
             skip_unreachable_unwind: DenseBitSet::new_empty(body.basic_blocks.len()),
         }
     }
@@ -229,6 +252,13 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
     /// checker, where this information gets propagated along `FakeEdge`s.
     pub fn mark_inactive_variants_as_uninit(mut self) -> Self {
         self.mark_inactive_variants_as_uninit = true;
+        self
+    }
+
+    /// Ensures definitely inactive variants are included in the set of uninitialized places for
+    /// blocks reached through an `otherwise` edge.
+    pub fn include_inactive_in_otherwise(mut self) -> Self {
+        self.include_inactive_in_otherwise = true;
         self
     }
 
@@ -431,17 +461,24 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         data: &mut Self::SwitchIntData,
         state: &mut Self::Domain,
         value: SwitchTargetValue,
+        targets: &mir::SwitchTargets,
     ) {
-        if let SwitchTargetValue::Normal(value) = value {
-            // Kill all move paths that correspond to variants we know to be inactive along this
-            // particular outgoing edge of a `SwitchInt`.
-            drop_flag_effects::on_all_inactive_variants(
-                self.move_data,
-                data.enum_place,
-                data.next_discr(value),
-                |mpi| state.kill(mpi),
-            );
-        }
+        let inactive_variants = match value {
+            SwitchTargetValue::Normal(value) => InactiveVariants::Active(data.next_discr(value)),
+            SwitchTargetValue::Otherwise if self.exclude_inactive_in_otherwise => {
+                InactiveVariants::Inactives(data.variants(targets))
+            }
+            _ => return,
+        };
+
+        // Kill all move paths that correspond to variants we know to be inactive along this
+        // particular outgoing edge of a `SwitchInt`.
+        drop_flag_effects::on_all_inactive_variants(
+            self.move_data,
+            data.enum_place,
+            &inactive_variants,
+            |mpi| state.kill(mpi),
+        );
     }
 }
 
@@ -544,17 +581,24 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         data: &mut Self::SwitchIntData,
         state: &mut Self::Domain,
         value: SwitchTargetValue,
+        targets: &mir::SwitchTargets,
     ) {
-        if let SwitchTargetValue::Normal(value) = value {
-            // Mark all move paths that correspond to variants other than this one as maybe
-            // uninitialized (in reality, they are *definitely* uninitialized).
-            drop_flag_effects::on_all_inactive_variants(
-                self.move_data,
-                data.enum_place,
-                data.next_discr(value),
-                |mpi| state.gen_(mpi),
-            );
-        }
+        let inactive_variants = match value {
+            SwitchTargetValue::Normal(value) => InactiveVariants::Active(data.next_discr(value)),
+            SwitchTargetValue::Otherwise if self.include_inactive_in_otherwise => {
+                InactiveVariants::Inactives(data.variants(targets))
+            }
+            _ => return,
+        };
+
+        // Mark all move paths that correspond to variants other than this one as maybe
+        // uninitialized (in reality, they are *definitely* uninitialized).
+        drop_flag_effects::on_all_inactive_variants(
+            self.move_data,
+            data.enum_place,
+            &inactive_variants,
+            |mpi| state.gen_(mpi),
+        );
     }
 }
 

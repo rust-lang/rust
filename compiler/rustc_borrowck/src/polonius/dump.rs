@@ -116,7 +116,7 @@ fn emit_polonius_dump<'tcx>(
     writeln!(out, "<div>")?;
     writeln!(out, "NLL regions")?;
     writeln!(out, "<pre class='mermaid'>")?;
-    emit_mermaid_nll_regions(regioncx, out)?;
+    emit_mermaid_nll_regions(tcx, regioncx, out)?;
     writeln!(out, "</pre>")?;
     writeln!(out, "</div>")?;
 
@@ -124,7 +124,7 @@ fn emit_polonius_dump<'tcx>(
     writeln!(out, "<div>")?;
     writeln!(out, "NLL SCCs")?;
     writeln!(out, "<pre class='mermaid'>")?;
-    emit_mermaid_nll_sccs(regioncx, out)?;
+    emit_mermaid_nll_sccs(tcx, regioncx, out)?;
     writeln!(out, "</pre>")?;
     writeln!(out, "</div>")?;
 
@@ -306,9 +306,10 @@ fn emit_mermaid_cfg(body: &Body<'_>, out: &mut dyn io::Write) -> io::Result<()> 
 }
 
 /// Emits a region's label: index, universe, external name.
-fn render_region(
+fn render_region<'tcx>(
+    tcx: TyCtxt<'tcx>,
     region: RegionVid,
-    regioncx: &RegionInferenceContext<'_>,
+    regioncx: &RegionInferenceContext<'tcx>,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
     let def = regioncx.region_definition(region);
@@ -318,7 +319,7 @@ fn render_region(
     if !universe.is_root() {
         write!(out, "/{universe:?}")?;
     }
-    if let Some(name) = def.external_name.and_then(|e| e.get_name()) {
+    if let Some(name) = def.external_name.and_then(|e| e.get_name(tcx)) {
         write!(out, " ({name})")?;
     }
     Ok(())
@@ -327,6 +328,7 @@ fn render_region(
 /// Emits a mermaid flowchart of the NLL regions and the outlives constraints between them, similar
 /// to the graphviz version.
 fn emit_mermaid_nll_regions<'tcx>(
+    tcx: TyCtxt<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
@@ -336,7 +338,7 @@ fn emit_mermaid_nll_regions<'tcx>(
     // Emit the region nodes.
     for region in regioncx.definitions.indices() {
         write!(out, "{}[\"", region.as_usize())?;
-        render_region(region, regioncx, out)?;
+        render_region(tcx, region, regioncx, out)?;
         writeln!(out, "\"]")?;
     }
 
@@ -378,6 +380,7 @@ fn emit_mermaid_nll_regions<'tcx>(
 /// Emits a mermaid flowchart of the NLL SCCs and the outlives constraints between them, similar
 /// to the graphviz version.
 fn emit_mermaid_nll_sccs<'tcx>(
+    tcx: TyCtxt<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
@@ -395,7 +398,7 @@ fn emit_mermaid_nll_sccs<'tcx>(
         // The node label: the regions contained in the SCC.
         write!(out, "{scc}[\"SCC({scc}) = {{", scc = scc.as_usize())?;
         for (idx, &region) in regions.iter().enumerate() {
-            render_region(region, regioncx, out)?;
+            render_region(tcx, region, regioncx, out)?;
             if idx < regions.len() - 1 {
                 write!(out, ",")?;
             }

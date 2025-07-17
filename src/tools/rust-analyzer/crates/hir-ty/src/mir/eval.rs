@@ -630,7 +630,7 @@ impl Evaluator<'_> {
             Ok(target_data_layout) => target_data_layout,
             Err(e) => return Err(MirEvalError::TargetDataLayoutNotAvailable(e)),
         };
-        let cached_ptr_size = target_data_layout.pointer_size.bytes_usize();
+        let cached_ptr_size = target_data_layout.pointer_size().bytes_usize();
         Ok(Evaluator {
             target_data_layout,
             stack: vec![0],

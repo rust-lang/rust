@@ -2,7 +2,7 @@ use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 
 pub struct Thread(!);
 
@@ -23,6 +23,10 @@ impl Thread {
     }
 
     pub fn sleep(_dur: Duration) {
+        panic!("can't sleep");
+    }
+
+    pub fn sleep_until(_deadline: Instant) {
         panic!("can't sleep");
     }
 

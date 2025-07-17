@@ -15,7 +15,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     match self.locals[index] {
                         LocalRef::Place(cg_dest) => self.codegen_rvalue(bx, cg_dest, rvalue),
                         LocalRef::UnsizedPlace(cg_indirect_dest) => {
-                            self.codegen_rvalue_unsized(bx, cg_indirect_dest, rvalue)
+                            let ty = cg_indirect_dest.layout.ty;
+                            span_bug!(
+                                statement.source_info.span,
+                                "cannot reallocate from `UnsizedPlace({ty})` \
+                                into `{rvalue:?}`; dynamic alloca is not supported",
+                            );
                         }
                         LocalRef::PendingOperand => {
                             let operand = self.codegen_rvalue_operand(bx, rvalue);

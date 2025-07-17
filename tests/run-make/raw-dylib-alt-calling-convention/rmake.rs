@@ -9,7 +9,9 @@
 //@ only-x86
 //@ only-windows
 
-use run_make_support::{build_native_dynamic_lib, diff, is_msvc, run, run_with_args, rustc};
+use run_make_support::{
+    build_native_dynamic_lib, diff, is_windows_msvc, run, run_with_args, rustc,
+};
 
 fn main() {
     rustc()
@@ -21,7 +23,7 @@ fn main() {
     build_native_dynamic_lib("extern");
     let out = run("driver").stdout_utf8();
     diff().expected_file("output.txt").actual_text("actual", out).normalize(r#"\r"#, "").run();
-    if is_msvc() {
+    if is_windows_msvc() {
         let out_msvc = run_with_args("driver", &["true"]).stdout_utf8();
         diff()
             .expected_file("output.msvc.txt")

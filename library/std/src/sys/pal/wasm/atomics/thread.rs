@@ -2,7 +2,7 @@ use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
 use crate::sys::unsupported;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 
 pub struct Thread(!);
 
@@ -38,6 +38,14 @@ impl Thread {
             let val = unsafe { wasm::memory_atomic_wait32(&mut x, 0, amt as i64) };
             debug_assert_eq!(val, 2);
             nanos -= amt;
+        }
+    }
+
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
         }
     }
 

@@ -1,5 +1,5 @@
 use crate::cell::UnsafeCell;
-use crate::marker::{PointerLike, Unpin};
+use crate::marker::Unpin;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::pin::Pin;
 use crate::{fmt, ptr};
@@ -177,9 +177,5 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafePinned<U>> for UnsafePinned<T> 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 // #[unstable(feature = "unsafe_pinned", issue = "125735")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<UnsafePinned<U>> for UnsafePinned<T> {}
-
-#[unstable(feature = "pointer_like_trait", issue = "none")]
-// #[unstable(feature = "unsafe_pinned", issue = "125735")]
-impl<T: PointerLike> PointerLike for UnsafePinned<T> {}
 
 // FIXME(unsafe_pinned): impl PinCoerceUnsized for UnsafePinned<T>?

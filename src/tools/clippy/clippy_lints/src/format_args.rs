@@ -30,6 +30,7 @@ use rustc_span::edition::Edition::Edition2021;
 use rustc_span::{Span, Symbol, sym};
 use rustc_trait_selection::infer::TyCtxtInferExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause, Selection, SelectionContext};
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -656,7 +657,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                     };
                     let selection = SelectionContext::new(&infcx).select(&obligation);
                     let derived = if let Ok(Some(Selection::UserDefined(data))) = selection {
-                        tcx.has_attr(data.impl_def_id, sym::automatically_derived)
+                        find_attr!(tcx.get_all_attrs(data.impl_def_id), AttributeKind::AutomaticallyDerived(..))
                     } else {
                         false
                     };

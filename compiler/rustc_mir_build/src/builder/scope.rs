@@ -927,6 +927,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             scrut_span: rustc_span::Span::default(),
             refutable: true,
             known_valid_scrutinee: true,
+            internal_state: Default::default(),
         };
 
         let valtree = match self.eval_unevaluated_mir_constant_to_valtree(constant) {
@@ -936,7 +937,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 valtree
             }
-            Err(ErrorHandled::Reported(..)) => return self.cfg.start_new_block().unit(),
+            Err(ErrorHandled::Reported(..)) => {
+                return block.unit();
+            }
             Err(ErrorHandled::TooGeneric(_)) => {
                 self.tcx.dcx().emit_fatal(ConstContinueBadConst { span: constant.span });
             }

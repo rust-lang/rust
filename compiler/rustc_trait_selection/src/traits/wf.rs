@@ -288,9 +288,9 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             && let Some(&impl_item_id) =
                 tcx.impl_item_implementor_ids(impl_def_id).get(&projection_ty.def_id)
             && let Some(impl_item) =
-                items.iter().find(|item| item.id.owner_id.to_def_id() == impl_item_id)
+                items.iter().find(|item| item.owner_id.to_def_id() == impl_item_id)
         {
-            Some(tcx.hir_impl_item(impl_item.id).expect_type().span)
+            Some(tcx.hir_impl_item(*impl_item).expect_type().span)
         } else {
             None
         }

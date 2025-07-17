@@ -1,6 +1,6 @@
-//@ known-bug: #110395
+#![feature(const_trait_impl, const_from)]
 
-#![feature(const_trait_impl)]
+//@ check-pass
 
 #[const_trait]
 trait Convert<T> {

@@ -11,21 +11,20 @@
 
 extern crate rustc_hir;
 extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_smir;
 extern crate rustc_driver;
 extern crate rustc_interface;
-extern crate stable_mir;
+#[macro_use]
+extern crate rustc_public;
 
-use stable_mir::abi::{
+use rustc_public::abi::{
     ArgAbi, CallConvention, FieldsShape, IntegerLength, PassMode, Primitive, Scalar, ValueAbi,
     VariantsShape,
 };
-use stable_mir::mir::MirVisitor;
-use stable_mir::mir::mono::Instance;
-use stable_mir::target::MachineInfo;
-use stable_mir::ty::{AdtDef, RigidTy, Ty, TyKind};
-use stable_mir::{CrateDef, CrateItem, CrateItems, ItemKind};
+use rustc_public::mir::MirVisitor;
+use rustc_public::mir::mono::Instance;
+use rustc_public::target::MachineInfo;
+use rustc_public::ty::{AdtDef, RigidTy, Ty, TyKind};
+use rustc_public::{CrateDef, CrateItem, CrateItems, ItemKind};
 use std::assert_matches::assert_matches;
 use std::collections::HashSet;
 use std::convert::TryFrom;
@@ -37,7 +36,7 @@ const CRATE_NAME: &str = "input";
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_stable_mir() -> ControlFlow<()> {
     // Find items in the local crate.
-    let items = stable_mir::all_local_items();
+    let items = rustc_public::all_local_items();
 
     // Test fn_abi
     let target_fn = *get_item(&items, (ItemKind::Fn, "fn_abi")).unwrap();
@@ -70,7 +69,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     assert!(ptr_variadic_fn_abi.c_variadic);
     assert_eq!(ptr_variadic_fn_abi.args.len(), 1);
 
-    let entry = stable_mir::entry_fn().unwrap();
+    let entry = rustc_public::entry_fn().unwrap();
     let main_fn = Instance::try_from(entry).unwrap();
     let mut visitor = AdtDefVisitor::default();
     visitor.visit_body(&main_fn.body().unwrap());
@@ -148,7 +147,7 @@ fn check_niche(abi: &ArgAbi) {
 fn get_item<'a>(
     items: &'a CrateItems,
     item: (ItemKind, &str),
-) -> Option<&'a stable_mir::CrateItem> {
+) -> Option<&'a rustc_public::CrateItem> {
     items.iter().find(|crate_item| (item.0 == crate_item.kind()) && crate_item.name() == item.1)
 }
 
@@ -158,7 +157,7 @@ struct AdtDefVisitor {
 }
 
 impl MirVisitor for AdtDefVisitor {
-    fn visit_ty(&mut self, ty: &Ty, _location: stable_mir::mir::visit::Location) {
+    fn visit_ty(&mut self, ty: &Ty, _location: rustc_public::mir::visit::Location) {
         if let TyKind::RigidTy(RigidTy::Adt(adt, _)) = ty.kind() {
             self.adt_defs.insert(adt);
         }

@@ -7,8 +7,8 @@ use std::{collections::VecDeque, fmt, fs, iter, ops::Deref, sync, thread};
 use anyhow::Context;
 use base_db::{
     CrateBuilderId, CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin,
-    CrateWorkspaceData, DependencyBuilder, Env, LangCrateOrigin, ProcMacroPaths,
-    TargetLayoutLoadResult,
+    CrateWorkspaceData, DependencyBuilder, Env, LangCrateOrigin, ProcMacroLoadingError,
+    ProcMacroPaths, TargetLayoutLoadResult,
 };
 use cfg::{CfgAtom, CfgDiff, CfgOptions};
 use intern::{Symbol, sym};
@@ -391,6 +391,7 @@ impl ProjectWorkspace {
                         toolchain.clone(),
                         target_dir.clone(),
                     )),
+                    config.no_deps,
                     workspace_dir,
                     progress,
                 )
@@ -499,6 +500,7 @@ impl ProjectWorkspace {
                 if let Some(sysroot_project) = sysroot_project {
                     sysroot.load_workspace(
                         &RustSourceWorkspaceConfig::Json(*sysroot_project),
+                        config.no_deps,
                         project_root,
                         progress,
                     )
@@ -510,6 +512,7 @@ impl ProjectWorkspace {
                             toolchain.clone(),
                             target_dir,
                         )),
+                        config.no_deps,
                         project_root,
                         progress,
                     )
@@ -570,6 +573,7 @@ impl ProjectWorkspace {
                 toolchain.clone(),
                 target_dir.clone(),
             )),
+            config.no_deps,
             dir,
             &|_| (),
         );
@@ -744,7 +748,7 @@ impl ProjectWorkspace {
         }
     }
 
-    pub fn find_sysroot_proc_macro_srv(&self) -> anyhow::Result<AbsPathBuf> {
+    pub fn find_sysroot_proc_macro_srv(&self) -> Option<anyhow::Result<AbsPathBuf>> {
         self.sysroot.discover_proc_macro_srv()
     }
 
@@ -1641,11 +1645,11 @@ fn add_target_crate_root(
             Some((BuildScriptOutput { proc_macro_dylib_path, .. }, has_errors)) => {
                 match proc_macro_dylib_path {
                     Some(path) => Ok((cargo_name.to_owned(), path.clone())),
-                    None if has_errors => Err("failed to build proc-macro".to_owned()),
-                    None => Err("proc-macro crate build data is missing dylib path".to_owned()),
+                    None if has_errors => Err(ProcMacroLoadingError::FailedToBuild),
+                    None => Err(ProcMacroLoadingError::MissingDylibPath),
                 }
             }
-            None => Err("build scripts have not been built".to_owned()),
+            None => Err(ProcMacroLoadingError::NotYetBuilt),
         };
         proc_macros.insert(crate_id, proc_macro);
     }

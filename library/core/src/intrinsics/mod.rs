@@ -54,6 +54,7 @@
 )]
 #![allow(missing_docs)]
 
+use crate::ffi::va_list::{VaArgSafe, VaListImpl};
 use crate::marker::{ConstParamTy, DiscriminantKind, PointeeSized, Tuple};
 use crate::ptr;
 
@@ -909,7 +910,7 @@ pub const unsafe fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 /// # Safety
 ///
 /// - `index < PtrMetadata(slice_ptr)`, so the indexing is in-bounds for the slice
-/// - the resulting offsetting is in-bounds of the allocated object, which is
+/// - the resulting offsetting is in-bounds of the allocation, which is
 ///   always the case for references, but needs to be upheld manually for pointers
 #[rustc_nounwind]
 #[rustc_intrinsic]
@@ -2278,7 +2279,7 @@ pub const fn const_eval_select<ARG: Tuple, F, G, RET>(
 ) -> RET
 where
     G: FnOnce<ARG, Output = RET>,
-    F: FnOnce<ARG, Output = RET>;
+    F: const FnOnce<ARG, Output = RET>;
 
 /// A macro to make it easier to invoke const_eval_select. Use as follows:
 /// ```rust,ignore (just a macro example)
@@ -2723,7 +2724,20 @@ pub const fn type_name<T: ?Sized>() -> &'static str;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn type_id<T: ?Sized + 'static>() -> u128;
+pub const fn type_id<T: ?Sized + 'static>() -> crate::any::TypeId;
+
+/// Tests (at compile-time) if two [`crate::any::TypeId`] instances identify the
+/// same type. This is necessary because at const-eval time the actual discriminating
+/// data is opaque and cannot be inspected directly.
+///
+/// The stabilized version of this intrinsic is the [PartialEq] impl for [`core::any::TypeId`].
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_do_not_const_check]
+pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
+    a.data == b.data
+}
 
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///
@@ -3142,3 +3156,25 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
         }
     )
 }
+
+/// Copies the current location of arglist `src` to the arglist `dst`.
+///
+/// FIXME: document safety requirements
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
+
+/// Loads an argument of type `T` from the `va_list` `ap` and increment the
+/// argument `ap` points to.
+///
+/// FIXME: document safety requirements
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
+
+/// Destroy the arglist `ap` after initialization with `va_start` or `va_copy`.
+///
+/// FIXME: document safety requirements
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn va_end(ap: &mut VaListImpl<'_>);

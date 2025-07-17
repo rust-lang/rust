@@ -1,11 +1,10 @@
-use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
-use rustc_ast::{
-    self as ast, CRATE_NODE_ID, Crate, ItemKind, MetaItemInner, MetaItemKind, ModKind, NodeId, Path,
-};
+use rustc_ast::{self as ast, CRATE_NODE_ID, Crate, ItemKind, ModKind, NodeId, Path};
 use rustc_ast_pretty::pprust;
-use rustc_attr_data_structures::{self as attr, Stability};
+use rustc_attr_data_structures::{
+    self as attr, AttributeKind, CfgEntry, Stability, StrippedCfgItem, find_attr,
+};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
@@ -233,12 +232,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return;
         }
 
-        let old_kind = match (ns, old_binding.module()) {
+        let old_kind = match (ns, old_binding.res()) {
             (ValueNS, _) => "value",
             (MacroNS, _) => "macro",
             (TypeNS, _) if old_binding.is_extern_crate() => "extern crate",
-            (TypeNS, Some(module)) if module.is_normal() => "module",
-            (TypeNS, Some(module)) if module.is_trait() => "trait",
+            (TypeNS, Res::Def(DefKind::Mod, _)) => "module",
+            (TypeNS, Res::Def(DefKind::Trait, _)) => "trait",
             (TypeNS, _) => "type",
         };
 
@@ -1320,7 +1319,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
 
                 // collect submodules to explore
-                if let Some(module) = name_binding.module() {
+                if let Some(def_id) = name_binding.res().module_like_def_id() {
                     // form the path
                     let mut path_segments = path_segments.clone();
                     path_segments.push(ast::PathSegment::from_ident(ident));
@@ -1340,14 +1339,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                     if !is_extern_crate_that_also_appears_in_prelude || alias_import {
                         // add the module to the lookup
-                        if seen_modules.insert(module.def_id()) {
+                        if seen_modules.insert(def_id) {
                             if via_import { &mut worklist_via_import } else { &mut worklist }.push(
                                 (
-                                    module,
+                                    this.expect_module(def_id),
                                     path_segments,
                                     child_accessible,
                                     child_doc_visible,
-                                    is_stable && this.is_stable(module.def_id(), name_binding.span),
+                                    is_stable && this.is_stable(def_id, name_binding.span),
                                 ),
                             );
                         }
@@ -1440,7 +1439,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         |(key, name_resolution)| {
                             if key.ns == TypeNS
                                 && key.ident == ident
-                                && let Some(binding) = name_resolution.borrow().binding
+                                && let Some(binding) = name_resolution.borrow().best_binding()
                             {
                                 match binding.res() {
                                     // No disambiguation needed if the identically named item we
@@ -1494,7 +1493,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     return None;
                 };
                 for (_, resolution) in this.resolutions(m).borrow().iter() {
-                    let Some(binding) = resolution.borrow().binding else {
+                    let Some(binding) = resolution.borrow().best_binding() else {
                         continue;
                     };
                     let Res::Def(DefKind::Macro(MacroKind::Derive | MacroKind::Attr), def_id) =
@@ -1669,9 +1668,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut all_attrs: UnordMap<Symbol, Vec<_>> = UnordMap::default();
         // We're collecting these in a hashmap, and handle ordering the output further down.
         #[allow(rustc::potential_query_instability)]
-        for (def_id, data) in &self.macro_map {
+        for (def_id, data) in self
+            .local_macro_map
+            .iter()
+            .map(|(local_id, data)| (local_id.to_def_id(), data))
+            .chain(self.extern_macro_map.borrow().iter().map(|(id, d)| (*id, d)))
+        {
             for helper_attr in &data.ext.helper_attrs {
-                let item_name = self.tcx.item_name(*def_id);
+                let item_name = self.tcx.item_name(def_id);
                 all_attrs.entry(*helper_attr).or_default().push(item_name);
                 if helper_attr == &ident.name {
                     derives.push(item_name);
@@ -1998,9 +2002,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Otherwise, point out if the struct has any private fields.
         if let Some(def_id) = res.opt_def_id()
             && !def_id.is_local()
-            && let Some(attr) = self.tcx.get_attr(def_id, sym::non_exhaustive)
+            && let Some(attr_span) = find_attr!(self.tcx.get_all_attrs(def_id), AttributeKind::NonExhaustive(span) => *span)
         {
-            non_exhaustive = Some(attr.span());
+            non_exhaustive = Some(attr_span);
         } else if let Some(span) = ctor_fields_span {
             let label = errors::ConstructorPrivateIfAnyFieldPrivate { span };
             err.subdiagnostic(label);
@@ -2090,7 +2094,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         true, // re-export
                     ));
                 }
-                NameBindingKind::Res(_) | NameBindingKind::Module(_) => {}
+                NameBindingKind::Res(_) => {}
             }
             let first = binding == first_binding;
             let def_span = self.tcx.sess.source_map().guess_head_span(binding.span);
@@ -2302,25 +2306,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .ok()
                 };
                 if let Some(binding) = binding {
-                    let mut found = |what| {
-                        msg = format!(
-                            "expected {}, found {} `{}` in {}",
-                            ns.descr(),
-                            what,
-                            ident,
-                            parent
-                        )
-                    };
-                    if binding.module().is_some() {
-                        found("module")
-                    } else {
-                        match binding.res() {
-                            // Avoid using TyCtxt::def_kind_descr in the resolver, because it
-                            // indirectly *calls* the resolver, and would cause a query cycle.
-                            Res::Def(kind, id) => found(kind.descr(id)),
-                            _ => found(ns_to_try.descr()),
-                        }
-                    }
+                    msg = format!(
+                        "expected {}, found {} `{ident}` in {parent}",
+                        ns.descr(),
+                        binding.res().descr(),
+                    );
                 };
             }
             (msg, None)
@@ -2855,17 +2845,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let note = errors::FoundItemConfigureOut { span: ident.span };
             err.subdiagnostic(note);
 
-            if let MetaItemKind::List(nested) = &cfg.kind
-                && let MetaItemInner::MetaItem(meta_item) = &nested[0]
-                && let MetaItemKind::NameValue(feature_name) = &meta_item.kind
-            {
-                let note = errors::ItemWasBehindFeature {
-                    feature: feature_name.symbol,
-                    span: meta_item.span,
-                };
+            if let CfgEntry::NameValue { value: Some((feature, _)), .. } = cfg.0 {
+                let note = errors::ItemWasBehindFeature { feature, span: cfg.1 };
                 err.subdiagnostic(note);
             } else {
-                let note = errors::ItemWasCfgOut { span: cfg.span };
+                let note = errors::ItemWasCfgOut { span: cfg.1 };
                 err.subdiagnostic(note);
             }
         }

@@ -9,6 +9,7 @@
 //! Each Rust tool **MUST** utilize `ToolBuild` inside their `Step` logic,
 //! return `ToolBuildResult` and should never prepare `cargo` invocations manually.
 
+use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::{env, fs};
 
@@ -77,7 +78,7 @@ impl Builder<'_> {
                 *target,
             ),
             // doesn't depend on compiler, same as host compiler
-            _ => self.msg(Kind::Build, build_stage, format_args!("tool {tool}"), *host, *target),
+            _ => self.msg(kind, build_stage, format_args!("tool {tool}"), *host, *target),
         }
     }
 }
@@ -136,19 +137,6 @@ impl Step for ToolBuild {
             _ => panic!("unexpected Mode for tool build"),
         }
 
-        // build.tool.TOOL_NAME.features in bootstrap.toml allows specifying which features to
-        // enable for a specific tool. `extra_features` instead is not controlled by the toml and
-        // provides features that are always enabled for a specific tool (e.g. "in-rust-tree" for
-        // rust-analyzer). Finally, `prepare_tool_cargo` might add more features to adapt the build
-        // to the chosen flags (e.g. "all-static" for cargo if `cargo_native_static` is true).
-        let mut features = builder
-            .config
-            .tool
-            .get(self.tool)
-            .and_then(|tool| tool.features.clone())
-            .unwrap_or_default();
-        features.extend(self.extra_features.clone());
-
         let mut cargo = prepare_tool_cargo(
             builder,
             self.compiler,
@@ -157,7 +145,7 @@ impl Step for ToolBuild {
             Kind::Build,
             path,
             self.source_type,
-            &features,
+            &self.extra_features,
         );
 
         // The stage0 compiler changes infrequently and does not directly depend on code
@@ -244,7 +232,8 @@ pub fn prepare_tool_cargo(
 ) -> CargoCommand {
     let mut cargo = builder::Cargo::new(builder, compiler, mode, source_type, target, cmd_kind);
 
-    let dir = builder.src.join(path);
+    let path = PathBuf::from(path);
+    let dir = builder.src.join(&path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
     let mut features = extra_features.to_vec();
@@ -260,6 +249,18 @@ pub fn prepare_tool_cargo(
             features.push("all-static".to_string());
         }
     }
+
+    // build.tool.TOOL_NAME.features in bootstrap.toml allows specifying which features to enable
+    // for a specific tool. `extra_features` instead is not controlled by the toml and provides
+    // features that are always enabled for a specific tool (e.g. "in-rust-tree" for rust-analyzer).
+    // Finally, `prepare_tool_cargo` above here might add more features to adapt the build
+    // to the chosen flags (e.g. "all-static" for cargo if `cargo_native_static` is true).
+    builder
+        .config
+        .tool
+        .iter()
+        .filter(|(tool_name, _)| path.file_name().and_then(OsStr::to_str) == Some(tool_name))
+        .for_each(|(_, tool)| features.extend(tool.features.clone().unwrap_or_default()));
 
     // clippy tests need to know about the stage sysroot. Set them consistently while building to
     // avoid rebuilding when running tests.
@@ -516,7 +517,6 @@ bootstrap_tool!(
     ReplaceVersionPlaceholder, "src/tools/replace-version-placeholder", "replace-version-placeholder";
     CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
     GenerateCopyright, "src/tools/generate-copyright", "generate-copyright";
-    SuggestTests, "src/tools/suggest-tests", "suggest-tests";
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
     // rustdoc-gui-test has a crate dependency on compiletest, so it needs the same unstable features.
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = COMPILETEST_ALLOW_FEATURES;
@@ -910,6 +910,13 @@ impl Step for LldWrapper {
 
         tool_result
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::build("LldWrapper", self.target_compiler.host)
+                .built_by(self.build_compiler),
+        )
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -1014,9 +1021,8 @@ impl Step for RustAnalyzerProcMacroSrv {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LlvmBitcodeLinker {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
-    pub extra_features: Vec<String>,
 }
 
 impl Step for LlvmBitcodeLinker {
@@ -1032,8 +1038,9 @@ impl Step for LlvmBitcodeLinker {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LlvmBitcodeLinker {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
-            extra_features: Vec::new(),
+            build_compiler: run
+                .builder
+                .compiler(run.builder.top_stage, run.builder.config.host_target),
             target: run.target,
         });
     }
@@ -1043,35 +1050,22 @@ impl Step for LlvmBitcodeLinker {
         instrument(level = "debug", name = "LlvmBitcodeLinker::run", skip_all)
     )]
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
-        let tool_result = builder.ensure(ToolBuild {
-            compiler: self.compiler,
+        builder.ensure(ToolBuild {
+            compiler: self.build_compiler,
             target: self.target,
             tool: "llvm-bitcode-linker",
             mode: Mode::ToolRustc,
             path: "src/tools/llvm-bitcode-linker",
             source_type: SourceType::InTree,
-            extra_features: self.extra_features,
+            extra_features: vec![],
             allow_features: "",
             cargo_args: Vec::new(),
             artifact_kind: ToolArtifactKind::Binary,
-        });
+        })
+    }
 
-        if tool_result.target_compiler.stage > 0 {
-            let bindir_self_contained = builder
-                .sysroot(tool_result.target_compiler)
-                .join(format!("lib/rustlib/{}/bin/self-contained", self.target.triple));
-            t!(fs::create_dir_all(&bindir_self_contained));
-            let bin_destination = bindir_self_contained
-                .join(exe("llvm-bitcode-linker", tool_result.target_compiler.host));
-            builder.copy_link(&tool_result.tool_path, &bin_destination, FileType::Executable);
-            ToolBuildResult {
-                tool_path: bin_destination,
-                build_compiler: tool_result.build_compiler,
-                target_compiler: tool_result.target_compiler,
-            }
-        } else {
-            tool_result
-        }
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::build("LlvmBitcodeLinker", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -1146,6 +1140,7 @@ macro_rules! tool_extended {
             stable: $stable:expr
             $( , add_bins_to_sysroot: $add_bins_to_sysroot:expr )?
             $( , add_features: $add_features:expr )?
+            $( , cargo_args: $cargo_args:expr )?
             $( , )?
         }
     ) => {
@@ -1186,6 +1181,7 @@ macro_rules! tool_extended {
                     $path,
                     None $( .or(Some(&$add_bins_to_sysroot)) )?,
                     None $( .or(Some($add_features)) )?,
+                    None $( .or(Some($cargo_args)) )?,
                 )
             }
 
@@ -1225,6 +1221,7 @@ fn should_run_tool_build_step<'a>(
     )
 }
 
+#[expect(clippy::too_many_arguments)] // silence overeager clippy lint
 fn run_tool_build_step(
     builder: &Builder<'_>,
     compiler: Compiler,
@@ -1233,6 +1230,7 @@ fn run_tool_build_step(
     path: &'static str,
     add_bins_to_sysroot: Option<&[&str]>,
     add_features: Option<fn(&Builder<'_>, TargetSelection, &mut Vec<String>)>,
+    cargo_args: Option<&[&'static str]>,
 ) -> ToolBuildResult {
     let mut extra_features = Vec::new();
     if let Some(func) = add_features {
@@ -1249,7 +1247,7 @@ fn run_tool_build_step(
             extra_features,
             source_type: SourceType::InTree,
             allow_features: "",
-            cargo_args: vec![],
+            cargo_args: cargo_args.unwrap_or_default().iter().map(|s| String::from(*s)).collect(),
             artifact_kind: ToolArtifactKind::Binary,
         });
 
@@ -1300,7 +1298,9 @@ tool_extended!(Miri {
     path: "src/tools/miri",
     tool_name: "miri",
     stable: false,
-    add_bins_to_sysroot: ["miri"]
+    add_bins_to_sysroot: ["miri"],
+    // Always compile also tests when building miri. Otherwise feature unification can cause rebuilds between building and testing miri.
+    cargo_args: &["--all-targets"],
 });
 tool_extended!(CargoMiri {
     path: "src/tools/miri/cargo-miri",

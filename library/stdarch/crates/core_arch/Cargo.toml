@@ -22,7 +22,6 @@ maintenance = { status = "experimental" }
 
 [dev-dependencies]
 stdarch-test = { version = "0.*", path = "../stdarch-test" }
-std_detect = { version = "0.*", path = "../std_detect" }
 
 [target.'cfg(all(target_arch = "x86_64", target_os = "linux"))'.dev-dependencies]
 syscalls = { version = "0.6.18", default-features = false }

@@ -1,18 +1,27 @@
 [package]
 name = "run_make_support"
-version = "0.2.0"
-edition = "2021"
+version = "0.0.0"
+edition = "2024"
 
 [dependencies]
+
+# These dependencies are either used to implement part of support library
+# functionality, or re-exported to test recipe programs via the support library,
+# or both.
+
+# tidy-alphabetical-start
 bstr = "1.12"
+gimli = "0.32"
+libc = "0.2"
 object = "0.37"
+regex = "1.11"
+serde_json = "1.0"
 similar = "2.7"
 wasmparser = { version = "0.219", default-features = false, features = ["std"] }
-regex = "1.11"
-gimli = "0.32"
+# tidy-alphabetical-end
+
+# Shared with bootstrap and compiletest
 build_helper = { path = "../../build_helper" }
-serde_json = "1.0"
-libc = "0.2"
 
 [lib]
 crate-type = ["lib", "dylib"]

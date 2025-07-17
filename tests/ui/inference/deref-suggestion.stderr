@@ -2,9 +2,8 @@ error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:8:9
    |
 LL |     foo(s);
-   |     --- ^- help: try using a conversion method: `.to_string()`
-   |     |   |
-   |     |   expected `String`, found `&String`
+   |     --- ^ expected `String`, found `&String`
+   |     |
    |     arguments to this function are incorrect
    |
 note: function defined here
@@ -12,6 +11,10 @@ note: function defined here
    |
 LL | fn foo(_: String) {}
    |    ^^^ ---------
+help: try using a conversion method
+   |
+LL |     foo(s.to_string());
+   |          ++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:14:10

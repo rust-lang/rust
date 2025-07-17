@@ -3,22 +3,24 @@ error[E0425]: cannot find value `rust` in this scope
    |
 LL |     break rust
    |           ^^^^ not found in this scope
--Ztrack-diagnostics: created at compiler/rustc_resolve/src/late/diagnostics.rs:LL:CC
+   |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_resolve/src/late/diagnostics.rs:LL:CC
 
 error[E0268]: `break` outside of a loop or labeled block
   --> $DIR/track.rs:LL:CC
    |
 LL |     break rust
    |     ^^^^^^^^^^ cannot `break` outside of a loop or labeled block
--Ztrack-diagnostics: created at compiler/rustc_hir_typeck/src/loops.rs:LL:CC
+   |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_hir_typeck/src/loops.rs:LL:CC
 
 error: internal compiler error: It looks like you're trying to break rust; would you like some ICE?
   --> $DIR/track.rs:LL:CC
    |
 LL |     break rust
    |     ^^^^^^^^^^
--Ztrack-diagnostics: created at compiler/rustc_hir_typeck/src/lib.rs:LL:CC
    |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_hir_typeck/src/lib.rs:LL:CC
    = note: the compiler expectedly panicked. this is a feature.
    = note: we would appreciate a joke overview: https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675
    = note: rustc $VERSION running on $TARGET

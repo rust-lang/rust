@@ -177,5 +177,13 @@ error: casting `usize` to `f64` causes a loss of precision on targets with 64-bi
 LL |     9_999_999_999_999_999usize as f64;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 18 previous errors
+error: casting `usize` to `u16` may truncate the value
+  --> tests/ui/cast_size.rs:71:20
+   |
+LL |     const N: u16 = M as u16;
+   |                    ^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+
+error: aborting due to 19 previous errors
 

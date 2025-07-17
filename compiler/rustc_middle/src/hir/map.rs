@@ -4,6 +4,7 @@
 
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
@@ -15,7 +16,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
 use rustc_hir_pretty as pprust_hir;
 use rustc_span::def_id::StableCrateId;
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym, with_metavar_spans};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 
 use crate::hir::{ModuleItems, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -369,7 +370,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn hir_rustc_coherence_is_core(self) -> bool {
-        self.hir_krate_attrs().iter().any(|attr| attr.has_name(sym::rustc_coherence_is_core))
+        find_attr!(self.hir_krate_attrs(), AttributeKind::CoherenceIsCore)
     }
 
     pub fn hir_get_module(self, module: LocalModDefId) -> (&'tcx Mod<'tcx>, Span, HirId) {

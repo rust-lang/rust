@@ -225,8 +225,8 @@ pub(crate) struct InvalidSafetyOnItem {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_bare_fn_invalid_safety)]
-pub(crate) struct InvalidSafetyOnBareFn {
+#[diag(ast_passes_fn_ptr_invalid_safety)]
+pub(crate) struct InvalidSafetyOnFnPtr {
     #[primary_span]
     pub span: Span,
 }

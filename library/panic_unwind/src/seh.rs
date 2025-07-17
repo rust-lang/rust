@@ -61,6 +61,7 @@ struct Exception {
     // and its destructor is executed by the C++ runtime. When we take the Box
     // out of the exception, we need to leave the exception in a valid state
     // for its destructor to run without double-dropping the Box.
+    // We also construct this as None for copies of the exception.
     data: Option<Box<dyn Any + Send>>,
 }
 
@@ -264,7 +265,11 @@ static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
 // runtime under a try/catch block and the panic that we generate here will be
 // used as the result of the exception copy. This is used by the C++ runtime to
 // support capturing exceptions with std::exception_ptr, which we can't support
-// because Box<dyn Any> isn't clonable.
+// because Box<dyn Any> isn't clonable. Thus we throw an exception without data,
+// which the C++ runtime will attempt to copy, which will once again fail, and
+// a std::bad_exception instance ends up in the std::exception_ptr instance.
+// The lack of data doesn't matter because the exception will never be rethrown
+// - it is purely used to signal to the C++ runtime that copying failed.
 macro_rules! define_cleanup {
     ($abi:tt $abi2:tt) => {
         unsafe extern $abi fn exception_cleanup(e: *mut Exception) {
@@ -278,7 +283,9 @@ macro_rules! define_cleanup {
         unsafe extern $abi2 fn exception_copy(
             _dest: *mut Exception, _src: *mut Exception
         ) -> *mut Exception {
-            panic!("Rust panics cannot be copied");
+            unsafe {
+                throw_exception(None);
+            }
         }
     }
 }
@@ -291,6 +298,10 @@ cfg_if::cfg_if! {
 }
 
 pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
+    unsafe { throw_exception(Some(data)) }
+}
+
+unsafe fn throw_exception(data: Option<Box<dyn Any + Send>>) -> ! {
     use core::intrinsics::{AtomicOrdering, atomic_store};
 
     // _CxxThrowException executes entirely on this stack frame, so there's no
@@ -300,8 +311,7 @@ pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // The ManuallyDrop is needed here since we don't want Exception to be
     // dropped when unwinding. Instead it will be dropped by exception_cleanup
     // which is invoked by the C++ runtime.
-    let mut exception =
-        ManuallyDrop::new(Exception { canary: (&raw const TYPE_DESCRIPTOR), data: Some(data) });
+    let mut exception = ManuallyDrop::new(Exception { canary: (&raw const TYPE_DESCRIPTOR), data });
     let throw_ptr = (&raw mut exception) as *mut _;
 
     // This... may seems surprising, and justifiably so. On 32-bit MSVC the

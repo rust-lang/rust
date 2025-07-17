@@ -4,7 +4,7 @@ use super::hermit_abi;
 use crate::ffi::CStr;
 use crate::mem::ManuallyDrop;
 use crate::num::NonZero;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{io, ptr};
 
 pub type Tid = hermit_abi::Tid;
@@ -83,6 +83,14 @@ impl Thread {
 
         unsafe {
             hermit_abi::usleep(micros);
+        }
+    }
+
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
         }
     }
 

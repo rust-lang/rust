@@ -794,6 +794,7 @@ define_Conf! {
         unnested_or_patterns,
         unused_trait_names,
         use_self,
+        zero_ptr,
     )]
     msrv: Msrv = Msrv::default(),
     /// The minimum size (in bytes) to consider a type for passing by reference instead of by value.

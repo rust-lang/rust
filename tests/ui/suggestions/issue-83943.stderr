@@ -6,11 +6,14 @@ LL | |         "A".to_string()
    | |         --------------- expected because of this
 LL | |     } else {
 LL | |         "B"
-   | |         ^^^- help: try using a conversion method: `.to_string()`
-   | |         |
-   | |         expected `String`, found `&str`
+   | |         ^^^ expected `String`, found `&str`
 LL | |     };
    | |_____- `if` and `else` have incompatible types
+   |
+help: try using a conversion method
+   |
+LL |         "B".to_string()
+   |            ++++++++++++
 
 error: aborting due to 1 previous error
 

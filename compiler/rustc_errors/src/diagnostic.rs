@@ -417,6 +417,15 @@ impl DiagInner {
         self.args = std::mem::take(&mut self.reserved_args);
     }
 
+    pub fn emitted_at_sub_diag(&self) -> Subdiag {
+        let track = format!("-Ztrack-diagnostics: created at {}", self.emitted_at);
+        Subdiag {
+            level: crate::Level::Note,
+            messages: vec![(DiagMessage::Str(Cow::Owned(track)), Style::NoStyle)],
+            span: MultiSpan::new(),
+        }
+    }
+
     /// Fields used for Hash, and PartialEq trait.
     fn keys(
         &self,
@@ -1156,7 +1165,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self.push_suggestion(CodeSuggestion {
             substitutions,
             msg: self.subdiagnostic_message_to_diagnostic_message(msg),
-            style: SuggestionStyle::ShowCode,
+            style: SuggestionStyle::ShowAlways,
             applicability,
         });
         self

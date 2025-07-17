@@ -739,19 +739,29 @@ def configure_file(sections, top_level_keys, targets, config):
 
 
 def write_uncommented(target, f):
+    """Writes each block in 'target' that is not composed entirely of comments to 'f'.
+
+    A block is a sequence of non-empty lines separated by empty lines.
+    """
     block = []
-    is_comment = True
+
+    def flush(last):
+        # If the block is entirely made of comments, ignore it
+        entire_block_comments = all(ln.startswith("#") or ln == "" for ln in block)
+        if not entire_block_comments and len(block) > 0:
+            for line in block:
+                f.write(line + "\n")
+            # Required to output a newline before the start of a new section
+            if last:
+                f.write("\n")
+        block.clear()
 
     for line in target:
         block.append(line)
         if len(line) == 0:
-            if not is_comment:
-                for ln in block:
-                    f.write(ln + "\n")
-            block = []
-            is_comment = True
-            continue
-        is_comment = is_comment and line.startswith("#")
+            flush(last=False)
+
+    flush(last=True)
     return f
 
 

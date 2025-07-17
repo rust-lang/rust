@@ -1244,7 +1244,7 @@ impl PathBuf {
     ///
     /// The caller has free choice over the returned lifetime, including 'static.
     /// Indeed, this function is ideally used for data that lives for the remainder of
-    /// the program’s life, as dropping the returned reference will cause a memory leak.
+    /// the program's life, as dropping the returned reference will cause a memory leak.
     ///
     /// It does not reallocate or shrink the `PathBuf`, so the leaked allocation may include
     /// unused capacity that is not part of the returned slice. If you want to discard excess
@@ -3028,7 +3028,7 @@ impl Path {
     ///
     /// This function always resolves `..` to the "lexical" parent.
     /// That is "a/b/../c" will always resolve to `a/c` which can change the meaning of the path.
-    /// In particular, `a/c` and `a/b/../c` are distinct on many systems because `b` may be a symbolic link, so its parent isn’t `a`.
+    /// In particular, `a/c` and `a/b/../c` are distinct on many systems because `b` may be a symbolic link, so its parent isn't `a`.
     ///
     /// </div>
     ///

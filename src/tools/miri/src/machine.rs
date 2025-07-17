@@ -130,11 +130,11 @@ pub enum MiriMemoryKind {
     WinHeap,
     /// Windows "local" memory (to be freed with `LocalFree`)
     WinLocal,
-    /// Memory for args, errno, and other parts of the machine-managed environment.
+    /// Memory for args, errno, env vars, and other parts of the machine-managed environment.
     /// This memory may leak.
     Machine,
-    /// Memory allocated by the runtime (e.g. env vars). Separate from `Machine`
-    /// because we clean it up and leak-check it.
+    /// Memory allocated by the runtime, e.g. for readdir. Separate from `Machine` because we clean
+    /// it up (or expect the user to invoke operations that clean it up) and leak-check it.
     Runtime,
     /// Globals copied from `tcx`.
     /// This memory may leak.
@@ -499,9 +499,6 @@ pub struct MiriMachine<'tcx> {
     /// in `sched_getaffinity`
     pub(crate) thread_cpu_affinity: FxHashMap<ThreadId, CpuAffinityMask>,
 
-    /// The state of the primitive synchronization objects.
-    pub(crate) sync: SynchronizationObjects,
-
     /// Precomputed `TyLayout`s for primitive data types that are commonly used inside Miri.
     pub(crate) layouts: PrimitiveLayouts<'tcx>,
 
@@ -713,7 +710,6 @@ impl<'tcx> MiriMachine<'tcx> {
             layouts,
             threads,
             thread_cpu_affinity,
-            sync: SynchronizationObjects::default(),
             static_roots: Vec::new(),
             profiler,
             string_cache: Default::default(),
@@ -903,7 +899,6 @@ impl VisitProvenance for MiriMachine<'_> {
         let MiriMachine {
             threads,
             thread_cpu_affinity: _,
-            sync: _,
             tls,
             env_vars,
             main_fn_ret_place,
@@ -1202,7 +1197,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             ExternAbi::Rust,
             &[],
             None,
-            StackPopCleanup::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
+            ReturnContinuation::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
         )?;
         interp_ok(())
     }
@@ -1829,6 +1824,19 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
         #[cfg(not(target_os = "linux"))]
         MiriAllocParams::Global
+    }
+
+    fn enter_trace_span(span: impl FnOnce() -> tracing::Span) -> impl EnteredTraceSpan {
+        #[cfg(feature = "tracing")]
+        {
+            span().entered()
+        }
+        #[cfg(not(feature = "tracing"))]
+        #[expect(clippy::unused_unit)]
+        {
+            let _ = span; // so we avoid the "unused variable" warning
+            ()
+        }
     }
 }
 

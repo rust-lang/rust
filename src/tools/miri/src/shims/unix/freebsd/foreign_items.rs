@@ -56,6 +56,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
                 this.write_scalar(res, dest)?;
             }
+            "pthread_getthreadid_np" => {
+                let [] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let result = this.unix_gettid(link_name.as_str())?;
+                this.write_scalar(result, dest)?;
+            }
 
             "cpuset_getaffinity" => {
                 // The "same" kind of api as `sched_getaffinity` but more fine grained control for FreeBSD specifically.

@@ -99,5 +99,5 @@ fn is_zst<'tcx>(cx: &LateContext<'tcx>, field: &FieldDef, args: ty::GenericArgsR
 fn has_c_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     let attrs = cx.tcx.hir_attrs(hir_id);
 
-    find_attr!(attrs, AttributeKind::Repr(r) if r.iter().any(|(x, _)| *x == ReprAttr::ReprC))
+    find_attr!(attrs, AttributeKind::Repr { reprs, .. } if reprs.iter().any(|(x, _)| *x == ReprAttr::ReprC))
 }
