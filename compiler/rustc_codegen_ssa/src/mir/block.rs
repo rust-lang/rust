@@ -342,6 +342,97 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
 /// Codegen implementations for some terminator variants.
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    fn codegen_tail_call_terminator(
+        &mut self,
+        bx: &mut Bx,
+        func: &mir::Operand<'tcx>,
+        args: &[Spanned<mir::Operand<'tcx>>],
+        fn_span: Span,
+    ) {
+        // We don't need source_info as we already have fn_span for diagnostics
+        let func = self.codegen_operand(bx, func);
+        let fn_ty = func.layout.ty;
+
+        // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
+        let (fn_ptr, fn_abi, instance) = match *fn_ty.kind() {
+            ty::FnDef(def_id, substs) => {
+                let instance = ty::Instance::expect_resolve(
+                    bx.tcx(),
+                    bx.typing_env(),
+                    def_id,
+                    substs,
+                    fn_span,
+                );
+                let fn_ptr = bx.get_fn_addr(instance);
+                let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
+                (fn_ptr, fn_abi, Some(instance))
+            }
+            ty::FnPtr(..) => {
+                let sig = fn_ty.fn_sig(bx.tcx());
+                let extra_args = bx.tcx().mk_type_list(&[]);
+                let fn_ptr = func.immediate();
+                let fn_abi = bx.fn_abi_of_fn_ptr(sig, extra_args);
+                (fn_ptr, fn_abi, None)
+            }
+            _ => bug!("{} is not callable", func.layout.ty),
+        };
+
+        let mut llargs = Vec::with_capacity(args.len());
+        let mut lifetime_ends_after_call = Vec::new();
+
+        // Process arguments
+        for arg in args {
+            let op = self.codegen_operand(bx, &arg.node);
+            let arg_idx = llargs.len();
+
+            if arg_idx < fn_abi.args.len() {
+                self.codegen_argument(
+                    bx,
+                    op,
+                    &mut llargs,
+                    &fn_abi.args[arg_idx],
+                    &mut lifetime_ends_after_call,
+                );
+            } else {
+                // This can happen in case of C-variadic functions
+                let is_immediate = match op.val {
+                    Immediate(_) => true,
+                    _ => false,
+                };
+
+                if is_immediate {
+                    llargs.push(op.immediate());
+                } else {
+                    let temp = PlaceRef::alloca(bx, op.layout);
+                    op.val.store(bx, temp);
+                    llargs.push(bx.load(
+                        bx.backend_type(op.layout),
+                        temp.val.llval,
+                        temp.val.align,
+                    ));
+                }
+            }
+        }
+
+        // Call the function
+        let fn_ty = bx.fn_decl_backend_type(fn_abi);
+        let fn_attrs = if let Some(instance) = instance
+            && bx.tcx().def_kind(instance.def_id()).has_codegen_attrs()
+        {
+            Some(bx.tcx().codegen_fn_attrs(instance.def_id()))
+        } else {
+            None
+        };
+
+        // Perform the actual function call
+        let llret = bx.call(fn_ty, fn_attrs, Some(fn_abi), fn_ptr, &llargs, None, instance);
+
+        // Mark as tail call - this is the critical part
+        bx.set_tail_call(llret);
+
+        // Return the result - musttail requires ret immediately after the call
+        bx.ret(llret);
+    }
     /// Generates code for a `Resume` terminator.
     fn codegen_resume_terminator(&mut self, helper: TerminatorCodegenHelper<'tcx>, bx: &mut Bx) {
         if let Some(funclet) = helper.funclet(self) {
@@ -1390,12 +1481,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 fn_span,
                 mergeable_succ(),
             ),
-            mir::TerminatorKind::TailCall { .. } => {
-                // FIXME(explicit_tail_calls): implement tail calls in ssa backend
-                span_bug!(
-                    terminator.source_info.span,
-                    "`TailCall` terminator is not yet supported by `rustc_codegen_ssa`"
-                )
+            mir::TerminatorKind::TailCall { ref func, ref args, fn_span } => {
+                self.codegen_tail_call_terminator(bx, func, args, fn_span);
+                MergingSucc::False
             }
             mir::TerminatorKind::CoroutineDrop | mir::TerminatorKind::Yield { .. } => {
                 bug!("coroutine ops in codegen")

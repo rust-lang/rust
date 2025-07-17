@@ -1751,6 +1751,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // FIXME(bjorn3): implement
     }
 
+    fn set_tail_call(&mut self, _call_inst: RValue<'gcc>) {
+        // Explicitly fail when this method is called
+        bug!(
+            "Guaranteed tail calls with the 'become' keyword are not implemented in the GCC backend"
+        );
+    }
+
     fn set_span(&mut self, _span: Span) {}
 
     fn from_immediate(&mut self, val: Self::Value) -> Self::Value {
