@@ -1,0 +1,18 @@
+error: literal out of range for `u8`
+  --> $DIR/non_zero_assigned_oflo_lit.rs:9:36
+   |
+LL |     let _: std::num::NonZero<u8> = 256;
+   |                                    ^^^
+   |
+   = note: the literal `256` does not fit into the type `u8` whose range is `0..=255`
+
+error: literal out of range for `i8`
+  --> $DIR/non_zero_assigned_oflo_lit.rs:13:36
+   |
+LL |     let _: std::num::NonZero<i8> = -129;
+   |                                    ^^^^
+   |
+   = note: the literal `-129` does not fit into the type `i8` whose range is `-128..=127`
+
+error: aborting due to 2 previous errors
+
