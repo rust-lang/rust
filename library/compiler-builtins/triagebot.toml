@@ -4,7 +4,7 @@
 # Warns when a PR contains merge commits
 # Documentation at: https://forge.rust-lang.org/triagebot/no-merge.html
 [no-merges]
-exclude_titles = ["Update from"]
+exclude_titles = ["Rustc pull update"]
 
 # Canonicalize issue numbers to avoid closing the wrong issue
 # when commits are included in subtrees, as well as warning links in commits.
