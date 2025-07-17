@@ -4,7 +4,7 @@ use clippy_utils::is_in_test;
 use clippy_utils::msrvs::Msrv;
 use rustc_attr_data_structures::{RustcVersion, Stability, StableSince};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{Expr, ExprKind, HirId, QPath};
+use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
@@ -184,6 +184,16 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
                 }
             },
             _ => {},
+        }
+    }
+
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, hir_ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
+        if let hir::TyKind::Path(qpath @ (QPath::Resolved(..) | QPath::TypeRelative(..))) = hir_ty.kind
+            && let Some(ty_def_id) = cx.qpath_res(&qpath, hir_ty.hir_id).opt_def_id()
+            // `CStr` and `CString` have been moved around but have been available since Rust 1.0.0
+            && !matches!(cx.tcx.get_diagnostic_name(ty_def_id), Some(sym::cstr_type | sym::cstring_type))
+        {
+            self.emit_lint_if_under_msrv(cx, ty_def_id, hir_ty.hir_id, hir_ty.span);
         }
     }
 }
