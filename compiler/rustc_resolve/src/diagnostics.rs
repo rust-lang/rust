@@ -2149,7 +2149,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn find_similarly_named_module_or_crate(
-        &mut self,
+        &self,
         ident: Symbol,
         current_module: Module<'ra>,
     ) -> Option<Symbol> {
@@ -2158,7 +2158,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .keys()
             .map(|ident| ident.name)
             .chain(
-                self.module_map
+                self.local_module_map
+                    .iter()
+                    .filter(|(_, module)| {
+                        current_module.is_ancestor_of(**module) && current_module != **module
+                    })
+                    .flat_map(|(_, module)| module.kind.name()),
+            )
+            .chain(
+                self.extern_module_map
+                    .borrow()
                     .iter()
                     .filter(|(_, module)| {
                         current_module.is_ancestor_of(**module) && current_module != **module
@@ -2434,7 +2443,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn undeclared_module_suggest_declare(
-        &mut self,
+        &self,
         ident: Ident,
         path: std::path::PathBuf,
     ) -> Option<(Vec<(Span, String)>, String, Applicability)> {
@@ -2449,7 +2458,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ))
     }
 
-    fn undeclared_module_exists(&mut self, ident: Ident) -> Option<std::path::PathBuf> {
+    fn undeclared_module_exists(&self, ident: Ident) -> Option<std::path::PathBuf> {
         let map = self.tcx.sess.source_map();
 
         let src = map.span_to_filename(ident.span).into_local_path()?;
@@ -2808,24 +2817,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     return cached;
                 }
                 visited.insert(parent_module, false);
-                let res = r.module_map.get(&parent_module).is_some_and(|m| {
-                    for importer in m.glob_importers.borrow().iter() {
-                        if let Some(next_parent_module) = importer.parent_scope.module.opt_def_id()
+                let m = r.expect_module(parent_module);
+                let mut res = false;
+                for importer in m.glob_importers.borrow().iter() {
+                    if let Some(next_parent_module) = importer.parent_scope.module.opt_def_id() {
+                        if next_parent_module == module
+                            || comes_from_same_module_for_glob(
+                                r,
+                                next_parent_module,
+                                module,
+                                visited,
+                            )
                         {
-                            if next_parent_module == module
-                                || comes_from_same_module_for_glob(
-                                    r,
-                                    next_parent_module,
-                                    module,
-                                    visited,
-                                )
-                            {
-                                return true;
-                            }
+                            res = true;
+                            break;
                         }
                     }
-                    false
-                });
+                }
                 visited.insert(parent_module, res);
                 res
             }

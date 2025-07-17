@@ -456,7 +456,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         f: F,
     ) -> T
     where
-        F: FnOnce(&mut Resolver<'ra, 'tcx>, &mut NameResolution<'ra>) -> T,
+        F: FnOnce(&Resolver<'ra, 'tcx>, &mut NameResolution<'ra>) -> T,
     {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
