@@ -1245,6 +1245,7 @@ symbols! {
         iterator,
         iterator_collect_fn,
         kcfi,
+        kernel_address,
         keylocker_x86,
         keyword,
         kind,
