@@ -41,9 +41,9 @@ impl AttributeKind {
             Fundamental { .. } => Yes,
             Ignore { .. } => No,
             Inline(..) => No,
-            LinkName { .. } => Yes,
+            LinkName { .. } => Yes, // Needed for rustdoc
             LinkOrdinal { .. } => No,
-            LinkSection { .. } => No,
+            LinkSection { .. } => Yes, // Needed for rustdoc
             LoopMatch(..) => No,
             MacroTransparency(..) => Yes,
             Marker(..) => No,
@@ -51,8 +51,8 @@ impl AttributeKind {
             MustUse { .. } => Yes,
             Naked(..) => No,
             NoImplicitPrelude(..) => No,
-            NoMangle(..) => No,
-            NonExhaustive(..) => Yes,
+            NoMangle(..) => Yes,      // Needed for rustdoc
+            NonExhaustive(..) => Yes, // Needed for rustdoc
             OmitGdbPrettyPrinterSection => No,
             Optimize(..) => No,
             ParenSugar(..) => No,
