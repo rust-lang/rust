@@ -1993,6 +1993,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | InitCandidate
+                | ArrayUnsizeInitCandidate(..)
                 | TrivialInitCandidate
                 | FutureCandidate
                 | IteratorCandidate

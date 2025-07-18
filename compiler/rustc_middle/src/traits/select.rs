@@ -133,6 +133,10 @@ pub enum SelectionCandidate<'tcx> {
     /// place.
     TrivialInitCandidate,
 
+    /// Implementation of the `Init` trait through implicit array unsizing
+    /// from a bound in the environment
+    ArrayUnsizeInitCandidate(ty::PolyTraitPredicate<'tcx>),
+
     /// Implementation of an `AsyncFn`-family trait by one of the anonymous types
     /// generated for an `async ||` expression.
     AsyncClosureCandidate,

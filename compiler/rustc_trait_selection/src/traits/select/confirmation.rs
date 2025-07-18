@@ -100,6 +100,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.confirm_init_candidate(obligation)?,
             ),
 
+            ArrayUnsizeInitCandidate(_bound) => todo!("pinit: sorry"),
+
             TrivialInitCandidate => ImplSource::Builtin(
                 BuiltinImplSource::Misc,
                 self.confirm_trivial_init_candidate(obligation)?,
