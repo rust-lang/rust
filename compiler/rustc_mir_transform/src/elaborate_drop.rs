@@ -761,16 +761,17 @@ where
 
         let skip_contents = adt.is_union() || adt.is_manually_drop();
         let contents_drop = if skip_contents {
-            if adt.has_dtor(self.tcx()) {
+            if adt.has_dtor(self.tcx()) && self.elaborator.get_drop_flag(self.path).is_some() {
                 // the top-level drop flag is usually cleared by open_drop_for_adt_contents
-                // types with destructors still need an empty drop ladder to clear it
+                // types with destructors would still need an empty drop ladder to clear it
 
-                // currently no rust types can trigger this path in a context where drop flags exist
-                // however, a future box-like "DerefMove" trait would allow it
-                self.drop_ladder_bottom()
-            } else {
-                (self.succ, self.unwind, self.dropline)
+                // however, these types are only open dropped in `DropShimElaborator`
+                // which does not have drop flags
+                // a future box-like "DerefMove" trait would allow for this case to happen
+                span_bug!(self.source_info.span, "open dropping partially moved union");
             }
+
+            (self.succ, self.unwind, self.dropline)
         } else {
             self.open_drop_for_adt_contents(adt, args)
         };
