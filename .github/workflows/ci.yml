@@ -223,7 +223,7 @@ jobs:
         run: |
           cd src/ci/citool
           CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build
-      
+
       - name: Free Diskspace
         shell: pwsh
         if: ${{ runner.os == "Windows" }}
