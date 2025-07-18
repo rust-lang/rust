@@ -12,7 +12,7 @@ use crate::context::LintContext;
 use crate::lints::{
     OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign, OverflowingBinHexSignBitSub,
     OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral, OverflowingUInt,
-    RangeEndpointOutOfRange, UseInclusiveRange,
+    RangeEndpointOutOfRange, SurrogateCharCast, TooLargeCharCast, UseInclusiveRange,
 };
 use crate::types::{OVERFLOWING_LITERALS, TypeLimits};
 
@@ -38,12 +38,18 @@ fn lint_overflowing_range_endpoint<'tcx>(
 
     // We only want to handle exclusive (`..`) ranges,
     // which are represented as `ExprKind::Struct`.
-    let Node::ExprField(field) = cx.tcx.parent_hir_node(hir_id) else { return false };
-    let Node::Expr(struct_expr) = cx.tcx.parent_hir_node(field.hir_id) else { return false };
+    let Node::ExprField(field) = cx.tcx.parent_hir_node(hir_id) else {
+        return false;
+    };
+    let Node::Expr(struct_expr) = cx.tcx.parent_hir_node(field.hir_id) else {
+        return false;
+    };
     if !is_range_literal(struct_expr) {
         return false;
     };
-    let ExprKind::Struct(_, [start, end], _) = &struct_expr.kind else { return false };
+    let ExprKind::Struct(_, [start, end], _) = &struct_expr.kind else {
+        return false;
+    };
 
     // We can suggest using an inclusive range
     // (`..=`) instead only if it is the `end` that is
@@ -61,7 +67,9 @@ fn lint_overflowing_range_endpoint<'tcx>(
     };
 
     let sub_sugg = if span.lo() == lit_span.lo() {
-        let Ok(start) = cx.sess().source_map().span_to_snippet(start.span) else { return false };
+        let Ok(start) = cx.sess().source_map().span_to_snippet(start.span) else {
+            return false;
+        };
         UseInclusiveRange::WithoutParen {
             sugg: struct_expr.span.shrink_to_lo().to(lit_span.shrink_to_hi()),
             start,
@@ -316,11 +324,25 @@ fn lint_uint_literal<'tcx>(
             match par_e.kind {
                 hir::ExprKind::Cast(..) => {
                     if let ty::Char = cx.typeck_results().expr_ty(par_e).kind() {
-                        cx.emit_span_lint(
-                            OVERFLOWING_LITERALS,
-                            par_e.span,
-                            OnlyCastu8ToChar { span: par_e.span, literal: lit_val },
-                        );
+                        if lit_val > 0x10FFFF {
+                            cx.emit_span_lint(
+                                OVERFLOWING_LITERALS,
+                                par_e.span,
+                                TooLargeCharCast { literal: lit_val },
+                            );
+                        } else if (0xD800..=0xDFFF).contains(&lit_val) {
+                            cx.emit_span_lint(
+                                OVERFLOWING_LITERALS,
+                                par_e.span,
+                                SurrogateCharCast { literal: lit_val },
+                            );
+                        } else {
+                            cx.emit_span_lint(
+                                OVERFLOWING_LITERALS,
+                                par_e.span,
+                                OnlyCastu8ToChar { span: par_e.span, literal: lit_val },
+                            );
+                        }
                         return;
                     }
                 }

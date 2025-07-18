@@ -10,7 +10,7 @@ use std::collections::hash_map::Entry;
 use std::slice;
 
 use rustc_abi::{Align, ExternAbi, Size};
-use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, ast};
+use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, ast, join_path_syms};
 use rustc_attr_data_structures::{AttributeKind, InlineAttr, ReprAttr, find_attr};
 use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
@@ -246,6 +246,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 &Attribute::Parsed(AttributeKind::FfiPure(attr_span)) => {
                     self.check_ffi_pure(attr_span, attrs, target)
+                }
+                Attribute::Parsed(AttributeKind::UnstableFeatureBound(syms)) => {
+                    self.check_unstable_feature_bound(syms.first().unwrap().1, span, target)
                 }
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
@@ -678,9 +681,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         allowed_target: Target,
     ) {
         if target != allowed_target {
-            let path = attr.path();
-            let path: Vec<_> = path.iter().map(|s| s.as_str()).collect();
-            let attr_name = path.join("::");
+            let attr_name = join_path_syms(attr.path());
             self.tcx.emit_node_span_lint(
                 UNUSED_ATTRIBUTES,
                 hir_id,
@@ -1159,7 +1160,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match item.kind {
             ItemKind::Enum(_, generics, _) | ItemKind::Struct(_, generics, _)
                 if generics.params.len() != 0 => {}
-            ItemKind::Trait(_, _, _, generics, _, items)
+            ItemKind::Trait(_, _, _, _, generics, _, items)
                 if generics.params.len() != 0
                     || items.iter().any(|item| {
                         matches!(self.tcx.def_kind(item.owner_id), DefKind::AssocTy)
@@ -2263,6 +2264,47 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 .inline_attr_str_error_with_macro_def(hir_id, attr_span, "allow_internal_unstable"),
             _ => {
                 self.tcx.dcx().emit_err(errors::RustcAllowConstFnUnstable { attr_span, span });
+            }
+        }
+    }
+
+    fn check_unstable_feature_bound(&self, attr_span: Span, span: Span, target: Target) {
+        match target {
+            // FIXME(staged_api): There's no reason we can't support more targets here. We're just
+            // being conservative to begin with.
+            Target::Fn | Target::Impl => {}
+            Target::ExternCrate
+            | Target::Use
+            | Target::Static
+            | Target::Const
+            | Target::Closure
+            | Target::Mod
+            | Target::ForeignMod
+            | Target::GlobalAsm
+            | Target::TyAlias
+            | Target::Enum
+            | Target::Variant
+            | Target::Struct
+            | Target::Field
+            | Target::Union
+            | Target::Trait
+            | Target::TraitAlias
+            | Target::Expression
+            | Target::Statement
+            | Target::Arm
+            | Target::AssocConst
+            | Target::Method(_)
+            | Target::AssocTy
+            | Target::ForeignFn
+            | Target::ForeignStatic
+            | Target::ForeignTy
+            | Target::GenericParam(_)
+            | Target::MacroDef
+            | Target::Param
+            | Target::PatField
+            | Target::ExprField
+            | Target::WherePredicate => {
+                self.tcx.dcx().emit_err(errors::RustcUnstableFeatureBound { attr_span, span });
             }
         }
     }

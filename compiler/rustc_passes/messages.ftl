@@ -667,6 +667,10 @@ passes_rustc_std_internal_symbol =
     attribute should be applied to functions or statics
     .label = not a function or static
 
+passes_rustc_unstable_feature_bound =
+    attribute should be applied to `impl` or free function outside of any `impl` or trait
+    .label = not an `impl` or free function
+
 passes_should_be_applied_to_fn =
     attribute should be applied to a function definition
     .label = {$on_crate ->
@@ -780,7 +784,7 @@ passes_unused_capture_maybe_capture_ref = value captured by `{$name}` is never r
     .help = did you mean to capture by reference instead?
 
 passes_unused_default_method_body_const_note =
-    `default_method_body_is_const` has been replaced with `#[const_trait]` on traits
+    `default_method_body_is_const` has been replaced with `const` on traits
 
 passes_unused_duplicate =
     unused attribute

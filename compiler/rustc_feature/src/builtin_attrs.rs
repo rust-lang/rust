@@ -614,6 +614,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // RFC 2632
+    // FIXME(const_trait_impl) remove this
     gated!(
         const_trait, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No, const_trait_impl,
         "`const_trait` is a temporary placeholder for marking a trait that is suitable for `const` \
@@ -682,6 +683,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         unstable, Normal,
         template!(List: r#"feature = "name", reason = "...", issue = "N""#), DuplicatesOk,
         EncodeCrossCrate::Yes
+    ),
+    ungated!(
+        unstable_feature_bound, Normal, template!(Word, List: "feat1, feat2, ..."),
+        DuplicatesOk, EncodeCrossCrate::No,
     ),
     ungated!(
         rustc_const_unstable, Normal, template!(List: r#"feature = "name""#),

@@ -80,6 +80,7 @@ pub fn expand_trait_aliases<'tcx>(
             | ty::ClauseKind::ConstArgHasType(_, _)
             | ty::ClauseKind::WellFormed(_)
             | ty::ClauseKind::ConstEvaluatable(_)
+            | ty::ClauseKind::UnstableFeature(_)
             | ty::ClauseKind::HostEffect(..) => {}
         }
     }
@@ -377,6 +378,13 @@ pub fn sizedness_fast_path<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
             Some(LangItem::MetaSized) => SizedTraitKind::MetaSized,
             _ => return false,
         };
+
+        // FIXME(sized_hierarchy): this temporarily reverts the `sized_hierarchy` feature
+        // while a proper fix for `tests/ui/sized-hierarchy/incomplete-inference-issue-143992.rs`
+        // is pending a proper fix
+        if !tcx.features().sized_hierarchy() && matches!(sizedness, SizedTraitKind::MetaSized) {
+            return true;
+        }
 
         if trait_pred.self_ty().has_trivial_sizedness(tcx, sizedness) {
             debug!("fast path -- trivial sizedness");

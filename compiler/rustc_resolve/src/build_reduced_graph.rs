@@ -85,7 +85,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Reachable macros with block module parents exist due to `#[macro_export] macro_rules!`,
     /// but they cannot use def-site hygiene, so the assumption holds
     /// (<https://github.com/rust-lang/rust/pull/77984#issuecomment-712445508>).
-    pub(crate) fn get_nearest_non_block_module(&mut self, mut def_id: DefId) -> Module<'ra> {
+    pub(crate) fn get_nearest_non_block_module(&self, mut def_id: DefId) -> Module<'ra> {
         loop {
             match self.get_module(def_id) {
                 Some(module) => return module,
@@ -94,44 +94,47 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    pub(crate) fn expect_module(&mut self, def_id: DefId) -> Module<'ra> {
+    pub(crate) fn expect_module(&self, def_id: DefId) -> Module<'ra> {
         self.get_module(def_id).expect("argument `DefId` is not a module")
     }
 
     /// If `def_id` refers to a module (in resolver's sense, i.e. a module item, crate root, enum,
     /// or trait), then this function returns that module's resolver representation, otherwise it
     /// returns `None`.
-    pub(crate) fn get_module(&mut self, def_id: DefId) -> Option<Module<'ra>> {
-        if let module @ Some(..) = self.module_map.get(&def_id) {
-            return module.copied();
-        }
+    pub(crate) fn get_module(&self, def_id: DefId) -> Option<Module<'ra>> {
+        match def_id.as_local() {
+            Some(local_def_id) => self.local_module_map.get(&local_def_id).copied(),
+            None => {
+                if let module @ Some(..) = self.extern_module_map.borrow().get(&def_id) {
+                    return module.copied();
+                }
 
-        if !def_id.is_local() {
-            // Query `def_kind` is not used because query system overhead is too expensive here.
-            let def_kind = self.cstore().def_kind_untracked(def_id);
-            if def_kind.is_module_like() {
-                let parent = self
-                    .tcx
-                    .opt_parent(def_id)
-                    .map(|parent_id| self.get_nearest_non_block_module(parent_id));
-                // Query `expn_that_defined` is not used because
-                // hashing spans in its result is expensive.
-                let expn_id = self.cstore().expn_that_defined_untracked(def_id, self.tcx.sess);
-                return Some(self.new_module(
-                    parent,
-                    ModuleKind::Def(def_kind, def_id, Some(self.tcx.item_name(def_id))),
-                    expn_id,
-                    self.def_span(def_id),
-                    // FIXME: Account for `#[no_implicit_prelude]` attributes.
-                    parent.is_some_and(|module| module.no_implicit_prelude),
-                ));
+                // Query `def_kind` is not used because query system overhead is too expensive here.
+                let def_kind = self.cstore().def_kind_untracked(def_id);
+                if def_kind.is_module_like() {
+                    let parent = self
+                        .tcx
+                        .opt_parent(def_id)
+                        .map(|parent_id| self.get_nearest_non_block_module(parent_id));
+                    // Query `expn_that_defined` is not used because
+                    // hashing spans in its result is expensive.
+                    let expn_id = self.cstore().expn_that_defined_untracked(def_id, self.tcx.sess);
+                    return Some(self.new_extern_module(
+                        parent,
+                        ModuleKind::Def(def_kind, def_id, Some(self.tcx.item_name(def_id))),
+                        expn_id,
+                        self.def_span(def_id),
+                        // FIXME: Account for `#[no_implicit_prelude]` attributes.
+                        parent.is_some_and(|module| module.no_implicit_prelude),
+                    ));
+                }
+
+                None
             }
         }
-
-        None
     }
 
-    pub(crate) fn expn_def_scope(&mut self, expn_id: ExpnId) -> Module<'ra> {
+    pub(crate) fn expn_def_scope(&self, expn_id: ExpnId) -> Module<'ra> {
         match expn_id.expn_data().macro_def_id {
             Some(def_id) => self.macro_def_scope(def_id),
             None => expn_id
@@ -141,7 +144,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    pub(crate) fn macro_def_scope(&mut self, def_id: DefId) -> Module<'ra> {
+    pub(crate) fn macro_def_scope(&self, def_id: DefId) -> Module<'ra> {
         if let Some(id) = def_id.as_local() {
             self.local_macro_def_scopes[&id]
         } else {
@@ -403,7 +406,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         self.r.field_visibility_spans.insert(def_id, field_vis);
     }
 
-    fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
+    fn block_needs_anonymous_module(&self, block: &Block) -> bool {
         // If any statements are items, we need to create an anonymous module
         block
             .stmts
@@ -758,7 +761,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 if let ast::ModKind::Loaded(_, _, _, Err(_)) = mod_kind {
                     self.r.mods_with_parse_errors.insert(def_id);
                 }
-                self.parent_scope.module = self.r.new_module(
+                self.parent_scope.module = self.r.new_local_module(
                     Some(parent),
                     ModuleKind::Def(def_kind, def_id, Some(ident.name)),
                     expansion.to_expn_id(),
@@ -790,7 +793,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             ItemKind::Enum(ident, _, _) | ItemKind::Trait(box ast::Trait { ident, .. }) => {
                 self.r.define(parent, ident, TypeNS, res, vis, sp, expansion);
 
-                self.parent_scope.module = self.r.new_module(
+                self.parent_scope.module = self.r.new_local_module(
                     Some(parent),
                     ModuleKind::Def(def_kind, def_id, Some(ident.name)),
                     expansion.to_expn_id(),
@@ -986,7 +989,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         let parent = self.parent_scope.module;
         let expansion = self.parent_scope.expansion;
         if self.block_needs_anonymous_module(block) {
-            let module = self.r.new_module(
+            let module = self.r.new_local_module(
                 Some(parent),
                 ModuleKind::Block,
                 expansion.to_expn_id(),
@@ -1118,7 +1121,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     }
 
     /// Returns `true` if this attribute list contains `macro_use`.
-    fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
+    fn contains_macro_use(&self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
             if attr.has_name(sym::macro_escape) {
                 let inner_attribute = matches!(attr.style, ast::AttrStyle::Inner);

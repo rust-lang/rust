@@ -51,6 +51,7 @@ use std::path::PathBuf;
 use std::{cmp, fmt, iter};
 
 use rustc_abi::ExternAbi;
+use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
     Applicability, Diag, DiagStyledString, IntoDiagArg, MultiSpan, StringPart, pluralize,
@@ -73,7 +74,7 @@ use rustc_middle::ty::{
     TypeVisitableExt,
 };
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, sym};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use crate::error_reporting::TypeErrCtxt;
@@ -225,7 +226,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         struct AbsolutePathPrinter<'tcx> {
             tcx: TyCtxt<'tcx>,
-            segments: Vec<String>,
+            segments: Vec<Symbol>,
         }
 
         impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
@@ -253,7 +254,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
-                self.segments = vec![self.tcx.crate_name(cnum).to_string()];
+                self.segments = vec![self.tcx.crate_name(cnum)];
                 Ok(())
             }
             fn path_qualified(
@@ -279,7 +280,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 disambiguated_data: &DisambiguatedDefPathData,
             ) -> Result<(), PrintError> {
                 print_prefix(self)?;
-                self.segments.push(disambiguated_data.to_string());
+                self.segments.push(disambiguated_data.as_sym(true));
                 Ok(())
             }
             fn path_generic_args(
@@ -314,7 +315,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // known" by the same name, we use the "absolute path" which uses the original
                 // crate name instead.
                 let (expected, found) = if expected_str == found_str {
-                    (expected_abs.join("::"), found_abs.join("::"))
+                    (join_path_syms(&expected_abs), join_path_syms(&found_abs))
                 } else {
                     (expected_str.clone(), found_str.clone())
                 };

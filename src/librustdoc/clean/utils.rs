@@ -3,6 +3,7 @@ use std::fmt::{self, Display, Write as _};
 use std::sync::LazyLock as Lazy;
 use std::{ascii, mem};
 
+use rustc_ast::join_path_idents;
 use rustc_ast::tokenstream::TokenTree;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -24,7 +25,7 @@ use crate::clean::{
     clean_middle_ty, inline,
 };
 use crate::core::DocContext;
-use crate::display::{Joined as _, MaybeDisplay as _};
+use crate::display::Joined as _;
 
 #[cfg(test)]
 mod tests;
@@ -251,13 +252,7 @@ pub(crate) fn qpath_to_string(p: &hir::QPath<'_>) -> String {
         hir::QPath::LangItem(lang_item, ..) => return lang_item.name().to_string(),
     };
 
-    fmt::from_fn(|f| {
-        segments
-            .iter()
-            .map(|seg| (seg.ident.name != kw::PathRoot).then_some(seg.ident).maybe_display())
-            .joined("::", f)
-    })
-    .to_string()
+    join_path_idents(segments.iter().map(|seg| seg.ident))
 }
 
 pub(crate) fn build_deref_target_impls(

@@ -26,6 +26,7 @@ use super::{
     Misalignment, Pointer, PointerArithmetic, Provenance, Scalar, alloc_range, err_ub,
     err_ub_custom, interp_ok, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
 };
+use crate::const_eval::ConstEvalErrKind;
 use crate::fluent_generated as fluent;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -309,6 +310,51 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.deallocate_ptr(ptr, old_size_and_align, kind)?;
 
         interp_ok(new_ptr)
+    }
+
+    /// Mark the `const_allocate`d allocation `ptr` points to as immutable so we can intern it.
+    pub fn make_const_heap_ptr_global(
+        &mut self,
+        ptr: Pointer<Option<CtfeProvenance>>,
+    ) -> InterpResult<'tcx>
+    where
+        M: Machine<'tcx, MemoryKind = crate::const_eval::MemoryKind, Provenance = CtfeProvenance>,
+    {
+        let (alloc_id, offset, _) = self.ptr_get_alloc_id(ptr, 0)?;
+        if offset.bytes() != 0 {
+            return Err(ConstEvalErrKind::ConstMakeGlobalWithOffset(ptr)).into();
+        }
+
+        if matches!(self.tcx.try_get_global_alloc(alloc_id), Some(_)) {
+            // This points to something outside the current interpreter.
+            return Err(ConstEvalErrKind::ConstMakeGlobalPtrIsNonHeap(ptr)).into();
+        }
+
+        // If we can't find it in `alloc_map` it must be dangling (because we don't use
+        // `extra_fn_ptr_map` in const-eval).
+        let (kind, alloc) = self
+            .memory
+            .alloc_map
+            .get_mut_or(alloc_id, || Err(ConstEvalErrKind::ConstMakeGlobalWithDanglingPtr(ptr)))?;
+
+        // Ensure this is actually a *heap* allocation, and record it as made-global.
+        match kind {
+            MemoryKind::Stack | MemoryKind::CallerLocation => {
+                return Err(ConstEvalErrKind::ConstMakeGlobalPtrIsNonHeap(ptr)).into();
+            }
+            MemoryKind::Machine(crate::const_eval::MemoryKind::Heap { was_made_global }) => {
+                if *was_made_global {
+                    return Err(ConstEvalErrKind::ConstMakeGlobalPtrAlreadyMadeGlobal(alloc_id))
+                        .into();
+                }
+                *was_made_global = true;
+            }
+        }
+
+        // Prevent further mutation, this is now an immutable global.
+        alloc.mutability = Mutability::Not;
+
+        interp_ok(())
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -951,12 +997,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn get_ptr_type_id(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
-    ) -> InterpResult<'tcx, (Ty<'tcx>, Size)> {
+    ) -> InterpResult<'tcx, (Ty<'tcx>, u64)> {
         let (alloc_id, offset, _meta) = self.ptr_get_alloc_id(ptr, 0)?;
         let GlobalAlloc::TypeId { ty } = self.tcx.global_alloc(alloc_id) else {
-            throw_ub_format!("type_id_eq: `TypeId` provenance is not a type id")
+            throw_ub_format!("invalid `TypeId` value: not all bytes carry type id metadata")
         };
-        interp_ok((ty, offset))
+        interp_ok((ty, offset.bytes()))
     }
 
     pub fn get_ptr_fn(
