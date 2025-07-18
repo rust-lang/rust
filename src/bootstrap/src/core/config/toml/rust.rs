@@ -531,6 +531,14 @@ impl Config {
             lld_enabled = lld_enabled_toml;
             std_features = std_features_toml;
 
+            if optimize_toml.as_ref().is_some_and(|v| matches!(v, RustOptimize::Bool(false))) {
+                eprintln!(
+                    "WARNING: setting `optimize` to `false` is known to cause errors and \
+                    should be considered unsupported. Refer to `bootstrap.example.toml` \
+                    for more details."
+                );
+            }
+
             optimize = optimize_toml;
             self.rust_new_symbol_mangling = new_symbol_mangling;
             set(&mut self.rust_optimize_tests, optimize_tests);
