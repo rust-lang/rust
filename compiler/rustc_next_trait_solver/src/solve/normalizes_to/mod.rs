@@ -639,7 +639,6 @@ where
             | ty::CoroutineClosure(..)
             | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Foreign(..) => Ty::new_unit(cx),
 
@@ -892,7 +891,6 @@ where
             | ty::CoroutineClosure(..)
             | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Foreign(..)
             | ty::Adt(_, _)

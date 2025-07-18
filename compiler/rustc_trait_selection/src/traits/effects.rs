@@ -474,10 +474,9 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
 
         // Coroutines and closures could implement `[const] Drop`,
         // but they don't really need to right now.
-        ty::Closure(_, _)
-        | ty::CoroutineClosure(_, _)
-        | ty::Coroutine(_, _)
-        | ty::CoroutineWitness(_, _) => return Err(EvaluationFailure::NoSolution),
+        ty::Closure(_, _) | ty::CoroutineClosure(_, _) | ty::Coroutine(_, _) => {
+            return Err(EvaluationFailure::NoSolution);
+        }
 
         // FIXME(unsafe_binders): Unsafe binders could implement `[const] Drop`
         // if their inner type implements it.

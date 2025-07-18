@@ -133,7 +133,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Uint(..)
             | ty::Float(_)
             | ty::Array(..)
-            | ty::CoroutineWitness(..)
             | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::Pat(..)

@@ -90,14 +90,6 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_closure(interner: I, def_id: I::ClosureId, args: I::GenericArgs) -> Self;
 
-    fn new_coroutine_witness(interner: I, def_id: I::CoroutineId, args: I::GenericArgs) -> Self;
-
-    fn new_coroutine_witness_for_coroutine(
-        interner: I,
-        def_id: I::CoroutineId,
-        coroutine_args: I::GenericArgs,
-    ) -> Self;
-
     fn new_ptr(interner: I, ty: Self, mutbl: Mutability) -> Self;
 
     fn new_ref(interner: I, region: I::Region, ty: Self, mutbl: Mutability) -> Self;
@@ -182,7 +174,6 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
             | ty::Coroutine(_, _)
-            | ty::CoroutineWitness(_, _)
             | ty::Never
             | ty::Tuple(_)
             | ty::Alias(_, _)

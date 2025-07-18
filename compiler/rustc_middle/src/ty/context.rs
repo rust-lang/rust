@@ -649,11 +649,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             // `assemble_candidates_after_normalizing_self_ty`.
             ty::Alias(_, _) | ty::Placeholder(..) | ty::Error(_) => (),
 
-            // FIXME: These should ideally not exist as a self type. It would be nice for
-            // the builtin auto trait impls of coroutines to instead directly recurse
-            // into the witness.
-            ty::CoroutineWitness(..) => (),
-
             // These variants should not exist as a self type.
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Param(_)
@@ -2632,7 +2627,6 @@ impl<'tcx> TyCtxt<'tcx> {
                 UnsafeBinder,
                 Placeholder,
                 Coroutine,
-                CoroutineWitness,
                 Dynamic,
                 Closure,
                 CoroutineClosure,

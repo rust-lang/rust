@@ -42,7 +42,6 @@ pub enum SimplifiedType<DefId> {
     Trait(DefId),
     Closure(DefId),
     Coroutine(DefId),
-    CoroutineWitness(DefId),
     Function(usize),
     UnsafeBinder,
     Placeholder,
@@ -139,7 +138,6 @@ pub fn simplify_type<I: Interner>(
         ty::Closure(def_id, _) => Some(SimplifiedType::Closure(def_id.into())),
         ty::CoroutineClosure(def_id, _) => Some(SimplifiedType::Closure(def_id.into())),
         ty::Coroutine(def_id, _) => Some(SimplifiedType::Coroutine(def_id.into())),
-        ty::CoroutineWitness(def_id, _) => Some(SimplifiedType::CoroutineWitness(def_id.into())),
         ty::Never => Some(SimplifiedType::Never),
         ty::Tuple(tys) => Some(SimplifiedType::Tuple(tys.len())),
         ty::FnPtr(sig_tys, _hdr) => {
@@ -174,8 +172,7 @@ impl<DefId> SimplifiedType<DefId> {
             | SimplifiedType::Foreign(d)
             | SimplifiedType::Trait(d)
             | SimplifiedType::Closure(d)
-            | SimplifiedType::Coroutine(d)
-            | SimplifiedType::CoroutineWitness(d) => Some(d),
+            | SimplifiedType::Coroutine(d) => Some(d),
             _ => None,
         }
     }
@@ -306,7 +303,6 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Foreign(_)
             | ty::Placeholder(_)
             | ty::UnsafeBinder(_) => {}
@@ -449,13 +445,6 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
 
             ty::Coroutine(lhs_def_id, lhs_args) => match rhs.kind() {
                 ty::Coroutine(rhs_def_id, rhs_args) => {
-                    lhs_def_id == rhs_def_id && self.args_may_unify_inner(lhs_args, rhs_args, depth)
-                }
-                _ => false,
-            },
-
-            ty::CoroutineWitness(lhs_def_id, lhs_args) => match rhs.kind() {
-                ty::CoroutineWitness(rhs_def_id, rhs_args) => {
                     lhs_def_id == rhs_def_id && self.args_may_unify_inner(lhs_args, rhs_args, depth)
                 }
                 _ => false,

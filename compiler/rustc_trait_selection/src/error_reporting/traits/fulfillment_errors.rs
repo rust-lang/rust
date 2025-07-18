@@ -1824,10 +1824,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::Adt(..) => Some(17),
                 ty::Coroutine(..) => Some(18),
                 ty::Foreign(..) => Some(19),
-                ty::CoroutineWitness(..) => Some(20),
-                ty::CoroutineClosure(..) => Some(21),
-                ty::Pat(..) => Some(22),
-                ty::UnsafeBinder(..) => Some(23),
+                ty::CoroutineClosure(..) => Some(20),
+                ty::Pat(..) => Some(21),
+                ty::UnsafeBinder(..) => Some(22),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
             }
         }

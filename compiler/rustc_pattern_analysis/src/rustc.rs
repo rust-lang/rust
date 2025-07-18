@@ -426,7 +426,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             | ty::Alias(_, _)
             | ty::Param(_)
             | ty::Error(_) => ConstructorSet::Unlistable,
-            ty::CoroutineWitness(_, _) | ty::Bound(_, _) | ty::Placeholder(_) | ty::Infer(_) => {
+            ty::Bound(_, _) | ty::Placeholder(_) | ty::Infer(_) => {
                 bug!("Encountered unexpected type in `ConstructorSet::for_ty`: {ty:?}")
             }
         })

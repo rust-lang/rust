@@ -306,7 +306,6 @@ impl<'tcx, 'a> TypeVisitor<TyCtxt<'tcx>> for ExportableItemsChecker<'tcx, 'a> {
             | ty::FnDef(_, _)
             | ty::FnPtr(_, _)
             | ty::CoroutineClosure(_, _)
-            | ty::CoroutineWitness(_, _)
             | ty::Never
             | ty::UnsafeBinder(_)
             | ty::Alias(ty::AliasTyKind::Opaque, _) => {

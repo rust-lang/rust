@@ -246,9 +246,7 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_flags(TypeFlags::HAS_TY_PARAM);
             }
 
-            ty::Closure(_, args)
-            | ty::CoroutineClosure(_, args)
-            | ty::CoroutineWitness(_, args) => {
+            ty::Closure(_, args) | ty::CoroutineClosure(_, args) => {
                 self.add_args(args.as_slice());
             }
 

@@ -219,10 +219,6 @@ where
                             return Some(self.always_drop_component(ty));
                         }
                     }
-                    ty::CoroutineWitness(..) => {
-                        unreachable!("witness should be handled in parent");
-                    }
-
                     ty::UnsafeBinder(bound_ty) => {
                         let ty = self.tcx.instantiate_bound_regions_with_erased(bound_ty.into());
                         queue_type(self, ty);

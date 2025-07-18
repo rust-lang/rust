@@ -776,7 +776,7 @@ fn layout_of_uncached<'tcx>(
             return Err(error(cx, err));
         }
 
-        ty::Bound(..) | ty::CoroutineWitness(..) | ty::Infer(_) | ty::Error(_) => {
+        ty::Bound(..) | ty::Infer(_) | ty::Error(_) => {
             // `ty::Error` is handled at the top of this function.
             bug!("layout_of: unexpected type `{ty}`")
         }

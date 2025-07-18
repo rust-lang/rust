@@ -2155,7 +2155,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Char
             | ty::Ref(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -2209,12 +2208,14 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Never
             | ty::Ref(_, _, hir::Mutability::Not)
             | ty::Array(..) => {
-                unreachable!("tried to assemble `Sized` for type with libcore-provided impl")
+                unreachable!("tried to assemble `Copy`/`Clone` for type with libcore-provided impl")
             }
 
             // FIXME(unsafe_binder): Should we conditionally
             // (i.e. universally) implement copy/clone?
-            ty::UnsafeBinder(_) => unreachable!("tried to assemble `Sized` for unsafe binder"),
+            ty::UnsafeBinder(_) => {
+                unreachable!("tried to assemble `Copy`/`Clone` for unsafe binder")
+            }
 
             ty::Tuple(tys) => {
                 // (*) binder moved here
@@ -2232,10 +2233,17 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
                 hir::Movability::Movable => {
                     if self.tcx().features().coroutine_clone() {
-                        ty::Binder::dummy(vec![
-                            args.as_coroutine().tupled_upvars_ty(),
-                            Ty::new_coroutine_witness_for_coroutine(self.tcx(), def_id, args),
-                        ])
+                        self.infcx
+                            .tcx
+                            .coroutine_hidden_types(def_id)
+                            .instantiate(self.infcx.tcx, args)
+                            .map_bound(|witness| {
+                                args.as_coroutine()
+                                    .upvar_tys()
+                                    .iter()
+                                    .chain(witness.types)
+                                    .collect()
+                            })
                     } else {
                         unreachable!(
                             "tried to assemble `Clone` for coroutine without enabled feature"
@@ -2243,13 +2251,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     }
                 }
             },
-
-            ty::CoroutineWitness(def_id, args) => self
-                .infcx
-                .tcx
-                .coroutine_hidden_types(def_id)
-                .instantiate(self.infcx.tcx, args)
-                .map_bound(|witness| witness.types.to_vec()),
 
             ty::Closure(_, args) => ty::Binder::dummy(args.as_closure().upvar_tys().to_vec()),
 
@@ -2365,23 +2366,15 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
             ty::Coroutine(def_id, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
-                let tcx = self.tcx();
-                let witness = Ty::new_coroutine_witness_for_coroutine(tcx, def_id, args);
-                ty::Binder::dummy(AutoImplConstituents {
-                    types: vec![ty, witness],
-                    assumptions: vec![],
-                })
+                self.infcx
+                    .tcx
+                    .coroutine_hidden_types(def_id)
+                    .instantiate(self.infcx.tcx, args)
+                    .map_bound(|witness| AutoImplConstituents {
+                        types: [ty].into_iter().chain(witness.types).collect(),
+                        assumptions: witness.assumptions.to_vec(),
+                    })
             }
-
-            ty::CoroutineWitness(def_id, args) => self
-                .infcx
-                .tcx
-                .coroutine_hidden_types(def_id)
-                .instantiate(self.infcx.tcx, args)
-                .map_bound(|witness| AutoImplConstituents {
-                    types: witness.types.to_vec(),
-                    assumptions: witness.assumptions.to_vec(),
-                }),
 
             // For `PhantomData<T>`, we pass `T`.
             ty::Adt(def, args) if def.is_phantom_data() => {

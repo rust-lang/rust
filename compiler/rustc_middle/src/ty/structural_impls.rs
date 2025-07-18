@@ -391,9 +391,6 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
                 ty::Ref(r.try_fold_with(folder)?, ty.try_fold_with(folder)?, mutbl)
             }
             ty::Coroutine(did, args) => ty::Coroutine(did, args.try_fold_with(folder)?),
-            ty::CoroutineWitness(did, args) => {
-                ty::CoroutineWitness(did, args.try_fold_with(folder)?)
-            }
             ty::Closure(did, args) => ty::Closure(did, args.try_fold_with(folder)?),
             ty::CoroutineClosure(did, args) => {
                 ty::CoroutineClosure(did, args.try_fold_with(folder)?)
@@ -434,7 +431,6 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::UnsafeBinder(f) => ty::UnsafeBinder(f.fold_with(folder)),
             ty::Ref(r, ty, mutbl) => ty::Ref(r.fold_with(folder), ty.fold_with(folder), mutbl),
             ty::Coroutine(did, args) => ty::Coroutine(did, args.fold_with(folder)),
-            ty::CoroutineWitness(did, args) => ty::CoroutineWitness(did, args.fold_with(folder)),
             ty::Closure(did, args) => ty::Closure(did, args.fold_with(folder)),
             ty::CoroutineClosure(did, args) => ty::CoroutineClosure(did, args.fold_with(folder)),
             ty::Alias(kind, data) => ty::Alias(kind, data.fold_with(folder)),
@@ -482,7 +478,6 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
                 ty.visit_with(visitor)
             }
             ty::Coroutine(_did, args) => args.visit_with(visitor),
-            ty::CoroutineWitness(_did, args) => args.visit_with(visitor),
             ty::Closure(_did, args) => args.visit_with(visitor),
             ty::CoroutineClosure(_did, args) => args.visit_with(visitor),
             ty::Alias(_, data) => data.visit_with(visitor),

@@ -746,8 +746,7 @@ where
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
                 | ty::Coroutine(..)
-                | ty::UnsafeBinder(_)
-                | ty::CoroutineWitness(..) => {
+                | ty::UnsafeBinder(_) => {
                     ecx.add_goal(
                         GoalSource::ImplWhereBound,
                         goal.with(
@@ -1249,7 +1248,6 @@ where
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
-            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Adt(_, _)

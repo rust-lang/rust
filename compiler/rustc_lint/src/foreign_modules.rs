@@ -358,7 +358,6 @@ fn structurally_same_type_impl<'tcx>(
                 | (ty::Error(..), ty::Error(..))
                 | (ty::Closure(..), ty::Closure(..))
                 | (ty::Coroutine(..), ty::Coroutine(..))
-                | (ty::CoroutineWitness(..), ty::CoroutineWitness(..))
                 | (ty::Alias(ty::Projection, ..), ty::Alias(ty::Projection, ..))
                 | (ty::Alias(ty::Inherent, ..), ty::Alias(ty::Inherent, ..))
                 | (ty::Alias(ty::Opaque, ..), ty::Alias(ty::Opaque, ..)) => false,

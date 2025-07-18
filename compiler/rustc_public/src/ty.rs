@@ -565,7 +565,6 @@ pub enum RigidTy {
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region),
     Never,
     Tuple(Vec<Ty>),
-    CoroutineWitness(CoroutineWitnessDef, GenericArgs),
 }
 
 impl RigidTy {
@@ -992,11 +991,6 @@ impl ImplDef {
 crate_def! {
     #[derive(Serialize)]
     pub RegionDef;
-}
-
-crate_def! {
-    #[derive(Serialize)]
-    pub CoroutineWitnessDef;
 }
 
 /// A list of generic arguments.

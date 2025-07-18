@@ -835,43 +835,6 @@ impl<'tcx> Ty<'tcx> {
         Ty::new(tcx, Coroutine(def_id, coroutine_args))
     }
 
-    #[inline]
-    pub fn new_coroutine_witness(
-        tcx: TyCtxt<'tcx>,
-        def_id: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> Ty<'tcx> {
-        if cfg!(debug_assertions) {
-            tcx.debug_assert_args_compatible(tcx.typeck_root_def_id(def_id), args);
-        }
-        Ty::new(tcx, CoroutineWitness(def_id, args))
-    }
-
-    pub fn new_coroutine_witness_for_coroutine(
-        tcx: TyCtxt<'tcx>,
-        def_id: DefId,
-        coroutine_args: GenericArgsRef<'tcx>,
-    ) -> Ty<'tcx> {
-        tcx.debug_assert_args_compatible(def_id, coroutine_args);
-        // HACK: Coroutine witness types are lifetime erased, so they
-        // never reference any lifetime args from the coroutine. We erase
-        // the regions here since we may get into situations where a
-        // coroutine is recursively contained within itself, leading to
-        // witness types that differ by region args. This means that
-        // cycle detection in fulfillment will not kick in, which leads
-        // to unnecessary overflows in async code. See the issue:
-        // <https://github.com/rust-lang/rust/issues/145151>.
-        let args =
-            ty::GenericArgs::for_item(tcx, tcx.typeck_root_def_id(def_id), |def, _| {
-                match def.kind {
-                    ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-                    ty::GenericParamDefKind::Type { .. }
-                    | ty::GenericParamDefKind::Const { .. } => coroutine_args[def.index as usize],
-                }
-            });
-        Ty::new_coroutine_witness(tcx, def_id, args)
-    }
-
     // misc
 
     #[inline]
@@ -1024,22 +987,6 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
 
     fn new_closure(interner: TyCtxt<'tcx>, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> Self {
         Ty::new_closure(interner, def_id, args)
-    }
-
-    fn new_coroutine_witness(
-        interner: TyCtxt<'tcx>,
-        def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> Self {
-        Ty::new_coroutine_witness(interner, def_id, args)
-    }
-
-    fn new_coroutine_witness_for_coroutine(
-        interner: TyCtxt<'tcx>,
-        def_id: DefId,
-        coroutine_args: ty::GenericArgsRef<'tcx>,
-    ) -> Self {
-        Ty::new_coroutine_witness_for_coroutine(interner, def_id, coroutine_args)
     }
 
     fn new_ptr(interner: TyCtxt<'tcx>, ty: Self, mutbl: hir::Mutability) -> Self {
@@ -1691,7 +1638,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
-            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::UnsafeBinder(_)
@@ -1727,7 +1673,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Char
             | ty::Ref(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -1918,7 +1863,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Char
             | ty::Ref(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Pat(..)
             | ty::Closure(..)
@@ -1994,7 +1938,7 @@ impl<'tcx> Ty<'tcx> {
             // for all unsized types.
             ty::Ref(_, _, hir::Mutability::Not) | ty::RawPtr(..) => true,
 
-            ty::Coroutine(..) | ty::CoroutineWitness(..) => false,
+            ty::Coroutine(..) => false,
 
             // Might be, but not "trivial" so just giving the safe answer.
             ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) => false,
@@ -2050,7 +1994,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Alias(..)
             | ty::Error(_) => false,
         }

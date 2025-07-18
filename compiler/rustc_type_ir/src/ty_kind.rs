@@ -178,31 +178,6 @@ pub enum TyKind<I: Interner> {
     /// `CoroutineArgs`.
     Coroutine(I::CoroutineId, I::GenericArgs),
 
-    /// A type representing the types stored inside a coroutine.
-    /// This should only appear as part of the `CoroutineArgs`.
-    ///
-    /// Unlike upvars, the witness can reference lifetimes from
-    /// inside of the coroutine itself. To deal with them in
-    /// the type of the coroutine, we convert them to higher ranked
-    /// lifetimes bound by the witness itself.
-    ///
-    /// This contains the `DefId` and the `GenericArgsRef` of the coroutine.
-    /// The actual witness types are computed on MIR by the `mir_coroutine_witnesses` query.
-    ///
-    /// Looking at the following example, the witness for this coroutine
-    /// may end up as something like `for<'a> [Vec<i32>, &'a Vec<i32>]`:
-    ///
-    /// ```
-    /// #![feature(coroutines)]
-    /// #[coroutine] static |a| {
-    ///     let x = &vec![3];
-    ///     yield a;
-    ///     yield x[0];
-    /// }
-    /// # ;
-    /// ```
-    CoroutineWitness(I::CoroutineId, I::GenericArgs),
-
     /// The never type `!`.
     Never,
 
@@ -308,7 +283,6 @@ impl<I: Interner> TyKind<I> {
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
             | ty::Coroutine(_, _)
-            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_) => true,
 
@@ -361,7 +335,6 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Closure(d, s) => f.debug_tuple("Closure").field(d).field(&s).finish(),
             CoroutineClosure(d, s) => f.debug_tuple("CoroutineClosure").field(d).field(&s).finish(),
             Coroutine(d, s) => f.debug_tuple("Coroutine").field(d).field(&s).finish(),
-            CoroutineWitness(d, s) => f.debug_tuple("CoroutineWitness").field(d).field(&s).finish(),
             Never => write!(f, "!"),
             Tuple(t) => {
                 write!(f, "(")?;

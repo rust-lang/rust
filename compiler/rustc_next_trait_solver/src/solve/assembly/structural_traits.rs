@@ -75,16 +75,17 @@ where
             Ok(ty::Binder::dummy(vec![args.as_coroutine_closure().tupled_upvars_ty()]))
         }
 
-        ty::Coroutine(def_id, args) => Ok(ty::Binder::dummy(vec![
-            args.as_coroutine().tupled_upvars_ty(),
-            Ty::new_coroutine_witness_for_coroutine(ecx.cx(), def_id, args),
-        ])),
-
-        ty::CoroutineWitness(def_id, args) => Ok(ecx
-            .cx()
-            .coroutine_hidden_types(def_id)
-            .instantiate(cx, args)
-            .map_bound(|bound| bound.types.to_vec())),
+        ty::Coroutine(def_id, args) => {
+            let coroutine = args.as_coroutine();
+            Ok(ecx.cx().coroutine_hidden_types(def_id).instantiate(ecx.cx(), args).map_bound(
+                |bound_tys| {
+                    [coroutine.tupled_upvars_ty()]
+                        .into_iter()
+                        .chain(bound_tys.types.iter())
+                        .collect()
+                },
+            ))
+        }
 
         ty::UnsafeBinder(bound_ty) => Ok(bound_ty.map_bound(|ty| vec![ty])),
 
@@ -116,7 +117,7 @@ where
 {
     match ty.kind() {
         // impl {Meta,}Sized for u*, i*, bool, f*, FnDef, FnPtr, *(const/mut) T, char
-        // impl {Meta,}Sized for &mut? T, [T; N], dyn* Trait, !, Coroutine, CoroutineWitness
+        // impl {Meta,}Sized for &mut? T, [T; N], dyn* Trait, !, Coroutine
         // impl {Meta,}Sized for Closure, CoroutineClosure
         ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Uint(_)
@@ -129,7 +130,6 @@ where
         | ty::Char
         | ty::Ref(..)
         | ty::Coroutine(..)
-        | ty::CoroutineWitness(..)
         | ty::Array(..)
         | ty::Pat(..)
         | ty::Closure(..)
@@ -244,10 +244,17 @@ where
             Movability::Static => Err(NoSolution),
             Movability::Movable => {
                 if ecx.cx().features().coroutine_clone() {
-                    Ok(ty::Binder::dummy(vec![
-                        args.as_coroutine().tupled_upvars_ty(),
-                        Ty::new_coroutine_witness_for_coroutine(ecx.cx(), def_id, args),
-                    ]))
+                    let coroutine = args.as_coroutine();
+                    Ok(ecx
+                        .cx()
+                        .coroutine_hidden_types(def_id)
+                        .instantiate(ecx.cx(), args)
+                        .map_bound(|bound_tys| {
+                            [coroutine.tupled_upvars_ty()]
+                                .into_iter()
+                                .chain(bound_tys.types.iter())
+                                .collect()
+                        }))
                 } else {
                     Err(NoSolution)
                 }
@@ -255,13 +262,6 @@ where
         },
 
         ty::UnsafeBinder(_) => Err(NoSolution),
-
-        // impl Copy/Clone for CoroutineWitness where T: Copy/Clone forall T in coroutine_hidden_types
-        ty::CoroutineWitness(def_id, args) => Ok(ecx
-            .cx()
-            .coroutine_hidden_types(def_id)
-            .instantiate(ecx.cx(), args)
-            .map_bound(|bound| bound.types.to_vec())),
     }
 }
 
@@ -385,7 +385,6 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         | ty::Ref(_, _, _)
         | ty::Dynamic(_, _)
         | ty::Coroutine(_, _)
-        | ty::CoroutineWitness(..)
         | ty::Never
         | ty::Tuple(_)
         | ty::Pat(_, _)
@@ -559,7 +558,6 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         | ty::Ref(_, _, _)
         | ty::Dynamic(_, _)
         | ty::Coroutine(_, _)
-        | ty::CoroutineWitness(..)
         | ty::Never
         | ty::UnsafeBinder(_)
         | ty::Tuple(_)
@@ -709,7 +707,6 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         | ty::Ref(_, _, _)
         | ty::Dynamic(_, _)
         | ty::Coroutine(_, _)
-        | ty::CoroutineWitness(..)
         | ty::Never
         | ty::Tuple(_)
         | ty::Pat(_, _)
@@ -788,10 +785,7 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
 
         // Coroutines and closures could implement `[const] Drop`,
         // but they don't really need to right now.
-        ty::Closure(_, _)
-        | ty::CoroutineClosure(_, _)
-        | ty::Coroutine(_, _)
-        | ty::CoroutineWitness(_, _) => Err(NoSolution),
+        ty::Closure(_, _) | ty::CoroutineClosure(_, _) | ty::Coroutine(_, _) => Err(NoSolution),
 
         // FIXME(unsafe_binders): Unsafe binders could implement `[const] Drop`
         // if their inner type implements it.

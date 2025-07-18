@@ -85,6 +85,7 @@
 
 use std::ops::Coroutine;
 use std::pin::Pin;
+
 use Mod1::TestTrait2;
 
 fn main() {

@@ -697,7 +697,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
                 | ty::Coroutine(_, _)
-                | ty::CoroutineWitness(..)
                 | ty::UnsafeBinder(_)
                 | ty::Never
                 | ty::Tuple(_)
@@ -851,10 +850,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     } else {
                         candidates.vec.push(AutoImplCandidate)
                     }
-                }
-
-                ty::CoroutineWitness(..) => {
-                    candidates.vec.push(AutoImplCandidate);
                 }
 
                 ty::Bool
@@ -1203,10 +1198,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::CoroutineWitness(..) => {
-                candidates.vec.push(SizedCandidate);
-            }
-
             // Fallback to whatever user-defined impls or param-env clauses exist in this case.
             ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {}
 
@@ -1257,10 +1248,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 } else {
                     candidates.vec.push(SizedCandidate);
                 }
-            }
-
-            ty::CoroutineWitness(..) => {
-                candidates.vec.push(SizedCandidate);
             }
 
             // Conditionally `Sized`.
@@ -1335,7 +1322,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
-            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Alias(..)
             | ty::Param(_)
@@ -1374,7 +1360,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::UnsafeBinder(_)
             | ty::Never
             | ty::Tuple(..)
@@ -1427,7 +1412,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::UnsafeBinder(_)
-            | ty::CoroutineWitness(..)
             | ty::Bound(..) => {
                 candidates.vec.push(BikeshedGuaranteedNoDropCandidate);
             }

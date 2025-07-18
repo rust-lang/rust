@@ -38,7 +38,6 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::FnDef(..)
         | ty::FnPtr(..)
         | ty::Char
-        | ty::CoroutineWitness(..)
         | ty::RawPtr(_, _)
         | ty::Ref(..)
         | ty::Str
@@ -279,8 +278,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
         | ty::RawPtr(..)
         | ty::Ref(..)
         | ty::FnDef(..)
-        | ty::FnPtr(..)
-        | ty::CoroutineWitness(..) => {
+        | ty::FnPtr(..) => {
             // these types never have a destructor
         }
 

@@ -53,7 +53,6 @@ make_bridge_trait!(GenericDef);
 make_bridge_trait!(ConstDef);
 make_bridge_trait!(ImplDef);
 make_bridge_trait!(RegionDef);
-make_bridge_trait!(CoroutineWitnessDef);
 make_bridge_trait!(AssocDef);
 make_bridge_trait!(OpaqueDef);
 make_bridge_trait!(StaticDef);

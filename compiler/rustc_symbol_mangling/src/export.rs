@@ -114,7 +114,6 @@ impl<'tcx> AbiHashStable<'tcx> for Ty<'tcx> {
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
             | ty::Coroutine(_, _)
-            | ty::CoroutineWitness(_, _)
             | ty::Never
             | ty::Tuple(_)
             | ty::Alias(_, _)

@@ -135,7 +135,6 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
             | ty::Closure(_, args)
             | ty::CoroutineClosure(_, args)
             | ty::Coroutine(_, args)
-            | ty::CoroutineWitness(_, args)
             | ty::FnDef(_, args) => {
                 stack.extend(args.iter().rev());
             }

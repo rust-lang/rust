@@ -181,7 +181,6 @@ fn const_to_valtree_inner<'tcx>(
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
-        | ty::CoroutineWitness(..)
         | ty::UnsafeBinder(_) => Err(ValTreeCreationError::NonSupportedType(ty)),
     }
 }
@@ -343,7 +342,6 @@ pub fn valtree_to_const_value<'tcx>(
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
-        | ty::CoroutineWitness(..)
         | ty::FnPtr(..)
         | ty::Str
         | ty::Slice(_)

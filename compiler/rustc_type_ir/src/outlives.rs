@@ -126,10 +126,6 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
                 // want these to affect region inference
             }
 
-            // All regions are bound inside a witness, and we don't emit
-            // higher-ranked outlives components currently.
-            ty::CoroutineWitness(..) => {}
-
             // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
             // is implied by the environment is done in regionck.
             ty::Param(p) => {

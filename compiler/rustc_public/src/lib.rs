@@ -263,7 +263,6 @@ bridge_impl!(GenericDef, crate::ty::GenericDef);
 bridge_impl!(ConstDef, crate::ty::ConstDef);
 bridge_impl!(ImplDef, crate::ty::ImplDef);
 bridge_impl!(RegionDef, crate::ty::RegionDef);
-bridge_impl!(CoroutineWitnessDef, crate::ty::CoroutineWitnessDef);
 bridge_impl!(AssocDef, crate::ty::AssocDef);
 bridge_impl!(OpaqueDef, crate::ty::OpaqueDef);
 bridge_impl!(StaticDef, crate::mir::mono::StaticDef);

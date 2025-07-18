@@ -177,13 +177,6 @@ impl<'tcx, B: Bridge> Tables<'tcx, B> {
         B::RegionDef::new(self.create_def_id(did))
     }
 
-    pub fn coroutine_witness_def(
-        &mut self,
-        did: rustc_span::def_id::DefId,
-    ) -> B::CoroutineWitnessDef {
-        B::CoroutineWitnessDef::new(self.create_def_id(did))
-    }
-
     pub fn assoc_def(&mut self, did: rustc_span::def_id::DefId) -> B::AssocDef {
         B::AssocDef::new(self.create_def_id(did))
     }
@@ -230,7 +223,6 @@ pub trait Bridge: Sized {
     type ConstDef: ConstDef<Self>;
     type ImplDef: ImplDef<Self>;
     type RegionDef: RegionDef<Self>;
-    type CoroutineWitnessDef: CoroutineWitnessDef<Self>;
     type AssocDef: AssocDef<Self>;
     type OpaqueDef: OpaqueDef<Self>;
     type Prov: Prov<Self>;

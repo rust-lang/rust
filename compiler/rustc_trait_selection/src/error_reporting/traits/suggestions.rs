@@ -2405,7 +2405,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
 
                     match *ty.kind() {
-                        ty::Coroutine(did, ..) | ty::CoroutineWitness(did, _) => {
+                        ty::Coroutine(did, ..) => {
                             coroutine = coroutine.or(Some(did));
                             outer_coroutine = Some(did);
                         }
@@ -2434,7 +2434,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
 
                     match *ty.kind() {
-                        ty::Coroutine(did, ..) | ty::CoroutineWitness(did, ..) => {
+                        ty::Coroutine(did, ..) => {
                             coroutine = coroutine.or(Some(did));
                             outer_coroutine = Some(did);
                         }
@@ -3457,10 +3457,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     "required because it's used within this {kind:#}",
                                 )),
                             );
-                        }
-                        ty::CoroutineWitness(..) => {
-                            // Skip printing coroutine-witnesses, since we'll drill into
-                            // the bad field in another derived obligation cause.
                         }
                         ty::Closure(def_id, _) | ty::CoroutineClosure(def_id, _) => {
                             err.span_note(

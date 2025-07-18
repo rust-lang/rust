@@ -297,7 +297,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     | ty::Closure(_, _)
                     | ty::CoroutineClosure(_, _)
                     | ty::Coroutine(_, _)
-                    | ty::CoroutineWitness(..)
                     | ty::UnsafeBinder(_)
                     | ty::Never
                     | ty::Tuple(_)

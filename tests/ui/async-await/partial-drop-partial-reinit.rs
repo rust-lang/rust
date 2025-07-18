@@ -7,7 +7,6 @@ fn main() {
     //~^ ERROR cannot be sent between threads safely
     //~| NOTE cannot be sent
     //~| NOTE bound introduced by
-    //~| NOTE appears within the type
 }
 
 fn gimme_send<T: Send>(t: T) {

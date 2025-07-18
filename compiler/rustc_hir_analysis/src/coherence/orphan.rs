@@ -226,7 +226,6 @@ pub(crate) fn orphan_check_impl(
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Infer(..) => {

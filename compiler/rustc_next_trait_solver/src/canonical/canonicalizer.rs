@@ -391,7 +391,6 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
-            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Alias(_, _)

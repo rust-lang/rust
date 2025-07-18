@@ -437,8 +437,7 @@ fn push_debuginfo_type_name<'tcx>(
         | ty::Infer(_)
         | ty::Placeholder(..)
         | ty::Alias(..)
-        | ty::Bound(..)
-        | ty::CoroutineWitness(..) => {
+        | ty::Bound(..) => {
             bug!(
                 "debuginfo: Trying to create type name for \
                   unexpected type: {:?}",

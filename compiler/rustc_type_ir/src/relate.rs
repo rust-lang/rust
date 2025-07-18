@@ -394,16 +394,6 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             Ok(Ty::new_coroutine(cx, a_id, args))
         }
 
-        (ty::CoroutineWitness(a_id, a_args), ty::CoroutineWitness(b_id, b_args))
-            if a_id == b_id =>
-        {
-            // All CoroutineWitness types with the same id represent
-            // the (anonymous) type of the same coroutine expression. So
-            // all of their regions should be equated.
-            let args = relate_args_invariantly(relation, a_args, b_args)?;
-            Ok(Ty::new_coroutine_witness(cx, a_id, args))
-        }
-
         (ty::Closure(a_id, a_args), ty::Closure(b_id, b_args)) if a_id == b_id => {
             // All Closure types with the same id represent
             // the (anonymous) type of the same closure expression. So

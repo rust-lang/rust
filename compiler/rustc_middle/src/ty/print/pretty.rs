@@ -910,29 +910,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                 write!(self, "}}")?
             }
-            ty::CoroutineWitness(did, args) => {
-                write!(self, "{{")?;
-                if !self.tcx().sess.verbose_internals() {
-                    write!(self, "coroutine witness")?;
-                    if let Some(did) = did.as_local() {
-                        let span = self.tcx().def_span(did);
-                        write!(
-                            self,
-                            "@{}",
-                            // This may end up in stderr diagnostics but it may also be emitted
-                            // into MIR. Hence we use the remapped path if available
-                            self.tcx().sess.source_map().span_to_diagnostic_string(span)
-                        )?;
-                    } else {
-                        write!(self, "@")?;
-                        self.print_def_path(did, args)?;
-                    }
-                } else {
-                    self.print_def_path(did, args)?;
-                }
-
-                write!(self, "}}")?
-            }
             ty::Closure(did, args) => {
                 write!(self, "{{")?;
                 if !self.should_print_verbose() {
@@ -1024,6 +1001,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         self.print_def_path(did, args)?;
                     }
                 } else {
+<<<<<<< HEAD
                     self.print_def_path(did, args)?;
                     write!(self, " closure_kind_ty=")?;
                     args.as_coroutine_closure().kind_ty().print(self)?;
@@ -1033,6 +1011,19 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     args.as_coroutine_closure().tupled_upvars_ty().print(self)?;
                     write!(self, " coroutine_captures_by_ref_ty=")?;
                     args.as_coroutine_closure().coroutine_captures_by_ref_ty().print(self)?;
+=======
+                    p!(print_def_path(did, args));
+                    p!(
+                        " closure_kind_ty=",
+                        print(args.as_coroutine_closure().kind_ty()),
+                        " signature_parts_ty=",
+                        print(args.as_coroutine_closure().signature_parts_ty()),
+                        " upvar_tys=",
+                        print(args.as_coroutine_closure().tupled_upvars_ty()),
+                        " coroutine_captures_by_ref_ty=",
+                        print(args.as_coroutine_closure().coroutine_captures_by_ref_ty())
+                    );
+>>>>>>> 3995d8bfb2b (Remove coroutine witness type)
                 }
                 write!(self, "}}")?;
             }
@@ -2293,7 +2284,6 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Tuple(_)
             | ty::Alias(..)
             | ty::Param(_)

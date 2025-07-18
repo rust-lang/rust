@@ -1185,7 +1185,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Dynamic(..)
             | ty::Foreign(_)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::UnsafeBinder(_)
             | ty::Infer(_)
             | ty::Alias(..)
@@ -1226,7 +1225,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Dynamic(..)
             | ty::Foreign(_)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::UnsafeBinder(_)
             | ty::Infer(_)
             | ty::Alias(..)
@@ -1281,7 +1279,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Dynamic(..)
             | ty::Foreign(_)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Infer(_)
             | ty::Alias(..)
             | ty::Param(_)
@@ -1454,7 +1451,7 @@ impl<'tcx> Ty<'tcx> {
                 false
             }
 
-            ty::Foreign(_) | ty::CoroutineWitness(..) | ty::Error(_) | ty::UnsafeBinder(_) => false,
+            ty::Foreign(_) | ty::Error(_) | ty::UnsafeBinder(_) => false,
         }
     }
 
@@ -1564,7 +1561,6 @@ pub fn needs_drop_components_with_async<'tcx>(
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
-        | ty::CoroutineWitness(..)
         | ty::UnsafeBinder(_) => Ok(smallvec![ty]),
     }
 }

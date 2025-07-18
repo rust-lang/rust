@@ -139,7 +139,6 @@ impl<'tcx> Ty<'tcx> {
             ty::Coroutine(def_id, ..) => {
                 format!("{:#}", tcx.coroutine_kind(def_id).unwrap()).into()
             }
-            ty::CoroutineWitness(..) => "coroutine witness".into(),
             ty::Infer(ty::TyVar(_)) => "inferred type".into(),
             ty::Infer(ty::IntVar(_)) => "integer".into(),
             ty::Infer(ty::FloatVar(_)) => "floating-point number".into(),
@@ -205,7 +204,6 @@ impl<'tcx> Ty<'tcx> {
             ty::Coroutine(def_id, ..) => {
                 format!("{:#}", tcx.coroutine_kind(def_id).unwrap()).into()
             }
-            ty::CoroutineWitness(..) => "coroutine witness".into(),
             ty::Tuple(..) => "tuple".into(),
             ty::Placeholder(..) => "higher-ranked type".into(),
             ty::Bound(..) => "bound type variable".into(),

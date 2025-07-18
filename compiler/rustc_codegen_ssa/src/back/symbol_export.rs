@@ -253,7 +253,6 @@ fn exported_generic_symbols_provider_local<'tcx>(
                 ty::FnDef(def_id, _) => *def_id,
                 ty::Coroutine(def_id, _) => *def_id,
                 ty::CoroutineClosure(def_id, _) => *def_id,
-                ty::CoroutineWitness(def_id, _) => *def_id,
                 _ => return false,
             };
             let Some(root_def_id) = root_def_id.as_local() else {

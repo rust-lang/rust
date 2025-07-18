@@ -617,12 +617,7 @@ pub(crate) fn encode_ty<'tcx>(
         }
 
         // Unexpected types
-        ty::Alias(..)
-        | ty::Bound(..)
-        | ty::Error(..)
-        | ty::CoroutineWitness(..)
-        | ty::Infer(..)
-        | ty::Placeholder(..) => {
+        ty::Alias(..) | ty::Bound(..) | ty::Error(..) | ty::Infer(..) | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
         }
     };

@@ -57,7 +57,6 @@ impl Bridge for BridgeTys {
     type ConstDef = crate::ty::ConstDef;
     type ImplDef = crate::ty::ImplDef;
     type RegionDef = crate::ty::RegionDef;
-    type CoroutineWitnessDef = crate::ty::CoroutineWitnessDef;
     type AssocDef = crate::ty::AssocDef;
     type OpaqueDef = crate::ty::OpaqueDef;
     type Prov = crate::ty::Prov;
