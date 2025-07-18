@@ -1638,6 +1638,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> LldWrapper 1 <host>
         [build] rustdoc 0 <host>
         [doc] std 1 <host> crates=[core]
         ");
@@ -1653,6 +1654,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> LldWrapper 1 <host>
         [build] rustdoc 0 <host>
         [doc] std 1 <host> crates=[alloc,core]
         ");
