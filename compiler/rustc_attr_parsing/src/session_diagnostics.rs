@@ -542,6 +542,7 @@ pub(crate) enum AttributeParseErrorReason {
     ExpectedNameValue(Option<Symbol>),
     DuplicateKey(Symbol),
     ExpectedSpecificArgument { possibilities: Vec<&'static str>, strings: bool },
+    ExpectedIdentifier,
 }
 
 pub(crate) struct AttributeParseError {
@@ -640,6 +641,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                         diag.span_label(self.span, format!("valid arguments are {res}"));
                     }
                 }
+            }
+            AttributeParseErrorReason::ExpectedIdentifier => {
+                diag.span_label(self.span, format!("expected a valid identifier here"));
             }
         }
 

@@ -367,12 +367,6 @@ warning: `#[should_panic]` only has an effect on functions
 LL | #![should_panic]
    | ^^^^^^^^^^^^^^^^
 
-warning: `#[proc_macro_derive]` only has an effect on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:60:1
-   |
-LL | #![proc_macro_derive()]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
-
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:64:1
    |
@@ -408,6 +402,12 @@ warning: `#[must_use]` has no effect when applied to a module
    |
 LL | #![must_use]
    | ^^^^^^^^^^^^
+
+warning: `#[proc_macro_derive]` only has an effect on functions
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:60:1
+   |
+LL | #![proc_macro_derive(Test)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: attribute should be applied to a function definition
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:62:1
