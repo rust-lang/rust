@@ -1621,6 +1621,19 @@ impl Expr {
         )
     }
 
+    /// Is this an `is` expression or a chain of `&&` operators containing an `is` expression?
+    /// This determines the scope of the `is` expression's bindings. E.g., since
+    /// `(expr is x) && f()` is broken up by parentheses, `x` is dropped before evaluating `f()`.
+    pub fn has_expr_is(&self) -> bool {
+        match &self.kind {
+            ExprKind::Is(..) => true,
+            ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
+                lhs.has_expr_is() || rhs.has_expr_is()
+            }
+            _ => false,
+        }
+    }
+
     /// Creates a dummy `Expr`.
     ///
     /// Should only be used when it will be replaced afterwards or as a return value when an error was encountered.
