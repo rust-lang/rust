@@ -582,7 +582,6 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             }
 
             ty::Alias(..) => bug!("symbol_names: unexpected alias"),
-            ty::CoroutineWitness(..) => bug!("symbol_names: unexpected `CoroutineWitness`"),
         }
 
         // Only cache types that do not refer to an enclosing

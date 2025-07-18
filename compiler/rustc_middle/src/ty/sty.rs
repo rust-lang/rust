@@ -816,15 +816,6 @@ impl<'tcx> Ty<'tcx> {
         Ty::new(tcx, Coroutine(def_id, coroutine_args))
     }
 
-    #[inline]
-    pub fn new_coroutine_witness(
-        tcx: TyCtxt<'tcx>,
-        id: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> Ty<'tcx> {
-        Ty::new(tcx, CoroutineWitness(id, args))
-    }
-
     // misc
 
     #[inline]
@@ -973,14 +964,6 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
 
     fn new_closure(interner: TyCtxt<'tcx>, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> Self {
         Ty::new_closure(interner, def_id, args)
-    }
-
-    fn new_coroutine_witness(
-        interner: TyCtxt<'tcx>,
-        def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> Self {
-        Ty::new_coroutine_witness(interner, def_id, args)
     }
 
     fn new_ptr(interner: TyCtxt<'tcx>, ty: Self, mutbl: hir::Mutability) -> Self {
@@ -1580,7 +1563,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
-            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::UnsafeBinder(_)
@@ -1616,7 +1598,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Char
             | ty::Ref(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -1807,7 +1788,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Char
             | ty::Ref(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Pat(..)
             | ty::Closure(..)
@@ -1883,7 +1863,7 @@ impl<'tcx> Ty<'tcx> {
             // for all unsized types.
             ty::Ref(_, _, hir::Mutability::Not) | ty::RawPtr(..) => true,
 
-            ty::Coroutine(..) | ty::CoroutineWitness(..) => false,
+            ty::Coroutine(..) => false,
 
             // Might be, but not "trivial" so just giving the safe answer.
             ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) => false,
@@ -1939,7 +1919,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Alias(..)
             | ty::Error(_) => false,
         }

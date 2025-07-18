@@ -290,8 +290,7 @@ where
             | ty::UnsafeBinder(_)
             | ty::Param(..)
             | ty::Bound(..)
-            | ty::Error(_)
-            | ty::CoroutineWitness(..) => {}
+            | ty::Error(_) => {}
             ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
             }
