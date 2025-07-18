@@ -1,3 +1,4 @@
+#![feature(abort_unwind)]
 #![feature(cfg_select)]
 #![feature(rustc_private)]
 #![feature(float_gamma)]
