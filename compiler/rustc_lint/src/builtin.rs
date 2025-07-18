@@ -1585,6 +1585,8 @@ impl EarlyLintPass for DoubleNegations {
         if let ExprKind::Unary(UnOp::Neg, ref inner) = expr.kind
             && let ExprKind::Unary(UnOp::Neg, ref inner2) = inner.kind
             && !matches!(inner2.kind, ExprKind::Unary(UnOp::Neg, _))
+            // Don't lint if this jumps macro expansion boundary (Issue #143980)
+            && expr.span.eq_ctxt(inner.span)
         {
             cx.emit_span_lint(
                 DOUBLE_NEGATIONS,
