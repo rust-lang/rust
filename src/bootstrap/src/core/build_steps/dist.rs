@@ -1206,17 +1206,13 @@ impl Step for Src {
         );
 
         // Vendor all Cargo dependencies
-        let vendor = builder.ensure(Vendor {
+        builder.ensure(Vendor {
             sync_args: vec![],
             versioned_dirs: true,
             root_dir: dst_src.clone(),
             output_dir: None,
             only_library_workspace: true,
         });
-
-        let library_cargo_config_dir = dst_src.join("library").join(".cargo");
-        builder.create_dir(&library_cargo_config_dir);
-        builder.create(&library_cargo_config_dir.join("config.toml"), &vendor.config_library);
 
         tarball.generate()
     }
@@ -1379,21 +1375,13 @@ fn prepare_source_tarball<'a>(
             });
 
         // Vendor all Cargo dependencies
-        let vendor = builder.ensure(Vendor {
+        builder.ensure(Vendor {
             sync_args: pkgs_for_pgo_training.collect(),
             versioned_dirs: true,
             root_dir: plain_dst_src.into(),
             output_dir: None,
             only_library_workspace: false,
         });
-
-        let cargo_config_dir = plain_dst_src.join(".cargo");
-        builder.create_dir(&cargo_config_dir);
-        builder.create(&cargo_config_dir.join("config.toml"), &vendor.config);
-
-        let library_cargo_config_dir = plain_dst_src.join("library").join(".cargo");
-        builder.create_dir(&library_cargo_config_dir);
-        builder.create(&library_cargo_config_dir.join("config.toml"), &vendor.config_library);
     }
 
     // Delete extraneous directories
