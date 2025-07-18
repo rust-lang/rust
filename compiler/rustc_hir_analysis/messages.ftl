@@ -371,9 +371,6 @@ hir_analysis_missing_type_params =
         *[other] parameters
     } must be specified on the object type
 
-hir_analysis_multiple_relaxed_default_bounds =
-    type parameter has more than one relaxed default bound, only one is supported
-
 hir_analysis_must_be_name_of_associated_function = must be a name of an associated function
 
 hir_analysis_must_implement_not_function = not a function
@@ -447,8 +444,6 @@ hir_analysis_parenthesized_fn_trait_expansion =
 
 hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
     .label = not allowed in type signatures
-
-hir_analysis_pointee_sized_trait_object = `PointeeSized` cannot be used with trait objects
 
 hir_analysis_precise_capture_self_alias = `Self` can't be captured in `use<...>` precise captures list, since it is an alias
     .label = `Self` is not a generic argument, but an alias to the type of the {$what}

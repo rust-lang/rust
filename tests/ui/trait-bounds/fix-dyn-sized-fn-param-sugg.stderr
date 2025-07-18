@@ -1,41 +1,41 @@
-error[E0203]: type parameter has more than one relaxed default bound, only one is supported
-  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:12:12
+error[E0203]: duplicate relaxed `Sized` bounds
+  --> $DIR/fix-dyn-sized-fn-param-sugg.rs:11:12
    |
 LL | fn foo2<T: ?Sized + ?Sized>(a: T) {}
    |            ^^^^^^   ^^^^^^
 
-error[E0203]: type parameter has more than one relaxed default bound, only one is supported
-  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:16:12
+error[E0203]: duplicate relaxed `Sized` bounds
+  --> $DIR/fix-dyn-sized-fn-param-sugg.rs:15:12
    |
 LL | fn foo3<T: ?Sized + ?Sized + Debug>(a: T) {}
    |            ^^^^^^   ^^^^^^
 
-error[E0203]: type parameter has more than one relaxed default bound, only one is supported
-  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:20:12
+error[E0203]: duplicate relaxed `Sized` bounds
+  --> $DIR/fix-dyn-sized-fn-param-sugg.rs:19:12
    |
 LL | fn foo4<T: ?Sized + Debug + ?Sized >(a: T) {}
    |            ^^^^^^           ^^^^^^
 
-error[E0203]: type parameter has more than one relaxed default bound, only one is supported
-  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:27:17
+error[E0203]: duplicate relaxed `Sized` bounds
+  --> $DIR/fix-dyn-sized-fn-param-sugg.rs:26:17
    |
 LL | fn foo6(_: impl ?Sized + ?Sized) {}
    |                 ^^^^^^   ^^^^^^
 
-error[E0203]: type parameter has more than one relaxed default bound, only one is supported
-  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:31:17
+error[E0203]: duplicate relaxed `Sized` bounds
+  --> $DIR/fix-dyn-sized-fn-param-sugg.rs:30:17
    |
 LL | fn foo7(_: impl ?Sized + ?Sized + Debug) {}
    |                 ^^^^^^   ^^^^^^
 
-error[E0203]: type parameter has more than one relaxed default bound, only one is supported
-  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:35:17
+error[E0203]: duplicate relaxed `Sized` bounds
+  --> $DIR/fix-dyn-sized-fn-param-sugg.rs:34:17
    |
 LL | fn foo8(_: impl ?Sized + Debug + ?Sized ) {}
    |                 ^^^^^^           ^^^^^^
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:9:23
+  --> $DIR/fix-dyn-sized-fn-param-sugg.rs:8:23
    |
 LL | fn foo1<T: ?Sized>(a: T) {}
    |         -             ^ doesn't have a size known at compile-time
@@ -54,7 +54,7 @@ LL | fn foo1<T: ?Sized>(a: &T) {}
    |                       +
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:12:32
+  --> $DIR/fix-dyn-sized-fn-param-sugg.rs:11:32
    |
 LL | fn foo2<T: ?Sized + ?Sized>(a: T) {}
    |         -                      ^ doesn't have a size known at compile-time
@@ -73,7 +73,7 @@ LL | fn foo2<T: ?Sized + ?Sized>(a: &T) {}
    |                                +
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:16:40
+  --> $DIR/fix-dyn-sized-fn-param-sugg.rs:15:40
    |
 LL | fn foo3<T: ?Sized + ?Sized + Debug>(a: T) {}
    |         -                              ^ doesn't have a size known at compile-time
@@ -92,7 +92,7 @@ LL | fn foo3<T: ?Sized + ?Sized + Debug>(a: &T) {}
    |                                        +
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:20:41
+  --> $DIR/fix-dyn-sized-fn-param-sugg.rs:19:41
    |
 LL | fn foo4<T: ?Sized + Debug + ?Sized >(a: T) {}
    |         -                               ^ doesn't have a size known at compile-time
@@ -111,7 +111,7 @@ LL | fn foo4<T: ?Sized + Debug + ?Sized >(a: &T) {}
    |                                         +
 
 error[E0277]: the size for values of type `impl ?Sized` cannot be known at compilation time
-  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:24:12
+  --> $DIR/fix-dyn-sized-fn-param-sugg.rs:23:12
    |
 LL | fn foo5(_: impl ?Sized) {}
    |            ^^^^^^^^^^^
@@ -131,7 +131,7 @@ LL | fn foo5(_: &impl ?Sized) {}
    |            +
 
 error[E0277]: the size for values of type `impl ?Sized + ?Sized` cannot be known at compilation time
-  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:27:12
+  --> $DIR/fix-dyn-sized-fn-param-sugg.rs:26:12
    |
 LL | fn foo6(_: impl ?Sized + ?Sized) {}
    |            ^^^^^^^^^^^^^^^^^^^^
@@ -151,7 +151,7 @@ LL | fn foo6(_: &impl ?Sized + ?Sized) {}
    |            +
 
 error[E0277]: the size for values of type `impl ?Sized + ?Sized + Debug` cannot be known at compilation time
-  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:31:12
+  --> $DIR/fix-dyn-sized-fn-param-sugg.rs:30:12
    |
 LL | fn foo7(_: impl ?Sized + ?Sized + Debug) {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -171,7 +171,7 @@ LL | fn foo7(_: &impl ?Sized + ?Sized + Debug) {}
    |            +
 
 error[E0277]: the size for values of type `impl ?Sized + Debug + ?Sized` cannot be known at compilation time
-  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:35:12
+  --> $DIR/fix-dyn-sized-fn-param-sugg.rs:34:12
    |
 LL | fn foo8(_: impl ?Sized + Debug + ?Sized ) {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
