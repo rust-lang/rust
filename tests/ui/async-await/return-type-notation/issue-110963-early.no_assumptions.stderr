@@ -1,5 +1,5 @@
 error: implementation of `Send` is not general enough
-  --> $DIR/issue-110963-early.rs:14:5
+  --> $DIR/issue-110963-early.rs:17:5
    |
 LL | /     spawn(async move {
 LL | |         let mut hc = hc;
@@ -13,7 +13,7 @@ LL | |     });
    = note: ...but `Send` is actually implemented for the type `impl Future<Output = bool> { <HC as HealthCheck>::check<'2>(..) }`, for some specific lifetime `'2`
 
 error: implementation of `Send` is not general enough
-  --> $DIR/issue-110963-early.rs:14:5
+  --> $DIR/issue-110963-early.rs:17:5
    |
 LL | /     spawn(async move {
 LL | |         let mut hc = hc;

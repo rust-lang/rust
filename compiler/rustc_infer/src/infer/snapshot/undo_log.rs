@@ -28,6 +28,7 @@ pub(crate) enum UndoLog<'tcx> {
     RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'tcx>>>),
     ProjectionCache(traits::UndoLog<'tcx>),
     PushTypeOutlivesConstraint,
+    PushRegionAssumption,
 }
 
 macro_rules! impl_from {
@@ -76,6 +77,9 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
             UndoLog::PushTypeOutlivesConstraint => {
                 let popped = self.region_obligations.pop();
                 assert_matches!(popped, Some(_), "pushed region constraint but could not pop it");
+            }
+            UndoLog::PushRegionAssumption => {
+                self.region_assumptions.pop();
             }
         }
     }

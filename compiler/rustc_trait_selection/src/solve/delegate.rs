@@ -206,14 +206,18 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         .map(|obligations| obligations.into_iter().map(|obligation| obligation.as_goal()).collect())
     }
 
-    fn make_deduplicated_outlives_constraints(
-        &self,
-    ) -> Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>> {
+    fn make_deduplicated_outlives_constraints(&self) -> Vec<ty::ArgOutlivesPredicate<'tcx>> {
         // Cannot use `take_registered_region_obligations` as we may compute the response
         // inside of a `probe` whenever we have multiple choices inside of the solver.
         let region_obligations = self.0.inner.borrow().region_obligations().to_owned();
+        let region_assumptions = self.0.inner.borrow().region_assumptions().to_owned();
         let region_constraints = self.0.with_region_constraints(|region_constraints| {
-            make_query_region_constraints(self.tcx, region_obligations, region_constraints)
+            make_query_region_constraints(
+                self.tcx,
+                region_obligations,
+                region_constraints,
+                region_assumptions,
+            )
         });
 
         let mut seen = FxHashSet::default();
