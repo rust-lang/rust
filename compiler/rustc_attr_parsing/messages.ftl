@@ -136,6 +136,9 @@ attr_parsing_unrecognized_repr_hint =
 attr_parsing_unstable_cfg_target_compact =
     compact `cfg(target(..))` is experimental and subject to change
 
+attr_parsing_unstable_feature_bound_incompatible_stability = Item annotated with `#[unstable_feature_bound]` should not be stable
+    .help = If this item is meant to be stable, do not use any functions annotated with `#[unstable_feature_bound]`. Otherwise, mark this item as unstable with `#[unstable]`
+
 attr_parsing_unsupported_literal_cfg_boolean =
     literal in `cfg` predicate value must be a boolean
 attr_parsing_unsupported_literal_cfg_string =

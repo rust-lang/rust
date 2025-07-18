@@ -11,7 +11,9 @@ use rustc_infer::traits::{
 use rustc_middle::bug;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, Binder, Const, GenericArgsRef, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{
+    self, Binder, Const, GenericArgsRef, TypeVisitableExt, TypingMode, may_use_unstable_feature,
+};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, debug_span, instrument};
 
@@ -404,6 +406,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::AliasRelate(..) => {
                     bug!("AliasRelate is only used by the new solver")
                 }
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => {
+                   unreachable!("unexpected higher ranked `UnstableFeature` goal")
+                }
             },
             Some(pred) => match pred {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
@@ -765,6 +770,13 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 ))
                             }
                         }
+                    }
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
+                    if may_use_unstable_feature(self.selcx.infcx, obligation.param_env, symbol) {
+                        ProcessResult::Changed(Default::default())
+                    } else {
+                        ProcessResult::Unchanged
                     }
                 }
             },

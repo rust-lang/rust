@@ -148,6 +148,20 @@ where
         }
     }
 
+    fn compute_unstable_feature_goal(
+        &mut self,
+        param_env: <I as Interner>::ParamEnv,
+        symbol: <I as Interner>::Symbol,
+    ) -> QueryResult<I> {
+        if self.may_use_unstable_feature(param_env, symbol) {
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        } else {
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
+                MaybeCause::Ambiguity,
+            ))
+        }
+    }
+
     #[instrument(level = "trace", skip(self))]
     fn compute_const_evaluatable_goal(
         &mut self,

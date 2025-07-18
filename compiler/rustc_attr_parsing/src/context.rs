@@ -13,7 +13,9 @@ use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, HirI
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
-use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
+use crate::attributes::allow_unstable::{
+    AllowConstFnUnstableParser, AllowInternalUnstableParser, UnstableFeatureBoundParser,
+};
 use crate::attributes::codegen_attrs::{
     ColdParser, ExportNameParser, NakedParser, NoMangleParser, OmitGdbPrettyPrinterSectionParser,
     OptimizeParser, TargetFeatureParser, TrackCallerParser, UsedParser,
@@ -133,6 +135,7 @@ attribute_parsers!(
         Combine<AllowInternalUnstableParser>,
         Combine<ReprParser>,
         Combine<TargetFeatureParser>,
+        Combine<UnstableFeatureBoundParser>,
         // tidy-alphabetical-end
 
         // tidy-alphabetical-start
@@ -223,7 +226,7 @@ impl Stage for Early {
         sess: &'sess Session,
         diag: impl for<'x> Diagnostic<'x>,
     ) -> ErrorGuaranteed {
-        if self.emit_errors {
+        if self.emit_errors.should_emit() {
             sess.dcx().emit_err(diag)
         } else {
             sess.dcx().create_err(diag).delay_as_bug()
@@ -254,7 +257,7 @@ pub struct Early {
     /// Whether to emit errors or delay them as a bug
     /// For most attributes, the attribute will be parsed again in the `Late` stage and in this case the errors should be delayed
     /// But for some, such as `cfg`, the attribute will be removed before the `Late` stage so errors must be emitted
-    pub emit_errors: bool,
+    pub emit_errors: ShouldEmit,
 }
 /// used when parsing attributes during ast lowering
 pub struct Late;
@@ -555,6 +558,25 @@ pub enum OmitDoc {
     Skip,
 }
 
+#[derive(Copy, Clone)]
+pub enum ShouldEmit {
+    /// The operation will emit errors and lints.
+    /// This is usually what you need.
+    ErrorsAndLints,
+    /// The operation will emit *not* errors and lints.
+    /// Use this if you are *sure* that this operation will be called at a different time with `ShouldEmit::Emit`.
+    Nothing,
+}
+
+impl ShouldEmit {
+    pub fn should_emit(&self) -> bool {
+        match self {
+            ShouldEmit::ErrorsAndLints => true,
+            ShouldEmit::Nothing => false,
+        }
+    }
+}
+
 /// Context created once, for example as part of the ast lowering
 /// context, through which all attributes can be lowered.
 pub struct AttributeParser<'sess, S: Stage = Late> {
@@ -597,7 +619,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             tools: Vec::new(),
             parse_only: Some(sym),
             sess,
-            stage: Early { emit_errors: false },
+            stage: Early { emit_errors: ShouldEmit::Nothing },
         };
         let mut parsed = p.parse_attribute_list(
             attrs,
@@ -620,7 +642,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         target_span: Span,
         target_node_id: NodeId,
         features: Option<&'sess Features>,
-        emit_errors: bool,
+        emit_errors: ShouldEmit,
         parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser<'_>) -> T,
         template: &AttributeTemplate,
     ) -> T {

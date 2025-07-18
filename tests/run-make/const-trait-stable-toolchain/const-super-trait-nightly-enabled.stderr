@@ -4,30 +4,30 @@ error: `[const]` is not allowed here
 LL | trait Bar: ~const Foo {}
    |            ^^^^^^
    |
-note: this trait is not a `#[const_trait]`, so it cannot have `[const]` trait bounds
+note: this trait is not `const`, so it cannot have `[const]` trait bounds
   --> const-super-trait.rs:7:1
    |
 LL | trait Bar: ~const Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `[const]` can only be applied to `#[const_trait]` traits
+error: `[const]` can only be applied to `const` traits
   --> const-super-trait.rs:7:12
    |
 LL | trait Bar: ~const Foo {}
    |            ^^^^^^ can't be applied to `Foo`
    |
-help: mark `Foo` as `#[const_trait]` to allow it to have `const` implementations
+help: mark `Foo` as `const` to allow it to have `const` implementations
    |
 LL | #[const_trait] trait Foo {
    | ++++++++++++++
 
-error: `[const]` can only be applied to `#[const_trait]` traits
+error: `[const]` can only be applied to `const` traits
   --> const-super-trait.rs:9:17
    |
 LL | const fn foo<T: ~const Bar>(x: &T) {
    |                 ^^^^^^ can't be applied to `Bar`
    |
-help: mark `Bar` as `#[const_trait]` to allow it to have `const` implementations
+help: mark `Bar` as `const` to allow it to have `const` implementations
    |
 LL | #[const_trait] trait Bar: ~const Foo {}
    | ++++++++++++++

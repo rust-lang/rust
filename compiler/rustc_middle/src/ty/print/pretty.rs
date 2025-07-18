@@ -2430,7 +2430,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         }
 
         let verbose = self.should_print_verbose();
-        disambiguated_data.fmt_maybe_verbose(self, verbose)?;
+        write!(self, "{}", disambiguated_data.as_sym(verbose))?;
 
         self.empty_path = false;
 
@@ -3237,6 +3237,7 @@ define_print! {
             ty::ClauseKind::ConstEvaluatable(ct) => {
                 p!("the constant `", print(ct), "` can be evaluated")
             }
+            ty::ClauseKind::UnstableFeature(symbol) => p!("unstable feature: ", write("`{}`", symbol)),
         }
     }
 
