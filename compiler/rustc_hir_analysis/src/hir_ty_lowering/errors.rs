@@ -35,31 +35,29 @@ use crate::fluent_generated as fluent;
 use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
-    /// Check for multiple relaxed bounds and relaxed bounds of non-default traits.
+    /// Check for duplicate relaxed bounds and relaxed bounds of non-default traits.
     pub(crate) fn check_and_report_invalid_relaxed_bounds(
         &self,
         relaxed_bounds: SmallVec<[&PolyTraitRef<'_>; 1]>,
     ) {
         let tcx = self.tcx();
 
-        let mut unique_bounds = FxIndexSet::default();
-        let mut seen_repeat = false;
+        let mut grouped_bounds = FxIndexMap::<_, Vec<_>>::default();
+
         for bound in &relaxed_bounds {
             if let Res::Def(DefKind::Trait, trait_def_id) = bound.trait_ref.path.res {
-                seen_repeat |= !unique_bounds.insert(trait_def_id);
+                grouped_bounds.entry(trait_def_id).or_default().push(bound.span);
             }
         }
 
-        if relaxed_bounds.len() > 1 {
-            let err = errors::MultipleRelaxedDefaultBounds {
-                spans: relaxed_bounds.iter().map(|ptr| ptr.span).collect(),
-            };
-
-            if seen_repeat {
-                tcx.dcx().emit_err(err);
-            } else if !tcx.features().more_maybe_bounds() {
-                tcx.sess.create_feature_err(err, sym::more_maybe_bounds).emit();
-            };
+        for (trait_def_id, spans) in grouped_bounds {
+            if spans.len() > 1 {
+                let name = tcx.item_name(trait_def_id);
+                self.dcx()
+                    .struct_span_err(spans, format!("duplicate relaxed `{name}` bounds"))
+                    .with_code(E0203)
+                    .emit();
+            }
         }
 
         let sized_def_id = tcx.require_lang_item(hir::LangItem::Sized, DUMMY_SP);

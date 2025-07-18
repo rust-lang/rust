@@ -31,7 +31,7 @@ LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
    = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
 
 error: this relaxed bound is not permitted here
-  --> $DIR/relaxed-bounds-invalid-places.rs:23:21
+  --> $DIR/relaxed-bounds-invalid-places.rs:22:21
    |
 LL |     fn f() where T: ?Sized {}
    |                     ^^^^^^
@@ -39,7 +39,7 @@ LL |     fn f() where T: ?Sized {}
    = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
 
 error: relaxed bounds are not permitted in supertrait bounds
-  --> $DIR/relaxed-bounds-invalid-places.rs:26:11
+  --> $DIR/relaxed-bounds-invalid-places.rs:25:11
    |
 LL | trait Tr: ?Sized {}
    |           ^^^^^^
@@ -47,19 +47,19 @@ LL | trait Tr: ?Sized {}
    = note: traits are `?Sized` by default
 
 error: relaxed bounds are not permitted in trait object types
-  --> $DIR/relaxed-bounds-invalid-places.rs:30:20
+  --> $DIR/relaxed-bounds-invalid-places.rs:29:20
    |
 LL | type O1 = dyn Tr + ?Sized;
    |                    ^^^^^^
 
 error: relaxed bounds are not permitted in trait object types
-  --> $DIR/relaxed-bounds-invalid-places.rs:31:15
+  --> $DIR/relaxed-bounds-invalid-places.rs:30:15
    |
 LL | type O2 = dyn ?Sized + ?Sized + Tr;
    |               ^^^^^^
 
 error: relaxed bounds are not permitted in trait object types
-  --> $DIR/relaxed-bounds-invalid-places.rs:31:24
+  --> $DIR/relaxed-bounds-invalid-places.rs:30:24
    |
 LL | type O2 = dyn ?Sized + ?Sized + Tr;
    |                        ^^^^^^
@@ -70,21 +70,11 @@ error: bound modifier `?` can only be applied to `Sized`
 LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
    |                                  ^^^^^^^^^^
 
-error[E0203]: type parameter has more than one relaxed default bound, only one is supported
-  --> $DIR/relaxed-bounds-invalid-places.rs:18:33
-   |
-LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
-   |                                 ^^^^^^^^^^^^^^^   ^^^^^^
-   |
-   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error: bound modifier `?` can only be applied to `Sized`
   --> $DIR/relaxed-bounds-invalid-places.rs:18:33
    |
 LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
    |                                 ^^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error: aborting due to 11 previous errors
 
-For more information about this error, try `rustc --explain E0203`.
