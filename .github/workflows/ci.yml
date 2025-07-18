@@ -98,6 +98,12 @@ jobs:
         # Check the `calculate_matrix` job to see how is the matrix defined.
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
     steps:
+      - name: Diskspace
+        shell: pwsh
+        run: |
+          Get-Volume
+          diskusage /t:100 C:\
+          exit 1
       - name: Install cargo in AWS CodeBuild
         if: matrix.codebuild
         run: |
