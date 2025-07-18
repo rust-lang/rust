@@ -412,6 +412,10 @@ These tests revolve around command-line flags which change the way error/warning
 
 Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namespace](https://github.com/rust-lang/rfcs/blob/master/text/3368-diagnostic-attribute-namespace.md).
 
+## `tests/ui/diagnostics-infra`
+
+This directory contains tests and infrastructure related to the diagnostics system, including support for translatable diagnostics
+
 ## `tests/ui/diagnostic-width/`: `--diagnostic-width`
 
 Everything to do with `--diagnostic-width`.
