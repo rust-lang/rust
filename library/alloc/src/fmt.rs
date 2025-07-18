@@ -348,13 +348,13 @@
 //! format := '{' [ argument ] [ ':' format_spec ] [ ws ] * '}'
 //! argument := integer | identifier
 //!
-//! format_spec := [[fill]align][sign]['#']['0'][width]['.' precision]type
+//! format_spec := [[fill]align][sign]['#']['0'][width]['.' precision][type]
 //! fill := character
 //! align := '<' | '^' | '>'
 //! sign := '+' | '-'
 //! width := count
 //! precision := count | '*'
-//! type := '' | '?' | 'x?' | 'X?' | identifier
+//! type := '?' | 'x?' | 'X?' | identifier
 //! count := parameter | integer
 //! parameter := argument '$'
 //! ```
