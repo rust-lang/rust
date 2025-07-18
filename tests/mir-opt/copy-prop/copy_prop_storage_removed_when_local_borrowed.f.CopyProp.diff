@@ -8,12 +8,11 @@
       let mut _4: &T;
   
       bb0: {
--         StorageLive(_2);
+          StorageLive(_2);
           _2 = copy (_1.0: T);
--         _3 = copy _2;
--         _4 = &_3;
--         StorageDead(_2);
-+         _4 = &_2;
+          _3 = copy _2;
+          _4 = &_3;
+          StorageDead(_2);
           _0 = copy (*_4);
           return;
       }
