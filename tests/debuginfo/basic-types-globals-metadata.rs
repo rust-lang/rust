@@ -1,5 +1,11 @@
 //@ compile-flags:-g
 
+// Targets with broken f16 cannot link due to missing __gnu_f2h_ieee
+// See https://github.com/llvm/llvm-project/issues/97981
+// and https://github.com/rust-lang/compiler-builtins/issues/655
+//@ ignore-powerpc
+//@ ignore-powerpc64
+
 // gdb-command:run
 // gdb-command:whatis basic_types_globals_metadata::B
 // gdb-check:type = bool
