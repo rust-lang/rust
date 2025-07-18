@@ -1933,7 +1933,7 @@ pub enum Axis { X = 0, Y = 1, Z = 2 }
 
 $0impl<T> core::ops::IndexMut<Axis> for [T; 3] {
     fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
-        &self[index as usize]
+        &mut self[index as usize]
     }
 }
 
@@ -1988,6 +1988,34 @@ struct Person {
 impl Person {
     fn $0set_name(&mut self, name: String) {
         self.name = name;
+    }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_single_field_struct_from() {
+    check_doc_test(
+        "generate_single_field_struct_from",
+        r#####"
+//- minicore: from, phantom_data
+use core::marker::PhantomData;
+struct $0Foo<T> {
+    id: i32,
+    _phantom_data: PhantomData<T>,
+}
+"#####,
+        r#####"
+use core::marker::PhantomData;
+struct Foo<T> {
+    id: i32,
+    _phantom_data: PhantomData<T>,
+}
+
+impl<T> From<i32> for Foo<T> {
+    fn from(id: i32) -> Self {
+        Self { id, _phantom_data: PhantomData }
     }
 }
 "#####,

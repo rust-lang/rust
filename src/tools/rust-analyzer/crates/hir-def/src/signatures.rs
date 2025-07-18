@@ -779,14 +779,10 @@ impl VariantFields {
                 Arc::new(VariantFields { fields, store: Arc::new(store), shape }),
                 Arc::new(source_map),
             ),
-            None => (
-                Arc::new(VariantFields {
-                    fields: Arena::default(),
-                    store: ExpressionStore::empty_singleton(),
-                    shape,
-                }),
-                ExpressionStoreSourceMap::empty_singleton(),
-            ),
+            None => {
+                let (store, source_map) = ExpressionStore::empty_singleton();
+                (Arc::new(VariantFields { fields: Arena::default(), store, shape }), source_map)
+            }
         }
     }
 
@@ -878,7 +874,7 @@ fn lower_fields<Field: ast::HasAttrs + ast::HasVisibility>(
                 idx += 1;
             }
             Err(cfg) => {
-                col.source_map.diagnostics.push(
+                col.store.diagnostics.push(
                     crate::expr_store::ExpressionStoreDiagnostics::InactiveCode {
                         node: InFile::new(fields.file_id, SyntaxNodePtr::new(field.syntax())),
                         cfg,
@@ -891,9 +887,9 @@ fn lower_fields<Field: ast::HasAttrs + ast::HasVisibility>(
     if !has_fields {
         return None;
     }
-    let store = col.store.finish();
+    let (store, source_map) = col.store.finish();
     arena.shrink_to_fit();
-    Some((arena, store, col.source_map))
+    Some((arena, store, source_map))
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -980,7 +976,7 @@ impl EnumVariants {
             if !matches!(variant.shape, FieldsShape::Unit) {
                 let body = db.body(v.into());
                 // A variant with explicit discriminant
-                if body.exprs[body.body_expr] != crate::hir::Expr::Missing {
+                if !matches!(body[body.body_expr], crate::hir::Expr::Missing) {
                     return false;
                 }
             }
