@@ -59,6 +59,11 @@ error[E0277]: the trait bound `(): const Bar` is not satisfied
    |
 LL |     <() as Bar<false>>::bar();
    |      ^^
+   |
+help: make the `impl` of trait `Bar` `const`
+   |
+LL | impl const Bar for () {
+   |      +++++
 
 error: aborting due to 5 previous errors
 
