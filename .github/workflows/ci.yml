@@ -101,7 +101,7 @@ jobs:
       - name: Diskspace
         shell: pwsh
         run: |
-          Get-Volume
+          Get-Volume > '\\.\CON'
           #diskusage /t:500 C:\
           $dirs = 'C:\Windows\Installer', 'C:\Program Files\LLVM\bin',
                   'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm',
@@ -111,8 +111,8 @@ jobs:
                   'C:\Program Files\MongoDB', 'C:\Program Files\Azure Cosmos DB Emulator',
                   'C:\Program Files\PostgreSQL', 'C:\Program Files\Unity Hub', 'C:\ProgramData\chocolatey',
                   'C:\ProgramData\Package Cache', 'C:\Strawberry', 'C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk'
-          Remove-Item -Recurse -Force $dirs
-          Get-Volume
+          Remove-Item -Recurse -Force -ErrorAction Continue $dirs
+          Get-Volume > '\\.\CON'
           exit 1
       - name: Install cargo in AWS CodeBuild
         if: matrix.codebuild
