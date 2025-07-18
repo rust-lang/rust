@@ -908,6 +908,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "min-llvm-version",
     "min-system-llvm-version",
     "needs-asm-support",
+    "needs-backends",
     "needs-crate-type",
     "needs-deterministic-layouts",
     "needs-dlltool",
@@ -1671,6 +1672,7 @@ pub(crate) fn make_test_description<R: Read>(
             decision!(needs::handle_needs(&cache.needs, config, ln));
             decision!(ignore_llvm(config, path, ln));
             decision!(ignore_backends(config, path, ln));
+            decision!(needs_backends(config, path, ln));
             decision!(ignore_cdb(config, ln));
             decision!(ignore_gdb(config, ln));
             decision!(ignore_lldb(config, ln));
@@ -1812,6 +1814,29 @@ fn ignore_backends(config: &Config, path: &Utf8Path, line: &str) -> IgnoreDecisi
                     reason: format!("{} backend is marked as ignore", backend.as_str()),
                 };
             }
+        }
+    }
+    IgnoreDecision::Continue
+}
+
+fn needs_backends(config: &Config, path: &Utf8Path, line: &str) -> IgnoreDecision {
+    if let Some(needed_backends) = config.parse_name_value_directive(line, "needs-backends") {
+        if !needed_backends
+            .split_whitespace()
+            .map(|backend| match CodegenBackend::try_from(backend) {
+                Ok(backend) => backend,
+                Err(error) => {
+                    panic!("Invalid needs-backends value `{backend}` in `{path}`: {error}")
+                }
+            })
+            .any(|backend| config.codegen_backend == backend)
+        {
+            return IgnoreDecision::Ignore {
+                reason: format!(
+                    "{} backend is not part of required backends",
+                    config.codegen_backend.as_str()
+                ),
+            };
         }
     }
     IgnoreDecision::Continue
