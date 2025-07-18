@@ -3,6 +3,9 @@ error[E0277]: the trait bound `TypeId: const PartialOrd` is not satisfied
    |
 LL |         let _a = TypeId::of::<u8>() < TypeId::of::<u16>();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: trait `PartialOrd` is implemented but not `const`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
 
 error: aborting due to 1 previous error
 
