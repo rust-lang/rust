@@ -226,18 +226,20 @@ jobs:
       
       - name: Free Diskspace
         shell: pwsh
-        if: contains(matrix.os, 'windows')
+        if: ${{ runner.os }} == "Windows"
         run: |
           Get-Volume | Out-String | Write-Host
-          #diskusage /t:500 C:\
-          $dirs = 'C:\Windows\Installer', 'C:\Program Files\LLVM\bin',
+          $dirs = 'C:\Program Files\LLVM\bin',
                   'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm',
                   'C:\rtools45', 'C:\ghcup', 'C:\Program Files (x86)\Android',
                   'C:\Program Files\Google\Chrome', 'C:\Program Files (x86)\Microsoft\Edge',
                   'C:\Program Files\Mozilla Firefox', 'C:\Program Files\MySQL', 'C:\Julia',
                   'C:\Program Files\MongoDB', 'C:\Program Files\Azure Cosmos DB Emulator',
                   'C:\Program Files\PostgreSQL', 'C:\Program Files\Unity Hub', 'C:\ProgramData\chocolatey',
-                  'C:\ProgramData\Package Cache', 'C:\Strawberry', 'C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk'
+                  'C:\Strawberry', 'C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk'
+          # The following are system directories that are typically large but should only be deleted
+          # if we're desperate for space.
+          # 'C:\Windows\Installer', 'C:\ProgramData\Package Cache', 
           Remove-Item -Recurse -Force -ErrorAction Continue $dirs
           Get-Volume | Out-String | Write-Host
       
