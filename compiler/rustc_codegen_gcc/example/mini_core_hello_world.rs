@@ -198,12 +198,6 @@ fn main() {
         assert_eq!(intrinsics::align_of::<u16>() as u8, 2);
         assert_eq!(intrinsics::align_of_val(&a) as u8, intrinsics::align_of::<&str>() as u8);
 
-<<<<<<< HEAD
-        assert!(!const { intrinsics::needs_drop::<u8>() });
-        assert!(!const { intrinsics::needs_drop::<[u8]>() });
-        assert!(const { intrinsics::needs_drop::<NoisyDrop>() });
-        assert!(const { intrinsics::needs_drop::<NoisyDropUnsized>() });
-=======
         /*
          * TODO: re-enable in the next sync.
         let u8_needs_drop = const { intrinsics::needs_drop::<u8>() };
@@ -215,7 +209,6 @@ fn main() {
         let noisy_unsized_drop = const { intrinsics::needs_drop::<NoisyDropUnsized>() };
         assert!(noisy_unsized_drop);
         */
->>>>>>> f682d09eefc6700b9e5851ef193847959acf4fac
 
         Unique {
             pointer: 0 as *const &str,
