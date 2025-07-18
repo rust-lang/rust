@@ -10,7 +10,8 @@ use std::{hint, mem, thread};
 //
 // To write a test that uses both `poison::Mutex` and `nonpoison::Mutex`, simply call the macro
 // `maybe_unwrap!(...)` on the result of `mutex.lock()`. For the `poison::Mutex`, it will unwrap the
-// `LockResult`, but for the `nonpoison::Mutex` it will do nothing.
+// `Result` (usually `LockResult`, but it could be other kinds of results), but for the
+// `nonpoison::Mutex` it will do nothing.
 //
 // The `poison` test will have the same name, but with a suffix of `_unwrap_poisoned`.
 //
@@ -38,11 +39,11 @@ macro_rules! nonpoison_and_poison_unwrap_test {
         #[test]
         fn ${concat($name, _unwrap_poisoned)}() {
             #[allow(unused_imports)]
-            use ::std::sync::{Mutex, MappedMutexGuard, MutexGuard, LockResult};
+            use ::std::sync::{Mutex, MappedMutexGuard, MutexGuard};
 
             #[allow(unused_macros)]
             macro_rules! maybe_unwrap {
-                ($e:expr) => { LockResult::unwrap($e) };
+                ($e:expr) => { Result::unwrap($e) };
             }
 
             $($test_body)*
@@ -151,17 +152,6 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-// TODO(connor): make this a double test after implementing `lock_value_accessors` on `nonpoison`.
-#[test]
-fn test_get_cloned() {
-    #[derive(Clone, Eq, PartialEq, Debug)]
-    struct Cloneable(i32);
-
-    let m = Mutex::new(Cloneable(10));
-
-    assert_eq!(m.get_cloned().unwrap(), Cloneable(10));
-}
-
 nonpoison_and_poison_unwrap_test!(
     name: test_get_mut,
     test_body: {
@@ -171,41 +161,55 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-// TODO(connor): make this a double test after implementing `lock_value_accessors` on `nonpoison`.
-#[test]
-fn test_set() {
-    fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
-    where
-        T: Debug + Eq,
-    {
-        let m = Mutex::new(init());
+nonpoison_and_poison_unwrap_test!(
+    name: test_get_cloned,
+    test_body: {
+        #[derive(Clone, Eq, PartialEq, Debug)]
+        struct Cloneable(i32);
 
-        assert_eq!(*m.lock().unwrap(), init());
-        m.set(value()).unwrap();
-        assert_eq!(*m.lock().unwrap(), value());
+        let m = Mutex::new(Cloneable(10));
+
+        assert_eq!(maybe_unwrap!(m.get_cloned()), Cloneable(10));
     }
+);
 
-    inner(|| NonCopy(10), || NonCopy(20));
-    inner(|| NonCopyNeedsDrop(10), || NonCopyNeedsDrop(20));
-}
+nonpoison_and_poison_unwrap_test!(
+    name: test_set,
+    test_body: {
+        fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
+        where
+            T: Debug + Eq,
+        {
+            let m = Mutex::new(init());
 
-// TODO(connor): make this a double test after implementing `lock_value_accessors` on `nonpoison`.
-#[test]
-fn test_replace() {
-    fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
-    where
-        T: Debug + Eq,
-    {
-        let m = Mutex::new(init());
+            assert_eq!(*maybe_unwrap!(m.lock()), init());
+            maybe_unwrap!(m.set(value()));
+            assert_eq!(*maybe_unwrap!(m.lock()), value());
+        }
 
-        assert_eq!(*m.lock().unwrap(), init());
-        assert_eq!(m.replace(value()).unwrap(), init());
-        assert_eq!(*m.lock().unwrap(), value());
+        inner(|| NonCopy(10), || NonCopy(20));
+        inner(|| NonCopyNeedsDrop(10), || NonCopyNeedsDrop(20));
     }
+);
 
-    inner(|| NonCopy(10), || NonCopy(20));
-    inner(|| NonCopyNeedsDrop(10), || NonCopyNeedsDrop(20));
-}
+nonpoison_and_poison_unwrap_test!(
+    name: test_replace,
+    test_body: {
+        fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
+        where
+            T: Debug + Eq,
+        {
+            let m = Mutex::new(init());
+
+            assert_eq!(*maybe_unwrap!(m.lock()), init());
+            assert_eq!(maybe_unwrap!(m.replace(value())), init());
+            assert_eq!(*maybe_unwrap!(m.lock()), value());
+        }
+
+        inner(|| NonCopy(10), || NonCopy(20));
+        inner(|| NonCopyNeedsDrop(10), || NonCopyNeedsDrop(20));
+    }
+);
 
 #[test]
 fn test_mutex_arc_condvar() {

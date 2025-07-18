@@ -1,16 +1,17 @@
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::marker::PhantomData;
-use crate::mem::ManuallyDrop;
+use crate::mem::{self, ManuallyDrop};
 use crate::ops::{Deref, DerefMut};
 use crate::ptr::NonNull;
 use crate::sync::nonpoison::{TryLockResult, WouldBlock};
 use crate::sys::sync as sys;
 
-/// A mutual exclusion primitive useful for protecting shared data.
+/// A mutual exclusion primitive useful for protecting shared data that does not keep track of
+/// lock poisoning.
 ///
 /// For more information about mutexes, check out the documentation for the poisoning variant of
-/// this lock (which can be found at [`poison::Mutex`])
+/// this lock (which can be found at [`poison::Mutex`]).
 ///
 /// # Examples
 ///
@@ -259,6 +260,7 @@ impl<T> Mutex<T> {
     ///
     /// ```
     /// #![feature(nonpoison_mutex)]
+    ///
     /// use std::sync::nonpoison::Mutex;
     ///
     /// let mutex = Mutex::new(0);
@@ -269,7 +271,72 @@ impl<T> Mutex<T> {
         Mutex { inner: sys::Mutex::new(), data: UnsafeCell::new(t) }
     }
 
-    // FIXME: Add `lock_value_accessors` feature methods.
+    /// Returns the contained value by cloning it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(nonpoison_mutex)]
+    /// #![feature(lock_value_accessors)]
+    ///
+    /// use std::sync::nonpoison::Mutex;
+    ///
+    /// let mut mutex = Mutex::new(7);
+    ///
+    /// assert_eq!(mutex.get_cloned(), 7);
+    /// ```
+    #[unstable(feature = "lock_value_accessors", issue = "133407")]
+    pub fn get_cloned(&self) -> T
+    where
+        T: Clone,
+    {
+        self.lock().clone()
+    }
+
+    /// Sets the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(nonpoison_mutex)]
+    /// #![feature(lock_value_accessors)]
+    ///
+    /// use std::sync::nonpoison::Mutex;
+    ///
+    /// let mut mutex = Mutex::new(7);
+    ///
+    /// assert_eq!(mutex.get_cloned(), 7);
+    /// mutex.set(11);
+    /// assert_eq!(mutex.get_cloned(), 11);
+    /// ```
+    #[unstable(feature = "lock_value_accessors", issue = "133407")]
+    pub fn set(&self, value: T) {
+        let old = self.replace(value);
+        if mem::needs_drop::<T>() {
+            drop(old)
+        }
+    }
+
+    /// Replaces the contained value with `value`, and returns the old contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(nonpoison_mutex)]
+    /// #![feature(lock_value_accessors)]
+    ///
+    /// use std::sync::nonpoison::Mutex;
+    ///
+    /// let mut mutex = Mutex::new(7);
+    ///
+    /// assert_eq!(mutex.replace(11), 7);
+    /// assert_eq!(mutex.get_cloned(), 11);
+    /// ```
+    #[unstable(feature = "lock_value_accessors", issue = "133407")]
+    pub fn replace(&self, value: T) -> T {
+        let mut guard = self.lock();
+        mem::replace(&mut *guard, value)
+    }
 }
 
 impl<T: ?Sized> Mutex<T> {
@@ -293,6 +360,7 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// ```
     /// #![feature(nonpoison_mutex)]
+    ///
     /// use std::sync::{Arc, nonpoison::Mutex};
     /// use std::thread;
     ///
@@ -329,6 +397,7 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// ```
     /// #![feature(nonpoison_mutex)]
+    ///
     /// use std::sync::{Arc, nonpoison::Mutex};
     /// use std::thread;
     ///
@@ -356,6 +425,7 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// ```
     /// #![feature(nonpoison_mutex)]
+    ///
     /// use std::sync::nonpoison::Mutex;
     ///
     /// let mutex = Mutex::new(0);
@@ -378,6 +448,7 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// ```
     /// #![feature(nonpoison_mutex)]
+    ///
     /// use std::sync::nonpoison::Mutex;
     ///
     /// let mut mutex = Mutex::new(0);
@@ -389,7 +460,16 @@ impl<T: ?Sized> Mutex<T> {
         self.data.get_mut()
     }
 
-    // FIXME: Add `mutex_data_ptr` feature method.
+    /// Returns a raw pointer to the underlying data.
+    ///
+    /// The returned pointer is always non-null and properly aligned, but it is
+    /// the user's responsibility to ensure that any reads and writes through it
+    /// are properly synchronized to avoid data races, and that it is not read
+    /// or written through after the mutex is dropped.
+    #[unstable(feature = "mutex_data_ptr", issue = "140368")]
+    pub fn data_ptr(&self) -> *mut T {
+        self.data.get()
+    }
 }
 
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
