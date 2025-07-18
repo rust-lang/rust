@@ -1,5 +1,3 @@
-#![feature(const_type_id)]
-
 use std::alloc::Layout;
 use std::any::TypeId;
 use std::mem::transmute;

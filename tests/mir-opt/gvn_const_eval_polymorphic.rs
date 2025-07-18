@@ -10,8 +10,6 @@
 //! evaluated to the string "crate_name::generic::<T>", and
 //! `no_optimize` was incorrectly optimized to `false`.
 
-#![feature(const_type_name)]
-
 fn generic<T>() {}
 
 const fn type_name_contains_i32<T>(_: &T) -> bool {
