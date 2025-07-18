@@ -3,6 +3,7 @@
 
 use serde::{Deserialize, Deserializer};
 
+use crate::core::build_steps::llvm::{self, LLVM_INVALIDATION_PATHS};
 use crate::core::config::toml::{Merge, ReplaceOpt, TomlConfig};
 use crate::core::config::{StringOrBool, set};
 use crate::{Config, HashMap, HashSet, PathBuf, define_config, exit};
@@ -147,14 +148,9 @@ pub fn check_incompatible_options_for_ci_llvm(
 
 impl Config {
     pub fn apply_llvm_config(&mut self, toml_llvm: Option<Llvm>) {
-        let mut llvm_tests = None;
-        let mut llvm_enzyme = None;
-        let mut llvm_offload = None;
-        let mut llvm_plugins = None;
-
         if let Some(llvm) = toml_llvm {
             let Llvm {
-                optimize: optimize_toml,
+                optimize,
                 thin_lto,
                 release_debuginfo,
                 assertions: _,
@@ -185,35 +181,36 @@ impl Config {
             } = llvm;
 
             set(&mut self.ninja_in_file, ninja);
-            llvm_tests = tests;
-            llvm_enzyme = enzyme;
-            llvm_offload = offload;
-            llvm_plugins = plugins;
-            set(&mut self.llvm_optimize, optimize_toml);
+            set(&mut self.llvm_optimize, optimize);
             set(&mut self.llvm_thin_lto, thin_lto);
             set(&mut self.llvm_release_debuginfo, release_debuginfo);
             set(&mut self.llvm_static_stdcpp, static_libstdcpp);
             set(&mut self.llvm_libzstd, libzstd);
-            if let Some(v) = link_shared {
-                self.llvm_link_shared.set(Some(v));
+            set(&mut self.llvm_use_libcxx, use_libcxx);
+
+            if let Some(shared) = link_shared {
+                self.llvm_link_shared.set(Some(shared));
             }
+
             self.llvm_targets.clone_from(&targets);
             self.llvm_experimental_targets.clone_from(&experimental_targets);
             self.llvm_link_jobs = link_jobs;
             self.llvm_version_suffix.clone_from(&version_suffix);
             self.llvm_clang_cl.clone_from(&clang_cl);
-
             self.llvm_cflags.clone_from(&cflags);
             self.llvm_cxxflags.clone_from(&cxxflags);
             self.llvm_ldflags.clone_from(&ldflags);
-            set(&mut self.llvm_use_libcxx, use_libcxx);
             self.llvm_use_linker.clone_from(&use_linker);
+            self.llvm_build_config = build_config.unwrap_or_default();
+
             self.llvm_allow_old_toolchain = allow_old_toolchain.unwrap_or(false);
             self.llvm_offload = offload.unwrap_or(false);
+            self.llvm_tests = tests.unwrap_or(false);
+            self.llvm_enzyme = enzyme.unwrap_or(false);
+            self.llvm_plugins = plugins.unwrap_or(false);
             self.llvm_polly = polly.unwrap_or(false);
             self.llvm_clang = clang.unwrap_or(false);
             self.llvm_enable_warnings = enable_warnings.unwrap_or(false);
-            self.llvm_build_config = build_config.clone().unwrap_or(Default::default());
 
             self.llvm_from_ci = self.parse_download_ci_llvm(download_ci_llvm, self.llvm_assertions);
 
@@ -261,10 +258,66 @@ impl Config {
         } else {
             self.llvm_from_ci = self.parse_download_ci_llvm(None, false);
         }
+    }
 
-        self.llvm_tests = llvm_tests.unwrap_or(false);
-        self.llvm_enzyme = llvm_enzyme.unwrap_or(false);
-        self.llvm_offload = llvm_offload.unwrap_or(false);
-        self.llvm_plugins = llvm_plugins.unwrap_or(false);
+    pub fn parse_download_ci_llvm(
+        &self,
+        download_ci_llvm: Option<StringOrBool>,
+        asserts: bool,
+    ) -> bool {
+        // We don't ever want to use `true` on CI, as we should not
+        // download upstream artifacts if there are any local modifications.
+        let default = if self.is_running_on_ci {
+            StringOrBool::String("if-unchanged".to_string())
+        } else {
+            StringOrBool::Bool(true)
+        };
+        let download_ci_llvm = download_ci_llvm.unwrap_or(default);
+
+        let if_unchanged = || {
+            if self.rust_info.is_from_tarball() {
+                // Git is needed for running "if-unchanged" logic.
+                println!("ERROR: 'if-unchanged' is only compatible with Git managed sources.");
+                crate::exit!(1);
+            }
+
+            // Fetching the LLVM submodule is unnecessary for self-tests.
+            #[cfg(not(test))]
+            self.update_submodule("src/llvm-project");
+
+            // Check for untracked changes in `src/llvm-project` and other important places.
+            let has_changes = self.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
+
+            // Return false if there are untracked changes, otherwise check if CI LLVM is available.
+            if has_changes {
+                false
+            } else {
+                crate::core::build_steps::llvm::is_ci_llvm_available_for_target(self, asserts)
+            }
+        };
+
+        match download_ci_llvm {
+            StringOrBool::Bool(b) => {
+                if !b && self.download_rustc_commit.is_some() {
+                    panic!(
+                        "`llvm.download-ci-llvm` cannot be set to `false` if `rust.download-rustc` is set to `true` or `if-unchanged`."
+                    );
+                }
+
+                if b && self.is_running_on_ci {
+                    // On CI, we must always rebuild LLVM if there were any modifications to it
+                    panic!(
+                        "`llvm.download-ci-llvm` cannot be set to `true` on CI. Use `if-unchanged` instead."
+                    );
+                }
+
+                // If download-ci-llvm=true we also want to check that CI llvm is available
+                b && llvm::is_ci_llvm_available_for_target(self, asserts)
+            }
+            StringOrBool::String(s) if s == "if-unchanged" => if_unchanged(),
+            StringOrBool::String(other) => {
+                panic!("unrecognized option for download-ci-llvm: {other:?}")
+            }
+        }
     }
 }

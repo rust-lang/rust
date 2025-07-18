@@ -3,6 +3,7 @@
 
 use std::str::FromStr;
 
+use build_helper::git::PathFreshness;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
@@ -11,7 +12,29 @@ use crate::core::config::{
     DebuginfoLevel, Merge, ReplaceOpt, RustcLto, StringOrBool, set, threads_from_config,
 };
 use crate::flags::Warnings;
+use crate::utils::channel;
 use crate::{BTreeSet, Config, HashSet, PathBuf, TargetSelection, define_config, exit};
+
+/// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
+/// This means they can be modified and changes to these paths should never trigger a compiler build
+/// when "if-unchanged" is set.
+///
+/// NOTE: Paths must have the ":!" prefix to tell git to ignore changes in those paths during
+/// the diff check.
+///
+/// WARNING: Be cautious when adding paths to this list. If a path that influences the compiler build
+/// is added here, it will cause bootstrap to skip necessary rebuilds, which may lead to risky results.
+/// For example, "src/bootstrap" should never be included in this list as it plays a crucial role in the
+/// final output/compiler, which can be significantly affected by changes made to the bootstrap sources.
+#[rustfmt::skip] // We don't want rustfmt to oneline this list
+pub const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
+    ":!library",
+    ":!src/tools",
+    ":!src/librustdoc",
+    ":!src/rustdoc-json-types",
+    ":!tests",
+    ":!triagebot.toml",
+];
 
 define_config! {
     /// TOML representation of how the Rust build is configured.
@@ -225,6 +248,46 @@ impl RustOptimize {
             RustOptimize::Int(i) => Some(i.to_string()),
             RustOptimize::Bool(_) => None,
         }
+    }
+}
+
+/// Checks whether the CI rustc is available for the given target triple.
+pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: bool) -> bool {
+    // All tier 1 targets and tier 2 targets with host tools.
+    const SUPPORTED_PLATFORMS: &[&str] = &[
+        "aarch64-apple-darwin",
+        "aarch64-pc-windows-msvc",
+        "aarch64-unknown-linux-gnu",
+        "aarch64-unknown-linux-musl",
+        "arm-unknown-linux-gnueabi",
+        "arm-unknown-linux-gnueabihf",
+        "armv7-unknown-linux-gnueabihf",
+        "i686-pc-windows-gnu",
+        "i686-pc-windows-msvc",
+        "i686-unknown-linux-gnu",
+        "loongarch64-unknown-linux-gnu",
+        "powerpc-unknown-linux-gnu",
+        "powerpc64-unknown-linux-gnu",
+        "powerpc64le-unknown-linux-gnu",
+        "riscv64gc-unknown-linux-gnu",
+        "s390x-unknown-linux-gnu",
+        "x86_64-apple-darwin",
+        "x86_64-pc-windows-gnu",
+        "x86_64-pc-windows-msvc",
+        "x86_64-unknown-freebsd",
+        "x86_64-unknown-illumos",
+        "x86_64-unknown-linux-gnu",
+        "x86_64-unknown-linux-musl",
+        "x86_64-unknown-netbsd",
+    ];
+
+    const SUPPORTED_PLATFORMS_WITH_ASSERTIONS: &[&str] =
+        &["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"];
+
+    if llvm_assertions {
+        SUPPORTED_PLATFORMS_WITH_ASSERTIONS.contains(&target_triple)
+    } else {
+        SUPPORTED_PLATFORMS.contains(&target_triple)
     }
 }
 
@@ -500,7 +563,7 @@ impl Config {
                 new_symbol_mangling,
                 profile_generate,
                 profile_use,
-                download_rustc,
+                download_rustc: _,
                 lto,
                 validate_mir_opts,
                 frame_pointers,
@@ -509,37 +572,6 @@ impl Config {
                 lld_mode,
                 std_features: std_features_toml,
             } = rust;
-
-            // FIXME(#133381): alt rustc builds currently do *not* have rustc debug assertions
-            // enabled. We should not download a CI alt rustc if we need rustc to have debug
-            // assertions (e.g. for crashes test suite). This can be changed once something like
-            // [Enable debug assertions on alt
-            // builds](https://github.com/rust-lang/rust/pull/131077) lands.
-            //
-            // Note that `rust.debug = true` currently implies `rust.debug-assertions = true`!
-            //
-            // This relies also on the fact that the global default for `download-rustc` will be
-            // `false` if it's not explicitly set.
-            let debug_assertions_requested = matches!(rustc_debug_assertions_toml, Some(true))
-                || (matches!(debug_toml, Some(true))
-                    && !matches!(rustc_debug_assertions_toml, Some(false)));
-
-            if debug_assertions_requested
-                && let Some(ref opt) = download_rustc
-                && opt.is_string_or_true()
-            {
-                eprintln!(
-                    "WARN: currently no CI rustc builds have rustc debug assertions \
-                            enabled. Please either set `rust.debug-assertions` to `false` if you \
-                            want to use download CI rustc or set `rust.download-rustc` to `false`."
-                );
-            }
-
-            self.download_rustc_commit = self.download_ci_rustc_commit(
-                download_rustc,
-                debug_assertions_requested,
-                self.llvm_assertions,
-            );
 
             debug = debug_toml;
             rustc_debug_assertions = rustc_debug_assertions_toml;
@@ -656,8 +688,8 @@ impl Config {
             set(&mut self.lld_enabled, lld_enabled);
         }
 
-        let default_std_features = BTreeSet::from([String::from("panic-unwind")]);
-        self.rust_std_features = std_features.unwrap_or(default_std_features);
+        self.rust_std_features =
+            std_features.unwrap_or_else(|| BTreeSet::from([String::from("panic-unwind")]));
 
         let default = debug == Some(true);
         self.rustc_debug_assertions = rustc_debug_assertions.unwrap_or(default);
@@ -679,5 +711,86 @@ impl Config {
         self.rust_debuginfo_level_std = with_defaults(debuginfo_level_std);
         self.rust_debuginfo_level_tools = with_defaults(debuginfo_level_tools);
         self.rust_debuginfo_level_tests = debuginfo_level_tests.unwrap_or(DebuginfoLevel::None);
+    }
+
+    /// Returns the commit to download, or `None` if we shouldn't download CI artifacts.
+    pub fn download_ci_rustc_commit(
+        &self,
+        download_rustc: Option<StringOrBool>,
+        debug_assertions_requested: bool,
+        llvm_assertions: bool,
+    ) -> Option<String> {
+        if !is_download_ci_available(&self.host_target.triple, llvm_assertions) {
+            return None;
+        }
+
+        // If `download-rustc` is not set, default to rebuilding.
+        let if_unchanged = match download_rustc {
+            // Globally default `download-rustc` to `false`, because some contributors don't use
+            // profiles for reasons such as:
+            // - They need to seamlessly switch between compiler/library work.
+            // - They don't want to use compiler profile because they need to override too many
+            //   things and it's easier to not use a profile.
+            None | Some(StringOrBool::Bool(false)) => return None,
+            Some(StringOrBool::Bool(true)) => false,
+            Some(StringOrBool::String(s)) if s == "if-unchanged" => {
+                if !self.rust_info.is_managed_git_subrepository() {
+                    println!(
+                        "ERROR: `download-rustc=if-unchanged` is only compatible with Git managed sources."
+                    );
+                    crate::exit!(1);
+                }
+
+                true
+            }
+            Some(StringOrBool::String(other)) => {
+                panic!("unrecognized option for download-rustc: {other}")
+            }
+        };
+
+        let commit = if self.rust_info.is_managed_git_subrepository() {
+            // Look for a version to compare to based on the current commit.
+            // Only commits merged by bors will have CI artifacts.
+            let freshness = self.check_path_modifications(RUSTC_IF_UNCHANGED_ALLOWED_PATHS);
+            self.verbose(|| {
+                eprintln!("rustc freshness: {freshness:?}");
+            });
+            match freshness {
+                PathFreshness::LastModifiedUpstream { upstream } => upstream,
+                PathFreshness::HasLocalModifications { upstream } => {
+                    if if_unchanged {
+                        return None;
+                    }
+
+                    if self.is_running_on_ci {
+                        eprintln!("CI rustc commit matches with HEAD and we are in CI.");
+                        eprintln!(
+                            "`rustc.download-ci` functionality will be skipped as artifacts are not available."
+                        );
+                        return None;
+                    }
+
+                    upstream
+                }
+                PathFreshness::MissingUpstream => {
+                    eprintln!("No upstream commit found");
+                    return None;
+                }
+            }
+        } else {
+            channel::read_commit_info_file(&self.src)
+                .map(|info| info.sha.trim().to_owned())
+                .expect("git-commit-info is missing in the project root")
+        };
+
+        if debug_assertions_requested {
+            eprintln!(
+                "WARN: `rust.debug-assertions = true` will prevent downloading CI rustc as alt CI \
+                rustc is not currently built with debug assertions."
+            );
+            return None;
+        }
+
+        Some(commit)
     }
 }

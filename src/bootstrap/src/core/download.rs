@@ -67,7 +67,7 @@ impl Config {
 
     /// Whether or not `fix_bin_or_dylib` needs to be run; can only be true
     /// on NixOS
-    fn should_fix_bins_and_dylibs(&self) -> bool {
+    pub(crate) fn should_fix_bins_and_dylibs(&self) -> bool {
         let val = *SHOULD_FIX_BINS_AND_DYLIBS.get_or_init(|| {
             let uname = command("uname").allow_failure().arg("-s").run_capture_stdout(self);
             if uname.is_failure() {
@@ -120,7 +120,7 @@ impl Config {
     /// change the interpreter/RPATH of ELF executables.
     ///
     /// Please see <https://nixos.org/patchelf.html> for more information
-    fn fix_bin_or_dylib(&self, fname: &Path) {
+    pub(crate) fn fix_bin_or_dylib(&self, fname: &Path) {
         assert_eq!(SHOULD_FIX_BINS_AND_DYLIBS.get(), Some(&true));
         println!("attempting to patch {}", fname.display());
 
@@ -388,7 +388,7 @@ fn recorded_entries(dst: &Path, pattern: &str) -> Option<BufWriter<File>> {
     Some(BufWriter::new(t!(File::create(dst.join(name)))))
 }
 
-enum DownloadSource {
+pub(crate) enum DownloadSource {
     CI,
     Dist,
 }
@@ -418,63 +418,6 @@ impl Config {
 
         t!(clippy_stamp.write());
         cargo_clippy
-    }
-
-    #[cfg(test)]
-    pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
-        Some(PathBuf::new())
-    }
-
-    /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
-    /// reuse target directories or artifacts
-    #[cfg(not(test))]
-    pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
-        use build_helper::stage0_parser::VersionMetadata;
-
-        if self.dry_run() {
-            return Some(PathBuf::new());
-        }
-
-        let VersionMetadata { date, version } = self.stage0_metadata.rustfmt.as_ref()?;
-        let channel = format!("{version}-{date}");
-
-        let host = self.host_target;
-        let bin_root = self.out.join(host).join("rustfmt");
-        let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
-        let rustfmt_stamp = BuildStamp::new(&bin_root).with_prefix("rustfmt").add_stamp(channel);
-        if rustfmt_path.exists() && rustfmt_stamp.is_up_to_date() {
-            return Some(rustfmt_path);
-        }
-
-        self.download_component(
-            DownloadSource::Dist,
-            format!("rustfmt-{version}-{build}.tar.xz", build = host.triple),
-            "rustfmt-preview",
-            date,
-            "rustfmt",
-        );
-        self.download_component(
-            DownloadSource::Dist,
-            format!("rustc-{version}-{build}.tar.xz", build = host.triple),
-            "rustc",
-            date,
-            "rustfmt",
-        );
-
-        if self.should_fix_bins_and_dylibs() {
-            self.fix_bin_or_dylib(&bin_root.join("bin").join("rustfmt"));
-            self.fix_bin_or_dylib(&bin_root.join("bin").join("cargo-fmt"));
-            let lib_dir = bin_root.join("lib");
-            for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
-                let lib = t!(lib);
-                if path_is_dylib(&lib.path()) {
-                    self.fix_bin_or_dylib(&lib.path());
-                }
-            }
-        }
-
-        t!(rustfmt_stamp.write());
-        Some(rustfmt_path)
     }
 
     pub(crate) fn ci_rust_std_contents(&self) -> Vec<String> {
@@ -514,31 +457,7 @@ impl Config {
         );
     }
 
-    #[cfg(test)]
-    pub(crate) fn download_beta_toolchain(&self) {}
-
-    #[cfg(not(test))]
-    pub(crate) fn download_beta_toolchain(&self) {
-        self.verbose(|| println!("downloading stage0 beta artifacts"));
-
-        let date = &self.stage0_metadata.compiler.date;
-        let version = &self.stage0_metadata.compiler.version;
-        let extra_components = ["cargo"];
-
-        let download_beta_component = |config: &Config, filename, prefix: &_, date: &_| {
-            config.download_component(DownloadSource::Dist, filename, prefix, date, "stage0")
-        };
-
-        self.download_toolchain(
-            version,
-            "stage0",
-            date,
-            &extra_components,
-            download_beta_component,
-        );
-    }
-
-    fn download_toolchain(
+    pub(crate) fn download_toolchain(
         &self,
         version: &str,
         sysroot: &str,
@@ -599,7 +518,7 @@ impl Config {
         )
     }
 
-    fn download_component(
+    pub(crate) fn download_component(
         &self,
         mode: DownloadSource,
         filename: String,
@@ -850,49 +769,50 @@ download-rustc = false
         }
         self.unpack(&tarball, root_dir, "gcc");
     }
+
+    /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
+    /// Return the version it would have used for the given commit.
+    pub(crate) fn artifact_version_part(&self, commit: &str) -> String {
+        let (channel, version) = if self.rust_info.is_managed_git_subrepository() {
+            let channel =
+                self.read_file_by_commit(Path::new("src/ci/channel"), commit).trim().to_owned();
+            let version =
+                self.read_file_by_commit(Path::new("src/version"), commit).trim().to_owned();
+            (channel, version)
+        } else {
+            let channel = fs::read_to_string(self.src.join("src/ci/channel"));
+            let version = fs::read_to_string(self.src.join("src/version"));
+            match (channel, version) {
+                (Ok(channel), Ok(version)) => {
+                    (channel.trim().to_owned(), version.trim().to_owned())
+                }
+                (channel, version) => {
+                    let src = self.src.display();
+                    eprintln!("ERROR: failed to determine artifact channel and/or version");
+                    eprintln!(
+                        "HELP: consider using a git checkout or ensure these files are readable"
+                    );
+                    if let Err(channel) = channel {
+                        eprintln!("reading {src}/src/ci/channel failed: {channel:?}");
+                    }
+                    if let Err(version) = version {
+                        eprintln!("reading {src}/src/version failed: {version:?}");
+                    }
+                    panic!();
+                }
+            }
+        };
+
+        match channel.as_str() {
+            "stable" => version,
+            "beta" => channel,
+            "nightly" => channel,
+            other => unreachable!("{:?} is not recognized as a valid channel", other),
+        }
+    }
 }
 
-fn path_is_dylib(path: &Path) -> bool {
+pub(crate) fn path_is_dylib(path: &Path) -> bool {
     // The .so is not necessarily the extension, it might be libLLVM.so.18.1
     path.to_str().is_some_and(|path| path.contains(".so"))
-}
-
-/// Checks whether the CI rustc is available for the given target triple.
-pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: bool) -> bool {
-    // All tier 1 targets and tier 2 targets with host tools.
-    const SUPPORTED_PLATFORMS: &[&str] = &[
-        "aarch64-apple-darwin",
-        "aarch64-pc-windows-msvc",
-        "aarch64-unknown-linux-gnu",
-        "aarch64-unknown-linux-musl",
-        "arm-unknown-linux-gnueabi",
-        "arm-unknown-linux-gnueabihf",
-        "armv7-unknown-linux-gnueabihf",
-        "i686-pc-windows-gnu",
-        "i686-pc-windows-msvc",
-        "i686-unknown-linux-gnu",
-        "loongarch64-unknown-linux-gnu",
-        "powerpc-unknown-linux-gnu",
-        "powerpc64-unknown-linux-gnu",
-        "powerpc64le-unknown-linux-gnu",
-        "riscv64gc-unknown-linux-gnu",
-        "s390x-unknown-linux-gnu",
-        "x86_64-apple-darwin",
-        "x86_64-pc-windows-gnu",
-        "x86_64-pc-windows-msvc",
-        "x86_64-unknown-freebsd",
-        "x86_64-unknown-illumos",
-        "x86_64-unknown-linux-gnu",
-        "x86_64-unknown-linux-musl",
-        "x86_64-unknown-netbsd",
-    ];
-
-    const SUPPORTED_PLATFORMS_WITH_ASSERTIONS: &[&str] =
-        &["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"];
-
-    if llvm_assertions {
-        SUPPORTED_PLATFORMS_WITH_ASSERTIONS.contains(&target_triple)
-    } else {
-        SUPPORTED_PLATFORMS.contains(&target_triple)
-    }
 }
