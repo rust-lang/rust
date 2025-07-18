@@ -345,12 +345,10 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
 
             // While we conservatively assume that all coroutines require drop
             // to avoid query cycles during MIR building, we can be more precise
-            // here and check the specific components of the coroutines. This
-            // includes the witness types, upvars, *and* the resume ty.
-            let typing_env = tcx.erase_regions(typing_env);
-            let needs_drop = args.witness().needs_drop(tcx, typing_env)
-                || args.upvar_tys().iter().any(|ty| ty.needs_drop(tcx, typing_env))
-                || args.resume_ty().needs_drop(tcx, typing_env);
+            // here by re-checking in a `TypingMode::Borrowck` environment. This
+            // will recurse into the coroutine witness (which we can now access
+            // without cycles).
+            let needs_drop = ty.needs_drop(tcx, tcx.erase_regions(typing_env));
             if needs_drop {
                 constraints.outlives.extend(args.upvar_tys().iter().map(ty::GenericArg::from));
                 constraints.outlives.push(args.resume_ty().into());
