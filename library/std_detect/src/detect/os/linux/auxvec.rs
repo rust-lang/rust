@@ -119,7 +119,7 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
     {
         // If calling getauxval fails, try to read the auxiliary vector from
         // its file:
-        auxv_from_file("/proc/self/auxv")
+        auxv_from_file("/proc/self/auxv").map_err(|_| ())
     }
     #[cfg(not(feature = "std_detect_file_io"))]
     {
@@ -157,17 +157,22 @@ fn getauxval(key: usize) -> Result<usize, ()> {
 /// Tries to read the auxiliary vector from the `file`. If this fails, this
 /// function returns `Err`.
 #[cfg(feature = "std_detect_file_io")]
-pub(super) fn auxv_from_file(file: &str) -> Result<AuxVec, ()> {
+pub(super) fn auxv_from_file(file: &str) -> Result<AuxVec, alloc::string::String> {
     let file = super::read_file(file)?;
+    auxv_from_file_bytes(&file)
+}
 
+/// Read auxiliary vector from a slice of bytes.
+#[cfg(feature = "std_detect_file_io")]
+pub(super) fn auxv_from_file_bytes(bytes: &[u8]) -> Result<AuxVec, alloc::string::String> {
     // See <https://github.com/torvalds/linux/blob/v5.15/include/uapi/linux/auxvec.h>.
     //
     // The auxiliary vector contains at most 34 (key,value) fields: from
     // `AT_MINSIGSTKSZ` to `AT_NULL`, but its number may increase.
-    let len = file.len();
+    let len = bytes.len();
     let mut buf = alloc::vec![0_usize; 1 + len / core::mem::size_of::<usize>()];
     unsafe {
-        core::ptr::copy_nonoverlapping(file.as_ptr(), buf.as_mut_ptr() as *mut u8, len);
+        core::ptr::copy_nonoverlapping(bytes.as_ptr(), buf.as_mut_ptr() as *mut u8, len);
     }
 
     auxv_from_buf(&buf)
@@ -176,7 +181,7 @@ pub(super) fn auxv_from_file(file: &str) -> Result<AuxVec, ()> {
 /// Tries to interpret the `buffer` as an auxiliary vector. If that fails, this
 /// function returns `Err`.
 #[cfg(feature = "std_detect_file_io")]
-fn auxv_from_buf(buf: &[usize]) -> Result<AuxVec, ()> {
+fn auxv_from_buf(buf: &[usize]) -> Result<AuxVec, alloc::string::String> {
     // Targets with only AT_HWCAP:
     #[cfg(any(
         target_arch = "riscv32",
@@ -222,7 +227,7 @@ fn auxv_from_buf(buf: &[usize]) -> Result<AuxVec, ()> {
     }
     // Suppress unused variable
     let _ = buf;
-    Err(())
+    Err(alloc::string::String::from("hwcap not found"))
 }
 
 #[cfg(test)]
