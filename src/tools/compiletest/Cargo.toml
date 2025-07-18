@@ -6,6 +6,10 @@ edition = "2024"
 [lib]
 doctest = false
 
+[[bin]]
+name = "compiletest"
+path = "src/bin/main.rs"
+
 [dependencies]
 # tidy-alphabetical-start
 anstyle-svg = "0.1.3"

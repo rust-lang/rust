@@ -46,21 +46,20 @@ pub(crate) fn create_static_alloc<'tcx>(
     interp_ok(ecx.ptr_to_mplace(Pointer::from(alloc_id).into(), layout))
 }
 
-/// This struct is needed to enforce `#[must_use]` on [tracing::span::EnteredSpan]
-/// while wrapping them in an `Option`.
-#[must_use]
-pub enum MaybeEnteredSpan {
-    Some(tracing::span::EnteredSpan),
-    None,
-}
+/// A marker trait returned by [crate::interpret::Machine::enter_trace_span], identifying either a
+/// real [tracing::span::EnteredSpan] in case tracing is enabled, or the dummy type `()` when
+/// tracing is disabled.
+pub trait EnteredTraceSpan {}
+impl EnteredTraceSpan for () {}
+impl EnteredTraceSpan for tracing::span::EnteredSpan {}
 
+/// Shortand for calling [crate::interpret::Machine::enter_trace_span] on a [tracing::info_span].
+/// This is supposed to be compiled out when [crate::interpret::Machine::enter_trace_span] has the
+/// default implementation (i.e. when it does not actually enter the span but instead returns `()`).
+/// Note: the result of this macro **must be used** because the span is exited when it's dropped.
 #[macro_export]
 macro_rules! enter_trace_span {
     ($machine:ident, $($tt:tt)*) => {
-        if $machine::TRACING_ENABLED {
-            $crate::interpret::util::MaybeEnteredSpan::Some(tracing::info_span!($($tt)*).entered())
-        } else {
-            $crate::interpret::util::MaybeEnteredSpan::None
-        }
+        $machine::enter_trace_span(|| tracing::info_span!($($tt)*))
     }
 }

@@ -314,7 +314,8 @@ impl IntRange {
         IntRange { lo, hi }
     }
 
-    fn is_subrange(&self, other: &Self) -> bool {
+    #[inline]
+    pub fn is_subrange(&self, other: &Self) -> bool {
         other.lo <= self.lo && self.hi <= other.hi
     }
 

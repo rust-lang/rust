@@ -295,6 +295,12 @@ impl DefKind {
         }
     }
 
+    /// This is a "module" in name resolution sense.
+    #[inline]
+    pub fn is_module_like(self) -> bool {
+        matches!(self, DefKind::Mod | DefKind::Enum | DefKind::Trait)
+    }
+
     #[inline]
     pub fn is_fn_like(self) -> bool {
         matches!(
@@ -720,6 +726,15 @@ impl<Id> Res<Id> {
         }
     }
 
+    /// If this is a "module" in name resolution sense, return its `DefId`.
+    #[inline]
+    pub fn module_like_def_id(&self) -> Option<DefId> {
+        match self {
+            Res::Def(def_kind, def_id) if def_kind.is_module_like() => Some(*def_id),
+            _ => None,
+        }
+    }
+
     /// A human readable name for the res kind ("function", "module", etc.).
     pub fn descr(&self) -> &'static str {
         match *self {
@@ -831,7 +846,7 @@ pub enum LifetimeRes {
         /// Id of the introducing place. That can be:
         /// - an item's id, for the item's generic parameters;
         /// - a TraitRef's ref_id, identifying the `for<...>` binder;
-        /// - a BareFn type's id.
+        /// - a FnPtr type's id.
         ///
         /// This information is used for impl-trait lifetime captures, to know when to or not to
         /// capture any given lifetime.

@@ -85,6 +85,9 @@ fn main() {
         let r = simd_round(h);
         assert_eq!(x, r);
 
+        let r = simd_round_ties_even(h);
+        assert_eq!(z, r);
+
         let r = simd_trunc(h);
         assert_eq!(z, r);
     }

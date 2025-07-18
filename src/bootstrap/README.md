@@ -105,6 +105,10 @@ build/
       debuginfo/
       ...
 
+    # Bootstrap host tools (which are always compiled with the stage0 compiler)
+    # are stored here.
+    bootstrap-tools/
+
     # Location where the stage0 Cargo and Rust compiler are unpacked. This
     # directory is purely an extracted and overlaid tarball of these two (done
     # by the bootstrap Python script). In theory, the build system does not
@@ -199,6 +203,10 @@ please file issues on the [Rust issue tracker][rust-issue-tracker].
 
 [rust-bootstrap-zulip]: https://rust-lang.zulipchat.com/#narrow/stream/t-infra.2Fbootstrap
 [rust-issue-tracker]: https://github.com/rust-lang/rust/issues
+
+## Testing
+
+To run bootstrap tests, execute `x test bootstrap`. If you want to bless snapshot tests, then install `cargo-insta` (`cargo install cargo-insta`) and then run `cargo insta review --manifest-path src/bootstrap/Cargo.toml`.
 
 ## Changelog
 

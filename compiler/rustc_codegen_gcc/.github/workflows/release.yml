@@ -12,6 +12,8 @@ permissions:
 env:
   # Enable backtraces for easier debugging
   RUST_BACKTRACE: 1
+  # For the run-make tests.
+  LLVM_BIN_DIR: /usr/bin
 
 jobs:
   build:
@@ -36,7 +38,8 @@ jobs:
       uses: Swatinem/rust-cache@v2
 
     - name: Install packages
-      run: sudo apt-get install ninja-build ripgrep
+      # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for run-make tests.
+      run: sudo apt-get install ninja-build ripgrep llvm-14-tools llvm
 
     - name: Download artifact
       run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/gcc-15.deb
@@ -46,18 +49,21 @@ jobs:
           sudo dpkg --force-overwrite -i gcc-15.deb
           echo 'gcc-path = "/usr/lib/"' > config.toml
 
+    # Some run-make tests fail if we use our forked GCC because it doesn't
+    # bundle libstdc++, so we switch to gcc-14 to have a GCC that has
+    # libstdc++.
+    - name: Set default GCC to gcc-14
+      run: sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-14 30
+
     - name: Set env
       run: |
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-        echo "LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
 
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
         EMBED_LTO_BITCODE=1 ./y.sh build --sysroot --release --release-sysroot
-        ./y.sh test --mini-tests
-        cargo test
+        ./y.sh test --cargo-tests
         ./y.sh clean all
 
     - name: Prepare dependencies

@@ -9,13 +9,23 @@ use std::cell::SyncUnsafeCell;
 static S: SyncUnsafeCell<i32> = SyncUnsafeCell::new(0);
 static mut S_MUT: i32 = 0;
 
-const C1: &SyncUnsafeCell<i32> = &S; //~ERROR encountered reference to mutable memory
+const C1: &SyncUnsafeCell<i32> = &S;
 const C1_READ: () = unsafe {
-    assert!(*C1.get() == 0);
+    assert!(*C1.get() == 0); //~ERROR constant accesses mutable global memory
 };
 const C2: *const i32 = unsafe { std::ptr::addr_of!(S_MUT) };
 const C2_READ: () = unsafe {
     assert!(*C2 == 0); //~ERROR constant accesses mutable global memory
 };
 
-fn main() {}
+const BAD_PATTERN: &i32 = {
+    static mut S: i32 = 0;
+    unsafe { &mut S }
+};
+
+fn main() {
+    match &0 {
+        BAD_PATTERN => {}, //~ ERROR cannot be used as pattern
+        _ => {},
+    }
+}

@@ -66,7 +66,7 @@ impl<'tcx> TyCtxt<'tcx> {
         {
             type Result = ControlFlow<()>;
 
-            fn visit_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
+            fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
                 &mut self,
                 t: &Binder<'tcx, T>,
             ) -> Self::Result {
@@ -168,7 +168,7 @@ impl LateBoundRegionsCollector {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector {
-    fn visit_binder<T: TypeFoldable<TyCtxt<'tcx>>>(&mut self, t: &Binder<'tcx, T>) {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &Binder<'tcx, T>) {
         self.current_index.shift_in(1);
         t.super_visit_with(self);
         self.current_index.shift_out(1);

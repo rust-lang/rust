@@ -3,18 +3,16 @@
 // `retpoline-external-thunk`, `retpoline-indirect-branches`, `retpoline-indirect-calls`
 // target features are (not) emitted when the `retpoline/retpoline-external-thunk` flag is (not) set.
 
+//@ add-core-stubs
 //@ revisions: disabled enabled_retpoline enabled_retpoline_external_thunk
 //@ needs-llvm-components: x86
 //@ compile-flags: --target x86_64-unknown-linux-gnu
 //@ [enabled_retpoline] compile-flags: -Zretpoline
 //@ [enabled_retpoline_external_thunk] compile-flags: -Zretpoline-external-thunk
-
 #![crate_type = "lib"]
-#![feature(no_core, lang_items)]
+#![feature(no_core)]
 #![no_core]
-
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
 
 #[no_mangle]
 pub fn foo() {

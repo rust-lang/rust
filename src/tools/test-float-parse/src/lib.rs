@@ -119,7 +119,6 @@ pub fn register_tests(cfg: &Config) -> Vec<TestInfo> {
 
     // Register normal generators for all floats.
 
-    #[cfg(not(bootstrap))]
     #[cfg(target_has_reliable_f16)]
     register_float::<f16>(&mut tests, cfg);
     register_float::<f32>(&mut tests, cfg);
@@ -341,7 +340,7 @@ fn launch_tests(tests: &mut [TestInfo], cfg: &Config) -> Duration {
     for test in tests.iter_mut() {
         test.progress = Some(ui::Progress::new(test, &mut all_progress_bars));
         ui::set_panic_hook(&all_progress_bars);
-        ((test.launch)(test, cfg));
+        (test.launch)(test, cfg);
     }
 
     start.elapsed()

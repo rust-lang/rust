@@ -14,3 +14,7 @@ libc = "0.2.73"
 # pinned `cc` in `rustc_codegen_ssa` if you update `cc` here.
 cc = "=1.2.16"
 # tidy-alphabetical-end
+
+[features]
+# Used by ./x.py check --compile-time-deps to skip building C++ code
+check_only = []

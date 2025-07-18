@@ -7,7 +7,8 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
-    self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers, TyAndLayout,
+    self, FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf,
+    LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypingEnv, Variance};
 use rustc_middle::{mir, span_bug};
@@ -21,7 +22,7 @@ use super::{
     MemPlaceMeta, Memory, OpTy, Place, PlaceTy, PointerArithmetic, Projectable, Provenance,
     err_inval, interp_ok, throw_inval, throw_ub, throw_ub_custom,
 };
-use crate::{ReportErrorExt, fluent_generated as fluent, util};
+use crate::{ReportErrorExt, enter_trace_span, fluent_generated as fluent, util};
 
 pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     /// Stores the `Machine` instance.
@@ -103,6 +104,43 @@ impl<'tcx, M: Machine<'tcx>> FnAbiOfHelpers<'tcx> for InterpCx<'tcx, M> {
         match err {
             FnAbiError::Layout(err) => err_inval!(Layout(err)),
         }
+    }
+}
+
+impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
+    /// This inherent method takes priority over the trait method with the same name in LayoutOf,
+    /// and allows wrapping the actual [LayoutOf::layout_of] with a tracing span.
+    /// See [LayoutOf::layout_of] for the original documentation.
+    #[inline(always)]
+    pub fn layout_of(&self, ty: Ty<'tcx>) -> <Self as LayoutOfHelpers<'tcx>>::LayoutOfResult {
+        let _span = enter_trace_span!(M, "InterpCx::layout_of", ty = ?ty.kind());
+        LayoutOf::layout_of(self, ty)
+    }
+
+    /// This inherent method takes priority over the trait method with the same name in FnAbiOf,
+    /// and allows wrapping the actual [FnAbiOf::fn_abi_of_fn_ptr] with a tracing span.
+    /// See [FnAbiOf::fn_abi_of_fn_ptr] for the original documentation.
+    #[inline(always)]
+    pub fn fn_abi_of_fn_ptr(
+        &self,
+        sig: ty::PolyFnSig<'tcx>,
+        extra_args: &'tcx ty::List<Ty<'tcx>>,
+    ) -> <Self as FnAbiOfHelpers<'tcx>>::FnAbiOfResult {
+        let _span = enter_trace_span!(M, "InterpCx::fn_abi_of_fn_ptr", ?sig, ?extra_args);
+        FnAbiOf::fn_abi_of_fn_ptr(self, sig, extra_args)
+    }
+
+    /// This inherent method takes priority over the trait method with the same name in FnAbiOf,
+    /// and allows wrapping the actual [FnAbiOf::fn_abi_of_instance] with a tracing span.
+    /// See [FnAbiOf::fn_abi_of_instance] for the original documentation.
+    #[inline(always)]
+    pub fn fn_abi_of_instance(
+        &self,
+        instance: ty::Instance<'tcx>,
+        extra_args: &'tcx ty::List<Ty<'tcx>>,
+    ) -> <Self as FnAbiOfHelpers<'tcx>>::FnAbiOfResult {
+        let _span = enter_trace_span!(M, "InterpCx::fn_abi_of_instance", ?instance, ?extra_args);
+        FnAbiOf::fn_abi_of_instance(self, instance, extra_args)
     }
 }
 
@@ -257,7 +295,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let def = instance.def_id();
             &self.tcx.promoted_mir(def)[promoted]
         } else {
-            M::load_mir(self, instance)?
+            M::load_mir(self, instance)
         };
         // do not continue if typeck errors occurred (can only occur in local crate)
         if let Some(err) = body.tainted_by_errors {
@@ -284,6 +322,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
         value: T,
     ) -> Result<T, ErrorHandled> {
+        let _span = enter_trace_span!(
+            M,
+            "instantiate_from_frame_and_normalize_erasing_regions",
+            "{}",
+            frame.instance
+        );
         frame
             .instance
             .try_instantiate_mir_and_normalize_erasing_regions(
@@ -362,7 +406,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Returns the actual dynamic size and alignment of the place at the given type.
     /// Only the "meta" (metadata) part of the place matters.
     /// This can fail to provide an answer for extern types.
-    pub(super) fn size_and_align_of(
+    pub(super) fn size_and_align_from_meta(
         &self,
         metadata: &MemPlaceMeta<M::Provenance>,
         layout: &TyAndLayout<'tcx>,
@@ -388,7 +432,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1);
                 let Some((unsized_size, mut unsized_align)) =
-                    self.size_and_align_of(metadata, &field)?
+                    self.size_and_align_from_meta(metadata, &field)?
                 else {
                     // A field with an extern type. We don't know the actual dynamic size
                     // or the alignment.
@@ -450,11 +494,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
     #[inline]
-    pub fn size_and_align_of_mplace(
+    pub fn size_and_align_of_val(
         &self,
-        mplace: &MPlaceTy<'tcx, M::Provenance>,
+        val: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
-        self.size_and_align_of(&mplace.meta(), &mplace.layout)
+        self.size_and_align_from_meta(&val.meta(), &val.layout())
     }
 
     /// Jump to the given block.

@@ -422,53 +422,49 @@ pub fn analyze_coroutine_closure_captures<'a, 'tcx: 'a, T>(
     child_captures: impl IntoIterator<Item = &'a CapturedPlace<'tcx>>,
     mut for_each: impl FnMut((usize, &'a CapturedPlace<'tcx>), (usize, &'a CapturedPlace<'tcx>)) -> T,
 ) -> impl Iterator<Item = T> {
-    std::iter::from_coroutine(
-        #[coroutine]
-        move || {
-            let mut child_captures = child_captures.into_iter().enumerate().peekable();
+    gen move {
+        let mut child_captures = child_captures.into_iter().enumerate().peekable();
 
-            // One parent capture may correspond to several child captures if we end up
-            // refining the set of captures via edition-2021 precise captures. We want to
-            // match up any number of child captures with one parent capture, so we keep
-            // peeking off this `Peekable` until the child doesn't match anymore.
-            for (parent_field_idx, parent_capture) in parent_captures.into_iter().enumerate() {
-                // Make sure we use every field at least once, b/c why are we capturing something
-                // if it's not used in the inner coroutine.
-                let mut field_used_at_least_once = false;
+        // One parent capture may correspond to several child captures if we end up
+        // refining the set of captures via edition-2021 precise captures. We want to
+        // match up any number of child captures with one parent capture, so we keep
+        // peeking off this `Peekable` until the child doesn't match anymore.
+        for (parent_field_idx, parent_capture) in parent_captures.into_iter().enumerate() {
+            // Make sure we use every field at least once, b/c why are we capturing something
+            // if it's not used in the inner coroutine.
+            let mut field_used_at_least_once = false;
 
-                // A parent matches a child if they share the same prefix of projections.
-                // The child may have more, if it is capturing sub-fields out of
-                // something that is captured by-move in the parent closure.
-                while child_captures.peek().is_some_and(|(_, child_capture)| {
-                    child_prefix_matches_parent_projections(parent_capture, child_capture)
-                }) {
-                    let (child_field_idx, child_capture) = child_captures.next().unwrap();
-                    // This analysis only makes sense if the parent capture is a
-                    // prefix of the child capture.
-                    assert!(
-                        child_capture.place.projections.len()
-                            >= parent_capture.place.projections.len(),
-                        "parent capture ({parent_capture:#?}) expected to be prefix of \
-                    child capture ({child_capture:#?})"
-                    );
-
-                    yield for_each(
-                        (parent_field_idx, parent_capture),
-                        (child_field_idx, child_capture),
-                    );
-
-                    field_used_at_least_once = true;
-                }
-
-                // Make sure the field was used at least once.
+            // A parent matches a child if they share the same prefix of projections.
+            // The child may have more, if it is capturing sub-fields out of
+            // something that is captured by-move in the parent closure.
+            while child_captures.peek().is_some_and(|(_, child_capture)| {
+                child_prefix_matches_parent_projections(parent_capture, child_capture)
+            }) {
+                let (child_field_idx, child_capture) = child_captures.next().unwrap();
+                // This analysis only makes sense if the parent capture is a
+                // prefix of the child capture.
                 assert!(
-                    field_used_at_least_once,
-                    "we captured {parent_capture:#?} but it was not used in the child coroutine?"
+                    child_capture.place.projections.len() >= parent_capture.place.projections.len(),
+                    "parent capture ({parent_capture:#?}) expected to be prefix of \
+                    child capture ({child_capture:#?})"
                 );
+
+                yield for_each(
+                    (parent_field_idx, parent_capture),
+                    (child_field_idx, child_capture),
+                );
+
+                field_used_at_least_once = true;
             }
-            assert_eq!(child_captures.next(), None, "leftover child captures?");
-        },
-    )
+
+            // Make sure the field was used at least once.
+            assert!(
+                field_used_at_least_once,
+                "we captured {parent_capture:#?} but it was not used in the child coroutine?"
+            );
+        }
+        assert_eq!(child_captures.next(), None, "leftover child captures?");
+    }
 }
 
 fn child_prefix_matches_parent_projections(

@@ -1,5 +1,8 @@
 # Troubleshooting
 
+First, search the [troubleshooting FAQ](faq.html). If your problem appears
+there (and the proposed solution works for you), great! Otherwise, read on.
+
 Start with looking at the rust-analyzer version. Try **rust-analyzer:
 Show RA Version** in VS Code (using **Command Palette** feature
 typically activated by Ctrl+Shift+P) or `rust-analyzer --version` in the
@@ -46,5 +49,4 @@ It is especially useful when the `repo` doesn’t use external crates or
 the standard library.
 
 If you want to go as far as to modify the source code to debug the
-problem, be sure to take a look at the [dev
-docs](https://github.com/rust-lang/rust-analyzer/tree/master/docs/dev)!
+problem, be sure to take a look at the [contribution guide](contributing/index.html)!

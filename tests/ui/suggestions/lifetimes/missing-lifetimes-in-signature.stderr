@@ -2,9 +2,12 @@ error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/missing-lifetimes-in-signature.rs:37:11
    |
 LL | fn baz<G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
-   |        -  ^^ undeclared lifetime
-   |        |
-   |        help: consider introducing lifetime `'a` here: `'a,`
+   |           ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn baz<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
+   |        +++
 
 error[E0700]: hidden type for `impl FnOnce()` captures lifetime that does not appear in bounds
   --> $DIR/missing-lifetimes-in-signature.rs:19:5

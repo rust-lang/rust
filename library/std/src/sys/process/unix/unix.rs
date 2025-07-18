@@ -340,6 +340,10 @@ impl Command {
             cvt(libc::setpgid(0, pgroup))?;
         }
 
+        if self.get_setsid() {
+            cvt(libc::setsid())?;
+        }
+
         // emscripten has no signal support.
         #[cfg(not(target_os = "emscripten"))]
         {
@@ -741,6 +745,16 @@ impl Command {
                 flags |= libc::POSIX_SPAWN_SETSIGDEF;
             }
 
+            if self.get_setsid() {
+                cfg_if::cfg_if! {
+                    if #[cfg(all(target_os = "linux", target_env = "gnu"))] {
+                        flags |= libc::POSIX_SPAWN_SETSID;
+                    } else {
+                        return Ok(None);
+                    }
+                }
+            }
+
             cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
 
             // Make sure we synchronize access to the global `environ` resource
@@ -963,9 +977,13 @@ impl Process {
         self.pid as u32
     }
 
-    pub fn kill(&mut self) -> io::Result<()> {
-        // If we've already waited on this process then the pid can be recycled
-        // and used for another process, and we probably shouldn't be killing
+    pub fn kill(&self) -> io::Result<()> {
+        self.send_signal(libc::SIGKILL)
+    }
+
+    pub(crate) fn send_signal(&self, signal: i32) -> io::Result<()> {
+        // If we've already waited on this process then the pid can be recycled and
+        // used for another process, and we probably shouldn't be sending signals to
         // random processes, so return Ok because the process has exited already.
         if self.status.is_some() {
             return Ok(());
@@ -973,9 +991,9 @@ impl Process {
         #[cfg(target_os = "linux")]
         if let Some(pid_fd) = self.pidfd.as_ref() {
             // pidfd_send_signal predates pidfd_open. so if we were able to get an fd then sending signals will work too
-            return pid_fd.kill();
+            return pid_fd.send_signal(signal);
         }
-        cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(drop)
+        cvt(unsafe { libc::kill(self.pid, signal) }).map(drop)
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {

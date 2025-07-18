@@ -128,10 +128,7 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             CanonicalVarKind::Region(ui) => self
-                .next_region_var_in_universe(
-                    RegionVariableOrigin::MiscVariable(span),
-                    universe_map(ui),
-                )
+                .next_region_var_in_universe(RegionVariableOrigin::Misc(span), universe_map(ui))
                 .into(),
 
             CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion { universe, bound }) => {

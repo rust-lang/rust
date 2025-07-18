@@ -62,7 +62,7 @@ This form of the `doc` attribute lets you control the favicon of your docs.
 This will put `<link rel="icon" href="{}">` into your docs, where
 the string for the attribute goes into the `{}`.
 
-If you don't use this attribute, there will be no favicon.
+If you don't use this attribute, a default favicon will be used.
 
 ### `html_logo_url`
 

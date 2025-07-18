@@ -6,11 +6,11 @@
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
 use rustc_middle::traits::CodegenObligationError;
-use rustc_middle::ty::{self, PseudoCanonicalInput, TyCtxt, TypeVisitableExt, Upcast};
+use rustc_middle::ty::{self, PseudoCanonicalInput, TyCtxt, TypeVisitableExt};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{
     ImplSource, Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
-    Unimplemented, sizedness_fast_path,
+    SelectionError,
 };
 use tracing::debug;
 
@@ -34,20 +34,13 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     let (infcx, param_env) = tcx.infer_ctxt().ignoring_regions().build_with_typing_env(typing_env);
     let mut selcx = SelectionContext::new(&infcx);
 
-    if sizedness_fast_path(tcx, trait_ref.upcast(tcx)) {
-        return Ok(&*tcx.arena.alloc(ImplSource::Builtin(
-            ty::solve::BuiltinImplSource::Trivial,
-            Default::default(),
-        )));
-    }
-
     let obligation_cause = ObligationCause::dummy();
     let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
 
     let selection = match selcx.select(&obligation) {
         Ok(Some(selection)) => selection,
         Ok(None) => return Err(CodegenObligationError::Ambiguity),
-        Err(Unimplemented) => return Err(CodegenObligationError::Unimplemented),
+        Err(SelectionError::Unimplemented) => return Err(CodegenObligationError::Unimplemented),
         Err(e) => {
             bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, trait_ref)
         }

@@ -1,7 +1,7 @@
 use std::env::consts::EXE_EXTENSION;
 use std::fmt::{Display, Formatter};
 
-use crate::core::build_steps::compile::{Std, Sysroot};
+use crate::core::build_steps::compile::Sysroot;
 use crate::core::build_steps::tool::{RustcPerf, Rustdoc};
 use crate::core::builder::Builder;
 use crate::core::config::DebuginfoLevel;
@@ -152,7 +152,7 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
     }
 
     let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
-    builder.ensure(Std::new(compiler, builder.config.host_target));
+    builder.std(compiler, builder.config.host_target);
 
     if let Some(opts) = args.cmd.shared_opts()
         && opts.profiles.contains(&Profile::Doc)

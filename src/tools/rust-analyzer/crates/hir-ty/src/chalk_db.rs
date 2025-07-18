@@ -63,7 +63,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     ) -> Option<rust_ir::AssociatedTyValueId<Interner>> {
         let alias_id = from_assoc_type_id(assoc_type_id);
         let trait_sig = self.db.type_alias_signature(alias_id);
-        self.db.impl_items(hir_def::ImplId::from_chalk(self.db, impl_id)).items.iter().find_map(
+        hir_def::ImplId::from_chalk(self.db, impl_id).impl_items(self.db).items.iter().find_map(
             |(name, item)| match item {
                 AssocItemId::TypeAliasId(alias) if &trait_sig.name == name => {
                     Some(TypeAliasAsValue(*alias).to_chalk(self.db))
@@ -261,9 +261,19 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         &self,
         well_known_trait: WellKnownTrait,
     ) -> Option<chalk_ir::TraitId<Interner>> {
-        let lang_attr = lang_item_from_well_known_trait(well_known_trait);
-        let trait_ = lang_attr.resolve_trait(self.db, self.krate)?;
+        let lang_item = lang_item_from_well_known_trait(well_known_trait);
+        let trait_ = lang_item.resolve_trait(self.db, self.krate)?;
         Some(to_chalk_trait_id(trait_))
+    }
+    fn well_known_assoc_type_id(
+        &self,
+        assoc_type: rust_ir::WellKnownAssocType,
+    ) -> Option<chalk_ir::AssocTypeId<Interner>> {
+        let lang_item = match assoc_type {
+            rust_ir::WellKnownAssocType::AsyncFnOnceOutput => LangItem::AsyncFnOnceOutput,
+        };
+        let alias = lang_item.resolve_type_alias(self.db, self.krate)?;
+        Some(to_assoc_type_id(alias))
     }
 
     fn program_clauses_for_env(
@@ -305,9 +315,8 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
             crate::ImplTraitId::AsyncBlockTypeImplTrait(..) => {
                 if let Some((future_trait, future_output)) =
                     LangItem::Future.resolve_trait(self.db, self.krate).and_then(|trait_| {
-                        let alias = self
-                            .db
-                            .trait_items(trait_)
+                        let alias = trait_
+                            .trait_items(self.db)
                             .associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
                         Some((trait_, alias))
                     })
@@ -701,7 +710,7 @@ pub(crate) fn trait_datum_query(
     };
     let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
     let associated_ty_ids =
-        db.trait_items(trait_).associated_types().map(to_assoc_type_id).collect();
+        trait_.trait_items(db).associated_types().map(to_assoc_type_id).collect();
     let trait_datum_bound = rust_ir::TraitDatumBound { where_clauses };
     let well_known = db.lang_attr(trait_.into()).and_then(well_known_trait_from_lang_item);
     let trait_datum = TraitDatum {
@@ -792,7 +801,7 @@ pub(crate) fn adt_datum_query(
 
     // this slows down rust-analyzer by quite a bit unfortunately, so enabling this is currently not worth it
     let _variant_id_to_fields = |id: VariantId| {
-        let variant_data = &id.variant_data(db);
+        let variant_data = &id.fields(db);
         let fields = if variant_data.fields().is_empty() {
             vec![]
         } else {
@@ -813,11 +822,11 @@ pub(crate) fn adt_datum_query(
             (rust_ir::AdtKind::Struct, vec![variant_id_to_fields(id.into())])
         }
         hir_def::AdtId::EnumId(id) => {
-            let variants = db
-                .enum_variants(id)
+            let variants = id
+                .enum_variants(db)
                 .variants
                 .iter()
-                .map(|&(variant_id, _)| variant_id_to_fields(variant_id.into()))
+                .map(|&(variant_id, _, _)| variant_id_to_fields(variant_id.into()))
                 .collect();
             (rust_ir::AdtKind::Enum, variants)
         }
@@ -869,9 +878,9 @@ fn impl_def_datum(db: &dyn HirDatabase, krate: Crate, impl_id: hir_def::ImplId) 
     let polarity = if negative { rust_ir::Polarity::Negative } else { rust_ir::Polarity::Positive };
 
     let impl_datum_bound = rust_ir::ImplDatumBound { trait_ref, where_clauses };
-    let trait_data = db.trait_items(trait_);
-    let associated_ty_value_ids = db
-        .impl_items(impl_id)
+    let trait_data = trait_.trait_items(db);
+    let associated_ty_value_ids = impl_id
+        .impl_items(db)
         .items
         .iter()
         .filter_map(|(_, item)| match item {
@@ -921,8 +930,9 @@ fn type_alias_associated_ty_value(
         .into_value_and_skipped_binders()
         .0; // we don't return any assoc ty values if the impl'd trait can't be resolved
 
-    let assoc_ty = db
-        .trait_items(trait_ref.hir_trait_id())
+    let assoc_ty = trait_ref
+        .hir_trait_id()
+        .trait_items(db)
         .associated_type_by_name(&type_alias_data.name)
         .expect("assoc ty value should not exist"); // validated when building the impl data as well
     let (ty, binders) = db.ty(type_alias.into()).into_value_and_skipped_binders();

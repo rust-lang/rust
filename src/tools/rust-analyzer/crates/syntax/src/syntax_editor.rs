@@ -435,7 +435,7 @@ mod tests {
             _ => {
                 let var_name = 2 + 2;
                 (var_name, true)
-            }"#]];
+            },"#]];
         expect.assert_eq(&edit.new_root.to_string());
 
         assert_eq!(edit.find_annotation(placeholder_snippet).len(), 2);

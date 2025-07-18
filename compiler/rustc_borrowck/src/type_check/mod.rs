@@ -16,7 +16,7 @@ use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
-    BoundRegion, BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin,
+    BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
 };
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
@@ -25,9 +25,9 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
-    self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
-    Dynamic, GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt,
-    TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
+    GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, TypeVisitableExt,
+    UserArgs, UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::move_paths::MoveData;
@@ -130,6 +130,11 @@ pub(crate) fn type_check<'tcx>(
     assert!(
         pre_obligations.is_empty(),
         "there should be no incoming region obligations = {pre_obligations:#?}",
+    );
+    let pre_assumptions = infcx.take_registered_region_assumptions();
+    assert!(
+        pre_assumptions.is_empty(),
+        "there should be no incoming region assumptions = {pre_assumptions:#?}",
     );
 
     debug!(?normalized_inputs_and_output);
@@ -373,8 +378,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     fn unsized_feature_enabled(&self) -> bool {
-        let features = self.tcx().features();
-        features.unsized_locals() || features.unsized_fn_params()
+        self.tcx().features().unsized_fn_params()
     }
 
     /// Equate the inferred type and the annotated type for user type annotations
@@ -787,15 +791,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     let region_ctxt_fn = || {
                         let reg_info = match br.kind {
                             ty::BoundRegionKind::Anon => sym::anon,
-                            ty::BoundRegionKind::Named(_, name) => name,
+                            ty::BoundRegionKind::Named(def_id) => tcx.item_name(def_id),
                             ty::BoundRegionKind::ClosureEnv => sym::env,
+                            ty::BoundRegionKind::NamedAnon(_) => {
+                                bug!("only used for pretty printing")
+                            }
                         };
 
                         RegionCtxt::LateBound(reg_info)
                     };
 
                     self.infcx.next_region_var(
-                        BoundRegion(
+                        RegionVariableOrigin::BoundRegion(
                             term.source_info.span,
                             br.kind,
                             BoundRegionConversionTime::FnCall,
@@ -957,7 +964,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
         }
 
-        // When `unsized_fn_params` or `unsized_locals` is enabled, only function calls
+        // When `unsized_fn_params` is enabled, only function calls
         // and nullary ops are checked in `check_call_dest`.
         if !self.unsized_feature_enabled() {
             match self.body.local_kind(local) {
@@ -1231,38 +1238,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 is_implicit_coercion,
                                 unsize_to: Some(unsize_to),
                             },
-                        );
-                    }
-
-                    CastKind::PointerCoercion(PointerCoercion::DynStar, coercion_source) => {
-                        // get the constraints from the target type (`dyn* Clone`)
-                        //
-                        // apply them to prove that the source type `Foo` implements `Clone` etc
-                        let (existential_predicates, region) = match ty.kind() {
-                            Dynamic(predicates, region, ty::DynStar) => (predicates, region),
-                            _ => panic!("Invalid dyn* cast_ty"),
-                        };
-
-                        let self_ty = op.ty(self.body, tcx);
-
-                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
-                        self.prove_predicates(
-                            existential_predicates
-                                .iter()
-                                .map(|predicate| predicate.with_self_ty(tcx, self_ty)),
-                            location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
-                        );
-
-                        let outlives_predicate = tcx.mk_predicate(Binder::dummy(
-                            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
-                                ty::OutlivesPredicate(self_ty, *region),
-                            )),
-                        ));
-                        self.prove_predicate(
-                            outlives_predicate,
-                            location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         );
                     }
 
@@ -1941,7 +1916,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
 
-                // When `unsized_fn_params` and `unsized_locals` are both not enabled,
+                // When `unsized_fn_params` is not enabled,
                 // this check is done at `check_local`.
                 if self.unsized_feature_enabled() {
                     let span = term.source_info.span;

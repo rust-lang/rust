@@ -20,7 +20,10 @@
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::str::FromStr;
 use std::{fmt, fs, io};
+
+use crate::CiInfo;
 
 const MIN_PY_REV: (u32, u32) = (3, 9);
 const MIN_PY_REV_STR: &str = "≥3.9";
@@ -36,15 +39,19 @@ const RUFF_CONFIG_PATH: &[&str] = &["src", "tools", "tidy", "config", "ruff.toml
 const RUFF_CACHE_PATH: &[&str] = &["cache", "ruff_cache"];
 const PIP_REQ_PATH: &[&str] = &["src", "tools", "tidy", "config", "requirements.txt"];
 
+// this must be kept in sync with with .github/workflows/spellcheck.yml
+const SPELLCHECK_DIRS: &[&str] = &["compiler", "library", "src/bootstrap", "src/librustdoc"];
+
 pub fn check(
     root_path: &Path,
     outdir: &Path,
+    ci_info: &CiInfo,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
     bad: &mut bool,
 ) {
-    if let Err(e) = check_impl(root_path, outdir, bless, extra_checks, pos_args) {
+    if let Err(e) = check_impl(root_path, outdir, ci_info, bless, extra_checks, pos_args) {
         tidy_error!(bad, "{e}");
     }
 }
@@ -52,26 +59,55 @@ pub fn check(
 fn check_impl(
     root_path: &Path,
     outdir: &Path,
+    ci_info: &CiInfo,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
 ) -> Result<(), Error> {
-    let show_diff = std::env::var("TIDY_PRINT_DIFF")
-        .map_or(false, |v| v.eq_ignore_ascii_case("true") || v == "1");
+    let show_diff =
+        std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1");
 
     // Split comma-separated args up
     let lint_args = match extra_checks {
-        Some(s) => s.strip_prefix("--extra-checks=").unwrap().split(',').collect(),
+        Some(s) => s
+            .strip_prefix("--extra-checks=")
+            .unwrap()
+            .split(',')
+            .map(|s| {
+                if s == "spellcheck:fix" {
+                    eprintln!("warning: `spellcheck:fix` is no longer valid, use `--extra-checks=spellcheck --bless`");
+                }
+                (ExtraCheckArg::from_str(s), s)
+            })
+            .filter_map(|(res, src)| match res {
+                Ok(arg) => {
+                    if arg.is_inactive_auto(ci_info) {
+                        None
+                    } else {
+                        Some(arg)
+                    }
+                }
+                Err(err) => {
+                    // only warn because before bad extra checks would be silently ignored.
+                    eprintln!("warning: bad extra check argument {src:?}: {err:?}");
+                    None
+                }
+            })
+            .collect(),
         None => vec![],
     };
 
-    let python_all = lint_args.contains(&"py");
-    let python_lint = lint_args.contains(&"py:lint") || python_all;
-    let python_fmt = lint_args.contains(&"py:fmt") || python_all;
-    let shell_all = lint_args.contains(&"shell");
-    let shell_lint = lint_args.contains(&"shell:lint") || shell_all;
-    let cpp_all = lint_args.contains(&"cpp");
-    let cpp_fmt = lint_args.contains(&"cpp:fmt") || cpp_all;
+    macro_rules! extra_check {
+        ($lang:ident, $kind:ident) => {
+            lint_args.iter().any(|arg| arg.matches(ExtraCheckLang::$lang, ExtraCheckKind::$kind))
+        };
+    }
+
+    let python_lint = extra_check!(Py, Lint);
+    let python_fmt = extra_check!(Py, Fmt);
+    let shell_lint = extra_check!(Shell, Lint);
+    let cpp_fmt = extra_check!(Cpp, Fmt);
+    let spellcheck = extra_check!(Spellcheck, None);
 
     let mut py_path = None;
 
@@ -105,7 +141,7 @@ fn check_impl(
             );
         }
         // Rethrow error
-        let _ = res?;
+        res?;
     }
 
     if python_fmt {
@@ -137,7 +173,7 @@ fn check_impl(
         }
 
         // Rethrow error
-        let _ = res?;
+        res?;
     }
 
     if cpp_fmt {
@@ -208,7 +244,7 @@ fn check_impl(
             }
         }
         // Rethrow error
-        let _ = res?;
+        res?;
     }
 
     if shell_lint {
@@ -224,6 +260,21 @@ fn check_impl(
         shellcheck_runner(&merge_args(&cfg_args, &file_args_shc))?;
     }
 
+    if spellcheck {
+        let config_path = root_path.join("typos.toml");
+        let mut args = vec!["-c", config_path.as_os_str().to_str().unwrap()];
+
+        args.extend_from_slice(SPELLCHECK_DIRS);
+
+        if bless {
+            eprintln!("spellcheck files and fix");
+            args.push("--write-changes");
+        } else {
+            eprintln!("spellcheck files");
+        }
+        spellcheck_runner(&args)?;
+    }
+
     Ok(())
 }
 
@@ -235,8 +286,8 @@ fn run_ruff(
     file_args: &[&OsStr],
     ruff_args: &[&OsStr],
 ) -> Result<(), Error> {
-    let mut cfg_args_ruff = cfg_args.into_iter().copied().collect::<Vec<_>>();
-    let mut file_args_ruff = file_args.into_iter().copied().collect::<Vec<_>>();
+    let mut cfg_args_ruff = cfg_args.to_vec();
+    let mut file_args_ruff = file_args.to_vec();
 
     let mut cfg_path = root_path.to_owned();
     cfg_path.extend(RUFF_CONFIG_PATH);
@@ -254,7 +305,7 @@ fn run_ruff(
         file_args_ruff.push(root_path.as_os_str());
     }
 
-    let mut args: Vec<&OsStr> = ruff_args.into_iter().copied().collect();
+    let mut args: Vec<&OsStr> = ruff_args.to_vec();
     args.extend(merge_args(&cfg_args_ruff, &file_args_ruff));
     py_runner(py_path, true, None, "ruff", &args)
 }
@@ -491,6 +542,36 @@ fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
     if status.success() { Ok(()) } else { Err(Error::FailedCheck("shellcheck")) }
 }
 
+/// Check that spellchecker is installed then run it at the given path
+fn spellcheck_runner(args: &[&str]) -> Result<(), Error> {
+    // sync version with .github/workflows/spellcheck.yml
+    let expected_version = "typos-cli 1.34.0";
+    match Command::new("typos").arg("--version").output() {
+        Ok(o) => {
+            let stdout = String::from_utf8_lossy(&o.stdout);
+            if stdout.trim() != expected_version {
+                return Err(Error::Version {
+                    program: "typos",
+                    required: expected_version,
+                    installed: stdout.trim().to_string(),
+                });
+            }
+        }
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            return Err(Error::MissingReq(
+                "typos",
+                "spellcheck file checks",
+                // sync version with .github/workflows/spellcheck.yml
+                Some("install tool via `cargo install typos-cli@1.34.0`".to_owned()),
+            ));
+        }
+        Err(e) => return Err(e.into()),
+    }
+
+    let status = Command::new("typos").args(args).status()?;
+    if status.success() { Ok(()) } else { Err(Error::FailedCheck("typos")) }
+}
+
 /// Check git for tracked files matching an extension
 fn find_with_extension(
     root_path: &Path,
@@ -577,5 +658,138 @@ impl fmt::Display for Error {
 impl From<io::Error> for Error {
     fn from(value: io::Error) -> Self {
         Self::Io(value)
+    }
+}
+
+#[derive(Debug)]
+enum ExtraCheckParseError {
+    #[allow(dead_code, reason = "shown through Debug")]
+    UnknownKind(String),
+    #[allow(dead_code)]
+    UnknownLang(String),
+    UnsupportedKindForLang,
+    /// Too many `:`
+    TooManyParts,
+    /// Tried to parse the empty string
+    Empty,
+    /// `auto` specified without lang part.
+    AutoRequiresLang,
+}
+
+struct ExtraCheckArg {
+    auto: bool,
+    lang: ExtraCheckLang,
+    /// None = run all extra checks for the given lang
+    kind: Option<ExtraCheckKind>,
+}
+
+impl ExtraCheckArg {
+    fn matches(&self, lang: ExtraCheckLang, kind: ExtraCheckKind) -> bool {
+        self.lang == lang && self.kind.map(|k| k == kind).unwrap_or(true)
+    }
+
+    /// Returns `true` if this is an auto arg and the relevant files are not modified.
+    fn is_inactive_auto(&self, ci_info: &CiInfo) -> bool {
+        if !self.auto {
+            return false;
+        }
+        let ext = match self.lang {
+            ExtraCheckLang::Py => ".py",
+            ExtraCheckLang::Cpp => ".cpp",
+            ExtraCheckLang::Shell => ".sh",
+            ExtraCheckLang::Spellcheck => {
+                return !crate::files_modified(ci_info, |s| {
+                    SPELLCHECK_DIRS.iter().any(|dir| Path::new(s).starts_with(dir))
+                });
+            }
+        };
+        !crate::files_modified(ci_info, |s| s.ends_with(ext))
+    }
+
+    fn has_supported_kind(&self) -> bool {
+        let Some(kind) = self.kind else {
+            // "run all extra checks" mode is supported for all languages.
+            return true;
+        };
+        use ExtraCheckKind::*;
+        let supported_kinds: &[_] = match self.lang {
+            ExtraCheckLang::Py => &[Fmt, Lint],
+            ExtraCheckLang::Cpp => &[Fmt],
+            ExtraCheckLang::Shell => &[Lint],
+            ExtraCheckLang::Spellcheck => &[],
+        };
+        supported_kinds.contains(&kind)
+    }
+}
+
+impl FromStr for ExtraCheckArg {
+    type Err = ExtraCheckParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut auto = false;
+        let mut parts = s.split(':');
+        let Some(mut first) = parts.next() else {
+            return Err(ExtraCheckParseError::Empty);
+        };
+        if first == "auto" {
+            let Some(part) = parts.next() else {
+                return Err(ExtraCheckParseError::AutoRequiresLang);
+            };
+            auto = true;
+            first = part;
+        }
+        let second = parts.next();
+        if parts.next().is_some() {
+            return Err(ExtraCheckParseError::TooManyParts);
+        }
+        let arg = Self { auto, lang: first.parse()?, kind: second.map(|s| s.parse()).transpose()? };
+        if !arg.has_supported_kind() {
+            return Err(ExtraCheckParseError::UnsupportedKindForLang);
+        }
+
+        Ok(arg)
+    }
+}
+
+#[derive(PartialEq, Copy, Clone)]
+enum ExtraCheckLang {
+    Py,
+    Shell,
+    Cpp,
+    Spellcheck,
+}
+
+impl FromStr for ExtraCheckLang {
+    type Err = ExtraCheckParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "py" => Self::Py,
+            "shell" => Self::Shell,
+            "cpp" => Self::Cpp,
+            "spellcheck" => Self::Spellcheck,
+            _ => return Err(ExtraCheckParseError::UnknownLang(s.to_string())),
+        })
+    }
+}
+
+#[derive(PartialEq, Copy, Clone)]
+enum ExtraCheckKind {
+    Lint,
+    Fmt,
+    /// Never parsed, but used as a placeholder for
+    /// langs that never have a specific kind.
+    None,
+}
+
+impl FromStr for ExtraCheckKind {
+    type Err = ExtraCheckParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "lint" => Self::Lint,
+            "fmt" => Self::Fmt,
+            _ => return Err(ExtraCheckParseError::UnknownKind(s.to_string())),
+        })
     }
 }

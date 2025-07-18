@@ -128,7 +128,7 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Binder<I, T> {
     }
 }
 
-impl<I: Interner, T: TypeFoldable<I>> TypeVisitable<I> for Binder<I, T> {
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Binder<I, T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_binder(self)
     }
@@ -147,7 +147,7 @@ impl<I: Interner, T: TypeFoldable<I>> TypeSuperFoldable<I> for Binder<I, T> {
     }
 }
 
-impl<I: Interner, T: TypeFoldable<I>> TypeSuperVisitable<I> for Binder<I, T> {
+impl<I: Interner, T: TypeVisitable<I>> TypeSuperVisitable<I> for Binder<I, T> {
     fn super_visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         self.as_ref().skip_binder().visit_with(visitor)
     }
@@ -292,7 +292,7 @@ impl<I: Interner> ValidateBoundVars<I> {
 impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
     type Result = ControlFlow<()>;
 
-    fn visit_binder<T: TypeFoldable<I>>(&mut self, t: &Binder<I, T>) -> Self::Result {
+    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &Binder<I, T>) -> Self::Result {
         self.binder_index.shift_in(1);
         let result = t.super_visit_with(self);
         self.binder_index.shift_out(1);
@@ -622,6 +622,17 @@ impl<I: Interner, T: TypeFoldable<I>> ty::EarlyBinder<I, T> {
     where
         A: SliceLike<Item = I::GenericArg>,
     {
+        // Nothing to fold, so let's avoid visiting things and possibly re-hashing/equating
+        // them when interning. Perf testing found this to be a modest improvement.
+        // See: <https://github.com/rust-lang/rust/pull/142317>
+        if args.is_empty() {
+            assert!(
+                !self.value.has_param(),
+                "{:?} has parameters, but no args were provided in instantiate",
+                self.value,
+            );
+            return self.value;
+        }
         let mut folder = ArgFolder { cx, args: args.as_slice(), binders_passed: 0 };
         self.value.fold_with(&mut folder)
     }

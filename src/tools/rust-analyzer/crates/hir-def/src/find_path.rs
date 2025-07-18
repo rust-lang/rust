@@ -137,7 +137,7 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
         let loc = variant.lookup(ctx.db);
         if let Some(mut path) = find_path_inner(ctx, ItemInNs::Types(loc.parent.into()), max_len) {
             path.push_segment(
-                ctx.db.enum_variants(loc.parent).variants[loc.index as usize].1.clone(),
+                loc.parent.enum_variants(ctx.db).variants[loc.index as usize].1.clone(),
             );
             return Some(path);
         }
@@ -615,6 +615,7 @@ fn find_local_import_locations(
                         cov_mark::hit!(discount_private_imports);
                         false
                     }
+                    Visibility::PubCrate(_) => true,
                     Visibility::Public => true,
                 };
 
@@ -1286,7 +1287,6 @@ $0
 
     #[test]
     fn explicit_private_imports_crate() {
-        cov_mark::check!(explicit_private_imports);
         check_found_path(
             r#"
 //- /main.rs

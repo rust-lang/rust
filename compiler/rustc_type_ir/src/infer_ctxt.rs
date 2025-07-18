@@ -13,7 +13,7 @@ use crate::{self as ty, Interner};
 /// slightly different typing rules depending on the current context. See the
 /// doc comment for each variant for how and why they are used.
 ///
-/// In most cases you can get the correct typing mode automically via:
+/// In most cases you can get the correct typing mode automatically via:
 /// - `mir::Body::typing_mode`
 /// - `rustc_lint::LateContext::typing_mode`
 ///
@@ -117,12 +117,20 @@ impl<I: Interner> TypingMode<I> {
     }
 
     pub fn borrowck(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
-        TypingMode::Borrowck { defining_opaque_types: cx.opaque_types_defined_by(body_def_id) }
+        let defining_opaque_types = cx.opaque_types_defined_by(body_def_id);
+        if defining_opaque_types.is_empty() {
+            TypingMode::non_body_analysis()
+        } else {
+            TypingMode::Borrowck { defining_opaque_types }
+        }
     }
 
     pub fn post_borrowck_analysis(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
-        TypingMode::PostBorrowckAnalysis {
-            defined_opaque_types: cx.opaque_types_defined_by(body_def_id),
+        let defined_opaque_types = cx.opaque_types_defined_by(body_def_id);
+        if defined_opaque_types.is_empty() {
+            TypingMode::non_body_analysis()
+        } else {
+            TypingMode::PostBorrowckAnalysis { defined_opaque_types }
         }
     }
 }
@@ -276,4 +284,41 @@ pub trait InferCtxtLike: Sized {
     );
 
     fn reset_opaque_types(&self);
+}
+
+pub fn may_use_unstable_feature<'a, I: Interner, Infcx>(
+    infcx: &'a Infcx,
+    param_env: I::ParamEnv,
+    symbol: I::Symbol,
+) -> bool
+where
+    Infcx: InferCtxtLike<Interner = I>,
+{
+    // Iterate through all goals in param_env to find the one that has the same symbol.
+    for pred in param_env.caller_bounds().iter() {
+        if let ty::ClauseKind::UnstableFeature(sym) = pred.kind().skip_binder() {
+            if sym == symbol {
+                return true;
+            }
+        }
+    }
+
+    // During codegen we must assume that all feature bounds hold as we may be
+    // monomorphizing a body from an upstream crate which had an unstable feature
+    // enabled that we do not.
+    //
+    // Coherence should already report overlap errors involving unstable impls
+    // as the affected code would otherwise break when stabilizing this feature.
+    // It is also easily possible to accidentally cause unsoundness this way as
+    // we have to always enable unstable impls during codegen.
+    //
+    // Return ambiguity can also prevent people from writing code which depends on inference guidance
+    // that might no longer work after the impl is stabilised,
+    // tests/ui/unstable-feature-bound/unstable_impl_method_selection.rs is one of the example.
+    //
+    // Note: `feature_bound_holds_in_crate` does not consider a feature to be enabled
+    // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
+
+    (infcx.typing_mode() == TypingMode::PostAnalysis)
+        || infcx.cx().features().feature_bound_holds_in_crate(symbol)
 }

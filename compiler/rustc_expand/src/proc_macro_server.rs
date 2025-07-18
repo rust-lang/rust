@@ -599,8 +599,12 @@ impl server::TokenStream for Rustc<'_, '_> {
             ast::ExprKind::Lit(token_lit) => {
                 Ok(tokenstream::TokenStream::token_alone(token::Literal(*token_lit), expr.span))
             }
-            ast::ExprKind::IncludedBytes(bytes) => {
-                let lit = token::Lit::new(token::ByteStr, escape_byte_str_symbol(bytes), None);
+            ast::ExprKind::IncludedBytes(byte_sym) => {
+                let lit = token::Lit::new(
+                    token::ByteStr,
+                    escape_byte_str_symbol(byte_sym.as_byte_str()),
+                    None,
+                );
                 Ok(tokenstream::TokenStream::token_alone(token::TokenKind::Literal(lit), expr.span))
             }
             ast::ExprKind::Unary(ast::UnOp::Neg, e) => match &e.kind {
@@ -677,7 +681,7 @@ impl server::Span for Rustc<'_, '_> {
             .lookup_char_pos(span.lo())
             .file
             .name
-            .prefer_remapped_unconditionaly()
+            .prefer_remapped_unconditionally()
             .to_string()
     }
 

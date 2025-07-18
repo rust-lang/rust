@@ -7,7 +7,7 @@
 // was hashed by rustc in addition to the span length, and the fix still
 // works.
 
-//@ needs-target-std
+//@ ignore-cross-compile
 
 use run_make_support::{rfs, rustc};
 

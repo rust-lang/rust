@@ -21,7 +21,7 @@ impl const Drop for ConstImplWithDropGlue {
     fn drop(&mut self) {}
 }
 
-const fn check<T: ~const Destruct>(_: T) {}
+const fn check<T: [const] Destruct>(_: T) {}
 
 macro_rules! check_all {
     ($($exp:expr),*$(,)?) => {$(

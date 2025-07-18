@@ -23,7 +23,7 @@ macro_rules! late_lint_methods {
             fn check_stmt(a: &'tcx rustc_hir::Stmt<'tcx>);
             fn check_arm(a: &'tcx rustc_hir::Arm<'tcx>);
             fn check_pat(a: &'tcx rustc_hir::Pat<'tcx>);
-            fn check_lit(hir_id: rustc_hir::HirId, a: &'tcx rustc_hir::Lit, negated: bool);
+            fn check_lit(hir_id: rustc_hir::HirId, a: rustc_hir::Lit, negated: bool);
             fn check_expr(a: &'tcx rustc_hir::Expr<'tcx>);
             fn check_expr_post(a: &'tcx rustc_hir::Expr<'tcx>);
             fn check_ty(a: &'tcx rustc_hir::Ty<'tcx, rustc_hir::AmbigArg>);

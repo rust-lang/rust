@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value at .0: encountered 0, but 
   --> tests/fail/validity/cast_fn_ptr_invalid_callee_ret.rs:LL:CC
    |
 LL |     f();
-   |     ^^^ constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
+   |     ^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

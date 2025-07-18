@@ -121,43 +121,6 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    // FIXME remove
-    /// Forces the data value of a dyn* value to the stack and returns a pointer to it as well as the
-    /// vtable pointer.
-    pub(crate) fn dyn_star_force_data_on_stack(
-        self,
-        fx: &mut FunctionCx<'_, '_, 'tcx>,
-    ) -> (Value, Value) {
-        assert!(self.1.ty.is_dyn_star());
-
-        match self.0 {
-            CValueInner::ByRef(ptr, None) => {
-                let (a_scalar, b_scalar) = match self.1.backend_repr {
-                    BackendRepr::ScalarPair(a, b) => (a, b),
-                    _ => unreachable!("dyn_star_force_data_on_stack({:?})", self),
-                };
-                let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
-                let clif_ty2 = scalar_to_clif_type(fx.tcx, b_scalar);
-                let mut flags = MemFlags::new();
-                flags.set_notrap();
-                let vtable = ptr.offset(fx, b_offset).load(fx, clif_ty2, flags);
-                (ptr.get_addr(fx), vtable)
-            }
-            CValueInner::ByValPair(data, vtable) => {
-                let data_ptr = fx.create_stack_slot(
-                    u32::try_from(fx.target_config.pointer_type().bytes()).unwrap(),
-                    u32::try_from(fx.target_config.pointer_type().bytes()).unwrap(),
-                );
-                data_ptr.store(fx, data, MemFlags::trusted());
-
-                (data_ptr.get_addr(fx), vtable)
-            }
-            CValueInner::ByRef(_, Some(_)) | CValueInner::ByVal(_) => {
-                unreachable!("dyn_star_force_data_on_stack({:?})", self)
-            }
-        }
-    }
-
     pub(crate) fn try_to_ptr(self) -> Option<(Pointer, Option<Value>)> {
         match self.0 {
             CValueInner::ByRef(ptr, meta) => Some((ptr, meta)),

@@ -13,7 +13,7 @@ To learn more about how rust-analyzer works, see [Architecture](architecture.md)
 It also explains the high-level layout of the source code.
 Do skim through that document.
 
-We also publish rustdoc docs to pages: https://rust-lang.github.io/rust-analyzer/ide/.
+We also publish rustdoc docs to <https://rust-lang.github.io/rust-analyzer/ide/>.
 Note though, that the internal documentation is very incomplete.
 
 Various organizational and process issues are discussed in this document.
@@ -30,7 +30,7 @@ Discussion happens in this Zulip stream:
 
 # Issue Labels
 
-* [good-first-issue](https://github.com/rust-lang/rust-analyzer/labels/good%20first%20issue)
+* [good-first-issue](https://github.com/rust-lang/rust-analyzer/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22)
   are good issues to get into the project.
 * [E-has-instructions](https://github.com/rust-lang/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AE-has-instructions)
   issues have links to the code in question and tests.

@@ -22,23 +22,11 @@ fn but_last_line(s: &str) -> &str {
 #[test]
 fn sources_template() {
     let mut template = SourcesPart::blank();
-    assert_eq!(
-        but_last_line(&template.to_string()),
-        r"var srcIndex = new Map(JSON.parse('[]'));
-createSrcSidebar();"
-    );
+    assert_eq!(but_last_line(&template.to_string()), r"createSrcSidebar('[]');");
     template.append(EscapedJson::from(OrderedJson::serialize("u").unwrap()).to_string());
-    assert_eq!(
-        but_last_line(&template.to_string()),
-        r#"var srcIndex = new Map(JSON.parse('["u"]'));
-createSrcSidebar();"#
-    );
+    assert_eq!(but_last_line(&template.to_string()), r#"createSrcSidebar('["u"]');"#);
     template.append(EscapedJson::from(OrderedJson::serialize("v").unwrap()).to_string());
-    assert_eq!(
-        but_last_line(&template.to_string()),
-        r#"var srcIndex = new Map(JSON.parse('["u","v"]'));
-createSrcSidebar();"#
-    );
+    assert_eq!(but_last_line(&template.to_string()), r#"createSrcSidebar('["u","v"]');"#);
 }
 
 #[test]

@@ -11,47 +11,47 @@ use std::marker::Destruct;
 
 const fn tester_fn<T>(f: T) -> T::Output
 where
-    T: ~const Fn<()> + ~const Destruct,
+    T: [const] Fn<()> + [const] Destruct,
 {
     f()
 }
 
 const fn tester_fn_mut<T>(mut f: T) -> T::Output
 where
-    T: ~const FnMut<()> + ~const Destruct,
+    T: [const] FnMut<()> + [const] Destruct,
 {
     f()
 }
 
 const fn tester_fn_once<T>(f: T) -> T::Output
 where
-    T: ~const FnOnce<()>,
+    T: [const] FnOnce<()>,
 {
     f()
 }
 
 const fn test_fn<T>(mut f: T) -> (T::Output, T::Output, T::Output)
 where
-    T: ~const Fn<()> + ~const Destruct,
+    T: [const] Fn<()> + [const] Destruct,
 {
     (
-        // impl<A: Tuple, F: ~const Fn + ?Sized> const Fn<A> for &F
+        // impl<A: Tuple, F: [const] Fn + ?Sized> const Fn<A> for &F
         tester_fn(&f),
-        // impl<A: Tuple, F: ~const Fn + ?Sized> const FnMut<A> for &F
+        // impl<A: Tuple, F: [const] Fn + ?Sized> const FnMut<A> for &F
         tester_fn_mut(&f),
-        // impl<A: Tuple, F: ~const Fn + ?Sized> const FnOnce<A> for &F
+        // impl<A: Tuple, F: [const] Fn + ?Sized> const FnOnce<A> for &F
         tester_fn_once(&f),
     )
 }
 
 const fn test_fn_mut<T>(mut f: T) -> (T::Output, T::Output)
 where
-    T: ~const FnMut<()> + ~const Destruct,
+    T: [const] FnMut<()> + [const] Destruct,
 {
     (
-        // impl<A: Tuple, F: ~const FnMut + ?Sized> const FnMut<A> for &mut F
+        // impl<A: Tuple, F: [const] FnMut + ?Sized> const FnMut<A> for &mut F
         tester_fn_mut(&mut f),
-        // impl<A: Tuple, F: ~const FnMut + ?Sized> const FnOnce<A> for &mut F
+        // impl<A: Tuple, F: [const] FnMut + ?Sized> const FnOnce<A> for &mut F
         tester_fn_once(&mut f),
     )
 }

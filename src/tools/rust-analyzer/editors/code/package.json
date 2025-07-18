@@ -683,6 +683,16 @@
             {
                 "title": "assist",
                 "properties": {
+                    "rust-analyzer.assist.preferSelf": {
+                        "markdownDescription": "When inserting a type (e.g. in \"fill match arms\" assist), prefer to use `Self` over the type name where possible.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "assist",
+                "properties": {
                     "rust-analyzer.assist.termSearch.borrowcheck": {
                         "markdownDescription": "Enable borrow checking for term search code assists. If set to false, also there will be more suggestions, but some of them may not borrow-check.",
                         "default": true,
@@ -1516,6 +1526,16 @@
                             "Use the client (editor) to watch files for changes",
                             "Use server-side file watching"
                         ]
+                    }
+                }
+            },
+            {
+                "title": "highlightRelated",
+                "properties": {
+                    "rust-analyzer.highlightRelated.branchExitPoints.enable": {
+                        "markdownDescription": "Enables highlighting of related return values while the cursor is on any `match`, `if`, or match arm arrow (`=>`).",
+                        "default": true,
+                        "type": "boolean"
                     }
                 }
             },
@@ -2888,6 +2908,16 @@
                                 }
                             }
                         ]
+                    }
+                }
+            },
+            {
+                "title": "workspace",
+                "properties": {
+                    "rust-analyzer.workspace.symbol.search.excludeImports": {
+                        "markdownDescription": "Exclude all imports from workspace symbol search.\n\nIn addition to regular imports (which are always excluded),\nthis option removes public imports (better known as re-exports)\nand removes imports that rename the imported symbol.",
+                        "default": false,
+                        "type": "boolean"
                     }
                 }
             },

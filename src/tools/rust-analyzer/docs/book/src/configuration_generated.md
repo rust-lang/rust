@@ -13,6 +13,13 @@ Default: `"todo"`
 Placeholder expression to use for missing expressions in assists.
 
 
+## rust-analyzer.assist.preferSelf {#assist.preferSelf}
+
+Default: `false`
+
+When inserting a type (e.g. in "fill match arms" assist), prefer to use `Self` over the type name where possible.
+
+
 ## rust-analyzer.assist.termSearch.borrowcheck {#assist.termSearch.borrowcheck}
 
 Default: `true`
@@ -603,6 +610,13 @@ also need to add the folders to Code's `files.watcherExclude`.
 Default: `"client"`
 
 Controls file watching implementation.
+
+
+## rust-analyzer.highlightRelated.branchExitPoints.enable {#highlightRelated.branchExitPoints.enable}
+
+Default: `true`
+
+Enables highlighting of related return values while the cursor is on any `match`, `if`, or match arm arrow (`=>`).
 
 
 ## rust-analyzer.highlightRelated.breakPoints.enable {#highlightRelated.breakPoints.enable}
@@ -1529,6 +1543,17 @@ and therefore, a workspace, whereas `DiscoverArgument::buildfile` is used to
 to update an existing workspace. As a reference for implementors,
 buck2's `rust-project` will likely be useful:
 https://github.com/facebook/buck2/tree/main/integrations/rust-project.
+
+
+## rust-analyzer.workspace.symbol.search.excludeImports {#workspace.symbol.search.excludeImports}
+
+Default: `false`
+
+Exclude all imports from workspace symbol search.
+
+In addition to regular imports (which are always excluded),
+this option removes public imports (better known as re-exports)
+and removes imports that rename the imported symbol.
 
 
 ## rust-analyzer.workspace.symbol.search.kind {#workspace.symbol.search.kind}

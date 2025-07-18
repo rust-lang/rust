@@ -8,7 +8,7 @@
 //!
 //! [docs]: https://doc.rust-lang.org/stable/rustdoc/#using-standalone-markdown-files
 
-use std::fmt::Write as _;
+use std::fmt::{self, Write as _};
 use std::fs::{File, create_dir_all, read_to_string};
 use std::io::prelude::*;
 use std::path::Path;
@@ -77,32 +77,33 @@ pub(crate) fn render_and_write<P: AsRef<Path>>(
     }
     let title = metadata[0];
 
-    let mut ids = IdMap::new();
     let error_codes = ErrorCodes::from(options.unstable_features.is_nightly_build());
-    let text = if !options.markdown_no_toc {
-        MarkdownWithToc {
-            content: text,
-            links: &[],
-            ids: &mut ids,
-            error_codes,
-            edition,
-            playground: &playground,
+    let text = fmt::from_fn(|f| {
+        if !options.markdown_no_toc {
+            MarkdownWithToc {
+                content: text,
+                links: &[],
+                ids: &mut IdMap::new(),
+                error_codes,
+                edition,
+                playground: &playground,
+            }
+            .write_into(f)
+        } else {
+            Markdown {
+                content: text,
+                links: &[],
+                ids: &mut IdMap::new(),
+                error_codes,
+                edition,
+                playground: &playground,
+                heading_offset: HeadingOffset::H1,
+            }
+            .write_into(f)
         }
-        .into_string()
-    } else {
-        Markdown {
-            content: text,
-            links: &[],
-            ids: &mut ids,
-            error_codes,
-            edition,
-            playground: &playground,
-            heading_offset: HeadingOffset::H1,
-        }
-        .into_string()
-    };
+    });
 
-    let err = write!(
+    let res = write!(
         &mut out,
         r#"<!DOCTYPE html>
 <html lang="en">
@@ -130,15 +131,10 @@ pub(crate) fn render_and_write<P: AsRef<Path>>(
 </body>
 </html>"#,
         title = Escape(title),
-        css = css,
         in_header = options.external_html.in_header,
         before_content = options.external_html.before_content,
-        text = text,
         after_content = options.external_html.after_content,
     );
 
-    match err {
-        Err(e) => Err(format!("cannot write to `{output}`: {e}", output = output.display())),
-        Ok(_) => Ok(()),
-    }
+    res.map_err(|e| format!("cannot write to `{output}`: {e}", output = output.display()))
 }

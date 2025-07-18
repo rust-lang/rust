@@ -1,0 +1,9 @@
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/unstable_feature_bound_staged_api.rs:8:1
+   |
+LL | #[unstable_feature_bound(feat_bar)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0734`.

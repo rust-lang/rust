@@ -1,4 +1,4 @@
-# Profile Guided Optimization
+# Profile-guided optimization
 
 <!-- toc -->
 
@@ -6,7 +6,7 @@
 This chapter describes what PGO is and how the support for it is
 implemented in `rustc`.
 
-## What Is Profiled-Guided Optimization?
+## What is profiled-guided optimization?
 
 The basic concept of PGO is to collect data about the typical execution of
 a program (e.g. which branches it is likely to take) and then use this data
@@ -52,7 +52,7 @@ instrumentation, via the experimental option
 [`-C instrument-coverage`](./llvm-coverage-instrumentation.md), but using these
 coverage results for PGO has not been attempted at this time.
 
-### Overall Workflow
+### Overall workflow
 
 Generating a PGO-optimized program involves the following four steps:
 
@@ -62,12 +62,12 @@ Generating a PGO-optimized program involves the following four steps:
 4. Compile the program again, this time making use of the profiling data
    (e.g. `rustc -C profile-use=merged.profdata main.rs`)
 
-### Compile-Time Aspects
+### Compile-time aspects
 
 Depending on which step in the above workflow we are in, two different things
 can happen at compile time:
 
-#### Create Binaries with Instrumentation
+#### Create binaries with instrumentation
 
 As mentioned above, the profiling instrumentation is added by LLVM.
 `rustc` instructs LLVM to do so [by setting the appropriate][pgo-gen-passmanager]
@@ -88,7 +88,7 @@ runtime are not removed [by marking the with the right export level][pgo-gen-sym
 [pgo-gen-symbols]:https://github.com/rust-lang/rust/blob/1.34.1/src/librustc_codegen_ssa/back/symbol_export.rs#L212-L225
 
 
-#### Compile Binaries Where Optimizations Make Use Of Profiling Data
+#### Compile binaries where optimizations make use of profiling data
 
 In the final step of the workflow described above, the program is compiled
 again, with the compiler using the gathered profiling data in order to drive
@@ -106,7 +106,7 @@ LLVM does the rest (e.g. setting branch weights, marking functions with
 `cold` or `inlinehint`, etc).
 
 
-### Runtime Aspects
+### Runtime aspects
 
 Instrumentation-based approaches always also have a runtime component, i.e.
 once we have an instrumented program, that program needs to be run in order
@@ -134,7 +134,7 @@ instrumentation artifacts show up in LLVM IR.
 [rmake-tests]: https://github.com/rust-lang/rust/tree/master/tests/run-make
 [codegen-test]: https://github.com/rust-lang/rust/blob/master/tests/codegen/pgo-instrumentation.rs
 
-## Additional Information
+## Additional information
 
 Clang's documentation contains a good overview on [PGO in LLVM][llvm-pgo].
 

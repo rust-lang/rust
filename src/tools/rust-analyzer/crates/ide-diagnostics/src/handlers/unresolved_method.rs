@@ -18,7 +18,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_ran
 // This diagnostic is triggered if a method does not exist on a given type.
 pub(crate) fn unresolved_method(
     ctx: &DiagnosticsContext<'_>,
-    d: &hir::UnresolvedMethodCall,
+    d: &hir::UnresolvedMethodCall<'_>,
 ) -> Diagnostic {
     let suffix = if d.field_with_same_name.is_some() {
         ", but a field with a similar name exists"
@@ -49,7 +49,7 @@ pub(crate) fn unresolved_method(
     .with_fixes(fixes(ctx, d))
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -> Option<Vec<Assist>> {
+fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall<'_>) -> Option<Vec<Assist>> {
     let field_fix = if let Some(ty) = &d.field_with_same_name {
         field_fix(ctx, d, ty)
     } else {
@@ -72,8 +72,8 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -> Option<
 
 fn field_fix(
     ctx: &DiagnosticsContext<'_>,
-    d: &hir::UnresolvedMethodCall,
-    ty: &hir::Type,
+    d: &hir::UnresolvedMethodCall<'_>,
+    ty: &hir::Type<'_>,
 ) -> Option<Assist> {
     if !ty.impls_fnonce(ctx.sema.db) {
         return None;
@@ -107,7 +107,10 @@ fn field_fix(
     })
 }
 
-fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -> Option<Assist> {
+fn assoc_func_fix(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::UnresolvedMethodCall<'_>,
+) -> Option<Assist> {
     if let Some(f) = d.assoc_func_with_same_name {
         let db = ctx.sema.db;
 
@@ -117,8 +120,7 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
 
         let call = ast::MethodCallExpr::cast(expr.syntax().clone())?;
         let range = InFile::new(expr_ptr.file_id, call.syntax().text_range())
-            .original_node_file_range_rooted(db)
-            .range;
+            .original_node_file_range_rooted_opt(db)?;
 
         let receiver = call.receiver()?;
         let receiver_type = &ctx.sema.type_of_expr(&receiver)?.original;
@@ -171,18 +173,16 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
 
         let assoc_func_call_expr_string = make::expr_call(assoc_func_path, args).to_string();
 
-        let file_id = ctx.sema.original_range_opt(call.receiver()?.syntax())?.file_id;
-
         Some(Assist {
             id: AssistId::quick_fix("method_call_to_assoc_func_call_fix"),
             label: Label::new(format!(
                 "Use associated func call instead: `{assoc_func_call_expr_string}`"
             )),
             group: None,
-            target: range,
+            target: range.range,
             source_change: Some(SourceChange::from_text_edit(
-                file_id.file_id(ctx.sema.db),
-                TextEdit::replace(range, assoc_func_call_expr_string),
+                range.file_id.file_id(ctx.sema.db),
+                TextEdit::replace(range.range, assoc_func_call_expr_string),
             )),
             command: None,
         })
@@ -297,7 +297,7 @@ macro_rules! m {
 }
 fn main() {
     m!(());
- // ^^^^^^ error: no method `foo` on type `()`
+ // ^^ error: no method `foo` on type `()`
 }
 "#,
         );

@@ -897,8 +897,31 @@ pub fn sleep(dur: Duration) {
 ///
 /// # Platform-specific behavior
 ///
-/// This function uses [`sleep`] internally, see its platform-specific behavior.
+/// In most cases this function will call an OS specific function. Where that
+/// is not supported [`sleep`] is used. Those platforms are referred to as other
+/// in the table below.
 ///
+/// # Underlying System calls
+///
+/// The following system calls are [currently] being used:
+///
+/// |  Platform |               System call                                            |
+/// |-----------|----------------------------------------------------------------------|
+/// | Linux     | [clock_nanosleep] (Monotonic clock)                                  |
+/// | BSD except OpenBSD | [clock_nanosleep] (Monotonic Clock)]                        |
+/// | Android   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Solaris   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Illumos   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Dragonfly | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Hurd      | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Fuchsia   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Vxworks   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Other     | `sleep_until` uses [`sleep`] and does not issue a syscall itself     |
+///
+/// [currently]: crate::io#platform-specific-behavior
+/// [clock_nanosleep]: https://linux.die.net/man/3/clock_nanosleep
+///
+/// **Disclaimer:** These system calls might change over time.
 ///
 /// # Examples
 ///
@@ -923,9 +946,9 @@ pub fn sleep(dur: Duration) {
 /// }
 /// ```
 ///
-/// A slow api we must not call too fast and which takes a few
+/// A slow API we must not call too fast and which takes a few
 /// tries before succeeding. By using `sleep_until` the time the
-/// api call takes does not influence when we retry or when we give up
+/// API call takes does not influence when we retry or when we give up
 ///
 /// ```no_run
 /// #![feature(thread_sleep_until)]
@@ -960,11 +983,7 @@ pub fn sleep(dur: Duration) {
 /// ```
 #[unstable(feature = "thread_sleep_until", issue = "113752")]
 pub fn sleep_until(deadline: Instant) {
-    let now = Instant::now();
-
-    if let Some(delay) = deadline.checked_duration_since(now) {
-        sleep(delay);
-    }
+    imp::Thread::sleep_until(deadline)
 }
 
 /// Used to ensure that `park` and `park_timeout` do not unwind, as that can

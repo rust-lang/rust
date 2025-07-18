@@ -17,10 +17,10 @@ LL | #[cfg(version(false))]
    |               ^^^^^
 
 error: expected single version literal
-  --> $DIR/syntax.rs:23:7
+  --> $DIR/syntax.rs:23:14
    |
 LL | #[cfg(version("1.43", "1.44", "1.45"))]
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unknown version literal format, assuming it refers to a future version
   --> $DIR/syntax.rs:51:15

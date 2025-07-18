@@ -11,6 +11,7 @@ use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal};
 use rustc_data_structures::{parallel, thousands};
+use rustc_errors::timings::TimingSection;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
@@ -18,6 +19,7 @@ use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
+use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepsType;
@@ -191,7 +193,7 @@ fn configure_and_expand(
         // Create the config for macro expansion
         let recursion_limit = get_recursion_limit(pre_configured_attrs, sess);
         let cfg = rustc_expand::expand::ExpansionConfig {
-            crate_name: crate_name.to_string(),
+            crate_name,
             features,
             recursion_limit,
             trace_mac: sess.opts.unstable_opts.trace_macros,
@@ -296,6 +298,16 @@ fn configure_and_expand(
 fn print_macro_stats(ecx: &ExtCtxt<'_>) {
     use std::fmt::Write;
 
+    let crate_name = ecx.ecfg.crate_name.as_str();
+    let crate_name = if crate_name == "build_script_build" {
+        // This is a build script. Get the package name from the environment.
+        let pkg_name =
+            std::env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "<unknown crate>".to_string());
+        format!("{pkg_name} build script")
+    } else {
+        crate_name.to_string()
+    };
+
     // No instability because we immediately sort the produced vector.
     #[allow(rustc::potential_query_instability)]
     let mut macro_stats: Vec<_> = ecx
@@ -325,7 +337,7 @@ fn print_macro_stats(ecx: &ExtCtxt<'_>) {
     // non-interleaving, though.
     let mut s = String::new();
     _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
-    _ = writeln!(s, "{prefix} MACRO EXPANSION STATS: {}", ecx.ecfg.crate_name);
+    _ = writeln!(s, "{prefix} MACRO EXPANSION STATS: {}", crate_name);
     _ = writeln!(
         s,
         "{prefix} {:<name_w$}{:>uses_w$}{:>lines_w$}{:>avg_lines_w$}{:>bytes_w$}{:>avg_bytes_w$}",
@@ -339,23 +351,33 @@ fn print_macro_stats(ecx: &ExtCtxt<'_>) {
     }
     for (bytes, lines, uses, name, kind) in macro_stats {
         let mut name = ExpnKind::Macro(kind, *name).descr();
+        let uses_with_underscores = thousands::usize_with_underscores(uses);
         let avg_lines = lines as f64 / uses as f64;
         let avg_bytes = bytes as f64 / uses as f64;
-        if name.len() >= name_w {
-            // If the name is long, print it on a line by itself, then
-            // set the name to empty and print things normally, to show the
-            // stats on the next line.
+
+        // Ensure the "Macro Name" and "Uses" columns are as compact as possible.
+        let mut uses_w = uses_w;
+        if name.len() + uses_with_underscores.len() >= name_w + uses_w {
+            // The name would abut or overlap the uses value. Print the name
+            // on a line by itself, then set the name to empty and print things
+            // normally, to show the stats on the next line.
             _ = writeln!(s, "{prefix} {:<name_w$}", name);
             name = String::new();
-        }
+        } else if name.len() >= name_w {
+            // The name won't abut or overlap with the uses value, but it does
+            // overlap with the empty part of the uses column. Shrink the width
+            // of the uses column to account for the excess name length.
+            uses_w = uses_with_underscores.len() + 1
+        };
+
         _ = writeln!(
             s,
             "{prefix} {:<name_w$}{:>uses_w$}{:>lines_w$}{:>avg_lines_w$}{:>bytes_w$}{:>avg_bytes_w$}",
             name,
-            thousands::usize_with_underscores(uses),
-            thousands::isize_with_underscores(lines),
+            uses_with_underscores,
+            thousands::usize_with_underscores(lines),
             thousands::f64p1_with_underscores(avg_lines),
-            thousands::isize_with_underscores(bytes),
+            thousands::usize_with_underscores(bytes),
             thousands::f64p1_with_underscores(avg_bytes),
         );
     }
@@ -369,7 +391,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let mut lint_buffer = resolver.lint_buffer.steal();
 
     if sess.opts.unstable_opts.input_stats {
-        input_stats::print_ast_stats(krate, "POST EXPANSION AST STATS", "ast-stats");
+        input_stats::print_ast_stats(tcx, krate);
     }
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
@@ -849,8 +871,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.analysis = analysis;
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
     providers.resolver_for_lowering_raw = resolver_for_lowering_raw;
-    providers.stripped_cfg_items =
-        |tcx, _| tcx.arena.alloc_from_iter(tcx.resolutions(()).stripped_cfg_items.steal());
+    providers.stripped_cfg_items = |tcx, _| &tcx.resolutions(()).stripped_cfg_items[..];
     providers.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
     providers.early_lint_checks = early_lint_checks;
     providers.env_var_os = env_var_os;
@@ -1010,8 +1031,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
     // Prefetch this to prevent multiple threads from blocking on it later.
     // This is needed since the `hir_id_validator::check_crate` call above is not guaranteed
-    // to use `hir_crate`.
-    tcx.ensure_done().hir_crate(());
+    // to use `hir_crate_items`.
+    tcx.ensure_done().hir_crate_items(());
 
     let sess = tcx.sess;
     sess.time("misc_checking_1", || {
@@ -1174,7 +1195,9 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
 pub(crate) fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-) -> Box<dyn Any> {
+) -> (Box<dyn Any>, EncodedMetadata) {
+    tcx.sess.timings.start_section(tcx.sess.dcx(), TimingSection::Codegen);
+
     // Hook for tests.
     if let Some((def_id, _)) = tcx.entry_fn(())
         && tcx.has_attr(def_id, sym::rustc_delayed_bug_from_inside_query)
@@ -1197,11 +1220,9 @@ pub(crate) fn start_codegen<'tcx>(
 
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
-    let (metadata, need_metadata_module) = rustc_metadata::fs::encode_and_write_metadata(tcx);
+    let metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
 
-    let codegen = tcx.sess.time("codegen_crate", move || {
-        codegen_backend.codegen_crate(tcx, metadata, need_metadata_module)
-    });
+    let codegen = tcx.sess.time("codegen_crate", move || codegen_backend.codegen_crate(tcx));
 
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 
@@ -1211,7 +1232,7 @@ pub(crate) fn start_codegen<'tcx>(
         tcx.sess.code_stats.print_type_sizes();
     }
 
-    codegen
+    (codegen, metadata)
 }
 
 /// Compute and validate the crate name.

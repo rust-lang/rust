@@ -532,7 +532,7 @@ impl flags::AnalysisStats {
                 }
 
                 let todo = syntax::ast::make::ext::expr_todo().to_string();
-                let mut formatter = |_: &hir::Type| todo.clone();
+                let mut formatter = |_: &hir::Type<'_>| todo.clone();
                 let mut syntax_hit_found = false;
                 for term in found_terms {
                     let generated = term
@@ -796,7 +796,7 @@ impl flags::AnalysisStats {
             // region:expressions
             let (previous_exprs, previous_unknown, previous_partially_unknown) =
                 (num_exprs, num_exprs_unknown, num_exprs_partially_unknown);
-            for (expr_id, _) in body.exprs.iter() {
+            for (expr_id, _) in body.exprs() {
                 let ty = &inference_result[expr_id];
                 num_exprs += 1;
                 let unknown_or_partial = if ty.is_unknown() {
@@ -901,7 +901,7 @@ impl flags::AnalysisStats {
             // region:patterns
             let (previous_pats, previous_unknown, previous_partially_unknown) =
                 (num_pats, num_pats_unknown, num_pats_partially_unknown);
-            for (pat_id, _) in body.pats.iter() {
+            for (pat_id, _) in body.pats() {
                 let ty = &inference_result[pat_id];
                 num_pats += 1;
                 let unknown_or_partial = if ty.is_unknown() {

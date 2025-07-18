@@ -71,7 +71,6 @@ impl<'tcx> BorrowExplanation<'tcx> {
     ) {
         let tcx = cx.infcx.tcx;
         let body = cx.body;
-        let local_names = &cx.local_names;
 
         if let Some(span) = borrow_span {
             let def_id = body.source.def_id();
@@ -220,7 +219,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     _ => ("destructor", format!("type `{}`", local_decl.ty)),
                 };
 
-                match local_names[dropped_local] {
+                match cx.local_name(dropped_local) {
                     Some(local_name) if !local_decl.from_compiler_desugaring() => {
                         let message = format!(
                             "{borrow_desc}borrow might be used here, when `{local_name}` is dropped \
@@ -342,6 +341,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                 }
                             }
                         } else if let LocalInfo::BlockTailTemp(info) = local_decl.local_info() {
+                            let sp = info.span.find_oldest_ancestor_in_same_ctxt();
                             if info.tail_result_is_ignored {
                                 // #85581: If the first mutable borrow's scope contains
                                 // the second borrow, this suggestion isn't helpful.
@@ -349,7 +349,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                     old.to(info.span.shrink_to_hi()).contains(new)
                                 }) {
                                     err.span_suggestion_verbose(
-                                        info.span.shrink_to_hi(),
+                                        sp.shrink_to_hi(),
                                         "consider adding semicolon after the expression so its \
                                         temporaries are dropped sooner, before the local variables \
                                         declared by the block are dropped",
@@ -368,8 +368,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                      local variable `x` and then make `x` be the expression at the \
                                      end of the block",
                                     vec![
-                                        (info.span.shrink_to_lo(), "let x = ".to_string()),
-                                        (info.span.shrink_to_hi(), "; x".to_string()),
+                                        (sp.shrink_to_lo(), "let x = ".to_string()),
+                                        (sp.shrink_to_hi(), "; x".to_string()),
                                     ],
                                     Applicability::MaybeIncorrect,
                                 );
@@ -669,10 +669,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
             Some(Cause::DropVar(local, location)) => {
                 let mut should_note_order = false;
-                if self.local_names[local].is_some()
+                if self.local_name(local).is_some()
                     && let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place
                     && let Some(borrowed_local) = place.as_local()
-                    && self.local_names[borrowed_local].is_some()
+                    && self.local_name(borrowed_local).is_some()
                     && local != borrowed_local
                 {
                     should_note_order = true;
@@ -747,7 +747,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         Operand::Copy(place) | Operand::Move(place) => {
                             if let Some(l) = place.as_local() {
                                 let local_decl = &self.body.local_decls[l];
-                                if self.local_names[l].is_none() {
+                                if self.local_name(l).is_none() {
                                     local_decl.source_info.span
                                 } else {
                                     span
@@ -792,7 +792,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             Operand::Copy(place) | Operand::Move(place) => {
                                 if let Some(l) = place.as_local() {
                                     let local_decl = &self.body.local_decls[l];
-                                    if self.local_names[l].is_none() {
+                                    if self.local_name(l).is_none() {
                                         local_decl.source_info.span
                                     } else {
                                         span

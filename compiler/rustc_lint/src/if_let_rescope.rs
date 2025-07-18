@@ -230,7 +230,7 @@ impl IfLetRescope {
                     }
                 }
             }
-            // At this point, any `if let` fragment in the cascade is definitely preceeded by `else`,
+            // At this point, any `if let` fragment in the cascade is definitely preceded by `else`,
             // so a opening bracket is mandatory before each `match`.
             add_bracket_to_match_head = true;
             if let Some(alt) = alt {

@@ -1,4 +1,5 @@
 use core::cell::*;
+use core::mem::forget;
 
 #[test]
 fn smoketest_unsafe_cell() {
@@ -476,4 +477,75 @@ fn const_cells() {
         const CELL_FROM: Cell<i32> = Cell::from(3);
         const _: i32 = CELL.into_inner();
     */
+}
+
+#[test]
+fn refcell_borrow() {
+    // Check that `borrow` is usable at compile-time
+    const {
+        let a = RefCell::new(0);
+        assert!(a.try_borrow().is_ok());
+        assert!(a.try_borrow_mut().is_ok());
+        let a_ref = a.borrow();
+        assert!(*a_ref == 0);
+        assert!(a.try_borrow().is_ok());
+        assert!(a.try_borrow_mut().is_err());
+    }
+}
+
+#[test]
+fn refcell_borrow_mut() {
+    // Check that `borrow_mut` is usable at compile-time
+    const {
+        let mut a = RefCell::new(0);
+        {
+            assert!(a.try_borrow().is_ok());
+            assert!(a.try_borrow_mut().is_ok());
+            let mut a_ref = a.borrow_mut();
+            assert!(*a_ref == 0);
+            *a_ref = 10;
+            assert!(*a_ref == 10);
+            assert!(a.try_borrow().is_err());
+            assert!(a.try_borrow_mut().is_err());
+        }
+        assert!(*a.get_mut() == 10);
+    };
+}
+struct NeverDrop;
+impl Drop for NeverDrop {
+    fn drop(&mut self) {
+        panic!("should never be called");
+    }
+}
+
+#[test]
+fn refcell_replace() {
+    // Check that `replace` is usable at compile-time
+    const {
+        let a = RefCell::new(0);
+        assert!(a.replace(10) == 0);
+        let a = a.into_inner();
+        assert!(a == 10);
+
+        let b = RefCell::new(NeverDrop);
+        forget(b.replace(NeverDrop));
+        forget(b)
+    };
+}
+
+#[test]
+fn refcell_swap() {
+    // Check that `swap` is usable at compile-time
+    const {
+        let (a, b) = (RefCell::new(31), RefCell::new(41));
+        a.swap(&b);
+        let (a, b) = (a.into_inner(), b.into_inner());
+        assert!(a == 41);
+        assert!(b == 31);
+
+        let c = RefCell::new(NeverDrop);
+        let d = RefCell::new(NeverDrop);
+        c.swap(&d);
+        forget((c, d));
+    };
 }

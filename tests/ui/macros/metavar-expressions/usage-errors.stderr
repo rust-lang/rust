@@ -1,0 +1,71 @@
+error: `count` can not be placed inside the innermost repetition
+  --> $DIR/usage-errors.rs:15:24
+   |
+LL |     ( $i:ident ) => { ${ count($i) } };
+   |                        ^^^^^^^^^^^^^
+
+error: `count` can not be placed inside the innermost repetition
+  --> $DIR/usage-errors.rs:21:24
+   |
+LL |     ( $i:ident ) => { ${ count($i) } };
+   |                        ^^^^^^^^^^^^^
+
+error: missing `fn` or `struct` for function or struct definition
+  --> $DIR/usage-errors.rs:28:30
+   |
+LL |     ( $( $i:ident ),* ) => { count(i) };
+   |                              ^^^^^
+...
+LL | no_curly__no_rhs_dollar__round !(a, b, c);
+   | ----------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `no_curly__no_rhs_dollar__round` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: if you meant to call a macro, try
+   |
+LL |     ( $( $i:ident ),* ) => { count!(i) };
+   |                                   +
+
+error: missing `fn` or `struct` for function or struct definition
+  --> $DIR/usage-errors.rs:35:23
+   |
+LL |     ( $i:ident ) => { count(i) };
+   |                       ^^^^^
+...
+LL | no_curly__no_rhs_dollar__no_round !(a);
+   | -------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `no_curly__no_rhs_dollar__no_round` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: if you meant to call a macro, try
+   |
+LL |     ( $i:ident ) => { count!(i) };
+   |                            +
+
+error: variable `i` is still repeating at this depth
+  --> $DIR/usage-errors.rs:42:36
+   |
+LL |     ( $( $i:ident ),* ) => { count($i) };
+   |                                    ^^
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/usage-errors.rs:52:49
+   |
+LL |     ( $i:ident ) => { count($i) };
+   |                             -- due to this macro variable
+...
+LL | const _: u32 = no_curly__rhs_dollar__no_round! (a);
+   |                                                 ^ not found in this scope
+
+error[E0425]: cannot find function `count` in this scope
+  --> $DIR/usage-errors.rs:49:23
+   |
+LL |     ( $i:ident ) => { count($i) };
+   |                       ^^^^^ not found in this scope
+...
+LL | const _: u32 = no_curly__rhs_dollar__no_round! (a);
+   |                ----------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `no_curly__rhs_dollar__no_round` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

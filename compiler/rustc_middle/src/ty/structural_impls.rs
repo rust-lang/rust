@@ -69,12 +69,11 @@ impl fmt::Debug for ty::BoundRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ty::BoundRegionKind::Anon => write!(f, "BrAnon"),
-            ty::BoundRegionKind::Named(did, name) => {
-                if did.is_crate_root() {
-                    write!(f, "BrNamed({name})")
-                } else {
-                    write!(f, "BrNamed({did:?}, {name})")
-                }
+            ty::BoundRegionKind::NamedAnon(name) => {
+                write!(f, "BrNamedAnon({name})")
+            }
+            ty::BoundRegionKind::Named(did) => {
+                write!(f, "BrNamed({did:?})")
             }
             ty::BoundRegionKind::ClosureEnv => write!(f, "BrEnv"),
         }
@@ -91,12 +90,11 @@ impl fmt::Debug for ty::LateParamRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ty::LateParamRegionKind::Anon(idx) => write!(f, "LateAnon({idx})"),
-            ty::LateParamRegionKind::Named(did, name) => {
-                if did.is_crate_root() {
-                    write!(f, "LateNamed({name})")
-                } else {
-                    write!(f, "LateNamed({did:?}, {name})")
-                }
+            ty::LateParamRegionKind::NamedAnon(idx, name) => {
+                write!(f, "LateNamedAnon({idx:?}, {name})")
+            }
+            ty::LateParamRegionKind::Named(did) => {
+                write!(f, "LateNamed({did:?})")
             }
             ty::LateParamRegionKind::ClosureEnv => write!(f, "LateEnv"),
         }
@@ -185,7 +183,7 @@ impl fmt::Debug for ty::BoundTy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             ty::BoundTyKind::Anon => write!(f, "{:?}", self.var),
-            ty::BoundTyKind::Param(_, sym) => write!(f, "{sym:?}"),
+            ty::BoundTyKind::Param(def_id) => write!(f, "{def_id:?}"),
         }
     }
 }
@@ -230,9 +228,9 @@ TrivialLiftImpls! {
     usize,
     u64,
     // tidy-alphabetical-start
+    crate::mir::Promoted,
     crate::mir::interpret::AllocId,
     crate::mir::interpret::Scalar,
-    crate::mir::Promoted,
     rustc_abi::ExternAbi,
     rustc_abi::Size,
     rustc_hir::Safety,
@@ -267,9 +265,6 @@ TrivialTypeTraversalImpls! {
     crate::mir::SwitchTargets,
     crate::traits::IsConstable,
     crate::traits::OverflowError,
-    crate::ty::abstract_const::NotConstEvaluatable,
-    crate::ty::adjustment::AutoBorrowMutability,
-    crate::ty::adjustment::PointerCoercion,
     crate::ty::AdtKind,
     crate::ty::AssocItem,
     crate::ty::AssocKind,
@@ -277,19 +272,21 @@ TrivialTypeTraversalImpls! {
     crate::ty::BoundVar,
     crate::ty::InferConst,
     crate::ty::Placeholder<crate::ty::BoundRegion>,
-    crate::ty::Placeholder<crate::ty::BoundTy>,
     crate::ty::Placeholder<ty::BoundVar>,
     crate::ty::UserTypeAnnotationIndex,
     crate::ty::ValTree<'tcx>,
+    crate::ty::abstract_const::NotConstEvaluatable,
+    crate::ty::adjustment::AutoBorrowMutability,
+    crate::ty::adjustment::PointerCoercion,
     rustc_abi::FieldIdx,
     rustc_abi::VariantIdx,
     rustc_ast::InlineAsmOptions,
     rustc_ast::InlineAsmTemplatePiece,
     rustc_hir::CoroutineKind,
-    rustc_hir::def_id::LocalDefId,
     rustc_hir::HirId,
     rustc_hir::MatchSource,
     rustc_hir::RangeEnd,
+    rustc_hir::def_id::LocalDefId,
     rustc_span::Ident,
     rustc_span::Span,
     rustc_span::Symbol,
@@ -303,9 +300,10 @@ TrivialTypeTraversalImpls! {
 // interners).
 TrivialTypeTraversalAndLiftImpls! {
     // tidy-alphabetical-start
-    crate::ty::instance::ReifyReason,
     crate::ty::ParamConst,
     crate::ty::ParamTy,
+    crate::ty::Placeholder<crate::ty::BoundTy>,
+    crate::ty::instance::ReifyReason,
     rustc_hir::def_id::DefId,
     // tidy-alphabetical-end
 }
@@ -804,4 +802,5 @@ list_fold! {
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> : mk_poly_existential_predicates,
     &'tcx ty::List<PlaceElem<'tcx>> : mk_place_elems,
     &'tcx ty::List<ty::Pattern<'tcx>> : mk_patterns,
+    &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>> : mk_outlives,
 }

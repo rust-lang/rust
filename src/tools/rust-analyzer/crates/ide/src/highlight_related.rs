@@ -37,7 +37,10 @@ pub struct HighlightRelatedConfig {
     pub break_points: bool,
     pub closure_captures: bool,
     pub yield_points: bool,
+    pub branch_exit_points: bool,
 }
+
+type HighlightMap = FxHashMap<EditionedFileId, FxHashSet<HighlightedRange>>;
 
 // Feature: Highlight Related
 //
@@ -64,7 +67,7 @@ pub(crate) fn highlight_related(
 
     let token = pick_best_token(syntax.token_at_offset(offset), |kind| match kind {
         T![?] => 4, // prefer `?` when the cursor is sandwiched like in `await$0?`
-        T![->] => 4,
+        T![->] | T![=>] => 4,
         kind if kind.is_keyword(file_id.edition(sema.db)) => 3,
         IDENT | INT_NUMBER => 2,
         T![|] => 1,
@@ -77,6 +80,9 @@ pub(crate) fn highlight_related(
         }
         T![fn] | T![return] | T![->] if config.exit_points => {
             highlight_exit_points(sema, token).remove(&file_id)
+        }
+        T![match] | T![=>] | T![if] if config.branch_exit_points => {
+            highlight_branch_exit_points(sema, token).remove(&file_id)
         }
         T![await] | T![async] if config.yield_points => {
             highlight_yield_points(sema, token).remove(&file_id)
@@ -300,11 +306,93 @@ fn highlight_references(
     if res.is_empty() { None } else { Some(res.into_iter().collect()) }
 }
 
+pub(crate) fn highlight_branch_exit_points(
+    sema: &Semantics<'_, RootDatabase>,
+    token: SyntaxToken,
+) -> FxHashMap<EditionedFileId, Vec<HighlightedRange>> {
+    let mut highlights: HighlightMap = FxHashMap::default();
+
+    let push_to_highlights = |file_id, range, highlights: &mut HighlightMap| {
+        if let Some(FileRange { file_id, range }) = original_frange(sema.db, file_id, range) {
+            let hrange = HighlightedRange { category: ReferenceCategory::empty(), range };
+            highlights.entry(file_id).or_default().insert(hrange);
+        }
+    };
+
+    let push_tail_expr = |tail: Option<ast::Expr>, highlights: &mut HighlightMap| {
+        let Some(tail) = tail else {
+            return;
+        };
+
+        for_each_tail_expr(&tail, &mut |tail| {
+            let file_id = sema.hir_file_for(tail.syntax());
+            let range = tail.syntax().text_range();
+            push_to_highlights(file_id, Some(range), highlights);
+        });
+    };
+
+    let nodes = goto_definition::find_branch_root(sema, &token).into_iter();
+    match token.kind() {
+        T![match] => {
+            for match_expr in nodes.filter_map(ast::MatchExpr::cast) {
+                let file_id = sema.hir_file_for(match_expr.syntax());
+                let range = match_expr.match_token().map(|token| token.text_range());
+                push_to_highlights(file_id, range, &mut highlights);
+
+                let Some(arm_list) = match_expr.match_arm_list() else {
+                    continue;
+                };
+                for arm in arm_list.arms() {
+                    push_tail_expr(arm.expr(), &mut highlights);
+                }
+            }
+        }
+        T![=>] => {
+            for arm in nodes.filter_map(ast::MatchArm::cast) {
+                let file_id = sema.hir_file_for(arm.syntax());
+                let range = arm.fat_arrow_token().map(|token| token.text_range());
+                push_to_highlights(file_id, range, &mut highlights);
+
+                push_tail_expr(arm.expr(), &mut highlights);
+            }
+        }
+        T![if] => {
+            for mut if_to_process in nodes.map(ast::IfExpr::cast) {
+                while let Some(cur_if) = if_to_process.take() {
+                    let file_id = sema.hir_file_for(cur_if.syntax());
+
+                    let if_kw_range = cur_if.if_token().map(|token| token.text_range());
+                    push_to_highlights(file_id, if_kw_range, &mut highlights);
+
+                    if let Some(then_block) = cur_if.then_branch() {
+                        push_tail_expr(Some(then_block.into()), &mut highlights);
+                    }
+
+                    match cur_if.else_branch() {
+                        Some(ast::ElseBranch::Block(else_block)) => {
+                            push_tail_expr(Some(else_block.into()), &mut highlights);
+                            if_to_process = None;
+                        }
+                        Some(ast::ElseBranch::IfExpr(nested_if)) => if_to_process = Some(nested_if),
+                        None => if_to_process = None,
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+
+    highlights
+        .into_iter()
+        .map(|(file_id, ranges)| (file_id, ranges.into_iter().collect()))
+        .collect()
+}
+
 fn hl_exit_points(
     sema: &Semantics<'_, RootDatabase>,
     def_token: Option<SyntaxToken>,
     body: ast::Expr,
-) -> Option<FxHashMap<EditionedFileId, FxHashSet<HighlightedRange>>> {
+) -> Option<HighlightMap> {
     let mut highlights: FxHashMap<EditionedFileId, FxHashSet<_>> = FxHashMap::default();
 
     let mut push_to_highlights = |file_id, range| {
@@ -411,7 +499,7 @@ pub(crate) fn highlight_break_points(
         loop_token: Option<SyntaxToken>,
         label: Option<ast::Label>,
         expr: ast::Expr,
-    ) -> Option<FxHashMap<EditionedFileId, FxHashSet<HighlightedRange>>> {
+    ) -> Option<HighlightMap> {
         let mut highlights: FxHashMap<EditionedFileId, FxHashSet<_>> = FxHashMap::default();
 
         let mut push_to_highlights = |file_id, range| {
@@ -504,7 +592,7 @@ pub(crate) fn highlight_yield_points(
         sema: &Semantics<'_, RootDatabase>,
         async_token: Option<SyntaxToken>,
         body: Option<ast::Expr>,
-    ) -> Option<FxHashMap<EditionedFileId, FxHashSet<HighlightedRange>>> {
+    ) -> Option<HighlightMap> {
         let mut highlights: FxHashMap<EditionedFileId, FxHashSet<_>> = FxHashMap::default();
 
         let mut push_to_highlights = |file_id, range| {
@@ -597,10 +685,7 @@ fn original_frange(
     InFile::new(file_id, text_range?).original_node_file_range_opt(db).map(|(frange, _)| frange)
 }
 
-fn merge_map(
-    res: &mut FxHashMap<EditionedFileId, FxHashSet<HighlightedRange>>,
-    new: Option<FxHashMap<EditionedFileId, FxHashSet<HighlightedRange>>>,
-) {
+fn merge_map(res: &mut HighlightMap, new: Option<HighlightMap>) {
     let Some(new) = new else {
         return;
     };
@@ -750,6 +835,7 @@ mod tests {
         references: true,
         closure_captures: true,
         yield_points: true,
+        branch_exit_points: true,
     };
 
     #[track_caller]
@@ -2135,6 +2221,62 @@ fn main() {
     }
 
     #[test]
+    fn nested_match() {
+        check(
+            r#"
+fn main() {
+    match$0 0 {
+ // ^^^^^
+        0 => match 1 {
+            1 => 2,
+              // ^
+            _ => 3,
+              // ^
+        },
+        _ => 4,
+          // ^
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn single_arm_highlight() {
+        check(
+            r#"
+fn main() {
+    match 0 {
+        0 =>$0 {
+       // ^^
+            let x = 1;
+            x
+         // ^
+        }
+        _ => 2,
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn no_branches_when_disabled() {
+        let config = HighlightRelatedConfig { branch_exit_points: false, ..ENABLED_CONFIG };
+        check_with_config(
+            r#"
+fn main() {
+    match$0 0 {
+        0 => 1,
+        _ => 2,
+    }
+}
+"#,
+            config,
+        );
+    }
+
+    #[test]
     fn asm() {
         check(
             r#"
@@ -2161,6 +2303,200 @@ pub unsafe fn bootstrap() -> ! {
     );
 }
 "#,
+        )
+    }
+
+    #[test]
+    fn complex_arms_highlight() {
+        check(
+            r#"
+fn calculate(n: i32) -> i32 { n * 2 }
+
+fn main() {
+    match$0 Some(1) {
+ // ^^^^^
+        Some(x) => match x {
+            0 => { let y = x; y },
+                           // ^
+            1 => calculate(x),
+               //^^^^^^^^^^^^
+            _ => (|| 6)(),
+              // ^^^^^^^^
+        },
+        None => loop {
+            break 5;
+         // ^^^^^^^
+        },
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn match_in_macro_highlight() {
+        check(
+            r#"
+macro_rules! M {
+    ($e:expr) => { $e };
+}
+
+fn main() {
+    M!{
+        match$0 Some(1) {
+     // ^^^^^
+            Some(x) => x,
+                    // ^
+            None => 0,
+                 // ^
+        }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn match_in_macro_highlight_2() {
+        check(
+            r#"
+macro_rules! match_ast {
+    (match $node:ident { $($tt:tt)* }) => { $crate::match_ast!(match ($node) { $($tt)* }) };
+
+    (match ($node:expr) {
+        $( $( $path:ident )::+ ($it:pat) => $res:expr, )*
+        _ => $catch_all:expr $(,)?
+    }) => {{
+        $( if let Some($it) = $($path::)+cast($node.clone()) { $res } else )*
+        { $catch_all }
+    }};
+}
+
+fn main() {
+    match_ast! {
+        match$0 Some(1) {
+            Some(x) => x,
+        }
+    }
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn nested_if_else() {
+        check(
+            r#"
+fn main() {
+    if$0 true {
+ // ^^
+        if false {
+            1
+         // ^
+        } else {
+            2
+         // ^
+        }
+    } else {
+        3
+     // ^
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn if_else_if_highlight() {
+        check(
+            r#"
+fn main() {
+    if$0 true {
+ // ^^
+        1
+     // ^
+    } else if false {
+        // ^^
+        2
+     // ^
+    } else {
+        3
+     // ^
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn complex_if_branches() {
+        check(
+            r#"
+fn calculate(n: i32) -> i32 { n * 2 }
+
+fn main() {
+    if$0 true {
+ // ^^
+        let x = 5;
+        calculate(x)
+     // ^^^^^^^^^^^^
+    } else if false {
+        // ^^
+        (|| 10)()
+     // ^^^^^^^^^
+    } else {
+        loop {
+            break 15;
+         // ^^^^^^^^
+        }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn if_in_macro_highlight() {
+        check(
+            r#"
+macro_rules! M {
+    ($e:expr) => { $e };
+}
+
+fn main() {
+    M!{
+        if$0 true {
+     // ^^
+            5
+         // ^
+        } else {
+            10
+         // ^^
+        }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn match_in_macro() {
+        // We should not highlight the outer `match` expression.
+        check(
+            r#"
+macro_rules! M {
+    (match) => { 1 };
+}
+
+fn main() {
+    match Some(1) {
+        Some(x) => x,
+        None => {
+            M!(match$0)
+        }
+    }
+}
+            "#,
         )
     }
 

@@ -562,7 +562,7 @@ mod llvm_enzyme {
     /// so instead we manually build something that should pass the type checker.
     /// We also add a inline_asm line, as one more barrier for rustc to prevent inlining
     /// or const propagation. inline_asm will also triggers an Enzyme crash if due to another
-    /// bug would ever try to accidentially differentiate this placeholder function body.
+    /// bug would ever try to accidentally differentiate this placeholder function body.
     /// Finally, we also add back_box usages of all input arguments, to prevent rustc
     /// from optimizing any arguments away.
     fn gen_enzyme_body(
@@ -606,7 +606,7 @@ mod llvm_enzyme {
             return body;
         }
 
-        // Everything from here onwards just tries to fullfil the return type. Fun!
+        // Everything from here onwards just tries to fulfil the return type. Fun!
 
         // having an active-only return means we'll drop the original return type.
         // So that can be treated identical to not having one in the first place.
@@ -652,8 +652,10 @@ mod llvm_enzyme {
                 exprs = ecx.expr_call(new_decl_span, bb_call_expr, thin_vec![exprs]);
             } else {
                 let q = QSelf { ty: d_ret_ty, path_span: span, position: 0 };
-                let y =
-                    ExprKind::Path(Some(P(q)), ecx.path_ident(span, Ident::from_str("default")));
+                let y = ExprKind::Path(
+                    Some(P(q)),
+                    ecx.path_ident(span, Ident::with_dummy_span(kw::Default)),
+                );
                 let default_call_expr = ecx.expr(span, y);
                 let default_call_expr =
                     ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);

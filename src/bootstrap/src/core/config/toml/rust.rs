@@ -36,8 +36,6 @@ define_config! {
         incremental: Option<bool> = "incremental",
         default_linker: Option<String> = "default-linker",
         channel: Option<String> = "channel",
-        // FIXME: Remove this field at Q2 2025, it has been replaced by build.description
-        description: Option<String> = "description",
         musl_root: Option<String> = "musl-root",
         rpath: Option<bool> = "rpath",
         strip: Option<bool> = "strip",
@@ -320,7 +318,6 @@ pub fn check_incompatible_options_for_ci_rustc(
         jemalloc,
         rpath,
         channel,
-        description,
         default_linker,
         std_features,
 
@@ -388,18 +385,33 @@ pub fn check_incompatible_options_for_ci_rustc(
     err!(current_rust_config.std_features, std_features, "rust");
 
     warn!(current_rust_config.channel, channel, "rust");
-    warn!(current_rust_config.description, description, "rust");
 
     Ok(())
 }
 
+pub(crate) const VALID_CODEGEN_BACKENDS: &[&str] = &["llvm", "cranelift", "gcc"];
+
+pub(crate) fn validate_codegen_backends(backends: Vec<String>, section: &str) -> Vec<String> {
+    for backend in &backends {
+        if let Some(stripped) = backend.strip_prefix(CODEGEN_BACKEND_PREFIX) {
+            panic!(
+                "Invalid value '{backend}' for '{section}.codegen-backends'. \
+                Codegen backends are defined without the '{CODEGEN_BACKEND_PREFIX}' prefix. \
+                Please, use '{stripped}' instead."
+            )
+        }
+        if !VALID_CODEGEN_BACKENDS.contains(&backend.as_str()) {
+            println!(
+                "HELP: '{backend}' for '{section}.codegen-backends' might fail. \
+                List of known good values: {VALID_CODEGEN_BACKENDS:?}"
+            );
+        }
+    }
+    backends
+}
+
 impl Config {
-    pub fn apply_rust_config(
-        &mut self,
-        toml_rust: Option<Rust>,
-        warnings: Warnings,
-        description: &mut Option<String>,
-    ) {
+    pub fn apply_rust_config(&mut self, toml_rust: Option<Rust>, warnings: Warnings) {
         let mut debug = None;
         let mut rustc_debug_assertions = None;
         let mut std_debug_assertions = None;
@@ -438,7 +450,6 @@ impl Config {
                 randomize_layout,
                 default_linker,
                 channel: _, // already handled above
-                description: rust_description,
                 musl_root,
                 rpath,
                 verbose_tests,
@@ -520,6 +531,14 @@ impl Config {
             lld_enabled = lld_enabled_toml;
             std_features = std_features_toml;
 
+            if optimize_toml.as_ref().is_some_and(|v| matches!(v, RustOptimize::Bool(false))) {
+                eprintln!(
+                    "WARNING: setting `optimize` to `false` is known to cause errors and \
+                    should be considered unsupported. Refer to `bootstrap.example.toml` \
+                    for more details."
+                );
+            }
+
             optimize = optimize_toml;
             self.rust_new_symbol_mangling = new_symbol_mangling;
             set(&mut self.rust_optimize_tests, optimize_tests);
@@ -531,14 +550,6 @@ impl Config {
             set(&mut self.jemalloc, jemalloc);
             set(&mut self.test_compare_mode, test_compare_mode);
             set(&mut self.backtrace, backtrace);
-            if rust_description.is_some() {
-                eprintln!(
-                    "Warning: rust.description is deprecated. Use build.description instead."
-                );
-            }
-            if description.is_none() {
-                *description = rust_description;
-            }
             set(&mut self.rust_dist_src, dist_src);
             set(&mut self.verbose_tests, verbose_tests);
             // in the case "false" is set explicitly, do not overwrite the command line args
@@ -571,24 +582,10 @@ impl Config {
             set(&mut self.ehcont_guard, ehcont_guard);
             self.llvm_libunwind_default =
                 llvm_libunwind.map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
-
-            if let Some(ref backends) = codegen_backends {
-                let available_backends = ["llvm", "cranelift", "gcc"];
-
-                self.rust_codegen_backends = backends.iter().map(|s| {
-                    if let Some(backend) = s.strip_prefix(CODEGEN_BACKEND_PREFIX) {
-                        if available_backends.contains(&backend) {
-                            panic!("Invalid value '{s}' for 'rust.codegen-backends'. Instead, please use '{backend}'.");
-                        } else {
-                            println!("HELP: '{s}' for 'rust.codegen-backends' might fail. \
-                                Codegen backends are mostly defined without the '{CODEGEN_BACKEND_PREFIX}' prefix. \
-                                In this case, it would be referred to as '{backend}'.");
-                        }
-                    }
-
-                    s.clone()
-                }).collect();
-            }
+            set(
+                &mut self.rust_codegen_backends,
+                codegen_backends.map(|backends| validate_codegen_backends(backends, "rust")),
+            );
 
             self.rust_codegen_units = codegen_units.map(threads_from_config);
             self.rust_codegen_units_std = codegen_units_std.map(threads_from_config);
@@ -612,7 +609,6 @@ impl Config {
         // build our internal lld and use it as the default linker, by setting the `rust.lld` config
         // to true by default:
         // - on the `x86_64-unknown-linux-gnu` target
-        // - on the `dev` and `nightly` channels
         // - when building our in-tree llvm (i.e. the target has not set an `llvm-config`), so that
         //   we're also able to build the corresponding lld
         // - or when using an external llvm that's downloaded from CI, which also contains our prebuilt
@@ -621,9 +617,7 @@ impl Config {
         //   thus, disabled
         // - similarly, lld will not be built nor used by default when explicitly asked not to, e.g.
         //   when the config sets `rust.lld = false`
-        if self.host_target.triple == "x86_64-unknown-linux-gnu"
-            && self.hosts == [self.host_target]
-            && (self.channel == "dev" || self.channel == "nightly")
+        if self.host_target.triple == "x86_64-unknown-linux-gnu" && self.hosts == [self.host_target]
         {
             let no_llvm_config = self
                 .target_config

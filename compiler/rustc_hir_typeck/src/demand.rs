@@ -1110,27 +1110,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    // Returns whether the given expression is a destruct assignment desugaring.
-    // For example, `(a, b) = (1, &2);`
-    // Here we try to find the pattern binding of the expression,
-    // `default_binding_modes` is false only for destruct assignment desugaring.
+    /// Returns whether the given expression is a destruct assignment desugaring.
+    /// For example, `(a, b) = (1, &2);`
+    /// Here we try to find the pattern binding of the expression,
+    /// `default_binding_modes` is false only for destruct assignment desugaring.
     pub(crate) fn is_destruct_assignment_desugaring(&self, expr: &hir::Expr<'_>) -> bool {
         if let hir::ExprKind::Path(hir::QPath::Resolved(
             _,
             hir::Path { res: hir::def::Res::Local(bind_hir_id), .. },
         )) = expr.kind
-        {
-            let bind = self.tcx.hir_node(*bind_hir_id);
-            let parent = self.tcx.parent_hir_node(*bind_hir_id);
-            if let hir::Node::Pat(hir::Pat {
+            && let bind = self.tcx.hir_node(*bind_hir_id)
+            && let parent = self.tcx.parent_hir_node(*bind_hir_id)
+            && let hir::Node::Pat(hir::Pat {
                 kind: hir::PatKind::Binding(_, _hir_id, _, _), ..
             }) = bind
-                && let hir::Node::Pat(hir::Pat { default_binding_modes: false, .. }) = parent
-            {
-                return true;
-            }
+            && let hir::Node::Pat(hir::Pat { default_binding_modes: false, .. }) = parent
+        {
+            true
+        } else {
+            false
         }
-        false
     }
 
     fn explain_self_literal(

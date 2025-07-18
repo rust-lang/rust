@@ -588,7 +588,7 @@ impl<'tcx> GenericArgs<'tcx> {
     }
 
     pub fn truncate_to(&self, tcx: TyCtxt<'tcx>, generics: &ty::Generics) -> GenericArgsRef<'tcx> {
-        tcx.mk_args_from_iter(self.iter().take(generics.count()))
+        tcx.mk_args(&self[..generics.count()])
     }
 
     pub fn print_as_list(&self) -> String {

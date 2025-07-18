@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::{is_none_arm, msrvs, paths, peel_hir_expr_refs, sym};
+use clippy_utils::{is_none_arm, msrvs, peel_hir_expr_refs, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, Expr, ExprKind, LangItem, Pat, PatKind, QPath, is_range_literal};
@@ -220,5 +220,5 @@ fn is_empty_slice(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 }
 
 fn is_slice_from_ref(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    paths::SLICE_FROM_REF.matches_path(cx, expr)
+    clippy_utils::is_path_diagnostic_item(cx, expr, sym::slice_from_ref)
 }

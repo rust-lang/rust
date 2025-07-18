@@ -2,7 +2,7 @@ error: Undefined Behavior: calling a variadic function with a non-variadic calle
   --> tests/fail/shims/non_vararg_signature_mismatch.rs:LL:CC
    |
 LL |         open(c_path.as_ptr(), /* value does not matter */ 0)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling a variadic function with a non-variadic caller-side signature
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

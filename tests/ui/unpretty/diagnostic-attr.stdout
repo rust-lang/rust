@@ -12,6 +12,4 @@ extern crate std;
 trait ImportantTrait<A> { }
 
 #[diagnostic::do_not_recommend]
-impl <T> ImportantTrait<T> for T where T: Clone
-    {#![diagnostic::do_not_recommend]
-}
+impl <T> ImportantTrait<T> for T where T: Clone { }

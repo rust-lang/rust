@@ -55,9 +55,6 @@ RUN ./install-riscv64-none-elf.sh
 COPY host-x86_64/dist-various-1/install-riscv32-none-elf.sh /build
 RUN ./install-riscv32-none-elf.sh
 
-COPY host-x86_64/dist-various-1/install-llvm-mingw.sh /build
-RUN ./install-llvm-mingw.sh
-
 # Suppress some warnings in the openwrt toolchains we downloaded
 ENV STAGING_DIR=/tmp
 
@@ -114,9 +111,6 @@ ENV TARGETS=$TARGETS,armv7r-none-eabi
 ENV TARGETS=$TARGETS,armv7r-none-eabihf
 ENV TARGETS=$TARGETS,thumbv7neon-unknown-linux-gnueabihf
 ENV TARGETS=$TARGETS,armv7a-none-eabi
-ENV TARGETS=$TARGETS,aarch64-pc-windows-gnullvm
-ENV TARGETS=$TARGETS,i686-pc-windows-gnullvm
-ENV TARGETS=$TARGETS,x86_64-pc-windows-gnullvm
 
 ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft" \
     CFLAGS_arm_unknown_linux_musleabi="-march=armv6 -marm" \
@@ -148,10 +142,7 @@ ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft
     CC_riscv64imac_unknown_none_elf=riscv64-unknown-elf-gcc \
     CFLAGS_riscv64imac_unknown_none_elf=-march=rv64imac -mabi=lp64 \
     CC_riscv64gc_unknown_none_elf=riscv64-unknown-elf-gcc \
-    CFLAGS_riscv64gc_unknown_none_elf=-march=rv64gc -mabi=lp64 \
-    CC_aarch64_pc_windows_gnullvm=aarch64-w64-mingw32-clang \
-    CC_i686_pc_windows_gnullvm=i686-w64-mingw32-clang \
-    CC_x86_64_pc_windows_gnullvm=x86_64-w64-mingw32-clang
+    CFLAGS_riscv64gc_unknown_none_elf=-march=rv64gc -mabi=lp64
 
 ENV RUST_CONFIGURE_ARGS \
       --musl-root-armv5te=/musl-armv5te \

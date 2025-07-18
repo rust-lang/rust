@@ -1,10 +1,11 @@
 use clippy_utils::diagnostics::span_lint;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_hir as hir;
 use rustc_hir::Attribute;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::AssocItemContainer;
 use rustc_session::declare_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -64,8 +65,7 @@ declare_clippy_lint! {
 }
 
 fn check_missing_inline_attrs(cx: &LateContext<'_>, attrs: &[Attribute], sp: Span, desc: &'static str) {
-    let has_inline = attrs.iter().any(|a| a.has_name(sym::inline));
-    if !has_inline {
+    if !find_attr!(attrs, AttributeKind::Inline(..)) {
         span_lint(
             cx,
             MISSING_INLINE_IN_PUBLIC_ITEMS,
@@ -101,19 +101,19 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
                 let attrs = cx.tcx.hir_attrs(it.hir_id());
                 check_missing_inline_attrs(cx, attrs, it.span, desc);
             },
-            hir::ItemKind::Trait(ref _is_auto, ref _unsafe, _ident, _generics, _bounds, trait_items) => {
+            hir::ItemKind::Trait(ref _constness, ref _is_auto, ref _unsafe, _ident, _generics, _bounds, trait_items) => {
                 // note: we need to check if the trait is exported so we can't use
                 // `LateLintPass::check_trait_item` here.
-                for tit in trait_items {
-                    let tit_ = cx.tcx.hir_trait_item(tit.id);
+                for &tit in trait_items {
+                    let tit_ = cx.tcx.hir_trait_item(tit);
                     match tit_.kind {
                         hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => {},
                         hir::TraitItemKind::Fn(..) => {
-                            if cx.tcx.defaultness(tit.id.owner_id).has_value() {
+                            if cx.tcx.defaultness(tit.owner_id).has_value() {
                                 // trait method with default body needs inline in case
                                 // an impl is not provided
                                 let desc = "a default trait method";
-                                let item = cx.tcx.hir_trait_item(tit.id);
+                                let item = cx.tcx.hir_trait_item(tit);
                                 let attrs = cx.tcx.hir_attrs(item.hir_id());
                                 check_missing_inline_attrs(cx, attrs, item.span, desc);
                             }

@@ -13,7 +13,13 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
 
+// See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
+// about jemalloc.
+#[cfg(feature = "jemalloc")]
+extern crate tikv_jemalloc_sys as jemalloc_sys;
+
 use clippy_utils::sym;
+use declare_clippy_lint::LintListBuilder;
 use rustc_interface::interface;
 use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::ErrorOutputType;
@@ -151,8 +157,13 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
                 (previous)(sess, lint_store);
             }
 
+            let mut list_builder = LintListBuilder::default();
+            list_builder.insert(clippy_lints::declared_lints::LINTS);
+            list_builder.register(lint_store);
+
             let conf = clippy_config::Conf::read(sess, &conf_path);
-            clippy_lints::register_lints(lint_store, conf);
+            clippy_lints::register_lint_passes(lint_store, conf);
+
             #[cfg(feature = "internal")]
             clippy_lints_internal::register_lints(lint_store);
         }));
@@ -181,6 +192,36 @@ const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/ne
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::ignored_unit_patterns)]
 pub fn main() {
+    // See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
+    // about jemalloc.
+    #[cfg(feature = "jemalloc")]
+    {
+        use std::os::raw::{c_int, c_void};
+
+        #[used]
+        static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::calloc;
+        #[used]
+        static _F2: unsafe extern "C" fn(*mut *mut c_void, usize, usize) -> c_int = jemalloc_sys::posix_memalign;
+        #[used]
+        static _F3: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::aligned_alloc;
+        #[used]
+        static _F4: unsafe extern "C" fn(usize) -> *mut c_void = jemalloc_sys::malloc;
+        #[used]
+        static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void = jemalloc_sys::realloc;
+        #[used]
+        static _F6: unsafe extern "C" fn(*mut c_void) = jemalloc_sys::free;
+
+        #[cfg(target_os = "macos")]
+        {
+            unsafe extern "C" {
+                fn _rjem_je_zone_register();
+            }
+
+            #[used]
+            static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
+        }
+    }
+
     let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     rustc_driver::init_rustc_env_logger(&early_dcx);

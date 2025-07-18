@@ -33,7 +33,7 @@ impl BuildArg {
                 }
                 arg => {
                     if !build_arg.config_info.parse_argument(arg, &mut args)? {
-                        return Err(format!("Unknown argument `{}`", arg));
+                        return Err(format!("Unknown argument `{arg}`"));
                     }
                 }
             }
@@ -105,14 +105,14 @@ pub fn create_build_sysroot_content(start_dir: &Path) -> Result<(), String> {
     if !start_dir.is_dir() {
         create_dir(start_dir)?;
     }
-    copy_file("build_system/build_sysroot/Cargo.toml", &start_dir.join("Cargo.toml"))?;
-    copy_file("build_system/build_sysroot/Cargo.lock", &start_dir.join("Cargo.lock"))?;
+    copy_file("build_system/build_sysroot/Cargo.toml", start_dir.join("Cargo.toml"))?;
+    copy_file("build_system/build_sysroot/Cargo.lock", start_dir.join("Cargo.lock"))?;
 
     let src_dir = start_dir.join("src");
     if !src_dir.is_dir() {
         create_dir(&src_dir)?;
     }
-    copy_file("build_system/build_sysroot/lib.rs", &start_dir.join("src/lib.rs"))
+    copy_file("build_system/build_sysroot/lib.rs", start_dir.join("src/lib.rs"))
 }
 
 pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Result<(), String> {
@@ -169,7 +169,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         run_command(&[&"cp", &"-r", &dir_to_copy, &sysroot_path], None).map(|_| ())
     };
     walk_dir(
-        start_dir.join(&format!("target/{}/{}/deps", config.target_triple, channel)),
+        start_dir.join(format!("target/{}/{}/deps", config.target_triple, channel)),
         &mut copier.clone(),
         &mut copier,
         false,

@@ -1,4 +1,4 @@
-use rustc_abi::{AddressSpace, Float, Integer, Reg};
+use rustc_abi::{AddressSpace, Float, Integer, Primitive, Reg, Scalar};
 use rustc_middle::bug;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
@@ -84,6 +84,24 @@ pub trait DerivedTypeCodegenMethods<'tcx>:
     fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
         ty.is_freeze(self.tcx(), self.typing_env())
     }
+
+    fn type_from_primitive(&self, p: Primitive) -> Self::Type {
+        use Primitive::*;
+        match p {
+            Int(i, _) => self.type_from_integer(i),
+            Float(f) => self.type_from_float(f),
+            Pointer(address_space) => self.type_ptr_ext(address_space),
+        }
+    }
+
+    fn type_from_scalar(&self, s: Scalar) -> Self::Type {
+        // `MaybeUninit` being `repr(transparent)` somewhat implies that the type
+        // of a scalar has to be the type of its primitive (which is true in LLVM,
+        // where noundef is a parameter attribute or metadata) but if we ever get
+        // a backend where that's no longer true, every use of this will need to
+        // to carefully scrutinized and re-evaluated.
+        self.type_from_primitive(s.primitive())
+    }
 }
 
 impl<'tcx, T> DerivedTypeCodegenMethods<'tcx> for T where
@@ -136,9 +154,9 @@ pub trait LayoutTypeCodegenMethods<'tcx>: BackendTypes {
 // For backends that support CFI using type membership (i.e., testing whether a given pointer is
 // associated with a type identifier).
 pub trait TypeMembershipCodegenMethods<'tcx>: BackendTypes {
-    fn add_type_metadata(&self, _function: Self::Function, _typeid: String) {}
-    fn set_type_metadata(&self, _function: Self::Function, _typeid: String) {}
-    fn typeid_metadata(&self, _typeid: String) -> Option<Self::Metadata> {
+    fn add_type_metadata(&self, _function: Self::Function, _typeid: &[u8]) {}
+    fn set_type_metadata(&self, _function: Self::Function, _typeid: &[u8]) {}
+    fn typeid_metadata(&self, _typeid: &[u8]) -> Option<Self::Metadata> {
         None
     }
     fn add_kcfi_type_metadata(&self, _function: Self::Function, _typeid: u32) {}

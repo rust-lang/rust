@@ -103,9 +103,10 @@ pub trait Interner:
     type Ty: Ty<Self>;
     type Tys: Tys<Self>;
     type FnInputTys: Copy + Debug + Hash + Eq + SliceLike<Item = Self::Ty> + TypeVisitable<Self>;
-    type ParamTy: Copy + Debug + Hash + Eq + ParamLike;
-    type BoundTy: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
-    type PlaceholderTy: PlaceholderLike;
+    type ParamTy: ParamLike;
+    type BoundTy: BoundVarLike<Self>;
+    type PlaceholderTy: PlaceholderLike<Self, Bound = Self::BoundTy>;
+    type Symbol: Copy + Hash + PartialEq + Eq + Debug;
 
     // Things stored inside of tys
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;
@@ -131,19 +132,26 @@ pub trait Interner:
 
     // Kinds of consts
     type Const: Const<Self>;
-    type PlaceholderConst: PlaceholderLike;
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
-    type BoundConst: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
+    type BoundConst: BoundVarLike<Self>;
+    type PlaceholderConst: PlaceholderConst<Self>;
     type ValueConst: ValueConst<Self>;
     type ExprConst: ExprConst<Self>;
     type ValTree: Copy + Debug + Hash + Eq;
 
     // Kinds of regions
     type Region: Region<Self>;
-    type EarlyParamRegion: Copy + Debug + Hash + Eq + ParamLike;
+    type EarlyParamRegion: ParamLike;
     type LateParamRegion: Copy + Debug + Hash + Eq;
-    type BoundRegion: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
-    type PlaceholderRegion: PlaceholderLike;
+    type BoundRegion: BoundVarLike<Self>;
+    type PlaceholderRegion: PlaceholderLike<Self, Bound = Self::BoundRegion>;
+
+    type RegionAssumptions: Copy
+        + Debug
+        + Hash
+        + Eq
+        + SliceLike<Item = ty::OutlivesPredicate<Self, Self::GenericArg>>
+        + TypeFoldable<Self>;
 
     // Predicates
     type ParamEnv: ParamEnv<Self>;
@@ -271,6 +279,13 @@ pub trait Interner:
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
 
+    /// This is equivalent to computing the super-predicates of the trait for this impl
+    /// and filtering them to the outlives predicates. This is purely for performance.
+    fn impl_super_outlives(
+        self,
+        impl_def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+
     fn impl_is_const(self, def_id: Self::DefId) -> bool;
     fn fn_is_const(self, def_id: Self::DefId) -> bool;
     fn alias_has_const_conditions(self, def_id: Self::DefId) -> bool;
@@ -340,12 +355,6 @@ pub trait Interner:
 
     type UnsizingParams: Deref<Target = DenseBitSet<u32>>;
     fn unsizing_params_for_adt(self, adt_def_id: Self::DefId) -> Self::UnsizingParams;
-
-    fn find_const_ty_from_env(
-        self,
-        param_env: Self::ParamEnv,
-        placeholder: Self::PlaceholderConst,
-    ) -> Self::Ty;
 
     fn anonymize_bound_vars<T: TypeFoldable<Self>>(
         self,

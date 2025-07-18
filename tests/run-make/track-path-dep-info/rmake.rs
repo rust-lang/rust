@@ -1,3 +1,7 @@
+//@ ignore-cross-compile
+//@ needs-crate-type: proc-macro
+//@ ignore-musl (FIXME: can't find `-lunwind`)
+
 // This test checks the functionality of `tracked_path::path`, a procedural macro
 // feature that adds a dependency to another file inside the procmacro. In this case,
 // the text file is added through this method, and the test checks that the compilation

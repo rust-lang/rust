@@ -324,7 +324,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         }
     }
 
-    fn lit(&self, lit: &Binding<&Lit>) {
+    fn lit(&self, lit: &Binding<Lit>) {
         let kind = |kind| chain!(self, "let LitKind::{kind} = {lit}.node");
         macro_rules! kind {
             ($($t:tt)*) => (kind(format_args!($($t)*)));

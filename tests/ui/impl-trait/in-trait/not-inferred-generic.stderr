@@ -5,7 +5,7 @@ LL |     ().publish_typed();
    |        ^^^^^^^^^^^^^ cannot infer type of the type parameter `F` declared on the method `publish_typed`
    |
    = note: cannot satisfy `_: Clone`
-   = note: associated types cannot be accessed directly on a `trait`, they can only be accessed through a specific `impl`
+   = note: opaque types cannot be accessed directly on a `trait`, they can only be accessed through a specific `impl`
 note: required by a bound in `TypedClient::publish_typed::{anon_assoc#0}`
   --> $DIR/not-inferred-generic.rs:4:12
    |

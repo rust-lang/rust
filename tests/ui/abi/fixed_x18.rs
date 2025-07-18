@@ -20,7 +20,11 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
+#[lang = "pointee_sized"]
+trait PointeeSized {}
+#[lang = "meta_sized"]
+trait MetaSized: PointeeSized {}
 #[lang = "sized"]
-trait Sized {}
+trait Sized: MetaSized {}
 
 //~? ERROR the `-Zfixed-x18` flag is not supported on the `

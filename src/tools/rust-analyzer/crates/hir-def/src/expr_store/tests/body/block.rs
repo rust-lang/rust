@@ -397,7 +397,6 @@ fn main() {
 fn underscore_import() {
     // This used to panic, because the default (private) visibility inside block expressions would
     // point into the containing `DefMap`, which visibilities should never be able to do.
-    cov_mark::check!(adjust_vis_in_block_def_map);
     check_at(
         r#"
 mod m {
@@ -457,7 +456,6 @@ fn foo() {
 #[test]
 fn is_visible_from_same_def_map() {
     // Regression test for https://github.com/rust-lang/rust-analyzer/issues/9481
-    cov_mark::check!(is_visible_from_same_block_def_map);
     check_at(
         r#"
 fn outer() {

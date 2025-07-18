@@ -35,6 +35,9 @@ declare_clippy_lint! {
     ///     { path = "std::net::Ipv4Addr", reason = "no IPv4 allowed" },
     ///     # Can also add a `replacement` that will be offered as a suggestion.
     ///     { path = "std::sync::Mutex", reason = "prefer faster & simpler non-poisonable mutex", replacement = "parking_lot::Mutex" },
+    ///     # This would normally error if the path is incorrect, but with `allow-invalid` = `true`,
+    ///     # it will be silently ignored
+    ///     { path = "std::invalid::Type", reason = "use alternative instead", allow-invalid = true }
     /// ]
     /// ```
     ///

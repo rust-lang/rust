@@ -4,6 +4,7 @@
 //@ compile-flags: -Cpanic=abort
 //@ ignore-wasm different `main` convention
 
+#![feature(lang_items)]
 #![no_std]
 #![no_main]
 
@@ -32,6 +33,17 @@ extern "C" {}
 
 #[panic_handler]
 fn panic_handler(_info: &PanicInfo<'_>) -> ! {
+    loop {}
+}
+
+#[lang = "eh_personality"]
+extern "C" fn rust_eh_personality(
+    _version: i32,
+    _actions: i32,
+    _exception_class: u64,
+    _exception_object: *mut (),
+    _context: *mut (),
+) -> i32 {
     loop {}
 }
 

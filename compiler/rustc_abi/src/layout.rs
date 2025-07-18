@@ -432,7 +432,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             align = align.min(AbiAlign::new(pack));
         }
         // The unadjusted ABI alignment does not include repr(align), but does include repr(pack).
-        // See documentation on `LayoutS::unadjusted_abi_align`.
+        // See documentation on `LayoutData::unadjusted_abi_align`.
         let unadjusted_abi_align = align.abi;
         if let Some(repr_align) = repr.align {
             align = align.max(AbiAlign::new(repr_align));
@@ -602,10 +602,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         dont_niche_optimize_enum: bool,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         // Until we've decided whether to use the tagged or
-        // niche filling LayoutS, we don't want to intern the
+        // niche filling LayoutData, we don't want to intern the
         // variant layouts, so we can't store them in the
-        // overall LayoutS. Store the overall LayoutS
-        // and the variant LayoutSs here until then.
+        // overall LayoutData. Store the overall LayoutData
+        // and the variant LayoutDatas here until then.
         struct TmpLayout<FieldIdx: Idx, VariantIdx: Idx> {
             layout: LayoutData<FieldIdx, VariantIdx>,
             variants: IndexVec<VariantIdx, LayoutData<FieldIdx, VariantIdx>>,
@@ -1214,7 +1214,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
                 match kind {
                     StructKind::AlwaysSized | StructKind::MaybeUnsized => {
-                        // Currently `LayoutS` only exposes a single niche so sorting is usually
+                        // Currently `LayoutData` only exposes a single niche so sorting is usually
                         // sufficient to get one niche into the preferred position. If it ever
                         // supported multiple niches then a more advanced pick-and-pack approach could
                         // provide better results. But even for the single-niche cache it's not
@@ -1333,7 +1333,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         }
 
         // The unadjusted ABI alignment does not include repr(align), but does include repr(pack).
-        // See documentation on `LayoutS::unadjusted_abi_align`.
+        // See documentation on `LayoutData::unadjusted_abi_align`.
         let unadjusted_abi_align = align.abi;
         if let Some(repr_align) = repr.align {
             align = align.max(AbiAlign::new(repr_align));

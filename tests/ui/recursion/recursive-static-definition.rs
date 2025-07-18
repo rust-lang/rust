@@ -1,5 +1,5 @@
 pub static FOO: u32 = FOO;
-//~^ ERROR encountered static that tried to initialize itself with itself
+//~^ ERROR encountered static that tried to access itself during initialization
 
 #[derive(Copy, Clone)]
 pub union Foo {
@@ -7,6 +7,6 @@ pub union Foo {
 }
 
 pub static BAR: Foo = BAR;
-//~^ ERROR encountered static that tried to initialize itself with itself
+//~^ ERROR encountered static that tried to access itself during initialization
 
 fn main() {}

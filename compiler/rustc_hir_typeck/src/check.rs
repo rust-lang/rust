@@ -58,7 +58,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     let maybe_va_list = fn_sig.c_variadic.then(|| {
         let span = body.params.last().unwrap().span;
         let va_list_did = tcx.require_lang_item(LangItem::VaList, span);
-        let region = fcx.next_region_var(RegionVariableOrigin::MiscVariable(span));
+        let region = fcx.next_region_var(RegionVariableOrigin::Misc(span));
 
         tcx.type_of(va_list_did).instantiate(tcx, &[region.into()])
     });

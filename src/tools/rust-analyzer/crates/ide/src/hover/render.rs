@@ -476,10 +476,10 @@ pub(super) fn definition(
     db: &RootDatabase,
     def: Definition,
     famous_defs: Option<&FamousDefs<'_, '_>>,
-    notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
+    notable_traits: &[(Trait, Vec<(Option<Type<'_>>, Name)>)],
     macro_arm: Option<u32>,
     render_extras: bool,
-    subst_types: Option<&Vec<(Symbol, Type)>>,
+    subst_types: Option<&Vec<(Symbol, Type<'_>)>>,
     config: &HoverConfig,
     edition: Edition,
     display_target: DisplayTarget,
@@ -938,7 +938,7 @@ pub(super) fn literal(
 
 fn render_notable_trait(
     db: &RootDatabase,
-    notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
+    notable_traits: &[(Trait, Vec<(Option<Type<'_>>, Name)>)],
     edition: Edition,
     display_target: DisplayTarget,
 ) -> Option<String> {
@@ -979,7 +979,7 @@ fn render_notable_trait(
 fn type_info(
     sema: &Semantics<'_, RootDatabase>,
     config: &HoverConfig,
-    ty: TypeInfo,
+    ty: TypeInfo<'_>,
     edition: Edition,
     display_target: DisplayTarget,
 ) -> Option<HoverResult> {
@@ -1038,7 +1038,7 @@ fn type_info(
 fn closure_ty(
     sema: &Semantics<'_, RootDatabase>,
     config: &HoverConfig,
-    TypeInfo { original, adjusted }: &TypeInfo,
+    TypeInfo { original, adjusted }: &TypeInfo<'_>,
     edition: Edition,
     display_target: DisplayTarget,
 ) -> Option<HoverResult> {

@@ -7,7 +7,7 @@ use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
 pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
 use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
-use rustc_ast::expand::StrippedCfgItem;
+use rustc_attr_data_structures::StrippedCfgItem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir::PreciseCapturingArgKind;
@@ -282,7 +282,8 @@ pub(crate) struct CrateRoot {
 
     exportable_items: LazyArray<DefIndex>,
     stable_order_of_exportable_impls: LazyArray<(DefIndex, usize)>,
-    exported_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
+    exported_non_generic_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
+    exported_generic_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
 
     syntax_contexts: SyntaxContextTable,
     expn_data: ExpnDataTable,
@@ -402,7 +403,6 @@ define_tables! {
     explicit_implied_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     explicit_implied_const_bounds: Table<DefIndex, LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
-    associated_types_for_impl_traits_in_associated_fn: Table<DefIndex, LazyArray<DefId>>,
     opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
     // Reexported names are not associated with individual `DefId`s,
     // e.g. a glob import can introduce a lot of names, all with the same `DefId`.
@@ -481,6 +481,7 @@ define_tables! {
     assumed_wf_types_for_rpitit: Table<DefIndex, LazyArray<(Ty<'static>, Span)>>,
     opaque_ty_origin: Table<DefIndex, LazyValue<hir::OpaqueTyOrigin<DefId>>>,
     anon_const_kind: Table<DefIndex, LazyValue<ty::AnonConstKind>>,
+    associated_types_for_impl_traits_in_trait_or_impl: Table<DefIndex, LazyValue<DefIdMap<Vec<DefId>>>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]

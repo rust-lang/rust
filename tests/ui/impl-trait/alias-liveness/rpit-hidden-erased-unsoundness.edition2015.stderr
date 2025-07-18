@@ -1,0 +1,18 @@
+error[E0700]: hidden type for `impl Sized + 'a` captures lifetime that does not appear in bounds
+  --> $DIR/rpit-hidden-erased-unsoundness.rs:19:5
+   |
+LL | fn step2<'a, 'b: 'a>() -> impl Sized + 'a {
+   |              --           --------------- opaque type defined here
+   |              |
+   |              hidden type `impl Captures<'b> + 'a` captures the lifetime `'b` as defined here
+LL |     step1::<'a, 'b>()
+   |     ^^^^^^^^^^^^^^^^^
+   |
+help: add a `use<...>` bound to explicitly capture `'b`
+   |
+LL | fn step2<'a, 'b: 'a>() -> impl Sized + 'a + use<'a, 'b> {
+   |                                           +++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.

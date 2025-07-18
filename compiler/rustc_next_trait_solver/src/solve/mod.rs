@@ -148,6 +148,20 @@ where
         }
     }
 
+    fn compute_unstable_feature_goal(
+        &mut self,
+        param_env: <I as Interner>::ParamEnv,
+        symbol: <I as Interner>::Symbol,
+    ) -> QueryResult<I> {
+        if self.may_use_unstable_feature(param_env, symbol) {
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        } else {
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
+                MaybeCause::Ambiguity,
+            ))
+        }
+    }
+
     #[instrument(level = "trace", skip(self))]
     fn compute_const_evaluatable_goal(
         &mut self,
@@ -191,6 +205,7 @@ where
         goal: Goal<I, (I::Const, I::Ty)>,
     ) -> QueryResult<I> {
         let (ct, ty) = goal.predicate;
+        let ct = self.structurally_normalize_const(goal.param_env, ct)?;
 
         let ct_ty = match ct.kind() {
             ty::ConstKind::Infer(_) => {
@@ -211,7 +226,7 @@ where
             ty::ConstKind::Bound(_, _) => panic!("escaping bound vars in {:?}", ct),
             ty::ConstKind::Value(cv) => cv.ty(),
             ty::ConstKind::Placeholder(placeholder) => {
-                self.cx().find_const_ty_from_env(goal.param_env, placeholder)
+                placeholder.find_const_ty_from_env(goal.param_env)
             }
         };
 

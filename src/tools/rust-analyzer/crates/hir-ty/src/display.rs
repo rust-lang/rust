@@ -795,6 +795,14 @@ fn render_const_scalar(
                 let Some(bytes) = memory_map.get(addr, size_one * count) else {
                     return f.write_str("<ref-data-not-available>");
                 };
+                let expected_len = count * size_one;
+                if bytes.len() < expected_len {
+                    never!(
+                        "Memory map size is too small. Expected {expected_len}, got {}",
+                        bytes.len(),
+                    );
+                    return f.write_str("<layout-error>");
+                }
                 f.write_str("&[")?;
                 let mut first = true;
                 for i in 0..count {
@@ -888,7 +896,7 @@ fn render_const_scalar(
                     write!(f, "{}", data.name.display(f.db, f.edition()))?;
                     let field_types = f.db.field_types(s.into());
                     render_variant_after_name(
-                        &f.db.variant_fields(s.into()),
+                        s.fields(f.db),
                         f,
                         &field_types,
                         f.db.trait_environment(adt.0.into()),
@@ -914,13 +922,13 @@ fn render_const_scalar(
                     write!(
                         f,
                         "{}",
-                        f.db.enum_variants(loc.parent).variants[loc.index as usize]
+                        loc.parent.enum_variants(f.db).variants[loc.index as usize]
                             .1
                             .display(f.db, f.edition())
                     )?;
                     let field_types = f.db.field_types(var_id.into());
                     render_variant_after_name(
-                        &f.db.variant_fields(var_id.into()),
+                        var_id.fields(f.db),
                         f,
                         &field_types,
                         f.db.trait_environment(adt.0.into()),
@@ -1208,7 +1216,7 @@ impl HirDisplay for Ty {
                         write!(
                             f,
                             "{}",
-                            db.enum_variants(loc.parent).variants[loc.index as usize]
+                            loc.parent.enum_variants(db).variants[loc.index as usize]
                                 .1
                                 .display(db, f.edition())
                         )?
@@ -1394,7 +1402,7 @@ impl HirDisplay for Ty {
                         let future_trait =
                             LangItem::Future.resolve_trait(db, body.module(db).krate());
                         let output = future_trait.and_then(|t| {
-                            db.trait_items(t)
+                            t.trait_items(db)
                                 .associated_type_by_name(&Name::new_symbol_root(sym::Output))
                         });
                         write!(f, "impl ")?;
@@ -1432,10 +1440,10 @@ impl HirDisplay for Ty {
                 match f.closure_style {
                     ClosureStyle::Hide => return write!(f, "{TYPE_HINT_TRUNCATION}"),
                     ClosureStyle::ClosureWithId => {
-                        return write!(f, "{{closure#{:?}}}", id.0.as_u32());
+                        return write!(f, "{{closure#{:?}}}", id.0.index());
                     }
                     ClosureStyle::ClosureWithSubst => {
-                        write!(f, "{{closure#{:?}}}", id.0.as_u32())?;
+                        write!(f, "{{closure#{:?}}}", id.0.index())?;
                         return hir_fmt_generics(f, substs.as_slice(Interner), None, None);
                     }
                     _ => (),
@@ -2082,6 +2090,7 @@ pub fn write_visibility(
 ) -> Result<(), HirDisplayError> {
     match vis {
         Visibility::Public => write!(f, "pub "),
+        Visibility::PubCrate(_) => write!(f, "pub(crate) "),
         Visibility::Module(vis_id, _) => {
             let def_map = module_id.def_map(f.db);
             let root_module_id = def_map.module_id(DefMap::ROOT);
@@ -2177,6 +2186,7 @@ impl HirDisplayWithExpressionStore for TypeRefId {
                         f.write_joined(
                             generic_params
                                 .where_predicates()
+                                .iter()
                                 .filter_map(|it| match it {
                                     WherePredicate::TypeBound { target, bound }
                                     | WherePredicate::ForLifetime { lifetimes: _, target, bound }
@@ -2326,6 +2336,7 @@ impl HirDisplayWithExpressionStore for TypeBound {
                 store[*path].hir_fmt(f, store)
             }
             TypeBound::Use(args) => {
+                write!(f, "use<")?;
                 let edition = f.edition();
                 let last = args.len().saturating_sub(1);
                 for (idx, arg) in args.iter().enumerate() {

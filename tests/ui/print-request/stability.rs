@@ -110,4 +110,3 @@ fn main() {}
 //[check_cfg]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `check-cfg` print option
 //[supported_crate_types]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `supported-crate-types` print option
 //[target_spec_json]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `target-spec-json` print option
-//[native_static_libs]~? WARNING cannot output linkage information without staticlib crate-type

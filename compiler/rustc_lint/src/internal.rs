@@ -14,8 +14,8 @@ use {rustc_ast as ast, rustc_hir as hir};
 use crate::lints::{
     BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand,
     NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked, SpanUseEqCtxtDiag,
-    SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind, TypeIrInherentUsage,
-    TypeIrTraitUsage, UntranslatableDiag,
+    SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind, TypeIrDirectUse,
+    TypeIrInherentUsage, TypeIrTraitUsage, UntranslatableDiag,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -301,8 +301,18 @@ declare_tool_lint! {
     "usage `rustc_type_ir`-specific abstraction traits outside of trait system",
     report_in_external_macro: true
 }
+declare_tool_lint! {
+    /// The `direct_use_of_rustc_type_ir` lint detects usage of `rustc_type_ir`.
+    ///
+    /// This module should only be used within the trait solver and some desirable
+    /// crates like rustc_middle.
+    pub rustc::DIRECT_USE_OF_RUSTC_TYPE_IR,
+    Allow,
+    "usage `rustc_type_ir` abstraction outside of trait system",
+    report_in_external_macro: true
+}
 
-declare_lint_pass!(TypeIr => [NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT, USAGE_OF_TYPE_IR_INHERENT, USAGE_OF_TYPE_IR_TRAITS]);
+declare_lint_pass!(TypeIr => [DIRECT_USE_OF_RUSTC_TYPE_IR, NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT, USAGE_OF_TYPE_IR_INHERENT, USAGE_OF_TYPE_IR_TRAITS]);
 
 impl<'tcx> LateLintPass<'tcx> for TypeIr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
@@ -371,6 +381,21 @@ impl<'tcx> LateLintPass<'tcx> for TypeIr {
             path.span,
             NonGlobImportTypeIrInherent { suggestion: lo.eq_ctxt(hi).then(|| lo.to(hi)), snippet },
         );
+    }
+
+    fn check_path(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        path: &rustc_hir::Path<'tcx>,
+        _: rustc_hir::HirId,
+    ) {
+        if let Some(seg) = path.segments.iter().find(|seg| {
+            seg.res
+                .opt_def_id()
+                .is_some_and(|def_id| cx.tcx.is_diagnostic_item(sym::type_ir, def_id))
+        }) {
+            cx.emit_span_lint(DIRECT_USE_OF_RUSTC_TYPE_IR, seg.ident.span, TypeIrDirectUse);
+        }
     }
 }
 

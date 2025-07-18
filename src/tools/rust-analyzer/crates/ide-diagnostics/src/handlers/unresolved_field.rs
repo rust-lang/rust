@@ -25,7 +25,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_ran
 // This diagnostic is triggered if a field does not exist on a given type.
 pub(crate) fn unresolved_field(
     ctx: &DiagnosticsContext<'_>,
-    d: &hir::UnresolvedField,
+    d: &hir::UnresolvedField<'_>,
 ) -> Diagnostic {
     let method_suffix = if d.method_with_same_name_exists {
         ", but a method with a similar name exists"
@@ -54,7 +54,7 @@ pub(crate) fn unresolved_field(
     .with_fixes(fixes(ctx, d))
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Vec<Assist>> {
+fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField<'_>) -> Option<Vec<Assist>> {
     let mut fixes = Vec::new();
     if d.method_with_same_name_exists {
         fixes.extend(method_fix(ctx, &d.expr));
@@ -64,7 +64,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Vec<A
 }
 
 // FIXME: Add Snippet Support
-fn field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Assist> {
+fn field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField<'_>) -> Option<Assist> {
     // Get the FileRange of the invalid field access
     let root = ctx.sema.db.parse_or_expand(d.expr.file_id);
     let expr = d.expr.value.to_node(&root).left()?;

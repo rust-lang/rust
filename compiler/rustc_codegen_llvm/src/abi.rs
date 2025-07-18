@@ -146,7 +146,7 @@ impl LlvmType for CastTarget {
                 "total size {:?} cannot be divided into units of zero size",
                 self.rest.total
             );
-            if self.rest.total.bytes() % self.rest.unit.size.bytes() != 0 {
+            if !self.rest.total.bytes().is_multiple_of(self.rest.unit.size.bytes()) {
                 assert_eq!(self.rest.unit.kind, RegKind::Integer, "only int regs can be split");
             }
             self.rest.total.bytes().div_ceil(self.rest.unit.size.bytes())
@@ -229,7 +229,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 let llscratch = bx.alloca(scratch_size, scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);
                 // ...store the value...
-                bx.store(val, llscratch, scratch_align);
+                rustc_codegen_ssa::mir::store_cast(bx, cast, val, llscratch, scratch_align);
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
                     dst.val.llval,

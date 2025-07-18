@@ -406,42 +406,6 @@ impl ast::WhereClause {
     }
 }
 
-impl ast::TypeParam {
-    pub fn remove_default(&self) {
-        if let Some((eq, last)) = self
-            .syntax()
-            .children_with_tokens()
-            .find(|it| it.kind() == T![=])
-            .zip(self.syntax().last_child_or_token())
-        {
-            ted::remove_all(eq..=last);
-
-            // remove any trailing ws
-            if let Some(last) = self.syntax().last_token().filter(|it| it.kind() == WHITESPACE) {
-                last.detach();
-            }
-        }
-    }
-}
-
-impl ast::ConstParam {
-    pub fn remove_default(&self) {
-        if let Some((eq, last)) = self
-            .syntax()
-            .children_with_tokens()
-            .find(|it| it.kind() == T![=])
-            .zip(self.syntax().last_child_or_token())
-        {
-            ted::remove_all(eq..=last);
-
-            // remove any trailing ws
-            if let Some(last) = self.syntax().last_token().filter(|it| it.kind() == WHITESPACE) {
-                last.detach();
-            }
-        }
-    }
-}
-
 pub trait Removable: AstNode {
     fn remove(&self);
 }

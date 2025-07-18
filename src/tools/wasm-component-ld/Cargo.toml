@@ -10,4 +10,4 @@ name = "wasm-component-ld"
 path = "src/main.rs"
 
 [dependencies]
-wasm-component-ld = "0.5.13"
+wasm-component-ld = "0.5.14"

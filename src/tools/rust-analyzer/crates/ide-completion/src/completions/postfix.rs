@@ -11,6 +11,7 @@ use ide_db::{
     text_edit::TextEdit,
     ty_filter::TryEnum,
 };
+use itertools::Either;
 use stdx::never;
 use syntax::{
     SyntaxKind::{BLOCK_EXPR, EXPR_STMT, FOR_EXPR, IF_EXPR, LOOP_EXPR, STMT_LIST, WHILE_EXPR},
@@ -28,7 +29,7 @@ use crate::{
 pub(crate) fn complete_postfix(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    dot_access: &DotAccess,
+    dot_access: &DotAccess<'_>,
 ) {
     if !ctx.config.enable_postfix_completions {
         return;
@@ -86,97 +87,9 @@ pub(crate) fn complete_postfix(
         }
     }
 
-    let try_enum = TryEnum::from_ty(&ctx.sema, &receiver_ty.strip_references());
-    if let Some(try_enum) = &try_enum {
-        match try_enum {
-            TryEnum::Result => {
-                postfix_snippet(
-                    "ifl",
-                    "if let Ok {}",
-                    &format!("if let Ok($1) = {receiver_text} {{\n    $0\n}}"),
-                )
-                .add_to(acc, ctx.db);
-
-                postfix_snippet(
-                    "lete",
-                    "let Ok else {}",
-                    &format!("let Ok($1) = {receiver_text} else {{\n    $2\n}};\n$0"),
-                )
-                .add_to(acc, ctx.db);
-
-                postfix_snippet(
-                    "while",
-                    "while let Ok {}",
-                    &format!("while let Ok($1) = {receiver_text} {{\n    $0\n}}"),
-                )
-                .add_to(acc, ctx.db);
-            }
-            TryEnum::Option => {
-                postfix_snippet(
-                    "ifl",
-                    "if let Some {}",
-                    &format!("if let Some($1) = {receiver_text} {{\n    $0\n}}"),
-                )
-                .add_to(acc, ctx.db);
-
-                postfix_snippet(
-                    "lete",
-                    "let Some else {}",
-                    &format!("let Some($1) = {receiver_text} else {{\n    $2\n}};\n$0"),
-                )
-                .add_to(acc, ctx.db);
-
-                postfix_snippet(
-                    "while",
-                    "while let Some {}",
-                    &format!("while let Some($1) = {receiver_text} {{\n    $0\n}}"),
-                )
-                .add_to(acc, ctx.db);
-            }
-        }
-    } else if receiver_ty.is_bool() || receiver_ty.is_unknown() {
-        postfix_snippet("if", "if expr {}", &format!("if {receiver_text} {{\n    $0\n}}"))
-            .add_to(acc, ctx.db);
-        postfix_snippet("while", "while expr {}", &format!("while {receiver_text} {{\n    $0\n}}"))
-            .add_to(acc, ctx.db);
-        postfix_snippet("not", "!expr", &format!("!{receiver_text}")).add_to(acc, ctx.db);
-    } else if let Some(trait_) = ctx.famous_defs().core_iter_IntoIterator() {
-        if receiver_ty.impls_trait(ctx.db, trait_, &[]) {
-            postfix_snippet(
-                "for",
-                "for ele in expr {}",
-                &format!("for ele in {receiver_text} {{\n    $0\n}}"),
-            )
-            .add_to(acc, ctx.db);
-        }
-    }
-
     postfix_snippet("ref", "&expr", &format!("&{receiver_text}")).add_to(acc, ctx.db);
     postfix_snippet("refm", "&mut expr", &format!("&mut {receiver_text}")).add_to(acc, ctx.db);
     postfix_snippet("deref", "*expr", &format!("*{receiver_text}")).add_to(acc, ctx.db);
-
-    let mut block_should_be_wrapped = true;
-    if dot_receiver.syntax().kind() == BLOCK_EXPR {
-        block_should_be_wrapped = false;
-        if let Some(parent) = dot_receiver.syntax().parent() {
-            if matches!(parent.kind(), IF_EXPR | WHILE_EXPR | LOOP_EXPR | FOR_EXPR) {
-                block_should_be_wrapped = true;
-            }
-        }
-    };
-    let unsafe_completion_string = if block_should_be_wrapped {
-        format!("unsafe {{ {receiver_text} }}")
-    } else {
-        format!("unsafe {receiver_text}")
-    };
-    postfix_snippet("unsafe", "unsafe {}", &unsafe_completion_string).add_to(acc, ctx.db);
-
-    let const_completion_string = if block_should_be_wrapped {
-        format!("const {{ {receiver_text} }}")
-    } else {
-        format!("const {receiver_text}")
-    };
-    postfix_snippet("const", "const {}", &const_completion_string).add_to(acc, ctx.db);
 
     // The rest of the postfix completions create an expression that moves an argument,
     // so it's better to consider references now to avoid breaking the compilation
@@ -195,37 +108,6 @@ pub(crate) fn complete_postfix(
         add_custom_postfix_completions(acc, ctx, &postfix_snippet, &receiver_text);
     }
 
-    match try_enum {
-        Some(try_enum) => match try_enum {
-            TryEnum::Result => {
-                postfix_snippet(
-                    "match",
-                    "match expr {}",
-                    &format!("match {receiver_text} {{\n    Ok(${{1:_}}) => {{$2}},\n    Err(${{3:_}}) => {{$0}},\n}}"),
-                )
-                .add_to(acc, ctx.db);
-            }
-            TryEnum::Option => {
-                postfix_snippet(
-                    "match",
-                    "match expr {}",
-                    &format!(
-                        "match {receiver_text} {{\n    Some(${{1:_}}) => {{$2}},\n    None => {{$0}},\n}}"
-                    ),
-                )
-                .add_to(acc, ctx.db);
-            }
-        },
-        None => {
-            postfix_snippet(
-                "match",
-                "match expr {}",
-                &format!("match {receiver_text} {{\n    ${{1:_}} => {{$0}},\n}}"),
-            )
-            .add_to(acc, ctx.db);
-        }
-    }
-
     postfix_snippet("box", "Box::new(expr)", &format!("Box::new({receiver_text})"))
         .add_to(acc, ctx.db);
     postfix_snippet("dbg", "dbg!(expr)", &format!("dbg!({receiver_text})")).add_to(acc, ctx.db); // fixme
@@ -233,13 +115,181 @@ pub(crate) fn complete_postfix(
     postfix_snippet("call", "function(expr)", &format!("${{1}}({receiver_text})"))
         .add_to(acc, ctx.db);
 
-    if let Some(parent) = dot_receiver_including_refs.syntax().parent().and_then(|p| p.parent()) {
-        if matches!(parent.kind(), STMT_LIST | EXPR_STMT) {
-            postfix_snippet("let", "let", &format!("let $0 = {receiver_text};"))
-                .add_to(acc, ctx.db);
-            postfix_snippet("letm", "let mut", &format!("let mut $0 = {receiver_text};"))
-                .add_to(acc, ctx.db);
+    let try_enum = TryEnum::from_ty(&ctx.sema, &receiver_ty.strip_references());
+    let mut is_in_cond = false;
+    if let Some(parent) = dot_receiver_including_refs.syntax().parent() {
+        if let Some(second_ancestor) = parent.parent() {
+            let sec_ancestor_kind = second_ancestor.kind();
+            if let Some(expr) = <Either<ast::IfExpr, ast::WhileExpr>>::cast(second_ancestor) {
+                is_in_cond = match expr {
+                    Either::Left(it) => it.condition().is_some_and(|cond| *cond.syntax() == parent),
+                    Either::Right(it) => {
+                        it.condition().is_some_and(|cond| *cond.syntax() == parent)
+                    }
+                }
+            }
+            match &try_enum {
+                Some(try_enum) if is_in_cond => match try_enum {
+                    TryEnum::Result => {
+                        postfix_snippet(
+                            "let",
+                            "let Ok(_)",
+                            &format!("let Ok($0) = {receiver_text}"),
+                        )
+                        .add_to(acc, ctx.db);
+                        postfix_snippet(
+                            "letm",
+                            "let Ok(mut _)",
+                            &format!("let Ok(mut $0) = {receiver_text}"),
+                        )
+                        .add_to(acc, ctx.db);
+                    }
+                    TryEnum::Option => {
+                        postfix_snippet(
+                            "let",
+                            "let Some(_)",
+                            &format!("let Some($0) = {receiver_text}"),
+                        )
+                        .add_to(acc, ctx.db);
+                        postfix_snippet(
+                            "letm",
+                            "let Some(mut _)",
+                            &format!("let Some(mut $0) = {receiver_text}"),
+                        )
+                        .add_to(acc, ctx.db);
+                    }
+                },
+                _ if matches!(sec_ancestor_kind, STMT_LIST | EXPR_STMT) => {
+                    postfix_snippet("let", "let", &format!("let $0 = {receiver_text};"))
+                        .add_to(acc, ctx.db);
+                    postfix_snippet("letm", "let mut", &format!("let mut $0 = {receiver_text};"))
+                        .add_to(acc, ctx.db);
+                }
+                _ => (),
+            }
         }
+    }
+
+    if !is_in_cond {
+        match try_enum {
+            Some(try_enum) => match try_enum {
+                TryEnum::Result => {
+                    postfix_snippet(
+                    "match",
+                    "match expr {}",
+                    &format!("match {receiver_text} {{\n    Ok(${{1:_}}) => {{$2}},\n    Err(${{3:_}}) => {{$0}},\n}}"),
+                )
+                .add_to(acc, ctx.db);
+                }
+                TryEnum::Option => {
+                    postfix_snippet(
+                    "match",
+                    "match expr {}",
+                    &format!(
+                        "match {receiver_text} {{\n    Some(${{1:_}}) => {{$2}},\n    None => {{$0}},\n}}"
+                    ),
+                )
+                .add_to(acc, ctx.db);
+                }
+            },
+            None => {
+                postfix_snippet(
+                    "match",
+                    "match expr {}",
+                    &format!("match {receiver_text} {{\n    ${{1:_}} => {{$0}},\n}}"),
+                )
+                .add_to(acc, ctx.db);
+            }
+        }
+        if let Some(try_enum) = &try_enum {
+            match try_enum {
+                TryEnum::Result => {
+                    postfix_snippet(
+                        "ifl",
+                        "if let Ok {}",
+                        &format!("if let Ok($1) = {receiver_text} {{\n    $0\n}}"),
+                    )
+                    .add_to(acc, ctx.db);
+
+                    postfix_snippet(
+                        "lete",
+                        "let Ok else {}",
+                        &format!("let Ok($1) = {receiver_text} else {{\n    $2\n}};\n$0"),
+                    )
+                    .add_to(acc, ctx.db);
+
+                    postfix_snippet(
+                        "while",
+                        "while let Ok {}",
+                        &format!("while let Ok($1) = {receiver_text} {{\n    $0\n}}"),
+                    )
+                    .add_to(acc, ctx.db);
+                }
+                TryEnum::Option => {
+                    postfix_snippet(
+                        "ifl",
+                        "if let Some {}",
+                        &format!("if let Some($1) = {receiver_text} {{\n    $0\n}}"),
+                    )
+                    .add_to(acc, ctx.db);
+
+                    postfix_snippet(
+                        "lete",
+                        "let Some else {}",
+                        &format!("let Some($1) = {receiver_text} else {{\n    $2\n}};\n$0"),
+                    )
+                    .add_to(acc, ctx.db);
+
+                    postfix_snippet(
+                        "while",
+                        "while let Some {}",
+                        &format!("while let Some($1) = {receiver_text} {{\n    $0\n}}"),
+                    )
+                    .add_to(acc, ctx.db);
+                }
+            }
+        } else if receiver_ty.is_bool() || receiver_ty.is_unknown() {
+            postfix_snippet("if", "if expr {}", &format!("if {receiver_text} {{\n    $0\n}}"))
+                .add_to(acc, ctx.db);
+            postfix_snippet(
+                "while",
+                "while expr {}",
+                &format!("while {receiver_text} {{\n    $0\n}}"),
+            )
+            .add_to(acc, ctx.db);
+            postfix_snippet("not", "!expr", &format!("!{receiver_text}")).add_to(acc, ctx.db);
+        } else if let Some(trait_) = ctx.famous_defs().core_iter_IntoIterator() {
+            if receiver_ty.impls_trait(ctx.db, trait_, &[]) {
+                postfix_snippet(
+                    "for",
+                    "for ele in expr {}",
+                    &format!("for ele in {receiver_text} {{\n    $0\n}}"),
+                )
+                .add_to(acc, ctx.db);
+            }
+        }
+    }
+
+    let mut block_should_be_wrapped = true;
+    if dot_receiver.syntax().kind() == BLOCK_EXPR {
+        block_should_be_wrapped = false;
+        if let Some(parent) = dot_receiver.syntax().parent() {
+            if matches!(parent.kind(), IF_EXPR | WHILE_EXPR | LOOP_EXPR | FOR_EXPR) {
+                block_should_be_wrapped = true;
+            }
+        }
+    };
+    {
+        let (open_brace, close_brace) =
+            if block_should_be_wrapped { ("{ ", " }") } else { ("", "") };
+        let (open_paren, close_paren) = if is_in_cond { ("(", ")") } else { ("", "") };
+        let unsafe_completion_string =
+            format!("{open_paren}unsafe {open_brace}{receiver_text}{close_brace}{close_paren}");
+        postfix_snippet("unsafe", "unsafe {}", &unsafe_completion_string).add_to(acc, ctx.db);
+
+        let const_completion_string =
+            format!("{open_paren}const {open_brace}{receiver_text}{close_brace}{close_paren}");
+        postfix_snippet("const", "const {}", &const_completion_string).add_to(acc, ctx.db);
     }
 
     if let ast::Expr::Literal(literal) = dot_receiver_including_refs.clone() {
@@ -562,6 +612,54 @@ fn main() {
     if let Some($1) = bar {
     $0
 }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn option_iflet_cond() {
+        check(
+            r#"
+//- minicore: option
+fn main() {
+    let bar = Some(true);
+    if bar.$0
+}
+"#,
+            expect![[r#"
+                me and(…)    fn(self, Option<U>) -> Option<U>
+                me as_ref()     const fn(&self) -> Option<&T>
+                me ok_or(…) const fn(self, E) -> Result<T, E>
+                me unwrap()               const fn(self) -> T
+                me unwrap_or(…)              fn(self, T) -> T
+                sn box                         Box::new(expr)
+                sn call                        function(expr)
+                sn const                             const {}
+                sn dbg                             dbg!(expr)
+                sn dbgr                           dbg!(&expr)
+                sn deref                                *expr
+                sn let                            let Some(_)
+                sn letm                       let Some(mut _)
+                sn ref                                  &expr
+                sn refm                             &mut expr
+                sn return                         return expr
+                sn unsafe                           unsafe {}
+            "#]],
+        );
+        check_edit(
+            "let",
+            r#"
+//- minicore: option
+fn main() {
+    let bar = Some(true);
+    if bar.$0
+}
+"#,
+            r#"
+fn main() {
+    let bar = Some(true);
+    if let Some($0) = bar
 }
 "#,
         );

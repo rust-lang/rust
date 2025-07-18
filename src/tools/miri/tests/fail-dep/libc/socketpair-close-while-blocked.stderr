@@ -1,8 +1,8 @@
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
    |
 LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
-   |                                                                  ^ the evaluated program deadlocked
+   |                                                                  ^ this thread got stuck here
    |
    = note: BACKTRACE:
    = note: inside `std::sys::pal::PLATFORM::thread::Thread::join` at RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
@@ -14,18 +14,18 @@ note: inside `main`
 LL |     thread1.join().unwrap();
    |     ^^^^^^^^^^^^^^
 
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
   --> tests/fail-dep/libc/socketpair-close-while-blocked.rs:LL:CC
    |
 LL |             libc::read(fds[1], buf.as_mut_ptr().cast(), buf.len() as libc::size_t)
-   |                                                                                  ^ the evaluated program deadlocked
+   |                                                                                  ^ this thread got stuck here
    |
    = note: BACKTRACE on thread `unnamed-ID`:
    = note: inside closure at tests/fail-dep/libc/socketpair-close-while-blocked.rs:LL:CC
 
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
    |
-   = note: the evaluated program deadlocked
+   = note: this thread got stuck here
    = note: (no span available)
    = note: BACKTRACE on thread `unnamed-ID`:
 

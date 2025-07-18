@@ -52,10 +52,10 @@ impl TestCx<'_> {
             // don't test rustfix with nll right now
         } else if self.config.rustfix_coverage {
             // Find out which tests have `MachineApplicable` suggestions but are missing
-            // `run-rustfix` or `run-rustfix-only-machine-applicable` headers.
+            // `run-rustfix` or `run-rustfix-only-machine-applicable` directives.
             //
             // This will return an empty `Vec` in case the executed test file has a
-            // `compile-flags: --error-format=xxxx` header with a value other than `json`.
+            // `compile-flags: --error-format=xxxx` directive with a value other than `json`.
             let suggestions = get_suggestions_from_json(
                 &rustfix_input,
                 &HashSet::new(),

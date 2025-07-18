@@ -61,7 +61,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let (len, _) = args[1].layout.ty.simd_size_and_type(bx.tcx());
 
         let expected_int_bits = (len.max(8) - 1).next_power_of_two();
-        let expected_bytes = len / 8 + ((len % 8 > 0) as u64);
+        let expected_bytes = len / 8 + ((!len.is_multiple_of(8)) as u64);
 
         let mask_ty = args[0].layout.ty;
         let mut mask = match *mask_ty.kind() {
@@ -676,7 +676,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let elem_type = vector_type.get_element_type();
 
         let expected_int_bits = in_len.max(8);
-        let expected_bytes = expected_int_bits / 8 + ((expected_int_bits % 8 > 0) as u64);
+        let expected_bytes =
+            expected_int_bits / 8 + ((!expected_int_bits.is_multiple_of(8)) as u64);
 
         // FIXME(antoyo): that's not going to work for masks bigger than 128 bits.
         let result_type = bx.type_ix(expected_int_bits);
@@ -779,6 +780,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             sym::simd_fsin => "sin",
             sym::simd_fsqrt => "sqrt",
             sym::simd_round => "round",
+            sym::simd_round_ties_even => "rint",
             sym::simd_trunc => "trunc",
             _ => return_error!(InvalidMonomorphization::UnrecognizedIntrinsic { span, name }),
         };
@@ -826,6 +828,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             | sym::simd_fsin
             | sym::simd_fsqrt
             | sym::simd_round
+            | sym::simd_round_ties_even
             | sym::simd_trunc
     ) {
         return simd_simple_float_intrinsic(name, in_elem, in_ty, in_len, bx, span, args);
@@ -1081,7 +1084,9 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let (_, element_ty1) = args[1].layout.ty.simd_size_and_type(bx.tcx());
         let (_, element_ty2) = args[2].layout.ty.simd_size_and_type(bx.tcx());
         let (pointer_count, underlying_ty) = match *element_ty1.kind() {
-            ty::RawPtr(p_ty, mutbl) if p_ty == in_elem && mutbl == hir::Mutability::Mut => {
+            ty::RawPtr(p_ty, mutability)
+                if p_ty == in_elem && mutability == hir::Mutability::Mut =>
+            {
                 (ptr_count(element_ty1), non_ptr(element_ty1))
             }
             _ => {
@@ -1179,7 +1184,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let lhs = args[0].immediate();
         let rhs = args[1].immediate();
         let is_add = name == sym::simd_saturating_add;
-        let ptr_bits = bx.tcx().data_layout.pointer_size.bits() as _;
+        let ptr_bits = bx.tcx().data_layout.pointer_size().bits() as _;
         let (signed, elem_width, elem_ty) = match *in_elem.kind() {
             ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits) / 8, bx.cx.type_int_from_ty(i)),
             ty::Uint(i) => {

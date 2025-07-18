@@ -22,7 +22,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, ExprKind, HirId, Node, PathSegment, QPath};
-use rustc_infer::infer::{self, RegionVariableOrigin};
+use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::print::{
@@ -724,7 +724,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 let def_path = tcx.def_path_str(adt_def.did());
                 err.span_suggestion(
-                    ty.span.to(item_ident.span),
+                    sugg_span,
                     format!("to construct a value of type `{}`, use the explicit path", def_path),
                     def_path,
                     Applicability::MachineApplicable,
@@ -1189,7 +1189,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         entry.1.insert((self_ty.span, ""));
                     }
                     Some(Node::Item(hir::Item {
-                        kind: hir::ItemKind::Trait(rustc_ast::ast::IsAuto::Yes, ..),
+                        kind: hir::ItemKind::Trait(_, rustc_ast::ast::IsAuto::Yes, ..),
                         span: item_span,
                         ..
                     })) => {
@@ -1201,7 +1201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(
                         Node::Item(hir::Item {
                             kind:
-                                hir::ItemKind::Trait(_, _, ident, ..)
+                                hir::ItemKind::Trait(_, _, _, ident, ..)
                                 | hir::ItemKind::TraitAlias(ident, ..),
                             ..
                         })
@@ -1723,8 +1723,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Don't emit a suggestion if we found an actual method
             // that had unsatisfied trait bounds
             if unsatisfied_predicates.is_empty()
-                // ...or if we already suggested that name because of `rustc_confusable` annotation.
+                // ...or if we already suggested that name because of `rustc_confusable` annotation
                 && Some(similar_candidate.name()) != confusable_suggested
+                // and if we aren't in an expansion.
+                && !span.from_expansion()
             {
                 self.find_likely_intended_associated_item(
                     &mut err,
@@ -1949,7 +1951,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if def_kind == DefKind::AssocFn {
             let ty_args = self.infcx.fresh_args_for_item(span, similar_candidate.def_id);
             let fn_sig = tcx.fn_sig(similar_candidate.def_id).instantiate(tcx, ty_args);
-            let fn_sig = self.instantiate_binder_with_fresh_vars(span, infer::FnCall, fn_sig);
+            let fn_sig = self.instantiate_binder_with_fresh_vars(
+                span,
+                BoundRegionConversionTime::FnCall,
+                fn_sig,
+            );
             if similar_candidate.is_method() {
                 if let Some(args) = args
                     && fn_sig.inputs()[1..].len() == args.len()
@@ -2031,7 +2037,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tcx.fn_sig(inherent_method.def_id).instantiate(self.tcx, args);
                         let fn_sig = self.instantiate_binder_with_fresh_vars(
                             item_name.span,
-                            infer::FnCall,
+                            BoundRegionConversionTime::FnCall,
                             fn_sig,
                         );
                         let name = inherent_method.name();
@@ -2346,9 +2352,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if !arg.is_suggestable(self.tcx, true) {
                         has_unsuggestable_args = true;
                         match arg.kind() {
-                            GenericArgKind::Lifetime(_) => self
-                                .next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
-                                .into(),
+                            GenericArgKind::Lifetime(_) => {
+                                self.next_region_var(RegionVariableOrigin::Misc(DUMMY_SP)).into()
+                            }
                             GenericArgKind::Type(_) => self.next_ty_var(DUMMY_SP).into(),
                             GenericArgKind::Const(_) => self.next_const_var(DUMMY_SP).into(),
                         }
@@ -3049,7 +3055,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn note_unmet_impls_on_type(
         &self,
         err: &mut Diag<'_>,
-        errors: Vec<FulfillmentError<'tcx>>,
+        errors: &[FulfillmentError<'tcx>],
         suggest_derive: bool,
     ) {
         let preds: Vec<_> = errors
@@ -3475,9 +3481,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         item_name: Ident,
-        valid_out_of_scope_traits: Vec<DefId>,
+        mut valid_out_of_scope_traits: Vec<DefId>,
         explain: bool,
     ) -> bool {
+        valid_out_of_scope_traits.retain(|id| self.tcx.is_user_visible_dep(id.krate));
         if !valid_out_of_scope_traits.is_empty() {
             let mut candidates = valid_out_of_scope_traits;
             candidates.sort_by_key(|id| self.tcx.def_path_str(id));
@@ -4077,7 +4084,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return;
                         }
                         Node::Item(hir::Item {
-                            kind: hir::ItemKind::Trait(_, _, ident, _, bounds, _),
+                            kind: hir::ItemKind::Trait(_, _, _, ident, _, bounds, _),
                             ..
                         }) => {
                             let (sp, sep, article) = if bounds.is_empty() {
@@ -4382,7 +4389,7 @@ pub(crate) struct TraitInfo {
 /// Retrieves all traits in this crate and any dependent crates,
 /// and wraps them into `TraitInfo` for custom sorting.
 pub(crate) fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
-    tcx.all_traits().map(|def_id| TraitInfo { def_id }).collect()
+    tcx.all_traits_including_private().map(|def_id| TraitInfo { def_id }).collect()
 }
 
 fn print_disambiguation_help<'tcx>(

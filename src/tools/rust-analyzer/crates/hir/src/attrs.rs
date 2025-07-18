@@ -207,7 +207,7 @@ fn resolve_assoc_or_field(
             // Doc paths in this context may only resolve to an item of this trait
             // (i.e. no items of its supertraits), so we need to handle them here
             // independently of others.
-            return db.trait_items(id).items.iter().find(|it| it.0 == name).map(|(_, assoc_id)| {
+            return id.trait_items(db).items.iter().find(|it| it.0 == name).map(|(_, assoc_id)| {
                 let def = match *assoc_id {
                     AssocItemId::FunctionId(it) => ModuleDef::Function(it.into()),
                     AssocItemId::ConstId(it) => ModuleDef::Const(it.into()),
@@ -242,9 +242,9 @@ fn resolve_assoc_or_field(
     resolve_field(db, variant_def, name, ns)
 }
 
-fn resolve_assoc_item(
-    db: &dyn HirDatabase,
-    ty: &Type,
+fn resolve_assoc_item<'db>(
+    db: &'db dyn HirDatabase,
+    ty: &Type<'db>,
     name: &Name,
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
@@ -256,10 +256,10 @@ fn resolve_assoc_item(
     })
 }
 
-fn resolve_impl_trait_item(
-    db: &dyn HirDatabase,
+fn resolve_impl_trait_item<'db>(
+    db: &'db dyn HirDatabase,
     resolver: Resolver<'_>,
-    ty: &Type,
+    ty: &Type<'db>,
     name: &Name,
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {

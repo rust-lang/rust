@@ -784,7 +784,7 @@ macro_rules! delegate_impl {
         }
     }
 }
-impl <> Data for &'amut G where G: Data {}
+impl <> Data for &'a mut G where G: Data {}
 "#]],
     );
 }

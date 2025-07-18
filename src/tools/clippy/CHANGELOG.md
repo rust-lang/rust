@@ -6,7 +6,94 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[1e5237f4...master](https://github.com/rust-lang/rust-clippy/compare/1e5237f4...master)
+[03a5b6b9...master](https://github.com/rust-lang/rust-clippy/compare/03a5b6b9...master)
+
+## Rust 1.88
+
+Current stable, released 2025-06-26
+
+[View all 126 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2025-03-21T10%3A30%3A57Z..2025-05-01T08%3A03%3A26Z+base%3Amaster)
+
+### New Lints
+
+* Added [`swap_with_temporary`] to `complexity` [#14046](https://github.com/rust-lang/rust-clippy/pull/14046)
+* Added [`redundant_test_prefix`] to `restriction` [#13710](https://github.com/rust-lang/rust-clippy/pull/13710)
+* Added [`manual_dangling_ptr`] to `style` [#14107](https://github.com/rust-lang/rust-clippy/pull/14107)
+* Added [`char_indices_as_byte_indices`] to `correctness` [#13435](https://github.com/rust-lang/rust-clippy/pull/13435)
+* Added [`manual_abs_diff`] to `complexity` [#14482](https://github.com/rust-lang/rust-clippy/pull/14482)
+* Added [`ignore_without_reason`] to `pedantic` [#13931](https://github.com/rust-lang/rust-clippy/pull/13931)
+
+### Moves and Deprecations
+
+* Moved [`uninlined_format_args`] to `style` (from `pedantic`)
+  [#14160](https://github.com/rust-lang/rust-clippy/pull/14160)
+* [`match_on_vec_items`] deprecated in favor of [`indexing_slicing`]
+  [#14217](https://github.com/rust-lang/rust-clippy/pull/14217)
+* Removed superseded lints: `transmute_float_to_int`, `transmute_int_to_char`,
+  `transmute_int_to_float`, `transmute_num_to_bytes` (now in rustc)
+  [#14703](https://github.com/rust-lang/rust-clippy/pull/14703)
+
+### Enhancements
+
+* Configuration renamed from `lint-inconsistent-struct-field-initializers`
+  to `check-inconsistent-struct-field-initializers`
+  [#14280](https://github.com/rust-lang/rust-clippy/pull/14280)
+* Paths in `disallowed_*` configurations are now validated
+  [#14397](https://github.com/rust-lang/rust-clippy/pull/14397)
+* [`borrow_as_ptr`] now lints implicit casts as well
+  [#14408](https://github.com/rust-lang/rust-clippy/pull/14408)
+* [`iter_kv_map`] now recognizes references on maps
+  [#14596](https://github.com/rust-lang/rust-clippy/pull/14596)
+* [`empty_enum_variants_with_brackets`] no longer lints reachable enums or enums used 
+  as functions within same crate [#12971](https://github.com/rust-lang/rust-clippy/pull/12971)
+* [`needless_lifetimes`] now checks for lifetime uses in closures
+  [#14608](https://github.com/rust-lang/rust-clippy/pull/14608)
+* [`wildcard_imports`] now lints on `pub use` when `warn_on_all_wildcard_imports` is enabled
+  [#14182](https://github.com/rust-lang/rust-clippy/pull/14182)
+* [`collapsible_if`] now recognizes the `let_chains` feature
+  [#14481](https://github.com/rust-lang/rust-clippy/pull/14481)
+* [`match_single_binding`] now allows macros in scrutinee and patterns
+  [#14635](https://github.com/rust-lang/rust-clippy/pull/14635)
+* [`needless_borrow`] does not contradict the compiler's
+  `dangerous_implicit_autorefs` lint even though the references
+  are not mandatory
+  [#14810](https://github.com/rust-lang/rust-clippy/pull/14810)
+
+### False Positive Fixes
+
+* [`double_ended_iterator_last`] and [`needless_collect`] fixed FP when iter has side effects
+  [#14490](https://github.com/rust-lang/rust-clippy/pull/14490)
+* [`mut_from_ref`] fixed FP where lifetimes nested in types were not considered
+  [#14471](https://github.com/rust-lang/rust-clippy/pull/14471)
+* [`redundant_clone`] fixed FP in overlapping lifetime
+  [#14237](https://github.com/rust-lang/rust-clippy/pull/14237)
+* [`map_entry`] fixed FP where lint would trigger without insert calls present
+  [#14568](https://github.com/rust-lang/rust-clippy/pull/14568)
+* [`iter_cloned_collect`] fixed FP with custom `From`/`IntoIterator` impl
+  [#14473](https://github.com/rust-lang/rust-clippy/pull/14473)
+* [`shadow_unrelated`] fixed FP in destructuring assignments
+  [#14381](https://github.com/rust-lang/rust-clippy/pull/14381)
+* [`redundant_clone`] fixed FP on enum cast
+  [#14395](https://github.com/rust-lang/rust-clippy/pull/14395)
+* [`collapsible_if`] fixed FP on block stmt before expr
+  [#14730](https://github.com/rust-lang/rust-clippy/pull/14730)
+
+### ICE Fixes
+
+* [`missing_const_for_fn`] fix ICE with `-Z validate-mir` compilation option
+  [#14776](https://github.com/rust-lang/rust-clippy/pull/14776)
+
+### Documentation Improvements
+
+* [`missing_asserts_for_indexing`] improved documentation and examples
+  [#14108](https://github.com/rust-lang/rust-clippy/pull/14108)
+
+### Others
+
+* We're testing with edition 2024 now
+  [#14602](https://github.com/rust-lang/rust-clippy/pull/14602)
+* Don't warn about unloaded crates in `clippy.toml` disallowed paths
+  [#14733](https://github.com/rust-lang/rust-clippy/pull/14733)
 
 ## Rust 1.87
 
@@ -5729,6 +5816,7 @@ Released 2018-09-13
 [`disallowed_type`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_type
 [`disallowed_types`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
 [`diverging_sub_expression`]: https://rust-lang.github.io/rust-clippy/master/index.html#diverging_sub_expression
+[`doc_broken_link`]: https://rust-lang.github.io/rust-clippy/master/index.html#doc_broken_link
 [`doc_comment_double_space_linebreaks`]: https://rust-lang.github.io/rust-clippy/master/index.html#doc_comment_double_space_linebreaks
 [`doc_include_without_cfg`]: https://rust-lang.github.io/rust-clippy/master/index.html#doc_include_without_cfg
 [`doc_lazy_continuation`]: https://rust-lang.github.io/rust-clippy/master/index.html#doc_lazy_continuation
@@ -5967,6 +6055,7 @@ Released 2018-09-13
 [`manual_is_ascii_check`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_ascii_check
 [`manual_is_finite`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_finite
 [`manual_is_infinite`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_infinite
+[`manual_is_multiple_of`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_multiple_of
 [`manual_is_power_of_two`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_power_of_two
 [`manual_is_variant_and`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_variant_and
 [`manual_let_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else

@@ -494,7 +494,17 @@ impl<T: Display> Display for ParenHelper<T> {
 /// operators have the same
 /// precedence.
 pub fn make_unop(op: &str, expr: Sugg<'_>) -> Sugg<'static> {
-    Sugg::MaybeParen(format!("{op}{}", expr.maybe_paren()).into())
+    // If the `expr` starts with `op` already, do not add wrap it in
+    // parentheses.
+    let expr = if let Sugg::MaybeParen(ref sugg) = expr
+        && !has_enclosing_paren(sugg)
+        && sugg.starts_with(op)
+    {
+        expr
+    } else {
+        expr.maybe_paren()
+    };
+    Sugg::MaybeParen(format!("{op}{expr}").into())
 }
 
 /// Builds the string for `<lhs> <op> <rhs>` adding parenthesis when necessary.
@@ -1016,6 +1026,16 @@ mod test {
         let sugg = Sugg::BinOp(AssocOp::Binary(ast::BinOpKind::Add), "(1 + 1)".into(), "(1 + 1)".into());
         assert_eq!("((1 + 1) + (1 + 1))", sugg.maybe_paren().to_string());
     }
+
+    #[test]
+    fn unop_parenthesize() {
+        let sugg = Sugg::NonParen("x".into()).mut_addr();
+        assert_eq!("&mut x", sugg.to_string());
+        let sugg = sugg.mut_addr();
+        assert_eq!("&mut &mut x", sugg.to_string());
+        assert_eq!("(&mut &mut x)", sugg.maybe_paren().to_string());
+    }
+
     #[test]
     fn not_op() {
         use ast::BinOpKind::{Add, And, Eq, Ge, Gt, Le, Lt, Ne, Or};

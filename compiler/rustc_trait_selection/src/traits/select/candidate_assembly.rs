@@ -14,12 +14,12 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode, elaborate};
+use rustc_middle::ty::{self, SizedTraitKind, Ty, TypeVisitableExt, TypingMode, elaborate};
 use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;
-use super::{BuiltinImplConditions, SelectionCandidateSet, SelectionContext, TraitObligationStack};
+use super::{SelectionCandidateSet, SelectionContext, TraitObligationStack};
 use crate::traits::util;
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
@@ -75,19 +75,35 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_candidates_from_impls(obligation, &mut candidates);
 
                     // For other types, we'll use the builtin rules.
-                    let copy_conditions = self.copy_clone_conditions(obligation);
-                    self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
+                    self.assemble_builtin_copy_clone_candidate(
+                        obligation.predicate.self_ty().skip_binder(),
+                        &mut candidates,
+                    );
                 }
                 Some(LangItem::DiscriminantKind) => {
                     // `DiscriminantKind` is automatically implemented for every type.
-                    candidates.vec.push(BuiltinCandidate { has_nested: false });
+                    candidates.vec.push(BuiltinCandidate);
                 }
                 Some(LangItem::PointeeTrait) => {
                     // `Pointee` is automatically implemented for every type.
-                    candidates.vec.push(BuiltinCandidate { has_nested: false });
+                    candidates.vec.push(BuiltinCandidate);
                 }
                 Some(LangItem::Sized) => {
-                    self.assemble_builtin_sized_candidate(obligation, &mut candidates);
+                    self.assemble_builtin_sized_candidate(
+                        obligation.predicate.self_ty().skip_binder(),
+                        &mut candidates,
+                        SizedTraitKind::Sized,
+                    );
+                }
+                Some(LangItem::MetaSized) => {
+                    self.assemble_builtin_sized_candidate(
+                        obligation.predicate.self_ty().skip_binder(),
+                        &mut candidates,
+                        SizedTraitKind::MetaSized,
+                    );
+                }
+                Some(LangItem::PointeeSized) => {
+                    bug!("`PointeeSized` is removed during lowering");
                 }
                 Some(LangItem::Unsize) => {
                     self.assemble_candidates_for_unsizing(obligation, &mut candidates);
@@ -201,6 +217,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     selcx.infcx.probe(|_| {
+                        let bound = util::lazily_elaborate_sizedness_candidate(
+                            selcx.infcx,
+                            obligation,
+                            bound,
+                        );
+
                         // We checked the polarity already
                         match selcx.match_normalize_trait_ref(
                             obligation,
@@ -245,14 +267,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .caller_bounds()
             .iter()
             .filter_map(|p| p.as_trait_clause())
-            // Micro-optimization: filter out predicates relating to different traits.
-            .filter(|p| p.def_id() == stack.obligation.predicate.def_id())
+            // Micro-optimization: filter out predicates with different polarities.
             .filter(|p| p.polarity() == stack.obligation.predicate.polarity());
 
         let drcx = DeepRejectCtxt::relate_rigid_rigid(self.tcx());
         let obligation_args = stack.obligation.predicate.skip_binder().trait_ref.args;
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
         for bound in bounds {
+            let bound =
+                util::lazily_elaborate_sizedness_candidate(self.infcx, stack.obligation, bound);
+
+            // Micro-optimization: filter out predicates relating to different traits.
+            if bound.def_id() != stack.obligation.predicate.def_id() {
+                continue;
+            }
+
             let bound_trait_ref = bound.map_bound(|t| t.trait_ref);
             if !drcx.args_may_unify(obligation_args, bound_trait_ref.skip_binder().args) {
                 continue;
@@ -330,15 +359,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = obligation.self_ty().skip_binder();
-        // gen constructs get lowered to a special kind of coroutine that
-        // should directly `impl FusedIterator`.
-        if let ty::Coroutine(did, ..) = self_ty.kind()
-            && self.tcx().coroutine_is_gen(*did)
-        {
-            debug!(?self_ty, ?obligation, "assemble_fused_iterator_candidates",);
-
-            candidates.vec.push(BuiltinCandidate { has_nested: false });
+        if self.coroutine_is_gen(obligation.self_ty().skip_binder()) {
+            candidates.vec.push(BuiltinCandidate);
         }
     }
 
@@ -783,7 +805,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         hir::Movability::Movable => {
                             // Movable coroutines are always `Unpin`, so add an
                             // unconditional builtin candidate.
-                            candidates.vec.push(BuiltinCandidate { has_nested: false });
+                            candidates.vec.push(BuiltinCandidate);
                         }
                     }
                 }
@@ -820,6 +842,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
+                ty::CoroutineWitness(def_id, _) => {
+                    if self.should_stall_coroutine_witness(def_id) {
+                        candidates.ambiguous = true;
+                    } else {
+                        candidates.vec.push(AutoImplCandidate);
+                    }
+                }
+
                 ty::Bool
                 | ty::Char
                 | ty::Int(_)
@@ -839,7 +869,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Coroutine(..)
                 | ty::Never
                 | ty::Tuple(_)
-                | ty::CoroutineWitness(..)
                 | ty::UnsafeBinder(_) => {
                     // Only consider auto impls of unsafe traits when there are
                     // no unsafe fields.
@@ -1086,44 +1115,173 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    /// Assembles the trait which are built-in to the language itself:
-    /// `Copy`, `Clone` and `Sized`.
+    /// Assembles `Copy` and `Clone` candidates for built-in types with no libcore-defined
+    /// `Copy` or `Clone` impls.
     #[instrument(level = "debug", skip(self, candidates))]
-    fn assemble_builtin_sized_candidate(
+    fn assemble_builtin_copy_clone_candidate(
         &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
+        self_ty: Ty<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        match self.sized_conditions(obligation) {
-            BuiltinImplConditions::Where(nested) => {
-                candidates
-                    .vec
-                    .push(SizedCandidate { has_nested: !nested.skip_binder().is_empty() });
+        match *self_ty.kind() {
+            // These impls are built-in because we cannot express sufficiently
+            // generic impls in libcore.
+            ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) | ty::Tuple(..) | ty::Pat(..) => {
+                candidates.vec.push(BuiltinCandidate);
             }
-            BuiltinImplConditions::None => {}
-            BuiltinImplConditions::Ambiguous => {
+
+            // Implementations provided in libcore.
+            ty::Uint(_)
+            | ty::Int(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Bool
+            | ty::Float(_)
+            | ty::Char
+            | ty::RawPtr(..)
+            | ty::Never
+            | ty::Ref(_, _, hir::Mutability::Not)
+            | ty::Array(..) => {}
+
+            // FIXME(unsafe_binder): Should we conditionally
+            // (i.e. universally) implement copy/clone?
+            ty::UnsafeBinder(_) => {}
+
+            // Not `Sized`, which is a supertrait of `Copy`/`Clone`.
+            ty::Dynamic(..) | ty::Str | ty::Slice(..) | ty::Foreign(..) => {}
+
+            // Not `Copy` or `Clone` by design.
+            ty::Ref(_, _, hir::Mutability::Mut) => {}
+
+            ty::Coroutine(coroutine_def_id, args) => {
+                match self.tcx().coroutine_movability(coroutine_def_id) {
+                    hir::Movability::Static => {}
+                    hir::Movability::Movable => {
+                        if self.tcx().features().coroutine_clone() {
+                            let resolved_upvars =
+                                self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
+                            let resolved_witness =
+                                self.infcx.shallow_resolve(args.as_coroutine().witness());
+                            if resolved_upvars.is_ty_var() || resolved_witness.is_ty_var() {
+                                // Not yet resolved.
+                                candidates.ambiguous = true;
+                            } else {
+                                candidates.vec.push(BuiltinCandidate);
+                            }
+                        }
+                    }
+                }
+            }
+
+            ty::Closure(_, args) => {
+                let resolved_upvars =
+                    self.infcx.shallow_resolve(args.as_closure().tupled_upvars_ty());
+                if resolved_upvars.is_ty_var() {
+                    // Not yet resolved.
+                    candidates.ambiguous = true;
+                } else {
+                    candidates.vec.push(BuiltinCandidate);
+                }
+            }
+
+            ty::CoroutineClosure(_, args) => {
+                let resolved_upvars =
+                    self.infcx.shallow_resolve(args.as_coroutine_closure().tupled_upvars_ty());
+                if resolved_upvars.is_ty_var() {
+                    // Not yet resolved.
+                    candidates.ambiguous = true;
+                } else {
+                    candidates.vec.push(BuiltinCandidate);
+                }
+            }
+
+            ty::CoroutineWitness(coroutine_def_id, _) => {
+                if self.should_stall_coroutine_witness(coroutine_def_id) {
+                    candidates.ambiguous = true;
+                } else {
+                    candidates.vec.push(SizedCandidate);
+                }
+            }
+
+            // Fallback to whatever user-defined impls or param-env clauses exist in this case.
+            ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {}
+
+            ty::Infer(ty::TyVar(_)) => {
                 candidates.ambiguous = true;
+            }
+
+            // Only appears when assembling higher-ranked `for<T> T: Clone`.
+            ty::Bound(..) => {}
+
+            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
         }
     }
 
-    /// Assembles the trait which are built-in to the language itself:
-    /// e.g. `Copy` and `Clone`.
+    /// Assembles the `Sized` and `MetaSized` traits which are built-in to the language itself.
     #[instrument(level = "debug", skip(self, candidates))]
-    fn assemble_builtin_bound_candidates(
+    fn assemble_builtin_sized_candidate(
         &mut self,
-        conditions: BuiltinImplConditions<'tcx>,
+        self_ty: Ty<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
+        sizedness: SizedTraitKind,
     ) {
-        match conditions {
-            BuiltinImplConditions::Where(nested) => {
-                candidates
-                    .vec
-                    .push(BuiltinCandidate { has_nested: !nested.skip_binder().is_empty() });
+        match *self_ty.kind() {
+            // Always sized.
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Uint(_)
+            | ty::Int(_)
+            | ty::Bool
+            | ty::Float(_)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::RawPtr(..)
+            | ty::Char
+            | ty::Ref(..)
+            | ty::Coroutine(..)
+            | ty::Array(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Never
+            | ty::Error(_) => {
+                candidates.vec.push(SizedCandidate);
             }
-            BuiltinImplConditions::None => {}
-            BuiltinImplConditions::Ambiguous => {
+
+            ty::CoroutineWitness(coroutine_def_id, _) => {
+                if self.should_stall_coroutine_witness(coroutine_def_id) {
+                    candidates.ambiguous = true;
+                } else {
+                    candidates.vec.push(SizedCandidate);
+                }
+            }
+
+            // Conditionally `Sized`.
+            ty::Tuple(..) | ty::Pat(..) | ty::Adt(..) | ty::UnsafeBinder(_) => {
+                candidates.vec.push(SizedCandidate);
+            }
+
+            // `MetaSized` but not `Sized`.
+            ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {
+                SizedTraitKind::Sized => {}
+                SizedTraitKind::MetaSized => {
+                    candidates.vec.push(SizedCandidate);
+                }
+            },
+
+            // Not `MetaSized` or `Sized`.
+            ty::Foreign(..) => {}
+
+            ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => {}
+
+            ty::Infer(ty::TyVar(_)) => {
                 candidates.ambiguous = true;
+            }
+
+            // Only appears when assembling higher-ranked `for<T> T: Sized`.
+            ty::Bound(..) => {}
+
+            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
         }
     }
@@ -1133,7 +1291,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         _obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        candidates.vec.push(BuiltinCandidate { has_nested: false });
+        candidates.vec.push(BuiltinCandidate);
     }
 
     fn assemble_candidate_for_tuple(
@@ -1144,7 +1302,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
         match self_ty.kind() {
             ty::Tuple(_) => {
-                candidates.vec.push(BuiltinCandidate { has_nested: false });
+                candidates.vec.push(BuiltinCandidate);
             }
             ty::Infer(ty::TyVar(_)) => {
                 candidates.ambiguous = true;
@@ -1188,7 +1346,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx.resolve_vars_if_possible(obligation.self_ty());
 
         match self_ty.skip_binder().kind() {
-            ty::FnPtr(..) => candidates.vec.push(BuiltinCandidate { has_nested: false }),
+            ty::FnPtr(..) => candidates.vec.push(BuiltinCandidate),
             ty::Bool
             | ty::Char
             | ty::Int(_)

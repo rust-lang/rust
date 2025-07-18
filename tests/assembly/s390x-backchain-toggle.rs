@@ -1,5 +1,5 @@
 //@ add-core-stubs
-//@ revisions: enable-backchain disable-backchain
+//@ revisions: enable-backchain disable-backchain default-backchain
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3 --crate-type=lib --target=s390x-unknown-linux-gnu
 //@ needs-llvm-components: systemz
@@ -26,6 +26,8 @@ extern "C" fn test_backchain() -> i32 {
     // enable-backchain: stg [[REG1]], 0(%r15)
     // disable-backchain: aghi %r15, -160
     // disable-backchain-NOT: stg %r{{.*}}, 0(%r15)
+    // default-backchain: aghi %r15, -160
+    // default-backchain-NOT: stg %r{{.*}}, 0(%r15)
     unsafe {
         extern_func();
     }
@@ -35,6 +37,7 @@ extern "C" fn test_backchain() -> i32 {
     // Make sure that the expected return value is written into %r2 (return register):
     // enable-backchain-NEXT: lghi %r2, 1
     // disable-backchain: lghi %r2, 0
+    // default-backchain: lghi %r2, 0
     #[cfg(target_feature = "backchain")]
     {
         1

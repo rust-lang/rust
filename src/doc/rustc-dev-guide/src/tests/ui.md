@@ -13,6 +13,11 @@ used for many other purposes. For example, tests can also be configured to [run
 the resulting program](#controlling-passfail-expectations) to verify its
 behavior.
 
+For a survey of each subdirectory's purpose under `tests/ui`, consult the
+[SUMMARY.md](https://github.com/rust-lang/rust/tree/master/tests/ui/SUMMARY.md).
+This is useful if you write a new test, and are looking for a category to
+place it in.
+
 If you need to work with `#![no_std]` cross-compiling tests, consult the
 [`minicore` test auxiliary](./minicore.md) chapter.
 
@@ -53,6 +58,11 @@ expect.
 The output is normalized to ignore unwanted differences, see the
 [Normalization](#normalization) section. If the file is missing, then
 compiletest expects the corresponding output to be empty.
+
+A common reason to use normalization, revisions, and most of the other following tools,
+is to account for platform differences. Consider alternatives to these tools, like
+e.g. using the `extern "rust-invalid"` ABI that is invalid on every platform
+instead of fixing the test to use cross-compilation and testing every possibly-invalid ABI.
 
 There can be multiple stdout/stderr files. The general form is:
 
@@ -113,6 +123,8 @@ Compiletest makes the following replacements on the compiler output:
 - The base directory where the test's output goes is replaced with
   `$TEST_BUILD_DIR`. This only comes up in a few rare circumstances. Example:
   `/path/to/rust/build/x86_64-unknown-linux-gnu/test/ui`
+- The real directory to the standard library source is replaced with `$SRC_DIR_REAL`.
+- The real directory to the compiler source is replaced with `$COMPILER_DIR_REAL`.
 - Tabs are replaced with `\t`.
 - Backslashes (`\`) are converted to forward slashes (`/`) within paths (using a
   heuristic). This helps normalize differences with Windows-style paths.
@@ -441,9 +453,9 @@ even run the resulting program. Just add one of the following
   - `//@ check-fail` — compilation should fail (the codegen phase is skipped).
     This is the default for UI tests.
   - `//@ build-fail` — compilation should fail during the codegen phase.
-    This will run `rustc` twice, once to verify that it compiles successfully
-    without the codegen phase, then a second time the full compile should
-    fail.
+    This will run `rustc` twice:
+    - First time is to ensure that the compile succeeds without the codegen phase
+    - Second time is to ensure that the full compile fails
   - `//@ run-fail` — compilation should succeed, but running the resulting
     binary should fail.
 
@@ -487,7 +499,7 @@ This directive takes comma-separated issue numbers as arguments, or `"unknown"`:
 - `//@ known-bug: rust-lang/chalk#123456`
   (allows arbitrary text before the `#`, which is useful when the issue is on another repo)
 - `//@ known-bug: unknown`
-  (when there is no known issue yet; preferrably open one if it does not already exist)
+  (when there is no known issue yet; preferably open one if it does not already exist)
 
 Do not include [error annotations](#error-annotations) in a test with
 `known-bug`. The test should still include other normal directives and

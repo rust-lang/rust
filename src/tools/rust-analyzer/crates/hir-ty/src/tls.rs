@@ -109,7 +109,7 @@ impl DebugContext<'_> {
             CallableDefId::StructId(s) => self.0.struct_signature(s).name.clone(),
             CallableDefId::EnumVariantId(e) => {
                 let loc = e.lookup(self.0);
-                self.0.enum_variants(loc.parent).variants[loc.index as usize].1.clone()
+                loc.parent.enum_variants(self.0).variants[loc.index as usize].1.clone()
             }
         };
         match def {

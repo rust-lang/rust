@@ -2,7 +2,6 @@ use rustc_abi::{CanonAbi, FieldIdx, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::Single;
 use rustc_middle::ty::Ty;
-use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;

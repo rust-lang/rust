@@ -634,10 +634,8 @@ impl TokenStream {
                     (
                         TokenTree::Token(token_left, Spacing::Alone),
                         TokenTree::Token(token_right, _),
-                    ) if ((token_left.is_ident() && !token_left.is_reserved_ident())
-                        || token_left.is_lit())
-                        && ((token_right.is_ident() && !token_right.is_reserved_ident())
-                            || token_right.is_lit()) =>
+                    ) if (token_left.is_non_reserved_ident() || token_left.is_lit())
+                        && (token_right.is_non_reserved_ident() || token_right.is_lit()) =>
                     {
                         token_left.span
                     }

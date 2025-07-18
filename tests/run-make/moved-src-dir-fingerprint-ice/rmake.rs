@@ -12,7 +12,7 @@
 // sessions.
 // See https://github.com/rust-lang/rust/issues/85019
 
-//@ needs-target-std
+//@ ignore-cross-compile
 
 use run_make_support::{rfs, rust_lib_name, rustc};
 

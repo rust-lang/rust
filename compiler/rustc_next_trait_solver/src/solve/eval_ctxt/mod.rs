@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_NoContext;
-use rustc_type_ir::data_structures::{HashMap, HashSet, ensure_sufficient_stack};
+use rustc_type_ir::data_structures::{HashMap, HashSet};
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
@@ -19,8 +19,10 @@ use tracing::{debug, instrument, trace};
 use super::has_only_region_constraints;
 use crate::coherence;
 use crate::delegate::SolverDelegate;
+use crate::placeholder::BoundVarReplacer;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
+use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
     CanonicalInput, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluation, GoalEvaluationKind,
     GoalSource, GoalStalledOn, HasChanged, NestedNormalizationGoals, NoSolution, QueryInput,
@@ -146,13 +148,9 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
     fn evaluate_root_goal(
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
-        generate_proof_tree: GenerateProofTree,
         span: <Self::Interner as Interner>::Span,
         stalled_on: Option<GoalStalledOn<Self::Interner>>,
-    ) -> (
-        Result<GoalEvaluation<Self::Interner>, NoSolution>,
-        Option<inspect::GoalEvaluation<Self::Interner>>,
-    );
+    ) -> Result<GoalEvaluation<Self::Interner>, NoSolution>;
 
     /// Check whether evaluating `goal` with a depth of `root_depth` may
     /// succeed. This only returns `false` if the goal is guaranteed to
@@ -169,17 +167,16 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
 
     // FIXME: This is only exposed because we need to use it in `analyse.rs`
     // which is not yet uplifted. Once that's done, we should remove this.
-    fn evaluate_root_goal_raw(
+    fn evaluate_root_goal_for_proof_tree(
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
-        generate_proof_tree: GenerateProofTree,
-        stalled_on: Option<GoalStalledOn<Self::Interner>>,
+        span: <Self::Interner as Interner>::Span,
     ) -> (
         Result<
             (NestedNormalizationGoals<Self::Interner>, GoalEvaluation<Self::Interner>),
             NoSolution,
         >,
-        Option<inspect::GoalEvaluation<Self::Interner>>,
+        inspect::GoalEvaluation<Self::Interner>,
     );
 }
 
@@ -192,13 +189,17 @@ where
     fn evaluate_root_goal(
         &self,
         goal: Goal<I, I::Predicate>,
-        generate_proof_tree: GenerateProofTree,
         span: I::Span,
         stalled_on: Option<GoalStalledOn<I>>,
-    ) -> (Result<GoalEvaluation<I>, NoSolution>, Option<inspect::GoalEvaluation<I>>) {
-        EvalCtxt::enter_root(self, self.cx().recursion_limit(), generate_proof_tree, span, |ecx| {
-            ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal, stalled_on)
-        })
+    ) -> Result<GoalEvaluation<I>, NoSolution> {
+        EvalCtxt::enter_root(
+            self,
+            self.cx().recursion_limit(),
+            GenerateProofTree::No,
+            span,
+            |ecx| ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal, stalled_on),
+        )
+        .0
     }
 
     fn root_goal_may_hold_with_depth(
@@ -216,24 +217,22 @@ where
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn evaluate_root_goal_raw(
+    fn evaluate_root_goal_for_proof_tree(
         &self,
         goal: Goal<I, I::Predicate>,
-        generate_proof_tree: GenerateProofTree,
-        stalled_on: Option<GoalStalledOn<I>>,
+        span: I::Span,
     ) -> (
         Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolution>,
-        Option<inspect::GoalEvaluation<I>>,
+        inspect::GoalEvaluation<I>,
     ) {
-        EvalCtxt::enter_root(
+        let (result, proof_tree) = EvalCtxt::enter_root(
             self,
             self.cx().recursion_limit(),
-            generate_proof_tree,
-            I::Span::dummy(),
-            |ecx| {
-                ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal, stalled_on)
-            },
-        )
+            GenerateProofTree::Yes,
+            span,
+            |ecx| ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal, None),
+        );
+        (result, proof_tree.unwrap())
     }
 }
 
@@ -338,13 +337,12 @@ where
 
     /// Creates a nested evaluation context that shares the same search graph as the
     /// one passed in. This is suitable for evaluation, granted that the search graph
-    /// has had the nested goal recorded on its stack ([`SearchGraph::with_new_goal`]),
-    /// but it's preferable to use other methods that call this one rather than this
-    /// method directly.
+    /// has had the nested goal recorded on its stack. This method only be used by
+    /// `search_graph::Delegate::compute_goal`.
     ///
     /// This function takes care of setting up the inference context, setting the anchor,
     /// and registering opaques from the canonicalized input.
-    fn enter_canonical<R>(
+    pub(super) fn enter_canonical<R>(
         cx: I,
         search_graph: &'a mut SearchGraph<D>,
         canonical_input: CanonicalInput<I>,
@@ -400,56 +398,6 @@ where
         result
     }
 
-    /// The entry point of the solver.
-    ///
-    /// This function deals with (coinductive) cycles, overflow, and caching
-    /// and then calls [`EvalCtxt::compute_goal`] which contains the actual
-    /// logic of the solver.
-    ///
-    /// Instead of calling this function directly, use either [EvalCtxt::evaluate_goal]
-    /// if you're inside of the solver or [SolverDelegateEvalExt::evaluate_root_goal] if you're
-    /// outside of it.
-    #[instrument(level = "debug", skip(cx, search_graph, goal_evaluation), ret)]
-    fn evaluate_canonical_goal(
-        cx: I,
-        search_graph: &'a mut SearchGraph<D>,
-        canonical_input: CanonicalInput<I>,
-        step_kind_from_parent: PathKind,
-        goal_evaluation: &mut ProofTreeBuilder<D>,
-    ) -> QueryResult<I> {
-        let mut canonical_goal_evaluation =
-            goal_evaluation.new_canonical_goal_evaluation(canonical_input);
-
-        // Deal with overflow, caching, and coinduction.
-        //
-        // The actual solver logic happens in `ecx.compute_goal`.
-        let result = ensure_sufficient_stack(|| {
-            search_graph.with_new_goal(
-                cx,
-                canonical_input,
-                step_kind_from_parent,
-                &mut canonical_goal_evaluation,
-                |search_graph, canonical_goal_evaluation| {
-                    EvalCtxt::enter_canonical(
-                        cx,
-                        search_graph,
-                        canonical_input,
-                        canonical_goal_evaluation,
-                        |ecx, goal| {
-                            let result = ecx.compute_goal(goal);
-                            ecx.inspect.query_result(result);
-                            result
-                        },
-                    )
-                },
-            )
-        });
-
-        canonical_goal_evaluation.query_result(result);
-        goal_evaluation.canonical_goal_evaluation(canonical_goal_evaluation);
-        result
-    }
-
     /// Recursively evaluates `goal`, returning whether any inference vars have
     /// been constrained and the certainty of the result.
     fn evaluate_goal(
@@ -482,39 +430,36 @@ where
         // If we have run this goal before, and it was stalled, check that any of the goal's
         // args have changed. Otherwise, we don't need to re-run the goal because it'll remain
         // stalled, since it'll canonicalize the same way and evaluation is pure.
-        if let Some(stalled_on) = stalled_on {
-            if !stalled_on.stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value))
-                && !self
-                    .delegate
-                    .opaque_types_storage_num_entries()
-                    .needs_reevaluation(stalled_on.num_opaques)
-            {
-                return Ok((
-                    NestedNormalizationGoals::empty(),
-                    GoalEvaluation {
-                        certainty: Certainty::Maybe(stalled_on.stalled_cause),
-                        has_changed: HasChanged::No,
-                        stalled_on: Some(stalled_on),
-                    },
-                ));
-            }
+        if let Some(stalled_on) = stalled_on
+            && !stalled_on.stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value))
+            && !self
+                .delegate
+                .opaque_types_storage_num_entries()
+                .needs_reevaluation(stalled_on.num_opaques)
+        {
+            return Ok((
+                NestedNormalizationGoals::empty(),
+                GoalEvaluation {
+                    certainty: Certainty::Maybe(stalled_on.stalled_cause),
+                    has_changed: HasChanged::No,
+                    stalled_on: Some(stalled_on),
+                },
+            ));
         }
 
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
-        let canonical_response = EvalCtxt::evaluate_canonical_goal(
+        let canonical_result = self.search_graph.evaluate_goal(
             self.cx(),
-            self.search_graph,
             canonical_goal,
             self.step_kind_for_source(source),
             &mut goal_evaluation,
         );
-        let response = match canonical_response {
-            Err(e) => {
-                self.inspect.goal_evaluation(goal_evaluation);
-                return Err(e);
-            }
+        goal_evaluation.query_result(canonical_result);
+        self.inspect.goal_evaluation(goal_evaluation);
+        let response = match canonical_result {
+            Err(e) => return Err(e),
             Ok(response) => response,
         };
 
@@ -523,7 +468,6 @@ where
 
         let (normalization_nested_goals, certainty) =
             self.instantiate_and_apply_query_response(goal.param_env, &orig_values, response);
-        self.inspect.goal_evaluation(goal_evaluation);
 
         // FIXME: We previously had an assert here that checked that recomputing
         // a goal after applying its constraints did not change its response.
@@ -584,7 +528,7 @@ where
         Ok((normalization_nested_goals, GoalEvaluation { certainty, has_changed, stalled_on }))
     }
 
-    fn compute_goal(&mut self, goal: Goal<I, I::Predicate>) -> QueryResult<I> {
+    pub(super) fn compute_goal(&mut self, goal: Goal<I, I::Predicate>) -> QueryResult<I> {
         let Goal { param_env, predicate } = goal;
         let kind = predicate.kind();
         if let Some(kind) = kind.no_bound_vars() {
@@ -606,6 +550,9 @@ where
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                     self.compute_const_arg_has_type_goal(Goal { param_env, predicate: (ct, ty) })
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
+                    self.compute_unstable_feature_goal(param_env, symbol)
                 }
                 ty::PredicateKind::Subtype(predicate) => {
                     self.compute_subtype_goal(Goal { param_env, predicate })
@@ -889,14 +836,11 @@ where
 
                 match t.kind() {
                     ty::Infer(ty::TyVar(vid)) => {
-                        if let ty::TermKind::Ty(term) = self.term.kind() {
-                            if let ty::Infer(ty::TyVar(term_vid)) = term.kind() {
-                                if self.delegate.root_ty_var(vid)
-                                    == self.delegate.root_ty_var(term_vid)
-                                {
-                                    return ControlFlow::Break(());
-                                }
-                            }
+                        if let ty::TermKind::Ty(term) = self.term.kind()
+                            && let ty::Infer(ty::TyVar(term_vid)) = term.kind()
+                            && self.delegate.root_ty_var(vid) == self.delegate.root_ty_var(term_vid)
+                        {
+                            return ControlFlow::Break(());
                         }
 
                         self.check_nameable(self.delegate.universe_of_ty(vid).unwrap())?;
@@ -916,15 +860,12 @@ where
             fn visit_const(&mut self, c: I::Const) -> Self::Result {
                 match c.kind() {
                     ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
-                        if let ty::TermKind::Const(term) = self.term.kind() {
-                            if let ty::ConstKind::Infer(ty::InferConst::Var(term_vid)) = term.kind()
-                            {
-                                if self.delegate.root_const_var(vid)
-                                    == self.delegate.root_const_var(term_vid)
-                                {
-                                    return ControlFlow::Break(());
-                                }
-                            }
+                        if let ty::TermKind::Const(term) = self.term.kind()
+                            && let ty::ConstKind::Infer(ty::InferConst::Var(term_vid)) = term.kind()
+                            && self.delegate.root_const_var(vid)
+                                == self.delegate.root_const_var(term_vid)
+                        {
+                            return ControlFlow::Break(());
                         }
 
                         self.check_nameable(self.delegate.universe_of_ct(vid).unwrap())
@@ -1231,6 +1172,22 @@ where
         assume: I::Const,
     ) -> Result<Certainty, NoSolution> {
         self.delegate.is_transmutable(dst, src, assume)
+    }
+
+    pub(super) fn replace_bound_vars<T: TypeFoldable<I>>(
+        &self,
+        t: T,
+        universes: &mut Vec<Option<ty::UniverseIndex>>,
+    ) -> T {
+        BoundVarReplacer::replace_bound_vars(&**self.delegate, universes, t).0
+    }
+
+    pub(super) fn may_use_unstable_feature(
+        &self,
+        param_env: I::ParamEnv,
+        symbol: I::Symbol,
+    ) -> bool {
+        may_use_unstable_feature(&**self.delegate, param_env, symbol)
     }
 }
 

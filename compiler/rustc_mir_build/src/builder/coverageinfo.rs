@@ -61,10 +61,10 @@ impl BlockMarkerGen {
         block: BasicBlock,
     ) -> BlockMarkerId {
         let id = self.next_block_marker_id();
-        let marker_statement = mir::Statement {
+        let marker_statement = mir::Statement::new(
             source_info,
-            kind: mir::StatementKind::Coverage(CoverageKind::BlockMarker { id }),
-        };
+            mir::StatementKind::Coverage(CoverageKind::BlockMarker { id }),
+        );
         cfg.push(block, marker_statement);
 
         id

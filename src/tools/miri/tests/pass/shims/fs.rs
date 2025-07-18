@@ -2,7 +2,6 @@
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
-#![feature(file_lock)]
 
 use std::collections::BTreeMap;
 use std::ffi::OsString;

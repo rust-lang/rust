@@ -1,5 +1,6 @@
 //@ compile-flags: -C opt-level=3
 //@ only-x86_64
+//@ needs-deterministic-layouts
 
 #![crate_type = "lib"]
 #![feature(iter_repeat_n)]
@@ -25,10 +26,10 @@ pub fn iter_repeat_n_next(it: &mut std::iter::RepeatN<NotCopy>) -> Option<NotCop
     // CHECK-NEXT: br i1 %[[COUNT_ZERO]], label %[[EMPTY:.+]], label %[[NOT_EMPTY:.+]]
 
     // CHECK: [[NOT_EMPTY]]:
-    // CHECK-NEXT: %[[DEC:.+]] = add i64 %[[COUNT]], -1
-    // CHECK-NEXT: store i64 %[[DEC]]
     // CHECK-NOT: br
-    // CHECK: %[[VAL:.+]] = load i16
+    // CHECK: %[[DEC:.+]] = add i64 %[[COUNT]], -1
+    // CHECK-NEXT: %[[VAL:.+]] = load i16
+    // CHECK-NEXT: store i64 %[[DEC]]
     // CHECK-NEXT: br label %[[EMPTY]]
 
     // CHECK: [[EMPTY]]:

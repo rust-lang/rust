@@ -3,8 +3,8 @@ error: missing `enum` for enum definition
    |
 LL | pub onion {
    | ^^^^^^^^^
--Ztrack-diagnostics: created at compiler/rustc_parse/src/parser/item.rs:LL:CC
    |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_parse/src/parser/item.rs:LL:CC
 help: add `enum` here to parse `onion` as an enum
    |
 LL | pub enum onion {

@@ -1,3 +1,7 @@
+//@ ignore-cross-compile
+//@ needs-crate-type: dylib, cdylib, proc-macro
+//@ needs-dynamic-linking
+
 // Dynamic libraries on Rust used to export a very high amount of symbols,
 // going as far as filling the output with mangled names and generic function
 // names. After the rework of #38117, this test checks that no mangled Rust symbols
@@ -5,7 +9,7 @@
 // See https://github.com/rust-lang/rust/issues/37530
 
 use run_make_support::object::read::Object;
-use run_make_support::{bin_name, dynamic_lib_name, is_msvc, object, regex, rfs, rustc};
+use run_make_support::{bin_name, dynamic_lib_name, is_windows_msvc, object, regex, rfs, rustc};
 
 fn main() {
     let cdylib_name = dynamic_lib_name("a_cdylib");
@@ -60,7 +64,7 @@ fn main() {
     );
 
     // FIXME(nbdd0121): This is broken in MinGW, see https://github.com/rust-lang/rust/pull/95604#issuecomment-1101564032
-    if is_msvc() {
+    if is_windows_msvc() {
         // Check that an executable does not export any dynamic symbols
         symbols_check(&exe_name, SymbolCheckType::StrSymbol("public_c_function_from_rlib"), false);
         symbols_check(
@@ -126,7 +130,7 @@ fn main() {
     );
 
     // FIXME(nbdd0121): This is broken in MinGW, see https://github.com/rust-lang/rust/pull/95604#issuecomment-1101564032
-    if is_msvc() {
+    if is_windows_msvc() {
         // Check that an executable does not export any dynamic symbols
         symbols_check(&exe_name, SymbolCheckType::StrSymbol("public_c_function_from_rlib"), false);
         symbols_check(

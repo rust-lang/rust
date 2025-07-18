@@ -6,14 +6,13 @@
 // Regression test for issue #125877.
 
 //@ compile-flags: -Znext-solver
-//@ normalize-stderr: "you are using [0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?( \([^)]*\))?" -> "you are using $$RUSTC_VERSION"
 
 #![feature(const_trait_impl, effects)]
 //~^ ERROR feature has been removed
 
 #[const_trait]
 trait Main {
-    fn compute<T: ~const Aux>() -> u32;
+    fn compute<T: [const] Aux>() -> u32;
 }
 
 impl const Main for () {

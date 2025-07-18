@@ -122,7 +122,7 @@ fn lifetime_bounds(p: &mut Parser<'_>) {
 }
 
 // test type_param_bounds
-// struct S<T: 'a + ?Sized + (Copy) + ~const Drop>;
+// struct S<T: 'a + ?Sized + (Copy) + [const] Drop>;
 pub(super) fn bounds(p: &mut Parser<'_>) {
     p.expect(T![:]);
     bounds_without_colon(p);
@@ -186,6 +186,11 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
                 T![~] => {
                     p.bump_any();
                     p.expect(T![const]);
+                }
+                T!['['] => {
+                    p.bump_any();
+                    p.expect(T![const]);
+                    p.expect(T![']']);
                 }
                 // test const_trait_bound
                 // const fn foo(_: impl const Trait) {}

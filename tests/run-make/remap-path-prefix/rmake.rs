@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Generating metadata alongside remap-path-prefix would fail to actually remap the path
 // in the metadata. After this was fixed in #85344, this test checks that "auxiliary" is being
 // successfully remapped to "/the/aux" in the rmeta files.

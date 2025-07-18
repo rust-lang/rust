@@ -1,5 +1,5 @@
 warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/supertrait-dyn-compatibility.rs:1:12
+  --> $DIR/supertrait-dyn-compatibility.rs:2:12
    |
 LL | #![feature(non_lifetime_binders)]
    |            ^^^^^^^^^^^^^^^^^^^^
@@ -8,14 +8,14 @@ LL | #![feature(non_lifetime_binders)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/supertrait-dyn-compatibility.rs:19:17
+  --> $DIR/supertrait-dyn-compatibility.rs:22:17
    |
 LL |     let x: &dyn Foo = &();
    |                 ^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/supertrait-dyn-compatibility.rs:4:12
+  --> $DIR/supertrait-dyn-compatibility.rs:7:12
    |
 LL | trait Foo: for<T> Bar<T> {}
    |       ---  ^^^^^^^^^^^^^ ...because where clause cannot reference non-lifetime `for<...>` variables

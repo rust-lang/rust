@@ -1,5 +1,4 @@
-#![cfg_attr(bootstrap, feature(cfg_match))]
-#![cfg_attr(not(bootstrap), feature(cfg_select))]
+#![feature(cfg_select)]
 #![feature(rustc_private)]
 #![feature(float_gamma)]
 #![feature(float_erf)]
@@ -16,7 +15,7 @@
 #![feature(unqualified_local_imports)]
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
-#![feature(file_lock)]
+#![feature(iter_advance_by)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -77,16 +76,15 @@ mod alloc_addresses;
 mod borrow_tracker;
 mod clock;
 mod concurrency;
+mod data_structures;
 mod diagnostics;
 mod eval;
 mod helpers;
 mod intrinsics;
 mod machine;
 mod math;
-mod mono_hash_map;
 mod operator;
 mod provenance_gc;
-mod range_map;
 mod shims;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
@@ -98,6 +96,11 @@ pub use rustc_const_eval::interpret::*;
 pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
 use rustc_middle::{bug, span_bug};
 use tracing::{info, trace};
+
+#[cfg(target_os = "linux")]
+pub mod native_lib {
+    pub use crate::shims::{init_sv, register_retcode_sv};
+}
 
 // Type aliases that set the provenance parameter.
 pub type Pointer = interpret::Pointer<Option<machine::Provenance>>;
@@ -122,15 +125,15 @@ pub use crate::concurrency::cpu_affinity::MAX_CPUS;
 pub use crate::concurrency::data_race::{
     AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _,
 };
-pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceId};
-pub use crate::concurrency::sync::{
-    CondvarId, EvalContextExt as _, MutexRef, RwLockId, SynchronizationObjects,
-};
+pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceRef};
+pub use crate::concurrency::sync::{CondvarRef, EvalContextExt as _, MutexRef, RwLockRef};
 pub use crate::concurrency::thread::{
     BlockReason, DynUnblockCallback, EvalContextExt as _, StackEmptyCallback, ThreadId,
     ThreadManager, TimeoutAnchor, TimeoutClock, UnblockKind,
 };
 pub use crate::concurrency::{GenmcConfig, GenmcCtx};
+pub use crate::data_structures::dedup_range_map::DedupRangeMap;
+pub use crate::data_structures::mono_hash_map::MonoHashMap;
 pub use crate::diagnostics::{
     EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo, report_error,
 };
@@ -138,24 +141,25 @@ pub use crate::eval::{
     AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, MiriEntryFnType, RejectOpWith,
     ValidationMode, create_ecx, eval_entry,
 };
-pub use crate::helpers::{AccessKind, EvalContextExt as _, ToU64 as _, ToUsize as _};
+pub use crate::helpers::{
+    AccessKind, EvalContextExt as _, MaybeEnteredTraceSpan, ToU64 as _, ToUsize as _,
+};
 pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::machine::{
     AllocExtra, DynMachineCallback, FrameExtra, MachineCallback, MemoryKind, MiriInterpCx,
     MiriInterpCxExt, MiriMachine, MiriMemoryKind, PrimitiveLayouts, Provenance, ProvenanceExtra,
 };
-pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as _;
 pub use crate::provenance_gc::{EvalContextExt as _, LiveAllocs, VisitProvenance, VisitWith};
-pub use crate::range_map::RangeMap;
 pub use crate::shims::EmulateItemResult;
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
 pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
 pub use crate::shims::io_error::{EvalContextExt as _, IoError, LibcError};
 pub use crate::shims::os_str::EvalContextExt as _;
-pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
+pub use crate::shims::panic::EvalContextExt as _;
 pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::TlsData;
+pub use crate::shims::unwind::{CatchUnwindData, EvalContextExt as _};
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.
@@ -168,7 +172,7 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     "-Zmir-emit-retag",
     "-Zmir-preserve-ub",
     "-Zmir-opt-level=0",
-    "-Zmir-enable-passes=-CheckAlignment,-CheckNull",
+    "-Zmir-enable-passes=-CheckAlignment,-CheckNull,-CheckEnums",
     // Deduplicating diagnostics means we miss events when tracking what happens during an
     // execution. Let's not do that.
     "-Zdeduplicate-diagnostics=no",

@@ -134,6 +134,13 @@ pub fn name_ref(name_ref: &str) -> ast::NameRef {
         }
     }
 }
+pub fn name_ref_self_ty() -> ast::NameRef {
+    quote! {
+        NameRef {
+            [Self]
+        }
+    }
+}
 fn raw_ident_esc(ident: &str) -> &'static str {
     if is_raw_identifier(ident, Edition::CURRENT) { "r#" } else { "" }
 }
@@ -673,7 +680,7 @@ pub fn expr_tuple(elements: impl IntoIterator<Item = ast::Expr>) -> ast::TupleEx
     let expr = elements.into_iter().format(", ");
     expr_from_text(&format!("({expr})"))
 }
-pub fn expr_assignment(lhs: ast::Expr, rhs: ast::Expr) -> ast::Expr {
+pub fn expr_assignment(lhs: ast::Expr, rhs: ast::Expr) -> ast::BinExpr {
     expr_from_text(&format!("{lhs} = {rhs}"))
 }
 fn expr_from_text<E: Into<ast::Expr> + AstNode>(text: &str) -> E {
@@ -835,9 +842,10 @@ pub fn ref_pat(pat: ast::Pat) -> ast::RefPat {
 }
 
 pub fn match_arm(pat: ast::Pat, guard: Option<ast::MatchGuard>, expr: ast::Expr) -> ast::MatchArm {
+    let comma_str = if expr.is_block_like() { "" } else { "," };
     return match guard {
-        Some(guard) => from_text(&format!("{pat} {guard} => {expr}")),
-        None => from_text(&format!("{pat} => {expr}")),
+        Some(guard) => from_text(&format!("{pat} {guard} => {expr}{comma_str}")),
+        None => from_text(&format!("{pat} => {expr}{comma_str}")),
     };
 
     fn from_text(text: &str) -> ast::MatchArm {
@@ -870,7 +878,7 @@ pub fn match_arm_list(arms: impl IntoIterator<Item = ast::MatchArm>) -> ast::Mat
     let arms_str = arms.into_iter().fold(String::new(), |mut acc, arm| {
         let needs_comma =
             arm.comma_token().is_none() && arm.expr().is_none_or(|it| !it.is_block_like());
-        let comma = if needs_comma { "," } else { "" };
+        let comma = if needs_comma && arm.comma_token().is_none() { "," } else { "" };
         let arm = arm.syntax();
         format_to_acc!(acc, "    {arm}{comma}\n")
     });

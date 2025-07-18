@@ -2,7 +2,7 @@ error: Undefined Behavior: `ptr_offset_from` called on two different pointers th
   --> tests/fail/intrinsics/ptr_offset_from_different_allocs.rs:LL:CC
    |
 LL |         (&1_u8 as *const u8).offset_from(&2_u8);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

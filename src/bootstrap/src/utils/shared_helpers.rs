@@ -6,6 +6,9 @@
 
 #![allow(dead_code)]
 
+#[cfg(test)]
+mod tests;
+
 use std::env;
 use std::ffi::OsString;
 use std::fs::OpenOptions;

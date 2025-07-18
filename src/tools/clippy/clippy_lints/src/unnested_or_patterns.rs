@@ -128,7 +128,7 @@ fn remove_all_parens(pat: &mut P<Pat>) {
     }
 
     impl MutVisitor for Visitor {
-        fn visit_pat(&mut self, pat: &mut P<Pat>) {
+        fn visit_pat(&mut self, pat: &mut Pat) {
             let is_inner = mem::replace(&mut self.is_inner, true);
             walk_pat(self, pat);
             let inner = match &mut pat.kind {
@@ -145,7 +145,7 @@ fn remove_all_parens(pat: &mut P<Pat>) {
 fn insert_necessary_parens(pat: &mut P<Pat>) {
     struct Visitor;
     impl MutVisitor for Visitor {
-        fn visit_pat(&mut self, pat: &mut P<Pat>) {
+        fn visit_pat(&mut self, pat: &mut Pat) {
             use ast::BindingMode;
             walk_pat(self, pat);
             let target = match &mut pat.kind {
@@ -167,7 +167,7 @@ fn unnest_or_patterns(pat: &mut P<Pat>) -> bool {
         changed: bool,
     }
     impl MutVisitor for Visitor {
-        fn visit_pat(&mut self, p: &mut P<Pat>) {
+        fn visit_pat(&mut self, p: &mut Pat) {
             // This is a bottom up transformation, so recurse first.
             walk_pat(self, p);
 

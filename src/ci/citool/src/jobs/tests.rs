@@ -46,6 +46,13 @@ auto:
     - name: test-msvc-i686-2
       os: ubuntu
       env: {}
+optional:
+    - name: optional-job-1
+      os: ubuntu
+      env: {}
+    - name: optional-dist-x86_64
+      os: ubuntu
+      env: {}
 "#,
     )
     .unwrap();
@@ -57,12 +64,18 @@ auto:
         "*i686*",
         &["test-i686", "dist-i686", "test-msvc-i686-1", "test-msvc-i686-2"],
     );
+    // Test that optional jobs are found
+    check_pattern(&db, "optional-*", &["optional-job-1", "optional-dist-x86_64"]);
+    check_pattern(&db, "*optional*", &["optional-job-1", "optional-dist-x86_64"]);
 }
 
 #[track_caller]
 fn check_pattern(db: &JobDatabase, pattern: &str, expected: &[&str]) {
-    let jobs =
-        db.find_auto_jobs_by_pattern(pattern).into_iter().map(|j| j.name).collect::<Vec<_>>();
+    let jobs = db
+        .find_auto_or_optional_jobs_by_pattern(pattern)
+        .into_iter()
+        .map(|j| j.name)
+        .collect::<Vec<_>>();
 
     assert_eq!(jobs, expected);
 }
@@ -116,8 +129,13 @@ fn validate_jobs() {
         load_job_db(&db_str).expect("Failed to load job database")
     };
 
-    let all_jobs =
-        db.pr_jobs.iter().chain(db.try_jobs.iter()).chain(db.auto_jobs.iter()).collect::<Vec<_>>();
+    let all_jobs = db
+        .pr_jobs
+        .iter()
+        .chain(db.try_jobs.iter())
+        .chain(db.auto_jobs.iter())
+        .chain(db.optional_jobs.iter())
+        .collect::<Vec<_>>();
 
     let errors: Vec<anyhow::Error> =
         all_jobs.into_iter().filter_map(|job| validate_codebuild_image(job).err()).collect();

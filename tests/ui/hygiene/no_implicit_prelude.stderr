@@ -23,8 +23,6 @@ LL |         ().clone()
    |            ^^^^^
    |
    = help: items from traits can only be used if the trait is in scope
-help: there is a method `clone_from` with a similar name, but with different arguments
-  --> $SRC_DIR/core/src/clone.rs:LL:COL
    = note: this error originates in the macro `::bar::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: trait `Clone` which provides `clone` is implemented but not in scope; perhaps you want to import it
    |

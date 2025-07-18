@@ -143,7 +143,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Coroutine(..)
             | ty::Adt(..)
             | ty::Never
-            | ty::Dynamic(_, _, ty::DynStar)
             | ty::Error(_) => {
                 let guar = self
                     .dcx()
@@ -734,14 +733,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         use rustc_middle::ty::cast::CastTy::*;
         use rustc_middle::ty::cast::IntTy::*;
 
-        if self.cast_ty.is_dyn_star() {
-            // This coercion will fail if the feature is not enabled, OR
-            // if the coercion is (currently) illegal (e.g. `dyn* Foo + Send`
-            // to `dyn* Foo`). Report "casting is invalid" rather than
-            // "non-primitive cast".
-            return Err(CastError::IllegalCast);
-        }
-
         let (t_from, t_cast) = match (CastTy::from_ty(self.expr_ty), CastTy::from_ty(self.cast_ty))
         {
             (Some(t_from), Some(t_cast)) => (t_from, t_cast),
@@ -1100,7 +1091,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn lossy_provenance_ptr2int_lint(&self, fcx: &FnCtxt<'a, 'tcx>, t_c: ty::cast::IntTy) {
-        let expr_prec = self.expr.precedence();
+        let expr_prec = fcx.precedence(self.expr);
         let needs_parens = expr_prec < ExprPrecedence::Unambiguous;
 
         let needs_cast = !matches!(t_c, ty::cast::IntTy::U(ty::UintTy::Usize));

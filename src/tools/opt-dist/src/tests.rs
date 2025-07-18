@@ -72,6 +72,8 @@ change-id = 115898
 [rust]
 channel = "{channel}"
 verbose-tests = true
+# rust-lld cannot be combined with an external LLVM
+lld = false
 
 [build]
 rustc = "{rustc}"
@@ -104,7 +106,10 @@ llvm-config = "{llvm_config}"
             "tests/incremental",
             "tests/mir-opt",
             "tests/pretty",
+            // Make sure that we don't use too new GLIBC symbols on x64
             "tests/run-make/glibc-symbols-x86_64-unknown-linux-gnu",
+            // Make sure that we use LLD by default on x64
+            "tests/run-make/rust-lld-x86_64-unknown-linux-gnu-dist",
             "tests/ui",
             "tests/crashes",
         ];

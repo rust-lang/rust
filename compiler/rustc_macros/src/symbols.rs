@@ -190,17 +190,6 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     let mut symbols_stream = quote! {};
     let mut prefill_stream = quote! {};
     let mut entries = Entries::with_capacity(input.keywords.len() + input.symbols.len() + 10);
-    let mut prev_key: Option<(Span, String)> = None;
-
-    let mut check_order = |span: Span, s: &str, errors: &mut Errors| {
-        if let Some((prev_span, ref prev_str)) = prev_key {
-            if s < prev_str {
-                errors.error(span, format!("Symbol `{s}` must precede `{prev_str}`"));
-                errors.error(prev_span, format!("location of previous symbol `{prev_str}`"));
-            }
-        }
-        prev_key = Some((span, s.to_string()));
-    };
 
     // Generate the listed keywords.
     for keyword in input.keywords.iter() {
@@ -219,7 +208,6 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     // Generate the listed symbols.
     for symbol in input.symbols.iter() {
         let name = &symbol.name;
-        check_order(symbol.name.span(), &name.to_string(), &mut errors);
 
         let value = match &symbol.value {
             Value::SameAsName => name.to_string(),

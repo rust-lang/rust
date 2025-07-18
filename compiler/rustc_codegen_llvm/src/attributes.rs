@@ -344,7 +344,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     llfn: &'ll Value,
     instance: ty::Instance<'tcx>,
 ) {
-    let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
+    let codegen_fn_attrs = cx.tcx.codegen_instance_attrs(instance.def);
 
     let mut to_add = SmallVec::<[_; 16]>::new();
 
@@ -370,22 +370,6 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     };
     to_add.extend(inline_attr(cx, inline));
 
-    // The `uwtable` attribute according to LLVM is:
-    //
-    //     This attribute indicates that the ABI being targeted requires that an
-    //     unwind table entry be produced for this function even if we can show
-    //     that no exceptions passes by it. This is normally the case for the
-    //     ELF x86-64 abi, but it can be disabled for some compilation units.
-    //
-    // Typically when we're compiling with `-C panic=abort` (which implies this
-    // `no_landing_pads` check) we don't need `uwtable` because we can't
-    // generate any exceptions! On Windows, however, exceptions include other
-    // events such as illegal instructions, segfaults, etc. This means that on
-    // Windows we end up still needing the `uwtable` attribute even if the `-C
-    // panic=abort` flag is passed.
-    //
-    // You can also find more info on why Windows always requires uwtables here:
-    //      https://bugzilla.mozilla.org/show_bug.cgi?id=1302078
     if cx.sess().must_emit_unwind_tables() {
         to_add.push(uwtable_attr(cx.llcx, cx.sess().opts.unstable_opts.use_sync_unwind));
     }
@@ -491,11 +475,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         let allocated_pointer = AttributeKind::AllocatedPointer.create_attr(cx.llcx);
         attributes::apply_to_llfn(llfn, AttributePlace::Argument(0), &[allocated_pointer]);
     }
-    // function alignment can be set globally with the `-Zmin-function-alignment=<n>` flag;
-    // the alignment from a `#[repr(align(<n>))]` is used if it specifies a higher alignment.
-    if let Some(align) =
-        Ord::max(cx.tcx.sess.opts.unstable_opts.min_function_alignment, codegen_fn_attrs.alignment)
-    {
+    if let Some(align) = codegen_fn_attrs.alignment {
         llvm::set_alignment(llfn, align);
     }
     if let Some(backchain) = backchain_attr(cx) {

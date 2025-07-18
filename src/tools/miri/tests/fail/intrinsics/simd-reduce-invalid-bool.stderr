@@ -2,7 +2,7 @@ error: Undefined Behavior: each element of a SIMD mask must be all-0-bits or all
   --> tests/fail/intrinsics/simd-reduce-invalid-bool.rs:LL:CC
    |
 LL |         simd_reduce_any(x);
-   |         ^^^^^^^^^^^^^^^^^^ each element of a SIMD mask must be all-0-bits or all-1-bits
+   |         ^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

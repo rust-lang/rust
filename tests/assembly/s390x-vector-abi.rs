@@ -15,12 +15,17 @@
 #![no_core]
 #![crate_type = "lib"]
 #![allow(non_camel_case_types)]
-
 // Cases where vector feature is disabled are rejected.
 // See tests/ui/simd-abi-checks-s390x.rs for test for them.
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+pub trait Sized: MetaSized {}
 #[lang = "copy"]
 pub trait Copy {}
 #[lang = "freeze"]

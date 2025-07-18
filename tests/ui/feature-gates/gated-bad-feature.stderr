@@ -1,43 +1,43 @@
 error[E0556]: malformed `feature` attribute input
-  --> $DIR/gated-bad-feature.rs:2:25
+  --> $DIR/gated-bad-feature.rs:1:25
    |
 LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
    |                         ^^^^^^^^ help: expected just one word: `foo`
 
 error[E0556]: malformed `feature` attribute input
-  --> $DIR/gated-bad-feature.rs:2:35
+  --> $DIR/gated-bad-feature.rs:1:35
    |
 LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
    |                                   ^^^^^^^^^^^ help: expected just one word: `foo`
 
 error[E0557]: feature has been removed
-  --> $DIR/gated-bad-feature.rs:9:12
+  --> $DIR/gated-bad-feature.rs:8:12
    |
 LL | #![feature(test_removed_feature)]
    |            ^^^^^^^^^^^^^^^^^^^^ feature has been removed
    |
-   = note: removed in 1.0.0 (you are using $RUSTC_VERSION)
+   = note: removed in 1.0.0
 
 error: malformed `feature` attribute input
-  --> $DIR/gated-bad-feature.rs:7:1
+  --> $DIR/gated-bad-feature.rs:6:1
    |
 LL | #![feature]
    | ^^^^^^^^^^^ help: must be of the form: `#![feature(name1, name2, ...)]`
 
 error: malformed `feature` attribute input
-  --> $DIR/gated-bad-feature.rs:8:1
+  --> $DIR/gated-bad-feature.rs:7:1
    |
 LL | #![feature = "foo"]
    | ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![feature(name1, name2, ...)]`
 
 error[E0635]: unknown feature `foo_bar_baz`
-  --> $DIR/gated-bad-feature.rs:2:12
+  --> $DIR/gated-bad-feature.rs:1:12
    |
 LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
    |            ^^^^^^^^^^^
 
 error[E0635]: unknown feature `foo`
-  --> $DIR/gated-bad-feature.rs:2:48
+  --> $DIR/gated-bad-feature.rs:1:48
    |
 LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
    |                                                ^^^

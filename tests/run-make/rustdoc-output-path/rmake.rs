@@ -1,5 +1,7 @@
 // Checks that if the output folder doesn't exist, rustdoc will create it.
 
+//@ needs-target-std
+
 use run_make_support::{path, rustdoc};
 
 fn main() {

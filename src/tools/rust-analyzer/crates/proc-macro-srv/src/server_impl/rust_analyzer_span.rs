@@ -318,7 +318,7 @@ mod tests {
             range: TextRange::empty(TextSize::new(0)),
             anchor: span::SpanAnchor {
                 file_id: EditionedFileId::current_edition(FileId::from_raw(0)),
-                ast_id: span::ErasedFileAstId::from_raw(0),
+                ast_id: span::ROOT_ERASED_FILE_AST_ID,
             },
             ctx: SyntaxContext::root(span::Edition::CURRENT),
         };
@@ -360,7 +360,7 @@ mod tests {
             range: TextRange::empty(TextSize::new(0)),
             anchor: span::SpanAnchor {
                 file_id: EditionedFileId::current_edition(FileId::from_raw(0)),
-                ast_id: span::ErasedFileAstId::from_raw(0),
+                ast_id: span::ROOT_ERASED_FILE_AST_ID,
             },
             ctx: SyntaxContext::root(span::Edition::CURRENT),
         };

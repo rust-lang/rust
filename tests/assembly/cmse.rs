@@ -6,7 +6,7 @@
 //@ [hard] needs-llvm-components: arm
 //@ [soft] needs-llvm-components: arm
 #![crate_type = "lib"]
-#![feature(abi_c_cmse_nonsecure_call, cmse_nonsecure_entry, no_core, lang_items)]
+#![feature(abi_cmse_nonsecure_call, cmse_nonsecure_entry, no_core, lang_items)]
 #![no_core]
 
 extern crate minicore;
@@ -53,7 +53,7 @@ use minicore::*;
 // Branch back to non-secure side
 // CHECK: bxns lr
 #[no_mangle]
-pub extern "C-cmse-nonsecure-entry" fn entry_point() -> i64 {
+pub extern "cmse-nonsecure-entry" fn entry_point() -> i64 {
     0
 }
 
@@ -95,8 +95,6 @@ pub extern "C-cmse-nonsecure-entry" fn entry_point() -> i64 {
 // Call to non-secure
 // CHECK: blxns r12
 #[no_mangle]
-pub fn call_nonsecure(
-    f: unsafe extern "C-cmse-nonsecure-call" fn(u32, u32, u32, u32) -> u64,
-) -> u64 {
+pub fn call_nonsecure(f: unsafe extern "cmse-nonsecure-call" fn(u32, u32, u32, u32) -> u64) -> u64 {
     unsafe { f(0, 1, 2, 3) }
 }

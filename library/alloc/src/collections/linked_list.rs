@@ -1031,7 +1031,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all elements `e` for which `f(&e)` returns false.
+    /// In other words, remove all elements `e` for which `f(&mut e)` returns false.
     /// This method operates in place, visiting each element exactly once in the
     /// original order, and preserves the order of the retained elements.
     ///
@@ -1047,7 +1047,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// d.push_front(2);
     /// d.push_front(3);
     ///
-    /// d.retain(|&x| x % 2 == 0);
+    /// d.retain(|&mut x| x % 2 == 0);
     ///
     /// assert_eq!(d.pop_front(), Some(2));
     /// assert_eq!(d.pop_front(), None);
@@ -1074,41 +1074,6 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// ```
     #[unstable(feature = "linked_list_retain", issue = "114135")]
     pub fn retain<F>(&mut self, mut f: F)
-    where
-        F: FnMut(&T) -> bool,
-    {
-        self.retain_mut(|elem| f(elem));
-    }
-
-    /// Retains only the elements specified by the predicate.
-    ///
-    /// In other words, remove all elements `e` for which `f(&mut e)` returns false.
-    /// This method operates in place, visiting each element exactly once in the
-    /// original order, and preserves the order of the retained elements.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(linked_list_retain)]
-    /// use std::collections::LinkedList;
-    ///
-    /// let mut d = LinkedList::new();
-    ///
-    /// d.push_front(1);
-    /// d.push_front(2);
-    /// d.push_front(3);
-    ///
-    /// d.retain_mut(|x| if *x % 2 == 0 {
-    ///     *x += 1;
-    ///     true
-    /// } else {
-    ///     false
-    /// });
-    /// assert_eq!(d.pop_front(), Some(3));
-    /// assert_eq!(d.pop_front(), None);
-    /// ```
-    #[unstable(feature = "linked_list_retain", issue = "114135")]
-    pub fn retain_mut<F>(&mut self, mut f: F)
     where
         F: FnMut(&mut T) -> bool,
     {

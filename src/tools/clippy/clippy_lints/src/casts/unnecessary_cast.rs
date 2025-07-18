@@ -185,7 +185,7 @@ pub(super) fn check<'tcx>(
             Node::Expr(parent) if is_borrow_expr(cx, parent) && !is_in_allowed_macro(cx, parent) => {
                 MaybeParenOrBlock::Block
             },
-            Node::Expr(parent) if cast_expr.precedence() < parent.precedence() => MaybeParenOrBlock::Paren,
+            Node::Expr(parent) if cx.precedence(cast_expr) < cx.precedence(parent) => MaybeParenOrBlock::Paren,
             _ => MaybeParenOrBlock::Nothing,
         };
 
@@ -243,7 +243,7 @@ fn lint_unnecessary_cast(
     );
 }
 
-fn get_numeric_literal<'e>(expr: &'e Expr<'e>) -> Option<&'e Lit> {
+fn get_numeric_literal<'e>(expr: &'e Expr<'e>) -> Option<Lit> {
     match expr.kind {
         ExprKind::Lit(lit) => Some(lit),
         ExprKind::Unary(UnOp::Neg, e) => {

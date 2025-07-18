@@ -444,6 +444,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         },
         (
             Trait(box ast::Trait {
+                constness: lc,
                 is_auto: la,
                 safety: lu,
                 ident: li,
@@ -452,6 +453,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 items: lis,
             }),
             Trait(box ast::Trait {
+                constness: rc,
                 is_auto: ra,
                 safety: ru,
                 ident: ri,
@@ -460,7 +462,8 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 items: ris,
             }),
         ) => {
-            la == ra
+            matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
+                && la == ra
                 && matches!(lu, Safety::Default) == matches!(ru, Safety::Default)
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
@@ -838,7 +841,7 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
         (PinnedRef(ll, l), PinnedRef(rl, r)) => {
             both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
         },
-        (BareFn(l), BareFn(r)) => {
+        (FnPtr(l), FnPtr(r)) => {
             l.safety == r.safety
                 && eq_ext(&l.ext, &r.ext)
                 && over(&l.generic_params, &r.generic_params, eq_generic_param)
@@ -886,13 +889,13 @@ pub fn eq_generic_param(l: &GenericParam, r: &GenericParam) -> bool {
             (
                 Const {
                     ty: lt,
-                    kw_span: _,
                     default: ld,
+                    span: _,
                 },
                 Const {
                     ty: rt,
-                    kw_span: _,
                     default: rd,
+                    span: _,
                 },
             ) => eq_ty(lt, rt) && both(ld.as_ref(), rd.as_ref(), eq_anon_const),
             _ => false,

@@ -3,8 +3,7 @@
 
 // Reduced test case from https://github.com/rust-lang/rust-clippy/issues/14658
 
-#[const_trait]
-trait ConstTrait {
+const trait ConstTrait {
     fn method(self);
 }
 
@@ -25,7 +24,7 @@ fn can_be_const() {
     0u64.method();
 }
 
-// False negative, see FIXME comment in `clipy_utils::qualify_min_const`
+// False negative, see FIXME comment in `clippy_utils::qualify_min_const_fn`
 fn could_be_const_but_does_not_trigger<T>(t: T)
 where
     T: const ConstTrait,

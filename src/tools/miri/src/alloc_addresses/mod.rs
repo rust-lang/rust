@@ -390,7 +390,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, interpret::Pointer<Provenance>> {
         let this = self.eval_context_ref();
 
-        let (prov, offset) = ptr.into_parts(); // offset is relative (AllocId provenance)
+        let (prov, offset) = ptr.prov_and_relative_offset();
         let alloc_id = prov.alloc_id();
 
         // Get a pointer to the beginning of this allocation.
@@ -447,7 +447,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> Option<(AllocId, Size)> {
         let this = self.eval_context_ref();
 
-        let (tag, addr) = ptr.into_parts(); // addr is absolute (Tag provenance)
+        let (tag, addr) = ptr.into_raw_parts(); // addr is absolute (Miri provenance)
 
         let alloc_id = if let Provenance::Concrete { alloc_id, .. } = tag {
             alloc_id
@@ -466,17 +466,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Some((alloc_id, Size::from_bytes(rel_offset)))
     }
 
-    /// Prepare all exposed memory for a native call.
-    /// This overapproximates the modifications which external code might make to memory:
-    /// We set all reachable allocations as initialized, mark all reachable provenances as exposed
-    /// and overwrite them with `Provenance::WILDCARD`.
-    fn prepare_exposed_for_native_call(&mut self) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        // We need to make a deep copy of this list, but it's fine; it also serves as scratch space
-        // for the search within `prepare_for_native_call`.
-        let exposed: Vec<AllocId> =
-            this.machine.alloc_addresses.get_mut().exposed.iter().copied().collect();
-        this.prepare_for_native_call(exposed)
+    /// Return a list of all exposed allocations.
+    fn exposed_allocs(&self) -> Vec<AllocId> {
+        let this = self.eval_context_ref();
+        this.machine.alloc_addresses.borrow().exposed.iter().copied().collect()
     }
 }
 

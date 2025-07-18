@@ -3,11 +3,10 @@ use clippy_utils::higher::{VecInitKind, get_vec_init_kind};
 use clippy_utils::source::snippet;
 use clippy_utils::{get_enclosing_block, sym};
 
-use hir::{Expr, ExprKind, HirId, LetStmt, PatKind, PathSegment, QPath, StmtKind};
 use rustc_errors::Applicability;
-use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{Visitor, walk_expr};
+use rustc_hir::{self as hir, Expr, ExprKind, HirId, LetStmt, PatKind, PathSegment, QPath, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 

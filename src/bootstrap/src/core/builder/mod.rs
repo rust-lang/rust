@@ -5,7 +5,7 @@ use std::fmt::{self, Debug, Write};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::sync::LazyLock;
+use std::sync::{LazyLock, OnceLock};
 use std::time::{Duration, Instant};
 use std::{env, fs};
 
@@ -15,14 +15,14 @@ use tracing::instrument;
 
 pub use self::cargo::{Cargo, cargo_profile_var};
 pub use crate::Compiler;
+use crate::core::build_steps::compile::{Std, StdLink};
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
 };
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{DryRun, TargetSelection};
 use crate::utils::cache::Cache;
-use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::execution_context::ExecutionContext;
+use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
 use crate::{Build, Crate, trace};
 
@@ -60,6 +60,9 @@ pub struct Builder<'a> {
     /// to do. For example: with `./x check foo bar` we get `paths=["foo",
     /// "bar"]`.
     pub paths: Vec<PathBuf>,
+
+    /// Cached list of submodules from self.build.src.
+    submodule_paths_cache: OnceLock<Vec<String>>,
 }
 
 impl Deref for Builder<'_> {
@@ -126,6 +129,73 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
         // they are likely dependencies (e.g., sysroot creation) or similar, and
         // as such calling them from ./x.py isn't logical.
         unimplemented!()
+    }
+
+    /// Returns metadata of the step, for tests
+    fn metadata(&self) -> Option<StepMetadata> {
+        None
+    }
+}
+
+/// Metadata that describes an executed step, mostly for testing and tracing.
+#[allow(unused)]
+#[derive(Debug, PartialEq, Eq)]
+pub struct StepMetadata {
+    name: &'static str,
+    kind: Kind,
+    target: TargetSelection,
+    built_by: Option<Compiler>,
+    stage: Option<u32>,
+    /// Additional opaque string printed in the metadata
+    metadata: Option<String>,
+}
+
+impl StepMetadata {
+    pub fn build(name: &'static str, target: TargetSelection) -> Self {
+        Self::new(name, target, Kind::Build)
+    }
+
+    pub fn check(name: &'static str, target: TargetSelection) -> Self {
+        Self::new(name, target, Kind::Check)
+    }
+
+    pub fn doc(name: &'static str, target: TargetSelection) -> Self {
+        Self::new(name, target, Kind::Doc)
+    }
+
+    pub fn dist(name: &'static str, target: TargetSelection) -> Self {
+        Self::new(name, target, Kind::Dist)
+    }
+
+    pub fn test(name: &'static str, target: TargetSelection) -> Self {
+        Self::new(name, target, Kind::Test)
+    }
+
+    fn new(name: &'static str, target: TargetSelection, kind: Kind) -> Self {
+        Self { name, kind, target, built_by: None, stage: None, metadata: None }
+    }
+
+    pub fn built_by(mut self, compiler: Compiler) -> Self {
+        self.built_by = Some(compiler);
+        self
+    }
+
+    pub fn stage(mut self, stage: u32) -> Self {
+        self.stage = Some(stage);
+        self
+    }
+
+    pub fn with_metadata(mut self, metadata: String) -> Self {
+        self.metadata = Some(metadata);
+        self
+    }
+
+    pub fn get_stage(&self) -> Option<u32> {
+        self.stage.or(self
+            .built_by
+            // For std, its stage corresponds to the stage of the compiler that builds it.
+            // For everything else, a stage N things gets built by a stage N-1 compiler.
+            .map(|compiler| if self.name == "std" { compiler.stage } else { compiler.stage + 1 }))
     }
 }
 
@@ -687,7 +757,7 @@ impl<'a> ShouldRun<'a> {
     ///
     /// [`path`]: ShouldRun::path
     pub fn paths(mut self, paths: &[&str]) -> Self {
-        let submodules_paths = build_helper::util::parse_gitmodules(&self.builder.src);
+        let submodules_paths = self.builder.submodule_paths();
 
         self.paths.insert(PathSet::Set(
             paths
@@ -775,7 +845,6 @@ pub enum Kind {
     #[value(alias = "r")]
     Run,
     Setup,
-    Suggest,
     Vendor,
     Perf,
 }
@@ -799,7 +868,6 @@ impl Kind {
             Kind::Install => "install",
             Kind::Run => "run",
             Kind::Setup => "setup",
-            Kind::Suggest => "suggest",
             Kind::Vendor => "vendor",
             Kind::Perf => "perf",
         }
@@ -811,7 +879,6 @@ impl Kind {
             Kind::Bench => "Benchmarking",
             Kind::Doc => "Documenting",
             Kind::Run => "Running",
-            Kind::Suggest => "Suggesting",
             Kind::Clippy => "Linting",
             Kind::Perf => "Profiling & benchmarking",
             _ => {
@@ -974,6 +1041,7 @@ impl<'a> Builder<'a> {
             Kind::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,
                 test::Tidy,
+                test::Bootstrap,
                 test::Ui,
                 test::Crashes,
                 test::Coverage,
@@ -1028,8 +1096,6 @@ impl<'a> Builder<'a> {
                 test::RustInstaller,
                 test::TestFloatParse,
                 test::CollectLicenseMetadata,
-                // Run bootstrap close to the end as it's unlikely to fail
-                test::Bootstrap,
                 // Run run-make last, since these won't pass without make on Windows
                 test::RunMake,
             ),
@@ -1132,7 +1198,7 @@ impl<'a> Builder<'a> {
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
             Kind::Vendor => describe!(vendor::Vendor),
             // special-cased in Build::build()
-            Kind::Format | Kind::Suggest | Kind::Perf => vec![],
+            Kind::Format | Kind::Perf => vec![],
             Kind::MiriTest | Kind::MiriSetup => unreachable!(),
         }
     }
@@ -1180,6 +1246,7 @@ impl<'a> Builder<'a> {
             stack: RefCell::new(Vec::new()),
             time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
             paths,
+            submodule_paths_cache: Default::default(),
         }
     }
 
@@ -1199,7 +1266,6 @@ impl<'a> Builder<'a> {
             Subcommand::Run { .. } => (Kind::Run, &paths[..]),
             Subcommand::Clean { .. } => (Kind::Clean, &paths[..]),
             Subcommand::Format { .. } => (Kind::Format, &[][..]),
-            Subcommand::Suggest { .. } => (Kind::Suggest, &[][..]),
             Subcommand::Setup { profile: ref path } => (
                 Kind::Setup,
                 path.as_ref().map_or([].as_slice(), |path| std::slice::from_ref(path)),
@@ -1312,6 +1378,49 @@ impl<'a> Builder<'a> {
 
         trace!(target: "COMPILER_FOR", ?resolved_compiler);
         resolved_compiler
+    }
+
+    /// Obtain a standard library for the given target that will be built by the passed compiler.
+    /// The standard library will be linked to the sysroot of the passed compiler.
+    ///
+    /// Prefer using this method rather than manually invoking `Std::new`.
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "trace",
+            name = "Builder::std",
+            target = "STD",
+            skip_all,
+            fields(
+                compiler = ?compiler,
+                target = ?target,
+            ),
+        ),
+    )]
+    pub fn std(&self, compiler: Compiler, target: TargetSelection) {
+        // FIXME: make the `Std` step return some type-level "proof" that std was indeed built,
+        // and then require passing that to all Cargo invocations that we do.
+
+        // The "stage 0" std is always precompiled and comes with the stage0 compiler, so we have
+        // special logic for it, to avoid creating needless and confusing Std steps that don't
+        // actually build anything.
+        if compiler.stage == 0 {
+            if target != compiler.host {
+                panic!(
+                    r"It is not possible to build the standard library for `{target}` using the stage0 compiler.
+You have to build a stage1 compiler for `{}` first, and then use it to build a standard library for `{target}`.
+",
+                    compiler.host
+                )
+            }
+
+            // We still need to link the prebuilt standard library into the ephemeral stage0 sysroot
+            self.ensure(StdLink::from_std(Std::new(compiler, target), compiler));
+        } else {
+            // This step both compiles the std and links it into the compiler's sysroot.
+            // Yes, it's quite magical and side-effecty.. would be nice to refactor later.
+            self.ensure(Std::new(compiler, target));
+        }
     }
 
     pub fn sysroot(&self, compiler: Compiler) -> PathBuf {
@@ -1492,7 +1601,7 @@ impl<'a> Builder<'a> {
             cmd.arg("-Dwarnings");
         }
         cmd.arg("-Znormalize-docs");
-        cmd.args(linker_args(self, compiler.host, LldThreads::Yes));
+        cmd.args(linker_args(self, compiler.host, LldThreads::Yes, compiler.stage));
         cmd
     }
 
@@ -1508,6 +1617,19 @@ impl<'a> Builder<'a> {
             }
         }
         None
+    }
+
+    /// Updates all submodules, and exits with an error if submodule
+    /// management is disabled and the submodule does not exist.
+    pub fn require_and_update_all_submodules(&self) {
+        for submodule in self.submodule_paths() {
+            self.require_submodule(submodule, None);
+        }
+    }
+
+    /// Get all submodules from the src directory.
+    pub fn submodule_paths(&self) -> &[String] {
+        self.submodule_paths_cache.get_or_init(|| build_helper::util::parse_gitmodules(&self.src))
     }
 
     /// Ensure that a given step is built, returning its output. This will

@@ -1,6 +1,7 @@
 //@ revisions: with without
 //@ compile-flags: -Znext-solver
 #![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 // This test is incredibly subtle. At its core the goal is to get a coinductive cycle,
 // which, depending on its root goal, either holds or errors. We achieve this by getting
@@ -17,20 +18,20 @@
 // test for that.
 
 #[rustc_coinductive]
-trait Trait<T: ?Sized, V: ?Sized, D: ?Sized> {}
-struct A<T: ?Sized>(*const T);
-struct B<T: ?Sized>(*const T);
+trait Trait<T, V, D> {}
+struct A<T>(*const T);
+struct B<T>(*const T);
 
-trait IncompleteGuidance<T: ?Sized, V: ?Sized> {}
-impl<T: ?Sized, U: ?Sized + 'static> IncompleteGuidance<U, u8> for T {}
-impl<T: ?Sized, U: ?Sized + 'static> IncompleteGuidance<U, i8> for T {}
-impl<T: ?Sized, U: ?Sized + 'static> IncompleteGuidance<U, i16> for T {}
+trait IncompleteGuidance<T, V> {}
+impl<T, U: 'static> IncompleteGuidance<U, u8> for T {}
+impl<T, U: 'static> IncompleteGuidance<U, i8> for T {}
+impl<T, U: 'static> IncompleteGuidance<U, i16> for T {}
 
-trait ImplGuidance<T: ?Sized, V: ?Sized> {}
-impl<T: ?Sized> ImplGuidance<u32, u8> for T {}
-impl<T: ?Sized> ImplGuidance<i32, i8> for T {}
+trait ImplGuidance<T, V> {}
+impl<T> ImplGuidance<u32, u8> for T {}
+impl<T> ImplGuidance<i32, i8> for T {}
 
-impl<T: ?Sized, U: ?Sized, V: ?Sized, D: ?Sized> Trait<U, V, D> for A<T>
+impl<T, U, V, D> Trait<U, V, D> for A<T>
 where
     T: IncompleteGuidance<U, V>,
     A<T>: Trait<U, D, V>,
@@ -39,17 +40,17 @@ where
 {
 }
 
-trait ToU8<T: ?Sized> {}
+trait ToU8<T> {}
 impl ToU8<u8> for () {}
 
-impl<T: ?Sized, U: ?Sized, V: ?Sized, D: ?Sized> Trait<U, V, D> for B<T>
+impl<T, U, V, D> Trait<U, V, D> for B<T>
 where
     T: ImplGuidance<U, V>,
     A<T>: Trait<U, V, D>,
 {
 }
 
-fn impls_trait<T: ?Sized + Trait<U, V, D>, U: ?Sized, V: ?Sized, D: ?Sized>() {}
+fn impls_trait<T: Trait<U, V, D>, U, V, D>() {}
 
 fn with_bound<X>()
 where

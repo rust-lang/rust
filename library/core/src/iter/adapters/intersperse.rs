@@ -223,7 +223,16 @@ where
 {
     let mut accum = init;
 
-    let first = if started { next_item.take() } else { iter.next() };
+    let first = if started {
+        next_item.take()
+    } else {
+        let n = iter.next();
+        // skip invoking fold() for empty iterators
+        if n.is_none() {
+            return accum;
+        }
+        n
+    };
     if let Some(x) = first {
         accum = f(accum, x);
     }

@@ -1,12 +1,13 @@
-use clippy_utils::consts::{ConstEvalCtxt, Constant, FullInt};
+use clippy_utils::consts::{ConstEvalCtxt, Constant, FullInt, integer_const, is_zero_integer_const};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{clip, peel_hir_expr_refs, unsext};
+use clippy_utils::{ExprUseNode, clip, expr_use_ctxt, peel_hir_expr_refs, unsext};
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, Node};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::{BinOpKind, Expr, ExprKind, Node, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::Span;
+use rustc_span::{Span, kw};
 
 use super::IDENTITY_OP;
 
@@ -17,7 +18,7 @@ pub(crate) fn check<'tcx>(
     left: &'tcx Expr<'_>,
     right: &'tcx Expr<'_>,
 ) {
-    if !is_allowed(cx, op, left, right) {
+    if !is_allowed(cx, expr, op, left, right) {
         return;
     }
 
@@ -165,14 +166,27 @@ fn needs_parenthesis(cx: &LateContext<'_>, binary: &Expr<'_>, child: &Expr<'_>) 
     Parens::Needed
 }
 
-fn is_allowed(cx: &LateContext<'_>, cmp: BinOpKind, left: &Expr<'_>, right: &Expr<'_>) -> bool {
+fn is_allowed<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    cmp: BinOpKind,
+    left: &Expr<'tcx>,
+    right: &Expr<'tcx>,
+) -> bool {
+    // Exclude case where the left or right side is associated function call returns a type which is
+    // `Self` that is not given explicitly, and the expression is not a let binding's init
+    // expression and the let binding has a type annotation, or a function's return value.
+    if (is_assoc_fn_without_type_instance(cx, left) || is_assoc_fn_without_type_instance(cx, right))
+        && !is_expr_used_with_type_annotation(cx, expr)
+    {
+        return false;
+    }
+
     // This lint applies to integers and their references
     cx.typeck_results().expr_ty(left).peel_refs().is_integral()
         && cx.typeck_results().expr_ty(right).peel_refs().is_integral()
         // `1 << 0` is a common pattern in bit manipulation code
-        && !(cmp == BinOpKind::Shl
-            && ConstEvalCtxt::new(cx).eval_simple(right) == Some(Constant::Int(0))
-            && ConstEvalCtxt::new(cx).eval_simple(left) == Some(Constant::Int(1)))
+        && !(cmp == BinOpKind::Shl && is_zero_integer_const(cx, right) && integer_const(cx, left) == Some(1))
 }
 
 fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span: Span, arg: Span) {
@@ -233,4 +247,48 @@ fn span_ineffective_operation(
         suggestion,
         applicability,
     );
+}
+
+fn is_expr_used_with_type_annotation<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    match expr_use_ctxt(cx, expr).use_node(cx) {
+        ExprUseNode::LetStmt(letstmt) => letstmt.ty.is_some(),
+        ExprUseNode::Return(_) => true,
+        _ => false,
+    }
+}
+
+/// Check if the expression is an associated function without a type instance.
+/// Example:
+/// ```
+/// trait Def {
+///     fn def() -> Self;
+/// }
+/// impl Def for usize {
+///     fn def() -> Self {
+///         0
+///     }
+/// }
+/// fn test() {
+///     let _ = 0usize + &Default::default();
+///     let _ = 0usize + &Def::def();
+/// }
+/// ```
+fn is_assoc_fn_without_type_instance<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
+    if let ExprKind::Call(func, _) = peel_hir_expr_refs(expr).0.kind
+        && let ExprKind::Path(QPath::Resolved(
+            // If it's not None, don't need to go further.
+            None,
+            Path {
+                res: Res::Def(DefKind::AssocFn, def_id),
+                ..
+            },
+        )) = func.kind
+        && let output_ty = cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder().output()
+        && let ty::Param(ty::ParamTy {
+            name: kw::SelfUpper, ..
+        }) = output_ty.kind()
+    {
+        return true;
+    }
+    false
 }

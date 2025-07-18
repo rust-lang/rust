@@ -1,12 +1,13 @@
 use std::path::PathBuf;
 
-use crate::utils::cache::{INTERNER, Internable, TyIntern};
+use crate::utils::cache::{INTERNER, Internable, Interner, TyIntern};
 
 #[test]
 fn test_string_interning() {
-    let s1 = INTERNER.intern_str("Hello");
-    let s2 = INTERNER.intern_str("Hello");
-    let s3 = INTERNER.intern_str("world");
+    let interner = Interner::default();
+    let s1 = interner.intern_str("Hello");
+    let s2 = interner.intern_str("Hello");
+    let s3 = interner.intern_str("world");
 
     assert_eq!(s1, s2, "Same strings should be interned to the same instance");
     assert_ne!(s1, s3, "Different strings should have different interned values");
@@ -14,6 +15,8 @@ fn test_string_interning() {
 
 #[test]
 fn test_interned_equality() {
+    // Because we compare with &str, and the Deref impl accesses the global
+    // INTERNER variable, we cannot use a local Interner variable here.
     let s1 = INTERNER.intern_str("test");
     let s2 = INTERNER.intern_str("test");
 

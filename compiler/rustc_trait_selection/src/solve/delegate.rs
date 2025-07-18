@@ -12,7 +12,7 @@ use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt as _, TypingMode,
+    self, SizedTraitKind, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt as _, TypingMode,
 };
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
@@ -79,7 +79,14 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     Some(LangItem::Sized)
                         if self
                             .resolve_vars_if_possible(trait_pred.self_ty().skip_binder())
-                            .is_trivially_sized(self.0.tcx) =>
+                            .has_trivial_sizedness(self.0.tcx, SizedTraitKind::Sized) =>
+                    {
+                        return Some(Certainty::Yes);
+                    }
+                    Some(LangItem::MetaSized)
+                        if self
+                            .resolve_vars_if_possible(trait_pred.self_ty().skip_binder())
+                            .has_trivial_sizedness(self.0.tcx, SizedTraitKind::MetaSized) =>
                     {
                         return Some(Certainty::Yes);
                     }
@@ -136,6 +143,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     None
                 }
             }
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
+                let arg = self.shallow_resolve_term(arg);
+                if arg.is_trivially_wf(self.tcx) {
+                    Some(Certainty::Yes)
+                } else if arg.is_infer() {
+                    Some(Certainty::AMBIGUOUS)
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -147,7 +164,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     ) -> ty::GenericArg<'tcx> {
         match arg.kind() {
             ty::GenericArgKind::Lifetime(_) => {
-                self.next_region_var(RegionVariableOrigin::MiscVariable(span)).into()
+                self.next_region_var(RegionVariableOrigin::Misc(span)).into()
             }
             ty::GenericArgKind::Type(_) => self.next_ty_var(span).into(),
             ty::GenericArgKind::Const(_) => self.next_const_var(span).into(),
@@ -189,19 +206,17 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         .map(|obligations| obligations.into_iter().map(|obligation| obligation.as_goal()).collect())
     }
 
-    fn make_deduplicated_outlives_constraints(
-        &self,
-    ) -> Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>> {
+    fn make_deduplicated_outlives_constraints(&self) -> Vec<ty::ArgOutlivesPredicate<'tcx>> {
         // Cannot use `take_registered_region_obligations` as we may compute the response
         // inside of a `probe` whenever we have multiple choices inside of the solver.
         let region_obligations = self.0.inner.borrow().region_obligations().to_owned();
+        let region_assumptions = self.0.inner.borrow().region_assumptions().to_owned();
         let region_constraints = self.0.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
                 self.tcx,
-                region_obligations
-                    .iter()
-                    .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())),
+                region_obligations,
                 region_constraints,
+                region_assumptions,
             )
         });
 

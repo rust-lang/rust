@@ -111,6 +111,15 @@ impl_zeroable_primitive!(
 /// ```
 ///
 /// [null pointer optimization]: crate::option#representation
+///
+/// # Note on generic usage
+///
+/// `NonZero<T>` can only be used with some standard library primitive types
+/// (such as `u8`, `i32`, and etc.). The type parameter `T` must implement the
+/// internal trait [`ZeroablePrimitive`], which is currently permanently unstable
+/// and cannot be implemented by users. Therefore, you cannot use `NonZero<T>`
+/// with your own types, nor can you implement traits for all `NonZero<T>`,
+/// only for concrete types.
 #[stable(feature = "generic_nonzero", since = "1.79.0")]
 #[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
@@ -191,9 +200,10 @@ impl<T> UseCloned for NonZero<T> where T: ZeroablePrimitive {}
 impl<T> Copy for NonZero<T> where T: ZeroablePrimitive {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
-impl<T> PartialEq for NonZero<T>
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T> const PartialEq for NonZero<T>
 where
-    T: ZeroablePrimitive + PartialEq,
+    T: ZeroablePrimitive + ~const PartialEq,
 {
     #[inline]
     fn eq(&self, other: &Self) -> bool {

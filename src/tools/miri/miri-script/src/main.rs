@@ -14,24 +14,40 @@ pub enum Command {
     /// Sets up the rpath such that the installed binary should work in any
     /// working directory.
     Install {
+        /// Pass features to cargo invocations on the "miri" crate in the root. This option does
+        /// **not** apply to other crates, so e.g. these features won't be used on "cargo-miri".
+        #[arg(long, value_delimiter = ',', action = clap::ArgAction::Append)]
+        features: Vec<String>,
         /// Flags that are passed through to `cargo install`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
     /// Build Miri.
     Build {
+        /// Pass features to cargo invocations on the "miri" crate in the root. This option does
+        /// **not** apply to other crates, so e.g. these features won't be used on "cargo-miri".
+        #[arg(long, value_delimiter = ',', action = clap::ArgAction::Append)]
+        features: Vec<String>,
         /// Flags that are passed through to `cargo build`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
     /// Check Miri.
     Check {
+        /// Pass features to cargo invocations on the "miri" crate in the root. This option does
+        /// **not** apply to other crates, so e.g. these features won't be used on "cargo-miri".
+        #[arg(long, value_delimiter = ',', action = clap::ArgAction::Append)]
+        features: Vec<String>,
         /// Flags that are passed through to `cargo check`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
     /// Check Miri with Clippy.
     Clippy {
+        /// Pass features to cargo invocations on the "miri" crate in the root. This option does
+        /// **not** apply to other crates, so e.g. these features won't be used on "cargo-miri".
+        #[arg(long, value_delimiter = ',', action = clap::ArgAction::Append)]
+        features: Vec<String>,
         /// Flags that are passed through to `cargo clippy`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
@@ -47,6 +63,10 @@ pub enum Command {
         /// Produce coverage report.
         #[arg(long)]
         coverage: bool,
+        /// Pass features to cargo invocations on the "miri" crate in the root. This option does
+        /// **not** apply to other crates, so e.g. these features won't be used on "cargo-miri".
+        #[arg(long, value_delimiter = ',', action = clap::ArgAction::Append)]
+        features: Vec<String>,
         /// Flags that are passed through to the test harness.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
@@ -67,6 +87,10 @@ pub enum Command {
         /// The Rust edition.
         #[arg(long)]
         edition: Option<String>,
+        /// Pass features to cargo invocations on the "miri" crate in the root. This option does
+        /// **not** apply to other crates, so e.g. these features won't be used on "cargo-miri".
+        #[arg(long, value_delimiter = ',', action = clap::ArgAction::Append)]
+        features: Vec<String>,
         /// Flags that are passed through to `miri`.
         ///
         /// The flags set in `MIRIFLAGS` are added in front of these flags.
@@ -75,6 +99,10 @@ pub enum Command {
     },
     /// Build documentation.
     Doc {
+        /// Pass features to cargo invocations on the "miri" crate in the root. This option does
+        /// **not** apply to other crates, so e.g. these features won't be used on "cargo-miri".
+        #[arg(long, value_delimiter = ',', action = clap::ArgAction::Append)]
+        features: Vec<String>,
         /// Flags that are passed through to `cargo doc`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
@@ -144,13 +172,13 @@ impl Command {
         }
 
         match self {
-            Self::Install { flags }
-            | Self::Build { flags }
-            | Self::Check { flags }
-            | Self::Doc { flags }
+            Self::Install { flags, .. }
+            | Self::Build { flags, .. }
+            | Self::Check { flags, .. }
+            | Self::Doc { flags, .. }
             | Self::Fmt { flags }
             | Self::Toolchain { flags }
-            | Self::Clippy { flags }
+            | Self::Clippy { flags, .. }
             | Self::Run { flags, .. }
             | Self::Test { flags, .. } => {
                 flags.extend(remainder);

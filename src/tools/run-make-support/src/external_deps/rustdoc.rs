@@ -3,21 +3,36 @@ use std::path::Path;
 
 use crate::command::Command;
 use crate::env::env_var;
+use crate::target;
 use crate::util::set_host_compiler_dylib_path;
 
-/// Construct a new `rustdoc` invocation. This will configure the host compiler runtime libs.
+/// Construct a new `rustdoc` invocation with target automatically set to cross-compile target and
+/// with host compiler runtime libs configured. Use [`bare_rustdoc`] to avoid automatically setting
+/// cross-compile target.
 #[track_caller]
 pub fn rustdoc() -> Rustdoc {
     Rustdoc::new()
+}
+
+/// Bare `rustdoc` invocation, no args set.
+#[track_caller]
+pub fn bare_rustdoc() -> Rustdoc {
+    Rustdoc::bare()
 }
 
 #[derive(Debug)]
 #[must_use]
 pub struct Rustdoc {
     cmd: Command,
+    target: Option<String>,
 }
 
-crate::macros::impl_common_helpers!(Rustdoc);
+// Only fill in the target just before execution, so that it can be overridden.
+crate::macros::impl_common_helpers!(Rustdoc, |rustdoc: &mut Rustdoc| {
+    if let Some(target) = &rustdoc.target {
+        rustdoc.cmd.arg(&format!("--target={target}"));
+    }
+});
 
 #[track_caller]
 fn setup_common() -> Command {
@@ -28,11 +43,20 @@ fn setup_common() -> Command {
 }
 
 impl Rustdoc {
-    /// Construct a bare `rustdoc` invocation. This will configure the host compiler runtime libs.
+    /// Construct a new `rustdoc` invocation with target automatically set to cross-compile target
+    /// and with host compiler runtime libs configured. Use [`bare_rustdoc`] to avoid automatically
+    /// setting cross-compile target.
     #[track_caller]
     pub fn new() -> Self {
         let cmd = setup_common();
-        Self { cmd }
+        Self { cmd, target: Some(target()) }
+    }
+
+    /// Bare `rustdoc` invocation, no args set.
+    #[track_caller]
+    pub fn bare() -> Self {
+        let cmd = setup_common();
+        Self { cmd, target: None }
     }
 
     /// Specify where an external library is located.
@@ -85,8 +109,9 @@ impl Rustdoc {
 
     /// Specify the target triple, or a path to a custom target json spec file.
     pub fn target<S: AsRef<str>>(&mut self, target: S) -> &mut Self {
-        let target = target.as_ref();
-        self.cmd.arg(format!("--target={target}"));
+        // We store the target as a separate field, so that it can be specified multiple times.
+        // This is in particular useful to override the default target set in `Rustdoc::new()`.
+        self.target = Some(target.as_ref().to_string());
         self
     }
 

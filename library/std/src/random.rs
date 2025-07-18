@@ -1,7 +1,4 @@
 //! Random value generation.
-//!
-//! The [`Random`] trait allows generating a random value for a type using a
-//! given [`RandomSource`].
 
 #[unstable(feature = "random", issue = "130703")]
 pub use core::random::*;
@@ -68,18 +65,11 @@ impl RandomSource for DefaultRandomSource {
     }
 }
 
-/// Generates a random value with the default random source.
+/// Generates a random value from a distribution, using the default random source.
 ///
-/// This is a convenience function for `T::random(&mut DefaultRandomSource)` and
-/// will sample according to the same distribution as the underlying [`Random`]
-/// trait implementation. See [`DefaultRandomSource`] for more information about
-/// how randomness is sourced.
-///
-/// **Warning:** Be careful when manipulating random values! The
-/// [`random`](Random::random) method on integers samples them with a uniform
-/// distribution, so a value of 1 is just as likely as [`i32::MAX`]. By using
-/// modulo operations, some of the resulting values can become more likely than
-/// others. Use audited crates when in doubt.
+/// This is a convenience function for `dist.sample(&mut DefaultRandomSource)` and will sample
+/// according to the same distribution as the underlying [`Distribution`] trait implementation. See
+/// [`DefaultRandomSource`] for more information about how randomness is sourced.
 ///
 /// # Examples
 ///
@@ -89,7 +79,7 @@ impl RandomSource for DefaultRandomSource {
 ///
 /// use std::random::random;
 ///
-/// let bits: u128 = random();
+/// let bits: u128 = random(..);
 /// let g1 = (bits >> 96) as u32;
 /// let g2 = (bits >> 80) as u16;
 /// let g3 = (0x4000 | (bits >> 64) & 0x0fff) as u16;
@@ -101,6 +91,6 @@ impl RandomSource for DefaultRandomSource {
 ///
 /// [version 4/variant 1 UUID]: https://en.wikipedia.org/wiki/Universally_unique_identifier#Version_4_(random)
 #[unstable(feature = "random", issue = "130703")]
-pub fn random<T: Random>() -> T {
-    T::random(&mut DefaultRandomSource)
+pub fn random<T>(dist: impl Distribution<T>) -> T {
+    dist.sample(&mut DefaultRandomSource)
 }

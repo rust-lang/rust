@@ -18,7 +18,7 @@ macro_rules! phantom_type {
         pub struct $name:ident <$t:ident> ($($inner:tt)*);
     )*) => {$(
         $(#[$attr])*
-        pub struct $name<$t>($($inner)*) where T: ?Sized;
+        pub struct $name<$t>($($inner)*) where $t: ?Sized;
 
         impl<T> $name<T>
             where T: ?Sized

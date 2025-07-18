@@ -1,7 +1,9 @@
 #[cfg(feature = "master")]
 use gccjit::FnAttribute;
 use gccjit::{ToLValue, ToRValue, Type};
-use rustc_abi::{ArmCall, CanonAbi, InterruptKind, Reg, RegKind, X86Call};
+#[cfg(feature = "master")]
+use rustc_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
+use rustc_abi::{Reg, RegKind};
 use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeCodegenMethods};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;

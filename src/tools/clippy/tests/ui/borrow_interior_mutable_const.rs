@@ -218,4 +218,20 @@ fn main() {
         let _ = &S::VALUE.1; //~ borrow_interior_mutable_const
         let _ = &S::VALUE.2;
     }
+    {
+        pub struct Foo<T, const N: usize>(pub Entry<N>, pub T);
+
+        pub struct Entry<const N: usize>(pub Cell<[u32; N]>);
+
+        impl<const N: usize> Entry<N> {
+            const INIT: Self = Self(Cell::new([42; N]));
+        }
+
+        impl<T, const N: usize> Foo<T, N> {
+            pub fn make_foo(v: T) -> Self {
+                // Used to ICE due to incorrect instantiation.
+                Foo(Entry::INIT, v)
+            }
+        }
+    }
 }

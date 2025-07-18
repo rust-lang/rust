@@ -177,7 +177,7 @@ decl_derive! {
     [PrintAttribute] =>
     /// Derives `PrintAttribute` for `AttributeKind`.
     /// This macro is pretty specific to `rustc_attr_data_structures` and likely not that useful in
-    /// other places. It's deriving something close to `Debug` without printing some extraenous
+    /// other places. It's deriving something close to `Debug` without printing some extraneous
     /// things like spans.
     print_attribute::print_attribute
 }

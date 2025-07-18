@@ -17,13 +17,12 @@
 //! also check out the `src/bootstrap/README.md` file for more information.
 #![cfg_attr(test, allow(unused))]
 
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::OnceLock;
-use std::time::SystemTime;
+use std::time::{Instant, SystemTime};
 use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
@@ -32,14 +31,14 @@ use cc::Tool;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
-use utils::execution_context::ExecutionContext;
+use utils::exec::ExecutionContext;
 
 use crate::core::builder;
 use crate::core::builder::Kind;
 use crate::core::config::{DryRun, LldMode, LlvmLibunwind, TargetSelection, flags};
-use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, command};
+use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
-    self, dir_is_empty, exe, libdir, output, set_file_times, split_debuginfo, symlink_dir,
+    self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo, symlink_dir,
 };
 
 mod core;
@@ -190,10 +189,12 @@ pub struct Build {
 
     // Runtime state filled in later on
     // C/C++ compilers and archiver for all targets
-    cc: RefCell<HashMap<TargetSelection, cc::Tool>>,
-    cxx: RefCell<HashMap<TargetSelection, cc::Tool>>,
-    ar: RefCell<HashMap<TargetSelection, PathBuf>>,
-    ranlib: RefCell<HashMap<TargetSelection, PathBuf>>,
+    cc: HashMap<TargetSelection, cc::Tool>,
+    cxx: HashMap<TargetSelection, cc::Tool>,
+    ar: HashMap<TargetSelection, PathBuf>,
+    ranlib: HashMap<TargetSelection, PathBuf>,
+    wasi_sdk_path: Option<PathBuf>,
+
     // Miscellaneous
     // allow bidirectional lookups: both name -> path and path -> name
     crates: HashMap<String, Crate>,
@@ -245,12 +246,17 @@ pub enum Mode {
     /// Build a codegen backend for rustc, placing the output in the "stageN-codegen" directory.
     Codegen,
 
-    /// Build a tool, placing output in the "stage0-bootstrap-tools"
-    /// directory. This is for miscellaneous sets of tools that are built
-    /// using the bootstrap stage0 compiler in its entirety (target libraries
-    /// and all). Typically these tools compile with stable Rust.
+    /// Build a tool, placing output in the "bootstrap-tools"
+    /// directory. This is for miscellaneous sets of tools that extend
+    /// bootstrap.
     ///
-    /// Only works for stage 0.
+    /// These tools are intended to be only executed on the host system that
+    /// invokes bootstrap, and they thus cannot be cross-compiled.
+    ///
+    /// They are always built using the stage0 compiler, and typically they
+    /// can be compiled with stable Rust.
+    ///
+    /// These tools also essentially do not participate in staging.
     ToolBootstrap,
 
     /// Build a tool which uses the locally built std, placing output in the
@@ -376,10 +382,13 @@ impl Build {
         let in_tree_llvm_info = config.in_tree_llvm_info.clone();
         let in_tree_gcc_info = config.in_tree_gcc_info.clone();
 
-        let initial_target_libdir =
-            output(Command::new(&config.initial_rustc).args(["--print", "target-libdir"]))
-                .trim()
-                .to_owned();
+        let initial_target_libdir = command(&config.initial_rustc)
+            .run_in_dry_run()
+            .args(["--print", "target-libdir"])
+            .run_capture_stdout(&config)
+            .stdout()
+            .trim()
+            .to_owned();
 
         let initial_target_dir = Path::new(&initial_target_libdir)
             .parent()
@@ -464,10 +473,11 @@ impl Build {
             enzyme_info,
             in_tree_llvm_info,
             in_tree_gcc_info,
-            cc: RefCell::new(HashMap::new()),
-            cxx: RefCell::new(HashMap::new()),
-            ar: RefCell::new(HashMap::new()),
-            ranlib: RefCell::new(HashMap::new()),
+            cc: HashMap::new(),
+            cxx: HashMap::new(),
+            ar: HashMap::new(),
+            ranlib: HashMap::new(),
+            wasi_sdk_path: env::var_os("WASI_SDK_PATH").map(PathBuf::from),
             crates: HashMap::new(),
             crate_paths: HashMap::new(),
             is_sudo,
@@ -479,8 +489,11 @@ impl Build {
 
         // If local-rust is the same major.minor as the current version, then force a
         // local-rebuild
-        let local_version_verbose =
-            output(Command::new(&build.initial_rustc).arg("--version").arg("--verbose"));
+        let local_version_verbose = command(&build.initial_rustc)
+            .run_in_dry_run()
+            .args(["--version", "--verbose"])
+            .run_capture_stdout(&build)
+            .stdout();
         let local_release = local_version_verbose
             .lines()
             .filter_map(|x| x.strip_prefix("release:"))
@@ -493,7 +506,7 @@ impl Build {
         }
 
         build.verbose(|| println!("finding compilers"));
-        utils::cc_detect::find(&build);
+        utils::cc_detect::fill_compilers(&mut build);
         // When running `setup`, the profile is about to change, so any requirements we have now may
         // be different on the next invocation. Don't check for them until the next time x.py is
         // run. This is ok because `setup` never runs any build commands, so it won't fail if commands are missing.
@@ -505,7 +518,7 @@ impl Build {
 
             // Make sure we update these before gathering metadata so we don't get an error about missing
             // Cargo.toml files.
-            let rust_submodules = ["library/backtrace", "library/stdarch"];
+            let rust_submodules = ["library/backtrace"];
             for s in rust_submodules {
                 build.require_submodule(
                     s,
@@ -588,14 +601,6 @@ impl Build {
         }
     }
 
-    /// Updates all submodules, and exits with an error if submodule
-    /// management is disabled and the submodule does not exist.
-    pub fn require_and_update_all_submodules(&self) {
-        for submodule in build_helper::util::parse_gitmodules(&self.src) {
-            self.require_submodule(submodule, None);
-        }
-    }
-
     /// If any submodule has been initialized already, sync it unconditionally.
     /// This avoids contributors checking in a submodule change by accident.
     fn update_existing_submodules(&self) {
@@ -646,11 +651,9 @@ impl Build {
         // Handle hard-coded subcommands.
         {
             #[cfg(feature = "tracing")]
-            let _hardcoded_span = span!(
-                tracing::Level::DEBUG,
-                "handling hardcoded subcommands (Format, Suggest, Perf)"
-            )
-            .entered();
+            let _hardcoded_span =
+                span!(tracing::Level::DEBUG, "handling hardcoded subcommands (Format, Perf)")
+                    .entered();
 
             match &self.config.cmd {
                 Subcommand::Format { check, all } => {
@@ -660,9 +663,6 @@ impl Build {
                         *all,
                         &self.config.paths,
                     );
-                }
-                Subcommand::Suggest { run } => {
-                    return core::build_steps::suggest::suggest(&builder::Builder::new(self), *run);
                 }
                 Subcommand::Perf(args) => {
                     return core::build_steps::perf::perf(&builder::Builder::new(self), args);
@@ -770,6 +770,9 @@ impl Build {
         if self.config.rust_randomize_layout && check("rustc_randomized_layouts") {
             features.push("rustc_randomized_layouts");
         }
+        if self.config.compile_time_deps && kind == Kind::Check {
+            features.push("check_only");
+        }
 
         // If debug logging is on, then we want the default for tracing:
         // https://github.com/tokio-rs/tracing/blob/3dd5c03d907afdf2c39444a29931833335171554/tracing/src/level_filters.rs#L26
@@ -804,7 +807,9 @@ impl Build {
             Mode::Std => "-std",
             Mode::Rustc => "-rustc",
             Mode::Codegen => "-codegen",
-            Mode::ToolBootstrap => "-bootstrap-tools",
+            Mode::ToolBootstrap => {
+                return self.out.join(compiler.host).join("bootstrap-tools");
+            }
             Mode::ToolStd | Mode::ToolRustc => "-tools",
         };
         self.out.join(compiler.host).join(format!("stage{}{}", compiler.stage, suffix))
@@ -941,9 +946,14 @@ impl Build {
     fn rustc_snapshot_sysroot(&self) -> &Path {
         static SYSROOT_CACHE: OnceLock<PathBuf> = OnceLock::new();
         SYSROOT_CACHE.get_or_init(|| {
-            let mut rustc = Command::new(&self.initial_rustc);
-            rustc.args(["--print", "sysroot"]);
-            output(&mut rustc).trim().into()
+            command(&self.initial_rustc)
+                .run_in_dry_run()
+                .args(["--print", "sysroot"])
+                .run_capture_stdout(self)
+                .stdout()
+                .trim()
+                .to_owned()
+                .into()
         })
     }
 
@@ -1133,17 +1143,17 @@ impl Build {
         if self.config.dry_run() {
             return PathBuf::new();
         }
-        self.cc.borrow()[&target].path().into()
+        self.cc[&target].path().into()
     }
 
     /// Returns the internal `cc::Tool` for the C compiler.
     fn cc_tool(&self, target: TargetSelection) -> Tool {
-        self.cc.borrow()[&target].clone()
+        self.cc[&target].clone()
     }
 
     /// Returns the internal `cc::Tool` for the C++ compiler.
     fn cxx_tool(&self, target: TargetSelection) -> Tool {
-        self.cxx.borrow()[&target].clone()
+        self.cxx[&target].clone()
     }
 
     /// Returns C flags that `cc-rs` thinks should be enabled for the
@@ -1153,8 +1163,8 @@ impl Build {
             return Vec::new();
         }
         let base = match c {
-            CLang::C => self.cc.borrow()[&target].clone(),
-            CLang::Cxx => self.cxx.borrow()[&target].clone(),
+            CLang::C => self.cc[&target].clone(),
+            CLang::Cxx => self.cxx[&target].clone(),
         };
 
         // Filter out -O and /O (the optimization flags) that we picked up
@@ -1207,7 +1217,7 @@ impl Build {
         if self.config.dry_run() {
             return None;
         }
-        self.ar.borrow().get(&target).cloned()
+        self.ar.get(&target).cloned()
     }
 
     /// Returns the path to the `ranlib` utility for the target specified.
@@ -1215,7 +1225,7 @@ impl Build {
         if self.config.dry_run() {
             return None;
         }
-        self.ranlib.borrow().get(&target).cloned()
+        self.ranlib.get(&target).cloned()
     }
 
     /// Returns the path to the C++ compiler for the target specified.
@@ -1223,7 +1233,7 @@ impl Build {
         if self.config.dry_run() {
             return Ok(PathBuf::new());
         }
-        match self.cxx.borrow().get(&target) {
+        match self.cxx.get(&target) {
             Some(p) => Ok(p.path().into()),
             None => Err(format!("target `{target}` is not configured as a host, only as a target")),
         }
@@ -1240,7 +1250,7 @@ impl Build {
         } else if target.contains("vxworks") {
             // need to use CXX compiler as linker to resolve the exception functions
             // that are only existed in CXX libraries
-            Some(self.cxx.borrow()[&target].path().into())
+            Some(self.cxx[&target].path().into())
         } else if !self.config.is_host_target(target)
             && helpers::use_host_linker(target)
             && !target.is_msvc()
@@ -1306,7 +1316,7 @@ impl Build {
         if let Some(path) = configured {
             return Some(path.join("lib").join(target.to_string()));
         }
-        let mut env_root = PathBuf::from(std::env::var_os("WASI_SDK_PATH")?);
+        let mut env_root = self.wasi_sdk_path.clone()?;
         env_root.push("share");
         env_root.push("wasi-sysroot");
         env_root.push("lib");
@@ -1500,7 +1510,7 @@ impl Build {
                     "refs/remotes/origin/{}..HEAD",
                     self.config.stage0_metadata.config.nightly_branch
                 ))
-                .run_always()
+                .run_in_dry_run()
                 .run_capture(self)
                 .stdout()
         });
@@ -1915,6 +1925,10 @@ to download LLVM rather than building it.
 
     pub fn exec_ctx(&self) -> &ExecutionContext {
         &self.config.exec_ctx
+    }
+
+    pub fn report_summary(&self, start_time: Instant) {
+        self.config.exec_ctx.profiler().report_summary(start_time);
     }
 }
 

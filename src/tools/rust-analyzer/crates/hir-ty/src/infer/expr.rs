@@ -542,7 +542,7 @@ impl InferenceContext<'_> {
                     _ if fields.is_empty() => {}
                     Some(def) => {
                         let field_types = self.db.field_types(def);
-                        let variant_data = def.variant_data(self.db);
+                        let variant_data = def.fields(self.db);
                         let visibilities = self.db.field_visibilities(def);
                         for field in fields.iter() {
                             let field_def = {
@@ -654,9 +654,8 @@ impl InferenceContext<'_> {
                 match op {
                     UnaryOp::Deref => {
                         if let Some(deref_trait) = self.resolve_lang_trait(LangItem::Deref) {
-                            if let Some(deref_fn) = self
-                                .db
-                                .trait_items(deref_trait)
+                            if let Some(deref_fn) = deref_trait
+                                .trait_items(self.db)
                                 .method_by_name(&Name::new_symbol_root(sym::deref))
                             {
                                 // FIXME: this is wrong in multiple ways, subst is empty, and we emit it even for builtin deref (note that
@@ -732,9 +731,32 @@ impl InferenceContext<'_> {
                     &Pat::Expr(expr) => {
                         Some(self.infer_expr(expr, &Expectation::none(), ExprIsRead::No))
                     }
-                    Pat::Path(path) => Some(self.infer_expr_path(path, target.into(), tgt_expr)),
+                    Pat::Path(path) => {
+                        let resolver_guard =
+                            self.resolver.update_to_inner_scope(self.db, self.owner, tgt_expr);
+                        let resolution = self.resolver.resolve_path_in_value_ns_fully(
+                            self.db,
+                            path,
+                            self.body.pat_path_hygiene(target),
+                        );
+                        self.resolver.reset_to_guard(resolver_guard);
+
+                        if matches!(
+                            resolution,
+                            Some(
+                                ValueNs::ConstId(_)
+                                    | ValueNs::StructId(_)
+                                    | ValueNs::EnumVariantId(_)
+                            )
+                        ) {
+                            None
+                        } else {
+                            Some(self.infer_expr_path(path, target.into(), tgt_expr))
+                        }
+                    }
                     _ => None,
                 };
+                let is_destructuring_assignment = lhs_ty.is_none();
 
                 if let Some(lhs_ty) = lhs_ty {
                     self.write_pat_ty(target, lhs_ty.clone());
@@ -748,7 +770,15 @@ impl InferenceContext<'_> {
                     self.inside_assignment = false;
                     self.resolver.reset_to_guard(resolver_guard);
                 }
-                self.result.standard_types.unit.clone()
+                if is_destructuring_assignment && self.diverges.is_always() {
+                    // Ordinary assignments always return `()`, even when they diverge.
+                    // However, rustc lowers destructuring assignments into blocks, and blocks return `!` if they have no tail
+                    // expression and they diverge. Therefore, we have to do the same here, even though we don't lower destructuring
+                    // assignments into blocks.
+                    self.table.new_maybe_never_var()
+                } else {
+                    self.result.standard_types.unit.clone()
+                }
             }
             Expr::Range { lhs, rhs, range_type } => {
                 let lhs_ty =
@@ -813,9 +843,8 @@ impl InferenceContext<'_> {
                         self.table.new_lifetime_var(),
                     ));
                     self.write_expr_adj(*base, adj.into_boxed_slice());
-                    if let Some(func) = self
-                        .db
-                        .trait_items(index_trait)
+                    if let Some(func) = index_trait
+                        .trait_items(self.db)
                         .method_by_name(&Name::new_symbol_root(sym::index))
                     {
                         let subst = TyBuilder::subst_for_def(self.db, index_trait, None);
@@ -1148,7 +1177,7 @@ impl InferenceContext<'_> {
         let Some(trait_) = fn_x.get_id(self.db, self.table.trait_env.krate) else {
             return;
         };
-        let trait_data = self.db.trait_items(trait_);
+        let trait_data = trait_.trait_items(self.db);
         if let Some(func) = trait_data.method_by_name(&fn_x.method_name()) {
             let subst = TyBuilder::subst_for_def(self.db, trait_, None)
                 .push(callee_ty.clone())
@@ -1316,7 +1345,7 @@ impl InferenceContext<'_> {
 
         let trait_func = lang_items_for_bin_op(op).and_then(|(name, lang_item)| {
             let trait_id = self.resolve_lang_item(lang_item)?.as_trait()?;
-            let func = self.db.trait_items(trait_id).method_by_name(&name)?;
+            let func = trait_id.trait_items(self.db).method_by_name(&name)?;
             Some((trait_id, func))
         });
         let (trait_, func) = match trait_func {
@@ -1568,12 +1597,12 @@ impl InferenceContext<'_> {
                     });
                 }
                 &TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), ref parameters) => {
-                    let local_id = self.db.variant_fields(s.into()).field(name)?;
+                    let local_id = s.fields(self.db).field(name)?;
                     let field = FieldId { parent: s.into(), local_id };
                     (field, parameters.clone())
                 }
                 &TyKind::Adt(AdtId(hir_def::AdtId::UnionId(u)), ref parameters) => {
-                    let local_id = self.db.variant_fields(u.into()).field(name)?;
+                    let local_id = u.fields(self.db).field(name)?;
                     let field = FieldId { parent: u.into(), local_id };
                     (field, parameters.clone())
                 }

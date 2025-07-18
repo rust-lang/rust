@@ -17,11 +17,11 @@ error: manual implementation of `Iterator::find`
    |
 LL | /     for (a, _) in arr {
 LL | |
-LL | |         if a % 2 == 0 {
+LL | |         if a.is_multiple_of(2) {
 LL | |             return Some(a);
 ...  |
 LL | |     None
-   | |________^ help: replace with an iterator: `arr.into_iter().map(|(a, _)| a).find(|&a| a % 2 == 0)`
+   | |________^ help: replace with an iterator: `arr.into_iter().map(|(a, _)| a).find(|&a| a.is_multiple_of(2))`
 
 error: manual implementation of `Iterator::find`
   --> tests/ui/manual_find_fixable.rs:34:5

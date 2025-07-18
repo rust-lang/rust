@@ -12,6 +12,14 @@ LL |     (): Trait<N>;
    |
    = help: the trait `Trait<2>` is not implemented for `()`
            but trait `Trait<3>` is implemented for it
+note: required by a bound in `WhereClause`
+  --> $DIR/wfness.rs:8:9
+   |
+LL | struct WhereClause<const N: u8 = 2>
+   |        ----------- required by a bound in this struct
+LL | where
+LL |     (): Trait<N>;
+   |         ^^^^^^^^ required by this bound in `WhereClause`
 
 error[E0277]: the trait bound `(): Trait<1>` is not satisfied
   --> $DIR/wfness.rs:18:13

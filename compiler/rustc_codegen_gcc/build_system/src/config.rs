@@ -66,7 +66,7 @@ impl ConfigFile {
                         "Expected a boolean for `download-gccjit`",
                     );
                 }
-                _ => return failed_config_parsing(config_file, &format!("Unknown key `{}`", key)),
+                _ => return failed_config_parsing(config_file, &format!("Unknown key `{key}`")),
             }
         }
         match (config.gcc_path.as_mut(), config.download_gccjit) {
@@ -86,9 +86,7 @@ impl ConfigFile {
                 let path = Path::new(gcc_path);
                 *gcc_path = path
                     .canonicalize()
-                    .map_err(|err| {
-                        format!("Failed to get absolute path of `{}`: {:?}", gcc_path, err)
-                    })?
+                    .map_err(|err| format!("Failed to get absolute path of `{gcc_path}`: {err:?}"))?
                     .display()
                     .to_string();
             }
@@ -175,7 +173,7 @@ impl ConfigInfo {
             "--sysroot-panic-abort" => self.sysroot_panic_abort = true,
             "--gcc-path" => match args.next() {
                 Some(arg) if !arg.is_empty() => {
-                    self.gcc_path = Some(arg.into());
+                    self.gcc_path = Some(arg);
                 }
                 _ => {
                     return Err("Expected a value after `--gcc-path`, found nothing".to_string());
@@ -244,7 +242,7 @@ impl ConfigInfo {
         let libgccjit_so = output_dir.join(libgccjit_so_name);
         if !libgccjit_so.is_file() && !self.no_download {
             // Download time!
-            let tempfile_name = format!("{}.download", libgccjit_so_name);
+            let tempfile_name = format!("{libgccjit_so_name}.download");
             let tempfile = output_dir.join(&tempfile_name);
             let is_in_ci = std::env::var("GITHUB_ACTIONS").is_ok();
 
@@ -262,14 +260,14 @@ impl ConfigInfo {
                 )
             })?;
 
-            println!("Downloaded libgccjit.so version {} successfully!", commit);
+            println!("Downloaded libgccjit.so version {commit} successfully!");
             // We need to create a link named `libgccjit.so.0` because that's what the linker is
             // looking for.
-            create_symlink(&libgccjit_so, output_dir.join(&format!("{}.0", libgccjit_so_name)))?;
+            create_symlink(&libgccjit_so, output_dir.join(format!("{libgccjit_so_name}.0")))?;
         }
 
         let gcc_path = output_dir.display().to_string();
-        println!("Using `{}` as path for libgccjit", gcc_path);
+        println!("Using `{gcc_path}` as path for libgccjit");
         self.gcc_path = Some(gcc_path);
         Ok(())
     }
@@ -286,8 +284,7 @@ impl ConfigInfo {
         // since we already have everything we need.
         if let Some(gcc_path) = &self.gcc_path {
             println!(
-                "`--gcc-path` was provided, ignoring config file. Using `{}` as path for libgccjit",
-                gcc_path
+                "`--gcc-path` was provided, ignoring config file. Using `{gcc_path}` as path for libgccjit"
             );
             return Ok(());
         }
@@ -343,7 +340,7 @@ impl ConfigInfo {
         self.dylib_ext = match os_name.as_str() {
             "Linux" => "so",
             "Darwin" => "dylib",
-            os => return Err(format!("unsupported OS `{}`", os)),
+            os => return Err(format!("unsupported OS `{os}`")),
         }
         .to_string();
         let rustc = match env.get("RUSTC") {
@@ -355,10 +352,10 @@ impl ConfigInfo {
             None => return Err("no host found".to_string()),
         };
 
-        if self.target_triple.is_empty() {
-            if let Some(overwrite) = env.get("OVERWRITE_TARGET_TRIPLE") {
-                self.target_triple = overwrite.clone();
-            }
+        if self.target_triple.is_empty()
+            && let Some(overwrite) = env.get("OVERWRITE_TARGET_TRIPLE")
+        {
+            self.target_triple = overwrite.clone();
         }
         if self.target_triple.is_empty() {
             self.target_triple = self.host_triple.clone();
@@ -378,7 +375,7 @@ impl ConfigInfo {
         }
 
         let current_dir =
-            std_env::current_dir().map_err(|error| format!("`current_dir` failed: {:?}", error))?;
+            std_env::current_dir().map_err(|error| format!("`current_dir` failed: {error:?}"))?;
         let channel = if self.channel == Channel::Release {
             "release"
         } else if let Some(channel) = env.get("CHANNEL") {
@@ -391,15 +388,15 @@ impl ConfigInfo {
         self.cg_backend_path = current_dir
             .join("target")
             .join(channel)
-            .join(&format!("librustc_codegen_gcc.{}", self.dylib_ext))
+            .join(format!("librustc_codegen_gcc.{}", self.dylib_ext))
             .display()
             .to_string();
         self.sysroot_path =
-            current_dir.join(&get_sysroot_dir()).join("sysroot").display().to_string();
+            current_dir.join(get_sysroot_dir()).join("sysroot").display().to_string();
         if let Some(backend) = &self.backend {
             // This option is only used in the rust compiler testsuite. The sysroot is handled
             // by its build system directly so no need to set it ourselves.
-            rustflags.push(format!("-Zcodegen-backend={}", backend));
+            rustflags.push(format!("-Zcodegen-backend={backend}"));
         } else {
             rustflags.extend_from_slice(&[
                 "--sysroot".to_string(),
@@ -412,10 +409,10 @@ impl ConfigInfo {
         // We have a different environment variable than RUSTFLAGS to make sure those flags are
         // only sent to rustc_codegen_gcc and not the LLVM backend.
         if let Some(cg_rustflags) = env.get("CG_RUSTFLAGS") {
-            rustflags.extend_from_slice(&split_args(&cg_rustflags)?);
+            rustflags.extend_from_slice(&split_args(cg_rustflags)?);
         }
         if let Some(test_flags) = env.get("TEST_FLAGS") {
-            rustflags.extend_from_slice(&split_args(&test_flags)?);
+            rustflags.extend_from_slice(&split_args(test_flags)?);
         }
 
         if let Some(linker) = linker {
@@ -438,8 +435,8 @@ impl ConfigInfo {
         env.insert("RUSTC_LOG".to_string(), "warn".to_string());
 
         let sysroot = current_dir
-            .join(&get_sysroot_dir())
-            .join(&format!("sysroot/lib/rustlib/{}/lib", self.target_triple));
+            .join(get_sysroot_dir())
+            .join(format!("sysroot/lib/rustlib/{}/lib", self.target_triple));
         let ld_library_path = format!(
             "{target}:{sysroot}:{gcc_path}",
             target = self.cargo_target_dir,
@@ -505,7 +502,7 @@ fn download_gccjit(
     with_progress_bar: bool,
 ) -> Result<(), String> {
     let url = if std::env::consts::OS == "linux" && std::env::consts::ARCH == "x86_64" {
-        format!("https://github.com/rust-lang/gcc/releases/download/master-{}/libgccjit.so", commit)
+        format!("https://github.com/rust-lang/gcc/releases/download/master-{commit}/libgccjit.so")
     } else {
         eprintln!(
             "\
@@ -518,7 +515,7 @@ to `download-gccjit = false` and set `gcc-path` to the appropriate directory."
         ));
     };
 
-    println!("Downloading `{}`...", url);
+    println!("Downloading `{url}`...");
 
     // Try curl. If that fails and we are on windows, fallback to PowerShell.
     let mut ret = run_command_with_output(
@@ -538,7 +535,7 @@ to `download-gccjit = false` and set `gcc-path` to the appropriate directory."
             if with_progress_bar { &"--progress-bar" } else { &"-s" },
             &url.as_str(),
         ],
-        Some(&output_dir),
+        Some(output_dir),
     );
     if ret.is_err() && cfg!(windows) {
         eprintln!("Fallback to PowerShell");
@@ -549,12 +546,11 @@ to `download-gccjit = false` and set `gcc-path` to the appropriate directory."
                 &"-Command",
                 &"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
                 &format!(
-                    "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
-                    url, tempfile_name,
+                    "(New-Object System.Net.WebClient).DownloadFile('{url}', '{tempfile_name}')",
                 )
                 .as_str(),
             ],
-            Some(&output_dir),
+            Some(output_dir),
         );
     }
     ret

@@ -13,10 +13,11 @@ use salsa::{
 
 use crate::{
     AssocTypeId, CallableDefId, ChalkTraitId, FnDefId, ForeignDefId, Interner, OpaqueTyId,
-    PlaceholderIndex, chalk_db, db::HirDatabase,
+    PlaceholderIndex, chalk_db,
+    db::{HirDatabase, InternedLifetimeParamId, InternedTypeOrConstParamId},
 };
 
-pub(crate) trait ToChalk {
+pub trait ToChalk {
     type Chalk;
     fn to_chalk(self, db: &dyn HirDatabase) -> Self::Chalk;
     fn from_chalk(db: &dyn HirDatabase, chalk: Self::Chalk) -> Self;
@@ -44,12 +45,12 @@ impl ToChalk for hir_def::ImplId {
 impl ToChalk for CallableDefId {
     type Chalk = FnDefId;
 
-    fn to_chalk(self, db: &dyn HirDatabase) -> FnDefId {
-        db.intern_callable_def(self).into()
+    fn to_chalk(self, _db: &dyn HirDatabase) -> FnDefId {
+        chalk_ir::FnDefId(salsa::plumbing::AsId::as_id(&self))
     }
 
     fn from_chalk(db: &dyn HirDatabase, fn_def_id: FnDefId) -> CallableDefId {
-        db.lookup_intern_callable_def(fn_def_id.into())
+        salsa::plumbing::FromIdWithDb::from_id(fn_def_id.0, db.zalsa())
     }
 }
 
@@ -67,18 +68,6 @@ impl ToChalk for TypeAliasAsValue {
         assoc_ty_value_id: chalk_db::AssociatedTyValueId,
     ) -> TypeAliasAsValue {
         TypeAliasAsValue(TypeAliasId::from_id(assoc_ty_value_id.0))
-    }
-}
-
-impl From<FnDefId> for crate::db::InternedCallableDefId {
-    fn from(fn_def_id: FnDefId) -> Self {
-        Self::from_id(fn_def_id.0)
-    }
-}
-
-impl From<crate::db::InternedCallableDefId> for FnDefId {
-    fn from(callable_def_id: crate::db::InternedCallableDefId) -> Self {
-        chalk_ir::FnDefId(callable_def_id.as_id())
     }
 }
 
@@ -137,30 +126,32 @@ pub fn from_assoc_type_id(id: AssocTypeId) -> TypeAliasId {
 pub fn from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> TypeOrConstParamId {
     assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
     // SAFETY: We cannot really encapsulate this unfortunately, so just hope this is sound.
-    let interned_id = FromId::from_id(unsafe { Id::from_u32(idx.idx.try_into().unwrap()) });
-    db.lookup_intern_type_or_const_param_id(interned_id)
+    let interned_id =
+        InternedTypeOrConstParamId::from_id(unsafe { Id::from_index(idx.idx.try_into().unwrap()) });
+    interned_id.loc(db)
 }
 
 pub fn to_placeholder_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> PlaceholderIndex {
-    let interned_id = db.intern_type_or_const_param_id(id);
+    let interned_id = InternedTypeOrConstParamId::new(db, id);
     PlaceholderIndex {
         ui: chalk_ir::UniverseIndex::ROOT,
-        idx: interned_id.as_id().as_u32() as usize,
+        idx: interned_id.as_id().index() as usize,
     }
 }
 
 pub fn lt_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> LifetimeParamId {
     assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
     // SAFETY: We cannot really encapsulate this unfortunately, so just hope this is sound.
-    let interned_id = FromId::from_id(unsafe { Id::from_u32(idx.idx.try_into().unwrap()) });
-    db.lookup_intern_lifetime_param_id(interned_id)
+    let interned_id =
+        InternedLifetimeParamId::from_id(unsafe { Id::from_index(idx.idx.try_into().unwrap()) });
+    interned_id.loc(db)
 }
 
 pub fn lt_to_placeholder_idx(db: &dyn HirDatabase, id: LifetimeParamId) -> PlaceholderIndex {
-    let interned_id = db.intern_lifetime_param_id(id);
+    let interned_id = InternedLifetimeParamId::new(db, id);
     PlaceholderIndex {
         ui: chalk_ir::UniverseIndex::ROOT,
-        idx: interned_id.as_id().as_u32() as usize,
+        idx: interned_id.as_id().index() as usize,
     }
 }
 

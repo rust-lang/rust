@@ -57,12 +57,10 @@ ENV RUST_CONFIGURE_ARGS \
 
 COPY scripts/shared.sh /scripts/
 
-ARG SCRIPT_ARG
+COPY scripts/x86_64-gnu-llvm.sh /scripts/
+COPY scripts/x86_64-gnu-llvm2.sh /scripts/
+COPY scripts/x86_64-gnu-llvm3.sh /scripts/
+COPY scripts/stage_2_test_set1.sh /scripts/
+COPY scripts/stage_2_test_set2.sh /scripts/
 
-COPY scripts/x86_64-gnu-llvm.sh /tmp/
-COPY scripts/x86_64-gnu-llvm2.sh /tmp/
-COPY scripts/x86_64-gnu-llvm3.sh /tmp/
-COPY scripts/stage_2_test_set1.sh /tmp/
-COPY scripts/stage_2_test_set2.sh /tmp/
-
-ENV SCRIPT "/tmp/${SCRIPT_ARG}"
+ENV SCRIPT "Must specify DOCKER_SCRIPT for this image"

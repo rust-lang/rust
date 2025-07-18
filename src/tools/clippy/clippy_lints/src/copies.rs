@@ -11,7 +11,7 @@ use clippy_utils::{
 use core::iter;
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, HirIdSet, Stmt, StmtKind, intravisit};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, HirIdSet, LetStmt, Node, Stmt, StmtKind, intravisit};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
@@ -295,7 +295,7 @@ fn lint_branches_sharing_code<'tcx>(
                 sugg,
                 Applicability::Unspecified,
             );
-            if !cx.typeck_results().expr_ty(expr).is_unit() {
+            if is_expr_parent_assignment(cx, expr) || !cx.typeck_results().expr_ty(expr).is_unit() {
                 diag.note("the end suggestion probably needs some adjustments to use the expression result correctly");
             }
         }
@@ -659,4 +659,18 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
             "these `if` branches have the same function call",
         );
     }
+}
+
+fn is_expr_parent_assignment(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    let parent = cx.tcx.parent_hir_node(expr.hir_id);
+    if let Node::LetStmt(LetStmt { init: Some(e), .. })
+    | Node::Expr(Expr {
+        kind: ExprKind::Assign(_, e, _),
+        ..
+    }) = parent
+    {
+        return e.hir_id == expr.hir_id;
+    }
+
+    false
 }

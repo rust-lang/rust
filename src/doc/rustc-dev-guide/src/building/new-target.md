@@ -174,8 +174,8 @@ compiler, you can use it instead of the JSON file for both arguments.
 ## Promoting a target from tier 2 (target) to tier 2 (host)
 
 There are two levels of tier 2 targets:
-  a) Targets that are only cross-compiled (`rustup target add`)
-  b) Targets that [have a native toolchain][tier2-native] (`rustup toolchain install`)
+- Targets that are only cross-compiled (`rustup target add`)
+- Targets that [have a native toolchain][tier2-native] (`rustup toolchain install`)
 
 [tier2-native]: https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html#tier-2-with-host-tools
 

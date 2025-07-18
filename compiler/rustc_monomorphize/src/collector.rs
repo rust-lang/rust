@@ -532,7 +532,7 @@ fn collect_items_rec<'tcx>(
         });
     }
     // Only updating `usage_map` for used items as otherwise we may be inserting the same item
-    // multiple times (if it is first 'mentioned' and then later actuall used), and the usage map
+    // multiple times (if it is first 'mentioned' and then later actually used), and the usage map
     // logic does not like that.
     // This is part of the output of collection and hence only relevant for "used" items.
     // ("Mentioned" items are only considered internally during collection.)
@@ -694,8 +694,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             // have to instantiate all methods of the trait being cast to, so we
             // can build the appropriate vtable.
             mir::Rvalue::Cast(
-                mir::CastKind::PointerCoercion(PointerCoercion::Unsize, _)
-                | mir::CastKind::PointerCoercion(PointerCoercion::DynStar, _),
+                mir::CastKind::PointerCoercion(PointerCoercion::Unsize, _),
                 ref operand,
                 target_ty,
             ) => {
@@ -710,9 +709,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 // This could also be a different Unsize instruction, like
                 // from a fixed sized array to a slice. But we are only
                 // interested in things that produce a vtable.
-                if (target_ty.is_trait() && !source_ty.is_trait())
-                    || (target_ty.is_dyn_star() && !source_ty.is_dyn_star())
-                {
+                if target_ty.is_trait() && !source_ty.is_trait() {
                     create_mono_items_for_vtable_methods(
                         self.tcx,
                         target_ty,
@@ -834,6 +831,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 mir::AssertKind::NullPointerDereference => {
                     push_mono_lang_item(self, LangItem::PanicNullPointerDereference);
                 }
+                mir::AssertKind::InvalidEnumConstruction(_) => {
+                    push_mono_lang_item(self, LangItem::PanicInvalidEnumConstruction);
+                }
                 _ => {
                     push_mono_lang_item(self, msg.panic_function());
                 }
@@ -949,6 +949,9 @@ fn visit_instance_use<'tcx>(
         }
         ty::InstanceKind::DropGlue(_, None) => {
             // Don't need to emit noop drop glue if we are calling directly.
+            //
+            // Note that we also optimize away the call to visit_instance_use in vtable construction
+            // (see create_mono_items_for_vtable_methods).
             if !is_direct_call {
                 output.push(create_fn_mono_item(tcx, instance, source));
             }
@@ -1103,14 +1106,6 @@ fn find_tails_for_unsizing<'tcx>(
             find_tails_for_unsizing(tcx, source_field, target_field)
         }
 
-        // `T` as `dyn* Trait` unsizes *directly*.
-        //
-        // FIXME(dyn_star): This case is a bit awkward, b/c we're not really computing
-        // a tail here. We probably should handle this separately in the *caller* of
-        // this function, rather than returning something that is semantically different
-        // than what we return above.
-        (_, &ty::Dynamic(_, _, ty::DynStar)) => (source_ty, target_ty),
-
         _ => bug!(
             "find_vtable_types_for_unsizing: invalid coercion {:?} -> {:?}",
             source_ty,
@@ -1177,8 +1172,13 @@ fn create_mono_items_for_vtable_methods<'tcx>(
         output.extend(methods);
     }
 
-    // Also add the destructor.
-    visit_drop_use(tcx, impl_ty, false, source, output);
+    // Also add the destructor, if it's necessary.
+    //
+    // This matches the check in vtable_allocation_provider in middle/ty/vtable.rs,
+    // if we don't need drop we're not adding an actual pointer to the vtable.
+    if impl_ty.needs_drop(tcx, ty::TypingEnv::fully_monomorphized()) {
+        visit_drop_use(tcx, impl_ty, false, source, output);
+    }
 }
 
 /// Scans the CTFE alloc in order to find function pointers and statics that must be monomorphized.
@@ -1219,6 +1219,7 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
             ));
             collect_alloc(tcx, alloc_id, output)
         }
+        GlobalAlloc::TypeId { .. } => {}
     }
 }
 
@@ -1333,9 +1334,7 @@ fn visit_mentioned_item<'tcx>(
             // This could also be a different Unsize instruction, like
             // from a fixed sized array to a slice. But we are only
             // interested in things that produce a vtable.
-            if (target_ty.is_trait() && !source_ty.is_trait())
-                || (target_ty.is_dyn_star() && !source_ty.is_dyn_star())
-            {
+            if target_ty.is_trait() && !source_ty.is_trait() {
                 create_mono_items_for_vtable_methods(tcx, target_ty, source_ty, span, output);
             }
         }
@@ -1481,12 +1480,14 @@ impl<'v> RootCollector<'_, 'v> {
                 // Const items only generate mono items if they are actually used somewhere.
                 // Just declaring them is insufficient.
 
-                // But even just declaring them must collect the items they refer to
-                // unless their generics require monomorphization.
-                if !self.tcx.generics_of(id.owner_id).own_requires_monomorphization()
-                    && let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id())
-                {
-                    collect_const_value(self.tcx, val, self.output);
+                // If we're collecting items eagerly, then recurse into all constants.
+                // Otherwise the value is only collected when explicitly mentioned in other items.
+                if self.strategy == MonoItemCollectionStrategy::Eager {
+                    if !self.tcx.generics_of(id.owner_id).own_requires_monomorphization()
+                        && let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id())
+                    {
+                        collect_const_value(self.tcx, val, self.output);
+                    }
                 }
             }
             DefKind::Impl { .. } => {

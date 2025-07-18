@@ -1,0 +1,75 @@
+error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:37:8
+   |
+LL | extern "msp430-interrupt" fn msp430() {}
+   |        ^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:41:8
+   |
+LL | extern "riscv-interrupt-m" fn riscv_m() {}
+   |        ^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "riscv-interrupt-s" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:43:8
+   |
+LL | extern "riscv-interrupt-s" fn riscv_s() {}
+   |        ^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "x86-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:45:8
+   |
+LL | extern "x86-interrupt" fn x86() {}
+   |        ^^^^^^^^^^^^^^^
+
+error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:70:25
+   |
+LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
+   |                         ^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:76:26
+   |
+LL | fn riscv_m_ptr(f: extern "riscv-interrupt-m" fn()) {
+   |                          ^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "riscv-interrupt-s" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:82:26
+   |
+LL | fn riscv_s_ptr(f: extern "riscv-interrupt-s" fn()) {
+   |                          ^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "x86-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:88:22
+   |
+LL | fn x86_ptr(f: extern "x86-interrupt" fn()) {
+   |                      ^^^^^^^^^^^^^^^
+
+error: functions with the "avr-interrupt" ABI cannot be called
+  --> $DIR/cannot-be-called.rs:50:5
+   |
+LL |     avr();
+   |     ^^^^^
+   |
+note: an `extern "avr-interrupt"` function can only be called using inline assembly
+  --> $DIR/cannot-be-called.rs:50:5
+   |
+LL |     avr();
+   |     ^^^^^
+
+error: functions with the "avr-interrupt" ABI cannot be called
+  --> $DIR/cannot-be-called.rs:66:5
+   |
+LL |     f()
+   |     ^^^
+   |
+note: an `extern "avr-interrupt"` function can only be called using inline assembly
+  --> $DIR/cannot-be-called.rs:66:5
+   |
+LL |     f()
+   |     ^^^
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0570`.

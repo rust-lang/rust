@@ -314,7 +314,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let span = this.machine.current_span();
 
         // Store initial permissions and their corresponding range.
-        let mut perms_map: RangeMap<LocationState> = RangeMap::new(
+        let mut perms_map: DedupRangeMap<LocationState> = DedupRangeMap::new(
             ptr_size,
             LocationState::new_accessed(Permission::new_disabled(), IdempotentForeignAccess::None), // this will be overwritten
         );
@@ -468,10 +468,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // - when `extern type` is involved we use the size of the known prefix,
         // - if the pointer is not reborrowed (raw pointer) then we override the size
         //   to do a zero-length reborrow.
-        let reborrow_size = this
-            .size_and_align_of_mplace(place)?
-            .map(|(size, _)| size)
-            .unwrap_or(place.layout.size);
+        let reborrow_size =
+            this.size_and_align_of_val(place)?.map(|(size, _)| size).unwrap_or(place.layout.size);
         trace!("Creating new permission: {:?} with size {:?}", new_perm, reborrow_size);
 
         // This new tag is not guaranteed to actually be used.

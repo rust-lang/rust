@@ -453,3 +453,15 @@ fn const_in_pattern(x: Option<(i32, i32)>) -> Option<()> {
 
     None
 }
+
+fn issue_13642(x: Option<i32>) -> Option<()> {
+    let Some(x) = x else {
+        #[cfg(false)]
+        panic!();
+
+        #[cfg(true)]
+        return None;
+    };
+
+    None
+}

@@ -2,7 +2,9 @@ error[E0283]: type annotations needed
   --> $DIR/auto-trait-selection.rs:15:16
    |
 LL |     if false { is_trait(foo()) } else { Default::default() }
-   |                ^^^^^^^^ cannot infer type of the type parameter `U` declared on the function `is_trait`
+   |                ^^^^^^^^ ----- type must be known at this point
+   |                |
+   |                cannot infer type of the type parameter `U` declared on the function `is_trait`
    |
 note: multiple `impl`s satisfying `impl Sized: Trait<_>` found
   --> $DIR/auto-trait-selection.rs:12:1

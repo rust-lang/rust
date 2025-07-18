@@ -34,6 +34,9 @@ declare_clippy_lint! {
     ///     { path = "std::vec::Vec::leak", reason = "no leaking memory" },
     ///     # Can also add a `replacement` that will be offered as a suggestion.
     ///     { path = "std::sync::Mutex::new", reason = "prefer faster & simpler non-poisonable mutex", replacement = "parking_lot::Mutex::new" },
+    ///     # This would normally error if the path is incorrect, but with `allow-invalid` = `true`,
+    ///     # it will be silently ignored
+    ///     { path = "std::fs::InvalidPath", reason = "use alternative instead", allow-invalid = true },
     /// ]
     /// ```
     ///

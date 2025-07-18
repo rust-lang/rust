@@ -10,7 +10,7 @@ use crate::mem::ManuallyDrop;
 use crate::num::NonZero;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{hint, io};
 
 pub struct Thread {
@@ -202,6 +202,14 @@ impl Thread {
     pub fn sleep(dur: Duration) {
         for timeout in dur2reltims(dur) {
             expect_success(unsafe { abi::dly_tsk(timeout) }, &"dly_tsk");
+        }
+    }
+
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
         }
     }
 

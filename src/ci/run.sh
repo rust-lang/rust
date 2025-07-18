@@ -86,13 +86,12 @@ fi
 # space required for CI artifacts.
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --dist-compression-formats=xz"
 
-if [ "$EXTERNAL_LLVM" = "1" ]; then
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.lld=false"
-fi
-
 # Enable the `c` feature for compiler_builtins, but only when the `compiler-rt` source is available
 # (to avoid spending a lot of time cloning llvm)
 if [ "$EXTERNAL_LLVM" = "" ]; then
+  # Enable building & shipping lld
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.lld=true"
+
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.optimized-compiler-builtins"
   # Likewise, only demand we test all LLVM components if we know we built LLVM with them
   export COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS=1
@@ -134,6 +133,11 @@ if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
 
   CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm}"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=$CODEGEN_BACKENDS"
+
+  # Unless explicitly disabled, we want rustc debug assertions on the -alt builds
+  if [ "$DEPLOY_ALT" != "" ] && [ "$NO_DEBUG_ASSERTIONS" = "" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-debug-assertions"
+  fi
 else
   # We almost always want debug assertions enabled, but sometimes this takes too
   # long for too little benefit, so we just turn them off.

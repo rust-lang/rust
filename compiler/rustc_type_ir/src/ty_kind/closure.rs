@@ -342,7 +342,7 @@ struct HasRegionsBoundAt {
 // FIXME: Could be optimized to not walk into components with no escaping bound vars.
 impl<I: Interner> TypeVisitor<I> for HasRegionsBoundAt {
     type Result = ControlFlow<()>;
-    fn visit_binder<T: TypeFoldable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
+    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
         self.binder.shift_in(1);
         t.super_visit_with(self)?;
         self.binder.shift_out(1);

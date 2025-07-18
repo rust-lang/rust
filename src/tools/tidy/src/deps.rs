@@ -206,6 +206,7 @@ const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
     ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
     ("wasmtime-jit-icache-coherence", "Apache-2.0 WITH LLVM-exception"),
+    ("wasmtime-math", "Apache-2.0 WITH LLVM-exception"),
     // tidy-alphabetical-end
 ];
 
@@ -356,6 +357,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rand",
     "rand_chacha",
     "rand_core",
+    "rand_xorshift", // dependency for doc-tests in rustc_thread_pool
     "rand_xoshiro",
     "redox_syscall",
     "regex",
@@ -364,7 +366,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rustc-demangle",
     "rustc-hash",
     "rustc-literal-escaper",
-    "rustc-rayon-core",
     "rustc-stable-hash",
     "rustc_apfloat",
     "rustix",
@@ -373,6 +374,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "scoped-tls",
     "scopeguard",
     "self_cell",
+    "semver",
     "serde",
     "serde_derive",
     "serde_json",
@@ -537,6 +539,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "indexmap",
     "libc",
     "libloading",
+    "libm",
     "log",
     "mach2",
     "memchr",
@@ -554,6 +557,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "target-lexicon",
     "unicode-ident",
     "wasmtime-jit-icache-coherence",
+    "wasmtime-math",
     "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",
@@ -620,7 +624,7 @@ fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, bad: &mut b
     let is_proc_macro_pkg = |pkg: &Package| pkg.targets.iter().any(|target| target.is_proc_macro());
 
     let mut proc_macro_deps = HashSet::new();
-    for pkg in metadata.packages.iter().filter(|pkg| is_proc_macro_pkg(*pkg)) {
+    for pkg in metadata.packages.iter().filter(|pkg| is_proc_macro_pkg(pkg)) {
         deps_of(&metadata, &pkg.id, &mut proc_macro_deps);
     }
     // Remove the proc-macro crates themselves

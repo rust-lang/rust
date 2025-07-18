@@ -5,12 +5,13 @@ LL | impl<'q, Q, I, F> A for TestB<Q, F>
    |             ^ unconstrained type parameter
 
 error[E0309]: the parameter type `F` may not live long enough
-  --> $DIR/issue-88526.rs:16:18
+  --> $DIR/issue-88526.rs:16:5
    |
 LL |     type I<'a> = &'a F;
-   |            --    ^^^^^ ...so that the reference type `&'a F` does not outlive the data it points at
-   |            |
-   |            the parameter type `F` must be valid for the lifetime `'a` as defined here...
+   |     ^^^^^^^--^
+   |     |      |
+   |     |      the parameter type `F` must be valid for the lifetime `'a` as defined here...
+   |     ...so that the reference type `&'a F` does not outlive the data it points at
    |
 help: consider adding an explicit lifetime bound
    |

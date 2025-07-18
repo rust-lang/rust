@@ -34,4 +34,5 @@ windows-sys = { version = "0.59", features = [
     "Wdk_Storage_FileSystem",
 ] }
 
+# Make sure we are not part of the rustc workspace.
 [workspace]

@@ -210,6 +210,9 @@ pub trait CommandExt: Sealed {
     /// intentional difference from the underlying `chroot` system call.)
     #[unstable(feature = "process_chroot", issue = "141298")]
     fn chroot<P: AsRef<Path>>(&mut self, dir: P) -> &mut process::Command;
+
+    #[unstable(feature = "process_setsid", issue = "105376")]
+    fn setsid(&mut self, setsid: bool) -> &mut process::Command;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -258,6 +261,11 @@ impl CommandExt for process::Command {
 
     fn chroot<P: AsRef<Path>>(&mut self, dir: P) -> &mut process::Command {
         self.as_inner_mut().chroot(dir.as_ref());
+        self
+    }
+
+    fn setsid(&mut self, setsid: bool) -> &mut process::Command {
+        self.as_inner_mut().setsid(setsid);
         self
     }
 }
@@ -375,6 +383,41 @@ impl ExitStatusExt for process::ExitStatusError {
 
     fn into_raw(self) -> i32 {
         self.into_status().into_raw()
+    }
+}
+
+#[unstable(feature = "unix_send_signal", issue = "141975")]
+pub trait ChildExt: Sealed {
+    /// Sends a signal to a child process.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the signal is invalid. The integer values associated
+    /// with signals are implementation-specific, so it's encouraged to use a crate that provides
+    /// posix bindings.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(unix_send_signal)]
+    ///
+    /// use std::{io, os::unix::process::ChildExt, process::{Command, Stdio}};
+    ///
+    /// use libc::SIGTERM;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let child = Command::new("cat").stdin(Stdio::piped()).spawn()?;
+    ///     child.send_signal(SIGTERM)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    fn send_signal(&self, signal: i32) -> io::Result<()>;
+}
+
+#[unstable(feature = "unix_send_signal", issue = "141975")]
+impl ChildExt for process::Child {
+    fn send_signal(&self, signal: i32) -> io::Result<()> {
+        self.handle.send_signal(signal)
     }
 }
 

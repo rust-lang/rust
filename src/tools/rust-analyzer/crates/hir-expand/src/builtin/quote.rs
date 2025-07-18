@@ -129,7 +129,7 @@ macro_rules! quote {
         }
     }
 }
-pub(super) use quote;
+pub use quote;
 
 pub trait ToTokenTree {
     fn to_tokens(self, span: Span, builder: &mut TopSubtreeBuilder);
@@ -277,8 +277,8 @@ mod tests {
         assert_eq!(quoted.to_string(), "hello");
         let t = format!("{quoted:#?}");
         expect![[r#"
-            SUBTREE $$ 937550:0@0..0#ROOT2024 937550:0@0..0#ROOT2024
-              IDENT   hello 937550:0@0..0#ROOT2024"#]]
+            SUBTREE $$ 937550:Root[0000, 0]@0..0#ROOT2024 937550:Root[0000, 0]@0..0#ROOT2024
+              IDENT   hello 937550:Root[0000, 0]@0..0#ROOT2024"#]]
         .assert_eq(&t);
     }
 

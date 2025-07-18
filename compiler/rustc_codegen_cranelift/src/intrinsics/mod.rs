@@ -812,21 +812,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
             dest.write_cvalue(fx, val);
         }
 
-        sym::needs_drop | sym::type_id | sym::type_name | sym::variant_count => {
-            intrinsic_args!(fx, args => (); intrinsic);
-
-            let const_val = fx
-                .tcx
-                .const_eval_instance(
-                    ty::TypingEnv::fully_monomorphized(),
-                    instance,
-                    source_info.span,
-                )
-                .unwrap();
-            let val = crate::constant::codegen_const_value(fx, const_val, ret.layout().ty);
-            ret.write_cvalue(fx, val);
-        }
-
         sym::ptr_offset_from | sym::ptr_offset_from_unsigned => {
             intrinsic_args!(fx, args => (ptr, base); intrinsic);
             let ptr = ptr.load_scalar(fx);

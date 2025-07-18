@@ -570,6 +570,10 @@ fn simd_round() {
         f32x4::from_array([1.0, 1.0, 2.0, -5.0])
     );
     assert_eq!(
+        unsafe { intrinsics::simd_round_ties_even(f32x4::from_array([0.9, 1.001, 2.0, -4.5])) },
+        f32x4::from_array([1.0, 1.0, 2.0, -4.0])
+    );
+    assert_eq!(
         f32x4::from_array([0.9, 1.001, 2.0, -4.5]).trunc(),
         f32x4::from_array([0.0, 1.0, 2.0, -4.0])
     );
@@ -585,6 +589,10 @@ fn simd_round() {
     assert_eq!(
         f64x4::from_array([0.9, 1.001, 2.0, -4.5]).round(),
         f64x4::from_array([1.0, 1.0, 2.0, -5.0])
+    );
+    assert_eq!(
+        unsafe { intrinsics::simd_round_ties_even(f64x4::from_array([0.9, 1.001, 2.0, -4.5])) },
+        f64x4::from_array([1.0, 1.0, 2.0, -4.0])
     );
     assert_eq!(
         f64x4::from_array([0.9, 1.001, 2.0, -4.5]).trunc(),

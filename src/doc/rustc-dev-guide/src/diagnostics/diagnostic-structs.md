@@ -1,14 +1,18 @@
 # Diagnostic and subdiagnostic structs
 rustc has three diagnostic traits that can be used to create diagnostics:
-`Diagnostic`, `LintDiagnostic`, and `Subdiagnostic`. For simple diagnostics,
-instead of using the `Diag` API to create and emit diagnostics,
-derived impls can be used. They are only suitable for simple diagnostics that
+`Diagnostic`, `LintDiagnostic`, and `Subdiagnostic`.
+
+For simple diagnostics,
+derived impls can be used, e.g. `#[derive(Diagnostic)]`. They are only suitable for simple diagnostics that
 don't require much logic in deciding whether or not to add additional
 subdiagnostics.
 
-Such diagnostic can be translated into
-different languages and each has a slug that uniquely identifies the
-diagnostic.
+In cases where diagnostics require more complex or dynamic behavior, such as conditionally adding subdiagnostics,
+customizing the rendering logic, or selecting messages at runtime, you will need to manually implement
+the corresponding trait (`Diagnostic`, `LintDiagnostic`, or `Subdiagnostic`).
+This approach provides greater flexibility and is recommended for diagnostics that go beyond simple, static structures.
+
+Diagnostic can be translated into different languages and each has a slug that uniquely identifies the diagnostic.
 
 ## `#[derive(Diagnostic)]` and `#[derive(LintDiagnostic)]`
 
@@ -142,7 +146,7 @@ tcx.dcx().emit_err(FieldAlreadyDeclared {
 });
 ```
 
-### Reference
+### Reference for `#[derive(Diagnostic)]` and `#[derive(LintDiagnostic)]`
 `#[derive(Diagnostic)]` and `#[derive(LintDiagnostic)]` support the
 following attributes:
 
@@ -330,7 +334,34 @@ function ([example][subdiag_use_1] and [example][subdiag_use_2]) on a
 diagnostic or by assigning it to a `#[subdiagnostic]`-annotated field of a
 diagnostic struct.
 
-### Reference
+### Argument sharing and isolation
+
+Subdiagnostics add their own arguments (i.e., certain fields in their structure) to the `Diag` structure before rendering the information.
+`Diag` structure also stores the arguments from the main diagnostic, so the subdiagnostic can also use the arguments from the main diagnostic.
+
+However, when a subdiagnostic is added to a main diagnostic by implementing `#[derive(Subdiagnostic)]`,
+the following rules, introduced in [rust-lang/rust#142724](https://github.com/rust-lang/rust/pull/142724)
+apply to the handling of arguments (i.e., variables used in Fluent messages):
+
+**Argument isolation between sub diagnostics**:
+Arguments set by a subdiagnostic are only available during the rendering of that subdiagnostic.
+After the subdiagnostic is rendered, all arguments it introduced are restored from the main diagnostic.
+This ensures that multiple subdiagnostics do not pollute each other's argument scope.
+For example, when using a `Vec<Subdiag>`, it iteratively adds the same argument over and over again.
+
+**Same argument override between sub and main diagnostics**:
+If a subdiagnostic sets a argument with the same name as a arguments already in the main diagnostic,
+it will report an error at runtime unless both have exactly the same value.
+It has two benefits:
+- preserves the flexibility that arguments in the main diagnostic are allowed to appear in the attributes of the subdiagnostic.
+For example, There is an attribute `#[suggestion(code = "{new_vis}")]` in the subdiagnostic, but `new_vis` is the field in the main diagnostic struct.
+- prevents accidental overwriting or deletion of arguments required by the main diagnostic or other subdiagnostics.
+
+These rules guarantee that arguments injected by subdiagnostics are strictly scoped to their own rendering.
+The main diagnostic's arguments remain unaffected by subdiagnostic logic, even in the presence of name collisions.
+Additionally, subdiagnostics can access arguments from the main diagnostic with the same name when needed.
+
+### Reference for `#[derive(Subdiagnostic)]`
 `#[derive(Subdiagnostic)]` supports the following attributes:
 
 - `#[label(slug)]`, `#[help(slug)]`, `#[warning(slug)]` or `#[note(slug)]`

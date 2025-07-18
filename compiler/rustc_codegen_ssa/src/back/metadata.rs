@@ -301,7 +301,7 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
                 "n32" if !is_32bit => e_flags |= elf::EF_MIPS_ABI2,
                 "n64" if !is_32bit => {}
                 "" if is_32bit => e_flags |= elf::EF_MIPS_ABI_O32,
-                "" => sess.dcx().fatal("LLVM ABI must be specifed for 64-bit MIPS targets"),
+                "" => sess.dcx().fatal("LLVM ABI must be specified for 64-bit MIPS targets"),
                 s if is_32bit => {
                     sess.dcx().fatal(format!("invalid LLVM ABI `{}` for 32-bit MIPS target", s))
                 }
@@ -378,6 +378,24 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
                 _ => elf::EF_CSKY_ABIV1,
             };
             e_flags
+        }
+        Architecture::PowerPc64 => {
+            const EF_PPC64_ABI_UNKNOWN: u32 = 0;
+            const EF_PPC64_ABI_ELF_V1: u32 = 1;
+            const EF_PPC64_ABI_ELF_V2: u32 = 2;
+
+            match sess.target.options.llvm_abiname.as_ref() {
+                // If the flags do not correctly indicate the ABI,
+                // linkers such as ld.lld assume that the ppc64 object files are always ELFv2
+                // which leads to broken binaries if ELFv1 is used for the object files.
+                "elfv1" => EF_PPC64_ABI_ELF_V1,
+                "elfv2" => EF_PPC64_ABI_ELF_V2,
+                "" if sess.target.options.binary_format.to_object() == BinaryFormat::Elf => {
+                    bug!("No ABI specified for this PPC64 ELF target");
+                }
+                // Fall back
+                _ => EF_PPC64_ABI_UNKNOWN,
+            }
         }
         _ => 0,
     }

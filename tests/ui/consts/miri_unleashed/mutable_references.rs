@@ -26,7 +26,7 @@ const BLUNT: &mut i32 = &mut 42;
 //~^ ERROR: pointing to read-only memory
 
 const SUBTLE: &mut i32 = unsafe {
-    //~^ ERROR: constructing invalid value: encountered reference to mutable memory in `const`
+    //~^ ERROR: encountered mutable reference
     static mut STATIC: i32 = 0;
     &mut STATIC
 };
@@ -65,7 +65,10 @@ static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as 
 // # Check for consts pointing to mutable memory
 
 static mut MUTABLE: i32 = 42;
-const POINTS_TO_MUTABLE: &i32 = unsafe { &MUTABLE }; //~ ERROR encountered reference to mutable memory
+const POINTS_TO_MUTABLE: &i32 = unsafe { &MUTABLE }; // OK, as long as it is not used as a pattern.
+
+// This fails since `&*MUTABLE_REF` is basically a copy of `MUTABLE_REF`, but we
+// can't read from that static as it is mutable.
 static mut MUTABLE_REF: &mut i32 = &mut 42;
 const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
 //~^ ERROR accesses mutable global memory

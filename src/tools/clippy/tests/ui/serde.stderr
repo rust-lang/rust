@@ -5,10 +5,7 @@ LL | /     fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
 LL | |
 LL | |     where
 LL | |         E: serde::de::Error,
-LL | |     {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
+   | |____________________________^
    |
    = note: `-D clippy::serde-api-misuse` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::serde_api_misuse)]`

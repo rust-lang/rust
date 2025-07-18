@@ -28,7 +28,7 @@ pub fn run(port: u16, lint: Option<String>) -> ! {
         .map(mtime);
 
         if times.iter().any(|&time| index_time < time) {
-            Command::new(env::var("CARGO").unwrap_or("cargo".into()))
+            Command::new(env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
                 .arg("collect-metadata")
                 .spawn()
                 .unwrap()

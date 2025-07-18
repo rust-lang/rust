@@ -1,0 +1,36 @@
+[
+    FileSymbol {
+        name: "Foo",
+        def: Adt(
+            Struct(
+                Struct {
+                    id: StructId(
+                        3800,
+                    ),
+                },
+            ),
+        ),
+        loc: DeclarationLocation {
+            hir_file_id: FileId(
+                EditionedFileId(
+                    Id(2001),
+                ),
+            ),
+            ptr: SyntaxNodePtr {
+                kind: STRUCT,
+                range: 0..15,
+            },
+            name_ptr: AstPtr(
+                SyntaxNodePtr {
+                    kind: NAME,
+                    range: 11..14,
+                },
+            ),
+        },
+        container_name: None,
+        is_alias: false,
+        is_assoc: false,
+        is_import: false,
+        do_not_complete: Yes,
+    },
+]

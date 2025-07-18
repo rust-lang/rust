@@ -27,6 +27,7 @@ chrono = { version = "0.4.38", default-features = false }
 chrono-tz = "0.10"
 directories = "6"
 bitflags = "2.6"
+serde_json = { version = "1.0", optional = true }
 
 # Copied from `compiler/rustc/Cargo.toml`.
 # But only for some targets, it fails for others. Rustc configures this in its CI, but we can't
@@ -39,6 +40,12 @@ features = ['unprefixed_malloc_on_supported_platforms']
 libc = "0.2"
 libffi = "4.0.0"
 libloading = "0.8"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = { version = "0.30.1", features = ["mman", "ptrace", "signal"] }
+ipc-channel = "0.19.0"
+serde = { version = "1.0.219", features = ["derive"] }
+capstone = "0.13"
 
 [dev-dependencies]
 ui_test = "0.29.1"
@@ -61,10 +68,10 @@ default = ["stack-cache"]
 genmc = []
 stack-cache = []
 stack-cache-consistency-check = ["stack-cache"]
+tracing = ["serde_json"]
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = ['cfg(bootstrap)']
 
 # Be aware that this file is inside a workspace when used via the
 # submodule in the rustc repo. That means there are many cargo features

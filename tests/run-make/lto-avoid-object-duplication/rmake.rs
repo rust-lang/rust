@@ -8,6 +8,7 @@
 // This test makes sure that functions defined in the upstream crates do not
 // appear twice in the final staticlib when listing all the symbols from it.
 
+//@ needs-target-std
 //@ ignore-windows
 // Reason: `llvm-objdump`'s output looks different on windows than on other platforms.
 // Only checking on Unix platforms should suffice.

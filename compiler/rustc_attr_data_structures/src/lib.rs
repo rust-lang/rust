@@ -1,3 +1,7 @@
+//! Data structures for representing parsed attributes in the Rust compiler.
+//! For detailed documentation about attribute processing,
+//! see [rustc_attr_parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html).
+
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![doc(rust_logo)]
@@ -5,6 +9,7 @@
 // tidy-alphabetical-end
 
 mod attributes;
+mod encode_cross_crate;
 mod stability;
 mod version;
 
@@ -13,6 +18,7 @@ pub mod lints;
 use std::num::NonZero;
 
 pub use attributes::*;
+pub use encode_cross_crate::EncodeCrossCrate;
 use rustc_abi::Align;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{AttrStyle, IntTy, UintTy};
@@ -41,6 +47,16 @@ pub trait PrintAttribute {
     fn should_render(&self) -> bool;
 
     fn print_attribute(&self, p: &mut Printer);
+}
+
+impl PrintAttribute for u128 {
+    fn should_render(&self) -> bool {
+        true
+    }
+
+    fn print_attribute(&self, p: &mut Printer) {
+        p.word(self.to_string())
+    }
 }
 
 impl<T: PrintAttribute> PrintAttribute for &T {

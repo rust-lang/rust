@@ -181,7 +181,7 @@ fn rm_rf(path: &Path) {
             panic!("failed to get metadata for file {}: {}", path.display(), e);
         }
         Ok(metadata) => {
-            if metadata.file_type().is_file() || metadata.file_type().is_symlink() {
+            if !metadata.file_type().is_dir() {
                 do_op(path, "remove file", |p| match fs::remove_file(p) {
                     #[cfg(windows)]
                     Err(e)

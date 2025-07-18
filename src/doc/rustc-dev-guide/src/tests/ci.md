@@ -66,8 +66,8 @@ kinds of builds (sets of jobs).
 ### Pull Request builds
 
 After each push to a pull request, a set of `pr` jobs are executed. Currently,
-these execute the `x86_64-gnu-llvm-X`, `x86_64-gnu-tools`, `mingw-check-1`, `mingw-check-2`
-and `mingw-check-tidy` jobs, all running on Linux. These execute a relatively short
+these execute the `x86_64-gnu-llvm-X`, `x86_64-gnu-tools`, `pr-check-1`, `pr-check-2`
+and `tidy` jobs, all running on Linux. These execute a relatively short
 (~40 minutes) and lightweight test suite that should catch common issues. More
 specifically, they run a set of lints, they try to perform a cross-compile check
 build to Windows mingw (without producing any artifacts) and they test the
@@ -147,6 +147,13 @@ Each pattern can either be an exact name of a job or a glob pattern that matches
 for example `*msvc*` or `*-alt`. You can start at most 20 jobs in a single try build. When using
 glob patterns, you might want to wrap them in backticks (`` ` ``) to avoid GitHub rendering
 the pattern as Markdown.
+
+The job pattern needs to match one or more jobs defined in the `auto` or `optional` sections
+of [`jobs.yml`]:
+
+- `auto` jobs are executed before a commit is merged into the `master` branch.
+- `optional` jobs are executed only when explicitly requested via a try build.
+  They are typically used for tier 2 and tier 3 targets.
 
 > **Using `try-job` PR description directives**
 >

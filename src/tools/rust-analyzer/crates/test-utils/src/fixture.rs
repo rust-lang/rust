@@ -412,23 +412,39 @@ impl MiniCore {
         }
 
         let mut active_regions = Vec::new();
+        let mut inactive_regions = Vec::new();
         let mut seen_regions = Vec::new();
         for line in lines {
             let trimmed = line.trim();
             if let Some(region) = trimmed.strip_prefix("// region:") {
-                active_regions.push(region);
-                continue;
+                if let Some(region) = region.strip_prefix('!') {
+                    inactive_regions.push(region);
+                    continue;
+                } else {
+                    active_regions.push(region);
+                    continue;
+                }
             }
             if let Some(region) = trimmed.strip_prefix("// endregion:") {
-                let prev = active_regions.pop().unwrap();
+                let (prev, region) = if let Some(region) = region.strip_prefix('!') {
+                    (inactive_regions.pop().unwrap(), region)
+                } else {
+                    (active_regions.pop().unwrap(), region)
+                };
                 assert_eq!(prev, region, "unbalanced region pairs");
                 continue;
             }
 
-            let mut line_region = false;
-            if let Some(idx) = trimmed.find("// :") {
-                line_region = true;
-                active_regions.push(&trimmed[idx + "// :".len()..]);
+            let mut active_line_region = 0;
+            let mut inactive_line_region = 0;
+            if let Some(idx) = trimmed.find("// :!") {
+                let regions = trimmed[idx + "// :!".len()..].split(", ");
+                inactive_line_region += regions.clone().count();
+                inactive_regions.extend(regions);
+            } else if let Some(idx) = trimmed.find("// :") {
+                let regions = trimmed[idx + "// :".len()..].split(", ");
+                active_line_region += regions.clone().count();
+                active_regions.extend(regions);
             }
 
             let mut keep = true;
@@ -438,17 +454,29 @@ impl MiniCore {
                 seen_regions.push(region);
                 keep &= self.has_flag(region);
             }
+            for &region in &inactive_regions {
+                assert!(!region.starts_with(' '), "region marker starts with a space: {region:?}");
+                self.assert_valid_flag(region);
+                seen_regions.push(region);
+                keep &= !self.has_flag(region);
+            }
 
             if keep {
                 buf.push_str(line);
             }
-            if line_region {
-                active_regions.pop().unwrap();
+            if active_line_region > 0 {
+                active_regions.drain(active_regions.len() - active_line_region..);
+            }
+            if inactive_line_region > 0 {
+                inactive_regions.drain(inactive_regions.len() - active_line_region..);
             }
         }
 
         if !active_regions.is_empty() {
             panic!("unclosed regions: {active_regions:?} Add an `endregion` comment");
+        }
+        if !inactive_regions.is_empty() {
+            panic!("unclosed regions: {inactive_regions:?} Add an `endregion` comment");
         }
 
         for flag in &self.valid_flags {

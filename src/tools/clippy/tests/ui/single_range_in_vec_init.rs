@@ -2,7 +2,6 @@
 //@no-rustfix: overlapping suggestions
 #![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::useless_vec, unused)]
 #![warn(clippy::single_range_in_vec_init)]
-#![feature(generic_arg_infer)]
 
 #[macro_use]
 extern crate proc_macros;

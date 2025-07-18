@@ -2,8 +2,7 @@ use ide_db::source_change::SourceChangeBuilder;
 use itertools::Itertools;
 use syntax::{
     NodeOrToken, SyntaxToken, T, TextRange, algo,
-    ast::{self, AstNode, make},
-    ted::{self, Position},
+    ast::{self, AstNode, make, syntax_factory::SyntaxFactory},
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -173,40 +172,45 @@ fn wrap_derive(
         }
     }
     let handle_source_change = |edit: &mut SourceChangeBuilder| {
-        let new_derive = make::attr_outer(make::meta_token_tree(
-            make::ext::ident_path("derive"),
-            make::token_tree(T!['('], new_derive),
-        ))
-        .clone_for_update();
-        let meta = make::meta_token_tree(
-            make::ext::ident_path("cfg_attr"),
-            make::token_tree(
+        let make = SyntaxFactory::with_mappings();
+        let mut editor = edit.make_editor(attr.syntax());
+        let new_derive = make.attr_outer(
+            make.meta_token_tree(make.ident_path("derive"), make.token_tree(T!['('], new_derive)),
+        );
+        let meta = make.meta_token_tree(
+            make.ident_path("cfg_attr"),
+            make.token_tree(
                 T!['('],
                 vec![
-                    NodeOrToken::Token(make::token(T![,])),
-                    NodeOrToken::Token(make::tokens::whitespace(" ")),
-                    NodeOrToken::Token(make::tokens::ident("derive")),
-                    NodeOrToken::Node(make::token_tree(T!['('], cfg_derive_tokens)),
+                    NodeOrToken::Token(make.token(T![,])),
+                    NodeOrToken::Token(make.whitespace(" ")),
+                    NodeOrToken::Token(make.ident("derive")),
+                    NodeOrToken::Node(make.token_tree(T!['('], cfg_derive_tokens)),
                 ],
             ),
         );
-        // Remove the derive attribute
-        let edit_attr = edit.make_syntax_mut(attr.syntax().clone());
 
-        ted::replace(edit_attr, new_derive.syntax().clone());
-        let cfg_attr = make::attr_outer(meta).clone_for_update();
-
-        ted::insert_all_raw(
-            Position::after(new_derive.syntax().clone()),
-            vec![make::tokens::whitespace("\n").into(), cfg_attr.syntax().clone().into()],
+        let cfg_attr = make.attr_outer(meta);
+        editor.replace_with_many(
+            attr.syntax(),
+            vec![
+                new_derive.syntax().clone().into(),
+                make.whitespace("\n").into(),
+                cfg_attr.syntax().clone().into(),
+            ],
         );
+
         if let Some(snippet_cap) = ctx.config.snippet_cap {
             if let Some(first_meta) =
                 cfg_attr.meta().and_then(|meta| meta.token_tree()).and_then(|tt| tt.l_paren_token())
             {
-                edit.add_tabstop_after_token(snippet_cap, first_meta)
+                let tabstop = edit.make_tabstop_after(snippet_cap);
+                editor.add_annotation(first_meta, tabstop);
             }
         }
+
+        editor.add_mappings(make.finish_with_mappings());
+        edit.add_file_edits(ctx.vfs_file_id(), editor);
     };
 
     acc.add(
@@ -221,10 +225,10 @@ fn wrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>, attr: ast::Attr) ->
     let range = attr.syntax().text_range();
     let path = attr.path()?;
     let handle_source_change = |edit: &mut SourceChangeBuilder| {
-        let mut raw_tokens = vec![
-            NodeOrToken::Token(make::token(T![,])),
-            NodeOrToken::Token(make::tokens::whitespace(" ")),
-        ];
+        let make = SyntaxFactory::with_mappings();
+        let mut editor = edit.make_editor(attr.syntax());
+        let mut raw_tokens =
+            vec![NodeOrToken::Token(make.token(T![,])), NodeOrToken::Token(make.whitespace(" "))];
         path.syntax().descendants_with_tokens().for_each(|it| {
             if let NodeOrToken::Token(token) = it {
                 raw_tokens.push(NodeOrToken::Token(token));
@@ -232,9 +236,9 @@ fn wrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>, attr: ast::Attr) ->
         });
         if let Some(meta) = attr.meta() {
             if let (Some(eq), Some(expr)) = (meta.eq_token(), meta.expr()) {
-                raw_tokens.push(NodeOrToken::Token(make::tokens::whitespace(" ")));
+                raw_tokens.push(NodeOrToken::Token(make.whitespace(" ")));
                 raw_tokens.push(NodeOrToken::Token(eq));
-                raw_tokens.push(NodeOrToken::Token(make::tokens::whitespace(" ")));
+                raw_tokens.push(NodeOrToken::Token(make.whitespace(" ")));
 
                 expr.syntax().descendants_with_tokens().for_each(|it| {
                     if let NodeOrToken::Token(token) = it {
@@ -245,26 +249,24 @@ fn wrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>, attr: ast::Attr) ->
                 raw_tokens.extend(tt.token_trees_and_tokens());
             }
         }
-        let meta = make::meta_token_tree(
-            make::ext::ident_path("cfg_attr"),
-            make::token_tree(T!['('], raw_tokens),
-        );
-        let cfg_attr = if attr.excl_token().is_some() {
-            make::attr_inner(meta)
-        } else {
-            make::attr_outer(meta)
-        }
-        .clone_for_update();
-        let attr_syntax = edit.make_syntax_mut(attr.syntax().clone());
-        ted::replace(attr_syntax, cfg_attr.syntax());
+        let meta =
+            make.meta_token_tree(make.ident_path("cfg_attr"), make.token_tree(T!['('], raw_tokens));
+        let cfg_attr =
+            if attr.excl_token().is_some() { make.attr_inner(meta) } else { make.attr_outer(meta) };
+
+        editor.replace(attr.syntax(), cfg_attr.syntax());
 
         if let Some(snippet_cap) = ctx.config.snippet_cap {
             if let Some(first_meta) =
                 cfg_attr.meta().and_then(|meta| meta.token_tree()).and_then(|tt| tt.l_paren_token())
             {
-                edit.add_tabstop_after_token(snippet_cap, first_meta)
+                let tabstop = edit.make_tabstop_after(snippet_cap);
+                editor.add_annotation(first_meta, tabstop);
             }
         }
+
+        editor.add_mappings(make.finish_with_mappings());
+        edit.add_file_edits(ctx.vfs_file_id(), editor);
     };
     acc.add(
         AssistId::refactor("wrap_unwrap_cfg_attr"),

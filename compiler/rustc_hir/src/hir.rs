@@ -7,7 +7,7 @@ use rustc_ast::token::CommentKind;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{
     self as ast, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label, LitIntType,
-    LitKind, TraitObjectSyntax, UintTy, UnsafeBinderCastKind,
+    LitKind, TraitObjectSyntax, UintTy, UnsafeBinderCastKind, join_path_idents,
 };
 pub use rustc_ast::{
     AssignOp, AssignOpKind, AttrId, AttrStyle, BinOp, BinOpKind, BindingMode, BorrowKind,
@@ -439,7 +439,7 @@ impl<'hir> ConstArg<'hir, AmbigArg> {
 }
 
 impl<'hir> ConstArg<'hir> {
-    /// Converts a `ConstArg` in an unambigous position to one in an ambiguous position. This is
+    /// Converts a `ConstArg` in an unambiguous position to one in an ambiguous position. This is
     /// fallible as the [`ConstArgKind::Infer`] variant is not present in ambiguous positions.
     ///
     /// Functions accepting ambiguous consts will not handle the [`ConstArgKind::Infer`] variant, if
@@ -508,7 +508,7 @@ pub enum GenericArg<'hir> {
     Lifetime(&'hir Lifetime),
     Type(&'hir Ty<'hir, AmbigArg>),
     Const(&'hir ConstArg<'hir, AmbigArg>),
-    /// Inference variables in [`GenericArg`] are always represnted by
+    /// Inference variables in [`GenericArg`] are always represented by
     /// `GenericArg::Infer` instead of the `Infer` variants on [`TyKind`] and
     /// [`ConstArgKind`] as it is not clear until hir ty lowering whether a
     /// `_` argument is a type or const argument.
@@ -956,7 +956,7 @@ impl<'hir> Generics<'hir> {
                     && let Some(ret_ty) = segment.args().paren_sugar_output()
                     && let ret_ty = ret_ty.peel_refs()
                     && let TyKind::TraitObject(_, tagged_ptr) = ret_ty.kind
-                    && let TraitObjectSyntax::Dyn | TraitObjectSyntax::DynStar = tagged_ptr.tag()
+                    && let TraitObjectSyntax::Dyn = tagged_ptr.tag()
                     && ret_ty.span.can_be_used_for_suggestions()
                 {
                     Some(ret_ty.span)
@@ -1168,7 +1168,7 @@ impl AttrPath {
 
 impl fmt::Display for AttrPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.segments.iter().map(|i| i.to_string()).collect::<Vec<_>>().join("::"))
+        write!(f, "{}", join_path_idents(&self.segments))
     }
 }
 
@@ -1302,6 +1302,9 @@ impl AttributeExt for Attribute {
             // FIXME: should not be needed anymore when all attrs are parsed
             Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::MayDangle(span)) => *span,
+            Attribute::Parsed(AttributeKind::Ignore { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::AutomaticallyDerived(span)) => *span,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }
@@ -1332,6 +1335,11 @@ impl AttributeExt for Attribute {
             _ => None,
         }
     }
+
+    fn is_automatically_derived_attr(&self) -> bool {
+        matches!(self, Attribute::Parsed(AttributeKind::AutomaticallyDerived(..)))
+    }
+
     #[inline]
     fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         match &self {
@@ -1345,12 +1353,13 @@ impl AttributeExt for Attribute {
         }
     }
 
-    #[inline]
-    fn style(&self) -> AttrStyle {
-        match &self {
-            Attribute::Unparsed(u) => u.style,
-            Attribute::Parsed(AttributeKind::DocComment { style, .. }) => *style,
-            _ => panic!(),
+    fn doc_resolution_scope(&self) -> Option<AttrStyle> {
+        match self {
+            Attribute::Parsed(AttributeKind::DocComment { style, .. }) => Some(*style),
+            Attribute::Unparsed(attr) if self.has_name(sym::doc) && self.value_str().is_some() => {
+                Some(attr.style)
+            }
+            _ => None,
         }
     }
 }
@@ -1440,11 +1449,6 @@ impl Attribute {
     #[inline]
     pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         AttributeExt::doc_str_and_comment_kind(self)
-    }
-
-    #[inline]
-    pub fn style(&self) -> AttrStyle {
-        AttributeExt::style(self)
     }
 }
 
@@ -1810,7 +1814,7 @@ pub struct PatExpr<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum PatExprKind<'hir> {
     Lit {
-        lit: &'hir Lit,
+        lit: Lit,
         // FIXME: move this into `Lit` and handle negated literal expressions
         // once instead of matching on unop neg expressions everywhere.
         negated: bool,
@@ -2285,12 +2289,16 @@ pub struct Expr<'hir> {
 }
 
 impl Expr<'_> {
-    pub fn precedence(&self) -> ExprPrecedence {
+    pub fn precedence(&self, has_attr: &dyn Fn(HirId) -> bool) -> ExprPrecedence {
+        let prefix_attrs_precedence = || -> ExprPrecedence {
+            if has_attr(self.hir_id) { ExprPrecedence::Prefix } else { ExprPrecedence::Unambiguous }
+        };
+
         match &self.kind {
             ExprKind::Closure(closure) => {
                 match closure.fn_decl.output {
                     FnRetTy::DefaultReturn(_) => ExprPrecedence::Jump,
-                    FnRetTy::Return(_) => ExprPrecedence::Unambiguous,
+                    FnRetTy::Return(_) => prefix_attrs_precedence(),
                 }
             }
 
@@ -2315,7 +2323,7 @@ impl Expr<'_> {
             | ExprKind::Let(..)
             | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
-            // Never need parens
+            // Need parens if and only if there are prefix attributes.
             ExprKind::Array(_)
             | ExprKind::Block(..)
             | ExprKind::Call(..)
@@ -2337,9 +2345,9 @@ impl Expr<'_> {
             | ExprKind::Type(..)
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Use(..)
-            | ExprKind::Err(_) => ExprPrecedence::Unambiguous,
+            | ExprKind::Err(_) => prefix_attrs_precedence(),
 
-            ExprKind::DropTemps(expr, ..) => expr.precedence(),
+            ExprKind::DropTemps(expr, ..) => expr.precedence(has_attr),
         }
     }
 
@@ -2733,7 +2741,7 @@ pub enum ExprKind<'hir> {
     /// A unary operation (e.g., `!x`, `*x`).
     Unary(UnOp, &'hir Expr<'hir>),
     /// A literal (e.g., `1`, `"foo"`).
-    Lit(&'hir Lit),
+    Lit(Lit),
     /// A cast (e.g., `foo as f64`).
     Cast(&'hir Expr<'hir>, &'hir Ty<'hir>),
     /// A type ascription (e.g., `x: Foo`). See RFC 3307.
@@ -3064,6 +3072,7 @@ pub struct TraitItem<'hir> {
     pub kind: TraitItemKind<'hir>,
     pub span: Span,
     pub defaultness: Defaultness,
+    pub has_delayed_lints: bool,
 }
 
 macro_rules! expect_methods_self_kind {
@@ -3168,6 +3177,9 @@ pub struct ImplItem<'hir> {
     pub defaultness: Defaultness,
     pub span: Span,
     pub vis_span: Span,
+    pub has_delayed_lints: bool,
+    /// When we are in a trait impl, link to the trait-item's id.
+    pub trait_item_def_id: Option<DefId>,
 }
 
 impl<'hir> ImplItem<'hir> {
@@ -3320,7 +3332,7 @@ impl<'hir> Ty<'hir, AmbigArg> {
 }
 
 impl<'hir> Ty<'hir> {
-    /// Converts a `Ty` in an unambigous position to one in an ambiguous position. This is
+    /// Converts a `Ty` in an unambiguous position to one in an ambiguous position. This is
     /// fallible as the [`TyKind::Infer`] variant is not present in ambiguous positions.
     ///
     /// Functions accepting ambiguous types will not handle the [`TyKind::Infer`] variant, if
@@ -3522,7 +3534,7 @@ impl PrimTy {
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub struct BareFnTy<'hir> {
+pub struct FnPtrTy<'hir> {
     pub safety: Safety,
     pub abi: ExternAbi,
     pub generic_params: &'hir [GenericParam<'hir>],
@@ -3641,8 +3653,8 @@ pub enum TyKind<'hir, Unambig = ()> {
     Ptr(MutTy<'hir>),
     /// A reference (i.e., `&'a T` or `&'a mut T`).
     Ref(&'hir Lifetime, MutTy<'hir>),
-    /// A bare function (e.g., `fn(usize) -> bool`).
-    BareFn(&'hir BareFnTy<'hir>),
+    /// A function pointer (e.g., `fn(usize) -> bool`).
+    FnPtr(&'hir FnPtrTy<'hir>),
     /// An unsafe binder type (e.g. `unsafe<'a> Foo<'a>`).
     UnsafeBinder(&'hir UnsafeBinderTy<'hir>),
     /// The never type (`!`).
@@ -4087,6 +4099,7 @@ pub struct Item<'hir> {
     pub kind: ItemKind<'hir>,
     pub span: Span,
     pub vis_span: Span,
+    pub has_delayed_lints: bool,
 }
 
 impl<'hir> Item<'hir> {
@@ -4131,7 +4144,7 @@ impl<'hir> Item<'hir> {
 
         expect_mod, (Ident, &'hir Mod<'hir>), ItemKind::Mod(ident, m), (*ident, m);
 
-        expect_foreign_mod, (ExternAbi, &'hir [ForeignItemRef]),
+        expect_foreign_mod, (ExternAbi, &'hir [ForeignItemId]),
             ItemKind::ForeignMod { abi, items }, (*abi, items);
 
         expect_global_asm, &'hir InlineAsm<'hir>, ItemKind::GlobalAsm { asm, .. }, asm;
@@ -4150,15 +4163,16 @@ impl<'hir> Item<'hir> {
 
         expect_trait,
             (
+                Constness,
                 IsAuto,
                 Safety,
                 Ident,
                 &'hir Generics<'hir>,
                 GenericBounds<'hir>,
-                &'hir [TraitItemRef]
+                &'hir [TraitItemId]
             ),
-            ItemKind::Trait(is_auto, safety, ident, generics, bounds, items),
-            (*is_auto, *safety, *ident, generics, bounds, items);
+            ItemKind::Trait(constness, is_auto, safety, ident, generics, bounds, items),
+            (*constness, *is_auto, *safety, *ident, generics, bounds, items);
 
         expect_trait_alias, (Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
             ItemKind::TraitAlias(ident, generics, bounds), (*ident, generics, bounds);
@@ -4220,7 +4234,7 @@ impl fmt::Display for Constness {
     }
 }
 
-/// The actualy safety specified in syntax. We may treat
+/// The actual safety specified in syntax. We may treat
 /// its safety different within the type system to create a
 /// "sound by default" system that needs checking this enum
 /// explicitly to allow unsafe operations.
@@ -4308,7 +4322,7 @@ pub enum ItemKind<'hir> {
     /// A module.
     Mod(Ident, &'hir Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
-    ForeignMod { abi: ExternAbi, items: &'hir [ForeignItemRef] },
+    ForeignMod { abi: ExternAbi, items: &'hir [ForeignItemId] },
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm {
         asm: &'hir InlineAsm<'hir>,
@@ -4328,7 +4342,15 @@ pub enum ItemKind<'hir> {
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
     Union(Ident, &'hir Generics<'hir>, VariantData<'hir>),
     /// A trait definition.
-    Trait(IsAuto, Safety, Ident, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
+    Trait(
+        Constness,
+        IsAuto,
+        Safety,
+        Ident,
+        &'hir Generics<'hir>,
+        GenericBounds<'hir>,
+        &'hir [TraitItemId],
+    ),
     /// A trait alias.
     TraitAlias(Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
 
@@ -4355,7 +4377,7 @@ pub struct Impl<'hir> {
     pub of_trait: Option<TraitRef<'hir>>,
 
     pub self_ty: &'hir Ty<'hir>,
-    pub items: &'hir [ImplItemRef],
+    pub items: &'hir [ImplItemId],
 }
 
 impl ItemKind<'_> {
@@ -4372,7 +4394,7 @@ impl ItemKind<'_> {
             | ItemKind::Enum(ident, ..)
             | ItemKind::Struct(ident, ..)
             | ItemKind::Union(ident, ..)
-            | ItemKind::Trait(_, _, ident, ..)
+            | ItemKind::Trait(_, _, _, ident, ..)
             | ItemKind::TraitAlias(ident, ..) => Some(ident),
 
             ItemKind::Use(_, UseKind::Glob | UseKind::ListStem)
@@ -4390,70 +4412,12 @@ impl ItemKind<'_> {
             | ItemKind::Enum(_, generics, _)
             | ItemKind::Struct(_, generics, _)
             | ItemKind::Union(_, generics, _)
-            | ItemKind::Trait(_, _, _, generics, _, _)
+            | ItemKind::Trait(_, _, _, _, generics, _, _)
             | ItemKind::TraitAlias(_, generics, _)
             | ItemKind::Impl(Impl { generics, .. }) => generics,
             _ => return None,
         })
     }
-
-    pub fn descr(&self) -> &'static str {
-        match self {
-            ItemKind::ExternCrate(..) => "extern crate",
-            ItemKind::Use(..) => "`use` import",
-            ItemKind::Static(..) => "static item",
-            ItemKind::Const(..) => "constant item",
-            ItemKind::Fn { .. } => "function",
-            ItemKind::Macro(..) => "macro",
-            ItemKind::Mod(..) => "module",
-            ItemKind::ForeignMod { .. } => "extern block",
-            ItemKind::GlobalAsm { .. } => "global asm item",
-            ItemKind::TyAlias(..) => "type alias",
-            ItemKind::Enum(..) => "enum",
-            ItemKind::Struct(..) => "struct",
-            ItemKind::Union(..) => "union",
-            ItemKind::Trait(..) => "trait",
-            ItemKind::TraitAlias(..) => "trait alias",
-            ItemKind::Impl(..) => "implementation",
-        }
-    }
-}
-
-/// A reference from an trait to one of its associated items. This
-/// contains the item's id, naturally, but also the item's name and
-/// some other high-level details (like whether it is an associated
-/// type or method, and whether it is public). This allows other
-/// passes to find the impl they want without loading the ID (which
-/// means fewer edges in the incremental compilation graph).
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub struct TraitItemRef {
-    pub id: TraitItemId,
-    pub ident: Ident,
-    pub kind: AssocItemKind,
-    pub span: Span,
-}
-
-/// A reference from an impl to one of its associated items. This
-/// contains the item's ID, naturally, but also the item's name and
-/// some other high-level details (like whether it is an associated
-/// type or method, and whether it is public). This allows other
-/// passes to find the impl they want without loading the ID (which
-/// means fewer edges in the incremental compilation graph).
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub struct ImplItemRef {
-    pub id: ImplItemId,
-    pub ident: Ident,
-    pub kind: AssocItemKind,
-    pub span: Span,
-    /// When we are in a trait impl, link to the trait-item's id.
-    pub trait_item_def_id: Option<DefId>,
-}
-
-#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
-pub enum AssocItemKind {
-    Const,
-    Fn { has_self: bool },
-    Type,
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -4472,19 +4436,6 @@ impl ForeignItemId {
     }
 }
 
-/// A reference from a foreign block to one of its items. This
-/// contains the item's ID, naturally, but also the item's name and
-/// some other high-level details (like whether it is an associated
-/// type or method, and whether it is public). This allows other
-/// passes to find the impl they want without loading the ID (which
-/// means fewer edges in the incremental compilation graph).
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub struct ForeignItemRef {
-    pub id: ForeignItemId,
-    pub ident: Ident,
-    pub span: Span,
-}
-
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct ForeignItem<'hir> {
     pub ident: Ident,
@@ -4492,6 +4443,7 @@ pub struct ForeignItem<'hir> {
     pub owner_id: OwnerId,
     pub span: Span,
     pub vis_span: Span,
+    pub has_delayed_lints: bool,
 }
 
 impl ForeignItem<'_> {
@@ -4513,7 +4465,7 @@ pub enum ForeignItemKind<'hir> {
     ///
     /// All argument idents are actually always present (i.e. `Some`), but
     /// `&[Option<Ident>]` is used because of code paths shared with `TraitFn`
-    /// and `BareFnTy`. The sharing is due to all of these cases not allowing
+    /// and `FnPtrTy`. The sharing is due to all of these cases not allowing
     /// arbitrary patterns for parameters.
     Fn(FnSig<'hir>, &'hir [Option<Ident>], &'hir Generics<'hir>),
     /// A foreign static item (`static ext: u8`).
@@ -4829,6 +4781,10 @@ impl<'hir> Node<'hir> {
                 ImplItemKind::Type(ty) => Some(ty),
                 _ => None,
             },
+            Node::ForeignItem(it) => match it.kind {
+                ForeignItemKind::Static(ty, ..) => Some(ty),
+                _ => None,
+            },
             _ => None,
         }
     }
@@ -4974,22 +4930,22 @@ mod size_asserts {
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 48);
     static_assert_size!(FnDecl<'_>, 40);
-    static_assert_size!(ForeignItem<'_>, 88);
+    static_assert_size!(ForeignItem<'_>, 96);
     static_assert_size!(ForeignItemKind<'_>, 56);
     static_assert_size!(GenericArg<'_>, 16);
     static_assert_size!(GenericBound<'_>, 64);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);
-    static_assert_size!(ImplItem<'_>, 88);
+    static_assert_size!(ImplItem<'_>, 96);
     static_assert_size!(ImplItemKind<'_>, 40);
     static_assert_size!(Item<'_>, 88);
     static_assert_size!(ItemKind<'_>, 64);
     static_assert_size!(LetStmt<'_>, 72);
     static_assert_size!(Param<'_>, 32);
     static_assert_size!(Pat<'_>, 72);
+    static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(Path<'_>, 40);
     static_assert_size!(PathSegment<'_>, 48);
-    static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(QPath<'_>, 24);
     static_assert_size!(Res, 12);
     static_assert_size!(Stmt<'_>, 32);

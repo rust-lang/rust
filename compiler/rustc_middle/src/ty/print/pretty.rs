@@ -11,7 +11,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
-use rustc_hir::def_id::{CRATE_DEF_ID, DefIdMap, DefIdSet, LOCAL_CRATE, ModDefId};
+use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModDefId};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_macros::{Lift, extension};
 use rustc_session::Limit;
@@ -795,9 +795,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 ty::BoundTyKind::Anon => {
                     rustc_type_ir::debug_bound_var(self, debruijn, bound_ty.var)?
                 }
-                ty::BoundTyKind::Param(_, s) => match self.should_print_verbose() {
+                ty::BoundTyKind::Param(def_id) => match self.should_print_verbose() {
                     true => p!(write("{:?}", ty.kind())),
-                    false => p!(write("{s}")),
+                    false => p!(write("{}", self.tcx().item_name(def_id))),
                 },
             },
             ty::Adt(def, args) => {
@@ -810,7 +810,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
                 match repr {
                     ty::Dyn => p!("dyn "),
-                    ty::DynStar => p!("dyn* "),
                 }
                 p!(print(data));
                 if print_r {
@@ -823,13 +822,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Alias(ty::Projection | ty::Inherent | ty::Free, ref data) => {
                 p!(print(data))
             }
-            ty::Placeholder(placeholder) => match placeholder.bound.kind {
-                ty::BoundTyKind::Anon => p!(write("{placeholder:?}")),
-                ty::BoundTyKind::Param(_, name) => match self.should_print_verbose() {
-                    true => p!(write("{:?}", ty.kind())),
-                    false => p!(write("{name}")),
-                },
-            },
+            ty::Placeholder(placeholder) => p!(print(placeholder)),
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
                 // We use verbose printing in 'NO_QUERIES' mode, to
                 // avoid needing to call `predicates_of`. This should
@@ -1069,24 +1062,35 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         let mut traits = FxIndexMap::default();
         let mut fn_traits = FxIndexMap::default();
+        let mut lifetimes = SmallVec::<[ty::Region<'tcx>; 1]>::new();
+
         let mut has_sized_bound = false;
         let mut has_negative_sized_bound = false;
-        let mut lifetimes = SmallVec::<[ty::Region<'tcx>; 1]>::new();
+        let mut has_meta_sized_bound = false;
 
         for (predicate, _) in bounds.iter_instantiated_copied(tcx, args) {
             let bound_predicate = predicate.kind();
 
             match bound_predicate.skip_binder() {
                 ty::ClauseKind::Trait(pred) => {
-                    // Don't print `+ Sized`, but rather `+ ?Sized` if absent.
-                    if tcx.is_lang_item(pred.def_id(), LangItem::Sized) {
-                        match pred.polarity {
+                    // With `feature(sized_hierarchy)`, don't print `?Sized` as an alias for
+                    // `MetaSized`, and skip sizedness bounds to be added at the end.
+                    match tcx.as_lang_item(pred.def_id()) {
+                        Some(LangItem::Sized) => match pred.polarity {
                             ty::PredicatePolarity::Positive => {
                                 has_sized_bound = true;
                                 continue;
                             }
                             ty::PredicatePolarity::Negative => has_negative_sized_bound = true,
+                        },
+                        Some(LangItem::MetaSized) => {
+                            has_meta_sized_bound = true;
+                            continue;
                         }
+                        Some(LangItem::PointeeSized) => {
+                            bug!("`PointeeSized` is removed during lowering");
+                        }
+                        _ => (),
                     }
 
                     self.insert_trait_and_projection(
@@ -1255,8 +1259,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             })?;
         }
 
+        let using_sized_hierarchy = self.tcx().features().sized_hierarchy();
         let add_sized = has_sized_bound && (first || has_negative_sized_bound);
-        let add_maybe_sized = !has_sized_bound && !has_negative_sized_bound;
+        let add_maybe_sized =
+            has_meta_sized_bound && !has_negative_sized_bound && !using_sized_hierarchy;
+        // Set `has_pointee_sized_bound` if there were no `Sized` or `MetaSized` bounds.
+        let has_pointee_sized_bound =
+            !has_sized_bound && !has_meta_sized_bound && !has_negative_sized_bound;
         if add_sized || add_maybe_sized {
             if !first {
                 write!(self, " + ")?;
@@ -1265,6 +1274,16 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 write!(self, "?")?;
             }
             write!(self, "Sized")?;
+        } else if has_meta_sized_bound && using_sized_hierarchy {
+            if !first {
+                write!(self, " + ")?;
+            }
+            write!(self, "MetaSized")?;
+        } else if has_pointee_sized_bound && using_sized_hierarchy {
+            if !first {
+                write!(self, " + ")?;
+            }
+            write!(self, "PointeeSized")?;
         }
 
         if !with_forced_trimmed_paths() {
@@ -1729,7 +1748,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     ) -> Result<(), PrintError> {
         define_scoped_cx!(self);
 
-        let (prov, offset) = ptr.into_parts();
+        let (prov, offset) = ptr.prov_and_relative_offset();
         match ty.kind() {
             // Byte strings (&[u8; N])
             ty::Ref(_, inner, _) => {
@@ -1754,6 +1773,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         }
                         Some(GlobalAlloc::Function { .. }) => p!("<function>"),
                         Some(GlobalAlloc::VTable(..)) => p!("<vtable>"),
+                        Some(GlobalAlloc::TypeId { .. }) => p!("<typeid>"),
                         None => p!("<dangling pointer>"),
                     }
                     return Ok(());
@@ -1823,7 +1843,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             // Pointer types
             ty::Ref(..) | ty::RawPtr(_, _) | ty::FnPtr(..) => {
-                let data = int.to_bits(self.tcx().data_layout.pointer_size);
+                let data = int.to_bits(self.tcx().data_layout.pointer_size());
                 self.typed_value(
                     |this| {
                         write!(this, "0x{data:x}")?;
@@ -2051,7 +2071,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!("const ");
             }
             ty::BoundConstness::Maybe => {
-                p!("~const ");
+                p!("[const] ");
             }
         }
         Ok(())
@@ -2410,7 +2430,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         }
 
         let verbose = self.should_print_verbose();
-        disambiguated_data.fmt_maybe_verbose(self, verbose)?;
+        write!(self, "{}", disambiguated_data.as_sym(verbose))?;
 
         self.empty_path = false;
 
@@ -2526,14 +2546,14 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
         match region.kind() {
-            ty::ReEarlyParam(ref data) => data.has_name(),
+            ty::ReEarlyParam(ref data) => data.is_named(),
 
-            ty::ReLateParam(ty::LateParamRegion { kind, .. }) => kind.is_named(),
+            ty::ReLateParam(ty::LateParamRegion { kind, .. }) => kind.is_named(self.tcx),
             ty::ReBound(_, ty::BoundRegion { kind: br, .. })
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
             }) => {
-                if br.is_named() {
+                if br.is_named(self.tcx) {
                     return true;
                 }
 
@@ -2601,7 +2621,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                 return Ok(());
             }
             ty::ReLateParam(ty::LateParamRegion { kind, .. }) => {
-                if let Some(name) = kind.get_name() {
+                if let Some(name) = kind.get_name(self.tcx) {
                     p!(write("{}", name));
                     return Ok(());
                 }
@@ -2610,9 +2630,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
             }) => {
-                if let ty::BoundRegionKind::Named(_, name) = br
-                    && br.is_named()
-                {
+                if let Some(name) = br.get_name(self.tcx) {
                     p!(write("{}", name));
                     return Ok(());
                 }
@@ -2819,55 +2837,22 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             let mut name = |lifetime_idx: Option<ty::DebruijnIndex>,
                             binder_level_idx: ty::DebruijnIndex,
                             br: ty::BoundRegion| {
-                let (name, kind) = match br.kind {
-                    ty::BoundRegionKind::Anon | ty::BoundRegionKind::ClosureEnv => {
-                        let name = next_name(self);
-
-                        if let Some(lt_idx) = lifetime_idx {
-                            if lt_idx > binder_level_idx {
-                                let kind =
-                                    ty::BoundRegionKind::Named(CRATE_DEF_ID.to_def_id(), name);
-                                return ty::Region::new_bound(
-                                    tcx,
-                                    ty::INNERMOST,
-                                    ty::BoundRegion { var: br.var, kind },
-                                );
-                            }
-                        }
-
-                        (name, ty::BoundRegionKind::Named(CRATE_DEF_ID.to_def_id(), name))
-                    }
-                    ty::BoundRegionKind::Named(def_id, kw::UnderscoreLifetime) => {
-                        let name = next_name(self);
-
-                        if let Some(lt_idx) = lifetime_idx {
-                            if lt_idx > binder_level_idx {
-                                let kind = ty::BoundRegionKind::Named(def_id, name);
-                                return ty::Region::new_bound(
-                                    tcx,
-                                    ty::INNERMOST,
-                                    ty::BoundRegion { var: br.var, kind },
-                                );
-                            }
-                        }
-
-                        (name, ty::BoundRegionKind::Named(def_id, name))
-                    }
-                    ty::BoundRegionKind::Named(_, name) => {
-                        if let Some(lt_idx) = lifetime_idx {
-                            if lt_idx > binder_level_idx {
-                                let kind = br.kind;
-                                return ty::Region::new_bound(
-                                    tcx,
-                                    ty::INNERMOST,
-                                    ty::BoundRegion { var: br.var, kind },
-                                );
-                            }
-                        }
-
-                        (name, br.kind)
-                    }
+                let (name, kind) = if let Some(name) = br.kind.get_name(tcx) {
+                    (name, br.kind)
+                } else {
+                    let name = next_name(self);
+                    (name, ty::BoundRegionKind::NamedAnon(name))
                 };
+
+                if let Some(lt_idx) = lifetime_idx {
+                    if lt_idx > binder_level_idx {
+                        return ty::Region::new_bound(
+                            tcx,
+                            ty::INNERMOST,
+                            ty::BoundRegion { var: br.var, kind },
+                        );
+                    }
+                }
 
                 // Unconditionally render `unsafe<>`.
                 if !trim_path || mode == WrapBinderMode::Unsafe {
@@ -2935,13 +2920,15 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         struct RegionNameCollector<'tcx> {
+            tcx: TyCtxt<'tcx>,
             used_region_names: FxHashSet<Symbol>,
             type_collector: SsoHashSet<Ty<'tcx>>,
         }
 
         impl<'tcx> RegionNameCollector<'tcx> {
-            fn new() -> Self {
+            fn new(tcx: TyCtxt<'tcx>) -> Self {
                 RegionNameCollector {
+                    tcx,
                     used_region_names: Default::default(),
                     type_collector: SsoHashSet::new(),
                 }
@@ -2955,7 +2942,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                 // Collect all named lifetimes. These allow us to prevent duplication
                 // of already existing lifetime names when introducing names for
                 // anonymous late-bound regions.
-                if let Some(name) = r.get_name() {
+                if let Some(name) = r.get_name(self.tcx) {
                     self.used_region_names.insert(name);
                 }
             }
@@ -2970,7 +2957,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             }
         }
 
-        let mut collector = RegionNameCollector::new();
+        let mut collector = RegionNameCollector::new(self.tcx());
         value.visit_with(&mut collector);
         self.used_region_names = collector.used_region_names;
         self.region_index = 0;
@@ -3224,7 +3211,7 @@ define_print! {
     ty::HostEffectPredicate<'tcx> {
         let constness = match self.constness {
             ty::BoundConstness::Const => { "const" }
-            ty::BoundConstness::Maybe => { "~const" }
+            ty::BoundConstness::Maybe => { "[const]" }
         };
         p!(print(self.trait_ref.self_ty()), ": {constness} ");
         p!(print(self.trait_ref.print_trait_sugared()))
@@ -3250,6 +3237,7 @@ define_print! {
             ty::ClauseKind::ConstEvaluatable(ct) => {
                 p!("the constant `", print(ct), "` can be evaluated")
             }
+            ty::ClauseKind::UnstableFeature(symbol) => p!("unstable feature: ", write("`{}`", symbol)),
         }
     }
 
@@ -3381,6 +3369,16 @@ define_print_and_forward_display! {
         p!(write("{}", self.name))
     }
 
+    ty::PlaceholderType {
+        match self.bound.kind {
+            ty::BoundTyKind::Anon => p!(write("{self:?}")),
+            ty::BoundTyKind::Param(def_id) => match cx.should_print_verbose() {
+                true => p!(write("{self:?}")),
+                false => p!(write("{}", cx.tcx().item_name(def_id))),
+            },
+        }
+    }
+
     ty::ParamConst {
         p!(write("{}", self.name))
     }
@@ -3457,9 +3455,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
                         collect_fn(&child.ident, ns, def_id);
                     }
 
-                    if matches!(defkind, DefKind::Mod | DefKind::Enum | DefKind::Trait)
-                        && seen_defs.insert(def_id)
-                    {
+                    if defkind.is_module_like() && seen_defs.insert(def_id) {
                         queue.push(def_id);
                     }
                 }

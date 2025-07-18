@@ -620,7 +620,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// instead of regular stability.
     ///
     /// This enforces *syntactical* const stability of const traits. In other words,
-    /// it enforces the ability to name `~const`/`const` traits in trait bounds in various
+    /// it enforces the ability to name `[const]`/`const` traits in trait bounds in various
     /// syntax positions in HIR (including in the trait of an impl header).
     pub fn check_const_stability(self, def_id: DefId, span: Span, const_kw_span: Span) {
         let is_staged_api = self.lookup_stability(def_id.krate.as_def_id()).is_some();

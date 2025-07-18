@@ -31,6 +31,36 @@ pub(crate) struct AutoDiffAttr {
     pub attr_span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(passes_loop_match_attr)]
+pub(crate) struct LoopMatchAttr {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub node_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_const_continue_attr)]
+pub(crate) struct ConstContinueAttr {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub node_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes_mixed_export_name_and_no_mangle)]
+pub(crate) struct MixedExportNameAndNoMangle {
+    #[label]
+    #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
+    pub no_mangle_span: Span,
+    #[note]
+    pub export_name_span: Span,
+    pub no_mangle_attr: &'static str,
+    pub export_name_attr: &'static str,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_outer_crate_level_attr)]
 pub(crate) struct OuterCrateLevelAttr;
@@ -127,7 +157,7 @@ pub(crate) struct NonExhaustiveWrongLocation {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_non_exaustive_with_default_field_values)]
+#[diag(passes_non_exhaustive_with_default_field_values)]
 pub(crate) struct NonExhaustiveWithDefaultFieldValues {
     #[primary_span]
     pub attr_span: Span,
@@ -472,7 +502,7 @@ pub(crate) struct Link {
 #[warning]
 pub(crate) struct LinkName<'a> {
     #[help]
-    pub attr_span: Option<Span>,
+    pub help_span: Option<Span>,
     #[label]
     pub span: Span,
     pub value: &'a str,
@@ -503,13 +533,6 @@ pub(crate) struct RustcLayoutScalarValidRangeNotStruct {
     pub attr_span: Span,
     #[label]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_rustc_layout_scalar_valid_range_arg)]
-pub(crate) struct RustcLayoutScalarValidRangeArg {
-    #[primary_span]
-    pub attr_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -581,6 +604,14 @@ pub(crate) struct NoMangle {
     pub span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(passes_align_on_fields)]
+#[warning]
+pub(crate) struct AlignOnFields {
+    #[label]
+    pub span: Span,
+}
+
 #[derive(Diagnostic)]
 #[diag(passes_repr_conflicting, code = E0566)]
 pub(crate) struct ReprConflicting {
@@ -609,13 +640,6 @@ pub(crate) struct UsedStatic {
     #[label]
     pub span: Span,
     pub target: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_used_compiler_linker)]
-pub(crate) struct UsedCompilerLinker {
-    #[primary_span]
-    pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
@@ -656,6 +680,15 @@ pub(crate) struct DebugVisualizerUnreadable<'a> {
 #[derive(Diagnostic)]
 #[diag(passes_rustc_allow_const_fn_unstable)]
 pub(crate) struct RustcAllowConstFnUnstable {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_rustc_unstable_feature_bound)]
+pub(crate) struct RustcUnstableFeatureBound {
     #[primary_span]
     pub attr_span: Span,
     #[label]
@@ -1071,17 +1104,6 @@ pub(crate) struct FeaturePreviouslyDeclared<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_naked_functions_incompatible_attribute, code = E0736)]
-pub(crate) struct NakedFunctionIncompatibleAttribute {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[label(passes_naked_attribute)]
-    pub naked_span: Span,
-    pub attr: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_attr_only_in_functions)]
 pub(crate) struct AttrOnlyInFunctions {
     #[primary_span]
@@ -1308,13 +1330,6 @@ pub(crate) enum AttrApplication {
         #[label]
         span: Span,
     },
-    #[diag(passes_attr_application_struct_enum_function_method_union, code = E0517)]
-    StructEnumFunctionMethodUnion {
-        #[primary_span]
-        hint_span: Span,
-        #[label]
-        span: Span,
-    },
 }
 
 #[derive(Diagnostic)]
@@ -1516,7 +1531,7 @@ pub(crate) struct EnumVariantSameName<'tcx> {
     #[primary_span]
     pub variant_span: Span,
     pub dead_name: Symbol,
-    pub descr: &'tcx str,
+    pub dead_descr: &'tcx str,
 }
 
 #[derive(Subdiagnostic)]
@@ -1714,6 +1729,7 @@ impl Subdiagnostic for UnusedVariableStringInterp {
 #[derive(LintDiagnostic)]
 #[diag(passes_unused_variable_try_ignore)]
 pub(crate) struct UnusedVarTryIgnore {
+    pub name: String,
     #[subdiagnostic]
     pub sugg: UnusedVarTryIgnoreSugg,
 }
@@ -1815,4 +1831,36 @@ pub(crate) enum UnexportableItem<'a> {
         vis_note: Span,
         field_name: &'a str,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_repr_align_should_be_align)]
+pub(crate) struct ReprAlignShouldBeAlign {
+    #[primary_span]
+    #[help]
+    pub span: Span,
+    pub item: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_align_should_be_repr_align)]
+pub(crate) struct AlignShouldBeReprAlign {
+    #[primary_span]
+    #[suggestion(
+        style = "verbose",
+        applicability = "machine-applicable",
+        code = "#[repr(align({align_bytes}))]"
+    )]
+    pub span: Span,
+    pub item: &'static str,
+    pub align_bytes: u64,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_align_attr_application)]
+pub(crate) struct AlignAttrApplication {
+    #[primary_span]
+    pub hint_span: Span,
+    #[label]
+    pub span: Span,
 }

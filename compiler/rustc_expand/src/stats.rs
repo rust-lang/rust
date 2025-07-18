@@ -15,15 +15,11 @@ pub struct MacroStat {
     /// Number of uses of the macro.
     pub uses: usize,
 
-    /// Net increase in number of lines of code (when pretty-printed), i.e.
-    /// `lines(output) - lines(invocation)`. Can be negative because a macro
-    /// output may be smaller than the invocation.
-    pub lines: isize,
+    /// Number of lines of code (when pretty-printed).
+    pub lines: usize,
 
-    /// Net increase in number of lines of code (when pretty-printed), i.e.
-    /// `bytes(output) - bytes(invocation)`. Can be negative because a macro
-    /// output may be smaller than the invocation.
-    pub bytes: isize,
+    /// Number of bytes of code (when pretty-printed).
+    pub bytes: usize,
 }
 
 pub(crate) fn elems_to_string<T>(elems: &SmallVec<[T; 1]>, f: impl Fn(&T) -> String) -> String {
@@ -131,16 +127,12 @@ pub(crate) fn update_macro_stats(
     input: &str,
     fragment: &AstFragment,
 ) {
-    fn lines_and_bytes(s: &str) -> (usize, usize) {
-        (s.trim_end().split('\n').count(), s.len())
-    }
-
     // Measure the size of the output by pretty-printing it and counting
     // the lines and bytes.
     let name = Symbol::intern(&pprust::path_to_string(path));
     let output = fragment.to_string();
-    let (in_l, in_b) = lines_and_bytes(input);
-    let (out_l, out_b) = lines_and_bytes(&output);
+    let num_lines = output.trim_end().split('\n').count();
+    let num_bytes = output.len();
 
     // This code is useful for debugging `-Zmacro-stats`. For every
     // invocation it prints the full input and output.
@@ -157,7 +149,7 @@ pub(crate) fn update_macro_stats(
             {name}: [{crate_name}] ({fragment_kind:?}) {span}\n\
             -------------------------------\n\
             {input}\n\
-            -- ({in_l} lines, {in_b} bytes) --> ({out_l} lines, {out_b} bytes) --\n\
+            -- {num_lines} lines, {num_bytes} bytes --\n\
             {output}\n\
         "
         );
@@ -166,6 +158,6 @@ pub(crate) fn update_macro_stats(
     // The recorded size is the difference between the input and the output.
     let entry = ecx.macro_stats.entry((name, macro_kind)).or_insert(MacroStat::default());
     entry.uses += 1;
-    entry.lines += out_l as isize - in_l as isize;
-    entry.bytes += out_b as isize - in_b as isize;
+    entry.lines += num_lines;
+    entry.bytes += num_bytes;
 }

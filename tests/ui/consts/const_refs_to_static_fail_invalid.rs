@@ -23,11 +23,10 @@ fn extern_() {
     }
 
     const C: &i8 = unsafe { &S };
-    //~^ERROR: `extern` static
 
     // This must be rejected here (or earlier), since the pattern cannot be read.
     match &0 {
-        C => {} // ok, `const` already emitted an error
+        C => {} //~ ERROR cannot be used as pattern
         _ => {}
     }
 }
@@ -36,12 +35,11 @@ fn mutable() {
     static mut S_MUT: i32 = 0;
 
     const C: &i32 = unsafe { &S_MUT };
-    //~^ERROR: encountered reference to mutable memory
 
     // This *must not build*, the constant we are matching against
     // could change its value!
     match &42 {
-        C => {} // ok, `const` already emitted an error
+        C => {} //~ ERROR cannot be used as pattern
         _ => {}
     }
 }

@@ -4,6 +4,7 @@
 
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
@@ -15,7 +16,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
 use rustc_hir_pretty as pprust_hir;
 use rustc_span::def_id::StableCrateId;
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym, with_metavar_spans};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 
 use crate::hir::{ModuleItems, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -328,8 +329,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns an iterator of the `DefId`s for all body-owners in this
-    /// crate. If you would prefer to iterate over the bodies
-    /// themselves, you can do `self.hir_crate(()).body_ids.iter()`.
+    /// crate.
     #[inline]
     pub fn hir_body_owners(self) -> impl Iterator<Item = LocalDefId> {
         self.hir_crate_items(()).body_owners.iter().copied()
@@ -370,7 +370,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn hir_rustc_coherence_is_core(self) -> bool {
-        self.hir_krate_attrs().iter().any(|attr| attr.has_name(sym::rustc_coherence_is_core))
+        find_attr!(self.hir_krate_attrs(), AttributeKind::CoherenceIsCore)
     }
 
     pub fn hir_get_module(self, module: LocalModDefId) -> (&'tcx Mod<'tcx>, Span, HirId) {
@@ -396,12 +396,11 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         V: Visitor<'tcx>,
     {
-        let krate = self.hir_crate(());
-        for info in krate.owners.iter() {
-            if let MaybeOwner::Owner(info) = info {
-                for attrs in info.attrs.map.values() {
-                    walk_list!(visitor, visit_attribute, *attrs);
-                }
+        let krate = self.hir_crate_items(());
+        for owner in krate.owners() {
+            let attrs = self.hir_attr_map(owner);
+            for attrs in attrs.map.values() {
+                walk_list!(visitor, visit_attribute, *attrs);
             }
         }
         V::Result::output()
@@ -941,7 +940,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }) => until_within(*outer_span, ty.span),
             // With generics and bounds.
             Node::Item(Item {
-                kind: ItemKind::Trait(_, _, _, generics, bounds, _),
+                kind: ItemKind::Trait(_, _, _, _, generics, bounds, _),
                 span: outer_span,
                 ..
             })
@@ -1225,6 +1224,7 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
         ..
     } = collector;
     ModuleItems {
+        add_root: false,
         submodules: submodules.into_boxed_slice(),
         free_items: items.into_boxed_slice(),
         trait_items: trait_items.into_boxed_slice(),
@@ -1233,6 +1233,7 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
         body_owners: body_owners.into_boxed_slice(),
         opaques: opaques.into_boxed_slice(),
         nested_bodies: nested_bodies.into_boxed_slice(),
+        delayed_lint_items: Box::new([]),
     }
 }
 
@@ -1254,10 +1255,20 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         body_owners,
         opaques,
         nested_bodies,
+        mut delayed_lint_items,
         ..
     } = collector;
 
+    // The crate could have delayed lints too, but would not be picked up by the visitor.
+    // The `delayed_lint_items` list is smart - it only contains items which we know from
+    // earlier passes is guaranteed to contain lints. It's a little harder to determine that
+    // for sure here, so we simply always add the crate to the list. If it has no lints,
+    // we'll discover that later. The cost of this should be low, there's only one crate
+    // after all compared to the many items we have we wouldn't want to iterate over later.
+    delayed_lint_items.push(CRATE_OWNER_ID);
+
     ModuleItems {
+        add_root: true,
         submodules: submodules.into_boxed_slice(),
         free_items: items.into_boxed_slice(),
         trait_items: trait_items.into_boxed_slice(),
@@ -1266,6 +1277,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         body_owners: body_owners.into_boxed_slice(),
         opaques: opaques.into_boxed_slice(),
         nested_bodies: nested_bodies.into_boxed_slice(),
+        delayed_lint_items: delayed_lint_items.into_boxed_slice(),
     }
 }
 
@@ -1282,6 +1294,7 @@ struct ItemCollector<'tcx> {
     body_owners: Vec<LocalDefId>,
     opaques: Vec<LocalDefId>,
     nested_bodies: Vec<LocalDefId>,
+    delayed_lint_items: Vec<OwnerId>,
 }
 
 impl<'tcx> ItemCollector<'tcx> {
@@ -1297,6 +1310,7 @@ impl<'tcx> ItemCollector<'tcx> {
             body_owners: Vec::default(),
             opaques: Vec::default(),
             nested_bodies: Vec::default(),
+            delayed_lint_items: Vec::default(),
         }
     }
 }
@@ -1314,6 +1328,9 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         }
 
         self.items.push(item.item_id());
+        if self.crate_collector && item.has_delayed_lints {
+            self.delayed_lint_items.push(item.item_id().owner_id);
+        }
 
         // Items that are modules are handled here instead of in visit_mod.
         if let ItemKind::Mod(_, module) = &item.kind {
@@ -1329,6 +1346,9 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
     fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
         self.foreign_items.push(item.foreign_item_id());
+        if self.crate_collector && item.has_delayed_lints {
+            self.delayed_lint_items.push(item.foreign_item_id().owner_id);
+        }
         intravisit::walk_foreign_item(self, item)
     }
 
@@ -1362,6 +1382,10 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         }
 
         self.trait_items.push(item.trait_item_id());
+        if self.crate_collector && item.has_delayed_lints {
+            self.delayed_lint_items.push(item.trait_item_id().owner_id);
+        }
+
         intravisit::walk_trait_item(self, item)
     }
 
@@ -1371,6 +1395,10 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         }
 
         self.impl_items.push(item.impl_item_id());
+        if self.crate_collector && item.has_delayed_lints {
+            self.delayed_lint_items.push(item.impl_item_id().owner_id);
+        }
+
         intravisit::walk_impl_item(self, item)
     }
 }

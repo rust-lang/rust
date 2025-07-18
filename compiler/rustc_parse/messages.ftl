@@ -299,10 +299,12 @@ parse_float_literal_unsupported_base = {$base} float literal is not supported
 parse_fn_pointer_cannot_be_async = an `fn` pointer type cannot be `async`
     .label = `async` because of this
     .suggestion = remove the `async` qualifier
+    .note = allowed qualifiers are: `unsafe` and `extern`
 
 parse_fn_pointer_cannot_be_const = an `fn` pointer type cannot be `const`
     .label = `const` because of this
     .suggestion = remove the `const` qualifier
+    .note = allowed qualifiers are: `unsafe` and `extern`
 
 parse_fn_ptr_with_generics = function pointer types may not have generic parameters
     .suggestion = consider moving the lifetime {$arity ->
@@ -509,6 +511,8 @@ parse_leading_underscore_unicode_escape_label = invalid start of unicode escape
 
 parse_left_arrow_operator = unexpected token: `<-`
     .suggestion = if you meant to write a comparison against a negative value, add a space in between `<` and `-`
+
+parse_let_chain_pre_2024 = let chains are only allowed in Rust 2024 or later
 
 parse_lifetime_after_mut = lifetime must precede `mut`
     .suggestion = place the lifetime before `mut`
@@ -851,6 +855,7 @@ parse_trailing_vert_not_allowed = a trailing `|` is not allowed in an or-pattern
     .suggestion = remove the `{$token}`
 
 parse_trait_alias_cannot_be_auto = trait aliases cannot be `auto`
+parse_trait_alias_cannot_be_const = trait aliases cannot be `const`
 parse_trait_alias_cannot_be_unsafe = trait aliases cannot be `unsafe`
 
 parse_transpose_dyn_or_impl = `for<...>` expected after `{$kw}`, not before

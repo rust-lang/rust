@@ -289,6 +289,9 @@ pub struct DiagInner {
     pub suggestions: Suggestions,
     pub args: DiagArgMap,
 
+    // This is used to store args and restore them after a subdiagnostic is rendered.
+    pub reserved_args: DiagArgMap,
+
     /// This is not used for highlighting or rendering any error message. Rather, it can be used
     /// as a sort key to sort a buffer of diagnostics. By default, it is the primary span of
     /// `span` if there is one. Otherwise, it is `DUMMY_SP`.
@@ -319,6 +322,7 @@ impl DiagInner {
             children: vec![],
             suggestions: Suggestions::Enabled(vec![]),
             args: Default::default(),
+            reserved_args: Default::default(),
             sort_span: DUMMY_SP,
             is_lint: None,
             long_ty_path: None,
@@ -390,7 +394,36 @@ impl DiagInner {
     }
 
     pub(crate) fn arg(&mut self, name: impl Into<DiagArgName>, arg: impl IntoDiagArg) {
-        self.args.insert(name.into(), arg.into_diag_arg(&mut self.long_ty_path));
+        let name = name.into();
+        let value = arg.into_diag_arg(&mut self.long_ty_path);
+        // This assertion is to avoid subdiagnostics overwriting an existing diagnostic arg.
+        debug_assert!(
+            !self.args.contains_key(&name) || self.args.get(&name) == Some(&value),
+            "arg {} already exists",
+            name
+        );
+        self.args.insert(name, value);
+    }
+
+    pub fn remove_arg(&mut self, name: &str) {
+        self.args.swap_remove(name);
+    }
+
+    pub fn store_args(&mut self) {
+        self.reserved_args = self.args.clone();
+    }
+
+    pub fn restore_args(&mut self) {
+        self.args = std::mem::take(&mut self.reserved_args);
+    }
+
+    pub fn emitted_at_sub_diag(&self) -> Subdiag {
+        let track = format!("-Ztrack-diagnostics: created at {}", self.emitted_at);
+        Subdiag {
+            level: crate::Level::Note,
+            messages: vec![(DiagMessage::Str(Cow::Owned(track)), Style::NoStyle)],
+            span: MultiSpan::new(),
+        }
     }
 
     /// Fields used for Hash, and PartialEq trait.
@@ -981,7 +1014,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// * may look like "to do xyz, use" or "to do xyz, use abc"
     /// * may contain a name of a function, variable, or type, but not whole expressions
     ///
-    /// See `CodeSuggestion` for more information.
+    /// See [`CodeSuggestion`] for more information.
     #[rustc_lint_diagnostics]
     pub fn span_suggestion(
         &mut self,
@@ -1132,7 +1165,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self.push_suggestion(CodeSuggestion {
             substitutions,
             msg: self.subdiagnostic_message_to_diagnostic_message(msg),
-            style: SuggestionStyle::ShowCode,
+            style: SuggestionStyle::ShowAlways,
             applicability,
         });
         self
@@ -1142,7 +1175,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// Prints out a message with a suggested edit of the code. If the suggestion is presented
     /// inline, it will only show the message and not the suggestion.
     ///
-    /// See `CodeSuggestion` for more information.
+    /// See [`CodeSuggestion`] for more information.
     #[rustc_lint_diagnostics]
     pub fn span_suggestion_short(
         &mut self,
@@ -1422,6 +1455,12 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn delay_as_bug(mut self) -> G::EmitResult {
         self.downgrade_to_delayed_bug();
         self.emit()
+    }
+
+    pub fn remove_arg(&mut self, name: &str) {
+        if let Some(diag) = self.diag.as_mut() {
+            diag.remove_arg(name);
+        }
     }
 }
 

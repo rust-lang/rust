@@ -26,9 +26,8 @@ LL | fn a() -> i32 {
    |    - consider calling this function
 ...
 LL |     assert_eq!(a, 0);
-   |     ^^^^^^^^^^^^^^^^ `fn() -> i32 {a}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |     ^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for fn item `fn() -> i32 {a}`
    |
-   = help: the trait `Debug` is not implemented for fn item `fn() -> i32 {a}`
    = help: use parentheses to call this function: `a()`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 

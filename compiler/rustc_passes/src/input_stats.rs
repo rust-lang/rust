@@ -65,16 +65,16 @@ pub fn print_hir_stats(tcx: TyCtxt<'_>) {
         StatCollector { tcx: Some(tcx), nodes: FxHashMap::default(), seen: FxHashSet::default() };
     tcx.hir_walk_toplevel_module(&mut collector);
     tcx.hir_walk_attributes(&mut collector);
-    collector.print("HIR STATS", "hir-stats");
+    collector.print(tcx, "HIR STATS", "hir-stats");
 }
 
-pub fn print_ast_stats(krate: &ast::Crate, title: &str, prefix: &str) {
+pub fn print_ast_stats(tcx: TyCtxt<'_>, krate: &ast::Crate) {
     use rustc_ast::visit::Visitor;
 
     let mut collector =
         StatCollector { tcx: None, nodes: FxHashMap::default(), seen: FxHashSet::default() };
     collector.visit_crate(krate);
-    collector.print(title, prefix);
+    collector.print(tcx, "POST EXPANSION AST STATS", "ast-stats");
 }
 
 impl<'k> StatCollector<'k> {
@@ -116,29 +116,48 @@ impl<'k> StatCollector<'k> {
         }
     }
 
-    fn print(&self, title: &str, prefix: &str) {
+    fn print(&self, tcx: TyCtxt<'_>, title: &str, prefix: &str) {
+        use std::fmt::Write;
+
         // We will soon sort, so the initial order does not matter.
         #[allow(rustc::potential_query_instability)]
         let mut nodes: Vec<_> = self.nodes.iter().collect();
         nodes.sort_by_cached_key(|(label, node)| (node.stats.accum_size(), label.to_owned()));
+        nodes.reverse(); // bigger items first
+
+        let name_w = 18;
+        let acc_size1_w = 10;
+        let acc_size2_w = 8; // " (NN.N%)"
+        let acc_size_w = acc_size1_w + acc_size2_w;
+        let count_w = 14;
+        let item_size_w = 14;
+        let banner_w = name_w + acc_size_w + count_w + item_size_w;
 
         let total_size = nodes.iter().map(|(_, node)| node.stats.accum_size()).sum();
         let total_count = nodes.iter().map(|(_, node)| node.stats.count).sum();
 
-        eprintln!("{prefix} {title}");
-        eprintln!(
-            "{} {:<18}{:>18}{:>14}{:>14}",
-            prefix, "Name", "Accumulated Size", "Count", "Item Size"
+        // We write all the text into a string and print it with a single
+        // `eprint!`. This is an attempt to minimize interleaved text if multiple
+        // rustc processes are printing macro-stats at the same time (e.g. with
+        // `RUSTFLAGS='-Zinput-stats' cargo build`). It still doesn't guarantee
+        // non-interleaving, though.
+        let mut s = String::new();
+        _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
+        _ = writeln!(s, "{prefix} {title}: {}", tcx.crate_name(hir::def_id::LOCAL_CRATE));
+        _ = writeln!(
+            s,
+            "{prefix} {:<name_w$}{:>acc_size_w$}{:>count_w$}{:>item_size_w$}",
+            "Name", "Accumulated Size", "Count", "Item Size"
         );
-        eprintln!("{prefix} ----------------------------------------------------------------");
+        _ = writeln!(s, "{prefix} {}", "-".repeat(banner_w));
 
         let percent = |m, n| (m * 100) as f64 / n as f64;
 
         for (label, node) in nodes {
             let size = node.stats.accum_size();
-            eprintln!(
-                "{} {:<18}{:>10} ({:4.1}%){:>14}{:>14}",
-                prefix,
+            _ = writeln!(
+                s,
+                "{prefix} {:<name_w$}{:>acc_size1_w$} ({:4.1}%){:>count_w$}{:>item_size_w$}",
                 label,
                 usize_with_underscores(size),
                 percent(size, total_size),
@@ -155,9 +174,9 @@ impl<'k> StatCollector<'k> {
 
                 for (label, subnode) in subnodes {
                     let size = subnode.accum_size();
-                    eprintln!(
-                        "{} - {:<18}{:>10} ({:4.1}%){:>14}",
-                        prefix,
+                    _ = writeln!(
+                        s,
+                        "{prefix} - {:<name_w$}{:>acc_size1_w$} ({:4.1}%){:>count_w$}",
                         label,
                         usize_with_underscores(size),
                         percent(size, total_size),
@@ -166,15 +185,17 @@ impl<'k> StatCollector<'k> {
                 }
             }
         }
-        eprintln!("{prefix} ----------------------------------------------------------------");
-        eprintln!(
-            "{} {:<18}{:>10}        {:>14}",
-            prefix,
+        _ = writeln!(s, "{prefix} {}", "-".repeat(banner_w));
+        _ = writeln!(
+            s,
+            "{prefix} {:<name_w$}{:>acc_size1_w$}{:>acc_size2_w$}{:>count_w$}",
             "Total",
             usize_with_underscores(total_size),
+            "",
             usize_with_underscores(total_count),
         );
-        eprintln!("{prefix}");
+        _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
+        eprint!("{s}");
     }
 }
 
@@ -379,7 +400,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 Array,
                 Ptr,
                 Ref,
-                BareFn,
+                FnPtr,
                 UnsafeBinder,
                 Never,
                 Tup,
@@ -446,9 +467,9 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_trait_item(self, ti)
     }
 
-    fn visit_trait_item_ref(&mut self, ti: &'v hir::TraitItemRef) {
-        self.record("TraitItemRef", Some(ti.id.hir_id()), ti);
-        hir_visit::walk_trait_item_ref(self, ti)
+    fn visit_trait_item_ref(&mut self, ti: &'v hir::TraitItemId) {
+        self.record("TraitItemId", Some(ti.hir_id()), ti);
+        hir_visit::walk_trait_item_ref(self, *ti)
     }
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
@@ -459,14 +480,14 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_impl_item(self, ii)
     }
 
-    fn visit_foreign_item_ref(&mut self, fi: &'v hir::ForeignItemRef) {
-        self.record("ForeignItemRef", Some(fi.id.hir_id()), fi);
-        hir_visit::walk_foreign_item_ref(self, fi)
+    fn visit_foreign_item_ref(&mut self, fi: &'v hir::ForeignItemId) {
+        self.record("ForeignItemId", Some(fi.hir_id()), fi);
+        hir_visit::walk_foreign_item_ref(self, *fi)
     }
 
-    fn visit_impl_item_ref(&mut self, ii: &'v hir::ImplItemRef) {
-        self.record("ImplItemRef", Some(ii.id.hir_id()), ii);
-        hir_visit::walk_impl_item_ref(self, ii)
+    fn visit_impl_item_ref(&mut self, ii: &'v hir::ImplItemId) {
+        self.record("ImplItemId", Some(ii.hir_id()), ii);
+        hir_visit::walk_impl_item_ref(self, *ii)
     }
 
     fn visit_param_bound(&mut self, b: &'v hir::GenericBound<'v>) {
@@ -653,7 +674,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Ptr,
                 Ref,
                 PinnedRef,
-                BareFn,
+                FnPtr,
                 UnsafeBinder,
                 Never,
                 Tup,

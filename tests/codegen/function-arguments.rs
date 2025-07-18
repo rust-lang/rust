@@ -1,7 +1,6 @@
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
-#![feature(dyn_star)]
 #![feature(allocator_api)]
 
 use std::marker::PhantomPinned;
@@ -275,13 +274,5 @@ pub fn enum_id_1(x: Option<Result<u16, u16>>) -> Option<Result<u16, u16>> {
 // CHECK: { i1, i8 } @enum_id_2(i1 noundef zeroext %x.0, i8 %x.1)
 #[no_mangle]
 pub fn enum_id_2(x: Option<u8>) -> Option<u8> {
-    x
-}
-
-// CHECK: { ptr, {{.+}} } @dyn_star(ptr noundef %x.0, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}) %x.1)
-// Expect an ABI something like `{ {}*, [3 x i64]* }`, but that's hard to match on generically,
-// so do like the `trait_box` test and just match on `{{.+}}` for the vtable.
-#[no_mangle]
-pub fn dyn_star(x: dyn* Drop) -> dyn* Drop {
     x
 }

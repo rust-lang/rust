@@ -5,7 +5,6 @@ use std::{env, fs};
 
 use rustc_fs_util::try_canonicalize;
 use rustc_target::spec::Target;
-use smallvec::{SmallVec, smallvec};
 
 use crate::search_paths::{PathKind, SearchPath};
 
@@ -182,24 +181,9 @@ fn current_dll_path() -> Result<PathBuf, String> {
     Err("current_dll_path is not supported on WASI".to_string())
 }
 
-pub fn sysroot_with_fallback(sysroot: &Path) -> SmallVec<[PathBuf; 2]> {
-    let mut candidates = smallvec![sysroot.to_owned()];
-    let default_sysroot = get_or_default_sysroot();
-    if default_sysroot != sysroot {
-        candidates.push(default_sysroot);
-    }
-    candidates
-}
-
-/// Returns the provided sysroot or calls [`get_or_default_sysroot`] if it's none.
-/// Panics if [`get_or_default_sysroot`]  returns an error.
-pub fn materialize_sysroot(maybe_sysroot: Option<PathBuf>) -> PathBuf {
-    maybe_sysroot.unwrap_or_else(|| get_or_default_sysroot())
-}
-
 /// This function checks if sysroot is found using env::args().next(), and if it
 /// is not found, finds sysroot from current rustc_driver dll.
-pub fn get_or_default_sysroot() -> PathBuf {
+pub(crate) fn default_sysroot() -> PathBuf {
     fn default_from_rustc_driver_dll() -> Result<PathBuf, String> {
         let dll = current_dll_path()?;
 
@@ -209,10 +193,9 @@ pub fn get_or_default_sysroot() -> PathBuf {
         //
         // use `parent` twice to chop off the file name and then also the
         // directory containing the dll
-        let dir = dll.parent().and_then(|p| p.parent()).ok_or(format!(
-            "Could not move 2 levels upper using `parent()` on {}",
-            dll.display()
-        ))?;
+        let dir = dll.parent().and_then(|p| p.parent()).ok_or_else(|| {
+            format!("Could not move 2 levels upper using `parent()` on {}", dll.display())
+        })?;
 
         // if `dir` points to target's dir, move up to the sysroot
         let mut sysroot_dir = if dir.ends_with(crate::config::host_tuple()) {
@@ -265,5 +248,6 @@ pub fn get_or_default_sysroot() -> PathBuf {
         rustlib_path.exists().then_some(p)
     }
 
-    from_env_args_next().unwrap_or(default_from_rustc_driver_dll().expect("Failed finding sysroot"))
+    from_env_args_next()
+        .unwrap_or_else(|| default_from_rustc_driver_dll().expect("Failed finding sysroot"))
 }

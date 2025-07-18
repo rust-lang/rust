@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use rustc_literal_escaper::{Mode, unescape_unicode};
+use rustc_literal_escaper::unescape_str;
 use walkdir::WalkDir;
 
 mod groups;
@@ -218,7 +218,7 @@ impl<'a> LintExtractor<'a> {
                         } else if let Some(text) = line.strip_prefix("#[doc = \"") {
                             let escaped = text.strip_suffix("\"]").unwrap();
                             let mut buf = String::new();
-                            unescape_unicode(escaped, Mode::Str, &mut |_, c| match c {
+                            unescape_str(escaped, |_, res| match res {
                                 Ok(c) => buf.push(c),
                                 Err(err) => {
                                     assert!(!err.is_fatal(), "failed to unescape string literal")

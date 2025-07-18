@@ -10,7 +10,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Namespace::{MacroNS, TypeNS, ValueNS};
 use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{ImplItemRef, ItemKind, Node, OwnerId, TraitItemRef, UseKind};
+use rustc_hir::{ItemKind, Node, UseKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyCtxt, UintTy};
@@ -125,15 +125,6 @@ path_macros! {
     value_path: PathNS::Value,
     macro_path: PathNS::Macro,
 }
-
-// Paths in `core`/`alloc`/`std`. This should be avoided and cleaned up by adding diagnostic items.
-pub static ALIGN_OF: PathLookup = value_path!(core::mem::align_of);
-pub static CHAR_TO_DIGIT: PathLookup = value_path!(char::to_digit);
-pub static CONCAT: PathLookup = macro_path!(core::concat);
-pub static IO_ERROR_NEW: PathLookup = value_path!(std::io::Error::new);
-pub static IO_ERRORKIND_OTHER_CTOR: PathLookup = value_path!(std::io::ErrorKind::Other);
-pub static ITER_STEP: PathLookup = type_path!(core::iter::Step);
-pub static SLICE_FROM_REF: PathLookup = value_path!(core::slice::from_ref);
 
 // Paths in external crates
 pub static FUTURES_IO_ASYNCREADEXT: PathLookup = type_path!(futures_util::AsyncReadExt);
@@ -293,14 +284,6 @@ fn local_item_child_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, ns: PathNS, n
         _ => return None,
     };
 
-    let res = |ident: Ident, owner_id: OwnerId| {
-        if ident.name == name && ns.matches(tcx.def_kind(owner_id).ns()) {
-            Some(owner_id.to_def_id())
-        } else {
-            None
-        }
-    };
-
     match item_kind {
         ItemKind::Mod(_, r#mod) => r#mod.item_ids.iter().find_map(|&item_id| {
             let item = tcx.hir_item(item_id);
@@ -316,17 +299,19 @@ fn local_item_child_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, ns: PathNS, n
                 } else {
                     None
                 }
+            } else if let Some(ident) = item.kind.ident()
+                && ident.name == name
+                && ns.matches(tcx.def_kind(item.owner_id).ns())
+            {
+                Some(item.owner_id.to_def_id())
             } else {
-                res(item.kind.ident()?, item_id.owner_id)
+                None
             }
         }),
-        ItemKind::Impl(r#impl) => r#impl
-            .items
-            .iter()
-            .find_map(|&ImplItemRef { ident, id, .. }| res(ident, id.owner_id)),
-        ItemKind::Trait(.., trait_item_refs) => trait_item_refs
-            .iter()
-            .find_map(|&TraitItemRef { ident, id, .. }| res(ident, id.owner_id)),
+        ItemKind::Impl(..) | ItemKind::Trait(..)
+            => tcx.associated_items(local_id).filter_by_name_unhygienic(name)
+                .find(|assoc_item| ns.matches(Some(assoc_item.namespace())))
+                .map(|assoc_item| assoc_item.def_id),
         _ => None,
     }
 }

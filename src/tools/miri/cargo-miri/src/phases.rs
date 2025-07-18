@@ -176,11 +176,6 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // Set `--target-dir` to `miri` inside the original target directory.
     let target_dir = get_target_dir(&metadata);
     cmd.arg("--target-dir").arg(target_dir);
-    // Only when running in x.py (where we are running with beta cargo): set `RUSTC_STAGE`.
-    // Will have to be removed on next bootstrap bump. tag: cfg(bootstrap).
-    if env::var_os("RUSTC_STAGE").is_some() {
-        cmd.arg("-Zdoctest-xcompile");
-    }
 
     // *After* we set all the flags that need setting, forward everything else. Make sure to skip
     // `--target-dir` (which would otherwise be set twice).

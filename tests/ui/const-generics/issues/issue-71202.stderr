@@ -7,7 +7,7 @@ LL | |             const VALUE: bool = false;
 ...  |
 LL | |         <IsCopy<T>>::VALUE
 LL | |     } as usize] = [];
-   | |_____________________^
+   | |_______________^
    |
 help: try adding a `where` bound
    |

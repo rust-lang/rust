@@ -45,7 +45,8 @@ fn emit_direct_ptr_va_arg<'ll, 'tcx>(
     let va_list_ty = bx.type_ptr();
     let va_list_addr = list.immediate();
 
-    let ptr = bx.load(va_list_ty, va_list_addr, bx.tcx().data_layout.pointer_align.abi);
+    let ptr_align_abi = bx.tcx().data_layout.pointer_align().abi;
+    let ptr = bx.load(va_list_ty, va_list_addr, ptr_align_abi);
 
     let (addr, addr_align) = if allow_higher_align && align > slot_size {
         (round_pointer_up_to_alignment(bx, ptr, align, bx.type_ptr()), align)
@@ -56,7 +57,7 @@ fn emit_direct_ptr_va_arg<'ll, 'tcx>(
     let aligned_size = size.align_to(slot_size).bytes() as i32;
     let full_direct_size = bx.cx().const_i32(aligned_size);
     let next = bx.inbounds_ptradd(addr, full_direct_size);
-    bx.store(next, va_list_addr, bx.tcx().data_layout.pointer_align.abi);
+    bx.store(next, va_list_addr, ptr_align_abi);
 
     if size.bytes() < slot_size.bytes()
         && bx.tcx().sess.target.endian == Endian::Big
@@ -108,8 +109,8 @@ fn emit_ptr_va_arg<'ll, 'tcx>(
     let (llty, size, align) = if indirect {
         (
             bx.cx.layout_of(Ty::new_imm_ptr(bx.cx.tcx, target_ty)).llvm_type(bx.cx),
-            bx.cx.data_layout().pointer_size,
-            bx.cx.data_layout().pointer_align,
+            bx.cx.data_layout().pointer_size(),
+            bx.cx.data_layout().pointer_align(),
         )
     } else {
         (layout.llvm_type(bx.cx), layout.size, layout.align)
@@ -172,10 +173,10 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
 
     let gr_type = target_ty.is_any_ptr() || target_ty.is_integral();
     let (reg_off, reg_top, slot_size) = if gr_type {
-        let nreg = (layout.size.bytes() + 7) / 8;
+        let nreg = layout.size.bytes().div_ceil(8);
         (gr_offs, gr_top, nreg * 8)
     } else {
-        let nreg = (layout.size.bytes() + 15) / 16;
+        let nreg = layout.size.bytes().div_ceil(16);
         (vr_offs, vr_top, nreg * 16)
     };
 
@@ -204,7 +205,7 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
 
     bx.switch_to_block(in_reg);
     let top_type = bx.type_ptr();
-    let top = bx.load(top_type, reg_top, dl.pointer_align.abi);
+    let top = bx.load(top_type, reg_top, dl.pointer_align().abi);
 
     // reg_value = *(@top + reg_off_v);
     let mut reg_addr = bx.ptradd(top, reg_off_v);
@@ -297,6 +298,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
 
     let max_regs = 8u8;
     let use_regs = bx.icmp(IntPredicate::IntULT, num_regs, bx.const_u8(max_regs));
+    let ptr_align_abi = bx.tcx().data_layout.pointer_align().abi;
 
     let in_reg = bx.append_sibling_block("va_arg.in_reg");
     let in_mem = bx.append_sibling_block("va_arg.in_mem");
@@ -308,7 +310,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
         bx.switch_to_block(in_reg);
 
         let reg_safe_area_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(1 + 1 + 2 + 4));
-        let mut reg_addr = bx.load(bx.type_ptr(), reg_safe_area_ptr, dl.pointer_align.abi);
+        let mut reg_addr = bx.load(bx.type_ptr(), reg_safe_area_ptr, ptr_align_abi);
 
         // Floating-point registers start after the general-purpose registers.
         if !is_int && !is_soft_float_abi {
@@ -342,11 +344,11 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
         let size = if !is_indirect {
             layout.layout.size.align_to(overflow_area_align)
         } else {
-            dl.pointer_size
+            dl.pointer_size()
         };
 
         let overflow_area_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(1 + 1 + 2));
-        let mut overflow_area = bx.load(bx.type_ptr(), overflow_area_ptr, dl.pointer_align.abi);
+        let mut overflow_area = bx.load(bx.type_ptr(), overflow_area_ptr, ptr_align_abi);
 
         // Round up address of argument to alignment
         if layout.layout.align.abi > overflow_area_align {
@@ -362,7 +364,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
 
         // Increase the overflow area.
         overflow_area = bx.inbounds_ptradd(overflow_area, bx.const_usize(size.bytes()));
-        bx.store(overflow_area, overflow_area_ptr, dl.pointer_align.abi);
+        bx.store(overflow_area, overflow_area_ptr, ptr_align_abi);
 
         bx.br(end);
 
@@ -373,11 +375,8 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     bx.switch_to_block(end);
     let val_addr = bx.phi(bx.type_ptr(), &[reg_addr, mem_addr], &[in_reg, in_mem]);
     let val_type = layout.llvm_type(bx);
-    let val_addr = if is_indirect {
-        bx.load(bx.cx.type_ptr(), val_addr, dl.pointer_align.abi)
-    } else {
-        val_addr
-    };
+    let val_addr =
+        if is_indirect { bx.load(bx.cx.type_ptr(), val_addr, ptr_align_abi) } else { val_addr };
     bx.load(val_type, val_addr, layout.align.abi)
 }
 
@@ -414,6 +413,7 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     let in_reg = bx.append_sibling_block("va_arg.in_reg");
     let in_mem = bx.append_sibling_block("va_arg.in_mem");
     let end = bx.append_sibling_block("va_arg.end");
+    let ptr_align_abi = dl.pointer_align().abi;
 
     // FIXME: vector ABI not yet supported.
     let target_ty_size = bx.cx.size_of(target_ty).bytes();
@@ -435,7 +435,7 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     bx.switch_to_block(in_reg);
 
     // Work out the address of the value in the register save area.
-    let reg_ptr_v = bx.load(bx.type_ptr(), reg_save_area, dl.pointer_align.abi);
+    let reg_ptr_v = bx.load(bx.type_ptr(), reg_save_area, ptr_align_abi);
     let scaled_reg_count = bx.mul(reg_count_v, bx.const_u64(8));
     let reg_off = bx.add(scaled_reg_count, bx.const_u64(reg_save_index * 8 + reg_padding));
     let reg_addr = bx.ptradd(reg_ptr_v, reg_off);
@@ -449,15 +449,14 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     bx.switch_to_block(in_mem);
 
     // Work out the address of the value in the argument overflow area.
-    let arg_ptr_v =
-        bx.load(bx.type_ptr(), overflow_arg_area, bx.tcx().data_layout.pointer_align.abi);
+    let arg_ptr_v = bx.load(bx.type_ptr(), overflow_arg_area, ptr_align_abi);
     let arg_off = bx.const_u64(padding);
     let mem_addr = bx.ptradd(arg_ptr_v, arg_off);
 
     // Update the argument overflow area pointer.
     let arg_size = bx.cx().const_u64(padded_size);
     let new_arg_ptr_v = bx.inbounds_ptradd(arg_ptr_v, arg_size);
-    bx.store(new_arg_ptr_v, overflow_arg_area, dl.pointer_align.abi);
+    bx.store(new_arg_ptr_v, overflow_arg_area, ptr_align_abi);
     bx.br(end);
 
     // Return the appropriate result.
@@ -465,7 +464,7 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     let val_addr = bx.phi(bx.type_ptr(), &[reg_addr, mem_addr], &[in_reg, in_mem]);
     let val_type = layout.llvm_type(bx);
     let val_addr =
-        if indirect { bx.load(bx.cx.type_ptr(), val_addr, dl.pointer_align.abi) } else { val_addr };
+        if indirect { bx.load(bx.cx.type_ptr(), val_addr, ptr_align_abi) } else { val_addr };
     bx.load(val_type, val_addr, layout.align.abi)
 }
 
@@ -607,7 +606,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
     // loads than necessary. Can we clean this up?
     let reg_save_area_ptr =
         bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(2 * unsigned_int_offset + ptr_offset));
-    let reg_save_area_v = bx.load(bx.type_ptr(), reg_save_area_ptr, dl.pointer_align.abi);
+    let reg_save_area_v = bx.load(bx.type_ptr(), reg_save_area_ptr, dl.pointer_align().abi);
 
     let reg_addr = match layout.layout.backend_repr() {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
@@ -749,10 +748,11 @@ fn x86_64_sysv64_va_arg_from_memory<'ll, 'tcx>(
     layout: TyAndLayout<'tcx, Ty<'tcx>>,
 ) -> &'ll Value {
     let dl = bx.cx.data_layout();
+    let ptr_align_abi = dl.data_layout().pointer_align().abi;
 
     let overflow_arg_area_ptr = bx.inbounds_ptradd(va_list_addr, bx.const_usize(8));
 
-    let overflow_arg_area_v = bx.load(bx.type_ptr(), overflow_arg_area_ptr, dl.pointer_align.abi);
+    let overflow_arg_area_v = bx.load(bx.type_ptr(), overflow_arg_area_ptr, ptr_align_abi);
     // AMD64-ABI 3.5.7p5: Step 7. Align l->overflow_arg_area upwards to a 16
     // byte boundary if alignment needed by type exceeds 8 byte boundary.
     // It isn't stated explicitly in the standard, but in practice we use
@@ -771,7 +771,7 @@ fn x86_64_sysv64_va_arg_from_memory<'ll, 'tcx>(
     let size_in_bytes = layout.layout.size().bytes();
     let offset = bx.const_i32(size_in_bytes.next_multiple_of(8) as i32);
     let overflow_arg_area = bx.inbounds_ptradd(overflow_arg_area_v, offset);
-    bx.store(overflow_arg_area, overflow_arg_area_ptr, dl.pointer_align.abi);
+    bx.store(overflow_arg_area, overflow_arg_area_ptr, ptr_align_abi);
 
     mem_addr
 }
@@ -803,6 +803,7 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     let from_stack = bx.append_sibling_block("va_arg.from_stack");
     let from_regsave = bx.append_sibling_block("va_arg.from_regsave");
     let end = bx.append_sibling_block("va_arg.end");
+    let ptr_align_abi = bx.tcx().data_layout.pointer_align().abi;
 
     // (*va).va_ndx
     let va_reg_offset = 4;
@@ -825,12 +826,11 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
 
     bx.switch_to_block(from_regsave);
     // update va_ndx
-    bx.store(offset_next, offset_ptr, bx.tcx().data_layout.pointer_align.abi);
+    bx.store(offset_next, offset_ptr, ptr_align_abi);
 
     // (*va).va_reg
     let regsave_area_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(va_reg_offset));
-    let regsave_area =
-        bx.load(bx.type_ptr(), regsave_area_ptr, bx.tcx().data_layout.pointer_align.abi);
+    let regsave_area = bx.load(bx.type_ptr(), regsave_area_ptr, ptr_align_abi);
     let regsave_value_ptr = bx.inbounds_ptradd(regsave_area, offset);
     bx.br(end);
 
@@ -849,11 +849,11 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     // va_ndx = offset_next_corrected;
     let offset_next_corrected = bx.add(offset_next, bx.const_i32(slot_size));
     // update va_ndx
-    bx.store(offset_next_corrected, offset_ptr, bx.tcx().data_layout.pointer_align.abi);
+    bx.store(offset_next_corrected, offset_ptr, ptr_align_abi);
 
     // let stack_value_ptr = unsafe { (*va).va_stk.byte_add(offset_corrected) };
     let stack_area_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(0));
-    let stack_area = bx.load(bx.type_ptr(), stack_area_ptr, bx.tcx().data_layout.pointer_align.abi);
+    let stack_area = bx.load(bx.type_ptr(), stack_area_ptr, ptr_align_abi);
     let stack_value_ptr = bx.inbounds_ptradd(stack_area, offset_corrected);
     bx.br(end);
 
@@ -861,7 +861,7 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
 
     // On big-endian, for values smaller than the slot size we'd have to align the read to the end
     // of the slot rather than the start. While the ISA and GCC support big-endian, all the Xtensa
-    // targets supported by rustc are litte-endian so don't worry about it.
+    // targets supported by rustc are little-endian so don't worry about it.
 
     // if from_regsave {
     //     unsafe { *regsave_value_ptr }

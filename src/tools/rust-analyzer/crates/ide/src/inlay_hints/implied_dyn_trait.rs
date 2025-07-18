@@ -17,19 +17,28 @@ pub(super) fn hints(
     let parent = path.syntax().parent()?;
     let range = match path {
         Either::Left(path) => {
-            let paren =
-                parent.ancestors().take_while(|it| ast::ParenType::can_cast(it.kind())).last();
+            let paren = parent
+                .ancestors()
+                .take_while(|it| {
+                    ast::ParenType::can_cast(it.kind()) || ast::ForType::can_cast(it.kind())
+                })
+                .last();
             let parent = paren.as_ref().and_then(|it| it.parent()).unwrap_or(parent);
             if ast::TypeBound::can_cast(parent.kind())
                 || ast::TypeAnchor::can_cast(parent.kind())
-                || ast::Impl::cast(parent)
-                    .and_then(|it| it.trait_())
-                    .is_some_and(|it| it.syntax() == path.syntax())
+                || ast::Impl::cast(parent).is_some_and(|it| {
+                    it.trait_().map_or(
+                        // only show it for impl type if the impl is not incomplete, otherwise we
+                        // are likely typing a trait impl
+                        it.assoc_item_list().is_none_or(|it| it.l_curly_token().is_none()),
+                        |trait_| trait_.syntax() == path.syntax(),
+                    )
+                })
             {
                 return None;
             }
             sema.resolve_trait(&path.path()?)?;
-            paren.map_or_else(|| path.syntax().text_range(), |it| it.text_range())
+            path.syntax().text_range()
         }
         Either::Right(dyn_) => {
             if dyn_.dyn_token().is_some() {
@@ -84,7 +93,8 @@ fn foo(_: &T,  _: for<'a> T) {}
 impl T {}
   // ^ dyn
 impl T for (T) {}
-        // ^^^ dyn
+         // ^ dyn
+impl T
 "#,
         );
     }
@@ -106,7 +116,7 @@ fn foo(
     _: &mut (T + T)
     //       ^^^^^ dyn
     _: *mut (T),
-    //      ^^^ dyn
+    //       ^ dyn
 ) {}
 "#,
         );
@@ -128,6 +138,28 @@ fn foo(
                     _: &mut dyn T
                 ) {}
             "#]],
+        );
+    }
+
+    #[test]
+    fn hrtb_bound_does_not_add_dyn() {
+        check(
+            r#"
+//- minicore: fn
+fn test<F>(f: F) where F: for<'a> FnOnce(&'a i32) {}
+     // ^: Sized
+        "#,
+        );
+    }
+
+    #[test]
+    fn with_parentheses() {
+        check(
+            r#"
+trait T {}
+fn foo(v: &(T)) {}
+         // ^ dyn
+        "#,
         );
     }
 }

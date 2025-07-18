@@ -1,6 +1,3 @@
-// From rust:
-/* global srcIndex */
-
 // Local js definitions:
 /* global addClass, onEachLazy, removeClass, browserSupportsHistoryApi */
 /* global updateLocalStorage, getVar, nonnull */
@@ -100,11 +97,15 @@ window.rustdocToggleSrcSidebar = () => {
 
 // This function is called from "src-files.js", generated in `html/render/write_shared.rs`.
 // eslint-disable-next-line no-unused-vars
-function createSrcSidebar() {
+/**
+ * @param {string} srcIndexStr - strinified json map from crate name to dir structure
+ */
+function createSrcSidebar(srcIndexStr) {
     const container = nonnull(document.querySelector("nav.sidebar"));
 
     const sidebar = document.createElement("div");
     sidebar.id = "src-sidebar";
+    const srcIndex = new Map(JSON.parse(srcIndexStr));
 
     let hasFoundFile = false;
 

@@ -94,6 +94,8 @@ config_data! {
 
 
 
+        /// Enables highlighting of related return values while the cursor is on any `match`, `if`, or match arm arrow (`=>`).
+        highlightRelated_branchExitPoints_enable: bool = true,
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = true,
         /// Enables highlighting of all captures of a closure while the cursor is on the `|` or move keyword of a closure.
@@ -452,6 +454,8 @@ config_data! {
         assist_emitMustUse: bool               = false,
         /// Placeholder expression to use for missing expressions in assists.
         assist_expressionFillDefault: ExprFillDefaultDef              = ExprFillDefaultDef::Todo,
+        /// When inserting a type (e.g. in "fill match arms" assist), prefer to use `Self` over the type name where possible.
+        assist_preferSelf: bool = false,
         /// Enable borrow checking for term search code assists. If set to false, also there will be more suggestions, but some of them may not borrow-check.
         assist_termSearch_borrowcheck: bool = true,
         /// Term search fuel in "units of work" for assists (Defaults to 1800).
@@ -760,6 +764,12 @@ config_data! {
         /// though Cargo might be the eventual consumer.
         vfs_extraIncludes: Vec<String> = vec![],
 
+        /// Exclude all imports from workspace symbol search.
+        ///
+        /// In addition to regular imports (which are always excluded),
+        /// this option removes public imports (better known as re-exports)
+        /// and removes imports that rename the imported symbol.
+        workspace_symbol_search_excludeImports: bool = false,
         /// Workspace symbol search kind.
         workspace_symbol_search_kind: WorkspaceSymbolSearchKindDef = WorkspaceSymbolSearchKindDef::OnlyTypes,
         /// Limits the number of items returned from a workspace symbol search (Defaults to 128).
@@ -1352,6 +1362,8 @@ pub struct RunnablesConfig {
 /// Configuration for workspace symbol search requests.
 #[derive(Debug, Clone)]
 pub struct WorkspaceSymbolConfig {
+    /// Should imports be excluded.
+    pub search_exclude_imports: bool,
     /// In what scope should the symbol be searched in.
     pub search_scope: WorkspaceSymbolSearchScope,
     /// What kind of symbol is being searched for.
@@ -1501,6 +1513,7 @@ impl Config {
                 ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
                 ExprFillDefaultDef::Underscore => ExprFillDefaultMode::Underscore,
             },
+            prefer_self_ty: *self.assist_preferSelf(source_root),
         }
     }
 
@@ -1513,7 +1526,7 @@ impl Config {
         CompletionConfig {
             enable_postfix_completions: self.completion_postfix_enable(source_root).to_owned(),
             enable_imports_on_the_fly: self.completion_autoimport_enable(source_root).to_owned()
-                && self.caps.completion_item_edit_resolve(),
+                && self.caps.has_completion_item_resolve_additionalTextEdits(),
             enable_self_on_the_fly: self.completion_autoself_enable(source_root).to_owned(),
             enable_auto_iter: *self.completion_autoIter_enable(source_root),
             enable_auto_await: *self.completion_autoAwait_enable(source_root),
@@ -1618,6 +1631,7 @@ impl Config {
             exit_points: self.highlightRelated_exitPoints_enable().to_owned(),
             yield_points: self.highlightRelated_yieldPoints_enable().to_owned(),
             closure_captures: self.highlightRelated_closureCaptures_enable().to_owned(),
+            branch_exit_points: self.highlightRelated_branchExitPoints_enable().to_owned(),
         }
     }
 
@@ -2280,6 +2294,7 @@ impl Config {
 
     pub fn workspace_symbol(&self, source_root: Option<SourceRootId>) -> WorkspaceSymbolConfig {
         WorkspaceSymbolConfig {
+            search_exclude_imports: *self.workspace_symbol_search_excludeImports(source_root),
             search_scope: match self.workspace_symbol_search_scope(source_root) {
                 WorkspaceSymbolSearchScopeDef::Workspace => WorkspaceSymbolSearchScope::Workspace,
                 WorkspaceSymbolSearchScopeDef::WorkspaceAndDependencies => {
@@ -2338,10 +2353,6 @@ impl Config {
             .as_ref()
             .filter(|it| it.name.starts_with("Visual Studio Code"))
             .and_then(|it| it.version.as_ref())
-    }
-
-    pub fn client_is_helix(&self) -> bool {
-        self.client_info.as_ref().map(|it| it.name == "helix").unwrap_or_default()
     }
 
     pub fn client_is_neovim(&self) -> bool {

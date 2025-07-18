@@ -16,7 +16,7 @@ use rustc_span::{RealFileName, SourceFileHashAlgorithm};
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility,
-    TargetTuple, TlsModel, WasmCAbi,
+    TargetTuple, TlsModel,
 };
 
 use crate::config::*;
@@ -290,14 +290,6 @@ macro_rules! top_level_options {
                 mods.sort_by(|a, b| a.opt.cmp(&b.opt));
                 mods
             }
-
-            pub fn target_feature_flag_enabled(&self, flag: &str) -> bool {
-                match flag {
-                    "retpoline" => self.unstable_opts.retpoline,
-                    "retpoline-external-thunk" => self.unstable_opts.retpoline_external_thunk,
-                    _ => false,
-                }
-            }
         }
     );
 }
@@ -345,7 +337,7 @@ top_level_options!(
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
         libs: Vec<NativeLib> [TRACKED],
-        sysroot: PathBuf [UNTRACKED],
+        sysroot: Sysroot [UNTRACKED],
 
         target_triple: TargetTuple [TRACKED],
 
@@ -395,20 +387,34 @@ top_level_options!(
 
         /// Remap source path prefixes in all output (messages, object files, debug, etc.).
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [TRACKED_NO_CRATE_HASH],
-        /// Base directory containing the `src/` for the Rust standard library, and
-        /// potentially `rustc` as well, if we can find it. Right now it's always
-        /// `$sysroot/lib/rustlib/src/rust` (i.e. the `rustup` `rust-src` component).
+
+        /// Base directory containing the `library/` directory for the Rust standard library.
+        /// Right now it's always `$sysroot/lib/rustlib/src/rust`
+        /// (i.e. the `rustup` `rust-src` component).
         ///
         /// This directory is what the virtual `/rustc/$hash` is translated back to,
         /// if Rust was built with path remapping to `/rustc/$hash` enabled
         /// (the `rust.remap-debuginfo` option in `bootstrap.toml`).
         real_rust_source_base_dir: Option<PathBuf> [TRACKED_NO_CRATE_HASH],
 
+        /// Base directory containing the `compiler/` directory for the rustc sources.
+        /// Right now it's always `$sysroot/lib/rustlib/rustc-src/rust`
+        /// (i.e. the `rustup` `rustc-dev` component).
+        ///
+        /// This directory is what the virtual `/rustc-dev/$hash` is translated back to,
+        /// if Rust was built with path remapping to `/rustc/$hash` enabled
+        /// (the `rust.remap-debuginfo` option in `bootstrap.toml`).
+        real_rustc_dev_source_base_dir: Option<PathBuf> [TRACKED_NO_CRATE_HASH],
+
         edition: Edition [TRACKED],
 
         /// `true` if we're emitting JSON blobs about each artifact produced
         /// by the compiler.
         json_artifact_notifications: bool [TRACKED],
+
+        /// `true` if we're emitting JSON timings with the start and end of
+        /// high-level compilation sections
+        json_timings: bool [UNTRACKED],
 
         /// `true` if we're emitting a JSON blob containing the unused externs
         json_unused_externs: JsonUnusedExterns [UNTRACKED],
@@ -719,7 +725,7 @@ mod desc {
     pub(crate) const parse_list: &str = "a space-separated list of strings";
     pub(crate) const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
-    pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `PrintModFinal`, `PrintPasses`, `NoPostopt`, `LooseTypes`, `Inline`";
+    pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintTAFn`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `PrintModFinal`, `PrintPasses`, `NoPostopt`, `LooseTypes`, `Inline`";
     pub(crate) const parse_comma_list: &str = "a comma-separated list of strings";
     pub(crate) const parse_opt_comma_list: &str = parse_comma_list;
     pub(crate) const parse_number: &str = "a number";
@@ -802,7 +808,7 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or a non-negative number";
     pub(crate) const parse_llvm_module_flag: &str = "<key>:<type>:<value>:<behavior>. Type must currently be `u32`. Behavior should be one of (`error`, `warning`, `require`, `override`, `append`, `appendunique`, `max`, `min`)";
     pub(crate) const parse_function_return: &str = "`keep` or `thunk-extern`";
-    pub(crate) const parse_wasm_c_abi: &str = "`legacy` or `spec`";
+    pub(crate) const parse_wasm_c_abi: &str = "`spec`";
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
     pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
@@ -1359,9 +1365,22 @@ pub mod parse {
         let mut v: Vec<&str> = v.split(",").collect();
         v.sort_unstable();
         for &val in v.iter() {
-            let variant = match val {
+            // Split each entry on '=' if it has an argument
+            let (key, arg) = match val.split_once('=') {
+                Some((k, a)) => (k, Some(a)),
+                None => (val, None),
+            };
+
+            let variant = match key {
                 "Enable" => AutoDiff::Enable,
                 "PrintTA" => AutoDiff::PrintTA,
+                "PrintTAFn" => {
+                    if let Some(fun) = arg {
+                        AutoDiff::PrintTAFn(fun.to_string())
+                    } else {
+                        return false;
+                    }
+                }
                 "PrintAA" => AutoDiff::PrintAA,
                 "PrintPerf" => AutoDiff::PrintPerf,
                 "PrintSteps" => AutoDiff::PrintSteps,
@@ -1898,14 +1917,8 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_wasm_c_abi(slot: &mut WasmCAbi, v: Option<&str>) -> bool {
-        match v {
-            Some("spec") => *slot = WasmCAbi::Spec,
-            // Explicitly setting the `-Z` flag suppresses the lint.
-            Some("legacy") => *slot = WasmCAbi::Legacy { with_lint: false },
-            _ => return false,
-        }
-        true
+    pub(crate) fn parse_wasm_c_abi(_slot: &mut (), v: Option<&str>) -> bool {
+        v == Some("spec")
     }
 
     pub(crate) fn parse_mir_include_spans(slot: &mut MirIncludeSpans, v: Option<&str>) -> bool {
@@ -2002,6 +2015,8 @@ options! {
         on a C toolchain or linker installed in the system"),
     linker: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "system linker to link outputs with"),
+    linker_features: LinkerFeaturesCli = (LinkerFeaturesCli::default(), parse_linker_features, [UNTRACKED],
+        "a comma-separated list of linker features to enable (+) or disable (-): `lld`"),
     linker_flavor: Option<LinkerFlavorCli> = (None, parse_linker_flavor, [UNTRACKED],
         "linker flavor"),
     linker_plugin_lto: LinkerPluginLto = (LinkerPluginLto::Disabled,
@@ -2241,6 +2256,10 @@ options! {
         environment variable `RUSTC_GRAPHVIZ_FONT` (default: `Courier, monospace`)"),
     has_thread_local: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the `cfg(target_thread_local)` directive"),
+    higher_ranked_assumptions: bool = (false, parse_bool, [TRACKED],
+        "allow deducing higher-ranked outlives assumptions from coroutines when proving auto traits"),
+    hint_mostly_unused: bool = (false, parse_bool, [TRACKED],
+        "hint that most of this crate will go unused, to minimize work for uncalled functions"),
     human_readable_cgu_names: bool = (false, parse_bool, [TRACKED],
         "generate human-readable, predictable names for codegen units (default: no)"),
     identify_regions: bool = (false, parse_bool, [UNTRACKED],
@@ -2292,8 +2311,6 @@ options! {
         "link native libraries in the linker invocation (default: yes)"),
     link_only: bool = (false, parse_bool, [TRACKED],
         "link the `.rlink` file generated by `-Z no-link` (default: no)"),
-    linker_features: LinkerFeaturesCli = (LinkerFeaturesCli::default(), parse_linker_features, [UNTRACKED],
-        "a comma-separated list of linker features to enable (+) or disable (-): `lld`"),
     lint_llvm_ir: bool = (false, parse_bool, [TRACKED],
         "lint LLVM IR (default: no)"),
     lint_mir: bool = (false, parse_bool, [UNTRACKED],
@@ -2642,8 +2659,11 @@ written to standard error output)"),
         Requires `-Clto[=[fat,yes]]`"),
     wasi_exec_model: Option<WasiExecModel> = (None, parse_wasi_exec_model, [TRACKED],
         "whether to build a wasi command or reactor"),
-    wasm_c_abi: WasmCAbi = (WasmCAbi::Legacy { with_lint: true }, parse_wasm_c_abi, [TRACKED],
-        "use spec-compliant C ABI for `wasm32-unknown-unknown` (default: legacy)"),
+    // This option only still exists to provide a more gradual transition path for people who need
+    // the spec-complaint C ABI to be used.
+    // FIXME remove this after a couple releases
+    wasm_c_abi: () = ((), parse_wasm_c_abi, [TRACKED],
+        "use spec-compliant C ABI for `wasm32-unknown-unknown` (deprecated, always enabled)"),
     write_long_types_to_disk: bool = (true, parse_bool, [UNTRACKED],
         "whether long type names should be written to files instead of being printed in errors"),
     // tidy-alphabetical-end

@@ -49,6 +49,7 @@ use std::{fs, str};
 
 use askama::Template;
 use itertools::Either;
+use rustc_ast::join_path_syms;
 use rustc_attr_data_structures::{
     ConstStability, DeprecatedSince, Deprecation, RustcVersion, StabilityLevel, StableSince,
 };
@@ -74,9 +75,9 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::format::{
-    Ending, HrefError, PrintWithSpace, href, join_with_double_colon, print_abi_with_space,
-    print_constness_with_space, print_default_space, print_generic_bounds, print_where_clause,
-    visibility_print_with_space, write_str,
+    Ending, HrefError, PrintWithSpace, href, print_abi_with_space, print_constness_with_space,
+    print_default_space, print_generic_bounds, print_where_clause, visibility_print_with_space,
+    write_str,
 };
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
@@ -508,22 +509,21 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
       the Rustdoc book]({DOC_RUST_LANG_ORG_VERSION}/rustdoc/scraped-examples.html)."
     ));
 
-    let mut ids = IdMap::default();
     format!(
         "<div class=\"main-heading\">\
              <h1>About scraped examples</h1>\
          </div>\
          <div>{}</div>",
-        Markdown {
+        fmt::from_fn(|f| Markdown {
             content: &content,
             links: &[],
-            ids: &mut ids,
+            ids: &mut IdMap::default(),
             error_codes: shared.codes,
             edition: shared.edition(),
             playground: &shared.playground,
             heading_offset: HeadingOffset::H1,
         }
-        .into_string()
+        .write_into(f))
     )
 }
 
@@ -555,20 +555,18 @@ fn render_markdown(
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| {
-        write!(
-            f,
-            "<div class=\"docblock\">{}</div>",
-            Markdown {
-                content: md_text,
-                links: &links,
-                ids: &mut cx.id_map.borrow_mut(),
-                error_codes: cx.shared.codes,
-                edition: cx.shared.edition(),
-                playground: &cx.shared.playground,
-                heading_offset,
-            }
-            .into_string()
-        )
+        f.write_str("<div class=\"docblock\">")?;
+        Markdown {
+            content: md_text,
+            links: &links,
+            ids: &mut cx.id_map.borrow_mut(),
+            error_codes: cx.shared.codes,
+            edition: cx.shared.edition(),
+            playground: &cx.shared.playground,
+            heading_offset,
+        }
+        .write_into(&mut *f)?;
+        f.write_str("</div>")
     })
 }
 
@@ -752,7 +750,7 @@ fn short_item_info(
             let mut id_map = cx.id_map.borrow_mut();
             let html = MarkdownItemInfo(note, &mut id_map);
             message.push_str(": ");
-            message.push_str(&html.into_string());
+            html.write_into(&mut message).unwrap();
         }
         extra_info.push(ShortItemInfo::Deprecation { message });
     }
@@ -983,7 +981,7 @@ fn assoc_method(
     let name = meth.name.as_ref().unwrap();
     let vis = visibility_print_with_space(meth, cx).to_string();
     let defaultness = print_default_space(meth.is_default());
-    // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
+    // FIXME: Once https://github.com/rust-lang/rust/issues/143874 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
         RenderMode::Normal => print_constness_with_space(
@@ -1194,7 +1192,7 @@ fn render_assoc_item(
 // a whitespace prefix and newline.
 fn render_attributes_in_pre(it: &clean::Item, prefix: &str, cx: &Context<'_>) -> impl fmt::Display {
     fmt::from_fn(move |f| {
-        for a in it.attributes_and_repr(cx.tcx(), cx.cache(), false) {
+        for a in it.attributes(cx.tcx(), cx.cache()) {
             writeln!(f, "{prefix}{a}")?;
         }
         Ok(())
@@ -1210,7 +1208,7 @@ fn render_code_attribute(code_attr: CodeAttribute, w: &mut impl fmt::Write) {
 // When an attribute is rendered inside a <code> tag, it is formatted using
 // a div to produce a newline after it.
 fn render_attributes_in_code(w: &mut impl fmt::Write, it: &clean::Item, cx: &Context<'_>) {
-    for attr in it.attributes_and_repr(cx.tcx(), cx.cache(), false) {
+    for attr in it.attributes(cx.tcx(), cx.cache()) {
         render_code_attribute(CodeAttribute(attr), w);
     }
 }
@@ -1222,7 +1220,7 @@ fn render_repr_attributes_in_code(
     def_id: DefId,
     item_type: ItemType,
 ) {
-    if let Some(repr) = clean::repr_attributes(cx.tcx(), cx.cache(), def_id, item_type, false) {
+    if let Some(repr) = clean::repr_attributes(cx.tcx(), cx.cache(), def_id, item_type) {
         render_code_attribute(CodeAttribute(repr), w);
     }
 }
@@ -1947,7 +1945,7 @@ fn render_impl(
         // 3. Functions
         //
         // This order is because you can have associated constants used in associated types (like array
-        // length), and both in associcated functions. So with this order, when reading from top to
+        // length), and both in associated functions. So with this order, when reading from top to
         // bottom, you should see items definitions before they're actually used most of the time.
         let mut assoc_types = Vec::new();
         let mut methods = Vec::new();
@@ -2155,7 +2153,7 @@ fn render_rightside(
     let tcx = cx.tcx();
 
     fmt::from_fn(move |w| {
-        // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
+        // FIXME: Once https://github.com/rust-lang/rust/issues/143874 is implemented, we can remove
         // this condition.
         let const_stability = match render_mode {
             RenderMode::Normal => item.const_stability(tcx),
@@ -2558,7 +2556,7 @@ fn collect_paths_for_type(first_ty: &clean::Type, cache: &Cache) -> Vec<String> 
         let fqp = cache.exact_paths.get(&did).or_else(get_extern);
 
         if let Some(path) = fqp {
-            out.push(join_with_double_colon(path));
+            out.push(join_path_syms(path));
         }
     };
 

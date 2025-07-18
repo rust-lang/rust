@@ -1,7 +1,7 @@
 use std::ops::Range;
 use std::sync::Arc;
 
-use gccjit::{Location, RValue};
+use gccjit::{Function, Location, RValue};
 use rustc_abi::Size;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::{DebugInfoBuilderMethods, DebugInfoCodegenMethods};
@@ -221,7 +221,7 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         &self,
         instance: Instance<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        llfn: RValue<'gcc>,
+        llfn: Function<'gcc>,
         mir: &mir::Body<'tcx>,
     ) -> Option<FunctionDebugContext<'tcx, Self::DIScope, Self::DILocation>> {
         if self.sess().opts.debuginfo == DebugInfo::None {
@@ -272,7 +272,7 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         &self,
         _instance: Instance<'tcx>,
         _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        _maybe_definition_llfn: Option<RValue<'gcc>>,
+        _maybe_definition_llfn: Option<Function<'gcc>>,
     ) -> Self::DIScope {
         // TODO(antoyo): implement.
     }

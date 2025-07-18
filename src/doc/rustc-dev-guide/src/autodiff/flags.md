@@ -6,6 +6,7 @@ To support you while debugging or profiling, we have added support for an experi
 
 ```text
 PrintTA // Print TypeAnalysis information
+PrintTAFn // Print TypeAnalysis information for a specific function
 PrintAA // Print ActivityAnalysis information
 Print // Print differentiated functions while they are being generated and optimized
 PrintPerf // Print AD related Performance warnings

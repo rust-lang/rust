@@ -1474,20 +1474,18 @@ fn main() {
 }
 "#,
         expect![[r#"
+            me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
             sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
-            sn if       if expr {}
             sn match match expr {}
-            sn not           !expr
             sn ref           &expr
             sn refm      &mut expr
             sn return  return expr
             sn unsafe    unsafe {}
-            sn while while expr {}
         "#]],
     );
 }
@@ -2241,5 +2239,39 @@ fn main() {
     let y = dbg!(*x);
 }
     "#,
+    );
+}
+
+#[test]
+fn ambiguous_float_literal() {
+    check(
+        r#"
+#![rustc_coherence_is_core]
+
+impl i32 {
+    pub fn int_method(self) {}
+}
+impl f64 {
+    pub fn float_method(self) {}
+}
+
+fn foo() {
+    1.$0
+}
+    "#,
+        expect![[r#"
+            me int_method() fn(self)
+            sn box    Box::new(expr)
+            sn call   function(expr)
+            sn const        const {}
+            sn dbg        dbg!(expr)
+            sn dbgr      dbg!(&expr)
+            sn deref           *expr
+            sn match   match expr {}
+            sn ref             &expr
+            sn refm        &mut expr
+            sn return    return expr
+            sn unsafe      unsafe {}
+        "#]],
     );
 }

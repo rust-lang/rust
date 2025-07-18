@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use clippy_utils::ty::get_type_diagnostic_name;
@@ -7,6 +7,7 @@ use clippy_utils::{
     get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate, path_to_local, path_to_local_id,
 };
 use rustc_abi::ExternAbi;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -108,14 +109,20 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
         {
             let vec_crate = if is_no_std_crate(cx) { "alloc" } else { "std" };
             // replace `|| vec![]` with `Vec::new`
-            span_lint_and_sugg(
+            span_lint_hir_and_then(
                 cx,
                 REDUNDANT_CLOSURE,
+                expr.hir_id,
                 expr.span,
                 "redundant closure",
-                "replace the closure with `Vec::new`",
-                format!("{vec_crate}::vec::Vec::new"),
-                Applicability::MachineApplicable,
+                |diag| {
+                    diag.span_suggestion(
+                        expr.span,
+                        "replace the closure with `Vec::new`",
+                        format!("{vec_crate}::vec::Vec::new"),
+                        Applicability::MachineApplicable,
+                    );
+                },
             );
         }
         // skip `foo(|| macro!())`
@@ -155,7 +162,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
             let sig = match callee_ty_adjusted.kind() {
                 ty::FnDef(def, _) => {
                     // Rewriting `x(|| f())` to `x(f)` where f is marked `#[track_caller]` moves the `Location`
-                    if cx.tcx.has_attr(*def, sym::track_caller) {
+                    if find_attr!(cx.tcx.get_all_attrs(*def), AttributeKind::TrackCaller(..)) {
                         return;
                     }
 
@@ -197,46 +204,53 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                 // For now ignore all callee types which reference a type parameter.
                 && !generic_args.types().any(|t| matches!(t.kind(), ty::Param(_)))
             {
-                span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
-                    if let Some(mut snippet) = snippet_opt(cx, callee.span) {
-                        if path_to_local(callee).is_some_and(|l| {
-                            // FIXME: Do we really need this `local_used_in` check?
-                            // Isn't it checking something like... `callee(callee)`?
-                            // If somehow this check is needed, add some test for it,
-                            // 'cuz currently nothing changes after deleting this check.
-                            local_used_in(cx, l, args) || local_used_after_expr(cx, l, expr)
-                        }) {
-                            match cx
-                                .tcx
-                                .infer_ctxt()
-                                .build(cx.typing_mode())
-                                .err_ctxt()
-                                .type_implements_fn_trait(
-                                    cx.param_env,
-                                    Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
-                                    ty::PredicatePolarity::Positive,
-                                ) {
-                                // Mutable closure is used after current expr; we cannot consume it.
-                                Ok((ClosureKind::FnMut, _)) => snippet = format!("&mut {snippet}"),
-                                Ok((ClosureKind::Fn, _)) if !callee_ty_raw.is_ref() => {
-                                    snippet = format!("&{snippet}");
-                                },
-                                _ => (),
+                span_lint_hir_and_then(
+                    cx,
+                    REDUNDANT_CLOSURE,
+                    expr.hir_id,
+                    expr.span,
+                    "redundant closure",
+                    |diag| {
+                        if let Some(mut snippet) = snippet_opt(cx, callee.span) {
+                            if path_to_local(callee).is_some_and(|l| {
+                                // FIXME: Do we really need this `local_used_in` check?
+                                // Isn't it checking something like... `callee(callee)`?
+                                // If somehow this check is needed, add some test for it,
+                                // 'cuz currently nothing changes after deleting this check.
+                                local_used_in(cx, l, args) || local_used_after_expr(cx, l, expr)
+                            }) {
+                                match cx
+                                    .tcx
+                                    .infer_ctxt()
+                                    .build(cx.typing_mode())
+                                    .err_ctxt()
+                                    .type_implements_fn_trait(
+                                        cx.param_env,
+                                        Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
+                                        ty::PredicatePolarity::Positive,
+                                    ) {
+                                    // Mutable closure is used after current expr; we cannot consume it.
+                                    Ok((ClosureKind::FnMut, _)) => snippet = format!("&mut {snippet}"),
+                                    Ok((ClosureKind::Fn, _)) if !callee_ty_raw.is_ref() => {
+                                        snippet = format!("&{snippet}");
+                                    },
+                                    _ => (),
+                                }
                             }
+                            diag.span_suggestion(
+                                expr.span,
+                                "replace the closure with the function itself",
+                                snippet,
+                                Applicability::MachineApplicable,
+                            );
                         }
-                        diag.span_suggestion(
-                            expr.span,
-                            "replace the closure with the function itself",
-                            snippet,
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                });
+                    },
+                );
             }
         },
         ExprKind::MethodCall(path, self_, args, _) if check_inputs(typeck, body.params, Some(self_), args) => {
             if let Some(method_def_id) = typeck.type_dependent_def_id(body.value.hir_id)
-                && !cx.tcx.has_attr(method_def_id, sym::track_caller)
+                && !find_attr!(cx.tcx.get_all_attrs(method_def_id), AttributeKind::TrackCaller(..))
                 && check_sig(closure_sig, cx.tcx.fn_sig(method_def_id).skip_binder().skip_binder())
             {
                 let mut app = Applicability::MachineApplicable;
@@ -244,9 +258,10 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                     Some(span) => format!("::{}", snippet_with_applicability(cx, span, "<..>", &mut app)),
                     None => String::new(),
                 };
-                span_lint_and_then(
+                span_lint_hir_and_then(
                     cx,
                     REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
+                    expr.hir_id,
                     expr.span,
                     "redundant closure",
                     |diag| {

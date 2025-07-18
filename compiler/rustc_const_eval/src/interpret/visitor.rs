@@ -6,7 +6,6 @@ use std::num::NonZero;
 use rustc_abi::{FieldIdx, FieldsShape, VariantIdx, Variants};
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::InterpResult;
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty};
 use tracing::trace;
 
@@ -101,26 +100,6 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
                 trace!("walk_value: dyn object layout: {:#?}", inner_mplace.layout);
                 // recurse with the inner type
                 return self.visit_field(v, 0, &inner_mplace.into());
-            }
-            ty::Dynamic(data, _, ty::DynStar) => {
-                // DynStar types. Very different from a dyn type (but strangely part of the
-                // same variant in `TyKind`): These are pairs where the 2nd component is the
-                // vtable, and the first component is the data (which must be ptr-sized).
-
-                // First make sure the vtable can be read at its type.
-                // The type of this vtable is fake, it claims to be a reference to some actual memory but that isn't true.
-                // So we transmute it to a raw pointer.
-                let raw_ptr_ty = Ty::new_mut_ptr(*self.ecx().tcx, self.ecx().tcx.types.unit);
-                let raw_ptr_ty = self.ecx().layout_of(raw_ptr_ty)?;
-                let vtable_field = self
-                    .ecx()
-                    .project_field(v, FieldIdx::ONE)?
-                    .transmute(raw_ptr_ty, self.ecx())?;
-                self.visit_field(v, 1, &vtable_field)?;
-
-                // Then unpack the first field, and continue.
-                let data = self.ecx().unpack_dyn_star(v, data)?;
-                return self.visit_field(v, 0, &data);
             }
             // Slices do not need special handling here: they have `Array` field
             // placement with length 0, so we enter the `Array` case below which

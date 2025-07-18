@@ -283,11 +283,11 @@ impl CallInfo {
     }
 }
 
-fn get_fn_params(
-    db: &dyn HirDatabase,
+fn get_fn_params<'db>(
+    db: &'db dyn HirDatabase,
     function: hir::Function,
     param_list: &ast::ParamList,
-) -> Option<Vec<(ast::Pat, Option<ast::Type>, hir::Param)>> {
+) -> Option<Vec<(ast::Pat, Option<ast::Type>, hir::Param<'db>)>> {
     let mut assoc_fn_params = function.assoc_fn_params(db).into_iter();
 
     let mut params = Vec::new();
@@ -316,7 +316,7 @@ fn inline(
     function_def_file_id: EditionedFileId,
     function: hir::Function,
     fn_body: &ast::BlockExpr,
-    params: &[(ast::Pat, Option<ast::Type>, hir::Param)],
+    params: &[(ast::Pat, Option<ast::Type>, hir::Param<'_>)],
     CallInfo { node, arguments, generic_arg_list, krate }: &CallInfo,
 ) -> ast::Expr {
     let file_id = sema.hir_file_for(fn_body.syntax());

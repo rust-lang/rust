@@ -847,7 +847,7 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(errors::LifetimeInBorrowExpression { span, lifetime_span: lt_span });
     }
 
-    /// Parse `mut?` or `raw [ const | mut ]`.
+    /// Parse `mut?` or `[ raw | pin ] [ const | mut ]`.
     fn parse_borrow_modifiers(&mut self) -> (ast::BorrowKind, ast::Mutability) {
         if self.check_keyword(exp!(Raw)) && self.look_ahead(1, Token::is_mutability) {
             // `raw [ const | mut ]`.
@@ -855,6 +855,11 @@ impl<'a> Parser<'a> {
             assert!(found_raw);
             let mutability = self.parse_const_or_mut().unwrap();
             (ast::BorrowKind::Raw, mutability)
+        } else if let Some((ast::Pinnedness::Pinned, mutbl)) = self.parse_pin_and_mut() {
+            // `pin [ const | mut ]`.
+            // `pin` has been gated in `self.parse_pin_and_mut()` so we don't
+            // need to gate it here.
+            (ast::BorrowKind::Pin, mutbl)
         } else {
             // `mut?`
             (ast::BorrowKind::Ref, self.parse_mutability())
@@ -3870,8 +3875,7 @@ impl<'a> Parser<'a> {
             // Check if a colon exists one ahead. This means we're parsing a fieldname.
             let is_shorthand = !this.look_ahead(1, |t| t == &token::Colon || t == &token::Eq);
             // Proactively check whether parsing the field will be incorrect.
-            let is_wrong = this.token.is_ident()
-                && !this.token.is_reserved_ident()
+            let is_wrong = this.token.is_non_reserved_ident()
                 && !this.look_ahead(1, |t| {
                     t == &token::Colon
                         || t == &token::Eq
@@ -4087,7 +4091,7 @@ impl<'a> CondChecker<'a> {
 }
 
 impl MutVisitor for CondChecker<'_> {
-    fn visit_expr(&mut self, e: &mut P<Expr>) {
+    fn visit_expr(&mut self, e: &mut Expr) {
         self.depth += 1;
         use ForbiddenLetReason::*;
 
@@ -4113,7 +4117,7 @@ impl MutVisitor for CondChecker<'_> {
                         LetChainsPolicy::AlwaysAllowed => (),
                         LetChainsPolicy::EditionDependent { current_edition } => {
                             if !current_edition.at_least_rust_2024() || !span.at_least_rust_2024() {
-                                self.parser.psess.gated_spans.gate(sym::let_chains, span);
+                                self.parser.dcx().emit_err(errors::LetChainPre2024 { span });
                             }
                         }
                     }

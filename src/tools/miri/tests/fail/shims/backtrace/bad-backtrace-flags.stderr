@@ -2,7 +2,7 @@ error: unsupported operation: unknown `miri_get_backtrace` flags 2
   --> tests/fail/shims/backtrace/bad-backtrace-flags.rs:LL:CC
    |
 LL |         miri_get_backtrace(2, std::ptr::null_mut());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown `miri_get_backtrace` flags 2
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:

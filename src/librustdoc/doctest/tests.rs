@@ -1,6 +1,11 @@
 use std::path::PathBuf;
 
-use super::{BuildDocTestBuilder, GlobalTestOptions};
+use rustc_span::edition::Edition;
+use rustc_span::{DUMMY_SP, FileName};
+
+use super::extracted::ExtractedDocTests;
+use super::{BuildDocTestBuilder, GlobalTestOptions, ScrapedDocTest};
+use crate::html::markdown::LangString;
 
 fn make_test(
     test_code: &str,
@@ -19,9 +24,9 @@ fn make_test(
         builder = builder.test_id(test_id.to_string());
     }
     let doctest = builder.build(None);
-    let (code, line_offset) =
+    let (wrapped, line_offset) =
         doctest.generate_unique_doctest(test_code, dont_insert_main, opts, crate_name);
-    (code, line_offset)
+    (wrapped.to_string(), line_offset)
 }
 
 /// Default [`GlobalTestOptions`] for these unit tests.
@@ -460,4 +465,52 @@ pub mod outer_module {
     .to_string();
     let (output, len) = make_test(input, None, false, &opts, Vec::new(), None);
     assert_eq!((output, len), (expected, 2));
+}
+
+fn get_extracted_doctests(code: &str) -> ExtractedDocTests {
+    let opts = default_global_opts("");
+    let mut extractor = ExtractedDocTests::new();
+    extractor.add_test_with_edition(
+        ScrapedDocTest::new(
+            FileName::Custom(String::new()),
+            0,
+            Vec::new(),
+            LangString::default(),
+            code.to_string(),
+            DUMMY_SP,
+            Vec::new(),
+        ),
+        &opts,
+        Edition::Edition2018,
+    );
+    extractor
+}
+
+// Test that `extracted::DocTest::wrapper` is `None` if the doctest has a `main` function.
+#[test]
+fn test_extracted_doctest_wrapper_field() {
+    let extractor = get_extracted_doctests("fn main() {}");
+
+    assert_eq!(extractor.doctests().len(), 1);
+    let doctest_code = extractor.doctests()[0].doctest_code.as_ref().unwrap();
+    assert!(doctest_code.wrapper.is_none());
+}
+
+// Test that `ExtractedDocTest::doctest_code` is `None` if the doctest has syntax error.
+#[test]
+fn test_extracted_doctest_doctest_code_field() {
+    let extractor = get_extracted_doctests("let x +=");
+
+    assert_eq!(extractor.doctests().len(), 1);
+    assert!(extractor.doctests()[0].doctest_code.is_none());
+}
+
+// Test that `extracted::DocTest::wrapper` is `Some` if the doctest needs wrapping.
+#[test]
+fn test_extracted_doctest_wrapper_field_with_info() {
+    let extractor = get_extracted_doctests("let x = 12;");
+
+    assert_eq!(extractor.doctests().len(), 1);
+    let doctest_code = extractor.doctests()[0].doctest_code.as_ref().unwrap();
+    assert!(doctest_code.wrapper.is_some());
 }

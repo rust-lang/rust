@@ -1779,6 +1779,13 @@ pub(crate) struct AsyncBoundModifierIn2015 {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_let_chain_pre_2024)]
+pub(crate) struct LetChainPre2024 {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_self_argument_pointer)]
 pub(crate) struct SelfArgumentPointer {
     #[primary_span]
@@ -1951,6 +1958,14 @@ pub(crate) struct BoundsNotAllowedOnTraitAliases {
 pub(crate) struct TraitAliasCannotBeAuto {
     #[primary_span]
     #[label(parse_trait_alias_cannot_be_auto)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_trait_alias_cannot_be_const)]
+pub(crate) struct TraitAliasCannotBeConst {
+    #[primary_span]
+    #[label(parse_trait_alias_cannot_be_const)]
     pub span: Span,
 }
 
@@ -2938,22 +2953,22 @@ pub(crate) struct DynAfterMut {
 
 #[derive(Diagnostic)]
 #[diag(parse_fn_pointer_cannot_be_const)]
+#[note]
 pub(crate) struct FnPointerCannotBeConst {
     #[primary_span]
-    pub span: Span,
     #[label]
-    pub qualifier: Span,
+    pub span: Span,
     #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
     pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(parse_fn_pointer_cannot_be_async)]
+#[note]
 pub(crate) struct FnPointerCannotBeAsync {
     #[primary_span]
-    pub span: Span,
     #[label]
-    pub qualifier: Span,
+    pub span: Span,
     #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
     pub suggestion: Span,
 }

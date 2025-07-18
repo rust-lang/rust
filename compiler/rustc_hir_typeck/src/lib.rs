@@ -42,6 +42,7 @@ mod writeback;
 
 pub use coercion::can_coerce;
 use fn_ctxt::FnCtxt;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
@@ -55,8 +56,8 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config;
+use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, sym};
 use tracing::{debug, instrument};
 use typeck_root_ctxt::TypeckRootCtxt;
 
@@ -173,7 +174,7 @@ fn typeck_with_inspect<'tcx>(
                 .map(|(idx, ty)| fcx.normalize(arg_span(idx), ty)),
         );
 
-        if tcx.has_attr(def_id, sym::naked) {
+        if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Naked(..)) {
             naked_functions::typeck_naked_fn(tcx, def_id, body);
         }
 
@@ -427,11 +428,9 @@ fn report_unexpected_variant_res(
                 }
                 hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(..), hir_id, .. }) => {
                     suggestion.push((expr.span.shrink_to_lo(), "(".to_string()));
-                    if let hir::Node::Expr(drop_temps) = tcx.parent_hir_node(*hir_id)
-                        && let hir::ExprKind::DropTemps(_) = drop_temps.kind
-                        && let hir::Node::Expr(parent) = tcx.parent_hir_node(drop_temps.hir_id)
+                    if let hir::Node::Expr(parent) = tcx.parent_hir_node(*hir_id)
                         && let hir::ExprKind::If(condition, block, None) = parent.kind
-                        && condition.hir_id == drop_temps.hir_id
+                        && condition.hir_id == *hir_id
                         && let hir::ExprKind::Block(block, _) = block.kind
                         && block.stmts.is_empty()
                         && let Some(expr) = block.expr
@@ -535,7 +534,12 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
     diag.emit()
 }
 
+/// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
 pub fn provide(providers: &mut Providers) {
-    method::provide(providers);
-    *providers = Providers { typeck, used_trait_imports, ..*providers };
+    *providers = Providers {
+        method_autoderef_steps: method::probe::method_autoderef_steps,
+        typeck,
+        used_trait_imports,
+        ..*providers
+    };
 }

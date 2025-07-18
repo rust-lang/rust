@@ -11,7 +11,7 @@ use rustc_hir::{ExprKind, HirId, LangItem, Node, QPath};
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, PermitVariants};
 use rustc_index::IndexVec;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TypeTrace};
+use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TypeTrace};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
@@ -30,7 +30,6 @@ use crate::TupleArgumentsFlag::*;
 use crate::coercion::CoerceMany;
 use crate::errors::SuggestPtrNullMut;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
-use crate::fn_ctxt::infer::FnCall;
 use crate::gather_locals::Declaration;
 use crate::inline_asm::InlineAsmCtxt;
 use crate::method::probe::IsSuggestion;
@@ -122,7 +121,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => {}
                 }
 
-                // We want to emit an error if the const is not structurally resolveable
+                // We want to emit an error if the const is not structurally resolvable
                 // as otherwise we can wind up conservatively proving `Copy` which may
                 // infer the repeat expr count to something that never required `Copy` in
                 // the first place.
@@ -242,6 +241,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 arg_expr.span,
                 ObligationCauseCode::WellFormed(None),
             );
+
+            self.check_place_expr_if_unsized(fn_input_ty, arg_expr);
         }
 
         // First, let's unify the formal method signature with the expectation eagerly.
@@ -544,6 +545,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// If `unsized_fn_params` is active, check that unsized values are place expressions. Since
+    /// the removal of `unsized_locals` in <https://github.com/rust-lang/rust/pull/142911> we can't
+    /// store them in MIR locals as temporaries.
+    ///
+    /// If `unsized_fn_params` is inactive, this will be checked in borrowck instead.
+    fn check_place_expr_if_unsized(&self, ty: Ty<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+        if self.tcx.features().unsized_fn_params() && !expr.is_syntactic_place_expr() {
+            self.require_type_is_sized(
+                ty,
+                expr.span,
+                ObligationCauseCode::UnsizedNonPlaceExpr(expr.span),
+            );
+        }
+    }
+
     fn report_arg_errors(
         &self,
         compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
@@ -657,7 +673,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let args = self.infcx.fresh_args_for_item(call_name.span, assoc.def_id);
                 let fn_sig = tcx.fn_sig(assoc.def_id).instantiate(tcx, args);
 
-                self.instantiate_binder_with_fresh_vars(call_name.span, FnCall, fn_sig);
+                self.instantiate_binder_with_fresh_vars(
+                    call_name.span,
+                    BoundRegionConversionTime::FnCall,
+                    fn_sig,
+                );
             }
             None
         };
@@ -1634,7 +1654,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::ByteStr(ref v, _) => Ty::new_imm_ref(
                 tcx,
                 tcx.lifetimes.re_static,
-                Ty::new_array(tcx, tcx.types.u8, v.len() as u64),
+                Ty::new_array(tcx, tcx.types.u8, v.as_byte_str().len() as u64),
             ),
             ast::LitKind::Byte(_) => tcx.types.u8,
             ast::LitKind::Char(_) => tcx.types.char,
@@ -1870,7 +1890,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
             }
             hir::StmtKind::Semi(expr) => {
-                self.check_expr(expr);
+                let ty = self.check_expr(expr);
+                self.check_place_expr_if_unsized(ty, expr);
             }
         }
 
@@ -2458,7 +2479,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             spans.push_span_label(param.param.span(), "");
                         }
                     }
-                    // Highligh each parameter being depended on for a generic type.
+                    // Highlight each parameter being depended on for a generic type.
                     for ((&(_, param), deps), &(_, expected_ty)) in
                         params_with_generics.iter().zip(&dependants).zip(formal_and_expected_inputs)
                     {

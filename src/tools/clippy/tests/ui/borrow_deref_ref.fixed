@@ -124,3 +124,50 @@ mod issue_11346 {
         //~^ borrow_deref_ref
     }
 }
+
+fn issue_14934() {
+    let x: &'static str = "x";
+    let y = "y".to_string();
+    {
+        #[expect(clippy::toplevel_ref_arg)]
+        let ref mut x = &*x; // Do not lint
+        *x = &*y;
+    }
+    {
+        let mut x = x;
+        //~^ borrow_deref_ref
+        x = &*y;
+    }
+    {
+        #[expect(clippy::toplevel_ref_arg, clippy::needless_borrow)]
+        let ref x = x;
+        //~^ borrow_deref_ref
+    }
+    {
+        #[expect(clippy::toplevel_ref_arg)]
+        let ref mut x = std::convert::identity(x);
+        //~^ borrow_deref_ref
+        *x = &*y;
+    }
+    {
+        #[derive(Clone)]
+        struct S(&'static str);
+        let s = S("foo");
+        #[expect(clippy::toplevel_ref_arg)]
+        let ref mut x = &*s.0; // Do not lint
+        *x = "bar";
+        #[expect(clippy::toplevel_ref_arg)]
+        let ref mut x = s.clone().0;
+        //~^ borrow_deref_ref
+        *x = "bar";
+        #[expect(clippy::toplevel_ref_arg)]
+        let ref mut x = &*std::convert::identity(&s).0;
+        *x = "bar";
+    }
+    {
+        let y = &1;
+        #[expect(clippy::toplevel_ref_arg)]
+        let ref mut x = { y };
+        //~^ borrow_deref_ref
+    }
+}

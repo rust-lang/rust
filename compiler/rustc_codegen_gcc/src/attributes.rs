@@ -16,7 +16,7 @@ use crate::gcc_util::to_gcc_features;
 /// Checks if the function `instance` is recursively inline.
 /// Returns `false` if a functions is guaranteed to be non-recursive, and `true` if it *might* be recursive.
 #[cfg(feature = "master")]
-fn resursively_inline<'gcc, 'tcx>(
+fn recursively_inline<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     instance: ty::Instance<'tcx>,
 ) -> bool {
@@ -61,7 +61,7 @@ fn inline_attr<'gcc, 'tcx>(
             //
             // That prevents issues steming from recursive `#[inline(always)]` at a *relatively* small cost.
             // We *only* need to check all the terminators of a function marked with this attribute.
-            if resursively_inline(cx, instance) {
+            if recursively_inline(cx, instance) {
                 Some(FnAttribute::Inline)
             } else {
                 Some(FnAttribute::AlwaysInline)
@@ -87,7 +87,7 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
     #[cfg_attr(not(feature = "master"), allow(unused_variables))] func: Function<'gcc>,
     instance: ty::Instance<'tcx>,
 ) {
-    let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
+    let codegen_fn_attrs = cx.tcx.codegen_instance_attrs(instance.def);
 
     #[cfg(feature = "master")]
     {

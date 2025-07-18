@@ -1,5 +1,9 @@
 //! Compiler intrinsics.
 //!
+//! The functions in this module are implementation details of `core` and should
+//! not be used outside of the standard library. We generally provide access to
+//! intrinsics via stable wrapper functions. Use these instead.
+//!
 //! These are the imports making intrinsics available to Rust code. The actual implementations live in the compiler.
 //! Some of these intrinsics are lowered to MIR in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_transform/src/lower_intrinsics.rs>.
 //! The remaining intrinsics are implemented for the LLVM backend in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_ssa/src/mir/intrinsic.rs>
@@ -50,7 +54,8 @@
 )]
 #![allow(missing_docs)]
 
-use crate::marker::{ConstParamTy, DiscriminantKind, Tuple};
+use crate::ffi::va_list::{VaArgSafe, VaListImpl};
+use crate::marker::{ConstParamTy, DiscriminantKind, PointeeSized, Tuple};
 use crate::ptr;
 
 mod bounds;
@@ -455,7 +460,7 @@ pub const fn unlikely(b: bool) -> bool {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The public form of this instrinsic is [`core::hint::select_unpredictable`].
+/// The public form of this intrinsic is [`core::hint::select_unpredictable`].
 /// However unlike the public form, the intrinsic will not drop the value that
 /// is not selected.
 #[unstable(feature = "core_intrinsics", issue = "none")]
@@ -468,7 +473,8 @@ pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
 }
 
 /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
-/// This will statically either panic, or do nothing.
+/// This will statically either panic, or do nothing. It does not *guarantee* to ever panic,
+/// and should only be called if an assertion failure will imply language UB in the following code.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic_const_stable_indirect]
@@ -477,7 +483,9 @@ pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
 pub const fn assert_inhabited<T>();
 
 /// A guard for unsafe functions that cannot ever be executed if `T` does not permit
-/// zero-initialization: This will statically either panic, or do nothing.
+/// zero-initialization: This will statically either panic, or do nothing. It does not *guarantee*
+/// to ever panic, and should only be called if an assertion failure will imply language UB in the
+/// following code.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic_const_stable_indirect]
@@ -485,7 +493,9 @@ pub const fn assert_inhabited<T>();
 #[rustc_intrinsic]
 pub const fn assert_zero_valid<T>();
 
-/// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing.
+/// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing. It does
+/// not *guarantee* to ever panic, and should only be called if an assertion failure will imply
+/// language UB in the following code.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic_const_stable_indirect]
@@ -835,10 +845,10 @@ pub const unsafe fn transmute_unchecked<Src, Dst>(src: Src) -> Dst;
 /// If the actual type neither requires drop glue nor implements
 /// `Copy`, then the return value of this function is unspecified.
 ///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
+/// Note that, unlike most intrinsics, this can only be called at compile-time
+/// as backends do not have an implementation for it. The only caller (its
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
+/// backends only see an evaluated constant.
 ///
 /// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
 #[rustc_intrinsic_const_stable_indirect]
@@ -900,7 +910,7 @@ pub const unsafe fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 /// # Safety
 ///
 /// - `index < PtrMetadata(slice_ptr)`, so the indexing is in-bounds for the slice
-/// - the resulting offsetting is in-bounds of the allocated object, which is
+/// - the resulting offsetting is in-bounds of the allocation, which is
 ///   always the case for references, but needs to be upheld manually for pointers
 #[rustc_nounwind]
 #[rustc_intrinsic]
@@ -2198,6 +2208,7 @@ pub const unsafe fn raw_eq<T>(a: &T, b: &T) -> bool;
 /// [valid]: crate::ptr#safety
 #[rustc_nounwind]
 #[rustc_intrinsic]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 pub const unsafe fn compare_bytes(left: *const u8, right: *const u8, bytes: usize) -> i32;
 
 /// See documentation of [`std::hint::black_box`] for details.
@@ -2269,7 +2280,7 @@ pub const fn const_eval_select<ARG: Tuple, F, G, RET>(
 ) -> RET
 where
     G: FnOnce<ARG, Output = RET>,
-    F: FnOnce<ARG, Output = RET>;
+    F: const FnOnce<ARG, Output = RET>;
 
 /// A macro to make it easier to invoke const_eval_select. Use as follows:
 /// ```rust,ignore (just a macro example)
@@ -2286,7 +2297,7 @@ where
 /// used inside the `if const`.
 /// Note that the two arms of this `if` really each become their own function, which is why the
 /// macro supports setting attributes for those functions. The runtime function is always
-/// markes as `#[inline]`.
+/// marked as `#[inline]`.
 ///
 /// See [`const_eval_select()`] for the rules and requirements around that intrinsic.
 pub(crate) macro const_eval_select {
@@ -2523,10 +2534,19 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
     // Runtime NOP
 }
 
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[miri::intrinsic_fallback_is_spec]
+pub const unsafe fn const_make_global(ptr: *mut u8) -> *const u8 {
+    // const eval overrides this function; at runtime, it is a NOP.
+    ptr
+}
+
 /// Returns whether we should perform contract-checking at runtime.
 ///
 /// This is meant to be similar to the ub_checks intrinsic, in terms
-/// of not prematurely commiting at compile-time to whether contract
+/// of not prematurely committing at compile-time to whether contract
 /// checking is turned on, so that we can specify contracts in libstd
 /// and let an end user opt into turning them on.
 #[rustc_const_unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
@@ -2651,10 +2671,10 @@ pub const fn align_of<T>() -> usize;
 /// Returns the number of variants of the type `T` cast to a `usize`;
 /// if `T` has no variants, returns `0`. Uninhabited variants will be counted.
 ///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
+/// Note that, unlike most intrinsics, this can only be called at compile-time
+/// as backends do not have an implementation for it. The only caller (its
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
+/// backends only see an evaluated constant.
 ///
 /// The to-be-stabilized version of this intrinsic is [`crate::mem::variant_count`].
 #[rustc_nounwind]
@@ -2690,10 +2710,10 @@ pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
 
 /// Gets a static string slice containing the name of a type.
 ///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
+/// Note that, unlike most intrinsics, this can only be called at compile-time
+/// as backends do not have an implementation for it. The only caller (its
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
+/// backends only see an evaluated constant.
 ///
 /// The stabilized version of this intrinsic is [`core::any::type_name`].
 #[rustc_nounwind]
@@ -2705,16 +2725,29 @@ pub const fn type_name<T: ?Sized>() -> &'static str;
 /// function will return the same value for a type regardless of whichever
 /// crate it is invoked in.
 ///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
+/// Note that, unlike most intrinsics, this can only be called at compile-time
+/// as backends do not have an implementation for it. The only caller (its
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
+/// backends only see an evaluated constant.
 ///
 /// The stabilized version of this intrinsic is [`core::any::TypeId::of`].
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn type_id<T: ?Sized + 'static>() -> u128;
+pub const fn type_id<T: ?Sized + 'static>() -> crate::any::TypeId;
+
+/// Tests (at compile-time) if two [`crate::any::TypeId`] instances identify the
+/// same type. This is necessary because at const-eval time the actual discriminating
+/// data is opaque and cannot be inspected directly.
+///
+/// The stabilized version of this intrinsic is the [PartialEq] impl for [`core::any::TypeId`].
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_do_not_const_check]
+pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
+    a.data == b.data
+}
 
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///
@@ -2736,7 +2769,7 @@ where
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(ptr: *const P) -> M;
+pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + PointeeSized, M>(ptr: *const P) -> M;
 
 /// This is an accidentally-stable alias to [`ptr::copy_nonoverlapping`]; use that instead.
 // Note (intentionally not in the doc comment): `ptr::copy_nonoverlapping` adds some extra
@@ -3133,3 +3166,25 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
         }
     )
 }
+
+/// Copies the current location of arglist `src` to the arglist `dst`.
+///
+/// FIXME: document safety requirements
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
+
+/// Loads an argument of type `T` from the `va_list` `ap` and increment the
+/// argument `ap` points to.
+///
+/// FIXME: document safety requirements
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
+
+/// Destroy the arglist `ap` after initialization with `va_start` or `va_copy`.
+///
+/// FIXME: document safety requirements
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn va_end(ap: &mut VaListImpl<'_>);

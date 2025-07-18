@@ -1,0 +1,14 @@
+error: `PointeeSized` cannot be used with trait objects
+  --> $DIR/reject-dyn-pointeesized.rs:5:12
+   |
+LL | type Foo = dyn PointeeSized;
+   |            ^^^^^^^^^^^^^^^^
+
+error: `PointeeSized` cannot be used with trait objects
+  --> $DIR/reject-dyn-pointeesized.rs:14:16
+   |
+LL |     let y: Box<dyn PointeeSized> = x;
+   |                ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

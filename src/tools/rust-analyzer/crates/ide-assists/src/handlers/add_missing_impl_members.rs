@@ -192,7 +192,7 @@ fn add_missing_impl_members_inner(
 fn try_gen_trait_body(
     ctx: &AssistContext<'_>,
     func: &ast::Fn,
-    trait_ref: hir::TraitRef,
+    trait_ref: hir::TraitRef<'_>,
     impl_def: &ast::Impl,
     edition: Edition,
 ) -> Option<()> {

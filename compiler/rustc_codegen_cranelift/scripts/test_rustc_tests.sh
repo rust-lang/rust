@@ -151,20 +151,6 @@ rm tests/ui/process/process-panic-after-fork.rs # same
 cp ../dist/bin/rustdoc-clif ../dist/bin/rustdoc # some tests expect bin/rustdoc to exist
 
 cat <<EOF | git apply -
-diff --git a/tests/run-make/linker-warning/rmake.rs b/tests/run-make/linker-warning/rmake.rs
-index 30387af428c..f7895b12961 100644
---- a/tests/run-make/linker-warning/rmake.rs
-+++ b/tests/run-make/linker-warning/rmake.rs
-@@ -57,7 +57,8 @@ fn main() {
-             .actual_text("(linker error)", out.stderr())
--            .normalize(r#"/rustc[^/]*/"#, "/rustc/")
-+            .normalize(r#"/tmp/rustc[^/]*/"#, "/tmp/rustc/")
-+            .normalize("libpanic_abort", "libpanic_unwind")
-             .normalize(
-                 regex::escape(run_make_support::build_root().to_str().unwrap()),
-                 "/build-root",
-             )
-             .normalize(r#""[^"]*\/symbols.o""#, "\\"/symbols.o\\"")
 diff --git a/src/tools/compiletest/src/runtest/run_make.rs b/src/tools/compiletest/src/runtest/run_make.rs
 index 073116933bd..c3e4578204d 100644
 --- a/src/tools/compiletest/src/runtest/run_make.rs

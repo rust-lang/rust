@@ -378,6 +378,14 @@ pub enum ExprKind<'tcx> {
     Loop {
         body: ExprId,
     },
+    /// A `#[loop_match] loop { state = 'blk: { match state { ... } } }` expression.
+    LoopMatch {
+        /// The state variable that is updated.
+        /// The `match_data.scrutinee` is the same variable, but with a different span.
+        state: ExprId,
+        region_scope: region::Scope,
+        match_data: Box<LoopMatchMatchData>,
+    },
     /// Special expression representing the `let` part of an `if let` or similar construct
     /// (including `if let` guards in match arms, and let-chains formed by `&&`).
     ///
@@ -454,6 +462,11 @@ pub enum ExprKind<'tcx> {
     Continue {
         label: region::Scope,
     },
+    /// A `#[const_continue] break` expression.
+    ConstContinue {
+        label: region::Scope,
+        value: ExprId,
+    },
     /// A `return` expression.
     Return {
         value: Option<ExprId>,
@@ -513,7 +526,7 @@ pub enum ExprKind<'tcx> {
     Closure(Box<ClosureExpr<'tcx>>),
     /// A literal.
     Literal {
-        lit: &'tcx hir::Lit,
+        lit: hir::Lit,
         neg: bool,
     },
     /// For literals that don't correspond to anything in the HIR
@@ -583,6 +596,14 @@ pub struct Arm<'tcx> {
     pub body: ExprId,
     pub lint_level: LintLevel,
     pub scope: region::Scope,
+    pub span: Span,
+}
+
+/// The `match` part of a `#[loop_match]`
+#[derive(Clone, Debug, HashStable)]
+pub struct LoopMatchMatchData {
+    pub scrutinee: ExprId,
+    pub arms: Box<[ArmId]>,
     pub span: Span,
 }
 

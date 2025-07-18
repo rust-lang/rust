@@ -207,7 +207,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of the `#[allow]` attribute and suggests replacing it with
-    /// the `#[expect]` (See [RFC 2383](https://rust-lang.github.io/rfcs/2383-lint-reasons.html))
+    /// the `#[expect]` attribute (See [RFC 2383](https://rust-lang.github.io/rfcs/2383-lint-reasons.html))
     ///
     /// This lint only warns outer attributes (`#[allow]`), as inner attributes
     /// (`#![allow]`) are usually used to enable or disable lints on a global scale.

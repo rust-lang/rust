@@ -2741,11 +2741,11 @@ impl B for Astruct {}
             715..744 '#[rust...1i32])': Box<[i32; 1], Global>
             737..743 '[1i32]': [i32; 1]
             738..742 '1i32': i32
-            755..756 'v': Vec<Box<dyn B + 'static, Global>, Global>
-            776..793 '<[_]> ...to_vec': fn into_vec<Box<dyn B + 'static, Global>, Global>(Box<[Box<dyn B + 'static, Global>], Global>) -> Vec<Box<dyn B + 'static, Global>, Global>
-            776..850 '<[_]> ...ct)]))': Vec<Box<dyn B + 'static, Global>, Global>
-            794..849 '#[rust...uct)])': Box<[Box<dyn B + 'static, Global>; 1], Global>
-            816..848 '[#[rus...ruct)]': [Box<dyn B + 'static, Global>; 1]
+            755..756 'v': Vec<Box<dyn B + '?, Global>, Global>
+            776..793 '<[_]> ...to_vec': fn into_vec<Box<dyn B + '?, Global>, Global>(Box<[Box<dyn B + '?, Global>], Global>) -> Vec<Box<dyn B + '?, Global>, Global>
+            776..850 '<[_]> ...ct)]))': Vec<Box<dyn B + '?, Global>, Global>
+            794..849 '#[rust...uct)])': Box<[Box<dyn B + '?, Global>; 1], Global>
+            816..848 '[#[rus...ruct)]': [Box<dyn B + '?, Global>; 1]
             817..847 '#[rust...truct)': Box<Astruct, Global>
             839..846 'Astruct': Astruct
         "#]],
@@ -3751,7 +3751,7 @@ fn foo() {
     }
     let v: bool = true;
     m!();
- // ^^^^ i32
+ // ^^ i32
 }
         "#,
     );
@@ -3765,39 +3765,39 @@ fn foo() {
     let v: bool;
     macro_rules! m { () => { v } }
     m!();
- // ^^^^ bool
+ // ^^ bool
 
     let v: char;
     macro_rules! m { () => { v } }
     m!();
- // ^^^^ char
+ // ^^ char
 
     {
         let v: u8;
         macro_rules! m { () => { v } }
         m!();
-     // ^^^^ u8
+     // ^^ u8
 
         let v: i8;
         macro_rules! m { () => { v } }
         m!();
-     // ^^^^ i8
+     // ^^ i8
 
         let v: i16;
         macro_rules! m { () => { v } }
         m!();
-     // ^^^^ i16
+     // ^^ i16
 
         {
             let v: u32;
             macro_rules! m { () => { v } }
             m!();
-         // ^^^^ u32
+         // ^^ u32
 
             let v: u64;
             macro_rules! m { () => { v } }
             m!();
-         // ^^^^ u64
+         // ^^ u64
         }
     }
 }

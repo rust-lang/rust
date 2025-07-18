@@ -152,6 +152,11 @@ impl Process {
         Ok(())
     }
 
+    pub fn send_signal(&self, _signal: i32) -> io::Result<()> {
+        // Fuchsia doesn't have a direct equivalent for signals
+        unimplemented!()
+    }
+
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         let mut proc_info: zx_info_process_t = Default::default();
         let mut actual: size_t = 0;

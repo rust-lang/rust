@@ -4,11 +4,11 @@ struct Foo<'a>(&'a str);
 
 impl<'b> Foo<'b> {
     fn a<'a>(self: Self, a: &'a str) -> &str {
-        //~^ WARNING lifetime flowing from input to output with different syntax
+        //~^ WARNING eliding a lifetime that's named elsewhere is confusing
         a
     }
     fn b<'a>(self: Foo<'b>, a: &'a str) -> &str {
-        //~^ WARNING lifetime flowing from input to output with different syntax
+        //~^ WARNING eliding a lifetime that's named elsewhere is confusing
         a
     }
 }

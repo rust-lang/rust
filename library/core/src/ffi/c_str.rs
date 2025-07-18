@@ -135,15 +135,19 @@ pub enum FromBytesWithNulError {
 }
 
 #[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
-impl Error for FromBytesWithNulError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
+impl fmt::Display for FromBytesWithNulError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InteriorNul { .. } => "data provided contains an interior nul byte",
-            Self::NotNulTerminated => "data provided is not nul terminated",
+            Self::InteriorNul { position } => {
+                write!(f, "data provided contains an interior nul byte at byte position {position}")
+            }
+            Self::NotNulTerminated => write!(f, "data provided is not nul terminated"),
         }
     }
 }
+
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
+impl Error for FromBytesWithNulError {}
 
 /// An error indicating that no nul byte was present.
 ///
@@ -178,18 +182,6 @@ impl Default for &CStr {
         const SLICE: &[c_char] = &[0];
         // SAFETY: `SLICE` is indeed pointing to a valid nul-terminated string.
         unsafe { CStr::from_ptr(SLICE.as_ptr()) }
-    }
-}
-
-#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
-impl fmt::Display for FromBytesWithNulError {
-    #[allow(deprecated, deprecated_in_future)]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.description())?;
-        if let Self::InteriorNul { position } = self {
-            write!(f, " at byte pos {position}")?;
-        }
-        Ok(())
     }
 }
 
@@ -467,7 +459,7 @@ impl CStr {
     /// // 💀 this violates `CStr::from_ptr`'s safety contract
     /// // 💀 leading to a dereference of a dangling pointer,
     /// // 💀 which is immediate undefined behavior.
-    /// // 💀 *BOOM*, you're dead, you're entire program has no meaning.
+    /// // 💀 *BOOM*, you're dead, your entire program has no meaning.
     /// dbg!(unsafe { CStr::from_ptr(ptr) });
     /// ```
     ///
@@ -660,6 +652,19 @@ impl CStr {
     }
 }
 
+#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<&Self> for CStr {
+    #[inline]
+    fn eq(&self, other: &&Self) -> bool {
+        *self == **other
+    }
+
+    #[inline]
+    fn ne(&self, other: &&Self) -> bool {
+        *self != **other
+    }
+}
+
 // `.to_bytes()` representations are compared instead of the inner `[c_char]`s,
 // because `c_char` is `i8` (not `u8`) on some platforms.
 // That is why this is implemented manually and not derived.
@@ -670,6 +675,7 @@ impl PartialOrd for CStr {
         self.to_bytes().partial_cmp(&other.to_bytes())
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for CStr {
     #[inline]

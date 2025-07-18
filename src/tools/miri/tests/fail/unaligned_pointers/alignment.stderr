@@ -2,7 +2,7 @@ error: Undefined Behavior: accessing memory based on pointer with alignment ALIG
   --> tests/fail/unaligned_pointers/alignment.rs:LL:CC
    |
 LL |         *(x_ptr as *mut u32) = 42; *(x_ptr.add(1) as *mut u32) = 42;
-   | ^ accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
+   | ^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

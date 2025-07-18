@@ -1,5 +1,5 @@
 use crate::cmp::Ordering;
-use crate::marker::Unsize;
+use crate::marker::{PointeeSized, Unsize};
 use crate::mem::{MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
@@ -20,19 +20,24 @@ use crate::{fmt, hash, intrinsics, mem, ptr};
 /// as a discriminant -- `Option<NonNull<T>>` has the same size as `*mut T`.
 /// However the pointer may still dangle if it isn't dereferenced.
 ///
-/// Unlike `*mut T`, `NonNull<T>` was chosen to be covariant over `T`. This makes it
-/// possible to use `NonNull<T>` when building covariant types, but introduces the
-/// risk of unsoundness if used in a type that shouldn't actually be covariant.
-/// (The opposite choice was made for `*mut T` even though technically the unsoundness
-/// could only be caused by calling unsafe functions.)
+/// Unlike `*mut T`, `NonNull<T>` is covariant over `T`. This is usually the correct
+/// choice for most data structures and safe abstractions, such as `Box`, `Rc`, `Arc`, `Vec`,
+/// and `LinkedList`.
 ///
-/// Covariance is correct for most safe abstractions, such as `Box`, `Rc`, `Arc`, `Vec`,
-/// and `LinkedList`. This is the case because they provide a public API that follows the
-/// normal shared XOR mutable rules of Rust.
+/// In rare cases, if your type exposes a way to mutate the value of `T` through a `NonNull<T>`,
+/// and you need to prevent unsoundness from variance (for example, if `T` could be a reference
+/// with a shorter lifetime), you should add a field to make your type invariant, such as
+/// `PhantomData<Cell<T>>` or `PhantomData<&'a mut T>`.
 ///
-/// If your type cannot safely be covariant, you must ensure it contains some
-/// additional field to provide invariance. Often this field will be a [`PhantomData`]
-/// type like `PhantomData<Cell<T>>` or `PhantomData<&'a mut T>`.
+/// Example of a type that must be invariant:
+/// ```rust
+/// use std::cell::Cell;
+/// use std::marker::PhantomData;
+/// struct Invariant<T> {
+///     ptr: std::ptr::NonNull<T>,
+///     _invariant: PhantomData<Cell<T>>,
+/// }
+/// ```
 ///
 /// Notice that `NonNull<T>` has a `From` instance for `&T`. However, this does
 /// not change the fact that mutating through a (pointer derived from a) shared
@@ -67,7 +72,7 @@ use crate::{fmt, hash, intrinsics, mem, ptr};
 #[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
 #[rustc_diagnostic_item = "NonNull"]
-pub struct NonNull<T: ?Sized> {
+pub struct NonNull<T: PointeeSized> {
     // Remember to use `.as_ptr()` instead of `.pointer`, as field projecting to
     // this is banned by <https://github.com/rust-lang/compiler-team/issues/807>.
     pointer: *const T,
@@ -76,12 +81,12 @@ pub struct NonNull<T: ?Sized> {
 /// `NonNull` pointers are not `Send` because the data they reference may be aliased.
 // N.B., this impl is unnecessary, but should provide better error messages.
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> !Send for NonNull<T> {}
+impl<T: PointeeSized> !Send for NonNull<T> {}
 
 /// `NonNull` pointers are not `Sync` because the data they reference may be aliased.
 // N.B., this impl is unnecessary, but should provide better error messages.
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> !Sync for NonNull<T> {}
+impl<T: PointeeSized> !Sync for NonNull<T> {}
 
 impl<T: Sized> NonNull<T> {
     /// Creates a pointer with the given address and no [provenance][crate::ptr#provenance].
@@ -89,8 +94,8 @@ impl<T: Sized> NonNull<T> {
     /// For more details, see the equivalent method on a raw pointer, [`ptr::without_provenance_mut`].
     ///
     /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
-    #[stable(feature = "nonnull_provenance", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "nonnull_provenance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "nonnull_provenance", since = "1.89.0")]
+    #[rustc_const_stable(feature = "nonnull_provenance", since = "1.89.0")]
     #[must_use]
     #[inline]
     pub const fn without_provenance(addr: NonZero<usize>) -> Self {
@@ -133,7 +138,7 @@ impl<T: Sized> NonNull<T> {
     /// For more details, see the equivalent method on a raw pointer, [`ptr::with_exposed_provenance_mut`].
     ///
     /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
-    #[stable(feature = "nonnull_provenance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "nonnull_provenance", since = "1.89.0")]
     #[inline]
     pub fn with_exposed_provenance(addr: NonZero<usize>) -> Self {
         // SAFETY: we know `addr` is non-zero.
@@ -190,7 +195,7 @@ impl<T: Sized> NonNull<T> {
     }
 }
 
-impl<T: ?Sized> NonNull<T> {
+impl<T: PointeeSized> NonNull<T> {
     /// Creates a new `NonNull`.
     ///
     /// # Safety
@@ -264,8 +269,8 @@ impl<T: ?Sized> NonNull<T> {
     }
 
     /// Converts a reference to a `NonNull` pointer.
-    #[stable(feature = "non_null_from_ref", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "non_null_from_ref", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "non_null_from_ref", since = "1.89.0")]
+    #[rustc_const_stable(feature = "non_null_from_ref", since = "1.89.0")]
     #[inline]
     pub const fn from_ref(r: &T) -> Self {
         // SAFETY: A reference cannot be null.
@@ -273,8 +278,8 @@ impl<T: ?Sized> NonNull<T> {
     }
 
     /// Converts a mutable reference to a `NonNull` pointer.
-    #[stable(feature = "non_null_from_ref", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "non_null_from_ref", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "non_null_from_ref", since = "1.89.0")]
+    #[rustc_const_stable(feature = "non_null_from_ref", since = "1.89.0")]
     #[inline]
     pub const fn from_mut(r: &mut T) -> Self {
         // SAFETY: A mutable reference cannot be null.
@@ -330,7 +335,7 @@ impl<T: ?Sized> NonNull<T> {
     /// For more details, see the equivalent method on a raw pointer, [`pointer::expose_provenance`].
     ///
     /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
-    #[stable(feature = "nonnull_provenance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "nonnull_provenance", since = "1.89.0")]
     pub fn expose_provenance(self) -> NonZero<usize> {
         // SAFETY: The pointer is guaranteed by the type to be non-null,
         // meaning that the address will be non-zero.
@@ -492,7 +497,7 @@ impl<T: ?Sized> NonNull<T> {
         unsafe { NonNull { pointer: self.as_ptr() as *mut U } }
     }
 
-    /// Try to cast to a pointer of another type by checking aligment.
+    /// Try to cast to a pointer of another type by checking alignment.
     ///
     /// If the pointer is properly aligned to the target type, it will be
     /// cast to the target type. Otherwise, `None` is returned.
@@ -1592,10 +1597,11 @@ impl<T> NonNull<[T]> {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_const_unstable(feature = "const_index", issue = "143775")]
     #[inline]
-    pub unsafe fn get_unchecked_mut<I>(self, index: I) -> NonNull<I::Output>
+    pub const unsafe fn get_unchecked_mut<I>(self, index: I) -> NonNull<I::Output>
     where
-        I: SliceIndex<[T]>,
+        I: ~const SliceIndex<[T]>,
     {
         // SAFETY: the caller ensures that `self` is dereferenceable and `index` in-bounds.
         // As a consequence, the resulting pointer cannot be null.
@@ -1604,7 +1610,7 @@ impl<T> NonNull<[T]> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> Clone for NonNull<T> {
+impl<T: PointeeSized> Clone for NonNull<T> {
     #[inline(always)]
     fn clone(&self) -> Self {
         *self
@@ -1612,39 +1618,36 @@ impl<T: ?Sized> Clone for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> Copy for NonNull<T> {}
+impl<T: PointeeSized> Copy for NonNull<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]
-impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
+impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
-impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
+impl<T: PointeeSized, U: PointeeSized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for NonNull<T> {}
-
-#[unstable(feature = "pointer_like_trait", issue = "none")]
-impl<T> core::marker::PointerLike for NonNull<T> {}
+unsafe impl<T: PointeeSized> PinCoerceUnsized for NonNull<T> {}
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> fmt::Debug for NonNull<T> {
+impl<T: PointeeSized> fmt::Debug for NonNull<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Pointer::fmt(&self.as_ptr(), f)
     }
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> fmt::Pointer for NonNull<T> {
+impl<T: PointeeSized> fmt::Pointer for NonNull<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Pointer::fmt(&self.as_ptr(), f)
     }
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> Eq for NonNull<T> {}
+impl<T: PointeeSized> Eq for NonNull<T> {}
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> PartialEq for NonNull<T> {
+impl<T: PointeeSized> PartialEq for NonNull<T> {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn eq(&self, other: &Self) -> bool {
@@ -1653,7 +1656,7 @@ impl<T: ?Sized> PartialEq for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> Ord for NonNull<T> {
+impl<T: PointeeSized> Ord for NonNull<T> {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn cmp(&self, other: &Self) -> Ordering {
@@ -1662,7 +1665,7 @@ impl<T: ?Sized> Ord for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> PartialOrd for NonNull<T> {
+impl<T: PointeeSized> PartialOrd for NonNull<T> {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -1671,7 +1674,7 @@ impl<T: ?Sized> PartialOrd for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> hash::Hash for NonNull<T> {
+impl<T: PointeeSized> hash::Hash for NonNull<T> {
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.as_ptr().hash(state)
@@ -1679,7 +1682,7 @@ impl<T: ?Sized> hash::Hash for NonNull<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
+impl<T: PointeeSized> From<Unique<T>> for NonNull<T> {
     #[inline]
     fn from(unique: Unique<T>) -> Self {
         unique.as_non_null_ptr()
@@ -1687,7 +1690,7 @@ impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> From<&mut T> for NonNull<T> {
+impl<T: PointeeSized> From<&mut T> for NonNull<T> {
     /// Converts a `&mut T` to a `NonNull<T>`.
     ///
     /// This conversion is safe and infallible since references cannot be null.
@@ -1698,7 +1701,7 @@ impl<T: ?Sized> From<&mut T> for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> From<&T> for NonNull<T> {
+impl<T: PointeeSized> From<&T> for NonNull<T> {
     /// Converts a `&T` to a `NonNull<T>`.
     ///
     /// This conversion is safe and infallible since references cannot be null.

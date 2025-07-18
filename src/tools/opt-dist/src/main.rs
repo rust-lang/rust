@@ -407,13 +407,18 @@ fn main() -> anyhow::Result<()> {
         for target in [
             "rust-docs",
             "rustc-docs",
+            "rustc-dev",
+            "rust-dev",
             "rust-docs-json",
             "rust-analyzer",
             "rustc-src",
+            "extended",
             "clippy",
             "miri",
             "rustfmt",
             "gcc",
+            "generate-copyright",
+            "bootstrap",
         ] {
             build_args.extend(["--skip".to_string(), target.to_string()]);
         }

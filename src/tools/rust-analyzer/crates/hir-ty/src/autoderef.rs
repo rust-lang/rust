@@ -208,7 +208,7 @@ pub(crate) fn deref_by_trait(
     };
     let trait_id = trait_id()?;
     let target =
-        db.trait_items(trait_id).associated_type_by_name(&Name::new_symbol_root(sym::Target))?;
+        trait_id.trait_items(db).associated_type_by_name(&Name::new_symbol_root(sym::Target))?;
 
     let projection = {
         let b = TyBuilder::subst_for_def(db, trait_id, None);

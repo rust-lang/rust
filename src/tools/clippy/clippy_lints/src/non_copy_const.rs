@@ -617,7 +617,7 @@ impl<'tcx> NonCopyConst<'tcx> {
 
             // Then a type check. Note we only check the type here as the result
             // gets cached.
-            let ty = EarlyBinder::bind(typeck.expr_ty(src_expr)).instantiate(tcx, init_args);
+            let ty = typeck.expr_ty(src_expr);
             // Normalized as we need to check if this is an array later.
             let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
             if self.is_ty_freeze(tcx, typing_env, ty).is_freeze() {

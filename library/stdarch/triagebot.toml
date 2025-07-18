@@ -1,0 +1,62 @@
+[assign]
+
+[assign.owners]
+"*" = ["@Amanieu"]
+
+[ping.windows]
+message = """\
+Hey Windows Group! This issue could use some guidance on how it can be resolved
+on Windows platforms.
+Could one of you weigh in please? In case it's useful, here are some
+[instructions] for tackling these sorts of bugs.
+Thanks!
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/windows.html
+"""
+
+[ping.arm]
+message = """\
+Hey Arm-interested people! This issue could use some guidance on how it can be
+resolved on Arm platforms.
+Could one of you weigh in please? In case it's useful, here are some
+[instructions] for tackling these sorts of bugs.
+Thanks!
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/arm.html
+"""
+
+[ping.risc-v]
+message = """\
+Hey RISC-V Group! This issue could use some guidance on how it can be resolved
+on RISC-V platforms.
+Could one of you weigh in please? In case it's useful, here are some
+[instructions] for tackling these sorts of bugs.
+Thanks!
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/risc-v.html
+"""
+
+[ping.fuchsia]
+message = """\
+Hey friends of Fuchsia! This issue could use some guidance on how this should be
+resolved/implemented on Fuchsia. Could one of you weigh in please?
+Thanks!
+"""
+
+[ping.apple]
+alias = ["macos", "ios", "tvos", "watchos", "visionos"]
+message = """\
+Hey Apple Group! This issue or PR could use some Darwin-specific guidance. Could
+one of you weigh in please?
+Thanks!
+"""
+
+# Canonicalize issue numbers to avoid closing the wrong issue
+# when commits are included in subtrees, as well as warning links in commits.
+# Documentation at: https://forge.rust-lang.org/triagebot/issue-links.html
+[issue-links]
+check-commits = false
+
+# Prevents mentions in commits to avoid users being spammed
+# Documentation at: https://forge.rust-lang.org/triagebot/no-mentions.html
+[no-mentions]

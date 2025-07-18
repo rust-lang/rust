@@ -130,11 +130,11 @@ pub enum MiriMemoryKind {
     WinHeap,
     /// Windows "local" memory (to be freed with `LocalFree`)
     WinLocal,
-    /// Memory for args, errno, and other parts of the machine-managed environment.
+    /// Memory for args, errno, env vars, and other parts of the machine-managed environment.
     /// This memory may leak.
     Machine,
-    /// Memory allocated by the runtime (e.g. env vars). Separate from `Machine`
-    /// because we clean it up and leak-check it.
+    /// Memory allocated by the runtime, e.g. for readdir. Separate from `Machine` because we clean
+    /// it up (or expect the user to invoke operations that clean it up) and leak-check it.
     Runtime,
     /// Globals copied from `tcx`.
     /// This memory may leak.
@@ -285,7 +285,7 @@ impl interpret::Provenance for Provenance {
     }
 
     fn fmt(ptr: &interpret::Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (prov, addr) = ptr.into_parts(); // address is absolute
+        let (prov, addr) = ptr.into_raw_parts(); // offset is absolute address
         write!(f, "{:#x}", addr.bytes())?;
         if f.alternate() {
             write!(f, "{prov:#?}")?;
@@ -499,9 +499,6 @@ pub struct MiriMachine<'tcx> {
     /// in `sched_getaffinity`
     pub(crate) thread_cpu_affinity: FxHashMap<ThreadId, CpuAffinityMask>,
 
-    /// The state of the primitive synchronization objects.
-    pub(crate) sync: SynchronizationObjects,
-
     /// Precomputed `TyLayout`s for primitive data types that are commonly used inside Miri.
     pub(crate) layouts: PrimitiveLayouts<'tcx>,
 
@@ -713,7 +710,6 @@ impl<'tcx> MiriMachine<'tcx> {
             layouts,
             threads,
             thread_cpu_affinity,
-            sync: SynchronizationObjects::default(),
             static_roots: Vec::new(),
             profiler,
             string_cache: Default::default(),
@@ -903,7 +899,6 @@ impl VisitProvenance for MiriMachine<'_> {
         let MiriMachine {
             threads,
             thread_cpu_affinity: _,
-            sync: _,
             tls,
             env_vars,
             main_fn_ret_place,
@@ -1056,7 +1051,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             // What's the offset between us and the promised alignment?
             let distance = offset.bytes().wrapping_sub(promised_offset.bytes());
             // That must also be aligned.
-            if distance % align.bytes() == 0 {
+            if distance.is_multiple_of(align.bytes()) {
                 // All looking good!
                 None
             } else {
@@ -1091,7 +1086,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx: &MiriInterpCx<'tcx>,
         instance: ty::Instance<'tcx>,
     ) -> InterpResult<'tcx> {
-        let attrs = ecx.tcx.codegen_fn_attrs(instance.def_id());
+        let attrs = ecx.tcx.codegen_instance_attrs(instance.def);
         if attrs
             .target_features
             .iter()
@@ -1202,7 +1197,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             ExternAbi::Rust,
             &[],
             None,
-            StackPopCleanup::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
+            ReturnContinuation::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
         )?;
         interp_ok(())
     }
@@ -1612,7 +1607,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx.machine.since_gc += 1;
         // Possibly report our progress. This will point at the terminator we are about to execute.
         if let Some(report_progress) = ecx.machine.report_progress {
-            if ecx.machine.basic_block_count % u64::from(report_progress) == 0 {
+            if ecx.machine.basic_block_count.is_multiple_of(u64::from(report_progress)) {
                 ecx.emit_diagnostic(NonHaltingDiagnostic::ProgressReport {
                     block_count: ecx.machine.basic_block_count,
                 });
@@ -1795,7 +1790,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 ecx.tcx.sess.opts.unstable_opts.cross_crate_inline_threshold,
                 InliningThreshold::Always
             ) || !matches!(
-                ecx.tcx.codegen_fn_attrs(instance.def_id()).inline,
+                ecx.tcx.codegen_instance_attrs(instance.def).inline,
                 InlineAttr::Never
             );
             !is_generic && !can_be_inlined
@@ -1829,6 +1824,19 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
         #[cfg(not(target_os = "linux"))]
         MiriAllocParams::Global
+    }
+
+    fn enter_trace_span(span: impl FnOnce() -> tracing::Span) -> impl EnteredTraceSpan {
+        #[cfg(feature = "tracing")]
+        {
+            span().entered()
+        }
+        #[cfg(not(feature = "tracing"))]
+        #[expect(clippy::unused_unit)]
+        {
+            let _ = span; // so we avoid the "unused variable" warning
+            ()
+        }
     }
 }
 

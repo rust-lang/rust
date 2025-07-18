@@ -2,17 +2,16 @@ use clippy_utils::consts::Constant::{F32, F64, Int};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{
-    eq_expr_value, get_parent_expr, higher, is_in_const_context, is_inherent_method_call, is_no_std_crate,
-    numeric_literal, peel_blocks, sugg, sym,
+    eq_expr_value, get_parent_expr, has_ambiguous_literal_in_expr, higher, is_in_const_context,
+    is_inherent_method_call, is_no_std_crate, numeric_literal, peel_blocks, sugg, sym,
 };
+use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
-
-use rustc_ast::ast;
 use std::f32::consts as f32_consts;
 use std::f64::consts as f64_consts;
 use sugg::Sugg;
@@ -456,7 +455,6 @@ fn is_float_mul_expr<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(&'
     None
 }
 
-// TODO: Fix rust-lang/rust-clippy#4735
 fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::Binary(
         Spanned {
@@ -491,6 +489,14 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
         } else {
             return;
         };
+
+        // Check if any variable in the expression has an ambiguous type (could be f32 or f64)
+        // see: https://github.com/rust-lang/rust-clippy/issues/14897
+        if (matches!(recv.kind, ExprKind::Path(_)) || matches!(recv.kind, ExprKind::Call(_, _)))
+            && has_ambiguous_literal_in_expr(cx, recv)
+        {
+            return;
+        }
 
         span_lint_and_sugg(
             cx,

@@ -8,7 +8,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId};
+use rustc_hir::{self as hir, HirId, LangItem, PolyTraitRef};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
@@ -26,14 +26,66 @@ use rustc_trait_selection::traits::{
 use smallvec::SmallVec;
 use tracing::debug;
 
+use super::InherentAssocCandidate;
 use crate::errors::{
     self, AssocItemConstraintsNotAllowedHere, ManualImplementation, MissingTypeParams,
-    ParenthesizedFnTraitExpansion, TraitObjectDeclaredWithNoTraits,
+    ParenthesizedFnTraitExpansion, PointeeSizedTraitObject, TraitObjectDeclaredWithNoTraits,
 };
 use crate::fluent_generated as fluent;
 use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
+    /// Check for multiple relaxed default bounds and relaxed bounds of non-sizedness traits.
+    pub(crate) fn check_and_report_invalid_unbounds_on_param(
+        &self,
+        unbounds: SmallVec<[&PolyTraitRef<'_>; 1]>,
+    ) {
+        let tcx = self.tcx();
+
+        let sized_did = tcx.require_lang_item(LangItem::Sized, DUMMY_SP);
+
+        let mut unique_bounds = FxIndexSet::default();
+        let mut seen_repeat = false;
+        for unbound in &unbounds {
+            if let Res::Def(DefKind::Trait, unbound_def_id) = unbound.trait_ref.path.res {
+                seen_repeat |= !unique_bounds.insert(unbound_def_id);
+            }
+        }
+
+        if unbounds.len() > 1 {
+            let err = errors::MultipleRelaxedDefaultBounds {
+                spans: unbounds.iter().map(|ptr| ptr.span).collect(),
+            };
+
+            if seen_repeat {
+                tcx.dcx().emit_err(err);
+            } else if !tcx.features().more_maybe_bounds() {
+                tcx.sess.create_feature_err(err, sym::more_maybe_bounds).emit();
+            };
+        }
+
+        for unbound in unbounds {
+            if let Res::Def(DefKind::Trait, did) = unbound.trait_ref.path.res
+                && ((did == sized_did) || tcx.is_default_trait(did))
+            {
+                continue;
+            }
+
+            let unbound_traits = match tcx.sess.opts.unstable_opts.experimental_default_bounds {
+                true => "`?Sized` and `experimental_default_bounds`",
+                false => "`?Sized`",
+            };
+            self.dcx().span_err(
+                unbound.span,
+                format!(
+                    "relaxing a default bound only does something for {}; all other traits are \
+                     not bound by default",
+                    unbound_traits
+                ),
+            );
+        }
+    }
+
     /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
     /// the type parameter's name as a placeholder.
     pub(crate) fn report_missing_type_params(
@@ -257,6 +309,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // change the associated item.
                         err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTrait {
                             span: assoc_ident.span,
+                            trait_name: &trait_name,
                             assoc_kind: assoc_kind_str,
                             suggested_name,
                         });
@@ -742,7 +795,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         name: Ident,
         self_ty: Ty<'tcx>,
-        candidates: Vec<(DefId, (DefId, DefId))>,
+        candidates: Vec<InherentAssocCandidate>,
         fulfillment_errors: Vec<FulfillmentError<'tcx>>,
         span: Span,
         assoc_tag: ty::AssocTag,
@@ -776,8 +829,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let type_candidates = candidates
                 .iter()
                 .take(limit)
-                .map(|&(impl_, _)| {
-                    format!("- `{}`", tcx.at(span).type_of(impl_).instantiate_identity())
+                .map(|cand| {
+                    format!("- `{}`", tcx.at(span).type_of(cand.impl_).instantiate_identity())
                 })
                 .collect::<Vec<_>>()
                 .join("\n");
@@ -1356,6 +1409,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .map(|trait_ref| tcx.def_span(trait_ref.def_id()));
 
         self.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span })
+    }
+
+    pub(super) fn report_pointee_sized_trait_object(&self, span: Span) -> ErrorGuaranteed {
+        self.dcx().emit_err(PointeeSizedTraitObject { span })
     }
 }
 

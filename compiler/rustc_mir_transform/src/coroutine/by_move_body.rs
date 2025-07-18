@@ -239,7 +239,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     body_def.explicit_predicates_of(tcx.explicit_predicates_of(coroutine_def_id));
     body_def.generics_of(tcx.generics_of(coroutine_def_id).clone());
     body_def.param_env(tcx.param_env(coroutine_def_id));
-    body_def.predicates_of(tcx.predicates_of(coroutine_def_id));
+    body_def.explicit_predicates_of(tcx.explicit_predicates_of(coroutine_def_id));
 
     // The type of the coroutine is the `by_move_coroutine_ty`.
     body_def.type_of(ty::EarlyBinder::bind(by_move_coroutine_ty));

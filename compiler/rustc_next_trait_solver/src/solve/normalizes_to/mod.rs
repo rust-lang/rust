@@ -6,6 +6,7 @@ mod opaque_types;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{self as ty, Interner, NormalizesTo, PredicateKind, Upcast as _};
 use tracing::instrument;
 
@@ -111,18 +112,17 @@ where
         goal: Goal<I, Self>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
-        if let Some(projection_pred) = assumption.as_projection_clause() {
-            if projection_pred.item_def_id() == goal.predicate.def_id() {
-                if DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
-                    goal.predicate.alias.args,
-                    projection_pred.skip_binder().projection_term.args,
-                ) {
-                    return Ok(());
-                }
-            }
+        if let Some(projection_pred) = assumption.as_projection_clause()
+            && projection_pred.item_def_id() == goal.predicate.def_id()
+            && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
+                goal.predicate.alias.args,
+                projection_pred.skip_binder().projection_term.args,
+            )
+        {
+            Ok(())
+        } else {
+            Err(NoSolution)
         }
-
-        Err(NoSolution)
     }
 
     fn match_assumption(
@@ -413,11 +413,12 @@ where
         panic!("trait aliases do not have associated types: {:?}", goal);
     }
 
-    fn consider_builtin_sized_candidate(
+    fn consider_builtin_sizedness_candidates(
         _ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        _sizedness: SizedTraitKind,
     ) -> Result<Candidate<I>, NoSolution> {
-        panic!("`Sized` does not have an associated type: {:?}", goal);
+        panic!("`Sized`/`MetaSized` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_copy_clone_candidate(
@@ -656,8 +657,7 @@ where
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Never
-            | ty::Foreign(..)
-            | ty::Dynamic(_, _, ty::DynStar) => Ty::new_unit(cx),
+            | ty::Foreign(..) => Ty::new_unit(cx),
 
             ty::Error(e) => Ty::new_error(cx, e),
 

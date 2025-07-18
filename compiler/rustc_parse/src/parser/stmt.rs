@@ -798,7 +798,7 @@ impl<'a> Parser<'a> {
         }
         if self.prev_token.is_reserved_ident() && self.prev_token.is_ident_named(kw::Await) {
             // Likely `foo.await bar`
-        } else if !self.prev_token.is_reserved_ident() && self.prev_token.is_ident() {
+        } else if self.prev_token.is_non_reserved_ident() {
             // Likely `foo bar`
         } else if self.prev_token.kind == token::Question {
             // `foo? bar`

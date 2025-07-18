@@ -1,5 +1,7 @@
 // Test that rustdoc will properly load in a theme file and display it in the theme selector.
 
+//@ needs-target-std
+
 use std::path::Path;
 
 use run_make_support::{htmldocck, rfs, rustdoc, source_root};

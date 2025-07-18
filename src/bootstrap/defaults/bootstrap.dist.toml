@@ -20,7 +20,6 @@ download-ci-llvm = false
 channel = "auto-detect"
 # Never download a rustc, distributions must build a fresh compiler.
 download-rustc = false
-lld = true
 # Build the llvm-bitcode-linker
 llvm-bitcode-linker = true
 

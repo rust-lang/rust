@@ -90,7 +90,7 @@ jobs:
       if: ${{ !matrix.cargo_runner }}
       run: |
         ./y.sh test --release --clean --release-sysroot --build-sysroot --mini-tests --std-tests --test-libcore
-        cargo test
+        ./y.sh test --cargo-tests
 
     - name: Run stdarch tests
       if: ${{ !matrix.cargo_runner }}

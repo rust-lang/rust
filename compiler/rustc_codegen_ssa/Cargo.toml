@@ -6,13 +6,11 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 ar_archive_writer = "0.4.2"
-arrayvec = { version = "0.7", default-features = false }
 bitflags = "2.4.1"
 bstr = "1.11.3"
 # Pinned so `cargo update` bumps don't cause breakage. Please also update the
 # `cc` in `rustc_llvm` if you update the `cc` here.
 cc = "=1.2.16"
-either = "1.5.0"
 itertools = "0.12"
 pathdiff = "0.2.0"
 regex = "1.4"

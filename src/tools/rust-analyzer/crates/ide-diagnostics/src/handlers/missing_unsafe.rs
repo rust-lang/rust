@@ -630,6 +630,17 @@ fn main() {
         // Checks that we don't place orphan arguments for formatting under an unsafe block.
         check_diagnostics(
             r#"
+//- minicore: fmt_before_1_89_0
+fn foo() {
+    let p = 0xDEADBEEF as *const i32;
+    format_args!("", *p);
+                  // ^^ error: dereference of raw pointer is unsafe and requires an unsafe function or block
+}
+        "#,
+        );
+
+        check_diagnostics(
+            r#"
 //- minicore: fmt
 fn foo() {
     let p = 0xDEADBEEF as *const i32;
@@ -954,6 +965,35 @@ pub struct S2;
 #[allow(unsafe_op_in_unsafe_fn)]
 impl FooTrait for S2 {
     impl_foo!();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn no_false_positive_on_format_args_since_1_89_0() {
+        check_diagnostics(
+            r#"
+//- minicore: fmt
+fn test() {
+    let foo = 10;
+    let bar = true;
+    let _x = format_args!("{} {0} {} {last}", foo, bar, last = "!");
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn naked_asm_is_safe() {
+        check_diagnostics(
+            r#"
+#[rustc_builtin_macro]
+macro_rules! naked_asm { () => {} }
+
+#[unsafe(naked)]
+extern "C" fn naked() {
+    naked_asm!("");
 }
         "#,
         );

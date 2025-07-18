@@ -4,6 +4,27 @@
 //! filesystem. All methods in this module represent cross-platform filesystem
 //! operations. Extra platform-specific functionality can be found in the
 //! extension traits of `std::os::$platform`.
+//!
+//! # Time of Check to Time of Use (TOCTOU)
+//!
+//! Many filesystem operations are subject to a race condition known as "Time of Check to Time of Use"
+//! (TOCTOU). This occurs when a program checks a condition (like file existence or permissions)
+//! and then uses the result of that check to make a decision, but the condition may have changed
+//! between the check and the use.
+//!
+//! For example, checking if a file exists and then creating it if it doesn't is vulnerable to
+//! TOCTOU - another process could create the file between your check and creation attempt.
+//!
+//! Another example is with symbolic links: when removing a directory, if another process replaces
+//! the directory with a symbolic link between the check and the removal operation, the removal
+//! might affect the wrong location. This is why operations like [`remove_dir_all`] need to use
+//! atomic operations to prevent such race conditions.
+//!
+//! To avoid TOCTOU issues:
+//! - Be aware that metadata operations (like [`metadata`] or [`symlink_metadata`]) may be affected by
+//! changes made by other processes.
+//! - Use atomic operations when possible (like [`File::create_new`] instead of checking existence then creating).
+//! - Keep file open for the duration of operations.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -121,7 +142,7 @@ pub struct File {
 ///
 /// [`try_lock`]: File::try_lock
 /// [`try_lock_shared`]: File::try_lock_shared
-#[unstable(feature = "file_lock", issue = "130994")]
+#[stable(feature = "file_lock", since = "1.89.0")]
 pub enum TryLockError {
     /// The lock could not be acquired due to an I/O error on the file. The standard library will
     /// not return an [`ErrorKind::WouldBlock`] error inside [`TryLockError::Error`]
@@ -153,9 +174,8 @@ pub struct Metadata(fs_imp::FileAttr);
 /// dependent.
 ///
 /// # Errors
-///
-/// This [`io::Result`] will be an [`Err`] if there's some sort of intermittent
-/// IO error during iteration.
+/// This [`io::Result`] will be an [`Err`] if an error occurred while fetching
+/// the next entry from the OS.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct ReadDir(fs_imp::ReadDir);
@@ -367,10 +387,10 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
     inner(path.as_ref(), contents.as_ref())
 }
 
-#[unstable(feature = "file_lock", issue = "130994")]
+#[stable(feature = "file_lock", since = "1.89.0")]
 impl error::Error for TryLockError {}
 
-#[unstable(feature = "file_lock", issue = "130994")]
+#[stable(feature = "file_lock", since = "1.89.0")]
 impl fmt::Debug for TryLockError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -380,7 +400,7 @@ impl fmt::Debug for TryLockError {
     }
 }
 
-#[unstable(feature = "file_lock", issue = "130994")]
+#[stable(feature = "file_lock", since = "1.89.0")]
 impl fmt::Display for TryLockError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -391,7 +411,7 @@ impl fmt::Display for TryLockError {
     }
 }
 
-#[unstable(feature = "file_lock", issue = "130994")]
+#[stable(feature = "file_lock", since = "1.89.0")]
 impl From<TryLockError> for io::Error {
     fn from(err: TryLockError) -> io::Error {
         match err {
@@ -549,13 +569,14 @@ impl File {
     /// non-exhaustive list of likely errors.
     ///
     /// This option is useful because it is atomic. Otherwise between checking whether a file
-    /// exists and creating a new one, the file may have been created by another process (a TOCTOU
+    /// exists and creating a new one, the file may have been created by another process (a [TOCTOU]
     /// race condition / attack).
     ///
     /// This can also be written using
     /// `File::options().read(true).write(true).create_new(true).open(...)`.
     ///
     /// [`AlreadyExists`]: crate::io::ErrorKind::AlreadyExists
+    /// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
     ///
     /// # Examples
     ///
@@ -683,11 +704,11 @@ impl File {
     /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
     /// cause non-lockholders to block.
     ///
-    /// If this file handle/descriptor, or a clone of it, already holds an lock the exact behavior
+    /// If this file handle/descriptor, or a clone of it, already holds a lock the exact behavior
     /// is unspecified and platform dependent, including the possibility that it will deadlock.
     /// However, if this method returns, then an exclusive lock is held.
     ///
-    /// If the file not open for writing, it is unspecified whether this function returns an error.
+    /// If the file is not open for writing, it is unspecified whether this function returns an error.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
@@ -714,7 +735,6 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -723,7 +743,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "1.89.0")]
     pub fn lock(&self) -> io::Result<()> {
         self.inner.lock()
     }
@@ -738,7 +758,7 @@ impl File {
     /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
     /// cause non-lockholders to block.
     ///
-    /// If this file handle/descriptor, or a clone of it, already holds an lock, the exact behavior
+    /// If this file handle/descriptor, or a clone of it, already holds a lock, the exact behavior
     /// is unspecified and platform dependent, including the possibility that it will deadlock.
     /// However, if this method returns, then a shared lock is held.
     ///
@@ -767,7 +787,6 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -776,7 +795,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "1.89.0")]
     pub fn lock_shared(&self) -> io::Result<()> {
         self.inner.lock_shared()
     }
@@ -793,11 +812,11 @@ impl File {
     /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
     /// cause non-lockholders to block.
     ///
-    /// If this file handle/descriptor, or a clone of it, already holds an lock, the exact behavior
+    /// If this file handle/descriptor, or a clone of it, already holds a lock, the exact behavior
     /// is unspecified and platform dependent, including the possibility that it will deadlock.
     /// However, if this method returns `Ok(true)`, then it has acquired an exclusive lock.
     ///
-    /// If the file not open for writing, it is unspecified whether this function returns an error.
+    /// If the file is not open for writing, it is unspecified whether this function returns an error.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
@@ -825,7 +844,6 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::{File, TryLockError};
     ///
     /// fn main() -> std::io::Result<()> {
@@ -841,7 +859,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "1.89.0")]
     pub fn try_lock(&self) -> Result<(), TryLockError> {
         self.inner.try_lock()
     }
@@ -859,7 +877,7 @@ impl File {
     /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
     /// cause non-lockholders to block.
     ///
-    /// If this file handle, or a clone of it, already holds an lock, the exact behavior is
+    /// If this file handle, or a clone of it, already holds a lock, the exact behavior is
     /// unspecified and platform dependent, including the possibility that it will deadlock.
     /// However, if this method returns `Ok(true)`, then it has acquired a shared lock.
     ///
@@ -889,7 +907,6 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::{File, TryLockError};
     ///
     /// fn main() -> std::io::Result<()> {
@@ -906,7 +923,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "1.89.0")]
     pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
         self.inner.try_lock_shared()
     }
@@ -934,7 +951,6 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -944,7 +960,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "1.89.0")]
     pub fn unlock(&self) -> io::Result<()> {
         self.inner.unlock()
     }
@@ -1616,7 +1632,7 @@ impl OpenOptions {
     ///
     /// This option is useful because it is atomic. Otherwise between checking
     /// whether a file exists and creating a new one, the file may have been
-    /// created by another process (a TOCTOU race condition / attack).
+    /// created by another process (a [TOCTOU] race condition / attack).
     ///
     /// If `.create_new(true)` is set, [`.create()`] and [`.truncate()`] are
     /// ignored.
@@ -1627,6 +1643,7 @@ impl OpenOptions {
     /// [`.create()`]: OpenOptions::create
     /// [`.truncate()`]: OpenOptions::truncate
     /// [`AlreadyExists`]: io::ErrorKind::AlreadyExists
+    /// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
     ///
     /// # Examples
     ///
@@ -2960,17 +2977,17 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// `GetFileInformationByHandleEx`, `SetFileInformationByHandle`, and `NtCreateFile`.
 ///
 /// ## Time-of-check to time-of-use (TOCTOU) race conditions
-/// On a few platforms there is no way to remove a directory's contents without following symlinks
-/// unless you perform a check and then operate on paths based on that directory.
-/// This allows concurrently-running code to replace the directory with a symlink after the check,
-/// causing a removal to instead operate on a path based on the symlink. This is a TOCTOU race.
-/// By default, `fs::remove_dir_all` protects against a symlink TOCTOU race on all platforms
-/// except the following. It should not be used in security-sensitive contexts on these platforms:
-/// - Miri: Even when emulating targets where the underlying implementation will protect against
-/// TOCTOU races, Miri will not do so.
-/// - Redox OS: This function does not protect against TOCTOU races, as Redox does not implement
-/// the required platform support to do so.
+/// See the [module-level TOCTOU explanation](self#time-of-check-to-time-of-use-toctou).
 ///
+/// On most platforms, `fs::remove_dir_all` protects against symlink TOCTOU races by default.
+/// However, on the following platforms, this protection is not provided and the function should
+/// not be used in security-sensitive contexts:
+/// - **Miri**: Even when emulating targets where the underlying implementation will protect against
+///   TOCTOU races, Miri will not do so.
+/// - **Redox OS**: This function does not protect against TOCTOU races, as Redox does not implement
+///   the required platform support to do so.
+///
+/// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
 /// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
@@ -3097,7 +3114,7 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 /// On UNIX-like systems, this function will update the permission bits
 /// of the file pointed to by the symlink.
 ///
-/// Note that this behavior can lead to privalage escalation vulnerabilites,
+/// Note that this behavior can lead to privalage escalation vulnerabilities,
 /// where the ability to create a symlink in one directory allows you to
 /// cause the permissions of another file or directory to be modified.
 ///
@@ -3244,7 +3261,7 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// permission is denied on one of the parent directories.
 ///
 /// Note that while this avoids some pitfalls of the `exists()` method, it still can not
-/// prevent time-of-check to time-of-use (TOCTOU) bugs. You should only use it in scenarios
+/// prevent time-of-check to time-of-use ([TOCTOU]) bugs. You should only use it in scenarios
 /// where those bugs are not an issue.
 ///
 /// # Examples
@@ -3257,6 +3274,7 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// ```
 ///
 /// [`Path::exists`]: crate::path::Path::exists
+/// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
 #[stable(feature = "fs_try_exists", since = "1.81.0")]
 #[inline]
 pub fn exists<P: AsRef<Path>>(path: P) -> io::Result<bool> {

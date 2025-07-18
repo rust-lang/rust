@@ -37,7 +37,7 @@ use hir_expand::{
 };
 use hir_ty::{
     Adjustment, AliasTy, InferenceResult, Interner, LifetimeElisionKind, ProjectionTy,
-    Substitution, TraitEnvironment, Ty, TyExt, TyKind, TyLoweringContext,
+    Substitution, ToChalk, TraitEnvironment, Ty, TyExt, TyKind, TyLoweringContext,
     diagnostics::{
         InsideUnsafeBlock, record_literal_missing_fields, record_pattern_missing_fields,
         unsafe_operations,
@@ -156,14 +156,14 @@ impl<'db> SourceAnalyzer<'db> {
         InFile { file_id, .. }: InFile<&SyntaxNode>,
         _offset: Option<TextSize>,
     ) -> SourceAnalyzer<'db> {
-        let (fields, source_map) = db.variant_fields_with_source_map(def);
+        let (fields, source_map) = def.fields_with_source_map(db);
         let resolver = def.resolver(db);
         SourceAnalyzer {
             resolver,
             body_or_sig: Some(BodyOrSig::VariantFields {
                 def,
                 store: fields.store.clone(),
-                source_map,
+                source_map: source_map.clone(),
             }),
             file_id,
         }
@@ -242,11 +242,7 @@ impl<'db> SourceAnalyzer<'db> {
 
     fn binding_id_of_pat(&self, pat: &ast::IdentPat) -> Option<BindingId> {
         let pat_id = self.pat_id(&pat.clone().into())?;
-        if let Pat::Bind { id, .. } = self.store()?.pats[pat_id.as_pat()?] {
-            Some(id)
-        } else {
-            None
-        }
+        if let Pat::Bind { id, .. } = self.store()?[pat_id.as_pat()?] { Some(id) } else { None }
     }
 
     pub(crate) fn expr_adjustments(&self, expr: &ast::Expr) -> Option<&[Adjustment]> {
@@ -254,10 +250,14 @@ impl<'db> SourceAnalyzer<'db> {
         // expressions nor patterns).
         let expr_id = self.expr_id(expr.clone())?.as_expr()?;
         let infer = self.infer()?;
-        infer.expr_adjustments.get(&expr_id).map(|v| &**v)
+        infer.expr_adjustment(expr_id)
     }
 
-    pub(crate) fn type_of_type(&self, db: &'db dyn HirDatabase, ty: &ast::Type) -> Option<Type> {
+    pub(crate) fn type_of_type(
+        &self,
+        db: &'db dyn HirDatabase,
+        ty: &ast::Type,
+    ) -> Option<Type<'db>> {
         let type_ref = self.type_id(ty)?;
         let ty = TyLoweringContext::new(
             db,
@@ -277,12 +277,12 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         expr: &ast::Expr,
-    ) -> Option<(Type, Option<Type>)> {
+    ) -> Option<(Type<'db>, Option<Type<'db>>)> {
         let expr_id = self.expr_id(expr.clone())?;
         let infer = self.infer()?;
         let coerced = expr_id
             .as_expr()
-            .and_then(|expr_id| infer.expr_adjustments.get(&expr_id))
+            .and_then(|expr_id| infer.expr_adjustment(expr_id))
             .and_then(|adjusts| adjusts.last().map(|adjust| adjust.target.clone()));
         let ty = infer[expr_id].clone();
         let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
@@ -293,17 +293,16 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         pat: &ast::Pat,
-    ) -> Option<(Type, Option<Type>)> {
+    ) -> Option<(Type<'db>, Option<Type<'db>>)> {
         let expr_or_pat_id = self.pat_id(pat)?;
         let infer = self.infer()?;
         let coerced = match expr_or_pat_id {
             ExprOrPatId::ExprId(idx) => infer
-                .expr_adjustments
-                .get(&idx)
+                .expr_adjustment(idx)
                 .and_then(|adjusts| adjusts.last().cloned())
                 .map(|adjust| adjust.target),
             ExprOrPatId::PatId(idx) => {
-                infer.pat_adjustments.get(&idx).and_then(|adjusts| adjusts.last().cloned())
+                infer.pat_adjustment(idx).and_then(|adjusts| adjusts.last().cloned())
             }
         };
 
@@ -316,7 +315,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         pat: &ast::IdentPat,
-    ) -> Option<Type> {
+    ) -> Option<Type<'db>> {
         let binding_id = self.binding_id_of_pat(pat)?;
         let infer = self.infer()?;
         let ty = infer[binding_id].clone();
@@ -328,7 +327,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         _param: &ast::SelfParam,
-    ) -> Option<Type> {
+    ) -> Option<Type<'db>> {
         let binding = self.body()?.self_param?;
         let ty = self.infer()?[binding].clone();
         Some(Type::new_with_resolver(db, &self.resolver, ty))
@@ -341,7 +340,7 @@ impl<'db> SourceAnalyzer<'db> {
     ) -> Option<BindingMode> {
         let id = self.pat_id(&pat.clone().into())?;
         let infer = self.infer()?;
-        infer.binding_modes.get(id.as_pat()?).map(|bm| match bm {
+        infer.binding_mode(id.as_pat()?).map(|bm| match bm {
             hir_ty::BindingMode::Move => BindingMode::Move,
             hir_ty::BindingMode::Ref(hir_ty::Mutability::Mut) => BindingMode::Ref(Mutability::Mut),
             hir_ty::BindingMode::Ref(hir_ty::Mutability::Not) => {
@@ -353,13 +352,12 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         pat: &ast::Pat,
-    ) -> Option<SmallVec<[Type; 1]>> {
+    ) -> Option<SmallVec<[Type<'db>; 1]>> {
         let pat_id = self.pat_id(pat)?;
         let infer = self.infer()?;
         Some(
             infer
-                .pat_adjustments
-                .get(&pat_id.as_pat()?)?
+                .pat_adjustment(pat_id.as_pat()?)?
                 .iter()
                 .map(|ty| Type::new_with_resolver(db, &self.resolver, ty.clone()))
                 .collect(),
@@ -370,7 +368,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         call: &ast::MethodCallExpr,
-    ) -> Option<Callable> {
+    ) -> Option<Callable<'db>> {
         let expr_id = self.expr_id(call.clone().into())?.as_expr()?;
         let (func, substs) = self.infer()?.method_resolution(expr_id)?;
         let ty = db.value_ty(func.into())?.substitute(Interner, &substs);
@@ -395,7 +393,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         call: &ast::MethodCallExpr,
-    ) -> Option<(Either<Function, Field>, Option<GenericSubstitution>)> {
+    ) -> Option<(Either<Function, Field>, Option<GenericSubstitution<'db>>)> {
         let expr_id = self.expr_id(call.clone().into())?.as_expr()?;
         let inference_result = self.infer()?;
         match inference_result.method_resolution(expr_id) {
@@ -419,7 +417,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         call: &ast::Expr,
-    ) -> Option<Callable> {
+    ) -> Option<Callable<'db>> {
         let (orig, adjusted) = self.type_of_expr(db, &call.clone())?;
         adjusted.unwrap_or(orig).as_callable(db)
     }
@@ -440,7 +438,7 @@ impl<'db> SourceAnalyzer<'db> {
         field_expr: ExprId,
         infer: &InferenceResult,
         db: &'db dyn HirDatabase,
-    ) -> Option<GenericSubstitution> {
+    ) -> Option<GenericSubstitution<'db>> {
         let body = self.store()?;
         if let Expr::Field { expr: object_expr, name: _ } = body[field_expr] {
             let (adt, subst) = type_of_expr_including_adjust(infer, object_expr)?.as_adt()?;
@@ -457,7 +455,8 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         field: &ast::FieldExpr,
-    ) -> Option<(Either<Either<Field, TupleField>, Function>, Option<GenericSubstitution>)> {
+    ) -> Option<(Either<Either<Field, TupleField>, Function>, Option<GenericSubstitution<'db>>)>
+    {
         let (def, ..) = self.body_()?;
         let expr_id = self.expr_id(field.clone().into())?.as_expr()?;
         let inference_result = self.infer()?;
@@ -680,7 +679,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         field: &ast::RecordExprField,
-    ) -> Option<(Field, Option<Local>, Type, GenericSubstitution)> {
+    ) -> Option<(Field, Option<Local>, Type<'db>, GenericSubstitution<'db>)> {
         let record_expr = ast::RecordExpr::cast(field.syntax().parent().and_then(|p| p.parent())?)?;
         let expr = ast::Expr::from(record_expr);
         let expr_id = self.store_sm()?.node_expr(InFile::new(self.file_id, &expr))?;
@@ -708,7 +707,7 @@ impl<'db> SourceAnalyzer<'db> {
         };
         let (adt, subst) = self.infer()?.type_of_expr_or_pat(expr_id)?.as_adt()?;
         let variant = self.infer()?.variant_resolution_for_expr_or_pat(expr_id)?;
-        let variant_data = variant.variant_data(db);
+        let variant_data = variant.fields(db);
         let field = FieldId { parent: variant, local_id: variant_data.field(&local_name)? };
         let field_ty =
             db.field_types(variant).get(field.local_id)?.clone().substitute(Interner, subst);
@@ -724,14 +723,14 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         field: &ast::RecordPatField,
-    ) -> Option<(Field, Type, GenericSubstitution)> {
+    ) -> Option<(Field, Type<'db>, GenericSubstitution<'db>)> {
         let field_name = field.field_name()?.as_name();
         let record_pat = ast::RecordPat::cast(field.syntax().parent().and_then(|p| p.parent())?)?;
         let pat_id = self.pat_id(&record_pat.into())?;
         let variant = self.infer()?.variant_resolution_for_pat(pat_id.as_pat()?)?;
-        let variant_data = variant.variant_data(db);
+        let variant_data = variant.fields(db);
         let field = FieldId { parent: variant, local_id: variant_data.field(&field_name)? };
-        let (adt, subst) = self.infer()?.type_of_pat.get(pat_id.as_pat()?)?.as_adt()?;
+        let (adt, subst) = self.infer()?[pat_id.as_pat()?].as_adt()?;
         let field_ty =
             db.field_types(variant).get(field.local_id)?.clone().substitute(Interner, subst);
         Some((
@@ -760,7 +759,8 @@ impl<'db> SourceAnalyzer<'db> {
             },
         };
 
-        let res = resolve_hir_path(db, &self.resolver, path, HygieneId::ROOT, Some(store))?;
+        let body_owner = self.resolver.body_owner();
+        let res = resolve_hir_value_path(db, &self.resolver, body_owner, path, HygieneId::ROOT)?;
         match res {
             PathResolution::Def(def) => Some(def),
             _ => None,
@@ -779,7 +779,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         name_ref: &ast::NameRef,
-    ) -> Option<(Either<crate::Variant, crate::Field>, GenericSubstitution)> {
+    ) -> Option<(Either<crate::Variant, crate::Field>, GenericSubstitution<'db>)> {
         let offset_of_expr = ast::OffsetOfExpr::cast(name_ref.syntax().parent()?)?;
         let container = offset_of_expr.ty()?;
         let container = self.type_of_type(db, &container)?;
@@ -798,8 +798,8 @@ impl<'db> SourceAnalyzer<'db> {
                 };
                 container = Either::Right(db.normalize_projection(projection, trait_env.clone()));
             }
-            let handle_variants = |variant, subst: &Substitution, container: &mut _| {
-                let fields = db.variant_fields(variant);
+            let handle_variants = |variant: VariantId, subst: &Substitution, container: &mut _| {
+                let fields = variant.fields(db);
                 let field = fields.field(&field_name.as_name())?;
                 let field_types = db.field_types(variant);
                 *container = Either::Right(field_types[field].clone().substitute(Interner, subst));
@@ -829,7 +829,7 @@ impl<'db> SourceAnalyzer<'db> {
                                 handle_variants(id.into(), subst, &mut container)?
                             }
                             AdtId::EnumId(id) => {
-                                let variants = db.enum_variants(id);
+                                let variants = id.enum_variants(db);
                                 let variant = variants.variant(&field_name.as_name())?;
                                 container = Either::Left((variant, subst.clone()));
                                 (Either::Left(Variant { id: variant }), id.into(), subst.clone())
@@ -851,7 +851,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         path: &ast::Path,
-    ) -> Option<(PathResolution, Option<GenericSubstitution>)> {
+    ) -> Option<(PathResolution, Option<GenericSubstitution<'db>>)> {
         let parent = path.syntax().parent();
         let parent = || parent.clone();
 
@@ -991,7 +991,7 @@ impl<'db> SourceAnalyzer<'db> {
         let parent_hir_path = path
             .parent_path()
             .and_then(|p| collector.lower_path(p, &mut ExprCollector::impl_trait_error_allocator));
-        let store = collector.store.finish();
+        let (store, _) = collector.store.finish();
 
         // Case where path is a qualifier of a use tree, e.g. foo::bar::{Baz, Qux} where we are
         // trying to resolve foo::bar.
@@ -1169,8 +1169,7 @@ impl<'db> SourceAnalyzer<'db> {
                         )
                     }
                     TyKind::FnDef(fn_id, subst) => {
-                        let fn_id = hir_ty::db::InternedCallableDefId::from(*fn_id);
-                        let fn_id = db.lookup_intern_callable_def(fn_id);
+                        let fn_id = ToChalk::from_chalk(db, *fn_id);
                         let generic_def_id = match fn_id {
                             CallableDefId::StructId(id) => id.into(),
                             CallableDefId::FunctionId(id) => id.into(),
@@ -1201,7 +1200,7 @@ impl<'db> SourceAnalyzer<'db> {
         let mut collector = ExprCollector::new(db, self.resolver.module(), self.file_id);
         let hir_path =
             collector.lower_path(path.clone(), &mut ExprCollector::impl_trait_error_allocator)?;
-        let store = collector.store.finish();
+        let (store, _) = collector.store.finish();
         Some(resolve_hir_path_(
             db,
             &self.resolver,
@@ -1217,7 +1216,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         literal: &ast::RecordExpr,
-    ) -> Option<Vec<(Field, Type)>> {
+    ) -> Option<Vec<(Field, Type<'db>)>> {
         let body = self.store()?;
         let infer = self.infer()?;
 
@@ -1240,12 +1239,12 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         pattern: &ast::RecordPat,
-    ) -> Option<Vec<(Field, Type)>> {
+    ) -> Option<Vec<(Field, Type<'db>)>> {
         let body = self.store()?;
         let infer = self.infer()?;
 
         let pat_id = self.pat_id(&pattern.clone().into())?.as_pat()?;
-        let substs = infer.type_of_pat[pat_id].as_adt()?.1;
+        let substs = infer[pat_id].as_adt()?.1;
 
         let (variant, missing_fields, _exhaustive) =
             record_pattern_missing_fields(db, infer, pat_id, &body[pat_id])?;
@@ -1259,7 +1258,7 @@ impl<'db> SourceAnalyzer<'db> {
         substs: &Substitution,
         variant: VariantId,
         missing_fields: Vec<LocalFieldId>,
-    ) -> Vec<(Field, Type)> {
+    ) -> Vec<(Field, Type<'db>)> {
         let field_types = db.field_types(variant);
 
         missing_fields
@@ -1419,7 +1418,7 @@ impl<'db> SourceAnalyzer<'db> {
         method_name: &Name,
     ) -> Option<(TraitId, FunctionId)> {
         let trait_id = lang_trait.resolve_trait(db, self.resolver.krate())?;
-        let fn_id = db.trait_items(trait_id).method_by_name(method_name)?;
+        let fn_id = trait_id.trait_items(db).method_by_name(method_name)?;
         Some((trait_id, fn_id))
     }
 
@@ -1436,9 +1435,11 @@ fn scope_for(
 ) -> Option<ScopeId> {
     node.ancestors_with_macros(db)
         .take_while(|it| {
-            !ast::Item::can_cast(it.kind())
-                || ast::MacroCall::can_cast(it.kind())
-                || ast::Use::can_cast(it.kind())
+            let kind = it.kind();
+            !ast::Item::can_cast(kind)
+                || ast::MacroCall::can_cast(kind)
+                || ast::Use::can_cast(kind)
+                || ast::AsmExpr::can_cast(kind)
         })
         .filter_map(|it| it.map(ast::Expr::cast).transpose())
         .filter_map(|it| source_map.node_expr(it.as_ref())?.as_expr())
@@ -1576,7 +1577,7 @@ fn resolve_hir_path_(
         // within the trait's associated types.
         if let (Some(unresolved), &TypeNs::TraitId(trait_id)) = (&unresolved, &ty) {
             if let Some(type_alias_id) =
-                db.trait_items(trait_id).associated_type_by_name(unresolved.name)
+                trait_id.trait_items(db).associated_type_by_name(unresolved.name)
             {
                 return Some(PathResolution::Def(ModuleDefId::from(type_alias_id).into()));
             }
@@ -1727,7 +1728,7 @@ fn resolve_hir_path_qualifier(
         // within the trait's associated types.
         if let (Some(unresolved), &TypeNs::TraitId(trait_id)) = (&unresolved, &ty) {
             if let Some(type_alias_id) =
-                db.trait_items(trait_id).associated_type_by_name(unresolved.name)
+                trait_id.trait_items(db).associated_type_by_name(unresolved.name)
             {
                 return Some(PathResolution::Def(ModuleDefId::from(type_alias_id).into()));
             }
@@ -1781,8 +1782,8 @@ pub(crate) fn name_hygiene(db: &dyn HirDatabase, name: InFile<&SyntaxNode>) -> H
 }
 
 fn type_of_expr_including_adjust(infer: &InferenceResult, id: ExprId) -> Option<&Ty> {
-    match infer.expr_adjustments.get(&id).and_then(|adjustments| adjustments.last()) {
+    match infer.expr_adjustment(id).and_then(|adjustments| adjustments.last()) {
         Some(adjustment) => Some(&adjustment.target),
-        None => infer.type_of_expr.get(id),
+        None => Some(&infer[id]),
     }
 }

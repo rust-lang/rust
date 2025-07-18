@@ -2,7 +2,6 @@
 
 macro_rules! used_arm {
     ( $( any_token $field_rust_type )* ) => {}; //~ ERROR missing fragment
-                                                //~| ERROR missing fragment
 }
 
 macro_rules! used_macro_unused_arm {

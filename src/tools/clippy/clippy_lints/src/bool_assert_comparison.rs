@@ -42,7 +42,7 @@ fn extract_bool_lit(e: &Expr<'_>) -> Option<bool> {
     }) = e.kind
         && !e.span.from_expansion()
     {
-        Some(*b)
+        Some(b)
     } else {
         None
     }
@@ -56,7 +56,7 @@ fn is_impl_not_trait_with_bool_out<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -
         .and_then(|trait_id| {
             cx.tcx.associated_items(trait_id).find_by_ident_and_kind(
                 cx.tcx,
-                Ident::from_str("Output"),
+                Ident::with_dummy_span(sym::Output),
                 ty::AssocTag::Type,
                 trait_id,
             )

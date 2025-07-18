@@ -1,5 +1,3 @@
-#![feature(generic_arg_infer)]
-
 // Test that we enforce repeat expr element types are `Copy` even
 // when the repeat count is only inferred at a later point in type
 // checking.

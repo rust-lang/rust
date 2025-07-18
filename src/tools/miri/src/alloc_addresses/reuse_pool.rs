@@ -129,7 +129,7 @@ impl ReusePool {
         let idx = rng.random_range(begin..end);
         // Remove it from the pool and return.
         let (chosen_addr, chosen_size, chosen_thread, clock) = subpool.remove(idx);
-        debug_assert!(chosen_size >= size && chosen_addr % align.bytes() == 0);
+        debug_assert!(chosen_size >= size && chosen_addr.is_multiple_of(align.bytes()));
         debug_assert!(cross_thread_reuse || chosen_thread == thread);
         // No synchronization needed if we reused from the current thread.
         Some((chosen_addr, if chosen_thread == thread { None } else { Some(clock) }))

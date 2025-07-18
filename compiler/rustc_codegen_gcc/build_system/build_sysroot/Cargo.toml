@@ -6,6 +6,7 @@ resolver = "2"
 
 [dependencies]
 core = { path = "./sysroot_src/library/core" }
+compiler_builtins = { path = "./sysroot_src/library/compiler-builtins/compiler-builtins" }
 alloc = { path = "./sysroot_src/library/alloc" }
 std = { path = "./sysroot_src/library/std", features = ["panic_unwind", "backtrace"] }
 test = { path = "./sysroot_src/library/test" }

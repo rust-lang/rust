@@ -731,23 +731,22 @@ struct Promoter<'a, 'tcx> {
 impl<'a, 'tcx> Promoter<'a, 'tcx> {
     fn new_block(&mut self) -> BasicBlock {
         let span = self.promoted.span;
-        self.promoted.basic_blocks_mut().push(BasicBlockData {
-            statements: vec![],
-            terminator: Some(Terminator {
+        self.promoted.basic_blocks_mut().push(BasicBlockData::new(
+            Some(Terminator {
                 source_info: SourceInfo::outermost(span),
                 kind: TerminatorKind::Return,
             }),
-            is_cleanup: false,
-        })
+            false,
+        ))
     }
 
     fn assign(&mut self, dest: Local, rvalue: Rvalue<'tcx>, span: Span) {
         let last = self.promoted.basic_blocks.last_index().unwrap();
         let data = &mut self.promoted[last];
-        data.statements.push(Statement {
-            source_info: SourceInfo::outermost(span),
-            kind: StatementKind::Assign(Box::new((Place::from(dest), rvalue))),
-        });
+        data.statements.push(Statement::new(
+            SourceInfo::outermost(span),
+            StatementKind::Assign(Box::new((Place::from(dest), rvalue))),
+        ));
     }
 
     fn is_temp_kind(&self, local: Local) -> bool {
@@ -914,13 +913,13 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             assert_eq!(self.temps.push(TempState::Unpromotable), promoted_ref);
 
             let promoted_operand = promoted_operand(ref_ty, span);
-            let promoted_ref_statement = Statement {
-                source_info: statement.source_info,
-                kind: StatementKind::Assign(Box::new((
+            let promoted_ref_statement = Statement::new(
+                statement.source_info,
+                StatementKind::Assign(Box::new((
                     Place::from(promoted_ref),
                     Rvalue::Use(Operand::Constant(Box::new(promoted_operand))),
                 ))),
-            };
+            );
             self.extra_statements.push((loc, promoted_ref_statement));
 
             (

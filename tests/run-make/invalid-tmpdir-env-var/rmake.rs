@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // When the TMP (on Windows) or TMPDIR (on Unix) variable is set to an invalid
 // or non-existing directory, this used to cause an internal compiler error (ICE). After the
 // addition of proper error handling in #28430, this test checks that the expected message is

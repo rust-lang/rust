@@ -49,6 +49,13 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
+        // Perf testing has found that this check is slightly faster than
+        // folding and re-interning an empty `ExternalConstraintsData`.
+        // See: <https://github.com/rust-lang/rust/pull/142430>.
+        if self.is_empty() {
+            return Ok(self);
+        }
+
         Ok(FallibleTypeFolder::cx(folder).mk_external_constraints(ExternalConstraintsData {
             region_constraints: self.region_constraints.clone().try_fold_with(folder)?,
             opaque_types: self
@@ -64,6 +71,13 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
     }
 
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        // Perf testing has found that this check is slightly faster than
+        // folding and re-interning an empty `ExternalConstraintsData`.
+        // See: <https://github.com/rust-lang/rust/pull/142430>.
+        if self.is_empty() {
+            return self;
+        }
+
         TypeFolder::cx(folder).mk_external_constraints(ExternalConstraintsData {
             region_constraints: self.region_constraints.clone().fold_with(folder),
             opaque_types: self.opaque_types.iter().map(|opaque| opaque.fold_with(folder)).collect(),

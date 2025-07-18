@@ -20,11 +20,17 @@ LL | pub struct T2(i32);
    |
    = help: consider removing this field
 
+error: struct `T3` is never constructed
+  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:5:8
+   |
+LL | struct T3;
+   |        ^^
+
 error: trait `Trait1` is never used
   --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:7:7
    |
 LL | trait Trait1 {
    |       ^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

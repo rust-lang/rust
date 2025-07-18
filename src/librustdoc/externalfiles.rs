@@ -35,10 +35,9 @@ impl ExternalHtml {
     ) -> Option<ExternalHtml> {
         let codes = ErrorCodes::from(nightly_build);
         let ih = load_external_files(in_header, dcx)?;
-        let bc = load_external_files(before_content, dcx)?;
-        let m_bc = load_external_files(md_before_content, dcx)?;
-        let bc = format!(
-            "{bc}{}",
+        let bc = {
+            let mut bc = load_external_files(before_content, dcx)?;
+            let m_bc = load_external_files(md_before_content, dcx)?;
             Markdown {
                 content: &m_bc,
                 links: &[],
@@ -48,12 +47,13 @@ impl ExternalHtml {
                 playground,
                 heading_offset: HeadingOffset::H2,
             }
-            .into_string()
-        );
-        let ac = load_external_files(after_content, dcx)?;
-        let m_ac = load_external_files(md_after_content, dcx)?;
-        let ac = format!(
-            "{ac}{}",
+            .write_into(&mut bc)
+            .unwrap();
+            bc
+        };
+        let ac = {
+            let mut ac = load_external_files(after_content, dcx)?;
+            let m_ac = load_external_files(md_after_content, dcx)?;
             Markdown {
                 content: &m_ac,
                 links: &[],
@@ -63,8 +63,10 @@ impl ExternalHtml {
                 playground,
                 heading_offset: HeadingOffset::H2,
             }
-            .into_string()
-        );
+            .write_into(&mut ac)
+            .unwrap();
+            ac
+        };
         Some(ExternalHtml { in_header: ih, before_content: bc, after_content: ac })
     }
 }

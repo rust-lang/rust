@@ -1,12 +1,9 @@
 //@ run-pass
 //@ needs-unwind
-//@ revisions: edition2021 edition2024
-//@ [edition2021] edition: 2021
-//@ [edition2024] edition: 2024
+//@ edition: 2024
 
 // See `mir_drop_order.rs` for more information
 
-#![cfg_attr(edition2021, feature(let_chains))]
 #![allow(irrefutable_let_patterns)]
 
 use std::cell::RefCell;
@@ -64,9 +61,6 @@ fn main() {
                 d(10, None)
             },
         );
-        #[cfg(edition2021)]
-        assert_eq!(get(), vec![8, 7, 1, 3, 2]);
-        #[cfg(edition2024)]
         assert_eq!(get(), vec![3, 2, 8, 7, 1]);
     }
     assert_eq!(get(), vec![0, 4, 6, 9, 5]);
@@ -101,8 +95,5 @@ fn main() {
             panic::panic_any(InjectedFailure),
         );
     });
-    #[cfg(edition2021)]
-    assert_eq!(get(), vec![20, 17, 15, 11, 19, 18, 16, 12, 14, 13]);
-    #[cfg(edition2024)]
     assert_eq!(get(), vec![14, 13, 19, 18, 20, 17, 15, 11, 16, 12]);
 }

@@ -1,11 +1,16 @@
 //! Helper code for character escaping.
 
 use crate::ascii;
+use crate::fmt::{self, Write};
+use crate::marker::PhantomData;
 use crate::num::NonZero;
 use crate::ops::Range;
 
 const HEX_DIGITS: [ascii::Char; 16] = *b"0123456789abcdef".as_ascii().unwrap();
 
+/// Escapes a character with `\x` representation.
+///
+/// Returns a buffer with the escaped representation and its corresponding range.
 #[inline]
 const fn backslash<const N: usize>(a: ascii::Char) -> ([ascii::Char; N], Range<u8>) {
     const { assert!(N >= 2) };
@@ -18,6 +23,9 @@ const fn backslash<const N: usize>(a: ascii::Char) -> ([ascii::Char; N], Range<u
     (output, 0..2)
 }
 
+/// Escapes a character with `\xNN` representation.
+///
+/// Returns a buffer with the escaped representation and its corresponding range.
 #[inline]
 const fn hex_escape<const N: usize>(byte: u8) -> ([ascii::Char; N], Range<u8>) {
     const { assert!(N >= 4) };
@@ -35,6 +43,7 @@ const fn hex_escape<const N: usize>(byte: u8) -> ([ascii::Char; N], Range<u8>) {
     (output, 0..4)
 }
 
+/// Returns a buffer with the verbatim character and its corresponding range.
 #[inline]
 const fn verbatim<const N: usize>(a: ascii::Char) -> ([ascii::Char; N], Range<u8>) {
     const { assert!(N >= 1) };
@@ -48,7 +57,7 @@ const fn verbatim<const N: usize>(a: ascii::Char) -> ([ascii::Char; N], Range<u8
 
 /// Escapes an ASCII character.
 ///
-/// Returns a buffer and the length of the escaped representation.
+/// Returns a buffer with the escaped representation and its corresponding range.
 const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], Range<u8>) {
     const { assert!(N >= 4) };
 
@@ -122,9 +131,9 @@ const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], Range<u8>)
     }
 }
 
-/// Escapes a character `\u{NNNN}` representation.
+/// Escapes a character with `\u{NNNN}` representation.
 ///
-/// Returns a buffer and the length of the escaped representation.
+/// Returns a buffer with the escaped representation and its corresponding range.
 const fn escape_unicode<const N: usize>(c: char) -> ([ascii::Char; N], Range<u8>) {
     const { assert!(N >= 10 && N < u8::MAX as usize) };
 
@@ -149,51 +158,81 @@ const fn escape_unicode<const N: usize>(c: char) -> ([ascii::Char; N], Range<u8>
     (output, (start as u8)..(N as u8))
 }
 
-/// An iterator over an fixed-size array.
-///
-/// This is essentially equivalent to array’s IntoIter except that indexes are
-/// limited to u8 to reduce size of the structure.
-#[derive(Clone, Debug)]
-pub(crate) struct EscapeIterInner<const N: usize> {
-    // The element type ensures this is always ASCII, and thus also valid UTF-8.
-    data: [ascii::Char; N],
-
-    // Invariant: `alive.start <= alive.end <= N`
-    alive: Range<u8>,
+#[derive(Clone, Copy)]
+union MaybeEscapedCharacter<const N: usize> {
+    pub escape_seq: [ascii::Char; N],
+    pub literal: char,
 }
 
-impl<const N: usize> EscapeIterInner<N> {
+/// Marker type to indicate that the character is always escaped,
+/// used to optimize the iterator implementation.
+#[derive(Clone, Copy)]
+#[non_exhaustive]
+pub(crate) struct AlwaysEscaped;
+
+/// Marker type to indicate that the character may be escaped,
+/// used to optimize the iterator implementation.
+#[derive(Clone, Copy)]
+#[non_exhaustive]
+pub(crate) struct MaybeEscaped;
+
+/// An iterator over a possibly escaped character.
+#[derive(Clone)]
+pub(crate) struct EscapeIterInner<const N: usize, ESCAPING> {
+    // Invariant:
+    //
+    // If `alive.end <= Self::LITERAL_ESCAPE_START`, `data` must contain
+    // printable ASCII characters in the `alive` range of its `escape_seq` variant.
+    //
+    // If `alive.end > Self::LITERAL_ESCAPE_START`, `data` must contain a
+    // `char` in its `literal` variant, and the `alive` range must have a
+    // length of at most `1`.
+    data: MaybeEscapedCharacter<N>,
+    alive: Range<u8>,
+    escaping: PhantomData<ESCAPING>,
+}
+
+impl<const N: usize, ESCAPING> EscapeIterInner<N, ESCAPING> {
+    const LITERAL_ESCAPE_START: u8 = 128;
+
+    /// # Safety
+    ///
+    /// `data.escape_seq` must contain an escape sequence in the range given by `alive`.
+    #[inline]
+    const unsafe fn new(data: MaybeEscapedCharacter<N>, alive: Range<u8>) -> Self {
+        // Longer escape sequences are not useful given `alive.end` is at most
+        // `Self::LITERAL_ESCAPE_START`.
+        const { assert!(N < Self::LITERAL_ESCAPE_START as usize) };
+
+        // Check bounds, which implicitly also checks the invariant
+        // `alive.end <= Self::LITERAL_ESCAPE_START`.
+        debug_assert!(alive.end <= (N + 1) as u8);
+
+        Self { data, alive, escaping: PhantomData }
+    }
+
     pub(crate) const fn backslash(c: ascii::Char) -> Self {
-        let (data, range) = backslash(c);
-        Self { data, alive: range }
+        let (escape_seq, alive) = backslash(c);
+        // SAFETY: `escape_seq` contains an escape sequence in the range given by `alive`.
+        unsafe { Self::new(MaybeEscapedCharacter { escape_seq }, alive) }
     }
 
     pub(crate) const fn ascii(c: u8) -> Self {
-        let (data, range) = escape_ascii(c);
-        Self { data, alive: range }
+        let (escape_seq, alive) = escape_ascii(c);
+        // SAFETY: `escape_seq` contains an escape sequence in the range given by `alive`.
+        unsafe { Self::new(MaybeEscapedCharacter { escape_seq }, alive) }
     }
 
     pub(crate) const fn unicode(c: char) -> Self {
-        let (data, range) = escape_unicode(c);
-        Self { data, alive: range }
+        let (escape_seq, alive) = escape_unicode(c);
+        // SAFETY: `escape_seq` contains an escape sequence in the range given by `alive`.
+        unsafe { Self::new(MaybeEscapedCharacter { escape_seq }, alive) }
     }
 
     #[inline]
     pub(crate) const fn empty() -> Self {
-        Self { data: [ascii::Char::Null; N], alive: 0..0 }
-    }
-
-    #[inline]
-    pub(crate) fn as_ascii(&self) -> &[ascii::Char] {
-        // SAFETY: `self.alive` is guaranteed to be a valid range for indexing `self.data`.
-        unsafe {
-            self.data.get_unchecked(usize::from(self.alive.start)..usize::from(self.alive.end))
-        }
-    }
-
-    #[inline]
-    pub(crate) fn as_str(&self) -> &str {
-        self.as_ascii().as_str()
+        // SAFETY: `0..0` ensures an empty escape sequence.
+        unsafe { Self::new(MaybeEscapedCharacter { escape_seq: [ascii::Char::Null; N] }, 0..0) }
     }
 
     #[inline]
@@ -201,25 +240,132 @@ impl<const N: usize> EscapeIterInner<N> {
         usize::from(self.alive.end - self.alive.start)
     }
 
+    #[inline]
+    pub(crate) fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        self.alive.advance_by(n)
+    }
+
+    #[inline]
+    pub(crate) fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        self.alive.advance_back_by(n)
+    }
+
+    /// Returns a `char` if `self.data` contains one in its `literal` variant.
+    #[inline]
+    const fn to_char(&self) -> Option<char> {
+        if self.alive.end > Self::LITERAL_ESCAPE_START {
+            // SAFETY: We just checked that `self.data` contains a `char` in
+            //         its `literal` variant.
+            return Some(unsafe { self.data.literal });
+        }
+
+        None
+    }
+
+    /// Returns the printable ASCII characters in the `escape_seq` variant of `self.data`
+    /// as a string.
+    ///
+    /// # Safety
+    ///
+    /// - `self.data` must contain printable ASCII characters in its `escape_seq` variant.
+    /// - `self.alive` must be a valid range for `self.data.escape_seq`.
+    #[inline]
+    unsafe fn to_str_unchecked(&self) -> &str {
+        debug_assert!(self.alive.end <= Self::LITERAL_ESCAPE_START);
+
+        // SAFETY: The caller guarantees `self.data` contains printable ASCII
+        //         characters in its `escape_seq` variant, and `self.alive` is
+        //         a valid range for `self.data.escape_seq`.
+        unsafe {
+            self.data
+                .escape_seq
+                .get_unchecked(usize::from(self.alive.start)..usize::from(self.alive.end))
+                .as_str()
+        }
+    }
+}
+
+impl<const N: usize> EscapeIterInner<N, AlwaysEscaped> {
     pub(crate) fn next(&mut self) -> Option<u8> {
         let i = self.alive.next()?;
 
-        // SAFETY: `i` is guaranteed to be a valid index for `self.data`.
-        unsafe { Some(self.data.get_unchecked(usize::from(i)).to_u8()) }
+        // SAFETY: The `AlwaysEscaped` marker guarantees that `self.data`
+        //         contains printable ASCII characters in its `escape_seq`
+        //         variant, and `i` is guaranteed to be a valid index for
+        //         `self.data.escape_seq`.
+        unsafe { Some(self.data.escape_seq.get_unchecked(usize::from(i)).to_u8()) }
     }
 
     pub(crate) fn next_back(&mut self) -> Option<u8> {
         let i = self.alive.next_back()?;
 
-        // SAFETY: `i` is guaranteed to be a valid index for `self.data`.
-        unsafe { Some(self.data.get_unchecked(usize::from(i)).to_u8()) }
+        // SAFETY: The `AlwaysEscaped` marker guarantees that `self.data`
+        //         contains printable ASCII characters in its `escape_seq`
+        //         variant, and `i` is guaranteed to be a valid index for
+        //         `self.data.escape_seq`.
+        unsafe { Some(self.data.escape_seq.get_unchecked(usize::from(i)).to_u8()) }
+    }
+}
+
+impl<const N: usize> EscapeIterInner<N, MaybeEscaped> {
+    // This is the only way to create any `EscapeIterInner` containing a `char` in
+    // the `literal` variant of its `self.data`, meaning the `AlwaysEscaped` marker
+    // guarantees that `self.data` contains printable ASCII characters in its
+    // `escape_seq` variant.
+    pub(crate) const fn printable(c: char) -> Self {
+        Self {
+            data: MaybeEscapedCharacter { literal: c },
+            // Uphold the invariant `alive.end > Self::LITERAL_ESCAPE_START`, and ensure
+            // `len` behaves correctly for iterating through one character literal.
+            alive: Self::LITERAL_ESCAPE_START..(Self::LITERAL_ESCAPE_START + 1),
+            escaping: PhantomData,
+        }
     }
 
-    pub(crate) fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
-        self.alive.advance_by(n)
-    }
+    pub(crate) fn next(&mut self) -> Option<char> {
+        let i = self.alive.next()?;
 
-    pub(crate) fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
-        self.alive.advance_back_by(n)
+        if let Some(c) = self.to_char() {
+            return Some(c);
+        }
+
+        // SAFETY: At this point, `self.data` must contain printable ASCII
+        //         characters in its `escape_seq` variant, and `i` is
+        //         guaranteed to be a valid index for `self.data.escape_seq`.
+        Some(char::from(unsafe { self.data.escape_seq.get_unchecked(usize::from(i)).to_u8() }))
+    }
+}
+
+impl<const N: usize> fmt::Display for EscapeIterInner<N, AlwaysEscaped> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // SAFETY: The `AlwaysEscaped` marker guarantees that `self.data`
+        //         contains printable ASCII chars, and `self.alive` is
+        //         guaranteed to be a valid range for `self.data`.
+        f.write_str(unsafe { self.to_str_unchecked() })
+    }
+}
+
+impl<const N: usize> fmt::Display for EscapeIterInner<N, MaybeEscaped> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(c) = self.to_char() {
+            return f.write_char(c);
+        }
+
+        // SAFETY: At this point, `self.data` must contain printable ASCII
+        //         characters in its `escape_seq` variant, and `self.alive`
+        //         is guaranteed to be a valid range for `self.data`.
+        f.write_str(unsafe { self.to_str_unchecked() })
+    }
+}
+
+impl<const N: usize> fmt::Debug for EscapeIterInner<N, AlwaysEscaped> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("EscapeIterInner").field(&format_args!("'{}'", self)).finish()
+    }
+}
+
+impl<const N: usize> fmt::Debug for EscapeIterInner<N, MaybeEscaped> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("EscapeIterInner").field(&format_args!("'{}'", self)).finish()
     }
 }

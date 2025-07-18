@@ -111,5 +111,35 @@ LL +         "1".parse::<u8>().ok()
 LL ~     };
    |
 
-error: aborting due to 9 previous errors
+error: manual implementation of `ok`
+  --> tests/ui/manual_ok_err.rs:152:9
+   |
+LL | /         match &x.field {
+LL | |
+LL | |             Ok(panel) => Some(panel),
+LL | |             Err(_) => None,
+LL | |         }
+   | |_________^ help: replace with: `(&x.field).as_ref().ok()`
+
+error: manual implementation of `ok`
+  --> tests/ui/manual_ok_err.rs:161:9
+   |
+LL | /         match result_with_ref() {
+LL | |
+LL | |             Ok(panel) => Some(panel),
+LL | |             Err(_) => None,
+LL | |         }
+   | |_________^ help: replace with: `result_with_ref().as_ref().ok()`
+
+error: manual implementation of `ok`
+  --> tests/ui/manual_ok_err.rs:173:9
+   |
+LL | /         match result_with_ref_mut(x) {
+LL | |
+LL | |             Ok(panel) => Some(panel),
+LL | |             Err(_) => None,
+LL | |         }
+   | |_________^ help: replace with: `result_with_ref_mut(x).as_mut().ok()`
+
+error: aborting due to 12 previous errors
 

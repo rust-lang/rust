@@ -1,14 +1,14 @@
 error[E0557]: feature has been removed
-  --> $DIR/feature-gate-coverage-attribute.rs:4:12
+  --> $DIR/feature-gate-coverage-attribute.rs:2:12
    |
 LL | #![feature(no_coverage)]
    |            ^^^^^^^^^^^ feature has been removed
    |
-   = note: removed in 1.74.0 (you are using $RUSTC_VERSION); see <https://github.com/rust-lang/rust/pull/114656> for more information
+   = note: removed in 1.74.0; see <https://github.com/rust-lang/rust/pull/114656> for more information
    = note: renamed to `coverage_attribute`
 
 error[E0658]: the `#[coverage]` attribute is an experimental feature
-  --> $DIR/feature-gate-coverage-attribute.rs:12:1
+  --> $DIR/feature-gate-coverage-attribute.rs:10:1
    |
 LL | #[coverage(off)]
    | ^^^^^^^^^^^^^^^^

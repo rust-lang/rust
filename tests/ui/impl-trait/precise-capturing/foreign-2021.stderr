@@ -8,7 +8,7 @@ LL |     x.push(0);
    |     ^^^^^^^^^ mutable borrow occurs here
 ...
 LL |     println!("{h}");
-   |               --- immutable borrow later used here
+   |                - immutable borrow later used here
    |
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
   --> $DIR/foreign-2021.rs:7:13

@@ -105,8 +105,6 @@
 //! stored when entering a macro definition starting from the state in which the meta-variable is
 //! bound.
 
-use std::iter;
-
 use rustc_ast::token::{Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::{DUMMY_NODE_ID, NodeId};
 use rustc_data_structures::fx::FxHashMap;
@@ -117,7 +115,6 @@ use rustc_session::parse::ParseSess;
 use rustc_span::{ErrorGuaranteed, MacroRulesNormalizedIdent, Span, kw};
 use smallvec::SmallVec;
 
-use super::quoted::VALID_FRAGMENT_NAMES_MSG;
 use crate::errors;
 use crate::mbe::{KleeneToken, TokenTree};
 
@@ -191,29 +188,22 @@ struct MacroState<'a> {
     ops: SmallVec<[KleeneToken; 1]>,
 }
 
-/// Checks that meta-variables are used correctly in a macro definition.
+/// Checks that meta-variables are used correctly in one rule of a macro definition.
 ///
 /// Arguments:
 /// - `psess` is used to emit diagnostics and lints
 /// - `node_id` is used to emit lints
-/// - `span` is used when no spans are available
-/// - `lhses` and `rhses` should have the same length and represent the macro definition
+/// - `lhs` and `rhs` represent the rule
 pub(super) fn check_meta_variables(
     psess: &ParseSess,
     node_id: NodeId,
-    span: Span,
-    lhses: &[TokenTree],
-    rhses: &[TokenTree],
+    lhs: &TokenTree,
+    rhs: &TokenTree,
 ) -> Result<(), ErrorGuaranteed> {
-    if lhses.len() != rhses.len() {
-        psess.dcx().span_bug(span, "length mismatch between LHSes and RHSes")
-    }
     let mut guar = None;
-    for (lhs, rhs) in iter::zip(lhses, rhses) {
-        let mut binders = Binders::default();
-        check_binders(psess, node_id, lhs, &Stack::Empty, &mut binders, &Stack::Empty, &mut guar);
-        check_occurrences(psess, node_id, rhs, &Stack::Empty, &binders, &Stack::Empty, &mut guar);
-    }
+    let mut binders = Binders::default();
+    check_binders(psess, node_id, lhs, &Stack::Empty, &mut binders, &Stack::Empty, &mut guar);
+    check_occurrences(psess, node_id, rhs, &Stack::Empty, &binders, &Stack::Empty, &mut guar);
     guar.map_or(Ok(()), Err)
 }
 
@@ -263,14 +253,7 @@ fn check_binders(
             }
         }
         // Similarly, this can only happen when checking a toplevel macro.
-        TokenTree::MetaVarDecl(span, name, kind) => {
-            if kind.is_none() && node_id != DUMMY_NODE_ID {
-                psess.dcx().emit_err(errors::MissingFragmentSpecifier {
-                    span,
-                    add_span: span.shrink_to_hi(),
-                    valid: VALID_FRAGMENT_NAMES_MSG,
-                });
-            }
+        TokenTree::MetaVarDecl { span, name, .. } => {
             if !macros.is_empty() {
                 psess.dcx().span_bug(span, "unexpected MetaVarDecl in nested lhs");
             }
@@ -339,7 +322,7 @@ fn check_occurrences(
 ) {
     match *rhs {
         TokenTree::Token(..) => {}
-        TokenTree::MetaVarDecl(span, _name, _kind) => {
+        TokenTree::MetaVarDecl { span, .. } => {
             psess.dcx().span_bug(span, "unexpected MetaVarDecl in rhs")
         }
         TokenTree::MetaVar(span, name) => {

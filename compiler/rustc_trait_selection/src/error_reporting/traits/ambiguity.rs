@@ -4,7 +4,7 @@ use rustc_errors::{Applicability, Diag, E0283, E0284, E0790, MultiSpan, struct_s
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor as _;
 use rustc_infer::infer::{BoundRegionConversionTime, InferCtxt};
 use rustc_infer::traits::util::elaborate;
@@ -12,6 +12,7 @@ use rustc_infer::traits::{
     Obligation, ObligationCause, ObligationCauseCode, PolyTraitObligation, PredicateObligation,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _};
+use rustc_session::parse::feature_err_unstable_feature_bound;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use tracing::{debug, instrument};
 
@@ -128,19 +129,26 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
         },
     );
 
-    let predicates =
-        tcx.predicates_of(obligation.cause.body_id.to_def_id()).instantiate_identity(tcx);
-    for (pred, span) in elaborate(tcx, predicates.into_iter()) {
-        let kind = pred.kind();
-        if let ty::ClauseKind::Trait(trait_pred) = kind.skip_binder()
-            && param_env_candidate_may_apply(kind.rebind(trait_pred))
-        {
-            if kind.rebind(trait_pred.trait_ref)
-                == ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_pred.def_id()))
+    // If our `body_id` has been set (and isn't just from a dummy obligation cause),
+    // then try to look for a param-env clause that would apply. The way we compute
+    // this is somewhat manual, since we need the spans, so we elaborate this directly
+    // from `predicates_of` rather than actually looking at the param-env which
+    // otherwise would be more appropriate.
+    let body_id = obligation.cause.body_id;
+    if body_id != CRATE_DEF_ID {
+        let predicates = tcx.predicates_of(body_id.to_def_id()).instantiate_identity(tcx);
+        for (pred, span) in elaborate(tcx, predicates.into_iter()) {
+            let kind = pred.kind();
+            if let ty::ClauseKind::Trait(trait_pred) = kind.skip_binder()
+                && param_env_candidate_may_apply(kind.rebind(trait_pred))
             {
-                ambiguities.push(CandidateSource::ParamEnv(tcx.def_span(trait_pred.def_id())))
-            } else {
-                ambiguities.push(CandidateSource::ParamEnv(span))
+                if kind.rebind(trait_pred.trait_ref)
+                    == ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_pred.def_id()))
+                {
+                    ambiguities.push(CandidateSource::ParamEnv(tcx.def_span(trait_pred.def_id())))
+                } else {
+                    ambiguities.push(CandidateSource::ParamEnv(span))
+                }
             }
         }
     }
@@ -199,7 +207,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // avoid inundating the user with unnecessary errors, but we now
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
-                if self.tcx.is_lang_item(trait_pred.def_id(), LangItem::Sized) {
+                if matches!(
+                    self.tcx.as_lang_item(trait_pred.def_id()),
+                    Some(LangItem::Sized | LangItem::MetaSized)
+                ) {
                     match self.tainted_by_errors() {
                         None => {
                             let err = self.emit_inference_failure_err(
@@ -352,7 +363,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         && self.tcx.trait_of_item(*item_id) == Some(*trait_id)
                         && let None = self.tainted_by_errors()
                     {
-                        let (verb, noun) = match self.tcx.associated_item(item_id).kind {
+                        let assoc_item = self.tcx.associated_item(item_id);
+                        let (verb, noun) = match assoc_item.kind {
                             ty::AssocKind::Const { .. } => ("refer to the", "constant"),
                             ty::AssocKind::Fn { .. } => ("call", "function"),
                             // This is already covered by E0223, but this following single match
@@ -371,17 +383,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         );
                         err.code(E0790);
 
-                        if let Some(local_def_id) = data.trait_ref.def_id.as_local()
-                            && let hir::Node::Item(hir::Item {
-                                kind: hir::ItemKind::Trait(_, _, trait_ident, _, _, trait_item_refs),
-                                ..
-                            }) = self.tcx.hir_node_by_def_id(local_def_id)
-                            && let Some(method_ref) = trait_item_refs
-                                .iter()
-                                .find(|item_ref| item_ref.ident == *assoc_item_ident)
-                        {
+                        if item_id.is_local() {
+                            let trait_ident = self.tcx.item_name(*trait_id);
                             err.span_label(
-                                method_ref.span,
+                                self.tcx.def_span(*item_id),
                                 format!("`{trait_ident}::{assoc_item_ident}` defined here"),
                             );
                         }
@@ -606,6 +611,30 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "type annotations needed: cannot normalize `{alias}`",
                 )
                 .with_span_label(span, format!("cannot normalize `{alias}`"))
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(sym)) => {
+                if let Some(e) = self.tainted_by_errors() {
+                    return e;
+                }
+
+                let mut err;
+
+                if self.tcx.features().staged_api() {
+                    err = self.dcx().struct_span_err(
+                        span,
+                        format!("unstable feature `{sym}` is used without being enabled."),
+                    );
+
+                    err.help(format!("The feature can be enabled by marking the current item with `#[unstable_feature_bound({sym})]`"));
+                } else {
+                    err = feature_err_unstable_feature_bound(
+                        &self.tcx.sess,
+                        sym,
+                        span,
+                        format!("use of unstable library feature `{sym}`"),
+                    );
+                }
+                err
             }
 
             _ => {

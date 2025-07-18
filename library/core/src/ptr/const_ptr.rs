@@ -4,7 +4,7 @@ use crate::intrinsics::const_eval_select;
 use crate::mem::{self, SizedTypeProperties};
 use crate::slice::{self, SliceIndex};
 
-impl<T: ?Sized> *const T {
+impl<T: PointeeSized> *const T {
     #[doc = include_str!("docs/is_null.md")]
     ///
     /// # Examples
@@ -29,7 +29,7 @@ impl<T: ?Sized> *const T {
             if const #[rustc_allow_const_fn_unstable(const_raw_ptr_comparison)] {
                 match (ptr).guaranteed_eq(null_mut()) {
                     Some(res) => res,
-                    // To remain maximally convervative, we stop execution when we don't
+                    // To remain maximally conservative, we stop execution when we don't
                     // know whether the pointer is null or not.
                     // We can *not* return `false` here, that would be unsound in `NonNull::new`!
                     None => panic!("null-ness of this pointer cannot be determined in const context"),
@@ -49,7 +49,7 @@ impl<T: ?Sized> *const T {
         self as _
     }
 
-    /// Try to cast to a pointer of another type by checking aligment.
+    /// Try to cast to a pointer of another type by checking alignment.
     ///
     /// If the pointer is properly aligned to the target type, it will be
     /// cast to the target type. Otherwise, `None` is returned.
@@ -129,7 +129,7 @@ impl<T: ?Sized> *const T {
     #[inline]
     pub const fn with_metadata_of<U>(self, meta: *const U) -> *const U
     where
-        U: ?Sized,
+        U: PointeeSized,
     {
         from_raw_parts::<U>(self as *const (), metadata(meta))
     }
@@ -1524,10 +1524,11 @@ impl<T> *const [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_const_unstable(feature = "const_index", issue = "143775")]
     #[inline]
-    pub unsafe fn get_unchecked<I>(self, index: I) -> *const I::Output
+    pub const unsafe fn get_unchecked<I>(self, index: I) -> *const I::Output
     where
-        I: SliceIndex<[T]>,
+        I: ~const SliceIndex<[T]>,
     {
         // SAFETY: the caller ensures that `self` is dereferenceable and `index` in-bounds.
         unsafe { index.get_unchecked(self) }
@@ -1586,7 +1587,7 @@ impl<T, const N: usize> *const [T; N] {
 
 /// Pointer equality is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> PartialEq for *const T {
+impl<T: PointeeSized> PartialEq for *const T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn eq(&self, other: &*const T) -> bool {
@@ -1596,11 +1597,11 @@ impl<T: ?Sized> PartialEq for *const T {
 
 /// Pointer equality is an equivalence relation.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Eq for *const T {}
+impl<T: PointeeSized> Eq for *const T {}
 
 /// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Ord for *const T {
+impl<T: PointeeSized> Ord for *const T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn cmp(&self, other: &*const T) -> Ordering {
@@ -1616,7 +1617,7 @@ impl<T: ?Sized> Ord for *const T {
 
 /// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> PartialOrd for *const T {
+impl<T: PointeeSized> PartialOrd for *const T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn partial_cmp(&self, other: &*const T) -> Option<Ordering> {

@@ -9,6 +9,7 @@ pub trait Mirror {
 impl<T: ?Sized> Mirror for () {
     //~^ ERROR the type parameter `T` is not constrained
     type Assoc = T;
+    //~^ ERROR the size for values of type `T` cannot be known at compilation time
 }
 
 pub trait First {

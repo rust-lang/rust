@@ -45,6 +45,7 @@ mod diagnostic;
 mod escape;
 mod to_tokens;
 
+use core::ops::BitOr;
 use std::ffi::CStr;
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
@@ -55,7 +56,7 @@ use std::{error, fmt};
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 #[unstable(feature = "proc_macro_value", issue = "136652")]
 pub use rustc_literal_escaper::EscapeError;
-use rustc_literal_escaper::{MixedUnit, Mode, byte_from_char, unescape_mixed, unescape_unicode};
+use rustc_literal_escaper::{MixedUnit, unescape_byte_str, unescape_c_str, unescape_str};
 #[unstable(feature = "proc_macro_totokens", issue = "130977")]
 pub use to_tokens::ToTokens;
 
@@ -237,7 +238,7 @@ impl Default for TokenStream {
 }
 
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
-pub use quote::{quote, quote_span};
+pub use quote::{HasIterator, RepInterp, ThereIsNoIteratorInRepetition, ext, quote, quote_span};
 
 fn tree_to_bridge_tree(
     tree: TokenTree,
@@ -1439,10 +1440,9 @@ impl Literal {
                     // Force-inlining here is aggressive but the closure is
                     // called on every char in the string, so it can be hot in
                     // programs with many long strings containing escapes.
-                    unescape_unicode(
+                    unescape_str(
                         symbol,
-                        Mode::Str,
-                        &mut #[inline(always)]
+                        #[inline(always)]
                         |_, c| match c {
                             Ok(c) => buf.push(c),
                             Err(err) => {
@@ -1471,11 +1471,11 @@ impl Literal {
                 let mut error = None;
                 let mut buf = Vec::with_capacity(symbol.len());
 
-                unescape_mixed(symbol, Mode::CStr, &mut |_span, c| match c {
+                unescape_c_str(symbol, |_span, res| match res {
                     Ok(MixedUnit::Char(c)) => {
-                        buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
+                        buf.extend_from_slice(c.get().encode_utf8(&mut [0; 4]).as_bytes())
                     }
-                    Ok(MixedUnit::HighByte(b)) => buf.push(b),
+                    Ok(MixedUnit::HighByte(b)) => buf.push(b.get()),
                     Err(err) => {
                         if err.is_fatal() {
                             error = Some(ConversionErrorKind::FailedToUnescape(err));
@@ -1510,8 +1510,8 @@ impl Literal {
                 let mut buf = Vec::with_capacity(symbol.len());
                 let mut error = None;
 
-                unescape_unicode(symbol, Mode::ByteStr, &mut |_, c| match c {
-                    Ok(c) => buf.push(byte_from_char(c)),
+                unescape_byte_str(symbol, |_, res| match res {
+                    Ok(b) => buf.push(b),
                     Err(err) => {
                         if err.is_fatal() {
                             error = Some(ConversionErrorKind::FailedToUnescape(err));

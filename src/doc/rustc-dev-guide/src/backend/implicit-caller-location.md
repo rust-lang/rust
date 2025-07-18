@@ -1,4 +1,4 @@
-# Implicit Caller Location
+# Implicit caller location
 
 <!-- toc -->
 
@@ -8,7 +8,7 @@ adds the [`#[track_caller]`][attr-reference] attribute for functions, the
 [`caller_location`][intrinsic] intrinsic, and the stabilization-friendly
 [`core::panic::Location::caller`][wrapper] wrapper.
 
-## Motivating Example
+## Motivating example
 
 Take this example program:
 
@@ -39,7 +39,7 @@ These error messages are achieved through a combination of changes to `panic!` i
 of `core::panic::Location::caller` and a number of `#[track_caller]` annotations in the standard
 library which propagate caller information.
 
-## Reading Caller Location
+## Reading caller location
 
 Previously, `panic!` made use of the `file!()`, `line!()`, and `column!()` macros to construct a
 [`Location`] pointing to where the panic occurred. These macros couldn't be given an overridden
@@ -51,7 +51,7 @@ was expanded. This function is itself annotated with `#[track_caller]` and wraps
 [`caller_location`][intrinsic] compiler intrinsic implemented by rustc. This intrinsic is easiest
 explained in terms of how it works in a `const` context.
 
-## Caller Location in `const`
+## Caller location in `const`
 
 There are two main phases to returning the caller location in a const context: walking up the stack
 to find the right location and allocating a const value to return.
@@ -138,7 +138,7 @@ fn main() {
 }
 ```
 
-### Dynamic Dispatch
+### Dynamic dispatch
 
 In codegen contexts we have to modify the callee ABI to pass this information down the stack, but
 the attribute expressly does *not* modify the type of the function. The ABI change must be
@@ -156,7 +156,7 @@ probably the best we can do without modifying fully-stabilized type signatures.
 > whether we'll be called in a const context (safe to ignore shim) or in a codegen context (unsafe
 > to ignore shim). Even if we did know, the results from const and codegen contexts must agree.
 
-## The Attribute
+## The attribute
 
 The `#[track_caller]` attribute is checked alongside other codegen attributes to ensure the
 function:

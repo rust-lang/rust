@@ -1,5 +1,6 @@
 //! File symbol extraction.
 
+use base_db::FxIndexSet;
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, Complete, DefWithBodyId, ExternCrateId, HasModule, ImplId, Lookup, MacroId,
@@ -21,8 +22,6 @@ use syntax::{AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, ToSmolStr, ast
 
 use crate::{HasCrate, Module, ModuleDef, Semantics};
 
-pub type FxIndexSet<T> = indexmap::IndexSet<T, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
-
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -34,6 +33,7 @@ pub struct FileSymbol {
     /// Whether this symbol is a doc alias for the original symbol.
     pub is_alias: bool,
     pub is_assoc: bool,
+    pub is_import: bool,
     pub do_not_complete: Complete,
 }
 
@@ -125,6 +125,13 @@ impl<'a> SymbolCollector<'a> {
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(id)) => {
                     this.push_decl(id, name, false, None);
+                    let enum_name = this.db.enum_signature(id).name.as_str().to_smolstr();
+                    this.with_container_name(Some(enum_name), |this| {
+                        let variants = id.enum_variants(this.db);
+                        for (variant_id, variant_name, _) in &variants.variants {
+                            this.push_decl(*variant_id, variant_name, true, None);
+                        }
+                    });
                 }
                 ModuleDefId::AdtId(AdtId::UnionId(id)) => {
                     this.push_decl(id, name, false, None);
@@ -165,6 +172,7 @@ impl<'a> SymbolCollector<'a> {
 
         let is_explicit_import = |vis| match vis {
             Visibility::Public => true,
+            Visibility::PubCrate(_) => true,
             Visibility::Module(_, VisibilityExplicitness::Explicit) => true,
             Visibility::Module(_, VisibilityExplicitness::Implicit) => false,
         };
@@ -197,6 +205,7 @@ impl<'a> SymbolCollector<'a> {
                 loc: dec_loc,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Complete::Yes,
             });
         };
@@ -227,6 +236,7 @@ impl<'a> SymbolCollector<'a> {
                     loc: dec_loc,
                     is_alias: false,
                     is_assoc: false,
+                    is_import: false,
                     do_not_complete: Complete::Yes,
                 });
             };
@@ -322,7 +332,7 @@ impl<'a> SymbolCollector<'a> {
                 .to_smolstr(),
         );
         self.with_container_name(impl_name, |s| {
-            for &(ref name, assoc_item_id) in &self.db.impl_items(impl_id).items {
+            for &(ref name, assoc_item_id) in &impl_id.impl_items(self.db).items {
                 s.push_assoc_item(assoc_item_id, name, None)
             }
         })
@@ -331,7 +341,7 @@ impl<'a> SymbolCollector<'a> {
     fn collect_from_trait(&mut self, trait_id: TraitId, trait_do_not_complete: Complete) {
         let trait_data = self.db.trait_signature(trait_id);
         self.with_container_name(Some(trait_data.name.as_str().into()), |s| {
-            for &(ref name, assoc_item_id) in &self.db.trait_items(trait_id).items {
+            for &(ref name, assoc_item_id) in &trait_id.trait_items(self.db).items {
                 s.push_assoc_item(assoc_item_id, name, Some(trait_do_not_complete));
             }
         });
@@ -398,6 +408,7 @@ impl<'a> SymbolCollector<'a> {
                     container_name: self.current_container_name.clone(),
                     is_alias: true,
                     is_assoc,
+                    is_import: false,
                     do_not_complete,
                 });
             }
@@ -410,6 +421,7 @@ impl<'a> SymbolCollector<'a> {
             loc: dec_loc,
             is_alias: false,
             is_assoc,
+            is_import: false,
             do_not_complete,
         });
 
@@ -442,6 +454,7 @@ impl<'a> SymbolCollector<'a> {
                     container_name: self.current_container_name.clone(),
                     is_alias: true,
                     is_assoc: false,
+                    is_import: false,
                     do_not_complete,
                 });
             }
@@ -454,6 +467,7 @@ impl<'a> SymbolCollector<'a> {
             loc: dec_loc,
             is_alias: false,
             is_assoc: false,
+            is_import: false,
             do_not_complete,
         });
     }

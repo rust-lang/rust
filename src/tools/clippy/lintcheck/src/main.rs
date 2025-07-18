@@ -45,7 +45,7 @@ use rayon::prelude::*;
 
 #[must_use]
 pub fn target_dir() -> String {
-    env::var("CARGO_TARGET_DIR").unwrap_or("target".to_owned())
+    env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_owned())
 }
 
 fn lintcheck_sources() -> String {
@@ -303,7 +303,12 @@ fn main() {
     let config = LintcheckConfig::new();
 
     match config.subcommand {
-        Some(Commands::Diff { old, new, truncate }) => json::diff(&old, &new, truncate),
+        Some(Commands::Diff {
+            old,
+            new,
+            truncate,
+            write_summary,
+        }) => json::diff(&old, &new, truncate, write_summary),
         Some(Commands::Popular { output, number }) => popular_crates::fetch(output, number).unwrap(),
         None => lintcheck(config),
     }

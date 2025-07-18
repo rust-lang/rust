@@ -38,7 +38,7 @@ impl InferenceContext<'_> {
         decl: Option<DeclContext>,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(id.into(), path, true);
-        let var_data = def.map(|it| it.variant_data(self.db));
+        let var_data = def.map(|it| it.fields(self.db));
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
         }
@@ -60,7 +60,7 @@ impl InferenceContext<'_> {
             _ if subs.is_empty() => {}
             Some(def) => {
                 let field_types = self.db.field_types(def);
-                let variant_data = def.variant_data(self.db);
+                let variant_data = def.fields(self.db);
                 let visibilities = self.db.field_visibilities(def);
 
                 let (pre, post) = match ellipsis {
@@ -129,7 +129,7 @@ impl InferenceContext<'_> {
             _ if subs.len() == 0 => {}
             Some(def) => {
                 let field_types = self.db.field_types(def);
-                let variant_data = def.variant_data(self.db);
+                let variant_data = def.fields(self.db);
                 let visibilities = self.db.field_visibilities(def);
 
                 let substs = ty.as_adt().map(TupleExt::tail);
@@ -459,7 +459,7 @@ impl InferenceContext<'_> {
         expected: &Ty,
         decl: Option<DeclContext>,
     ) -> Ty {
-        let Binding { mode, .. } = self.body.bindings[binding];
+        let Binding { mode, .. } = self.body[binding];
         let mode = if mode == BindingAnnotation::Unannotated {
             default_bm
         } else {
@@ -639,7 +639,7 @@ impl InferenceContext<'_> {
 pub(super) fn contains_explicit_ref_binding(body: &Body, pat_id: PatId) -> bool {
     let mut res = false;
     body.walk_pats(pat_id, &mut |pat| {
-        res |= matches!(body[pat], Pat::Bind { id, .. } if body.bindings[id].mode == BindingAnnotation::Ref);
+        res |= matches!(body[pat], Pat::Bind { id, .. } if body[id].mode == BindingAnnotation::Ref);
     });
     res
 }

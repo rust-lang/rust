@@ -112,16 +112,16 @@ fn size_of_val() {
 }
 
 #[test]
-fn min_align_of_val() {
+fn align_of_val() {
     check_number(
         r#"
         //- minicore: coerce_unsized
         #[rustc_intrinsic]
-        pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
+        pub fn align_of_val<T: ?Sized>(_: *const T) -> usize;
 
         struct X(i32, u8);
 
-        const GOAL: usize = min_align_of_val(&X(1, 2));
+        const GOAL: usize = align_of_val(&X(1, 2));
         "#,
         4,
     );
@@ -129,11 +129,11 @@ fn min_align_of_val() {
         r#"
         //- minicore: coerce_unsized
         #[rustc_intrinsic]
-        pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
+        pub fn align_of_val<T: ?Sized>(_: *const T) -> usize;
 
         const GOAL: usize = {
             let x: &[i32] = &[1, 2, 3];
-            min_align_of_val(x)
+            align_of_val(x)
         };
         "#,
         4,

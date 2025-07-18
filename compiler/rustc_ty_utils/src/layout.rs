@@ -379,7 +379,7 @@ fn layout_of_uncached<'tcx>(
 
         // Potentially-wide pointers.
         ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
-            let mut data_ptr = scalar_unit(Pointer(AddressSpace::DATA));
+            let mut data_ptr = scalar_unit(Pointer(AddressSpace::ZERO));
             if !ty.is_raw_ptr() {
                 data_ptr.valid_range_mut().start = 1;
             }
@@ -435,7 +435,7 @@ fn layout_of_uncached<'tcx>(
                     }
                     ty::Slice(_) | ty::Str => scalar_unit(Int(dl.ptr_sized_integer(), false)),
                     ty::Dynamic(..) => {
-                        let mut vtable = scalar_unit(Pointer(AddressSpace::DATA));
+                        let mut vtable = scalar_unit(Pointer(AddressSpace::ZERO));
                         vtable.valid_range_mut().start = 1;
                         vtable
                     }
@@ -447,14 +447,6 @@ fn layout_of_uncached<'tcx>(
 
             // Effectively a (ptr, meta) tuple.
             tcx.mk_layout(LayoutData::scalar_pair(cx, data_ptr, metadata))
-        }
-
-        ty::Dynamic(_, _, ty::DynStar) => {
-            let mut data = scalar_unit(Pointer(AddressSpace::DATA));
-            data.valid_range_mut().start = 0;
-            let mut vtable = scalar_unit(Pointer(AddressSpace::DATA));
-            vtable.valid_range_mut().start = 1;
-            tcx.mk_layout(LayoutData::scalar_pair(cx, data, vtable))
         }
 
         // Arrays and slices.
@@ -896,10 +888,9 @@ fn variant_info_for_coroutine<'tcx>(
                     variant_size = variant_size.max(offset + field_layout.size);
                     FieldInfo {
                         kind: FieldKind::CoroutineLocal,
-                        name: field_name.unwrap_or(Symbol::intern(&format!(
-                            ".coroutine_field{}",
-                            local.as_usize()
-                        ))),
+                        name: field_name.unwrap_or_else(|| {
+                            Symbol::intern(&format!(".coroutine_field{}", local.as_usize()))
+                        }),
                         offset: offset.bytes(),
                         size: field_layout.size.bytes(),
                         align: field_layout.align.abi.bytes(),

@@ -1,5 +1,3 @@
-#![feature(generic_arg_infer)]
-
 // Test when deferring repeat expr copy checks to end of typechecking whether elements
 // that are const items allow for repeat counts to go uninferred without an error being
 // emitted if they would later wind up inferred by integer fallback.

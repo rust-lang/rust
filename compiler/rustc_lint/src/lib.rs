@@ -55,7 +55,7 @@ mod invalid_from_utf8;
 mod late;
 mod let_underscore;
 mod levels;
-mod lifetime_syntax;
+pub mod lifetime_syntax;
 mod lints;
 mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
@@ -339,6 +339,14 @@ fn register_builtins(store: &mut LintStore) {
 
     add_lint_group!("deprecated_safe", DEPRECATED_SAFE_2024);
 
+    add_lint_group!(
+        "unknown_or_malformed_diagnostic_attributes",
+        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+        MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+        MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+        UNKNOWN_DIAGNOSTIC_ATTRIBUTES
+    );
+
     // Register renamed and removed lints.
     store.register_renamed("single_use_lifetime", "single_use_lifetimes");
     store.register_renamed("elided_lifetime_in_path", "elided_lifetimes_in_paths");
@@ -608,6 +616,7 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, see issue #127323 \
          <https://github.com/rust-lang/rust/issues/127323> for more information",
     );
+    store.register_removed("unsupported_fn_ptr_calling_conventions", "converted into hard error");
     store.register_removed(
         "undefined_naked_function_abi",
         "converted into hard error, see PR #139001 \
@@ -623,6 +632,7 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, \
          see <https://github.com/rust-lang/rust/issues/40107> for more information",
     );
+    store.register_removed("wasm_c_abi", "the wasm C ABI has been fixed");
 }
 
 fn register_internals(store: &mut LintStore) {
@@ -667,6 +677,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(USAGE_OF_TYPE_IR_TRAITS),
             LintId::of(BAD_OPT_ACCESS),
             LintId::of(SPAN_USE_EQ_CTXT),
+            LintId::of(DIRECT_USE_OF_RUSTC_TYPE_IR),
         ],
     );
 }

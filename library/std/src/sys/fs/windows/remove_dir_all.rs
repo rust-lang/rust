@@ -33,7 +33,7 @@ use core::sync::atomic::{Atomic, AtomicU32, Ordering};
 
 use super::{AsRawHandle, DirBuff, File, FromRawHandle};
 use crate::sys::c;
-use crate::sys::pal::api::WinError;
+use crate::sys::pal::api::{UnicodeStrRef, WinError, unicode_str};
 use crate::thread;
 
 // The maximum number of times to spin when waiting for deletes to complete.
@@ -74,7 +74,7 @@ unsafe fn nt_open_file(
 /// `options` will be OR'd with `FILE_OPEN_REPARSE_POINT`.
 fn open_link_no_reparse(
     parent: &File,
-    path: &[u16],
+    path: UnicodeStrRef<'_>,
     access: u32,
     options: u32,
 ) -> Result<Option<File>, WinError> {
@@ -90,9 +90,8 @@ fn open_link_no_reparse(
     static ATTRIBUTES: Atomic<u32> = AtomicU32::new(c::OBJ_DONT_REPARSE);
 
     let result = unsafe {
-        let mut path_str = c::UNICODE_STRING::from_ref(path);
         let mut object = c::OBJECT_ATTRIBUTES {
-            ObjectName: &mut path_str,
+            ObjectName: path.as_ptr(),
             RootDirectory: parent.as_raw_handle(),
             Attributes: ATTRIBUTES.load(Ordering::Relaxed),
             ..c::OBJECT_ATTRIBUTES::with_length()
@@ -129,7 +128,7 @@ fn open_link_no_reparse(
     }
 }
 
-fn open_dir(parent: &File, name: &[u16]) -> Result<Option<File>, WinError> {
+fn open_dir(parent: &File, name: UnicodeStrRef<'_>) -> Result<Option<File>, WinError> {
     // Open the directory for synchronous directory listing.
     open_link_no_reparse(
         parent,
@@ -140,7 +139,7 @@ fn open_dir(parent: &File, name: &[u16]) -> Result<Option<File>, WinError> {
     )
 }
 
-fn delete(parent: &File, name: &[u16]) -> Result<(), WinError> {
+fn delete(parent: &File, name: UnicodeStrRef<'_>) -> Result<(), WinError> {
     // Note that the `delete` function consumes the opened file to ensure it's
     // dropped immediately. See module comments for why this is important.
     match open_link_no_reparse(parent, name, c::DELETE, 0) {
@@ -179,8 +178,9 @@ pub fn remove_dir_all_iterative(dir: File) -> Result<(), WinError> {
     'outer: while let Some(dir) = dirlist.pop() {
         let more_data = dir.fill_dir_buff(&mut buffer, restart)?;
         for (name, is_directory) in buffer.iter() {
+            let name = unicode_str!(&name);
             if is_directory {
-                let Some(subdir) = open_dir(&dir, &name)? else { continue };
+                let Some(subdir) = open_dir(&dir, name)? else { continue };
                 dirlist.push(dir);
                 dirlist.push(subdir);
                 continue 'outer;
@@ -188,7 +188,7 @@ pub fn remove_dir_all_iterative(dir: File) -> Result<(), WinError> {
                 // Attempt to delete, retrying on sharing violation errors as these
                 // can often be very temporary. E.g. if something takes just a
                 // bit longer than expected to release a file handle.
-                retry(|| delete(&dir, &name), WinError::SHARING_VIOLATION)?;
+                retry(|| delete(&dir, name), WinError::SHARING_VIOLATION)?;
             }
         }
         if more_data {
@@ -197,7 +197,8 @@ pub fn remove_dir_all_iterative(dir: File) -> Result<(), WinError> {
         } else {
             // Attempt to delete, retrying on not empty errors because we may
             // need to wait some time for files to be removed from the filesystem.
-            retry(|| delete(&dir, &[]), WinError::DIR_NOT_EMPTY)?;
+            let name = unicode_str!("");
+            retry(|| delete(&dir, name), WinError::DIR_NOT_EMPTY)?;
             restart = true;
         }
     }

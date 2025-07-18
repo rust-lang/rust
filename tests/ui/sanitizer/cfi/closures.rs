@@ -31,7 +31,7 @@ fn dyn_fn_with_params() {
 
 #[test]
 fn call_fn_trait() {
-   let f: &(dyn Fn()) = &(|| {}) as _;
+   let f: &dyn Fn() = &(|| {}) as _;
    f.call(());
 }
 
@@ -47,7 +47,7 @@ fn use_fnmut<F: FnMut()>(mut f: F) {
 
 #[test]
 fn fn_to_fnmut() {
-    let f: &(dyn Fn()) = &(|| {}) as _;
+    let f: &dyn Fn() = &(|| {}) as _;
     use_fnmut(f);
 }
 

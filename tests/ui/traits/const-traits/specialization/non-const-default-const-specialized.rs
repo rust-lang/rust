@@ -11,7 +11,7 @@ trait Value {
     fn value() -> u32;
 }
 
-const fn get_value<T: ~const Value>() -> u32 {
+const fn get_value<T: [const] Value>() -> u32 {
     T::value()
 }
 

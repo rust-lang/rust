@@ -14,19 +14,20 @@ mod builtin_fn_macro;
 mod mbe;
 mod proc_macros;
 
-use std::{iter, ops::Range, sync};
+use std::{any::TypeId, iter, ops::Range, sync};
 
 use base_db::RootQueryDb;
 use expect_test::Expect;
 use hir_expand::{
     AstId, InFile, MacroCallId, MacroCallKind, MacroKind,
+    builtin::quote::quote,
     db::ExpandDatabase,
     proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind},
     span_map::SpanMapRef,
 };
-use intern::Symbol;
+use intern::{Symbol, sym};
 use itertools::Itertools;
-use span::{Edition, Span};
+use span::{Edition, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext};
 use stdx::{format_to, format_to_acc};
 use syntax::{
     AstNode, AstPtr,
@@ -34,7 +35,9 @@ use syntax::{
     SyntaxNode, T,
     ast::{self, edit::IndentLevel},
 };
+use syntax_bridge::token_tree_to_syntax_node;
 use test_fixture::WithFixture;
+use tt::{TextRange, TextSize};
 
 use crate::{
     AdtId, Lookup, ModuleDefId,
@@ -302,14 +305,15 @@ fn pretty_print_macro_expansion(
             (_, T!['{']) => " ",
             (T![;] | T!['{'] | T!['}'], _) => "\n",
             (_, T!['}']) => "\n",
-            (IDENT | LIFETIME_IDENT, IDENT | LIFETIME_IDENT) => " ",
-            _ if prev_kind.is_keyword(Edition::CURRENT)
-                && curr_kind.is_keyword(Edition::CURRENT) =>
+            _ if (prev_kind.is_any_identifier()
+                || prev_kind == LIFETIME_IDENT
+                || prev_kind.is_literal())
+                && (curr_kind.is_any_identifier()
+                    || curr_kind == LIFETIME_IDENT
+                    || curr_kind.is_literal()) =>
             {
                 " "
             }
-            (IDENT, _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
-            (_, IDENT) if prev_kind.is_keyword(Edition::CURRENT) => " ",
             (T![>], IDENT) => " ",
             (T![>], _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
             (T![->], _) | (_, T![->]) => " ",
@@ -380,4 +384,43 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
             panic!("got invalid macro input: {:?}", parse.errors());
         }
     }
+
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
+        other.type_id() == TypeId::of::<Self>()
+    }
+}
+
+#[test]
+fn regression_20171() {
+    // This really isn't the appropriate place to put this test, but it's convenient with access to `quote!`.
+    let span = Span {
+        range: TextRange::empty(TextSize::new(0)),
+        anchor: SpanAnchor {
+            file_id: span::EditionedFileId::current_edition(span::FileId::from_raw(0)),
+            ast_id: ROOT_ERASED_FILE_AST_ID,
+        },
+        ctx: SyntaxContext::root(Edition::CURRENT),
+    };
+    let close_brace = tt::Punct { char: '}', spacing: tt::Spacing::Alone, span };
+    let dotdot1 = tt::Punct { char: '.', spacing: tt::Spacing::Joint, span };
+    let dotdot2 = tt::Punct { char: '.', spacing: tt::Spacing::Alone, span };
+    let dollar_crate = sym::dollar_crate;
+    let tt = quote! {
+            span => {
+        if !((matches!(
+            drive_parser(&mut parser, data, false),
+            Err(TarParserError::CorruptField {
+                field: CorruptFieldContext::PaxKvLength,
+                error: GeneralParseError::ParseInt(ParseIntError { #dotdot1 #dotdot2 })
+            })
+        #close_brace  ))) {
+        #dollar_crate::panic::panic_2021!();
+    }}
+        };
+    token_tree_to_syntax_node(
+        &tt,
+        syntax_bridge::TopEntryPoint::MacroStmts,
+        &mut |_| Edition::CURRENT,
+        Edition::CURRENT,
+    );
 }

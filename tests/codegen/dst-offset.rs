@@ -3,8 +3,9 @@
 //@ compile-flags: -C no-prepopulate-passes -Copt-level=0
 
 #![crate_type = "lib"]
-#![feature(extern_types)]
+#![feature(extern_types, sized_hierarchy)]
 
+use std::marker::PointeeSized;
 use std::ptr::addr_of;
 
 // Hack to get the correct type for usize
@@ -12,7 +13,7 @@ use std::ptr::addr_of;
 #[no_mangle]
 pub fn helper(_: usize) {}
 
-struct Dst<T: ?Sized> {
+struct Dst<T: PointeeSized> {
     x: u32,
     y: u8,
     z: T,

@@ -217,7 +217,7 @@ fn item_as_trait(db: &RootDatabase, item: hir::ItemInNs) -> Option<hir::Trait> {
     }
 }
 
-fn group_label(candidate: &ImportCandidate) -> GroupLabel {
+fn group_label(candidate: &ImportCandidate<'_>) -> GroupLabel {
     let name = match candidate {
         ImportCandidate::Path(it) => &it.name,
         ImportCandidate::TraitAssocItem(it) | ImportCandidate::TraitMethod(it) => {
@@ -230,7 +230,7 @@ fn group_label(candidate: &ImportCandidate) -> GroupLabel {
 
 fn label(
     db: &RootDatabase,
-    candidate: &ImportCandidate,
+    candidate: &ImportCandidate<'_>,
     import: &LocatedImport,
     edition: Edition,
 ) -> String {

@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, channel};
 
 use askama::Template;
+use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
@@ -27,7 +28,6 @@ use crate::formats::FormatRenderer;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
-use crate::html::format::join_with_double_colon;
 use crate::html::markdown::{self, ErrorCodes, IdMap, plain_text_summary};
 use crate::html::render::write_shared::write_shared;
 use crate::html::url_parts_builder::UrlPartsBuilder;
@@ -211,7 +211,7 @@ impl<'tcx> Context<'tcx> {
                 title.push_str(" in ");
             }
             // No need to include the namespace for primitive types and keywords
-            title.push_str(&join_with_double_colon(&self.current));
+            title.push_str(&join_path_syms(&self.current));
         };
         title.push_str(" - Rust");
         let tyname = it.type_();
@@ -609,7 +609,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         self.info = info;
     }
 
-    fn after_krate(&mut self) -> Result<(), Error> {
+    fn after_krate(mut self) -> Result<(), Error> {
         let crate_name = self.tcx().crate_name(LOCAL_CRATE);
         let final_file = self.dst.join(crate_name.as_str()).join("all.html");
         let settings_file = self.dst.join("settings.html");
@@ -830,7 +830,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         Ok(())
     }
 
-    fn item(&mut self, item: clean::Item) -> Result<(), Error> {
+    fn item(&mut self, item: &clean::Item) -> Result<(), Error> {
         // Stripped modules survive the rustdoc passes (i.e., `strip-private`)
         // if they contain impls for public types. These modules can also
         // contain items such as publicly re-exported structures.
@@ -874,9 +874,5 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         }
 
         Ok(())
-    }
-
-    fn cache(&self) -> &Cache {
-        &self.shared.cache
     }
 }

@@ -158,6 +158,15 @@ compiler that has `debug=true` set in `bootstrap.toml`.
 You can set `MIRI_BACKTRACE=1` to get a backtrace of where an
 evaluation error was originally raised.
 
+#### Tracing
+
+You can generate a Chrome trace file from a Miri execution by passing `--features=tracing` during the
+build and then setting `MIRI_TRACING=1` when running Miri. This will generate a `.json` file that
+you can visualize in [Perfetto](https://ui.perfetto.dev/). For example:
+
+```sh
+MIRI_TRACING=1 ./miri run --features=tracing tests/pass/hello.rs
+```
 
 ### UI testing
 

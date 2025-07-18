@@ -110,7 +110,7 @@ pub struct SsrMatches {
 pub struct MatchFinder<'db> {
     /// Our source of information about the user's code.
     sema: Semantics<'db, ide_db::RootDatabase>,
-    rules: Vec<ResolvedRule>,
+    rules: Vec<ResolvedRule<'db>>,
     resolution_scope: resolving::ResolutionScope<'db>,
     restrict_ranges: Vec<ide_db::FileRange>,
 }

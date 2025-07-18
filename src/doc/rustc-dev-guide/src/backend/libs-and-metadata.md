@@ -1,4 +1,4 @@
-# Libraries and Metadata
+# Libraries and metadata
 
 When the compiler sees a reference to an external crate, it needs to load some
 information about that crate. This chapter gives an overview of that process,

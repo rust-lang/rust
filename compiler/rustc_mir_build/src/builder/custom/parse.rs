@@ -315,10 +315,8 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             let stmt = self.statement_as_expr(*stmt_id)?;
             let span = self.thir[stmt].span;
             let statement = self.parse_statement(stmt)?;
-            data.statements.push(Statement {
-                source_info: SourceInfo { span, scope: self.source_scope },
-                kind: statement,
-            });
+            data.statements
+                .push(Statement::new(SourceInfo { span, scope: self.source_scope }, statement));
         }
 
         let Some(trailing) = block.expr else { return Err(self.expr_error(expr_id, "terminator")) };

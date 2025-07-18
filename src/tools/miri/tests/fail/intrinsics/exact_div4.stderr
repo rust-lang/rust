@@ -2,7 +2,7 @@ error: Undefined Behavior: overflow in signed remainder (dividing MIN by -1)
   --> tests/fail/intrinsics/exact_div4.rs:LL:CC
    |
 LL |     unsafe { std::intrinsics::exact_div(i64::MIN, -1) };
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow in signed remainder (dividing MIN by -1)
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

@@ -2,7 +2,8 @@ use rustc_abi::ExternAbi;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
-use rustc_errors::ErrorGuaranteed;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
+use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, HirId, LifetimeSource, PredicateOrigin};
@@ -17,6 +18,7 @@ use tracing::instrument;
 
 use super::errors::{
     InvalidAbi, InvalidAbiSuggestion, MisplacedRelaxTraitBound, TupleStructWithDefault,
+    UnionWithDefault,
 };
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
@@ -145,6 +147,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind,
             vis_span,
             span: self.lower_span(i.span),
+            has_delayed_lints: !self.delayed_lints.is_empty(),
         };
         self.arena.alloc(item)
     }
@@ -315,7 +318,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         this.arena.alloc_from_iter(
-                            enum_definition.variants.iter().map(|x| this.lower_variant(x)),
+                            enum_definition.variants.iter().map(|x| this.lower_variant(i, x)),
                         )
                     },
                 );
@@ -327,7 +330,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                    |this| this.lower_variant_data(hir_id, struct_def),
+                    |this| this.lower_variant_data(hir_id, i, struct_def),
                 );
                 hir::ItemKind::Struct(ident, generics, struct_def)
             }
@@ -337,7 +340,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                    |this| this.lower_variant_data(hir_id, vdata),
+                    |this| this.lower_variant_data(hir_id, i, vdata),
                 );
                 hir::ItemKind::Union(ident, generics, vdata)
             }
@@ -390,11 +393,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         (trait_ref, lowered_ty)
                     });
 
-                let new_impl_items = self.arena.alloc_from_iter(
-                    impl_items
-                        .iter()
-                        .map(|item| self.lower_impl_item_ref(item, trait_ref.is_some())),
-                );
+                let new_impl_items = self
+                    .arena
+                    .alloc_from_iter(impl_items.iter().map(|item| self.lower_impl_item_ref(item)));
 
                 // `defaultness.has_value()` is never called for an `impl`, always `true` in order
                 // to not cause an assertion failure inside the `lower_defaultness` function.
@@ -416,7 +417,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     items: new_impl_items,
                 }))
             }
-            ItemKind::Trait(box Trait { is_auto, safety, ident, generics, bounds, items }) => {
+            ItemKind::Trait(box Trait {
+                constness,
+                is_auto,
+                safety,
+                ident,
+                generics,
+                bounds,
+                items,
+            }) => {
+                let constness = self.lower_constness(*constness);
                 let ident = self.lower_ident(*ident);
                 let (generics, (safety, items, bounds)) = self.lower_generics(
                     generics,
@@ -434,7 +444,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         (safety, items, bounds)
                     },
                 );
-                hir::ItemKind::Trait(*is_auto, safety, ident, generics, bounds, items)
+                hir::ItemKind::Trait(constness, *is_auto, safety, ident, generics, bounds, items)
             }
             ItemKind::TraitAlias(ident, generics, bounds) => {
                 let ident = self.lower_ident(*ident);
@@ -599,6 +609,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             kind,
                             vis_span,
                             span: this.lower_span(use_tree.span),
+                            has_delayed_lints: !this.delayed_lints.is_empty(),
                         };
                         hir::OwnerNode::Item(this.arena.alloc(item))
                     });
@@ -697,27 +708,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind,
             vis_span: self.lower_span(i.vis.span),
             span: self.lower_span(i.span),
+            has_delayed_lints: !self.delayed_lints.is_empty(),
         };
         self.arena.alloc(item)
     }
 
-    fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemRef {
-        hir::ForeignItemRef {
-            id: hir::ForeignItemId { owner_id: self.owner_id(i.id) },
-            // `unwrap` is safe because `ForeignItemKind::MacCall` is the only foreign item kind
-            // without an identifier and it cannot reach here.
-            ident: self.lower_ident(i.kind.ident().unwrap()),
-            span: self.lower_span(i.span),
-        }
+    fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemId {
+        hir::ForeignItemId { owner_id: self.owner_id(i.id) }
     }
 
-    fn lower_variant(&mut self, v: &Variant) -> hir::Variant<'hir> {
+    fn lower_variant(&mut self, item_kind: &ItemKind, v: &Variant) -> hir::Variant<'hir> {
         let hir_id = self.lower_node_id(v.id);
         self.lower_attrs(hir_id, &v.attrs, v.span);
         hir::Variant {
             hir_id,
             def_id: self.local_def_id(v.id),
-            data: self.lower_variant_data(hir_id, &v.data),
+            data: self.lower_variant_data(hir_id, item_kind, &v.data),
             disr_expr: v.disr_expr.as_ref().map(|e| self.lower_anon_const_to_anon_const(e)),
             ident: self.lower_ident(v.ident),
             span: self.lower_span(v.span),
@@ -727,15 +733,36 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_variant_data(
         &mut self,
         parent_id: hir::HirId,
+        item_kind: &ItemKind,
         vdata: &VariantData,
     ) -> hir::VariantData<'hir> {
         match vdata {
-            VariantData::Struct { fields, recovered } => hir::VariantData::Struct {
-                fields: self
+            VariantData::Struct { fields, recovered } => {
+                let fields = self
                     .arena
-                    .alloc_from_iter(fields.iter().enumerate().map(|f| self.lower_field_def(f))),
-                recovered: *recovered,
-            },
+                    .alloc_from_iter(fields.iter().enumerate().map(|f| self.lower_field_def(f)));
+
+                if let ItemKind::Union(..) = item_kind {
+                    for field in &fields[..] {
+                        if let Some(default) = field.default {
+                            // Unions cannot derive `Default`, and it's not clear how to use default
+                            // field values of unions if that was supported. Therefore, blanket reject
+                            // trying to use field values with unions.
+                            if self.tcx.features().default_field_values() {
+                                self.dcx().emit_err(UnionWithDefault { span: default.span });
+                            } else {
+                                let _ = self.dcx().span_delayed_bug(
+                                default.span,
+                                "expected union default field values feature gate error but none \
+                                was produced",
+                            );
+                            }
+                        }
+                    }
+                }
+
+                hir::VariantData::Struct { fields, recovered: *recovered }
+            }
             VariantData::Tuple(fields, id) => {
                 let ctor_id = self.lower_node_id(*id);
                 self.alias_attrs(ctor_id, parent_id);
@@ -941,36 +968,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind,
             span: self.lower_span(i.span),
             defaultness: hir::Defaultness::Default { has_value: has_default },
+            has_delayed_lints: !self.delayed_lints.is_empty(),
         };
         self.arena.alloc(item)
     }
 
-    fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemRef {
-        let (ident, kind) = match &i.kind {
-            AssocItemKind::Const(box ConstItem { ident, .. }) => {
-                (*ident, hir::AssocItemKind::Const)
-            }
-            AssocItemKind::Type(box TyAlias { ident, .. }) => (*ident, hir::AssocItemKind::Type),
-            AssocItemKind::Fn(box Fn { ident, sig, .. }) => {
-                (*ident, hir::AssocItemKind::Fn { has_self: sig.decl.has_self() })
-            }
-            AssocItemKind::Delegation(box delegation) => (
-                delegation.ident,
-                hir::AssocItemKind::Fn {
-                    has_self: self.delegatee_is_method(i.id, delegation.id, i.span, false),
-                },
-            ),
-            AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
-                panic!("macros should have been expanded by now")
-            }
-        };
-        let id = hir::TraitItemId { owner_id: self.owner_id(i.id) };
-        hir::TraitItemRef {
-            id,
-            ident: self.lower_ident(ident),
-            span: self.lower_span(i.span),
-            kind,
-        }
+    fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemId {
+        hir::TraitItemId { owner_id: self.owner_id(i.id) }
     }
 
     /// Construct `ExprKind::Err` for the given `span`.
@@ -1100,41 +1104,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
             vis_span: self.lower_span(i.vis.span),
             span: self.lower_span(i.span),
             defaultness,
-        };
-        self.arena.alloc(item)
-    }
-
-    fn lower_impl_item_ref(&mut self, i: &AssocItem, is_in_trait_impl: bool) -> hir::ImplItemRef {
-        hir::ImplItemRef {
-            id: hir::ImplItemId { owner_id: self.owner_id(i.id) },
-            // `unwrap` is safe because `AssocItemKind::{MacCall,DelegationMac}` are the only
-            // assoc item kinds without an identifier and they cannot reach here.
-            ident: self.lower_ident(i.kind.ident().unwrap()),
-            span: self.lower_span(i.span),
-            kind: match &i.kind {
-                AssocItemKind::Const(..) => hir::AssocItemKind::Const,
-                AssocItemKind::Type(..) => hir::AssocItemKind::Type,
-                AssocItemKind::Fn(box Fn { sig, .. }) => {
-                    hir::AssocItemKind::Fn { has_self: sig.decl.has_self() }
-                }
-                AssocItemKind::Delegation(box delegation) => hir::AssocItemKind::Fn {
-                    has_self: self.delegatee_is_method(
-                        i.id,
-                        delegation.id,
-                        i.span,
-                        is_in_trait_impl,
-                    ),
-                },
-                AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
-                    panic!("macros should have been expanded by now")
-                }
-            },
+            has_delayed_lints: !self.delayed_lints.is_empty(),
             trait_item_def_id: self
                 .resolver
                 .get_partial_res(i.id)
                 .map(|r| r.expect_full_res().opt_def_id())
                 .unwrap_or(None),
-        }
+        };
+        self.arena.alloc(item)
+    }
+
+    fn lower_impl_item_ref(&mut self, i: &AssocItem) -> hir::ImplItemId {
+        hir::ImplItemId { owner_id: self.owner_id(i.id) }
     }
 
     fn lower_defaultness(
@@ -1594,7 +1575,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let safety = self.lower_safety(h.safety, default_safety);
 
         // Treat safe `#[target_feature]` functions as unsafe, but also remember that we did so.
-        let safety = if attrs.iter().any(|attr| attr.has_name(sym::target_feature))
+        let safety = if find_attr!(attrs, AttributeKind::TargetFeature { .. })
             && safety.is_safe()
             && !self.tcx.sess.target.is_like_wasm
         {
@@ -1617,9 +1598,29 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.error_on_invalid_abi(abi_str);
             ExternAbi::Rust
         });
-        let sess = self.tcx.sess;
-        let features = self.tcx.features();
-        gate_unstable_abi(sess, features, span, extern_abi);
+        let tcx = self.tcx;
+
+        // we can't do codegen for unsupported ABIs, so error now so we won't get farther
+        if !tcx.sess.target.is_abi_supported(extern_abi) {
+            let mut err = struct_span_code_err!(
+                tcx.dcx(),
+                span,
+                E0570,
+                "{extern_abi} is not a supported ABI for the current target",
+            );
+
+            if let ExternAbi::Stdcall { unwind } = extern_abi {
+                let c_abi = ExternAbi::C { unwind };
+                let system_abi = ExternAbi::System { unwind };
+                err.help(format!("if you need `extern {extern_abi}` on win32 and `extern {c_abi}` everywhere else, \
+                    use `extern {system_abi}`"
+                ));
+            }
+            err.emit();
+        }
+        // Show required feature gate even if we already errored, as the user is likely to build the code
+        // for the actually intended target next and then they will need the feature gate.
+        gate_unstable_abi(tcx.sess, tcx.features(), span, extern_abi);
         extern_abi
     }
 

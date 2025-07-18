@@ -118,7 +118,7 @@ pub fn finish_all(tests: &[TestInfo], total_elapsed: Duration, cfg: &Config) -> 
         match result {
             Ok(FinishedAll) => (),
             Err(EarlyExit::Timeout) => {
-                println!("      exited early; exceded {:?} timeout", cfg.timeout)
+                println!("      exited early; exceeded {:?} timeout", cfg.timeout)
             }
             Err(EarlyExit::MaxFailures) => {
                 println!("      exited early; exceeded {:?} max failures", cfg.max_failures)

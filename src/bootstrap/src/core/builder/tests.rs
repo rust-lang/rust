@@ -8,6 +8,9 @@ use super::*;
 use crate::Flags;
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::config::Config;
+use crate::utils::cache::ExecutedStep;
+use crate::utils::helpers::get_host_target;
+use crate::utils::tests::ConfigBuilder;
 use crate::utils::tests::git::{GitCtx, git_test};
 
 static TEST_TRIPLE_1: &str = "i686-unknown-haiku";
@@ -15,11 +18,12 @@ static TEST_TRIPLE_2: &str = "i686-unknown-hurd-gnu";
 static TEST_TRIPLE_3: &str = "i686-unknown-netbsd";
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
-    configure_with_args(&[cmd.to_owned()], host, target)
+    configure_with_args(&[cmd], host, target)
 }
 
-fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config {
-    let mut config = Config::parse(Flags::parse(cmd));
+fn configure_with_args(cmd: &[&str], host: &[&str], target: &[&str]) -> Config {
+    let cmd = cmd.iter().copied().map(String::from).collect::<Vec<_>>();
+    let mut config = Config::parse(Flags::parse(&cmd));
     // don't save toolstates
     config.save_toolstates = None;
     config.set_dry_run(DryRun::SelfCheck);
@@ -67,7 +71,7 @@ fn run_build(paths: &[PathBuf], config: Config) -> Cache {
 fn check_cli<const N: usize>(paths: [&str; N]) {
     run_build(
         &paths.map(PathBuf::from),
-        configure_with_args(&paths.map(String::from), &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
+        configure_with_args(&paths, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
     );
 }
 
@@ -190,58 +194,6 @@ fn check_missing_paths_for_x_test_tests() {
 }
 
 #[test]
-fn test_exclude() {
-    let mut config = configure("test", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
-    config.skip = vec!["src/tools/tidy".into()];
-    let cache = run_build(&[], config);
-
-    // Ensure we have really excluded tidy
-    assert!(!cache.contains::<test::Tidy>());
-
-    // Ensure other tests are not affected.
-    assert!(cache.contains::<test::RustdocUi>());
-}
-
-#[test]
-fn test_exclude_kind() {
-    let path = PathBuf::from("compiler/rustc_data_structures");
-
-    let mut config = configure("test", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
-    // Ensure our test is valid, and `test::Rustc` would be run without the exclude.
-    assert!(run_build(&[], config.clone()).contains::<test::CrateLibrustc>());
-    // Ensure tests for rustc are not skipped.
-    config.skip = vec![path.clone()];
-    assert!(run_build(&[], config.clone()).contains::<test::CrateLibrustc>());
-    // Ensure builds for rustc are not skipped.
-    assert!(run_build(&[], config).contains::<compile::Rustc>());
-}
-
-/// Ensure that if someone passes both a single crate and `library`, all library crates get built.
-#[test]
-fn alias_and_path_for_library() {
-    let mut cache = run_build(
-        &["library".into(), "core".into()],
-        configure("build", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
-    );
-    assert_eq!(
-        first(cache.all::<compile::Std>()),
-        &[
-            std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
-            std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1)
-        ]
-    );
-
-    let mut cache = run_build(
-        &["library".into(), "core".into()],
-        configure("doc", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
-    );
-    assert_eq!(
-        first(cache.all::<doc::Std>()),
-        &[doc_std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1)]
-    );
-}
-
-#[test]
 fn ci_rustc_if_unchanged_invalidate_on_compiler_changes() {
     git_test(|ctx| {
         prepare_rustc_checkout(ctx);
@@ -313,101 +265,6 @@ mod defaults {
     use crate::core::builder::*;
 
     #[test]
-    fn build_default() {
-        let mut cache = run_build(&[], configure("build", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
-
-        let a = TargetSelection::from_user(TEST_TRIPLE_1);
-        assert_eq!(
-            first(cache.all::<compile::Std>()),
-            &[
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
-            ]
-        );
-        assert!(!cache.all::<compile::Assemble>().is_empty());
-        // Make sure rustdoc is only built once.
-        assert_eq!(
-            first(cache.all::<tool::Rustdoc>()),
-            // Recall that rustdoc stages are off-by-one
-            // - this is the compiler it's _linked_ to, not built with.
-            &[tool::Rustdoc { compiler: Compiler::new(1, a) }],
-        );
-        assert_eq!(
-            first(cache.all::<compile::Rustc>()),
-            &[rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0)],
-        );
-    }
-
-    #[test]
-    fn build_stage_0() {
-        let config = Config { stage: 0, ..configure("build", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]) };
-        let mut cache = run_build(&[], config);
-
-        let a = TargetSelection::from_user(TEST_TRIPLE_1);
-        assert_eq!(
-            first(cache.all::<compile::Std>()),
-            &[std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0)]
-        );
-        assert!(!cache.all::<compile::Assemble>().is_empty());
-        assert_eq!(
-            first(cache.all::<tool::Rustdoc>()),
-            // This is the beta rustdoc.
-            // Add an assert here to make sure this is the only rustdoc built.
-            &[tool::Rustdoc { compiler: Compiler::new(0, a) }],
-        );
-        assert!(cache.all::<compile::Rustc>().is_empty());
-    }
-
-    #[test]
-    fn build_cross_compile() {
-        let config = Config {
-            stage: 1,
-            ..configure("build", &[TEST_TRIPLE_1, TEST_TRIPLE_2], &[TEST_TRIPLE_1, TEST_TRIPLE_2])
-        };
-        let mut cache = run_build(&[], config);
-
-        let a = TargetSelection::from_user(TEST_TRIPLE_1);
-        let b = TargetSelection::from_user(TEST_TRIPLE_2);
-
-        // Ideally, this build wouldn't actually have `target: a`
-        // rustdoc/rustcc/std here (the user only requested a host=B build, so
-        // there's not really a need for us to build for target A in this case
-        // (since we're producing stage 1 libraries/binaries).  But currently
-        // bootstrap is just a bit buggy here; this should be fixed though.
-        assert_eq!(
-            first(cache.all::<compile::Std>()),
-            &[
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 0),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 1),
-            ]
-        );
-        assert_eq!(
-            first(cache.all::<compile::Assemble>()),
-            &[
-                compile::Assemble { target_compiler: Compiler::new(0, a) },
-                compile::Assemble { target_compiler: Compiler::new(1, a) },
-                compile::Assemble { target_compiler: Compiler::new(1, b) },
-            ]
-        );
-        assert_eq!(
-            first(cache.all::<tool::Rustdoc>()),
-            &[
-                tool::Rustdoc { compiler: Compiler::new(1, a) },
-                tool::Rustdoc { compiler: Compiler::new(1, b) },
-            ],
-        );
-        assert_eq!(
-            first(cache.all::<compile::Rustc>()),
-            &[
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 0),
-            ]
-        );
-    }
-
-    #[test]
     fn doc_default() {
         let mut config = configure("doc", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
         config.compiler_docs = true;
@@ -444,326 +301,6 @@ mod dist {
     }
 
     #[test]
-    fn dist_baseline() {
-        let mut cache = run_build(&[], configure(&[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
-
-        let a = TargetSelection::from_user(TEST_TRIPLE_1);
-
-        assert_eq!(first(cache.all::<dist::Docs>()), &[dist::Docs { host: a },]);
-        assert_eq!(first(cache.all::<dist::Mingw>()), &[dist::Mingw { host: a },]);
-        assert_eq!(
-            first(cache.all::<dist::Rustc>()),
-            &[dist::Rustc { compiler: Compiler::new(2, a) },]
-        );
-        assert_eq!(
-            first(cache.all::<dist::Std>()),
-            &[dist::Std { compiler: Compiler::new(1, a), target: a },]
-        );
-        assert_eq!(first(cache.all::<dist::Src>()), &[dist::Src]);
-        // Make sure rustdoc is only built once.
-        assert_eq!(
-            first(cache.all::<tool::Rustdoc>()),
-            &[tool::Rustdoc { compiler: Compiler::new(2, a) },]
-        );
-    }
-
-    #[test]
-    fn dist_with_targets() {
-        let mut cache =
-            run_build(&[], configure(&[TEST_TRIPLE_1], &[TEST_TRIPLE_1, TEST_TRIPLE_2]));
-
-        let a = TargetSelection::from_user(TEST_TRIPLE_1);
-        let b = TargetSelection::from_user(TEST_TRIPLE_2);
-
-        assert_eq!(
-            first(cache.all::<dist::Docs>()),
-            &[dist::Docs { host: a }, dist::Docs { host: b },]
-        );
-        assert_eq!(
-            first(cache.all::<dist::Mingw>()),
-            &[dist::Mingw { host: a }, dist::Mingw { host: b },]
-        );
-        assert_eq!(
-            first(cache.all::<dist::Rustc>()),
-            &[dist::Rustc { compiler: Compiler::new(2, a) },]
-        );
-        assert_eq!(
-            first(cache.all::<dist::Std>()),
-            &[
-                dist::Std { compiler: Compiler::new(1, a), target: a },
-                dist::Std { compiler: Compiler::new(2, a), target: b },
-            ]
-        );
-        assert_eq!(first(cache.all::<dist::Src>()), &[dist::Src]);
-    }
-
-    #[test]
-    fn dist_with_hosts() {
-        let mut cache = run_build(
-            &[],
-            configure(&[TEST_TRIPLE_1, TEST_TRIPLE_2], &[TEST_TRIPLE_1, TEST_TRIPLE_2]),
-        );
-
-        let a = TargetSelection::from_user(TEST_TRIPLE_1);
-        let b = TargetSelection::from_user(TEST_TRIPLE_2);
-
-        assert_eq!(
-            first(cache.all::<dist::Docs>()),
-            &[dist::Docs { host: a }, dist::Docs { host: b },]
-        );
-        assert_eq!(
-            first(cache.all::<dist::Mingw>()),
-            &[dist::Mingw { host: a }, dist::Mingw { host: b },]
-        );
-        assert_eq!(
-            first(cache.all::<dist::Rustc>()),
-            &[
-                dist::Rustc { compiler: Compiler::new(2, a) },
-                dist::Rustc { compiler: Compiler::new(2, b) },
-            ]
-        );
-        assert_eq!(
-            first(cache.all::<dist::Std>()),
-            &[
-                dist::Std { compiler: Compiler::new(1, a), target: a },
-                dist::Std { compiler: Compiler::new(1, a), target: b },
-            ]
-        );
-        assert_eq!(
-            first(cache.all::<compile::Std>()),
-            &[
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 2),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 1),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 2),
-            ],
-        );
-        assert_eq!(first(cache.all::<dist::Src>()), &[dist::Src]);
-    }
-
-    #[test]
-    fn dist_only_cross_host() {
-        let b = TargetSelection::from_user(TEST_TRIPLE_2);
-        let mut config =
-            configure(&[TEST_TRIPLE_1, TEST_TRIPLE_2], &[TEST_TRIPLE_1, TEST_TRIPLE_2]);
-        config.docs = false;
-        config.extended = true;
-        config.hosts = vec![b];
-        let mut cache = run_build(&[], config);
-
-        assert_eq!(
-            first(cache.all::<dist::Rustc>()),
-            &[dist::Rustc { compiler: Compiler::new(2, b) },]
-        );
-        assert_eq!(
-            first(cache.all::<compile::Rustc>()),
-            &[
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 1),
-            ]
-        );
-    }
-
-    #[test]
-    fn dist_with_targets_and_hosts() {
-        let mut cache = run_build(
-            &[],
-            configure(
-                &[TEST_TRIPLE_1, TEST_TRIPLE_2],
-                &[TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3],
-            ),
-        );
-
-        let a = TargetSelection::from_user(TEST_TRIPLE_1);
-        let b = TargetSelection::from_user(TEST_TRIPLE_2);
-        let c = TargetSelection::from_user(TEST_TRIPLE_3);
-
-        assert_eq!(
-            first(cache.all::<dist::Docs>()),
-            &[dist::Docs { host: a }, dist::Docs { host: b }, dist::Docs { host: c },]
-        );
-        assert_eq!(
-            first(cache.all::<dist::Mingw>()),
-            &[dist::Mingw { host: a }, dist::Mingw { host: b }, dist::Mingw { host: c },]
-        );
-        assert_eq!(
-            first(cache.all::<dist::Rustc>()),
-            &[
-                dist::Rustc { compiler: Compiler::new(2, a) },
-                dist::Rustc { compiler: Compiler::new(2, b) },
-            ]
-        );
-        assert_eq!(
-            first(cache.all::<dist::Std>()),
-            &[
-                dist::Std { compiler: Compiler::new(1, a), target: a },
-                dist::Std { compiler: Compiler::new(1, a), target: b },
-                dist::Std { compiler: Compiler::new(2, a), target: c },
-            ]
-        );
-        assert_eq!(first(cache.all::<dist::Src>()), &[dist::Src]);
-    }
-
-    #[test]
-    fn dist_with_empty_host() {
-        let config = configure(&[], &[TEST_TRIPLE_3]);
-        let mut cache = run_build(&[], config);
-
-        let a = TargetSelection::from_user(TEST_TRIPLE_1);
-        let c = TargetSelection::from_user(TEST_TRIPLE_3);
-
-        assert_eq!(first(cache.all::<dist::Docs>()), &[dist::Docs { host: c },]);
-        assert_eq!(first(cache.all::<dist::Mingw>()), &[dist::Mingw { host: c },]);
-        assert_eq!(
-            first(cache.all::<dist::Std>()),
-            &[dist::Std { compiler: Compiler::new(2, a), target: c },]
-        );
-    }
-
-    #[test]
-    fn dist_with_same_targets_and_hosts() {
-        let mut cache = run_build(
-            &[],
-            configure(&[TEST_TRIPLE_1, TEST_TRIPLE_2], &[TEST_TRIPLE_1, TEST_TRIPLE_2]),
-        );
-
-        let a = TargetSelection::from_user(TEST_TRIPLE_1);
-        let b = TargetSelection::from_user(TEST_TRIPLE_2);
-
-        assert_eq!(
-            first(cache.all::<dist::Docs>()),
-            &[dist::Docs { host: a }, dist::Docs { host: b },]
-        );
-        assert_eq!(
-            first(cache.all::<dist::Mingw>()),
-            &[dist::Mingw { host: a }, dist::Mingw { host: b },]
-        );
-        assert_eq!(
-            first(cache.all::<dist::Rustc>()),
-            &[
-                dist::Rustc { compiler: Compiler::new(2, a) },
-                dist::Rustc { compiler: Compiler::new(2, b) },
-            ]
-        );
-        assert_eq!(
-            first(cache.all::<dist::Std>()),
-            &[
-                dist::Std { compiler: Compiler::new(1, a), target: a },
-                dist::Std { compiler: Compiler::new(1, a), target: b },
-            ]
-        );
-        assert_eq!(first(cache.all::<dist::Src>()), &[dist::Src]);
-        assert_eq!(
-            first(cache.all::<compile::Std>()),
-            &[
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 2),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 1),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 2),
-            ]
-        );
-        assert_eq!(
-            first(cache.all::<compile::Assemble>()),
-            &[
-                compile::Assemble { target_compiler: Compiler::new(0, a) },
-                compile::Assemble { target_compiler: Compiler::new(1, a) },
-                compile::Assemble { target_compiler: Compiler::new(2, a) },
-                compile::Assemble { target_compiler: Compiler::new(2, b) },
-            ]
-        );
-    }
-
-    /// This also serves as an important regression test for <https://github.com/rust-lang/rust/issues/138123>
-    /// and <https://github.com/rust-lang/rust/issues/138004>.
-    #[test]
-    fn dist_all_cross() {
-        let cmd_args =
-            &["dist", "--stage", "2", "--dry-run", "--config=/does/not/exist"].map(str::to_owned);
-        let config_str = r#"
-            [rust]
-            channel = "nightly"
-
-            [build]
-            extended = true
-
-            build = "i686-unknown-haiku"
-            host = ["i686-unknown-netbsd"]
-            target = ["i686-unknown-netbsd"]
-        "#;
-        let config = Config::parse_inner(Flags::parse(cmd_args), |&_| toml::from_str(config_str));
-        let mut cache = run_build(&[], config);
-
-        // Stage 2 `compile::Rustc` should **NEVER** be cached here.
-        assert_eq!(
-            first(cache.all::<compile::Rustc>()),
-            &[
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_3, stage = 1),
-            ]
-        );
-    }
-
-    #[test]
-    fn build_all() {
-        let build = Build::new(configure(
-            &[TEST_TRIPLE_1, TEST_TRIPLE_2],
-            &[TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3],
-        ));
-        let mut builder = Builder::new(&build);
-        builder.run_step_descriptions(
-            &Builder::get_step_descriptions(Kind::Build),
-            &["compiler/rustc".into(), "library".into()],
-        );
-
-        assert_eq!(builder.config.stage, 2);
-
-        // `compile::Rustc` includes one-stage-off compiler information as the target compiler
-        // artifacts get copied from there to the target stage sysroot.
-        // For example, `stage2/bin/rustc` gets copied from the `stage1-rustc` build directory.
-        assert_eq!(
-            first(builder.cache.all::<compile::Rustc>()),
-            &[
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 1),
-            ]
-        );
-
-        assert_eq!(
-            first(builder.cache.all::<compile::Std>()),
-            &[
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 2),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 1),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 2),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_3, stage = 2),
-            ]
-        );
-
-        assert_eq!(
-            first(builder.cache.all::<compile::Assemble>()),
-            &[
-                compile::Assemble {
-                    target_compiler: Compiler::new(0, TargetSelection::from_user(TEST_TRIPLE_1),)
-                },
-                compile::Assemble {
-                    target_compiler: Compiler::new(1, TargetSelection::from_user(TEST_TRIPLE_1),)
-                },
-                compile::Assemble {
-                    target_compiler: Compiler::new(2, TargetSelection::from_user(TEST_TRIPLE_1),)
-                },
-                compile::Assemble {
-                    target_compiler: Compiler::new(2, TargetSelection::from_user(TEST_TRIPLE_2),)
-                },
-            ]
-        );
-    }
-
-    #[test]
     fn llvm_out_behaviour() {
         let mut config = configure(&[TEST_TRIPLE_1], &[TEST_TRIPLE_2]);
         config.llvm_from_ci = true;
@@ -778,85 +315,6 @@ mod dist {
         let build = Build::new(config.clone());
         let target = TargetSelection::from_user(TEST_TRIPLE_1);
         assert!(build.llvm_out(target).ends_with("llvm"));
-    }
-
-    #[test]
-    fn build_with_empty_host() {
-        let config = configure(&[], &[TEST_TRIPLE_3]);
-        let build = Build::new(config);
-        let mut builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
-
-        let a = TargetSelection::from_user(TEST_TRIPLE_1);
-
-        assert_eq!(
-            first(builder.cache.all::<compile::Std>()),
-            &[
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
-                std!(TEST_TRIPLE_1 => TEST_TRIPLE_3, stage = 2),
-            ]
-        );
-        assert_eq!(
-            first(builder.cache.all::<compile::Assemble>()),
-            &[
-                compile::Assemble { target_compiler: Compiler::new(0, a) },
-                compile::Assemble { target_compiler: Compiler::new(1, a) },
-                compile::Assemble { target_compiler: Compiler::new(2, a) },
-            ]
-        );
-        assert_eq!(
-            first(builder.cache.all::<compile::Rustc>()),
-            &[
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
-            ]
-        );
-    }
-
-    #[test]
-    fn test_with_no_doc_stage0() {
-        let mut config = configure(&[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
-        config.stage = 0;
-        config.paths = vec!["library/std".into()];
-        config.cmd = Subcommand::Test {
-            test_args: vec![],
-            compiletest_rustc_args: vec![],
-            no_fail_fast: false,
-            no_doc: true,
-            doc: false,
-            bless: false,
-            force_rerun: false,
-            compare_mode: None,
-            rustfix_coverage: false,
-            pass: None,
-            run: None,
-            only_modified: false,
-            extra_checks: None,
-            no_capture: false,
-        };
-
-        let build = Build::new(config);
-        let mut builder = Builder::new(&build);
-
-        let host = TargetSelection::from_user(TEST_TRIPLE_1);
-
-        builder.run_step_descriptions(
-            &[StepDescription::from::<test::Crate>(Kind::Test)],
-            &["library/std".into()],
-        );
-
-        // Ensure we don't build any compiler artifacts.
-        assert!(!builder.cache.contains::<compile::Rustc>());
-        assert_eq!(
-            first(builder.cache.all::<test::Crate>()),
-            &[test::Crate {
-                compiler: Compiler::new(0, host),
-                target: host,
-                mode: crate::Mode::Std,
-                crates: vec!["std".to_owned()],
-            },]
-        );
     }
 
     #[test]
@@ -884,65 +342,6 @@ mod dist {
         assert_eq!(
             first(builder.cache.all::<tool::Rustdoc>()),
             &[tool::Rustdoc { compiler: Compiler::new(2, a) },]
-        );
-    }
-
-    #[test]
-    fn test_docs() {
-        // Behavior of `x.py test` doing various documentation tests.
-        let mut config = configure(&[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
-        config.cmd = Subcommand::Test {
-            test_args: vec![],
-            compiletest_rustc_args: vec![],
-            no_fail_fast: false,
-            doc: true,
-            no_doc: false,
-            bless: false,
-            force_rerun: false,
-            compare_mode: None,
-            rustfix_coverage: false,
-            pass: None,
-            run: None,
-            only_modified: false,
-            extra_checks: None,
-            no_capture: false,
-        };
-        // Make sure rustfmt binary not being found isn't an error.
-        config.channel = "beta".to_string();
-        let build = Build::new(config);
-        let mut builder = Builder::new(&build);
-
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Test), &[]);
-        let a = TargetSelection::from_user(TEST_TRIPLE_1);
-
-        // error_index_generator uses stage 1 to share rustdoc artifacts with the
-        // rustdoc tool.
-        assert_eq!(
-            first(builder.cache.all::<doc::ErrorIndex>()),
-            &[doc::ErrorIndex { target: a },]
-        );
-        assert_eq!(
-            first(builder.cache.all::<tool::ErrorIndex>()),
-            &[tool::ErrorIndex { compiler: Compiler::new(1, a) }]
-        );
-        // Unfortunately rustdoc is built twice. Once from stage1 for compiletest
-        // (and other things), and once from stage0 for std crates. Ideally it
-        // would only be built once. If someone wants to fix this, it might be
-        // worth investigating if it would be possible to test std from stage1.
-        // Note that the stages here are +1 than what they actually are because
-        // Rustdoc::run swaps out the compiler with stage minus 1 if --stage is
-        // not 0.
-        //
-        // The stage 0 copy is the one downloaded for bootstrapping. It is
-        // (currently) needed to run "cargo test" on the linkchecker, and
-        // should be relatively "free".
-        assert_eq!(
-            first(builder.cache.all::<tool::Rustdoc>()),
-            &[
-                tool::Rustdoc { compiler: Compiler::new(0, a) },
-                tool::Rustdoc { compiler: Compiler::new(1, a) },
-                tool::Rustdoc { compiler: Compiler::new(2, a) },
-            ]
         );
     }
 }
@@ -1000,8 +399,7 @@ mod sysroot_target_dirs {
 /// cg_gcc tests instead.
 #[test]
 fn test_test_compiler() {
-    let cmd = &["test", "compiler"].map(str::to_owned);
-    let config = configure_with_args(cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+    let config = configure_with_args(&["test", "compiler"], &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
     let cache = run_build(&config.paths.clone(), config);
 
     let compiler = cache.contains::<test::CrateLibrustc>();
@@ -1034,8 +432,7 @@ fn test_test_coverage() {
         // Print each test case so that if one fails, the most recently printed
         // case is the one that failed.
         println!("Testing case: {cmd:?}");
-        let cmd = cmd.iter().copied().map(str::to_owned).collect::<Vec<_>>();
-        let config = configure_with_args(&cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+        let config = configure_with_args(cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
         let mut cache = run_build(&config.paths.clone(), config);
 
         let modes =
@@ -1207,8 +604,7 @@ fn test_get_tool_rustc_compiler() {
 /// of `Any { .. }`.
 #[test]
 fn step_cycle_debug() {
-    let cmd = ["run", "cyclic-step"].map(str::to_owned);
-    let config = configure_with_args(&cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+    let config = configure_with_args(&["run", "cyclic-step"], &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
 
     let err = panic::catch_unwind(|| run_build(&config.paths.clone(), config)).unwrap_err();
     let err = err.downcast_ref::<String>().unwrap().as_str();
@@ -1232,4 +628,1210 @@ fn any_debug() {
     assert_eq!(format!("{x:?}"), format!("{:?}", MyStruct { x: 7 }));
     // Downcasting to the underlying type should succeed.
     assert_eq!(x.downcast_ref::<MyStruct>(), Some(&MyStruct { x: 7 }));
+}
+
+/// These tests use insta for snapshot testing.
+/// See bootstrap's README on how to bless the snapshots.
+mod snapshot {
+    use std::path::PathBuf;
+
+    use crate::core::build_steps::{compile, dist, doc, test, tool};
+    use crate::core::builder::tests::{
+        RenderConfig, TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3, configure, configure_with_args,
+        first, host_target, render_steps, run_build,
+    };
+    use crate::core::builder::{Builder, Kind, StepDescription, StepMetadata};
+    use crate::core::config::TargetSelection;
+    use crate::utils::cache::Cache;
+    use crate::utils::helpers::get_host_target;
+    use crate::utils::tests::{ConfigBuilder, TestCtx};
+    use crate::{Build, Compiler, Config, Flags, Subcommand};
+
+    #[test]
+    fn build_default() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 0 <host>
+        ");
+    }
+
+    #[test]
+    fn build_cross_compile() {
+        let ctx = TestCtx::new();
+
+        insta::assert_snapshot!(
+            ctx.config("build")
+                // Cross-compilation fails on stage 1, as we don't have a stage0 std available
+                // for non-host targets.
+                .stage(2)
+                .hosts(&[&host_target(), TEST_TRIPLE_1])
+                .targets(&[&host_target(), TEST_TRIPLE_1])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [build] rustdoc 1 <host>
+        [build] llvm <target1>
+        [build] rustc 1 <host> -> rustc 2 <target1>
+        [build] rustdoc 1 <target1>
+        ");
+    }
+
+    #[test]
+    fn build_with_empty_host() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx
+                .config("build")
+                .hosts(&[])
+                .targets(&[TEST_TRIPLE_1])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        "
+        );
+    }
+
+    #[test]
+    fn build_compiler_no_explicit_stage() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("compiler")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        ");
+
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("rustc")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn build_compiler_stage_0() {
+        let ctx = TestCtx::new();
+        ctx.config("build").path("compiler").stage(0).run();
+    }
+
+    #[test]
+    fn build_compiler_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("compiler")
+                .stage(1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        ");
+    }
+
+    #[test]
+    fn build_compiler_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("compiler")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        ");
+    }
+
+    #[test]
+    fn build_compiler_tools() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx
+                .config("build")
+                .stage(2)
+                .args(&["--set", "rust.lld=true", "--set", "rust.llvm-bitcode-linker=true"])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> LldWrapper 1 <host>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> LldWrapper 2 <host>
+        [build] rustc 2 <host> -> LlvmBitcodeLinker 3 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustdoc 1 <host>
+        "
+        );
+    }
+
+    #[test]
+    fn build_compiler_tools_cross() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx
+                .config("build")
+                .stage(2)
+                .args(&["--set", "rust.lld=true", "--set", "rust.llvm-bitcode-linker=true"])
+                .hosts(&[TEST_TRIPLE_1])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> LldWrapper 1 <host>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> LldWrapper 2 <host>
+        [build] rustc 2 <host> -> LlvmBitcodeLinker 3 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [build] llvm <target1>
+        [build] rustc 1 <host> -> rustc 2 <target1>
+        [build] rustc 1 <host> -> LldWrapper 2 <target1>
+        [build] rustc 2 <target1> -> LlvmBitcodeLinker 3 <target1>
+        [build] rustdoc 1 <target1>
+        "
+        );
+    }
+
+    #[test]
+    fn build_library_no_explicit_stage() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+            .path("library")
+            .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn build_library_stage_0() {
+        let ctx = TestCtx::new();
+        ctx.config("build").path("library").stage(0).run();
+    }
+
+    #[test]
+    fn build_library_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("library")
+                .stage(1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        ");
+    }
+
+    #[test]
+    fn build_library_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("library")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        ");
+    }
+
+    #[test]
+    fn build_miri_no_explicit_stage() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("miri")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> miri 1 <host>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn build_miri_stage_0() {
+        let ctx = TestCtx::new();
+        ctx.config("build").path("miri").stage(0).run();
+    }
+
+    #[test]
+    fn build_miri_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("miri")
+                .stage(1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> miri 1 <host>
+        ");
+    }
+
+    #[test]
+    fn build_miri_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("miri")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> miri 2 <host>
+        ");
+    }
+
+    #[test]
+    fn build_bootstrap_tool_no_explicit_stage() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("opt-dist")
+                .render_steps(), @"[build] rustc 0 <host> -> OptimizedDist 1 <host>");
+    }
+
+    #[test]
+    #[should_panic]
+    fn build_bootstrap_tool_stage_0() {
+        let ctx = TestCtx::new();
+        ctx.config("build").path("opt-dist").stage(0).run();
+    }
+
+    #[test]
+    fn build_bootstrap_tool_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("opt-dist")
+                .stage(1)
+                .render_steps(), @"[build] rustc 0 <host> -> OptimizedDist 1 <host>");
+    }
+
+    #[test]
+    fn build_bootstrap_tool_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("opt-dist")
+                .stage(2)
+                .render_steps(), @"[build] rustc 0 <host> -> OptimizedDist 1 <host>");
+    }
+
+    #[test]
+    fn build_default_stage() {
+        let ctx = TestCtx::new();
+        assert_eq!(ctx.config("build").path("compiler").create_config().stage, 1);
+    }
+
+    /// Ensure that if someone passes both a single crate and `library`, all
+    /// library crates get built.
+    #[test]
+    fn alias_and_path_for_library() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(ctx.config("build")
+            .paths(&["library", "core"])
+            .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        ");
+
+        insta::assert_snapshot!(ctx.config("build")
+            .paths(&["std"])
+            .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        ");
+
+        insta::assert_snapshot!(ctx.config("build")
+            .paths(&["core"])
+            .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        ");
+
+        insta::assert_snapshot!(ctx.config("build")
+            .paths(&["alloc"])
+            .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        ");
+
+        insta::assert_snapshot!(ctx.config("doc")
+            .paths(&["library", "core"])
+            .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
+        ");
+    }
+
+    #[test]
+    fn build_all() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .stage(2)
+                .paths(&["compiler/rustc", "library"])
+                .hosts(&[&host_target(), TEST_TRIPLE_1])
+                .targets(&[&host_target(), TEST_TRIPLE_1, TEST_TRIPLE_2])
+            .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] llvm <target1>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 1 <host> -> rustc 2 <target1>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [build] rustc 2 <host> -> std 2 <target2>
+        ");
+    }
+
+    #[test]
+    fn dist_default_stage() {
+        let ctx = TestCtx::new();
+        assert_eq!(ctx.config("dist").path("compiler").create_config().stage, 2);
+    }
+
+    #[test]
+    fn dist_baseline() {
+        let ctx = TestCtx::new();
+        // Note that stdlib is uplifted, that is why `[dist] rustc 1 <host> -> std <host>` is in
+        // the output.
+        insta::assert_snapshot!(
+            ctx
+                .config("dist")
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustdoc 1 <host>
+        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [dist] docs <host>
+        [doc] std 2 <host> crates=[]
+        [dist] mingw <host>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
+        [dist] rustc <host>
+        [dist] rustc 1 <host> -> std 1 <host>
+        [dist] src <>
+        "
+        );
+    }
+
+    #[test]
+    fn dist_extended() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx
+                .config("dist")
+                .args(&["--set", "build.extended=true"])
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> WasmComponentLd 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> WasmComponentLd 2 <host>
+        [build] rustdoc 1 <host>
+        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [dist] docs <host>
+        [doc] std 2 <host> crates=[]
+        [dist] mingw <host>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
+        [dist] rustc <host>
+        [dist] rustc 1 <host> -> std 1 <host>
+        [dist] src <>
+        [build] rustc 0 <host> -> rustfmt 1 <host>
+        [build] rustc 0 <host> -> cargo-fmt 1 <host>
+        [build] rustc 0 <host> -> clippy-driver 1 <host>
+        [build] rustc 0 <host> -> cargo-clippy 1 <host>
+        [build] rustc 0 <host> -> miri 1 <host>
+        [build] rustc 0 <host> -> cargo-miri 1 <host>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
+        ");
+    }
+
+    #[test]
+    fn dist_with_targets() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx
+                .config("dist")
+                .hosts(&[&host_target()])
+                .targets(&[&host_target(), TEST_TRIPLE_1])
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustdoc 1 <host>
+        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
+        [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [dist] docs <host>
+        [dist] docs <target1>
+        [doc] std 2 <host> crates=[]
+        [doc] std 2 <target1> crates=[]
+        [dist] mingw <host>
+        [dist] mingw <target1>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
+        [dist] rustc <host>
+        [dist] rustc 1 <host> -> std 1 <host>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [dist] rustc 2 <host> -> std 2 <target1>
+        [dist] src <>
+        "
+        );
+    }
+
+    #[test]
+    fn dist_with_hosts() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx
+                .config("dist")
+                .hosts(&[&host_target(), TEST_TRIPLE_1])
+                .targets(&[&host_target()])
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustdoc 1 <host>
+        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [dist] docs <host>
+        [doc] std 2 <host> crates=[]
+        [dist] mingw <host>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
+        [dist] rustc <host>
+        [build] llvm <target1>
+        [build] rustc 1 <host> -> rustc 2 <target1>
+        [build] rustdoc 1 <target1>
+        [dist] rustc <target1>
+        [dist] rustc 1 <host> -> std 1 <host>
+        [dist] src <>
+        "
+        );
+    }
+
+    #[test]
+    fn dist_with_targets_and_hosts() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx
+                .config("dist")
+                .hosts(&[&host_target(), TEST_TRIPLE_1])
+                .targets(&[&host_target(), TEST_TRIPLE_1])
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustdoc 1 <host>
+        [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
+        [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [dist] docs <host>
+        [dist] docs <target1>
+        [doc] std 2 <host> crates=[]
+        [doc] std 2 <target1> crates=[]
+        [dist] mingw <host>
+        [dist] mingw <target1>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
+        [dist] rustc <host>
+        [build] llvm <target1>
+        [build] rustc 1 <host> -> rustc 2 <target1>
+        [build] rustdoc 1 <target1>
+        [dist] rustc <target1>
+        [dist] rustc 1 <host> -> std 1 <host>
+        [dist] rustc 1 <host> -> std 1 <target1>
+        [dist] src <>
+        "
+        );
+    }
+
+    #[test]
+    fn dist_with_empty_host() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx
+                .config("dist")
+                .hosts(&[])
+                .targets(&[TEST_TRIPLE_1])
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustdoc 1 <host>
+        [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [dist] docs <target1>
+        [doc] std 2 <target1> crates=[]
+        [dist] mingw <target1>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [dist] rustc 2 <host> -> std 2 <target1>
+        ");
+    }
+
+    /// This also serves as an important regression test for <https://github.com/rust-lang/rust/issues/138123>
+    /// and <https://github.com/rust-lang/rust/issues/138004>.
+    #[test]
+    fn dist_all_cross() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx
+                .config("dist")
+                .hosts(&[TEST_TRIPLE_1])
+                .targets(&[TEST_TRIPLE_1])
+                .args(&["--set", "rust.channel=nightly", "--set", "build.extended=true"])
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> WasmComponentLd 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> WasmComponentLd 2 <host>
+        [build] rustdoc 1 <host>
+        [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [dist] docs <target1>
+        [doc] std 2 <target1> crates=[]
+        [dist] mingw <target1>
+        [build] llvm <target1>
+        [build] rustc 1 <host> -> rustc 2 <target1>
+        [build] rustc 1 <host> -> WasmComponentLd 2 <target1>
+        [build] rustdoc 1 <target1>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
+        [dist] rustc <target1>
+        [dist] rustc 1 <host> -> std 1 <target1>
+        [dist] src <>
+        [build] rustc 0 <host> -> rustfmt 1 <target1>
+        [build] rustc 0 <host> -> cargo-fmt 1 <target1>
+        [build] rustc 0 <host> -> clippy-driver 1 <target1>
+        [build] rustc 0 <host> -> cargo-clippy 1 <target1>
+        [build] rustc 0 <host> -> miri 1 <target1>
+        [build] rustc 0 <host> -> cargo-miri 1 <target1>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
+        ");
+    }
+
+    #[test]
+    fn check_compiler_no_explicit_stage() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("compiler")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> cranelift 1 <host>
+        [check] rustc 0 <host> -> gcc 1 <host>
+        ");
+
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("rustc")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn check_compiler_stage_0() {
+        let ctx = TestCtx::new();
+        ctx.config("check").path("compiler").stage(0).run();
+    }
+
+    #[test]
+    fn check_compiler_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("compiler")
+                .stage(1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> cranelift 1 <host>
+        [check] rustc 0 <host> -> gcc 1 <host>
+        ");
+    }
+
+    #[test]
+    fn check_compiler_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("compiler")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [check] rustc 1 <host> -> rustc 2 <host>
+        [check] rustc 1 <host> -> cranelift 2 <host>
+        [check] rustc 1 <host> -> gcc 2 <host>
+        ");
+    }
+
+    #[test]
+    fn check_cross_compile() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .targets(&[TEST_TRIPLE_1])
+                .hosts(&[TEST_TRIPLE_1])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [check] rustc 1 <host> -> rustc 2 <target1>
+        [check] rustc 1 <host> -> Rustdoc 2 <target1>
+        [check] rustc 1 <host> -> cranelift 2 <target1>
+        [check] rustc 1 <host> -> gcc 2 <target1>
+        [check] rustc 1 <host> -> Clippy 2 <target1>
+        [check] rustc 1 <host> -> Miri 2 <target1>
+        [check] rustc 1 <host> -> CargoMiri 2 <target1>
+        [check] rustc 1 <host> -> Rustfmt 2 <target1>
+        [check] rustc 1 <host> -> rust-analyzer 2 <target1>
+        [check] rustc 1 <host> -> TestFloatParse 2 <target1>
+        [check] rustc 1 <host> -> std 1 <target1>
+        ");
+    }
+
+    #[test]
+    fn check_library_no_explicit_stage() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("library")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 1 <host> -> std 1 <host>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn check_library_stage_0() {
+        let ctx = TestCtx::new();
+        ctx.config("check").path("library").stage(0).run();
+    }
+
+    #[test]
+    fn check_library_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("library")
+                .stage(1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 1 <host> -> std 1 <host>
+        ");
+    }
+
+    #[test]
+    fn check_library_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("library")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [check] rustc 2 <host> -> std 2 <host>
+        ");
+    }
+
+    #[test]
+    fn check_library_cross_compile() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .paths(&["core", "alloc", "std"])
+                .targets(&[TEST_TRIPLE_1, TEST_TRIPLE_2])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 1 <host> -> std 1 <target1>
+        [check] rustc 1 <host> -> std 1 <target2>
+        ");
+    }
+
+    /// Make sure that we don't check library when download-rustc is disabled
+    /// when `--skip-std-check-if-no-download-rustc` was passed.
+    #[test]
+    fn check_library_skip_without_download_rustc() {
+        let ctx = TestCtx::new();
+        let args = ["--set", "rust.download-rustc=false", "--skip-std-check-if-no-download-rustc"];
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .paths(&["library"])
+                .args(&args)
+                .render_steps(), @"");
+
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .paths(&["library", "compiler"])
+                .args(&args)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> cranelift 1 <host>
+        [check] rustc 0 <host> -> gcc 1 <host>
+        ");
+    }
+
+    #[test]
+    fn check_miri_no_explicit_stage() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("miri")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> Miri 1 <host>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn check_miri_stage_0() {
+        let ctx = TestCtx::new();
+        ctx.config("check").path("miri").stage(0).run();
+    }
+
+    #[test]
+    fn check_miri_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("miri")
+                .stage(1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> Miri 1 <host>
+        ");
+    }
+
+    #[test]
+    fn check_miri_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("miri")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [check] rustc 1 <host> -> rustc 2 <host>
+        [check] rustc 1 <host> -> Miri 2 <host>
+        ");
+    }
+
+    #[test]
+    fn check_compiletest() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("compiletest")
+                .render_steps(), @"[check] compiletest <host>");
+    }
+
+    #[test]
+    fn check_compiletest_stage1_libtest() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("compiletest")
+                .args(&["--set", "build.compiletest-use-stage0-libtest=false"])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [check] compiletest <host>
+        ");
+    }
+
+    #[test]
+    fn check_codegen() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("rustc_codegen_cranelift")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> cranelift 1 <host>
+        [check] rustc 0 <host> -> gcc 1 <host>
+        ");
+    }
+
+    #[test]
+    fn check_rust_analyzer() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("rust-analyzer")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> rust-analyzer 1 <host>
+        ");
+    }
+
+    #[test]
+    fn check_bootstrap_tool() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("run-make-support")
+                .render_steps(), @"[check] rustc 0 <host> -> RunMakeSupport 1 <host>");
+    }
+
+    #[test]
+    fn test_exclude() {
+        let ctx = TestCtx::new();
+        let steps = ctx.config("test").args(&["--skip", "src/tools/tidy"]).get_steps();
+
+        let host = TargetSelection::from_user(&host_target());
+        steps.assert_contains(StepMetadata::test("RustdocUi", host));
+        steps.assert_not_contains(test::Tidy);
+    }
+
+    #[test]
+    fn test_exclude_kind() {
+        let ctx = TestCtx::new();
+        let host = TargetSelection::from_user(&host_target());
+
+        let get_steps = |args: &[&str]| ctx.config("test").args(args).get_steps();
+
+        // Ensure our test is valid, and `test::Rustc` would be run without the exclude.
+        get_steps(&[]).assert_contains(StepMetadata::test("CrateLibrustc", host));
+
+        let steps = get_steps(&["--skip", "compiler/rustc_data_structures"]);
+
+        // Ensure tests for rustc are not skipped.
+        steps.assert_contains(StepMetadata::test("CrateLibrustc", host));
+        steps.assert_contains_fuzzy(StepMetadata::build("rustc", host));
+    }
+
+    #[test]
+    fn doc_library() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("library")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,sysroot,test,unwind]
+        ");
+    }
+
+    #[test]
+    fn doc_core() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("core")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] std 1 <host> crates=[core]
+        ");
+    }
+
+    #[test]
+    fn doc_core_no_std_target() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("core")
+                .override_target_no_std(&host_target())
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] std 1 <host> crates=[core]
+        ");
+    }
+
+    #[test]
+    fn doc_library_no_std_target() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("library")
+                .override_target_no_std(&host_target())
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] std 1 <host> crates=[alloc,core]
+        ");
+    }
+
+    #[test]
+    fn doc_library_no_std_target_cross_compile() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("library")
+                .targets(&[TEST_TRIPLE_1])
+                .override_target_no_std(TEST_TRIPLE_1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] std 1 <target1> crates=[alloc,core]
+        ");
+    }
+}
+
+struct ExecutedSteps {
+    steps: Vec<ExecutedStep>,
+}
+
+impl ExecutedSteps {
+    fn render(&self) -> String {
+        self.render_with(RenderConfig::default())
+    }
+
+    fn render_with(&self, config: RenderConfig) -> String {
+        render_steps(&self.steps, config)
+    }
+
+    #[track_caller]
+    fn assert_contains<M: Into<StepMetadata>>(&self, metadata: M) {
+        let metadata = metadata.into();
+        if !self.contains(&metadata) {
+            panic!(
+                "Metadata `{}` ({metadata:?}) not found in executed steps:\n{}",
+                render_metadata(&metadata, &RenderConfig::default()),
+                self.render()
+            );
+        }
+    }
+
+    /// Try to match metadata by similarity, it does not need to match exactly.
+    /// Stages (and built_by compiler) do not need to match, but name, target and
+    /// kind has to match.
+    #[track_caller]
+    fn assert_contains_fuzzy<M: Into<StepMetadata>>(&self, metadata: M) {
+        let metadata = metadata.into();
+        if !self.contains_fuzzy(&metadata) {
+            panic!(
+                "Metadata `{}` ({metadata:?}) not found in executed steps:\n{}",
+                render_metadata(&metadata, &RenderConfig::default()),
+                self.render()
+            );
+        }
+    }
+
+    #[track_caller]
+    fn assert_not_contains<M: Into<StepMetadata>>(&self, metadata: M) {
+        let metadata = metadata.into();
+        if self.contains(&metadata) {
+            panic!(
+                "Metadata `{}` ({metadata:?}) found in executed steps (it should not be there):\n{}",
+                render_metadata(&metadata, &RenderConfig::default()),
+                self.render()
+            );
+        }
+    }
+
+    fn contains(&self, metadata: &StepMetadata) -> bool {
+        self.steps
+            .iter()
+            .filter_map(|s| s.metadata.as_ref())
+            .any(|executed_metadata| executed_metadata == metadata)
+    }
+
+    fn contains_fuzzy(&self, metadata: &StepMetadata) -> bool {
+        self.steps
+            .iter()
+            .filter_map(|s| s.metadata.as_ref())
+            .any(|executed_metadata| fuzzy_metadata_eq(executed_metadata, metadata))
+    }
+}
+
+fn fuzzy_metadata_eq(executed: &StepMetadata, to_match: &StepMetadata) -> bool {
+    let StepMetadata { name, kind, target, built_by: _, stage: _, metadata } = executed;
+    *name == to_match.name && *kind == to_match.kind && *target == to_match.target
+}
+
+impl<S: Step> From<S> for StepMetadata {
+    fn from(step: S) -> Self {
+        step.metadata().expect("step has no metadata")
+    }
+}
+
+impl ConfigBuilder {
+    fn run(self) -> Cache {
+        let config = self.create_config();
+
+        let kind = config.cmd.kind();
+        let build = Build::new(config);
+        let builder = Builder::new(&build);
+        builder.run_step_descriptions(&Builder::get_step_descriptions(kind), &builder.paths);
+        builder.cache
+    }
+
+    fn get_steps(self) -> ExecutedSteps {
+        let cache = self.run();
+        ExecutedSteps { steps: cache.into_executed_steps() }
+    }
+
+    fn render_steps(self) -> String {
+        self.get_steps().render()
+    }
+}
+
+struct RenderConfig {
+    normalize_host: bool,
+}
+
+impl Default for RenderConfig {
+    fn default() -> Self {
+        Self { normalize_host: true }
+    }
+}
+
+/// Renders the executed bootstrap steps for usage in snapshot tests with insta.
+/// Only renders certain important steps.
+/// Each value in `steps` should be a tuple of (Step, step output).
+///
+/// The arrow in the rendered output (`X -> Y`) means `X builds Y`.
+/// This is similar to the output printed by bootstrap to stdout, but here it is
+/// generated purely for the purpose of tests.
+fn render_steps(steps: &[ExecutedStep], config: RenderConfig) -> String {
+    steps
+        .iter()
+        .filter_map(|step| {
+            use std::fmt::Write;
+
+            let Some(metadata) = &step.metadata else {
+                return None;
+            };
+
+            Some(render_metadata(&metadata, &config))
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn render_metadata(metadata: &StepMetadata, config: &RenderConfig) -> String {
+    let mut record = format!("[{}] ", metadata.kind.as_str());
+    if let Some(compiler) = metadata.built_by {
+        write!(record, "{} -> ", render_compiler(compiler, config));
+    }
+    let stage = metadata.get_stage().map(|stage| format!("{stage} ")).unwrap_or_default();
+    write!(record, "{} {stage}<{}>", metadata.name, normalize_target(metadata.target, config));
+    if let Some(metadata) = &metadata.metadata {
+        write!(record, " {metadata}");
+    }
+    record
+}
+
+fn normalize_target(target: TargetSelection, config: &RenderConfig) -> String {
+    let mut target = target.to_string();
+    if config.normalize_host {
+        target = target.replace(&host_target(), "host");
+    }
+    target.replace(TEST_TRIPLE_1, "target1").replace(TEST_TRIPLE_2, "target2")
+}
+
+fn render_compiler(compiler: Compiler, config: &RenderConfig) -> String {
+    format!("rustc {} <{}>", compiler.stage, normalize_target(compiler.host, config))
+}
+
+fn host_target() -> String {
+    get_host_target().to_string()
 }

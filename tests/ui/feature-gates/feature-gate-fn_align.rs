@@ -1,9 +1,12 @@
 #![crate_type = "lib"]
 
-#[repr(align(16))] //~ ERROR `repr(align)` attributes on functions are unstable
+#[align(16)]
+//~^ ERROR the `#[align]` attribute is an experimental feature
 fn requires_alignment() {}
 
 trait MyTrait {
-    #[repr(align)] //~ ERROR invalid `repr(align)` attribute: `align` needs an argument
+    #[align]
+    //~^ ERROR the `#[align]` attribute is an experimental feature
+    //~| ERROR malformed `align` attribute input
     fn myfun();
 }

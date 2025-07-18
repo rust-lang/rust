@@ -1,10 +1,10 @@
-error[E0277]: the trait bound `U: ~const Other` is not satisfied
+error[E0277]: the trait bound `U: [const] Other` is not satisfied
   --> $DIR/assoc-type-const-bound-usage-fail-2.rs:24:5
    |
 LL |     T::Assoc::<U>::func();
    |     ^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `U: ~const Other` is not satisfied
+error[E0277]: the trait bound `U: [const] Other` is not satisfied
   --> $DIR/assoc-type-const-bound-usage-fail-2.rs:26:5
    |
 LL |     <T as Trait>::Assoc::<U>::func();

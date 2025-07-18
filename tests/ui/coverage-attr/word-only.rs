@@ -20,7 +20,6 @@ mod my_mod_inner {
 
 #[coverage]
 //~^ ERROR malformed `coverage` attribute input
-//~| ERROR [E0788]
 struct MyStruct;
 
 #[coverage]
@@ -28,22 +27,18 @@ struct MyStruct;
 impl MyStruct {
     #[coverage]
     //~^ ERROR malformed `coverage` attribute input
-    //~| ERROR [E0788]
     const X: u32 = 7;
 }
 
 #[coverage]
 //~^ ERROR malformed `coverage` attribute input
-//~| ERROR [E0788]
 trait MyTrait {
     #[coverage]
     //~^ ERROR malformed `coverage` attribute input
-    //~| ERROR [E0788]
     const X: u32;
 
     #[coverage]
     //~^ ERROR malformed `coverage` attribute input
-    //~| ERROR [E0788]
     type T;
 }
 
@@ -52,12 +47,10 @@ trait MyTrait {
 impl MyTrait for MyStruct {
     #[coverage]
     //~^ ERROR malformed `coverage` attribute input
-    //~| ERROR [E0788]
     const X: u32 = 8;
 
     #[coverage]
     //~^ ERROR malformed `coverage` attribute input
-    //~| ERROR [E0788]
     type T = ();
 }
 

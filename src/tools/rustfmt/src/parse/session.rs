@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter, SilentEmitter, stderr_destination};
 use rustc_errors::registry::Registry;
-use rustc_errors::translation::Translate;
+use rustc_errors::translation::Translator;
 use rustc_errors::{ColorConfig, Diag, DiagCtxt, DiagInner, Level as DiagnosticLevel};
 use rustc_session::parse::ParseSess as RawParseSess;
 use rustc_span::{
@@ -47,16 +47,6 @@ impl SilentOnIgnoredFilesEmitter {
     }
 }
 
-impl Translate for SilentOnIgnoredFilesEmitter {
-    fn fluent_bundle(&self) -> Option<&rustc_errors::FluentBundle> {
-        self.emitter.fluent_bundle()
-    }
-
-    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
-        self.emitter.fallback_fluent_bundle()
-    }
-}
-
 impl Emitter for SilentOnIgnoredFilesEmitter {
     fn source_map(&self) -> Option<&SourceMap> {
         None
@@ -84,6 +74,10 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
         }
         self.handle_non_ignoreable_error(diag, registry);
     }
+
+    fn translator(&self) -> &Translator {
+        self.emitter.translator()
+    }
 }
 
 impl From<Color> for ColorConfig {
@@ -110,23 +104,15 @@ fn default_dcx(
         ColorConfig::Never
     };
 
-    let fallback_bundle = rustc_errors::fallback_fluent_bundle(
-        rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
-        false,
-    );
-    let emitter = Box::new(
-        HumanEmitter::new(stderr_destination(emit_color), fallback_bundle)
-            .sm(Some(source_map.clone())),
-    );
+    let translator = rustc_driver::default_translator();
 
-    let emitter: Box<DynEmitter> = if !show_parse_errors {
-        Box::new(SilentEmitter {
-            fatal_emitter: emitter,
-            fatal_note: None,
-            emit_fatal_diagnostic: false,
-        })
+    let emitter: Box<DynEmitter> = if show_parse_errors {
+        Box::new(
+            HumanEmitter::new(stderr_destination(emit_color), translator)
+                .sm(Some(source_map.clone())),
+        )
     } else {
-        emitter
+        Box::new(SilentEmitter { translator })
     };
     DiagCtxt::new(Box::new(SilentOnIgnoredFilesEmitter {
         has_non_ignorable_parser_errors: false,
@@ -205,7 +191,7 @@ impl ParseSess {
     }
 
     pub(crate) fn set_silent_emitter(&mut self) {
-        self.raw_psess.dcx().make_silent(None, false);
+        self.raw_psess.dcx().make_silent();
     }
 
     pub(crate) fn span_to_filename(&self, span: Span) -> FileName {
@@ -335,16 +321,6 @@ mod tests {
             num_emitted_errors: Arc<AtomicU32>,
         }
 
-        impl Translate for TestEmitter {
-            fn fluent_bundle(&self) -> Option<&rustc_errors::FluentBundle> {
-                None
-            }
-
-            fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
-                panic!("test emitter attempted to translate a diagnostic");
-            }
-        }
-
         impl Emitter for TestEmitter {
             fn source_map(&self) -> Option<&SourceMap> {
                 None
@@ -352,6 +328,10 @@ mod tests {
 
             fn emit_diagnostic(&mut self, _diag: DiagInner, _registry: &Registry) {
                 self.num_emitted_errors.fetch_add(1, Ordering::Release);
+            }
+
+            fn translator(&self) -> &Translator {
+                panic!("test emitter attempted to translate a diagnostic");
             }
         }
 

@@ -101,7 +101,7 @@ impl ExprValidator {
             self.check_for_trailing_return(body.body_expr, &body);
         }
 
-        for (id, expr) in body.exprs.iter() {
+        for (id, expr) in body.exprs() {
             if let Some((variant, missed_fields, true)) =
                 record_literal_missing_fields(db, &self.infer, id, expr)
             {
@@ -132,7 +132,7 @@ impl ExprValidator {
             }
         }
 
-        for (id, pat) in body.pats.iter() {
+        for (id, pat) in body.pats() {
             if let Some((variant, missed_fields, true)) =
                 record_pattern_missing_fields(db, &self.infer, id, pat)
             {
@@ -389,7 +389,7 @@ impl ExprValidator {
         if !self.validate_lints {
             return;
         }
-        match &body.exprs[body_expr] {
+        match &body[body_expr] {
             Expr::Block { statements, tail, .. } => {
                 let last_stmt = tail.or_else(|| match statements.last()? {
                     Statement::Expr { expr, .. } => Some(*expr),
@@ -428,7 +428,7 @@ impl ExprValidator {
             if else_branch.is_none() {
                 return;
             }
-            if let Expr::Block { statements, tail, .. } = &self.body.exprs[*then_branch] {
+            if let Expr::Block { statements, tail, .. } = &self.body[*then_branch] {
                 let last_then_expr = tail.or_else(|| match statements.last()? {
                     Statement::Expr { expr, .. } => Some(*expr),
                     _ => None,
@@ -494,7 +494,7 @@ impl FilterMapNextChecker {
                 Some(next_function_id),
                 match next_function_id.lookup(db).container {
                     ItemContainerId::TraitId(iterator_trait_id) => {
-                        let iterator_trait_items = &db.trait_items(iterator_trait_id).items;
+                        let iterator_trait_items = &iterator_trait_id.trait_items(db).items;
                         iterator_trait_items.iter().find_map(|(name, it)| match it {
                             &AssocItemId::FunctionId(id) if *name == sym::filter_map => Some(id),
                             _ => None,
@@ -558,7 +558,7 @@ pub fn record_literal_missing_fields(
         return None;
     }
 
-    let variant_data = variant_def.variant_data(db);
+    let variant_data = variant_def.fields(db);
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
     let missed_fields: Vec<LocalFieldId> = variant_data
@@ -588,7 +588,7 @@ pub fn record_pattern_missing_fields(
         return None;
     }
 
-    let variant_data = variant_def.variant_data(db);
+    let variant_data = variant_def.fields(db);
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
     let missed_fields: Vec<LocalFieldId> = variant_data
@@ -642,7 +642,7 @@ fn missing_match_arms<'p>(
     }
 
     let non_empty_enum = match scrut_ty.as_adt() {
-        Some((AdtId::EnumId(e), _)) => !cx.db.enum_variants(e).variants.is_empty(),
+        Some((AdtId::EnumId(e), _)) => !e.enum_variants(cx.db).variants.is_empty(),
         _ => false,
     };
     let display_target = DisplayTarget::from_crate(cx.db, krate);

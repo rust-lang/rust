@@ -183,7 +183,7 @@ mod sip;
 /// [impl]: ../../std/primitive.str.html#impl-Hash-for-str
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Hash"]
-pub trait Hash {
+pub trait Hash: marker::PointeeSized {
     /// Feeds this value into the given [`Hasher`].
     ///
     /// # Examples
@@ -886,7 +886,7 @@ mod impls {
             maybe_tuple_doc! {
                 $($name)+ @
                 #[stable(feature = "rust1", since = "1.0.0")]
-                impl<$($name: Hash),+> Hash for ($($name,)+) where last_type!($($name,)+): ?Sized {
+                impl<$($name: Hash),+> Hash for ($($name,)+) {
                     #[allow(non_snake_case)]
                     #[inline]
                     fn hash<S: Hasher>(&self, state: &mut S) {
@@ -910,11 +910,6 @@ mod impls {
             #[$meta]
             $item
         };
-    }
-
-    macro_rules! last_type {
-        ($a:ident,) => { $a };
-        ($a:ident, $($rest_a:ident,)+) => { last_type!($($rest_a,)+) };
     }
 
     impl_hash_tuple! {}
@@ -941,7 +936,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: ?Sized + Hash> Hash for &T {
+    impl<T: ?Sized + marker::PointeeSized + Hash> Hash for &T {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             (**self).hash(state);
@@ -949,7 +944,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: ?Sized + Hash> Hash for &mut T {
+    impl<T: ?Sized + marker::PointeeSized + Hash> Hash for &mut T {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             (**self).hash(state);
@@ -957,7 +952,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: ?Sized> Hash for *const T {
+    impl<T: ?Sized + marker::PointeeSized> Hash for *const T {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             let (address, metadata) = self.to_raw_parts();
@@ -967,7 +962,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: ?Sized> Hash for *mut T {
+    impl<T: ?Sized + marker::PointeeSized> Hash for *mut T {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             let (address, metadata) = self.to_raw_parts();

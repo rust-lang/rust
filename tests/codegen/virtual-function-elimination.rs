@@ -6,8 +6,6 @@
 // CHECK: @vtable.2 = {{.*}}, !type ![[TYPE2:[0-9]+]], !vcall_visibility ![[VCALL_VIS2:[0-9]+]]
 
 #![crate_type = "lib"]
-#![allow(incomplete_features)]
-#![feature(unsized_locals)]
 
 use std::rc::Rc;
 

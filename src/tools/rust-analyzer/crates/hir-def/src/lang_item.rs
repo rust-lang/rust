@@ -9,8 +9,10 @@ use triomphe::Arc;
 
 use crate::{
     AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, ModuleDefId,
-    StaticId, StructId, TraitId, TypeAliasId, UnionId, db::DefDatabase, expr_store::path::Path,
-    nameres::crate_def_map,
+    StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    db::DefDatabase,
+    expr_store::path::Path,
+    nameres::{assoc::TraitItems, crate_def_map},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -96,7 +98,7 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
     for (_, module_data) in crate_def_map.modules() {
         for impl_def in module_data.scope.impls() {
             lang_items.collect_lang_item(db, impl_def, LangItemTarget::ImplDef);
-            for &(_, assoc) in db.impl_items(impl_def).items.iter() {
+            for &(_, assoc) in impl_def.impl_items(db).items.iter() {
                 match assoc {
                     AssocItemId::FunctionId(f) => {
                         lang_items.collect_lang_item(db, f, LangItemTarget::Function)
@@ -113,19 +115,21 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
             match def {
                 ModuleDefId::TraitId(trait_) => {
                     lang_items.collect_lang_item(db, trait_, LangItemTarget::Trait);
-                    db.trait_items(trait_).items.iter().for_each(|&(_, assoc_id)| match assoc_id {
-                        AssocItemId::FunctionId(f) => {
-                            lang_items.collect_lang_item(db, f, LangItemTarget::Function);
+                    TraitItems::query(db, trait_).items.iter().for_each(|&(_, assoc_id)| {
+                        match assoc_id {
+                            AssocItemId::FunctionId(f) => {
+                                lang_items.collect_lang_item(db, f, LangItemTarget::Function);
+                            }
+                            AssocItemId::TypeAliasId(alias) => {
+                                lang_items.collect_lang_item(db, alias, LangItemTarget::TypeAlias)
+                            }
+                            AssocItemId::ConstId(_) => {}
                         }
-                        AssocItemId::TypeAliasId(alias) => {
-                            lang_items.collect_lang_item(db, alias, LangItemTarget::TypeAlias)
-                        }
-                        AssocItemId::ConstId(_) => {}
                     });
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                     lang_items.collect_lang_item(db, e, LangItemTarget::EnumId);
-                    db.enum_variants(e).variants.iter().for_each(|&(id, _)| {
+                    e.enum_variants(db).variants.iter().for_each(|&(id, _, _)| {
                         lang_items.collect_lang_item(db, id, LangItemTarget::EnumVariant);
                     });
                 }
@@ -304,6 +308,8 @@ impl LangItem {
 language_item_table! {
 //  Variant name,            Name,                     Getter method name,         Target                  Generic requirements;
     Sized,                   sym::sized,               sized_trait,                Target::Trait,          GenericRequirement::Exact(0);
+    MetaSized,               sym::meta_sized,          sized_trait,                Target::Trait,          GenericRequirement::Exact(0);
+    PointeeSized,            sym::pointee_sized,       sized_trait,                Target::Trait,          GenericRequirement::Exact(0);
     Unsize,                  sym::unsize,              unsize_trait,               Target::Trait,          GenericRequirement::Minimum(1);
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
     StructuralPeq,           sym::structural_peq,      structural_peq_trait,       Target::Trait,          GenericRequirement::None;
@@ -377,6 +383,7 @@ language_item_table! {
     AsyncFnMut,              sym::async_fn_mut,        async_fn_mut_trait,         Target::Trait,          GenericRequirement::Exact(1);
     AsyncFnOnce,             sym::async_fn_once,       async_fn_once_trait,        Target::Trait,          GenericRequirement::Exact(1);
 
+    AsyncFnOnceOutput,       sym::async_fn_once_output,async_fn_once_output,       Target::AssocTy,        GenericRequirement::None;
     FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
 
     Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);

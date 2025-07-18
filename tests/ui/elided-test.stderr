@@ -1,9 +1,0 @@
-error[E0601]: `main` function not found in crate `elided_test`
-  --> $DIR/elided-test.rs:5:2
-   |
-LL | }
-   |  ^ consider adding a `main` function to `$DIR/elided-test.rs`
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0601`.

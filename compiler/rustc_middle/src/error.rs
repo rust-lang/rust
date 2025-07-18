@@ -170,3 +170,20 @@ pub(crate) struct TypeLengthLimit {
     pub path: PathBuf,
     pub type_length: usize,
 }
+
+#[derive(Diagnostic)]
+#[diag(middle_max_num_nodes_in_valtree)]
+pub(crate) struct MaxNumNodesInValtree {
+    #[primary_span]
+    pub span: Span,
+    pub global_const_id: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_invalid_const_in_valtree)]
+#[note]
+pub(crate) struct InvalidConstInValtree {
+    #[primary_span]
+    pub span: Span,
+    pub global_const_id: String,
+}

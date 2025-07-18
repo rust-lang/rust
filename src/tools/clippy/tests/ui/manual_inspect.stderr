@@ -157,25 +157,8 @@ LL |
 LL ~         println!("{}", x);
    |
 
-error: this call to `map()` won't have an effect on the call to `count()`
-  --> tests/ui/manual_inspect.rs:167:13
-   |
-LL |       let _ = [0]
-   |  _____________^
-LL | |
-LL | |         .into_iter()
-LL | |         .map(|x| {
-...  |
-LL | |         })
-LL | |         .count();
-   | |________________^
-   |
-   = help: make sure you did not confuse `map` with `filter`, `for_each` or `inspect`
-   = note: `-D clippy::suspicious-map` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::suspicious_map)]`
-
 error: using `map` over `inspect`
-  --> tests/ui/manual_inspect.rs:170:10
+  --> tests/ui/manual_inspect.rs:169:10
    |
 LL |         .map(|x| {
    |          ^^^
@@ -188,7 +171,7 @@ LL ~             println!("{}", x);
    |
 
 error: using `map` over `inspect`
-  --> tests/ui/manual_inspect.rs:203:30
+  --> tests/ui/manual_inspect.rs:202:30
    |
 LL |     if let Some(x) = Some(1).map(|x| { println!("{x}");
    |                              ^^^
@@ -200,5 +183,5 @@ LL |         // Do not collapse code into this comment
 LL ~          }) {
    |
 
-error: aborting due to 14 previous errors
+error: aborting due to 13 previous errors
 

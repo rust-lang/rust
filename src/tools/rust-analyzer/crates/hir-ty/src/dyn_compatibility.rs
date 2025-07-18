@@ -101,7 +101,7 @@ where
 
     // rustc checks for non-lifetime binders here, but we don't support HRTB yet
 
-    let trait_data = db.trait_items(trait_);
+    let trait_data = trait_.trait_items(db);
     for (_, assoc_item) in &trait_data.items {
         dyn_compatibility_violation_for_assoc_item(db, trait_, *assoc_item, cb)?;
     }
@@ -122,7 +122,7 @@ pub fn dyn_compatibility_of_trait_query(
     res
 }
 
-fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool {
+pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool {
     let krate = def.module(db).krate();
     let Some(sized) = LangItem::Sized.resolve_trait(db, krate) else {
         return false;
@@ -164,7 +164,7 @@ fn predicates_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
 
 // Same as the above, `predicates_reference_self`
 fn bounds_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
-    let trait_data = db.trait_items(trait_);
+    let trait_data = trait_.trait_items(db);
     trait_data
         .items
         .iter()

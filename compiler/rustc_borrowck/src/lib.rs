@@ -16,7 +16,7 @@
 // tidy-alphabetical-end
 
 use std::borrow::Cow;
-use std::cell::RefCell;
+use std::cell::{OnceCell, RefCell};
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
 
@@ -29,7 +29,7 @@ use rustc_errors::LintDiagnostic;
 use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
+use rustc_index::bit_set::MixedBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{
     InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
@@ -51,7 +51,7 @@ use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use crate::borrow_set::{BorrowData, BorrowSet};
-use crate::consumers::{BodyWithBorrowckFacts, ConsumerOptions};
+use crate::consumers::BodyWithBorrowckFacts;
 use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows};
 use crate::diagnostics::{
     AccessKind, BorrowckDiagnosticsBuffer, IllegalMoveOriginKind, MoveError, RegionName,
@@ -124,7 +124,7 @@ fn mir_borrowck(
         let opaque_types = ConcreteOpaqueTypes(Default::default());
         Ok(tcx.arena.alloc(opaque_types))
     } else {
-        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def);
+        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None);
         // We need to manually borrowck all nested bodies from the HIR as
         // we do not generate MIR for dead code. Not doing so causes us to
         // never check closures in dead code.
@@ -134,7 +134,7 @@ fn mir_borrowck(
         }
 
         let PropagatedBorrowCheckResults { closure_requirements, used_mut_upvars } =
-            do_mir_borrowck(&mut root_cx, def, None).0;
+            do_mir_borrowck(&mut root_cx, def);
         debug_assert!(closure_requirements.is_none());
         debug_assert!(used_mut_upvars.is_empty());
         root_cx.finalize()
@@ -289,17 +289,12 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
 
 /// Perform the actual borrow checking.
 ///
-/// Use `consumer_options: None` for the default behavior of returning
-/// [`PropagatedBorrowCheckResults`] only. Otherwise, return [`BodyWithBorrowckFacts`]
-/// according to the given [`ConsumerOptions`].
-///
 /// For nested bodies this should only be called through `root_cx.get_or_insert_nested`.
 #[instrument(skip(root_cx), level = "debug")]
 fn do_mir_borrowck<'tcx>(
     root_cx: &mut BorrowCheckRootCtxt<'tcx>,
     def: LocalDefId,
-    consumer_options: Option<ConsumerOptions>,
-) -> (PropagatedBorrowCheckResults<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
+) -> PropagatedBorrowCheckResults<'tcx> {
     let tcx = root_cx.tcx;
     let infcx = BorrowckInferCtxt::new(tcx, def);
     let (input_body, promoted) = tcx.mir_promoted(def);
@@ -343,7 +338,6 @@ fn do_mir_borrowck<'tcx>(
         &location_table,
         &move_data,
         &borrow_set,
-        consumer_options,
     );
 
     // Dump MIR results into a file, if that is enabled. This lets us
@@ -391,7 +385,7 @@ fn do_mir_borrowck<'tcx>(
             used_mut_upvars: SmallVec::new(),
             borrow_set: &borrow_set,
             upvars: &[],
-            local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
+            local_names: OnceCell::from(IndexVec::from_elem(None, &promoted_body.local_decls)),
             region_names: RefCell::default(),
             next_region_name: RefCell::new(1),
             polonius_output: None,
@@ -414,26 +408,6 @@ fn do_mir_borrowck<'tcx>(
         promoted_mbcx.report_move_errors();
     }
 
-    let mut local_names = IndexVec::from_elem(None, &body.local_decls);
-    for var_debug_info in &body.var_debug_info {
-        if let VarDebugInfoContents::Place(place) = var_debug_info.value {
-            if let Some(local) = place.as_local() {
-                if let Some(prev_name) = local_names[local]
-                    && var_debug_info.name != prev_name
-                {
-                    span_bug!(
-                        var_debug_info.source_info.span,
-                        "local {:?} has many names (`{}` vs `{}`)",
-                        local,
-                        prev_name,
-                        var_debug_info.name
-                    );
-                }
-                local_names[local] = Some(var_debug_info.name);
-            }
-        }
-    }
-
     let mut mbcx = MirBorrowckCtxt {
         root_cx,
         infcx: &infcx,
@@ -450,7 +424,7 @@ fn do_mir_borrowck<'tcx>(
         used_mut_upvars: SmallVec::new(),
         borrow_set: &borrow_set,
         upvars: tcx.closure_captures(def),
-        local_names,
+        local_names: OnceCell::new(),
         region_names: RefCell::default(),
         next_region_name: RefCell::new(1),
         move_errors: Vec::new(),
@@ -503,23 +477,24 @@ fn do_mir_borrowck<'tcx>(
         used_mut_upvars: mbcx.used_mut_upvars,
     };
 
-    let body_with_facts = if consumer_options.is_some() {
-        Some(Box::new(BodyWithBorrowckFacts {
-            body: body_owned,
-            promoted,
-            borrow_set,
-            region_inference_context: regioncx,
-            location_table: polonius_input.as_ref().map(|_| location_table),
-            input_facts: polonius_input,
-            output_facts: polonius_output,
-        }))
-    } else {
-        None
-    };
+    if let Some(consumer) = &mut root_cx.consumer {
+        consumer.insert_body(
+            def,
+            BodyWithBorrowckFacts {
+                body: body_owned,
+                promoted,
+                borrow_set,
+                region_inference_context: regioncx,
+                location_table: polonius_input.as_ref().map(|_| location_table),
+                input_facts: polonius_input,
+                output_facts: polonius_output,
+            },
+        );
+    }
 
     debug!("do_mir_borrowck: result = {:#?}", result);
 
-    (result, body_with_facts)
+    result
 }
 
 fn get_flow_results<'a, 'tcx>(
@@ -682,7 +657,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     upvars: &'tcx [&'tcx ty::CapturedPlace<'tcx>],
 
     /// Names of local (user) variables (extracted from `var_debug_info`).
-    local_names: IndexVec<Local, Option<Symbol>>,
+    local_names: OnceCell<IndexVec<Local, Option<Symbol>>>,
 
     /// Record the region names generated for each region in the given
     /// MIR def so that we can reuse them later in help/error messages.
@@ -1151,11 +1126,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         &self,
         location: Location,
         state: &'s BorrowckDomain,
-    ) -> Cow<'s, DenseBitSet<BorrowIndex>> {
+    ) -> Cow<'s, MixedBitSet<BorrowIndex>> {
         if let Some(polonius) = &self.polonius_output {
             // Use polonius output if it has been enabled.
             let location = self.location_table.start_index(location);
-            let mut polonius_output = DenseBitSet::new_empty(self.borrow_set.len());
+            let mut polonius_output = MixedBitSet::new_empty(self.borrow_set.len());
             for &idx in polonius.errors_at(location) {
                 polonius_output.insert(idx);
             }
@@ -2610,7 +2585,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             };
 
             // Skip over locals that begin with an underscore or have no name
-            if self.local_names[local].is_none_or(|name| name.as_str().starts_with('_')) {
+            if self.local_excluded_from_unused_mut_lint(local) {
                 continue;
             }
 

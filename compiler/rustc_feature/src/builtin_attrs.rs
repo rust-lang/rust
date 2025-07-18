@@ -5,6 +5,7 @@ use std::sync::LazyLock;
 use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
+use rustc_attr_data_structures::EncodeCrossCrate;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::edition::Edition;
 use rustc_span::{Symbol, sym};
@@ -111,6 +112,7 @@ pub enum AttributeGate {
     Ungated,
 }
 
+// FIXME(jdonszelmann): move to rustc_attr_data_structures
 /// A template that the attribute input must match.
 /// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
 #[derive(Clone, Copy, Default)]
@@ -125,6 +127,26 @@ pub struct AttributeTemplate {
     /// If `Some`, the attribute is allowed to be a name/value pair where the
     /// value is a string, like `#[must_use = "reason"]`.
     pub name_value_str: Option<&'static str>,
+}
+
+impl AttributeTemplate {
+    pub fn suggestions(&self, inner: bool, name: impl std::fmt::Display) -> Vec<String> {
+        let mut suggestions = vec![];
+        let inner = if inner { "!" } else { "" };
+        if self.word {
+            suggestions.push(format!("#{inner}[{name}]"));
+        }
+        if let Some(descr) = self.list {
+            suggestions.push(format!("#{inner}[{name}({descr})]"));
+        }
+        suggestions.extend(self.one_of.iter().map(|&word| format!("#{inner}[{name}({word})]")));
+        if let Some(descr) = self.name_value_str {
+            suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
+        }
+        suggestions.sort();
+
+        suggestions
+    }
 }
 
 /// How to handle multiple duplicate attributes on the same item.
@@ -181,20 +203,21 @@ pub enum AttributeDuplicates {
 /// A convenience macro for constructing attribute templates.
 /// E.g., `template!(Word, List: "description")` means that the attribute
 /// supports forms `#[attr]` and `#[attr(description)]`.
+#[macro_export]
 macro_rules! template {
-    (Word) => { template!(@ true, None, &[], None) };
-    (List: $descr: expr) => { template!(@ false, Some($descr), &[], None) };
-    (OneOf: $one_of: expr) => { template!(@ false, None, $one_of, None) };
-    (NameValueStr: $descr: expr) => { template!(@ false, None, &[], Some($descr)) };
-    (Word, List: $descr: expr) => { template!(@ true, Some($descr), &[], None) };
-    (Word, NameValueStr: $descr: expr) => { template!(@ true, None, &[], Some($descr)) };
+    (Word) => { $crate::template!(@ true, None, &[], None) };
+    (List: $descr: expr) => { $crate::template!(@ false, Some($descr), &[], None) };
+    (OneOf: $one_of: expr) => { $crate::template!(@ false, None, $one_of, None) };
+    (NameValueStr: $descr: expr) => { $crate::template!(@ false, None, &[], Some($descr)) };
+    (Word, List: $descr: expr) => { $crate::template!(@ true, Some($descr), &[], None) };
+    (Word, NameValueStr: $descr: expr) => { $crate::template!(@ true, None, &[], Some($descr)) };
     (List: $descr1: expr, NameValueStr: $descr2: expr) => {
-        template!(@ false, Some($descr1), &[], Some($descr2))
+        $crate::template!(@ false, Some($descr1), &[], Some($descr2))
     };
     (Word, List: $descr1: expr, NameValueStr: $descr2: expr) => {
-        template!(@ true, Some($descr1), &[], Some($descr2))
+        $crate::template!(@ true, Some($descr1), &[], Some($descr2))
     };
-    (@ $word: expr, $list: expr, $one_of: expr, $name_value_str: expr) => { AttributeTemplate {
+    (@ $word: expr, $list: expr, $one_of: expr, $name_value_str: expr) => { $crate::AttributeTemplate {
         word: $word, list: $list, one_of: $one_of, name_value_str: $name_value_str
     } };
 }
@@ -346,12 +369,6 @@ macro_rules! experimental {
     };
 }
 
-#[derive(PartialEq)]
-pub enum EncodeCrossCrate {
-    Yes,
-    No,
-}
-
 pub struct BuiltinAttribute {
     pub name: Symbol,
     /// Whether this attribute is encode cross crate.
@@ -473,6 +490,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(no_link, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(repr, Normal, template!(List: "C"), DuplicatesOk, EncodeCrossCrate::No),
+    gated!(align, Normal, template!(List: "alignment"), DuplicatesOk, EncodeCrossCrate::No, fn_align, experimental!(align)),
     ungated!(unsafe(Edition2024) export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
     ungated!(unsafe(Edition2024) link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
     ungated!(unsafe(Edition2024) no_mangle, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
@@ -596,6 +614,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // RFC 2632
+    // FIXME(const_trait_impl) remove this
     gated!(
         const_trait, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No, const_trait_impl,
         "`const_trait` is a temporary placeholder for marking a trait that is suitable for `const` \
@@ -634,6 +653,19 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, min_generic_const_args, experimental!(type_const),
     ),
 
+    // The `#[loop_match]` and `#[const_continue]` attributes are part of the
+    // lang experiment for RFC 3720 tracked in:
+    //
+    // - https://github.com/rust-lang/rust/issues/132306
+    gated!(
+        const_continue, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::No, loop_match, experimental!(const_continue)
+    ),
+    gated!(
+        loop_match, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::No, loop_match, experimental!(loop_match)
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================
@@ -651,6 +683,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         unstable, Normal,
         template!(List: r#"feature = "name", reason = "...", issue = "N""#), DuplicatesOk,
         EncodeCrossCrate::Yes
+    ),
+    ungated!(
+        unstable_feature_bound, Normal, template!(Word, List: "feat1, feat2, ..."),
+        DuplicatesOk, EncodeCrossCrate::No,
     ),
     ungated!(
         rustc_const_unstable, Normal, template!(List: r#"feature = "name""#),
@@ -687,7 +723,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_pub_transparent, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes,
+        ErrorFollowing, EncodeCrossCrate::Yes,
         "used internally to mark types with a `transparent` representation when it is guaranteed by the documentation",
     ),
 
@@ -887,7 +923,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_legacy_const_generics, Normal, template!(List: "N"), ErrorFollowing,
         EncodeCrossCrate::Yes,
     ),
-    // Do not const-check this function's body. It will always get replaced during CTFE.
+    // Do not const-check this function's body. It will always get replaced during CTFE via `hook_special_const_fn`.
     rustc_attr!(
         rustc_do_not_const_check, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::Yes, "`#[rustc_do_not_const_check]` skips const-check for this function's body",
@@ -1060,7 +1096,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "the `#[rustc_main]` attribute is used internally to specify test entry point function",
     ),
     rustc_attr!(
-        rustc_skip_during_method_dispatch, Normal, template!(List: "array, boxed_slice"), WarnFollowing,
+        rustc_skip_during_method_dispatch, Normal, template!(List: "array, boxed_slice"), ErrorFollowing,
         EncodeCrossCrate::No,
         "the `#[rustc_skip_during_method_dispatch]` attribute is used to exclude a trait \
         from method dispatch when the receiver is of the following type, for compatibility in \
@@ -1107,6 +1143,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         TEST, rustc_insignificant_dtor, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::Yes
+    ),
+    rustc_attr!(
+        TEST, rustc_no_implicit_bounds, CrateLevel, template!(Word),
+        WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
         TEST, rustc_strict_coherence, Normal, template!(Word),

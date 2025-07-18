@@ -1,16 +1,16 @@
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for static items
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for statics
   --> $DIR/issue-88643.rs:10:56
    |
 LL | static CALLBACKS: HashMap<*const dyn T, dyn FnMut(&mut _) + 'static> = HashMap::new();
    |                                                        ^ not allowed in type signatures
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for static items
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for statics
   --> $DIR/issue-88643.rs:13:33
    |
 LL | static CALLBACKS2: Vec<dyn Fn(& _)> = Vec::new();
    |                                 ^ not allowed in type signatures
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for static items
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for statics
   --> $DIR/issue-88643.rs:16:36
    |
 LL | static CALLBACKS3: Option<dyn Fn(& _)> = None;

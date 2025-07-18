@@ -49,6 +49,12 @@ enum E {
     Variant {} //~ ERROR the `#[default]` attribute may only be used on unit enum variants
 }
 
+union U
+{
+    x: i32 = 1,  //~ ERROR unions cannot have default field values
+    y: f32 = 2., //~ ERROR unions cannot have default field values
+}
+
 fn main () {
     let _ = Foo { .. }; // ok
     let _ = Foo::default(); // ok

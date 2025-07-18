@@ -42,13 +42,13 @@ use std::sync::Arc;
 
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, *};
-use rustc_attr_parsing::{AttributeParser, OmitDoc};
+use rustc_attr_parsing::{AttributeParser, Late, OmitDoc};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::spawn;
 use rustc_data_structures::tagged_ptr::TaggedRef;
-use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
+use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lints::DelayedLint;
@@ -60,7 +60,7 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
-use rustc_session::parse::{add_feature_diagnostics, feature_err};
+use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
 use smallvec::SmallVec;
@@ -192,7 +192,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
 
-            attribute_parser: AttributeParser::new(tcx.sess, tcx.features(), registered_tools),
+            attribute_parser: AttributeParser::new(
+                tcx.sess,
+                tcx.features(),
+                registered_tools,
+                Late,
+            ),
             delayed_lints: Vec::new(),
         }
     }
@@ -1209,6 +1214,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         modifiers: TraitBoundModifiers::NONE,
                         trait_ref: TraitRef { path: path.clone(), ref_id: t.id },
                         span: t.span,
+                        parens: ast::Parens::No,
                     },
                     itctx,
                 );
@@ -1268,9 +1274,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let path = self.make_lang_item_qpath(LangItem::Pin, span, Some(args));
                 hir::TyKind::Path(path)
             }
-            TyKind::BareFn(f) => {
+            TyKind::FnPtr(f) => {
                 let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
-                hir::TyKind::BareFn(self.arena.alloc(hir::BareFnTy {
+                hir::TyKind::FnPtr(self.arena.alloc(hir::FnPtrTy {
                     generic_params,
                     safety: self.lower_safety(f.safety, hir::Safety::Safe),
                     abi: self.lower_extern(f.ext),
@@ -1959,7 +1965,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 (hir::ParamName::Plain(self.lower_ident(param.ident)), kind)
             }
-            GenericParamKind::Const { ty, kw_span: _, default } => {
+            GenericParamKind::Const { ty, span: _, default } => {
                 let ty = self
                     .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault));
 
@@ -2109,15 +2115,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // `ExprKind::Paren(ExprKind::Underscore)` and should also be lowered to `GenericArg::Infer`
         match c.value.peel_parens().kind {
             ExprKind::Underscore => {
-                if !self.tcx.features().generic_arg_infer() {
-                    feature_err(
-                        &self.tcx.sess,
-                        sym::generic_arg_infer,
-                        c.value.span,
-                        fluent_generated::ast_lowering_underscore_array_length_unstable,
-                    )
-                    .stash(c.value.span, StashKey::UnderscoreForArrayLengths);
-                }
                 let ct_kind = hir::ConstArgKind::Infer(self.lower_span(c.value.span), ());
                 self.arena.alloc(hir::ConstArg { hir_id: self.lower_node_id(c.id), kind: ct_kind })
             }
@@ -2147,7 +2144,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 ty_id,
                 &None,
                 path,
-                ParamMode::Optional,
+                ParamMode::Explicit,
                 AllowReturnTypeNotation::No,
                 // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
@@ -2219,7 +2216,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 expr.id,
                 qself,
                 path,
-                ParamMode::Optional,
+                ParamMode::Explicit,
                 AllowReturnTypeNotation::No,
                 // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
@@ -2295,6 +2292,26 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             pat,
             els: None,
             source,
+            span: self.lower_span(span),
+            ty: None,
+        };
+        self.stmt(span, hir::StmtKind::Let(self.arena.alloc(local)))
+    }
+
+    fn stmt_super_let_pat(
+        &mut self,
+        span: Span,
+        pat: &'hir hir::Pat<'hir>,
+        init: Option<&'hir hir::Expr<'hir>>,
+    ) -> hir::Stmt<'hir> {
+        let hir_id = self.next_id();
+        let local = hir::LetStmt {
+            super_: Some(span),
+            hir_id,
+            init,
+            pat,
+            els: None,
+            source: hir::LocalSource::Normal,
             span: self.lower_span(span),
             ty: None,
         };

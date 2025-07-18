@@ -46,7 +46,7 @@ pub(crate) fn render_struct_pat(
 pub(crate) fn render_variant_pat(
     ctx: RenderContext<'_>,
     pattern_ctx: &PatternContext,
-    path_ctx: Option<&PathCompletionCtx>,
+    path_ctx: Option<&PathCompletionCtx<'_>>,
     variant: hir::Variant,
     local_name: Option<Name>,
     path: Option<&hir::ModPath>,
@@ -109,7 +109,7 @@ fn build_completion(
     lookup: SmolStr,
     pat: String,
     def: impl HasDocs + Copy,
-    adt_ty: hir::Type,
+    adt_ty: hir::Type<'_>,
     // Missing in context of match statement completions
     is_variant_missing: bool,
 ) -> CompletionItem {

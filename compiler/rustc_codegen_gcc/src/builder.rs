@@ -30,7 +30,7 @@ use rustc_middle::ty::{self, AtomicOrdering, Instance, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, Target, WasmCAbi, X86Abi};
+use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 
 use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
@@ -520,8 +520,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.block
     }
 
-    fn append_block(cx: &'a CodegenCx<'gcc, 'tcx>, func: RValue<'gcc>, name: &str) -> Block<'gcc> {
-        let func = cx.rvalue_as_function(func);
+    fn append_block(_: &'a CodegenCx<'gcc, 'tcx>, func: Function<'gcc>, name: &str) -> Block<'gcc> {
         func.new_block(name)
     }
 
@@ -539,11 +538,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn ret(&mut self, mut value: RValue<'gcc>) {
-        if self.structs_as_pointer.borrow().contains(&value) {
-            // NOTE: hack to workaround a limitation of the rustc API: see comment on
-            // CodegenCx.structs_as_pointer
-            value = value.dereference(self.location).to_rvalue();
-        }
         let expected_return_type = self.current_func().get_return_type();
         if !expected_return_type.is_compatible_with(value.get_type()) {
             // NOTE: due to opaque pointers now being used, we need to cast here.
@@ -701,7 +695,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let a = self.gcc_int_cast(a, a_type);
         let b_type = b.get_type().to_unsigned(self);
         let b = self.gcc_int_cast(b, b_type);
-        a / b
+        self.gcc_udiv(a, b)
     }
 
     fn sdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -713,8 +707,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // FIXME(antoyo): rustc_codegen_ssa::mir::intrinsic uses different types for a and b but they
         // should be the same.
         let typ = a.get_type().to_signed(self);
-        let b = self.context.new_cast(self.location, b, typ);
-        a / b
+        let b = self.gcc_int_cast(b, typ);
+        self.gcc_sdiv(a, b)
     }
 
     fn fdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -765,7 +759,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         #[cfg(feature = "master")]
         match self.cx.type_kind(a_type) {
-            TypeKind::Half | TypeKind::Float => {
+            TypeKind::Half => {
+                let fmodf = self.context.get_builtin_function("fmodf");
+                let f32_type = self.type_f32();
+                let a = self.context.new_cast(self.location, a, f32_type);
+                let b = self.context.new_cast(self.location, b, f32_type);
+                let result = self.context.new_call(self.location, fmodf, &[a, b]);
+                return self.context.new_cast(self.location, result, a_type);
+            }
+            TypeKind::Float => {
                 let fmodf = self.context.get_builtin_function("fmodf");
                 return self.context.new_call(self.location, fmodf, &[a, b]);
             }
@@ -774,8 +776,20 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 return self.context.new_call(self.location, fmod, &[a, b]);
             }
             TypeKind::FP128 => {
-                let fmodl = self.context.get_builtin_function("fmodl");
-                return self.context.new_call(self.location, fmodl, &[a, b]);
+                // TODO(antoyo): use get_simple_function_f128_2args.
+                let f128_type = self.type_f128();
+                let fmodf128 = self.context.new_function(
+                    None,
+                    gccjit::FunctionType::Extern,
+                    f128_type,
+                    &[
+                        self.context.new_parameter(None, f128_type, "a"),
+                        self.context.new_parameter(None, f128_type, "b"),
+                    ],
+                    "fmodf128",
+                    false,
+                );
+                return self.context.new_call(self.location, fmodf128, &[a, b]);
             }
             _ => (),
         }
@@ -897,7 +911,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn checked_binop(
         &mut self,
         oop: OverflowOp,
-        typ: Ty<'_>,
+        typ: Ty<'tcx>,
         lhs: Self::Value,
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value) {
@@ -912,24 +926,39 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             .get_address(self.location)
     }
 
-    fn dynamic_alloca(&mut self, _len: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
-        unimplemented!();
-    }
-
     fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
         let block = self.llbb();
         let function = block.get_function();
+        // NOTE(FractalFir): In some cases, we *should* skip the call to get_aligned.
+        // For example, calling `get_aligned` on a i8 is pointless(since it can only be 1 aligned)
+        // Calling get_aligned on a `u128`/`i128` causes the attribute to become "stacked"
+        //
+        // From GCCs perspective:
+        // __int128_t  __attribute__((aligned(16)))  __attribute__((aligned(16)))
+        // and:
+        // __int128_t  __attribute__((aligned(16)))
+        // are 2 distinct, incompatible types.
+        //
+        // So, we skip the call to `get_aligned` in such a case. *Ideally*, we could do this for all the types,
+        // but the GCC APIs to facilitate this just aren't quite there yet.
+
+        // This checks that we only skip `get_aligned` on 128 bit ints if they have the correct alignment.
+        // Otherwise, this may be an under-aligned load, so we will still call get_aligned.
+        let mut can_skip_align = (pointee_ty == self.cx.u128_type
+            || pointee_ty == self.cx.i128_type)
+            && align == self.int128_align;
+        // We can skip the call to `get_aligned` for byte-sized types with alignment of 1.
+        can_skip_align = can_skip_align
+            || (pointee_ty == self.cx.u8_type || pointee_ty == self.cx.i8_type)
+                && align.bytes() == 1;
+        // Skip the call to `get_aligned` when possible.
+        let aligned_type =
+            if can_skip_align { pointee_ty } else { pointee_ty.get_aligned(align.bytes()) };
+
+        let ptr = self.context.new_cast(self.location, ptr, aligned_type.make_pointer());
         // NOTE: instead of returning the dereference here, we have to assign it to a variable in
         // the current basic block. Otherwise, it could be used in another basic block, causing a
         // dereference after a drop, for instance.
-        // FIXME(antoyo): this check that we don't call get_aligned() a second time on a type.
-        // Ideally, we shouldn't need to do this check.
-        let aligned_type = if pointee_ty == self.cx.u128_type || pointee_ty == self.cx.i128_type {
-            pointee_ty
-        } else {
-            pointee_ty.get_aligned(align.bytes())
-        };
-        let ptr = self.context.new_cast(self.location, ptr, aligned_type.make_pointer());
         let deref = ptr.dereference(self.location).to_rvalue();
         let loaded_value = function.new_local(
             self.location,
@@ -1010,13 +1039,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             let b_offset = a.size(self).align_to(b.align(self).abi);
 
             let mut load = |i, scalar: &abi::Scalar, align| {
-                let llptr = if i == 0 {
+                let ptr = if i == 0 {
                     place.val.llval
                 } else {
                     self.inbounds_ptradd(place.val.llval, self.const_usize(b_offset.bytes()))
                 };
                 let llty = place.layout.scalar_pair_element_gcc_type(self, i);
-                let load = self.load(llty, llptr, align);
+                let load = self.load(llty, ptr, align);
                 scalar_load_metadata(self, load, scalar);
                 if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
             };
@@ -1464,16 +1493,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             element.get_address(self.location)
         } else if value_type.dyncast_vector().is_some() {
             panic!();
-        } else if let Some(pointer_type) = value_type.get_pointee() {
-            if let Some(struct_type) = pointer_type.is_struct() {
-                // NOTE: hack to workaround a limitation of the rustc API: see comment on
-                // CodegenCx.structs_as_pointer
-                aggregate_value
-                    .dereference_field(self.location, struct_type.get_field(idx as i32))
-                    .to_rvalue()
-            } else {
-                panic!("Unexpected type {:?}", value_type);
-            }
         } else if let Some(struct_type) = value_type.is_struct() {
             aggregate_value
                 .access_field(self.location, struct_type.get_field(idx as i32))
@@ -1493,21 +1512,18 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         assert_eq!(idx as usize as u64, idx);
         let value_type = aggregate_value.get_type();
 
+        let new_val = self.current_func().new_local(None, value_type, "aggregate_value");
+        self.block.add_assignment(None, new_val, aggregate_value);
+
         let lvalue = if value_type.dyncast_array().is_some() {
             let index = self
                 .context
                 .new_rvalue_from_long(self.u64_type, i64::try_from(idx).expect("i64::try_from"));
-            self.context.new_array_access(self.location, aggregate_value, index)
+            self.context.new_array_access(self.location, new_val, index)
         } else if value_type.dyncast_vector().is_some() {
             panic!();
-        } else if let Some(pointer_type) = value_type.get_pointee() {
-            if let Some(struct_type) = pointer_type.is_struct() {
-                // NOTE: hack to workaround a limitation of the rustc API: see comment on
-                // CodegenCx.structs_as_pointer
-                aggregate_value.dereference_field(self.location, struct_type.get_field(idx as i32))
-            } else {
-                panic!("Unexpected type {:?}", value_type);
-            }
+        } else if let Some(struct_type) = value_type.is_struct() {
+            new_val.access_field(None, struct_type.get_field(idx as i32))
         } else {
             panic!("Unexpected type {:?}", value_type);
         };
@@ -1524,19 +1540,16 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         self.llbb().add_assignment(self.location, lvalue, value);
 
-        aggregate_value
+        new_val.to_rvalue()
     }
 
-    fn set_personality_fn(&mut self, _personality: RValue<'gcc>) {
+    fn set_personality_fn(&mut self, _personality: Function<'gcc>) {
         #[cfg(feature = "master")]
-        {
-            let personality = self.rvalue_as_function(_personality);
-            self.current_func().set_personality_function(personality);
-        }
+        self.current_func().set_personality_function(_personality);
     }
 
     #[cfg(feature = "master")]
-    fn cleanup_landing_pad(&mut self, pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+    fn cleanup_landing_pad(&mut self, pers_fn: Function<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         self.set_personality_fn(pers_fn);
 
         // NOTE: insert the current block in a variable so that a later call to invoke knows to
@@ -1557,7 +1570,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(not(feature = "master"))]
-    fn cleanup_landing_pad(&mut self, _pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+    fn cleanup_landing_pad(&mut self, _pers_fn: Function<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         let value1 = self
             .current_func()
             .new_local(self.location, self.u8_type.make_pointer(), "landing_pad0")
@@ -1567,9 +1580,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         (value1, value2)
     }
 
-    fn filter_landing_pad(&mut self, pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+    fn filter_landing_pad(&mut self, pers_fn: Function<'gcc>) {
         // TODO(antoyo): generate the correct landing pad
-        self.cleanup_landing_pad(pers_fn)
+        self.cleanup_landing_pad(pers_fn);
     }
 
     #[cfg(feature = "master")]
@@ -2391,12 +2404,6 @@ impl<'tcx> HasTypingEnv<'tcx> for Builder<'_, '_, 'tcx> {
 impl<'tcx> HasTargetSpec for Builder<'_, '_, 'tcx> {
     fn target_spec(&self) -> &Target {
         self.cx.target_spec()
-    }
-}
-
-impl<'tcx> HasWasmCAbiOpt for Builder<'_, '_, 'tcx> {
-    fn wasm_c_abi_opt(&self) -> WasmCAbi {
-        self.cx.wasm_c_abi_opt()
     }
 }
 

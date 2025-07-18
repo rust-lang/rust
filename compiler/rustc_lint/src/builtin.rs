@@ -21,13 +21,14 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_errors::{Applicability, LintDiagnostic};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{Body, FnDecl, GenericParamKind, PatKind, PredicateOrigin};
+use rustc_hir::{Body, FnDecl, PatKind, PredicateOrigin};
 use rustc_middle::bug;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::ty::layout::LayoutOf;
@@ -951,39 +952,38 @@ declare_lint! {
 
 declare_lint_pass!(InvalidNoMangleItems => [NO_MANGLE_CONST_ITEMS, NO_MANGLE_GENERIC_ITEMS]);
 
+impl InvalidNoMangleItems {
+    fn check_no_mangle_on_generic_fn(
+        &self,
+        cx: &LateContext<'_>,
+        attr_span: Span,
+        def_id: LocalDefId,
+    ) {
+        let generics = cx.tcx.generics_of(def_id);
+        if generics.requires_monomorphization(cx.tcx) {
+            cx.emit_span_lint(
+                NO_MANGLE_GENERIC_ITEMS,
+                cx.tcx.def_span(def_id),
+                BuiltinNoMangleGeneric { suggestion: attr_span },
+            );
+        }
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         let attrs = cx.tcx.hir_attrs(it.hir_id());
-        let check_no_mangle_on_generic_fn = |attr: &hir::Attribute,
-                                             impl_generics: Option<&hir::Generics<'_>>,
-                                             generics: &hir::Generics<'_>,
-                                             span| {
-            for param in
-                generics.params.iter().chain(impl_generics.map(|g| g.params).into_iter().flatten())
-            {
-                match param.kind {
-                    GenericParamKind::Lifetime { .. } => {}
-                    GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                        cx.emit_span_lint(
-                            NO_MANGLE_GENERIC_ITEMS,
-                            span,
-                            BuiltinNoMangleGeneric { suggestion: attr.span() },
-                        );
-                        break;
-                    }
-                }
-            }
-        };
         match it.kind {
-            hir::ItemKind::Fn { generics, .. } => {
-                if let Some(attr) = attr::find_by_name(attrs, sym::export_name)
-                    .or_else(|| attr::find_by_name(attrs, sym::no_mangle))
+            hir::ItemKind::Fn { .. } => {
+                if let Some(attr_span) =
+                    find_attr!(attrs, AttributeKind::ExportName {span, ..} => *span)
+                        .or_else(|| find_attr!(attrs, AttributeKind::NoMangle(span) => *span))
                 {
-                    check_no_mangle_on_generic_fn(attr, None, generics, it.span);
+                    self.check_no_mangle_on_generic_fn(cx, attr_span, it.owner_id.def_id);
                 }
             }
             hir::ItemKind::Const(..) => {
-                if attr::contains_name(attrs, sym::no_mangle) {
+                if find_attr!(attrs, AttributeKind::NoMangle(..)) {
                     // account for "pub const" (#45562)
                     let start = cx
                         .tcx
@@ -1004,21 +1004,19 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                     );
                 }
             }
-            hir::ItemKind::Impl(hir::Impl { generics, items, .. }) => {
-                for it in *items {
-                    if let hir::AssocItemKind::Fn { .. } = it.kind {
-                        let attrs = cx.tcx.hir_attrs(it.id.hir_id());
-                        if let Some(attr) = attr::find_by_name(attrs, sym::export_name)
-                            .or_else(|| attr::find_by_name(attrs, sym::no_mangle))
-                        {
-                            check_no_mangle_on_generic_fn(
-                                attr,
-                                Some(generics),
-                                cx.tcx.hir_get_generics(it.id.owner_id.def_id).unwrap(),
-                                it.span,
-                            );
-                        }
-                    }
+            _ => {}
+        }
+    }
+
+    fn check_impl_item(&mut self, cx: &LateContext<'_>, it: &hir::ImplItem<'_>) {
+        let attrs = cx.tcx.hir_attrs(it.hir_id());
+        match it.kind {
+            hir::ImplItemKind::Fn { .. } => {
+                if let Some(attr_span) =
+                    find_attr!(attrs, AttributeKind::ExportName {span, ..} => *span)
+                        .or_else(|| find_attr!(attrs, AttributeKind::NoMangle(span) => *span))
+                {
+                    self.check_no_mangle_on_generic_fn(cx, attr_span, it.owner_id.def_id);
                 }
             }
             _ => {}
@@ -1181,11 +1179,11 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         if fn_kind.asyncness().is_async()
             && !cx.tcx.features().async_fn_track_caller()
             // Now, check if the function has the `#[track_caller]` attribute
-            && let Some(attr) = cx.tcx.get_attr(def_id, sym::track_caller)
+            && let Some(attr_span) = find_attr!(cx.tcx.get_all_attrs(def_id), AttributeKind::TrackCaller(span) => *span)
         {
             cx.emit_span_lint(
                 UNGATED_ASYNC_FN_TRACK_CALLER,
-                attr.span(),
+                attr_span,
                 BuiltinUngatedAsyncFnTrackCaller { label: span, session: &cx.tcx.sess },
             );
         }
@@ -1521,8 +1519,9 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     ClauseKind::TypeOutlives(..) |
                     ClauseKind::RegionOutlives(..) => "lifetime",
 
+                    ClauseKind::UnstableFeature(_)
                     // `ConstArgHasType` is never global as `ct` is always a param
-                    ClauseKind::ConstArgHasType(..)
+                    | ClauseKind::ConstArgHasType(..)
                     // Ignore projections, as they can only be global
                     // if the trait bound is global
                     | ClauseKind::Projection(..)
@@ -1586,6 +1585,8 @@ impl EarlyLintPass for DoubleNegations {
         if let ExprKind::Unary(UnOp::Neg, ref inner) = expr.kind
             && let ExprKind::Unary(UnOp::Neg, ref inner2) = inner.kind
             && !matches!(inner2.kind, ExprKind::Unary(UnOp::Neg, _))
+            // Don't lint if this jumps macro expansion boundary (Issue #143980)
+            && expr.span.eq_ctxt(inner.span)
         {
             cx.emit_span_lint(
                 DOUBLE_NEGATIONS,

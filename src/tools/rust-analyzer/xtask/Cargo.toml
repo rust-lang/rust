@@ -9,14 +9,14 @@ rust-version.workspace = true
 [dependencies]
 anyhow.workspace = true
 directories = "6.0"
-flate2 = "1.1.0"
+flate2 = "1.1.2"
 write-json = "0.1.4"
 xshell.workspace = true
 xflags = "0.3.2"
 time = { version = "0.3", default-features = false }
-zip = { version = "3.0", default-features = false, features = ["deflate-flate2", "time"] }
+zip = { version = "4.0", default-features = false, features = ["deflate-flate2", "time"] }
 stdx.workspace = true
-proc-macro2 = "1.0.94"
+proc-macro2 = "1.0.95"
 quote = "1.0.40"
 ungrammar = "1.16.1"
 either.workspace = true

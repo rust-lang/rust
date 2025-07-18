@@ -9,8 +9,8 @@ use xz2::bufread::XzDecoder;
 
 use crate::core::config::BUILDER_CONFIG_FILENAME;
 use crate::utils::build_stamp::BuildStamp;
-use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{check_run, exe, hex_encode, move_file};
+use crate::utils::exec::command;
+use crate::utils::helpers::{exe, hex_encode, move_file};
 use crate::{Config, t};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
@@ -63,17 +63,6 @@ impl Config {
         let tmp = self.out.join("tmp");
         t!(fs::create_dir_all(&tmp));
         tmp
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
-    /// Returns false if do not execute at all, otherwise returns its
-    /// `status.success()`.
-    pub(crate) fn check_run(&self, cmd: &mut BootstrapCommand) -> bool {
-        if self.dry_run() && !cmd.run_always {
-            return true;
-        }
-        self.verbose(|| println!("running: {cmd:?}"));
-        check_run(cmd, self.is_verbose())
     }
 
     /// Whether or not `fix_bin_or_dylib` needs to be run; can only be true
@@ -214,7 +203,7 @@ impl Config {
         // options should be kept in sync with
         // src/bootstrap/src/core/download.rs
         // for consistency
-        let mut curl = command("curl");
+        let mut curl = command("curl").allow_failure();
         curl.args([
             // follow redirect
             "--location",
@@ -255,7 +244,7 @@ impl Config {
             curl.arg("--retry-all-errors");
         }
         curl.arg(url);
-        if !self.check_run(&mut curl) {
+        if !curl.run(self) {
             if self.host_target.contains("windows-msvc") {
                 eprintln!("Fallback to PowerShell");
                 for _ in 0..3 {

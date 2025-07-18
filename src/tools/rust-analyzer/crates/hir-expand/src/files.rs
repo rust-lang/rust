@@ -106,7 +106,7 @@ impl FileRange {
 /// It is stable across reparses, and can be used as salsa key/value.
 pub type AstId<N> = crate::InFile<FileAstId<N>>;
 
-impl<N: AstIdNode> AstId<N> {
+impl<N: AstNode> AstId<N> {
     pub fn to_node(&self, db: &dyn ExpandDatabase) -> N {
         self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id))
     }
@@ -121,6 +121,13 @@ impl<N: AstIdNode> AstId<N> {
     }
     pub fn erase(&self) -> ErasedAstId {
         crate::InFile::new(self.file_id, self.value.erase())
+    }
+    #[inline]
+    pub fn upcast<M: AstIdNode>(self) -> AstId<M>
+    where
+        N: Into<M>,
+    {
+        self.map(|it| it.upcast())
     }
 }
 
@@ -308,11 +315,11 @@ impl<SN: Borrow<SyntaxNode>> InFile<SN> {
     }
 
     /// Falls back to the macro call range if the node cannot be mapped up fully.
-    pub fn original_file_range_with_macro_call_body(
+    pub fn original_file_range_with_macro_call_input(
         self,
         db: &dyn db::ExpandDatabase,
     ) -> FileRange {
-        self.borrow().map(SyntaxNode::text_range).original_node_file_range_with_macro_call_body(db)
+        self.borrow().map(SyntaxNode::text_range).original_node_file_range_with_macro_call_input(db)
     }
 
     pub fn original_syntax_node_rooted(
@@ -458,7 +465,7 @@ impl InFile<TextRange> {
         }
     }
 
-    pub fn original_node_file_range_with_macro_call_body(
+    pub fn original_node_file_range_with_macro_call_input(
         self,
         db: &dyn db::ExpandDatabase,
     ) -> FileRange {
@@ -469,7 +476,7 @@ impl InFile<TextRange> {
                     Some(it) => it,
                     _ => {
                         let loc = db.lookup_intern_macro_call(mac_file);
-                        loc.kind.original_call_range_with_body(db)
+                        loc.kind.original_call_range_with_input(db)
                     }
                 }
             }
@@ -487,6 +494,18 @@ impl InFile<TextRange> {
             )),
             HirFileId::MacroFile(mac_file) => {
                 map_node_range_up(db, &db.expansion_span_map(mac_file), self.value)
+            }
+        }
+    }
+
+    pub fn original_node_file_range_rooted_opt(
+        self,
+        db: &dyn db::ExpandDatabase,
+    ) -> Option<FileRange> {
+        match self.file_id {
+            HirFileId::FileId(file_id) => Some(FileRange { file_id, range: self.value }),
+            HirFileId::MacroFile(mac_file) => {
+                map_node_range_up_rooted(db, &db.expansion_span_map(mac_file), self.value)
             }
         }
     }

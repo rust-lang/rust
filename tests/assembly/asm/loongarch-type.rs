@@ -4,7 +4,7 @@
 //@ compile-flags: -Zmerge-functions=disabled
 //@ needs-llvm-components: loongarch
 
-#![feature(no_core)]
+#![feature(no_core, f16)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
@@ -69,6 +69,12 @@ check!(reg_i8, i8, reg, "move");
 // CHECK: #NO_APP
 check!(reg_i16, i16, reg, "move");
 
+// CHECK-LABEL: reg_f16:
+// CHECK: #APP
+// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
+// CHECK: #NO_APP
+check!(reg_f16, f16, reg, "move");
+
 // CHECK-LABEL: reg_i32:
 // CHECK: #APP
 // CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
@@ -99,6 +105,12 @@ check!(reg_f64, f64, reg, "move");
 // CHECK: #NO_APP
 check!(reg_ptr, ptr, reg, "move");
 
+// CHECK-LABEL: freg_f16:
+// CHECK: #APP
+// CHECK: fmov.s $f{{[a-z0-9]+}}, $f{{[a-z0-9]+}}
+// CHECK: #NO_APP
+check!(freg_f16, f16, freg, "fmov.s");
+
 // CHECK-LABEL: freg_f32:
 // CHECK: #APP
 // CHECK: fmov.s $f{{[a-z0-9]+}}, $f{{[a-z0-9]+}}
@@ -122,6 +134,12 @@ check_reg!(r4_i8, i8, "$r4", "move");
 // CHECK: move $a0, $a0
 // CHECK: #NO_APP
 check_reg!(r4_i16, i16, "$r4", "move");
+
+// CHECK-LABEL: r4_f16:
+// CHECK: #APP
+// CHECK: move $a0, $a0
+// CHECK: #NO_APP
+check_reg!(r4_f16, f16, "$r4", "move");
 
 // CHECK-LABEL: r4_i32:
 // CHECK: #APP
@@ -152,6 +170,12 @@ check_reg!(r4_f64, f64, "$r4", "move");
 // CHECK: move $a0, $a0
 // CHECK: #NO_APP
 check_reg!(r4_ptr, ptr, "$r4", "move");
+
+// CHECK-LABEL: f0_f16:
+// CHECK: #APP
+// CHECK: fmov.s $f{{[a-z0-9]+}}, $f{{[a-z0-9]+}}
+// CHECK: #NO_APP
+check_reg!(f0_f16, f16, "$f0", "fmov.s");
 
 // CHECK-LABEL: f0_f32:
 // CHECK: #APP

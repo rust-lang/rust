@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: by_flag by_feature1 by_feature2 by_feature3
 //@ compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=lib
 //@ needs-llvm-components: x86
@@ -11,13 +12,10 @@
 //@ [by_feature1]build-pass
 //@ [by_feature2]build-pass
 //@ [by_feature3]build-pass
-#![feature(no_core, lang_items)]
-#![no_std]
+#![feature(no_core)]
 #![no_core]
+extern crate minicore;
 
-#[lang = "sized"]
-pub trait Sized {}
-
-//[by_feature1]~? WARN target feature `retpoline-external-thunk` cannot be enabled with `-Ctarget-feature`: use `retpoline-external-thunk` target modifier flag instead
-//[by_feature2]~? WARN target feature `retpoline-indirect-branches` cannot be enabled with `-Ctarget-feature`: use `retpoline` target modifier flag instead
-//[by_feature3]~? WARN target feature `retpoline-indirect-calls` cannot be enabled with `-Ctarget-feature`: use `retpoline` target modifier flag instead
+//[by_feature1]~? WARN target feature `retpoline-external-thunk` cannot be enabled with `-Ctarget-feature`
+//[by_feature2]~? WARN target feature `retpoline-indirect-branches` cannot be enabled with `-Ctarget-feature`
+//[by_feature3]~? WARN target feature `retpoline-indirect-calls` cannot be enabled with `-Ctarget-feature`

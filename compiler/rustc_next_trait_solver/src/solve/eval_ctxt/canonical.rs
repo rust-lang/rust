@@ -88,7 +88,7 @@ where
     /// This takes the `shallow_certainty` which represents whether we're confident
     /// that the final result of the current goal only depends on the nested goals.
     ///
-    /// In case this is `Certainy::Maybe`, there may still be additional nested goals
+    /// In case this is `Certainty::Maybe`, there may still be additional nested goals
     /// or inference constraints required for this candidate to be hold. The candidate
     /// always requires all already added constraints and nested goals.
     #[instrument(level = "trace", skip(self), ret)]

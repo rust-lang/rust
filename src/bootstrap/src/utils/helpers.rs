@@ -5,13 +5,11 @@
 
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 use std::thread::panicking;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use std::{env, fs, io, panic, str};
 
-use build_helper::util::fail;
 use object::read::archive::ArchiveFile;
 
 use crate::LldMode;
@@ -98,7 +96,7 @@ pub fn is_dylib(path: &Path) -> bool {
 
 /// Return the path to the containing submodule if available.
 pub fn submodule_path_of(builder: &Builder<'_>, path: &str) -> Option<String> {
-    let submodule_paths = build_helper::util::parse_gitmodules(&builder.src);
+    let submodule_paths = builder.submodule_paths();
     submodule_paths.iter().find_map(|submodule_path| {
         if path.starts_with(submodule_path) { Some(submodule_path.to_string()) } else { None }
     })
@@ -178,6 +176,11 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
     fn symlink_dir_inner(target: &Path, junction: &Path) -> io::Result<()> {
         junction::create(target, junction)
     }
+}
+
+/// Return the host target on which we are currently running.
+pub fn get_host_target() -> TargetSelection {
+    TargetSelection::from_user(env!("BUILD_TRIPLE"))
 }
 
 /// Rename a file if from and to are in the same filesystem or
@@ -270,24 +273,6 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     }
 }
 
-// FIXME: get rid of this function
-pub fn check_run(cmd: &mut BootstrapCommand, print_cmd_on_fail: bool) -> bool {
-    let status = match cmd.as_command_mut().status() {
-        Ok(status) => status,
-        Err(e) => {
-            println!("failed to execute command: {cmd:?}\nERROR: {e}");
-            return false;
-        }
-    };
-    if !status.success() && print_cmd_on_fail {
-        println!(
-            "\n\ncommand did not execute successfully: {cmd:?}\n\
-             expected success, got: {status}\n\n"
-        );
-    }
-    status.success()
-}
-
 pub fn make(host: &str) -> PathBuf {
     if host.contains("dragonfly")
         || host.contains("freebsd")
@@ -297,52 +282,6 @@ pub fn make(host: &str) -> PathBuf {
         PathBuf::from("gmake")
     } else {
         PathBuf::from("make")
-    }
-}
-
-#[track_caller]
-pub fn output(cmd: &mut Command) -> String {
-    #[cfg(feature = "tracing")]
-    let _run_span = crate::trace_cmd!(cmd);
-
-    let output = match cmd.stderr(Stdio::inherit()).output() {
-        Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nERROR: {e}")),
-    };
-    if !output.status.success() {
-        panic!(
-            "command did not execute successfully: {:?}\n\
-             expected success, got: {}",
-            cmd, output.status
-        );
-    }
-    String::from_utf8(output.stdout).unwrap()
-}
-
-/// Spawn a process and return a closure that will wait for the process
-/// to finish and then return its output. This allows the spawned process
-/// to do work without immediately blocking bootstrap.
-#[track_caller]
-pub fn start_process(cmd: &mut Command) -> impl FnOnce() -> String + use<> {
-    let child = match cmd.stderr(Stdio::inherit()).stdout(Stdio::piped()).spawn() {
-        Ok(child) => child,
-        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nERROR: {e}")),
-    };
-
-    let command = format!("{cmd:?}");
-
-    move || {
-        let output = child.wait_with_output().unwrap();
-
-        if !output.status.success() {
-            panic!(
-                "command did not execute successfully: {}\n\
-                 expected success, got: {}",
-                command, output.status
-            );
-        }
-
-        String::from_utf8(output.stdout).unwrap()
     }
 }
 
@@ -465,8 +404,9 @@ pub fn linker_args(
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,
+    stage: u32,
 ) -> Vec<String> {
-    let mut args = linker_flags(builder, target, lld_threads);
+    let mut args = linker_flags(builder, target, lld_threads, stage);
 
     if let Some(linker) = builder.linker(target) {
         args.push(format!("-Clinker={}", linker.display()));
@@ -481,19 +421,30 @@ pub fn linker_flags(
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,
+    stage: u32,
 ) -> Vec<String> {
     let mut args = vec![];
     if !builder.is_lld_direct_linker(target) && builder.config.lld_mode.is_used() {
         match builder.config.lld_mode {
             LldMode::External => {
-                args.push("-Zlinker-features=+lld".to_string());
-                // FIXME(kobzol): remove this flag once MCP510 gets stabilized
+                // cfg(bootstrap) - remove the stage 0 check after updating the bootstrap compiler:
+                // `-Clinker-features` has been stabilized.
+                if stage == 0 {
+                    args.push("-Zlinker-features=+lld".to_string());
+                } else {
+                    args.push("-Clinker-features=+lld".to_string());
+                }
                 args.push("-Zunstable-options".to_string());
             }
             LldMode::SelfContained => {
-                args.push("-Zlinker-features=+lld".to_string());
+                // cfg(bootstrap) - remove the stage 0 check after updating the bootstrap compiler:
+                // `-Clinker-features` has been stabilized.
+                if stage == 0 {
+                    args.push("-Zlinker-features=+lld".to_string());
+                } else {
+                    args.push("-Clinker-features=+lld".to_string());
+                }
                 args.push("-Clink-self-contained=+linker".to_string());
-                // FIXME(kobzol): remove this flag once MCP510 gets stabilized
                 args.push("-Zunstable-options".to_string());
             }
             LldMode::Unused => unreachable!(),
@@ -514,8 +465,9 @@ pub fn add_rustdoc_cargo_linker_args(
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,
+    stage: u32,
 ) {
-    let args = linker_args(builder, target, lld_threads);
+    let args = linker_args(builder, target, lld_threads, stage);
     let mut flags = cmd
         .get_envs()
         .find_map(|(k, v)| if k == OsStr::new("RUSTDOCFLAGS") { v } else { None })

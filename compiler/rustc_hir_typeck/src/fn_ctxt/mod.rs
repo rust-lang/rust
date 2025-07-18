@@ -12,15 +12,19 @@ use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId, ItemLocalMap};
-use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
-use rustc_infer::infer;
+use rustc_hir_analysis::hir_ty_lowering::{
+    HirTyLowerer, InherentAssocCandidate, RegionInferReason,
+};
+use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_infer::traits::{DynCompatibilityViolation, Obligation};
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span, sym};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
 use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
-use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
+use rustc_trait_selection::traits::{
+    self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt,
+};
 
 use crate::coercion::DynamicCoerceMany;
 use crate::fallback::DivergingFallbackBehavior;
@@ -240,8 +244,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {
         let v = match reason {
-            RegionInferReason::Param(def) => infer::RegionParameterDefinition(span, def.name),
-            _ => infer::MiscVariable(span),
+            RegionInferReason::Param(def) => {
+                RegionVariableOrigin::RegionParameterDefinition(span, def.name)
+            }
+            _ => RegionVariableOrigin::Misc(span),
         };
         self.next_region_var(v)
     }
@@ -308,6 +314,67 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                 }
             }),
         ))
+    }
+
+    fn select_inherent_assoc_candidates(
+        &self,
+        span: Span,
+        self_ty: Ty<'tcx>,
+        candidates: Vec<InherentAssocCandidate>,
+    ) -> (Vec<InherentAssocCandidate>, Vec<FulfillmentError<'tcx>>) {
+        let tcx = self.tcx();
+        let infcx = &self.infcx;
+        let mut fulfillment_errors = vec![];
+
+        let mut filter_iat_candidate = |self_ty, impl_| {
+            let ocx = ObligationCtxt::new_with_diagnostics(self);
+            let self_ty = ocx.normalize(&ObligationCause::dummy(), self.param_env, self_ty);
+
+            let impl_args = infcx.fresh_args_for_item(span, impl_);
+            let impl_ty = tcx.type_of(impl_).instantiate(tcx, impl_args);
+            let impl_ty = ocx.normalize(&ObligationCause::dummy(), self.param_env, impl_ty);
+
+            // Check that the self types can be related.
+            if ocx.eq(&ObligationCause::dummy(), self.param_env, impl_ty, self_ty).is_err() {
+                return false;
+            }
+
+            // Check whether the impl imposes obligations we have to worry about.
+            let impl_bounds = tcx.predicates_of(impl_).instantiate(tcx, impl_args);
+            let impl_bounds = ocx.normalize(&ObligationCause::dummy(), self.param_env, impl_bounds);
+            let impl_obligations = traits::predicates_for_generics(
+                |_, _| ObligationCause::dummy(),
+                self.param_env,
+                impl_bounds,
+            );
+            ocx.register_obligations(impl_obligations);
+
+            let mut errors = ocx.select_where_possible();
+            if !errors.is_empty() {
+                fulfillment_errors.append(&mut errors);
+                return false;
+            }
+
+            true
+        };
+
+        let mut universes = if self_ty.has_escaping_bound_vars() {
+            vec![None; self_ty.outer_exclusive_binder().as_usize()]
+        } else {
+            vec![]
+        };
+
+        let candidates =
+            traits::with_replaced_escaping_bound_vars(infcx, &mut universes, self_ty, |self_ty| {
+                candidates
+                    .into_iter()
+                    .filter(|&InherentAssocCandidate { impl_, .. }| {
+                        infcx.probe(|_| filter_iat_candidate(self_ty, impl_))
+                    })
+                    .collect()
+            });
+
+        (candidates, fulfillment_errors)
     }
 
     fn lower_assoc_item_path(

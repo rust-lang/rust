@@ -1,13 +1,14 @@
-//@ known-bug: #110395
-// FIXME check-pass
+//@ check-pass
+//@ revisions: next old
+//@[next] compile-flags: -Znext-solver
 
 #![feature(const_trait_impl)]
 
 const fn answer_p1<F>(f: &F) -> u8
     where
-        F: ~const FnOnce() -> u8,
-        F: ~const FnMut() -> u8,
-        F: ~const Fn() -> u8,
+        F: [const] FnOnce() -> u8,
+        F: [const] FnMut() -> u8,
+        F: [const] Fn() -> u8,
 {
     f() * 7
 }
@@ -20,7 +21,7 @@ const fn answer_p2() -> u8 {
     answer_p1(&three)
 }
 
-const fn answer<F: ~const Fn() -> u8>(f: &F) -> u8 {
+const fn answer<F: [const] Fn() -> u8>(f: &F) -> u8 {
     f() + f()
 }
 

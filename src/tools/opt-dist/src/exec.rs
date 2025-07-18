@@ -122,7 +122,12 @@ impl Bootstrap {
         let metrics_path = env.build_root().join("build").join("metrics.json");
         let args = dist_args.iter().map(|arg| arg.as_str()).collect::<Vec<_>>();
         let cmd = cmd(&args).env("RUST_BACKTRACE", "full");
-        let cmd = add_shared_x_flags(env, cmd);
+        let mut cmd = add_shared_x_flags(env, cmd);
+        if env.is_fast_try_build() {
+            // We set build.extended=false for fast try builds, but we still need Cargo
+            cmd = cmd.arg("cargo");
+        }
+
         Self { cmd, metrics_path }
     }
 
@@ -189,5 +194,18 @@ impl Bootstrap {
 }
 
 fn add_shared_x_flags(env: &Environment, cmd: CmdBuilder) -> CmdBuilder {
-    if env.is_fast_try_build() { cmd.arg("--set").arg("rust.deny-warnings=false") } else { cmd }
+    if env.is_fast_try_build() {
+        // Skip things that cannot be skipped through `x ... --skip`
+        cmd.arg("--set")
+            .arg("rust.llvm-bitcode-linker=false")
+            // Skip wasm-component-ld. This also skips cargo, which we need to re-enable for dist
+            .arg("--set")
+            .arg("build.extended=false")
+            .arg("--set")
+            .arg("rust.codegen-backends=['llvm']")
+            .arg("--set")
+            .arg("rust.deny-warnings=false")
+    } else {
+        cmd
+    }
 }

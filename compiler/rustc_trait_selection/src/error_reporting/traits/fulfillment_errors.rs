@@ -47,8 +47,8 @@ use crate::infer::{self, InferCtxt, InferCtxtExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{
     MismatchedProjectionTypes, NormalizeExt, Obligation, ObligationCause, ObligationCauseCode,
-    ObligationCtxt, Overflow, PredicateObligation, SelectionContext, SelectionError,
-    SignatureMismatch, TraitDynIncompatible, elaborate, specialization_graph,
+    ObligationCtxt, PredicateObligation, SelectionContext, SelectionError, elaborate,
+    specialization_graph,
 };
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
@@ -647,6 +647,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     | ty::PredicateKind::ConstEquate { .. }
                     // Ambiguous predicates should never error
                     | ty::PredicateKind::Ambiguous
+                    // We never return Err when proving UnstableFeature goal.
+                    | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature{ .. })
                     | ty::PredicateKind::NormalizesTo { .. }
                     | ty::PredicateKind::AliasRelate { .. }
                     | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType { .. }) => {
@@ -659,7 +661,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
 
-            SignatureMismatch(box SignatureMismatchData {
+            SelectionError::SignatureMismatch(box SignatureMismatchData {
                 found_trait_ref,
                 expected_trait_ref,
                 terr: terr @ TypeError::CyclicTy(_),
@@ -669,7 +671,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 expected_trait_ref,
                 terr,
             ),
-            SignatureMismatch(box SignatureMismatchData {
+            SelectionError::SignatureMismatch(box SignatureMismatchData {
                 found_trait_ref,
                 expected_trait_ref,
                 terr: _,
@@ -690,7 +692,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 def_id,
             ),
 
-            TraitDynIncompatible(did) => {
+            SelectionError::TraitDynIncompatible(did) => {
                 let violations = self.tcx.dyn_compatibility_violations(did);
                 report_dyn_incompatibility(self.tcx, span, None, did, violations)
             }
@@ -710,12 +712,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Already reported in the query.
             SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(guar)) |
             // Already reported.
-            Overflow(OverflowError::Error(guar)) => {
+            SelectionError::Overflow(OverflowError::Error(guar)) => {
                 self.set_tainted_by_errors(guar);
                 return guar
             },
 
-            Overflow(_) => {
+            SelectionError::Overflow(_) => {
                 bug!("overflow should be handled before the `report_selection_error` path");
             }
 
@@ -775,7 +777,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         span: Span,
     ) -> Diag<'a> {
-        // FIXME(const_trait_impl): We should recompute the predicate with `~const`
+        // FIXME(const_trait_impl): We should recompute the predicate with `[const]`
         // if it's `const`, and if it holds, explain that this bound only
         // *conditionally* holds. If that fails, we should also do selection
         // to drill this down to an impl or built-in source, so we can
@@ -1186,7 +1188,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> Diag<'a> {
-        let span = obligation.cause.span;
+        let param = obligation.cause.body_id;
+        let hir::GenericParamKind::Const { ty: &hir::Ty { span, .. }, .. } =
+            self.tcx.hir_node_by_def_id(param).expect_generic_param().kind
+        else {
+            bug!()
+        };
 
         let mut diag = match ty.kind() {
             ty::Float(_) => {
@@ -1850,7 +1857,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let trait_def_id = trait_pred.def_id();
         let trait_name = self.tcx.item_name(trait_def_id);
         let crate_name = self.tcx.crate_name(trait_def_id.krate);
-        if let Some(other_trait_def_id) = self.tcx.all_traits().find(|def_id| {
+        if let Some(other_trait_def_id) = self.tcx.all_traits_including_private().find(|def_id| {
             trait_name == self.tcx.item_name(trait_def_id)
                 && trait_def_id.krate != def_id.krate
                 && crate_name == self.tcx.crate_name(def_id.krate)
@@ -1928,7 +1935,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     StringPart::highlighted("multiple different versions".to_string()),
                     StringPart::normal(" of crate `".to_string()),
                     StringPart::highlighted(format!("{crate_name}")),
-                    StringPart::normal("` in the dependency graph\n".to_string()),
+                    StringPart::normal("` in the dependency graph".to_string()),
                 ],
             );
             if points_at_type {

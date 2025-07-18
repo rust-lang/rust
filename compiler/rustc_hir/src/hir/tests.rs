@@ -45,7 +45,6 @@ define_tests! {
 #[test]
 fn trait_object_roundtrips() {
     trait_object_roundtrips_impl(TraitObjectSyntax::Dyn);
-    trait_object_roundtrips_impl(TraitObjectSyntax::DynStar);
     trait_object_roundtrips_impl(TraitObjectSyntax::None);
 }
 

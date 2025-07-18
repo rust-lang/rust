@@ -6,6 +6,7 @@ use crate::net::SocketAddrV4;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::pal::helpers;
+use crate::time::{Duration, Instant};
 
 const TYPE_OF_SERVICE: u8 = 8;
 const TIME_TO_LIVE: u8 = 255;
@@ -66,7 +67,7 @@ impl Tcp4 {
         if r.is_error() { Err(crate::io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
     }
 
-    pub(crate) fn connect(&self) -> io::Result<()> {
+    pub(crate) fn connect(&self, timeout: Option<Duration>) -> io::Result<()> {
         let evt = unsafe { self.create_evt() }?;
         let completion_token =
             tcp4::CompletionToken { event: evt.as_ptr(), status: Status::SUCCESS };
@@ -79,10 +80,133 @@ impl Tcp4 {
             return Err(io::Error::from_raw_os_error(r.as_usize()));
         }
 
-        self.wait_for_flag();
+        unsafe { self.wait_or_cancel(timeout, &mut conn_token.completion_token) }?;
 
         if completion_token.status.is_error() {
             Err(io::Error::from_raw_os_error(completion_token.status.as_usize()))
+        } else {
+            Ok(())
+        }
+    }
+
+    pub(crate) fn write(&self, buf: &[u8], timeout: Option<Duration>) -> io::Result<usize> {
+        let evt = unsafe { self.create_evt() }?;
+        let completion_token =
+            tcp4::CompletionToken { event: evt.as_ptr(), status: Status::SUCCESS };
+        let data_len = u32::try_from(buf.len()).unwrap_or(u32::MAX);
+
+        let fragment = tcp4::FragmentData {
+            fragment_length: data_len,
+            fragment_buffer: buf.as_ptr().cast::<crate::ffi::c_void>().cast_mut(),
+        };
+        let mut tx_data = tcp4::TransmitData {
+            push: r_efi::efi::Boolean::FALSE,
+            urgent: r_efi::efi::Boolean::FALSE,
+            data_length: data_len,
+            fragment_count: 1,
+            fragment_table: [fragment],
+        };
+
+        let protocol = self.protocol.as_ptr();
+        let mut token = tcp4::IoToken {
+            completion_token,
+            packet: tcp4::IoTokenPacket {
+                tx_data: (&raw mut tx_data).cast::<tcp4::TransmitData<0>>(),
+            },
+        };
+
+        let r = unsafe { ((*protocol).transmit)(protocol, &mut token) };
+        if r.is_error() {
+            return Err(io::Error::from_raw_os_error(r.as_usize()));
+        }
+
+        unsafe { self.wait_or_cancel(timeout, &mut token.completion_token) }?;
+
+        if completion_token.status.is_error() {
+            Err(io::Error::from_raw_os_error(completion_token.status.as_usize()))
+        } else {
+            Ok(data_len as usize)
+        }
+    }
+
+    pub(crate) fn read(&self, buf: &mut [u8], timeout: Option<Duration>) -> io::Result<usize> {
+        let evt = unsafe { self.create_evt() }?;
+        let completion_token =
+            tcp4::CompletionToken { event: evt.as_ptr(), status: Status::SUCCESS };
+        let data_len = u32::try_from(buf.len()).unwrap_or(u32::MAX);
+
+        let fragment = tcp4::FragmentData {
+            fragment_length: data_len,
+            fragment_buffer: buf.as_mut_ptr().cast::<crate::ffi::c_void>(),
+        };
+        let mut tx_data = tcp4::ReceiveData {
+            urgent_flag: r_efi::efi::Boolean::FALSE,
+            data_length: data_len,
+            fragment_count: 1,
+            fragment_table: [fragment],
+        };
+
+        let protocol = self.protocol.as_ptr();
+        let mut token = tcp4::IoToken {
+            completion_token,
+            packet: tcp4::IoTokenPacket {
+                rx_data: (&raw mut tx_data).cast::<tcp4::ReceiveData<0>>(),
+            },
+        };
+
+        let r = unsafe { ((*protocol).receive)(protocol, &mut token) };
+        if r.is_error() {
+            return Err(io::Error::from_raw_os_error(r.as_usize()));
+        }
+
+        unsafe { self.wait_or_cancel(timeout, &mut token.completion_token) }?;
+
+        if completion_token.status.is_error() {
+            Err(io::Error::from_raw_os_error(completion_token.status.as_usize()))
+        } else {
+            Ok(data_len as usize)
+        }
+    }
+
+    /// Wait for an event to finish. This is checked by an atomic boolean that is supposed to be set
+    /// to true in the event callback.
+    ///
+    /// Optionally, allow specifying a timeout.
+    ///
+    /// If a timeout is provided, the operation (specified by its `EFI_TCP4_COMPLETION_TOKEN`) is
+    /// canceled and Error of kind TimedOut is returned.
+    ///
+    /// # SAFETY
+    ///
+    /// Pointer to a valid `EFI_TCP4_COMPLETION_TOKEN`
+    unsafe fn wait_or_cancel(
+        &self,
+        timeout: Option<Duration>,
+        token: *mut tcp4::CompletionToken,
+    ) -> io::Result<()> {
+        if !self.wait_for_flag(timeout) {
+            let _ = unsafe { self.cancel(token) };
+            return Err(io::Error::new(io::ErrorKind::TimedOut, "Operation Timed out"));
+        }
+
+        Ok(())
+    }
+
+    /// Abort an asynchronous connection, listen, transmission or receive request.
+    ///
+    /// If token is NULL, then all pending tokens issued by EFI_TCP4_PROTOCOL.Connect(),
+    /// EFI_TCP4_PROTOCOL.Accept(), EFI_TCP4_PROTOCOL.Transmit() or EFI_TCP4_PROTOCOL.Receive() are
+    /// aborted.
+    ///
+    /// # SAFETY
+    ///
+    /// Pointer to a valid `EFI_TCP4_COMPLETION_TOKEN` or NULL
+    unsafe fn cancel(&self, token: *mut tcp4::CompletionToken) -> io::Result<()> {
+        let protocol = self.protocol.as_ptr();
+
+        let r = unsafe { ((*protocol).cancel)(protocol, token) };
+        if r.is_error() {
+            return Err(io::Error::from_raw_os_error(r.as_usize()));
         } else {
             Ok(())
         }
@@ -98,10 +222,19 @@ impl Tcp4 {
         )
     }
 
-    fn wait_for_flag(&self) {
+    fn wait_for_flag(&self, timeout: Option<Duration>) -> bool {
+        let start = Instant::now();
+
         while !self.flag.load(Ordering::Relaxed) {
             let _ = self.poll();
+            if let Some(t) = timeout {
+                if Instant::now().duration_since(start) >= t {
+                    return false;
+                }
+            }
         }
+
+        true
     }
 
     fn poll(&self) -> io::Result<()> {
