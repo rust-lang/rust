@@ -272,7 +272,7 @@ impl Canonicalized {
         // for canonical when possible.
         while let Some((&to, _)) = mappings
             .iter()
-            .find(|(&to, _)| to == 0)
+            .find(|&(&to, _)| to == 0)
             .or_else(|| mappings.iter().max_by_key(|m| m.1.len()))
         {
             // Get the mapping with the most entries. Currently, no mapping can
