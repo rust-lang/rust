@@ -10,6 +10,9 @@
 //@ revisions: aarch64_be_unknown_linux_gnu_ilp32
 //@ [aarch64_be_unknown_linux_gnu_ilp32] compile-flags: --target aarch64_be-unknown-linux-gnu_ilp32
 //@ [aarch64_be_unknown_linux_gnu_ilp32] needs-llvm-components: aarch64
+//@ revisions: aarch64_be_unknown_linux_musl
+//@ [aarch64_be_unknown_linux_musl] compile-flags: --target aarch64_be-unknown-linux-musl
+//@ [aarch64_be_unknown_linux_musl] needs-llvm-components: aarch64
 //@ revisions: aarch64_be_unknown_netbsd
 //@ [aarch64_be_unknown_netbsd] compile-flags: --target aarch64_be-unknown-netbsd
 //@ [aarch64_be_unknown_netbsd] needs-llvm-components: aarch64
