@@ -1,0 +1,45 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:9:8
+   |
+LL |     if x
+   |        ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:15:5
+   |
+LL |     x;
+   |     ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:18:8
+   |
+LL |     if x
+   |        ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:20:12
+   |
+LL |         && x
+   |            ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:21:31
+   |
+LL |         && (is!(true is x) || x)
+   |                               ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:23:9
+   |
+LL |         x;
+   |         ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/name-resolution-errors.rs:26:5
+   |
+LL |     x;
+   |     ^ not found in this scope
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

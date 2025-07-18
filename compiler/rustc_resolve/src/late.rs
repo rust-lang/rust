@@ -126,6 +126,18 @@ enum PatBoundCtx {
 /// Each identifier must map to at most one distinct [`Res`].
 type PatternBindings = SmallVec<[(PatBoundCtx, FxIndexMap<Ident, Res>); 1]>;
 
+/// In what scope should `is` expressions introduce bindings? See RFC 3573 for more details.
+enum IsBindingScope {
+    /// `is` expressions at the top-level of an `if` or `while` condition introduce their bindings
+    /// within the condition's rib, so that they are in scope in the expression's success block.
+    /// Likewise, within an `&&`-chain outside of an `if` or `while`, `is` expressions' bindings are
+    /// in scope for the remainder of the `&&`-chain.
+    InCurrentRib,
+    /// Indicates that an `&&` or `is` expression will need to introduce a new rib for `is`
+    /// expressions' bindings.
+    InNewRib,
+}
+
 /// Does this the item (from the item rib scope) allow generic parameters?
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum HasGenericParams {
@@ -800,7 +812,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         bug!("encountered anon const without a manual call to `resolve_anon_const`: {constant:#?}");
     }
     fn visit_expr(&mut self, expr: &'ast Expr) {
-        self.resolve_expr(expr, None);
+        self.resolve_expr(expr, None, IsBindingScope::InNewRib);
     }
     fn visit_pat(&mut self, p: &'ast Pat) {
         let prev = self.diag_metadata.current_pat;
@@ -3791,7 +3803,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     fn resolve_arm(&mut self, arm: &'ast Arm) {
         self.with_rib(ValueNS, RibKind::Normal, |this| {
             this.resolve_pattern_top(&arm.pat, PatternSource::Match);
-            visit_opt!(this, visit_expr, &arm.guard);
+            if let Some(guard) = &arm.guard {
+                this.resolve_expr(guard, None, IsBindingScope::InCurrentRib)
+            }
             visit_opt!(this, visit_expr, &arm.body);
         });
     }
@@ -3933,7 +3947,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     let subpat_bindings = bindings.pop().unwrap().1;
                     self.with_rib(ValueNS, RibKind::Normal, |this| {
                         *this.innermost_rib_bindings(ValueNS) = subpat_bindings.clone();
-                        this.resolve_expr(guard, None);
+                        // FIXME(guard_patterns): For `is` guards, we'll want to call `resolve_expr`
+                        // with `IsBindingScope::InCurrentRib`.
+                        this.resolve_expr(guard, None, IsBindingScope::InNewRib);
                     });
                     // Propagate the subpattern's bindings upwards.
                     // FIXME(guard_patterns): For `if let` guards, we'll also need to get the
@@ -4723,7 +4739,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             .value
             .is_potential_trivial_const_arg(self.r.tcx.features().min_generic_const_args());
         self.resolve_anon_const_manual(is_trivial_const_arg, anon_const_kind, |this| {
-            this.resolve_expr(&constant.value, None)
+            this.visit_expr(&constant.value)
         })
     }
 
@@ -4767,12 +4783,17 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     fn resolve_expr_field(&mut self, f: &'ast ExprField, e: &'ast Expr) {
-        self.resolve_expr(&f.expr, Some(e));
+        self.resolve_expr(&f.expr, Some(e), IsBindingScope::InNewRib);
         self.visit_ident(&f.ident);
         walk_list!(self, visit_attribute, f.attrs.iter());
     }
 
-    fn resolve_expr(&mut self, expr: &'ast Expr, parent: Option<&'ast Expr>) {
+    fn resolve_expr(
+        &mut self,
+        expr: &'ast Expr,
+        parent: Option<&'ast Expr>,
+        is_binding_scope: IsBindingScope,
+    ) {
         // First, record candidate traits for this expression if it could
         // result in the invocation of a method call.
 
@@ -4821,7 +4842,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             ExprKind::Break(None, Some(ref e)) => {
                 // We use this instead of `visit::walk_expr` to keep the parent expr around for
                 // better diagnostics.
-                self.resolve_expr(e, Some(expr));
+                self.resolve_expr(e, Some(expr), IsBindingScope::InNewRib);
             }
 
             ExprKind::Let(ref pat, ref scrutinee, _, Recovered::No) => {
@@ -4847,16 +4868,21 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
 
             ExprKind::Is(ref scrutinee, ref pat) => {
-                // TODO: handle `is` outside of `if`/`while`: we'll need to introduce a new rib for
-                // the `is`'s `&&`-chain.
                 self.visit_expr(scrutinee);
-                self.resolve_pattern_top(pat, PatternSource::Is);
+                match is_binding_scope {
+                    IsBindingScope::InCurrentRib => {
+                        self.resolve_pattern_top(pat, PatternSource::Is)
+                    }
+                    IsBindingScope::InNewRib => self.with_rib(ValueNS, RibKind::Normal, |this| {
+                        this.resolve_pattern_top(pat, PatternSource::Is)
+                    }),
+                }
             }
 
             ExprKind::If(ref cond, ref then, ref opt_else) => {
                 self.with_rib(ValueNS, RibKind::Normal, |this| {
                     let old = this.diag_metadata.in_if_condition.replace(cond);
-                    this.visit_expr(cond);
+                    this.resolve_expr(cond, None, IsBindingScope::InCurrentRib);
                     this.diag_metadata.in_if_condition = old;
                     this.visit_block(then);
                 });
@@ -4873,7 +4899,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.with_resolved_label(label, expr.id, |this| {
                     this.with_rib(ValueNS, RibKind::Normal, |this| {
                         let old = this.diag_metadata.in_if_condition.replace(cond);
-                        this.visit_expr(cond);
+                        this.resolve_expr(cond, None, IsBindingScope::InCurrentRib);
                         this.diag_metadata.in_if_condition = old;
                         this.visit_block(block);
                     })
@@ -4888,22 +4914,42 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 });
             }
 
+            ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, ref lhs, ref rhs) => {
+                match is_binding_scope {
+                    // At the top level of an `&&`-chain, we introduce a new rib to restrict `is`
+                    // expressions' bindings' lexical scope to that `&&`-chain.
+                    IsBindingScope::InNewRib if lhs.has_expr_is() || rhs.has_expr_is() => self
+                        .with_rib(ValueNS, RibKind::Normal, |this| {
+                            this.resolve_expr(lhs, None, IsBindingScope::InCurrentRib);
+                            this.resolve_expr(rhs, None, IsBindingScope::InCurrentRib);
+                        }),
+                    // Inside an `&&`-chain, we use the `&&`-chain's rib.
+                    // We also avoid introducing a new rib if the `&&`-chain has no `is`
+                    // expressions, to reduce the number of diagnostics emitted for malformed
+                    // `let` chains such as `(let x = true) && x`.
+                    IsBindingScope::InCurrentRib | IsBindingScope::InNewRib => {
+                        self.resolve_expr(lhs, None, IsBindingScope::InCurrentRib);
+                        self.resolve_expr(rhs, None, IsBindingScope::InCurrentRib);
+                    }
+                }
+            }
+
             ExprKind::Block(ref block, label) => self.resolve_labeled_block(label, block.id, block),
 
             // Equivalent to `visit::walk_expr` + passing some context to children.
             ExprKind::Field(ref subexpression, _) => {
-                self.resolve_expr(subexpression, Some(expr));
+                self.resolve_expr(subexpression, Some(expr), IsBindingScope::InNewRib);
             }
             ExprKind::MethodCall(box MethodCall { ref seg, ref receiver, ref args, .. }) => {
-                self.resolve_expr(receiver, Some(expr));
+                self.resolve_expr(receiver, Some(expr), IsBindingScope::InNewRib);
                 for arg in args {
-                    self.resolve_expr(arg, None);
+                    self.resolve_expr(arg, None, IsBindingScope::InNewRib);
                 }
                 self.visit_path_segment(seg);
             }
 
             ExprKind::Call(ref callee, ref arguments) => {
-                self.resolve_expr(callee, Some(expr));
+                self.resolve_expr(callee, Some(expr), IsBindingScope::InNewRib);
                 let const_args = self.r.legacy_const_generic_args(callee).unwrap_or_default();
                 for (idx, argument) in arguments.iter().enumerate() {
                     // Constant arguments need to be treated as AnonConst since
@@ -4915,10 +4961,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         self.resolve_anon_const_manual(
                             is_trivial_const_arg,
                             AnonConstKind::ConstArg(IsRepeatExpr::No),
-                            |this| this.resolve_expr(argument, None),
+                            |this| this.visit_expr(argument),
                         );
                     } else {
-                        self.resolve_expr(argument, None);
+                        self.visit_expr(argument);
                     }
                 }
             }
@@ -4951,7 +4997,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.resolve_anon_const(ct, AnonConstKind::InlineConst);
             }
             ExprKind::Index(ref elem, ref idx, _) => {
-                self.resolve_expr(elem, Some(expr));
+                self.resolve_expr(elem, Some(expr), IsBindingScope::InNewRib);
                 self.visit_expr(idx);
             }
             ExprKind::Assign(ref lhs, ref rhs, _) => {
@@ -4966,8 +5012,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
             ExprKind::Range(Some(ref start), Some(ref end), RangeLimits::HalfOpen) => {
                 self.diag_metadata.in_range = Some((start, end));
-                self.resolve_expr(start, Some(expr));
-                self.resolve_expr(end, Some(expr));
+                self.resolve_expr(start, Some(expr), IsBindingScope::InNewRib);
+                self.resolve_expr(end, Some(expr), IsBindingScope::InNewRib);
                 self.diag_metadata.in_range = None;
             }
             _ => {

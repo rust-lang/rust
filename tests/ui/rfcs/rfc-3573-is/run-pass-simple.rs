@@ -43,9 +43,18 @@ fn test_while() {
     assert_eq!(count, 4);
 }
 
-// TODO: test `is` not directly in conditions
+// Test `is` not directly in an `if` or `while` condition.
+fn test_elsewhere() {
+    for test_in in [None, Some(None), Some(Some(3)), Some(Some(4))] {
+        let test_is = is!(test_in is Some(x)) && is!(x is Some(y)) && y > 3;
+        let test_expected =
+            if let Some(x) = test_in && let Some(y) = x && y > 3 { true } else { false };
+        assert_eq!(test_is, test_expected);
+    }
+}
 
 fn main() {
     test_if();
     test_while();
+    test_elsewhere();
 }
