@@ -48,7 +48,7 @@ impl Environment {
     }
 
     pub fn build_artifacts(&self) -> Utf8PathBuf {
-        self.build_root().join("build").join(&self.host_tuple)
+        self.build_root().join(&self.host_tuple)
     }
 
     pub fn artifact_dir(&self) -> Utf8PathBuf {
