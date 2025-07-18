@@ -9,7 +9,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 use tracing::*;
 
-use crate::common::{Config, Debugger, FailMode, PassMode, RunFailMode, TestMode};
+use crate::common::{CodegenBackend, Config, Debugger, FailMode, PassMode, RunFailMode, TestMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
 use crate::directives::auxiliary::{AuxProps, parse_and_update_aux};
 use crate::directives::needs::CachedNeedsConditions;
@@ -818,6 +818,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-arm-unknown-linux-musleabihf",
     "ignore-auxiliary",
     "ignore-avr",
+    "ignore-backends",
     "ignore-beta",
     "ignore-cdb",
     "ignore-compare-mode-next-solver",
@@ -1669,6 +1670,7 @@ pub(crate) fn make_test_description<R: Read>(
             decision!(cfg::handle_only(config, ln));
             decision!(needs::handle_needs(&cache.needs, config, ln));
             decision!(ignore_llvm(config, path, ln));
+            decision!(ignore_backends(config, path, ln));
             decision!(ignore_cdb(config, ln));
             decision!(ignore_gdb(config, ln));
             decision!(ignore_lldb(config, ln));
@@ -1788,6 +1790,26 @@ fn ignore_lldb(config: &Config, line: &str) -> IgnoreDecision {
             if actual_version < min_version {
                 return IgnoreDecision::Ignore {
                     reason: format!("ignored when the LLDB version is {rest}"),
+                };
+            }
+        }
+    }
+    IgnoreDecision::Continue
+}
+
+fn ignore_backends(config: &Config, path: &Utf8Path, line: &str) -> IgnoreDecision {
+    if let Some(backends_to_ignore) = config.parse_name_value_directive(line, "ignore-backends") {
+        for backend in backends_to_ignore.split_whitespace().map(|backend| {
+            match CodegenBackend::try_from(backend) {
+                Ok(backend) => backend,
+                Err(error) => {
+                    panic!("Invalid ignore-backends value `{backend}` in `{path}`: {error}")
+                }
+            }
+        }) {
+            if config.codegen_backend == backend {
+                return IgnoreDecision::Ignore {
+                    reason: format!("{} backend is marked as ignore", backend.as_str()),
                 };
             }
         }
