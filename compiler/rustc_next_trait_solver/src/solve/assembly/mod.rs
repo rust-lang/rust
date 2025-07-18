@@ -621,7 +621,6 @@ where
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Param(_)
@@ -735,7 +734,6 @@ where
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Param(_)

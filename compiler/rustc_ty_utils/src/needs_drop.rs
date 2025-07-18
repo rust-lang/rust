@@ -112,6 +112,12 @@ struct NeedsDropTypes<'tcx, F> {
     adt_components: F,
     /// Set this to true if an exhaustive list of types involved in
     /// drop obligation is requested.
+    // FIXME: `exhaustive` is misleading here, since it both changes the behavior
+    // of how the coroutine's drop is computed, but ALSO changes the way that the
+    // iterator iterates over types that are unconditionally dropped. This should
+    // probably be replaced with a proper enum, or "get all types that may affect
+    // whether a type is drop for the purpose of diagnostics" should be split out
+    // into a totally different helper.
     exhaustive: bool,
 }
 
@@ -209,10 +215,6 @@ where
                             return Some(self.always_drop_component(ty));
                         }
                     }
-                    ty::CoroutineWitness(..) => {
-                        unreachable!("witness should be handled in parent");
-                    }
-
                     ty::UnsafeBinder(bound_ty) => {
                         let ty = self.tcx.instantiate_bound_regions_with_erased(bound_ty.into());
                         queue_type(self, ty);

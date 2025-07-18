@@ -264,7 +264,6 @@ fn resolve_associated_item<'tcx>(
                     match self_ty.kind() {
                         ty::FnDef(..) | ty::FnPtr(..) => (),
                         ty::Coroutine(..)
-                        | ty::CoroutineWitness(..)
                         | ty::Closure(..)
                         | ty::CoroutineClosure(..)
                         | ty::Tuple(..) => {}

@@ -1407,7 +1407,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Placeholder(..)
             | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
         }

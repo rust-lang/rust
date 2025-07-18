@@ -1307,7 +1307,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::UnsafeBinder(_)
-            | ty::CoroutineWitness(..)
             | ty::Bound(..) => {
                 obligations.push(obligation.with(
                     tcx,

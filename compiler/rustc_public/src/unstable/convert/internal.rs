@@ -184,10 +184,6 @@ impl RustcInternal for RigidTy {
                 def.0.internal(tables, tcx),
                 args.internal(tables, tcx),
             ),
-            RigidTy::CoroutineWitness(def, args) => rustc_ty::TyKind::CoroutineWitness(
-                def.0.internal(tables, tcx),
-                args.internal(tables, tcx),
-            ),
             RigidTy::Dynamic(predicate, region, dyn_kind) => rustc_ty::TyKind::Dynamic(
                 tcx.mk_poly_existential_predicates(&predicate.internal(tables, tcx)),
                 region.internal(tables, tcx),

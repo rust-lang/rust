@@ -53,7 +53,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
             ty::Closure(..)
             | ty::Coroutine(..)
             | ty::CoroutineClosure(..)
-            | ty::CoroutineWitness(..)
             | ty::Dynamic(..)
             | ty::Float(..)
             | ty::FnDef(..)

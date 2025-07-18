@@ -795,8 +795,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             | ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Param(..)
-            | ty::Alias(..)
-            | ty::CoroutineWitness(..) => bug!("Encountered invalid type {:?}", ty),
+            | ty::Alias(..) => bug!("Encountered invalid type {:?}", ty),
         }
     }
 

@@ -913,31 +913,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         " yield_ty=",
                         print(args.as_coroutine().yield_ty()),
                         " return_ty=",
-                        print(args.as_coroutine().return_ty()),
-                        " witness=",
-                        print(args.as_coroutine().witness())
+                        print(args.as_coroutine().return_ty())
                     );
-                }
-
-                p!("}}")
-            }
-            ty::CoroutineWitness(did, args) => {
-                p!(write("{{"));
-                if !self.tcx().sess.verbose_internals() {
-                    p!("coroutine witness");
-                    if let Some(did) = did.as_local() {
-                        let span = self.tcx().def_span(did);
-                        p!(write(
-                            "@{}",
-                            // This may end up in stderr diagnostics but it may also be emitted
-                            // into MIR. Hence we use the remapped path if available
-                            self.tcx().sess.source_map().span_to_embeddable_string(span)
-                        ));
-                    } else {
-                        p!(write("@"), print_def_path(did, args));
-                    }
-                } else {
-                    p!(print_def_path(did, args));
                 }
 
                 p!("}}")
@@ -1035,9 +1012,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         " upvar_tys=",
                         print(args.as_coroutine_closure().tupled_upvars_ty()),
                         " coroutine_captures_by_ref_ty=",
-                        print(args.as_coroutine_closure().coroutine_captures_by_ref_ty()),
-                        " coroutine_witness_ty=",
-                        print(args.as_coroutine_closure().coroutine_witness_ty())
+                        print(args.as_coroutine_closure().coroutine_captures_by_ref_ty())
                     );
                 }
                 p!("}}");
@@ -2296,7 +2271,6 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Tuple(_)
             | ty::Alias(..)
             | ty::Param(_)
