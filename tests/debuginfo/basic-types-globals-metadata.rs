@@ -59,7 +59,10 @@ static mut F64: f64 = 3.5;
 fn main() {
     _zzz(); // #break
 
-    let a = unsafe { (B, I, C, I8, I16, I32, I64, U, U8, U16, U32, U64, F16, F32, F64) };
+    let a = unsafe { (B, I, C, I8, I16, I32, I64, U, U8, U16, U32, U64, F32, F64) };
+    // N.B. Including f16 and f32 in the same tuple emits `__gnu_h2f_ieee`, which does
+    // not exist on some targets like PowerPC
+    let b = unsafe { F16 };
 }
 
 fn _zzz() {()}
