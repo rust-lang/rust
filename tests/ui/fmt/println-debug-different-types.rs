@@ -1,8 +1,10 @@
+//! Smoke test for println!() with debug format specifiers.
+
 //@ run-pass
 
 #[derive(Debug)]
 enum Numbers {
-    Three
+    Three,
 }
 
 pub fn main() {

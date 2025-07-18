@@ -1,3 +1,5 @@
+//! Test that `-Z deduplicate-diagnostics` flag properly deduplicates diagnostic messages.
+
 //@ revisions: duplicate deduplicate
 //@[deduplicate] compile-flags: -Z deduplicate-diagnostics=yes
 

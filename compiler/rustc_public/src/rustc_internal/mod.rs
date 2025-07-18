@@ -144,10 +144,10 @@ where
 #[macro_export]
 macro_rules! run {
     ($args:expr, $callback_fn:ident) => {
-        run_driver!($args, || $callback_fn())
+        $crate::run_driver!($args, || $callback_fn())
     };
     ($args:expr, $callback:expr) => {
-        run_driver!($args, $callback)
+        $crate::run_driver!($args, $callback)
     };
 }
 
@@ -158,10 +158,10 @@ macro_rules! run {
 #[macro_export]
 macro_rules! run_with_tcx {
     ($args:expr, $callback_fn:ident) => {
-        run_driver!($args, |tcx| $callback_fn(tcx), with_tcx)
+        $crate::run_driver!($args, |tcx| $callback_fn(tcx), with_tcx)
     };
     ($args:expr, $callback:expr) => {
-        run_driver!($args, $callback, with_tcx)
+        $crate::run_driver!($args, $callback, with_tcx)
     };
 }
 
@@ -191,11 +191,11 @@ macro_rules! run_driver {
         use rustc_public::CompilerError;
         use std::ops::ControlFlow;
 
-        pub struct StableMir<B = (), C = (), F = fn($(optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C>>
+        pub struct StableMir<B = (), C = (), F = fn($($crate::optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C>>
         where
             B: Send,
             C: Send,
-            F: FnOnce($(optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C> + Send,
+            F: FnOnce($($crate::optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C> + Send,
         {
             callback: Option<F>,
             result: Option<ControlFlow<B, C>>,
@@ -205,7 +205,7 @@ macro_rules! run_driver {
         where
             B: Send,
             C: Send,
-            F: FnOnce($(optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C> + Send,
+            F: FnOnce($($crate::optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C> + Send,
         {
             /// Creates a new `StableMir` instance, with given test_function and arguments.
             pub fn new(callback: F) -> Self {
@@ -240,7 +240,7 @@ macro_rules! run_driver {
         where
             B: Send,
             C: Send,
-            F: FnOnce($(optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C> + Send,
+            F: FnOnce($($crate::optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C> + Send,
         {
             /// Called after analysis. Return value instructs the compiler whether to
             /// continue the compilation afterwards (defaults to `Compilation::Continue`)
@@ -251,7 +251,7 @@ macro_rules! run_driver {
             ) -> Compilation {
                 if let Some(callback) = self.callback.take() {
                     rustc_internal::run(tcx, || {
-                        self.result = Some(callback($(optional!($with_tcx tcx))?));
+                        self.result = Some(callback($($crate::optional!($with_tcx tcx))?));
                     })
                     .unwrap();
                     if self.result.as_ref().is_some_and(|val| val.is_continue()) {
