@@ -44,21 +44,21 @@ fn auxv_dump() {
 #[cfg(feature = "std_detect_file_io")]
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "arm")] {
+        // The tests below can be executed under qemu, where we do not have access to the test
+        // files on disk, so we need to embed them with `include_bytes!`.
         #[test]
         fn linux_rpi3() {
-            let file = concat!(env!("CARGO_MANIFEST_DIR"), "/src/detect/test_data/linux-rpi3.auxv");
-            println!("file: {file}");
-            let v = auxv_from_file(file).unwrap();
+            let auxv = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/detect/test_data/linux-rpi3.auxv"));
+            let v = auxv_from_file_bytes(auxv).unwrap();
             assert_eq!(v.hwcap, 4174038);
             assert_eq!(v.hwcap2, 16);
         }
 
         #[test]
         fn linux_macos_vb() {
-            let file = concat!(env!("CARGO_MANIFEST_DIR"), "/src/detect/test_data/macos-virtualbox-linux-x86-4850HQ.auxv");
-            println!("file: {file}");
+            let auxv = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/detect/test_data/macos-virtualbox-linux-x86-4850HQ.auxv"));
             // The file contains HWCAP but not HWCAP2. In that case, we treat HWCAP2 as zero.
-            let v = auxv_from_file(file).unwrap();
+            let v = auxv_from_file_bytes(auxv).unwrap();
             assert_eq!(v.hwcap, 126614527);
             assert_eq!(v.hwcap2, 0);
         }
@@ -66,18 +66,16 @@ cfg_if::cfg_if! {
         #[cfg(target_endian = "little")]
         #[test]
         fn linux_artificial_aarch64() {
-            let file = concat!(env!("CARGO_MANIFEST_DIR"), "/src/detect/test_data/linux-artificial-aarch64.auxv");
-            println!("file: {file}");
-            let v = auxv_from_file(file).unwrap();
+            let auxv = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/detect/test_data/linux-artificial-aarch64.auxv"));
+            let v = auxv_from_file_bytes(auxv).unwrap();
             assert_eq!(v.hwcap, 0x0123456789abcdef);
             assert_eq!(v.hwcap2, 0x02468ace13579bdf);
         }
         #[cfg(target_endian = "little")]
         #[test]
         fn linux_no_hwcap2_aarch64() {
-            let file = concat!(env!("CARGO_MANIFEST_DIR"), "/src/detect/test_data/linux-no-hwcap2-aarch64.auxv");
-            println!("file: {file}");
-            let v = auxv_from_file(file).unwrap();
+            let auxv = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/detect/test_data/linux-no-hwcap2-aarch64.auxv"));
+            let v = auxv_from_file_bytes(auxv).unwrap();
             // An absent HWCAP2 is treated as zero, and does not prevent acceptance of HWCAP.
             assert_ne!(v.hwcap, 0);
             assert_eq!(v.hwcap2, 0);
