@@ -898,9 +898,12 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             Some(self.r.graph_root)
         } else {
             let tcx = self.r.tcx;
-            let crate_id = self.r.crate_loader(|c| {
-                c.process_extern_crate(item, local_def_id, &tcx.definitions_untracked())
-            });
+            let crate_id = self.r.cstore_mut().process_extern_crate(
+                self.r.tcx,
+                item,
+                local_def_id,
+                &tcx.definitions_untracked(),
+            );
             crate_id.map(|crate_id| {
                 self.r.extern_crate_map.insert(local_def_id, crate_id);
                 self.r.expect_module(crate_id.as_def_id())

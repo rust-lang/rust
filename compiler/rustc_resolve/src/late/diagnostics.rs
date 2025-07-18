@@ -2485,7 +2485,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             let extern_prelude = self.r.extern_prelude.clone();
                             names.extend(extern_prelude.iter().flat_map(|(ident, _)| {
                                 self.r
-                                    .crate_loader(|c| c.maybe_process_path_extern(ident.name))
+                                    .cstore_mut()
+                                    .maybe_process_path_extern(self.r.tcx, ident.name)
                                     .and_then(|crate_id| {
                                         let crate_mod =
                                             Res::Def(DefKind::Mod, crate_id.as_def_id());
