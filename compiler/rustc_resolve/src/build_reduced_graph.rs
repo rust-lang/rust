@@ -49,7 +49,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ns: Namespace,
         binding: NameBinding<'ra>,
     ) {
-        if let Err(old_binding) = self.try_define_local(parent, key, binding, false) {
+        assert!(parent.is_local());
+        if let Err(old_binding) = self.try_define_local(parent, ident, ns, binding, false) {
             self.report_conflict(parent, ident, ns, old_binding, binding);
         }
     }
@@ -60,17 +61,43 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ident: Ident,
         ns: Namespace,
         res: Res,
-        vis: Visibility,
+        vis: Visibility, // Implictly local
         span: Span,
         expn_id: LocalExpnId,
     ) {
         assert!(parent.is_local());
         assert!(res.opt_def_id().is_none_or(|def_id| def_id.is_local()));
         let binding = self.arenas.new_res_binding(res, vis.to_def_id(), span, expn_id);
-        self.define_binding_local(parent, ident, ns, binding)
+        self.define_binding_local(parent, ident, ns, binding);
     }
 
-    // Panics when a binding already exists.
+    /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
+    /// otherwise, panic.
+    pub(crate) fn define_binding_extern(
+        &self,
+        parent: Module<'ra>,
+        ident: Ident,
+        ns: Namespace,
+        binding: NameBinding<'ra>,
+    ) {
+        assert!(!parent.is_local());
+        // Even if underscore names cannot be looked up, we still need to add them to modules,
+        // because they can be fetched by glob imports from those modules, and bring traits
+        // into scope both directly and through glob imports.
+        let key = BindingKey::new_disambiguated(ident, ns, || {
+            (parent.0.0.lazy_resolutions.borrow().len() + 1).try_into().unwrap()
+        });
+        let resolution = &mut *self.resolution(parent, key).borrow_mut();
+        let resolution_binding = if binding.is_glob_import() {
+            &mut resolution.glob_binding
+        } else {
+            &mut resolution.non_glob_binding
+        };
+        if resolution_binding.replace(binding).is_some() {
+            panic!("An external binding was already defined");
+        }
+    }
+
     fn define_extern(
         &self,
         parent: Module<'ra>,
@@ -88,12 +115,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             def_id
         });
         let binding = self.arenas.new_res_binding(res, vis, span, expn_id);
-        let key = self.new_disambiguated_key(ident, ns);
-        let resolution = &mut *self.resolution(parent, key).borrow_mut();
-        if resolution.binding.is_some() {
-            panic!("An external binding was already defined");
-        }
-        resolution.binding = Some(binding);
+        self.define_binding_extern(parent, ident, ns, binding);
     }
 
     /// Walks up the tree of definitions starting at `def_id`,

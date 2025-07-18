@@ -670,7 +670,7 @@ impl<'ra> Module<'ra> {
         F: FnMut(&R, Ident, Namespace, NameBinding<'ra>),
     {
         for (key, name_resolution) in resolver.as_ref().resolutions(self).borrow().iter() {
-            if let Some(binding) = name_resolution.borrow().binding {
+            if let Some(binding) = name_resolution.borrow().best_binding() {
                 f(resolver, key.ident, key.ns, binding);
             }
         }
