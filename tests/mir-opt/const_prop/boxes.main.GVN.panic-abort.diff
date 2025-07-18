@@ -30,16 +30,21 @@
       }
   
       bb1: {
-          StorageLive(_7);
+-         StorageLive(_7);
++         nop;
           _7 = ShallowInitBox(move _6, i32);
           _8 = copy ((_7.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>) as *const i32 (Transmute);
           (*_8) = const 42_i32;
-          _3 = move _7;
-          StorageDead(_7);
-          _9 = copy ((_3.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>) as *const i32 (Transmute);
-          _2 = copy (*_9);
+-         _3 = move _7;
+-         StorageDead(_7);
+-         _9 = copy ((_3.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>) as *const i32 (Transmute);
+-         _2 = copy (*_9);
 -         _1 = Add(move _2, const 0_i32);
 -         StorageDead(_2);
++         _3 = copy _7;
++         nop;
++         _9 = copy _8;
++         _2 = copy (*_8);
 +         _1 = copy _2;
 +         nop;
           drop(_3) -> [return: bb2, unwind unreachable];

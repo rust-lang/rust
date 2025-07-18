@@ -18,7 +18,8 @@
   
       bb0: {
           _4 = copy _1 as *const T (PtrToPtr);
-          _5 = PtrMetadata(copy _4);
+-         _5 = PtrMetadata(copy _4);
++         _5 = const ();
           _6 = copy _1 as *const (&A, [T]) (PtrToPtr);
 -         _7 = PtrMetadata(copy _6);
 +         _7 = PtrMetadata(copy _1);
