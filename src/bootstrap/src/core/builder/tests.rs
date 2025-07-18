@@ -642,6 +642,7 @@ mod snapshot {
     };
     use crate::core::builder::{Builder, Kind, StepDescription, StepMetadata};
     use crate::core::config::TargetSelection;
+    use crate::core::config::toml::rust::with_lld_opt_in_targets;
     use crate::utils::cache::Cache;
     use crate::utils::helpers::get_host_target;
     use crate::utils::tests::{ConfigBuilder, TestCtx};
@@ -1638,10 +1639,31 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> LldWrapper 1 <host>
         [build] rustdoc 0 <host>
         [doc] std 1 <host> crates=[core]
         ");
+    }
+
+    #[test]
+    fn test_lld_opt_in() {
+        let target: &'static str = Box::leak(Box::new(host_target()));
+        let slice: &'static [&'static str] = Box::leak(Box::new([target]));
+
+        with_lld_opt_in_targets(slice, || {
+            let ctx = TestCtx::new();
+
+            insta::assert_snapshot!(
+                ctx.config("doc")
+                    .path("core")
+                    .override_target_no_std(&host_target())
+                    .render_steps(), @r"
+            [build] llvm <host>
+            [build] rustc 0 <host> -> rustc 1 <host>
+            [build] rustc 0 <host> -> LldWrapper 1 <host>
+            [build] rustdoc 0 <host>
+            [doc] std 1 <host> crates=[core]
+            ");
+        });
     }
 
     #[test]
@@ -1654,7 +1676,6 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> LldWrapper 1 <host>
         [build] rustdoc 0 <host>
         [doc] std 1 <host> crates=[alloc,core]
         ");
