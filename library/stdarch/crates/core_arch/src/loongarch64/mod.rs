@@ -13,10 +13,9 @@ use crate::arch::asm;
 /// Reads the 64-bit stable counter value and the counter ID
 #[inline]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn rdtime_d() -> (i64, isize) {
-    let val: i64;
-    let tid: isize;
-    asm!("rdtime.d {}, {}", out(reg) val, out(reg) tid, options(readonly, nostack));
+pub fn rdtime_d() -> (i64, isize) {
+    let (val, tid): (i64, isize);
+    unsafe { asm!("rdtime.d {}, {}", out(reg) val, out(reg) tid, options(readonly, nostack)) };
     (val, tid)
 }
 
@@ -51,15 +50,15 @@ unsafe extern "unadjusted" {
 /// Calculate the CRC value using the IEEE 802.3 polynomial (0xEDB88320)
 #[inline]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn crc_w_d_w(a: i64, b: i32) -> i32 {
-    __crc_w_d_w(a, b)
+pub fn crc_w_d_w(a: i64, b: i32) -> i32 {
+    unsafe { __crc_w_d_w(a, b) }
 }
 
 /// Calculate the CRC value using the Castagnoli polynomial (0x82F63B78)
 #[inline]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn crcc_w_d_w(a: i64, b: i32) -> i32 {
-    __crcc_w_d_w(a, b)
+pub fn crcc_w_d_w(a: i64, b: i32) -> i32 {
+    unsafe { __crcc_w_d_w(a, b) }
 }
 
 /// Generates the cache operation instruction
