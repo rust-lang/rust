@@ -87,6 +87,7 @@ pub(crate) fn expand_deriving_clone(
         }],
         associated_types: Vec::new(),
         is_const,
+        is_staged_api_crate: cx.ecfg.features.staged_api(),
     };
 
     trait_def.expand_ext(cx, mitem, item, push, is_simple)
