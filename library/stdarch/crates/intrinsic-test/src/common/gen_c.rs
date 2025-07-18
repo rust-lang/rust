@@ -1,7 +1,8 @@
 use itertools::Itertools;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
-use std::process::Command;
+
+use crate::common::compile_c::CppCompilation;
 
 use super::argument::Argument;
 use super::indentation::Indentation;
@@ -62,29 +63,30 @@ int main(int argc, char **argv) {{
     )
 }
 
-pub fn compile_c_programs(compiler_commands: &[String]) -> bool {
-    compiler_commands
+pub fn compile_c_programs(pipeline: &CppCompilation, intrinsics: &[String]) -> bool {
+    intrinsics
         .par_iter()
-        .map(|compiler_command| {
-            let output = Command::new("sh").arg("-c").arg(compiler_command).output();
-            if let Ok(output) = output {
-                if output.status.success() {
-                    true
-                } else {
-                    error!(
-                        "Failed to compile code for intrinsics: \n\nstdout:\n{}\n\nstderr:\n{}",
+        .map(
+            |intrinsic| match pipeline.run(&[format!("{intrinsic}.cpp")], intrinsic) {
+                Ok(output) if output.status.success() => Ok(()),
+                Ok(output) => {
+                    let msg = format!(
+                        "Failed to compile code for intrinsic `{intrinsic}`: \n\nstdout:\n{}\n\nstderr:\n{}",
                         std::str::from_utf8(&output.stdout).unwrap_or(""),
                         std::str::from_utf8(&output.stderr).unwrap_or("")
                     );
-                    false
+                    error!("{msg}");
+
+                    Err(msg)
                 }
-            } else {
-                error!("Command failed: {output:#?}");
-                false
-            }
-        })
-        .find_any(|x| !x)
-        .is_none()
+                Err(e) => {
+                    error!("command for `{intrinsic}` failed with IO error: {e:?}");
+                    Err(e.to_string())
+                }
+            },
+        )
+        .collect::<Result<(), String>>()
+        .is_ok()
 }
 
 // Creates directory structure and file path mappings
