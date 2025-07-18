@@ -335,7 +335,7 @@ fn main() -> Result<()> {
     ui(Mode::Panic, "tests/panic", &target, WithDependencies, tmpdir.path())?;
     ui(Mode::Fail, "tests/fail", &target, WithoutDependencies, tmpdir.path())?;
     ui(Mode::Fail, "tests/fail-dep", &target, WithDependencies, tmpdir.path())?;
-    if cfg!(unix) && target == host {
+    if cfg!(all(unix, feature = "native-lib")) && target == host {
         ui(Mode::Pass, "tests/native-lib/pass", &target, WithoutDependencies, tmpdir.path())?;
         ui(Mode::Fail, "tests/native-lib/fail", &target, WithoutDependencies, tmpdir.path())?;
     }

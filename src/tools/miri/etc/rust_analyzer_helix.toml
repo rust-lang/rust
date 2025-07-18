@@ -26,5 +26,6 @@ invocationStrategy = "once"
 overrideCommand = [
     "./miri",
     "check",
+    "--no-default-features",
     "--message-format=json",
 ]
