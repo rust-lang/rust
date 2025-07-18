@@ -1221,13 +1221,16 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 name = "lsp-server"
 version = "0.7.8"
 dependencies = [
+ "anyhow",
  "crossbeam-channel",
  "ctrlc",
  "log",
  "lsp-types",
+ "rustc-hash 2.1.1",
  "serde",
  "serde_derive",
  "serde_json",
+ "toolchain",
 ]
 
 [[package]]
