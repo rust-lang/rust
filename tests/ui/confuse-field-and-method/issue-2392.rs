@@ -1,5 +1,3 @@
-//@ compile-flags: -Zwrite-long-types-to-disk=yes
-
 struct FuncContainer {
     f1: fn(data: u8),
     f2: extern "C" fn(data: u8),
