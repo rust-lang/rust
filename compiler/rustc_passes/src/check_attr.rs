@@ -11,11 +11,17 @@ use std::slice;
 
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, ast, join_path_syms};
-use rustc_attr_data_structures::{AttributeKind, InlineAttr, ReprAttr, find_attr};
+use rustc_attr_data_structures::{
+    AttributeKind, InlineAttr, PartialConstStability, ReprAttr, Stability, StabilityLevel,
+    find_attr,
+};
 use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
-use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
+use rustc_feature::{
+    ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
+    BuiltinAttribute,
+};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -36,6 +42,7 @@ use rustc_session::lint;
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, INVALID_MACRO_EXPORT_ARGUMENTS,
     MALFORMED_DIAGNOSTIC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    USELESS_DEPRECATED,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
@@ -161,12 +168,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         sym::automatically_derived,
                         *attr_span,
                         target,
-                        Target::Impl,
+                        Target::Impl { of_trait: true },
                     ),
                 Attribute::Parsed(
-                    AttributeKind::Stability { span, .. }
-                    | AttributeKind::ConstStability { span, .. },
-                ) => self.check_stability_promotable(*span, target),
+                    AttributeKind::Stability {
+                        span: attr_span,
+                        stability: Stability { level, feature },
+                    }
+                    | AttributeKind::ConstStability {
+                        span: attr_span,
+                        stability: PartialConstStability { level, feature, .. },
+                    },
+                ) => self.check_stability(*attr_span, span, level, *feature, target),
                 Attribute::Parsed(AttributeKind::Inline(InlineAttr::Force { .. }, ..)) => {} // handled separately below
                 Attribute::Parsed(AttributeKind::Inline(kind, attr_span)) => {
                     self.check_inline(hir_id, *attr_span, span, kind, target)
@@ -494,7 +507,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         attr: &Attribute,
         item: Option<ItemLike<'_>>,
     ) {
-        if !matches!(target, Target::Impl)
+        if !matches!(target, Target::Impl { .. })
             || matches!(
                 item,
                 Some(ItemLike::Item(hir::Item {  kind: hir::ItemKind::Impl(_impl),.. }))
@@ -598,7 +611,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::Fn
             | Target::Closure
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
-            | Target::Impl
+            | Target::Impl { .. }
             | Target::Mod => return,
 
             // These are "functions", but they aren't allowed because they don't
@@ -987,9 +1000,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let span = meta.span();
         if let Some(location) = match target {
             Target::AssocTy => {
-                let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id;
-                let containing_item = self.tcx.hir_expect_item(parent_def_id);
-                if Target::from_item(containing_item) == Target::Impl {
+                if let DefKind::Impl { .. } =
+                    self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id))
+                {
                     Some("type alias in implementation block")
                 } else {
                     None
@@ -1012,7 +1025,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::Arm
             | Target::ForeignMod
             | Target::Closure
-            | Target::Impl
+            | Target::Impl { .. }
             | Target::WherePredicate => Some(target.name()),
             Target::ExternCrate
             | Target::Use
@@ -1033,7 +1046,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::ForeignFn
             | Target::ForeignStatic
             | Target::ForeignTy
-            | Target::GenericParam(..)
+            | Target::GenericParam { .. }
             | Target::MacroDef
             | Target::PatField
             | Target::ExprField => None,
@@ -1590,7 +1603,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let article = match target {
             Target::ExternCrate
             | Target::Enum
-            | Target::Impl
+            | Target::Impl { .. }
             | Target::Expression
             | Target::Arm
             | Target::AssocConst
@@ -2274,7 +2287,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             // FIXME(staged_api): There's no reason we can't support more targets here. We're just
             // being conservative to begin with.
-            Target::Fn | Target::Impl => {}
+            Target::Fn | Target::Impl { .. } => {}
             Target::ExternCrate
             | Target::Use
             | Target::Static
@@ -2300,7 +2313,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::ForeignFn
             | Target::ForeignStatic
             | Target::ForeignTy
-            | Target::GenericParam(_)
+            | Target::GenericParam { .. }
             | Target::MacroDef
             | Target::Param
             | Target::PatField
@@ -2320,12 +2333,29 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_stability_promotable(&self, span: Span, target: Target) {
+    fn check_stability(
+        &self,
+        attr_span: Span,
+        item_span: Span,
+        level: &StabilityLevel,
+        feature: Symbol,
+        target: Target,
+    ) {
         match target {
             Target::Expression => {
-                self.dcx().emit_err(errors::StabilityPromotable { attr_span: span });
+                self.dcx().emit_err(errors::StabilityPromotable { attr_span });
             }
             _ => {}
+        }
+
+        // Stable *language* features shouldn't be used as unstable library features.
+        // (Not doing this for stable library features is checked by tidy.)
+        if level.is_unstable()
+            && ACCEPTED_LANG_FEATURES.iter().find(|f| f.name == feature).is_some()
+        {
+            self.tcx
+                .dcx()
+                .emit_err(errors::UnstableAttrForAlreadyStableFeature { attr_span, item_span });
         }
     }
 
@@ -2352,6 +2382,28 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     hir_id,
                     attr.span(),
                     errors::Deprecated,
+                );
+            }
+            Target::Impl { of_trait: true }
+            | Target::GenericParam { has_default: false, kind: _ } => {
+                self.tcx.emit_node_span_lint(
+                    USELESS_DEPRECATED,
+                    hir_id,
+                    attr.span(),
+                    errors::DeprecatedAnnotationHasNoEffect { span: attr.span() },
+                );
+            }
+            Target::AssocConst | Target::Method(..) | Target::AssocTy
+                if matches!(
+                    self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id)),
+                    DefKind::Impl { of_trait: true }
+                ) =>
+            {
+                self.tcx.emit_node_span_lint(
+                    USELESS_DEPRECATED,
+                    hir_id,
+                    attr.span(),
+                    errors::DeprecatedAnnotationHasNoEffect { span: attr.span() },
                 );
             }
             _ => {}
