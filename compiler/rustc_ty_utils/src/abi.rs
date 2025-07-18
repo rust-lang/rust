@@ -39,7 +39,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             tcx.thread_local_ptr_ty(instance.def_id()),
             false,
             hir::Safety::Safe,
-            rustc_abi::ExternAbi::Unadjusted,
+            rustc_abi::ExternAbi::Rust,
         );
     }
 
