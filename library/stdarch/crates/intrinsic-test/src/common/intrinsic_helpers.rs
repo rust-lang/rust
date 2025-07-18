@@ -322,7 +322,9 @@ pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
     fn get_lane_function(&self) -> String;
 
     /// can be implemented in an `impl` block
-    fn from_c(_s: &str, _target: &str) -> Result<Box<Self>, String>;
+    fn from_c(_s: &str, _target: &str) -> Result<Self, String>
+    where
+        Self: Sized;
 
     /// Gets a string containing the typename for this type in C format.
     /// can be directly defined in `impl` blocks
