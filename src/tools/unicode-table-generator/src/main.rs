@@ -160,15 +160,15 @@ fn load_data() -> UnicodeData {
                 .push(Codepoints::Single(row.codepoint));
         }
 
-        if let Some(mapped) = row.simple_lowercase_mapping {
-            if mapped != row.codepoint {
-                to_lower.insert(row.codepoint.value(), (mapped.value(), 0, 0));
-            }
+        if let Some(mapped) = row.simple_lowercase_mapping
+            && mapped != row.codepoint
+        {
+            to_lower.insert(row.codepoint.value(), (mapped.value(), 0, 0));
         }
-        if let Some(mapped) = row.simple_uppercase_mapping {
-            if mapped != row.codepoint {
-                to_upper.insert(row.codepoint.value(), (mapped.value(), 0, 0));
-            }
+        if let Some(mapped) = row.simple_uppercase_mapping
+            && mapped != row.codepoint
+        {
+            to_upper.insert(row.codepoint.value(), (mapped.value(), 0, 0));
         }
     }
 
