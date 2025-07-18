@@ -280,7 +280,7 @@ fn gen_bind_body(
             let fn_output = if out_t.to_lowercase() == "void" {
                 String::new()
             } else {
-                format!("-> {}", type_to_rst(out_t, is_store))
+                format!(" -> {}", type_to_rst(out_t, is_store))
             };
             let fn_inputs = match para_num {
                 1 => format!("(a: {})", type_to_rst(in_t[0], is_store)),
@@ -304,7 +304,7 @@ fn gen_bind_body(
                 ),
                 _ => panic!("unsupported parameter number"),
             };
-            format!("fn __{current_name}{fn_inputs} {fn_output};")
+            format!("fn __{current_name}{fn_inputs}{fn_output};")
         };
         let function = format!(
             r#"    #[link_name = "llvm.loongarch.{}"]
