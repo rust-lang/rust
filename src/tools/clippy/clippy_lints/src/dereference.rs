@@ -916,7 +916,6 @@ impl TyCoercionStability {
                 | ty::Foreign(_)
                 | ty::FnDef(..)
                 | ty::Coroutine(..)
-                | ty::CoroutineWitness(..)
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
                 | ty::Never

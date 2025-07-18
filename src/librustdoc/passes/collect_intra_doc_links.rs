@@ -533,7 +533,6 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Dynamic(..)
             | ty::UnsafeBinder(_)
             | ty::Param(_)
