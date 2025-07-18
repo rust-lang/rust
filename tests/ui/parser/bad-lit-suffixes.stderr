@@ -29,7 +29,7 @@ LL | #[link(name = "string"suffix)]
    |               ^^^^^^^^^^^^^^ invalid suffix `suffix`
 
 error: invalid suffix `suffix` for number literal
-  --> $DIR/bad-lit-suffixes.rs:43:41
+  --> $DIR/bad-lit-suffixes.rs:44:41
    |
 LL | #[rustc_layout_scalar_valid_range_start(0suffix)]
    |                                         ^^^^^^^ invalid suffix `suffix`
@@ -167,8 +167,14 @@ LL - #[must_use = "string"suffix]
 LL + #[must_use]
    |
 
+error[E0459]: `#[link]` attribute requires a `name = "string"` argument
+  --> $DIR/bad-lit-suffixes.rs:39:1
+   |
+LL | #[link(name = "string"suffix)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `name` argument
+
 error[E0805]: malformed `rustc_layout_scalar_valid_range_start` attribute input
-  --> $DIR/bad-lit-suffixes.rs:43:1
+  --> $DIR/bad-lit-suffixes.rs:44:1
    |
 LL | #[rustc_layout_scalar_valid_range_start(0suffix)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------^
@@ -176,7 +182,7 @@ LL | #[rustc_layout_scalar_valid_range_start(0suffix)]
    | |                                      expected a single argument here
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_start(start)]`
 
-error: aborting due to 22 previous errors; 2 warnings emitted
+error: aborting due to 23 previous errors; 2 warnings emitted
 
-Some errors have detailed explanations: E0539, E0805.
-For more information about an error, try `rustc --explain E0539`.
+Some errors have detailed explanations: E0459, E0539, E0805.
+For more information about an error, try `rustc --explain E0459`.

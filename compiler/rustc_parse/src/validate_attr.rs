@@ -309,6 +309,7 @@ pub fn check_builtin_meta_item(
                 | sym::ignore
                 | sym::must_use
                 | sym::track_caller
+                | sym::link
                 | sym::link_name
                 | sym::link_ordinal
                 | sym::export_name

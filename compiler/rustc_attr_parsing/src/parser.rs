@@ -169,6 +169,15 @@ impl<'a> ArgParser<'a> {
         }
     }
 
+    /// Asserts that this MetaItem is a name-value pair, and that the value is a string.
+    /// Returns the value and the span of the value.
+    pub fn name_value_str(&self) -> Option<(Symbol, Span)> {
+        match self {
+            Self::NameValue(n) => n.value_as_str().map(|s| (s, n.value_span)),
+            Self::List(_) | Self::NoArgs => None,
+        }
+    }
+
     /// Assert that there were no args.
     /// If there were, get a span to the arguments
     /// (to pass to [`AcceptContext::expected_no_args`](crate::context::AcceptContext::expected_no_args)).

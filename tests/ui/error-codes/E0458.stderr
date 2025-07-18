@@ -1,8 +1,11 @@
-error[E0458]: unknown link kind `wonderful_unicorn`, expected one of: static, dylib, framework, raw-dylib, link-arg
-  --> $DIR/E0458.rs:1:15
+error[E0539]: malformed `link` attribute input
+  --> $DIR/E0458.rs:1:1
    |
 LL | #[link(kind = "wonderful_unicorn")] extern "C" {}
-   |               ^^^^^^^^^^^^^^^^^^^ unknown link kind
+   | ^^^^^^^^^^^^^^-------------------^^
+   | |             |
+   | |             valid arguments are "static", "dylib", "framework", "raw-dylib" or "link-arg"
+   | help: must be of the form: `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...", /*opt*/ import_name_type = "decorated|noprefix|undecorated")]`
 
 error[E0459]: `#[link]` attribute requires a `name = "string"` argument
   --> $DIR/E0458.rs:1:1
@@ -12,5 +15,5 @@ LL | #[link(kind = "wonderful_unicorn")] extern "C" {}
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0458, E0459.
-For more information about an error, try `rustc --explain E0458`.
+Some errors have detailed explanations: E0459, E0539.
+For more information about an error, try `rustc --explain E0459`.

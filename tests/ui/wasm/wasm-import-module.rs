@@ -1,12 +1,12 @@
 #![feature(link_cfg)]
 
-#[link(name = "...", wasm_import_module)] //~ ERROR: must be of the form
+#[link(name = "...", wasm_import_module)] //~ ERROR: malformed `link` attribute input
 extern "C" {}
 
-#[link(name = "...", wasm_import_module(x))] //~ ERROR: must be of the form
+#[link(name = "...", wasm_import_module(x))] //~ ERROR: malformed `link` attribute input
 extern "C" {}
 
-#[link(name = "...", wasm_import_module())] //~ ERROR: must be of the form
+#[link(name = "...", wasm_import_module())] //~ ERROR: malformed `link` attribute input
 extern "C" {}
 
 #[link(wasm_import_module = "foo", name = "bar")] //~ ERROR: `wasm_import_module` is incompatible with other arguments

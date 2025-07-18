@@ -52,6 +52,7 @@ tracing = "0.1"
 [dev-dependencies]
 # tidy-alphabetical-start
 rustc_abi = { path = "../rustc_abi" }
+rustc_attr_data_structures = { path = "../rustc_attr_data_structures"}
 # tidy-alphabetical-end
 
 [features]

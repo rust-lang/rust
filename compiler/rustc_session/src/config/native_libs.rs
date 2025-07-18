@@ -4,11 +4,12 @@
 //! (There is also a similar but separate syntax for `#[link]` attributes,
 //! which have their own parser in `rustc_metadata`.)
 
+use rustc_attr_data_structures::NativeLibKind;
 use rustc_feature::UnstableFeatures;
 
 use crate::EarlyDiagCtxt;
 use crate::config::UnstableOptions;
-use crate::utils::{NativeLib, NativeLibKind};
+use crate::utils::NativeLib;
 
 #[cfg(test)]
 mod tests;

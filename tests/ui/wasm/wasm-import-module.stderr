@@ -1,20 +1,29 @@
-error: wasm import module must be of the form `wasm_import_module = "string"`
-  --> $DIR/wasm-import-module.rs:3:22
+error[E0539]: malformed `link` attribute input
+  --> $DIR/wasm-import-module.rs:3:1
    |
 LL | #[link(name = "...", wasm_import_module)]
-   |                      ^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^------------------^^
+   | |                    |
+   | |                    expected this to be of the form `wasm_import_module = "..."`
+   | help: must be of the form: `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...", /*opt*/ import_name_type = "decorated|noprefix|undecorated")]`
 
-error: wasm import module must be of the form `wasm_import_module = "string"`
-  --> $DIR/wasm-import-module.rs:6:22
+error[E0539]: malformed `link` attribute input
+  --> $DIR/wasm-import-module.rs:6:1
    |
 LL | #[link(name = "...", wasm_import_module(x))]
-   |                      ^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^---------------------^^
+   | |                    |
+   | |                    expected this to be of the form `wasm_import_module = "..."`
+   | help: must be of the form: `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...", /*opt*/ import_name_type = "decorated|noprefix|undecorated")]`
 
-error: wasm import module must be of the form `wasm_import_module = "string"`
-  --> $DIR/wasm-import-module.rs:9:22
+error[E0539]: malformed `link` attribute input
+  --> $DIR/wasm-import-module.rs:9:1
    |
 LL | #[link(name = "...", wasm_import_module())]
-   |                      ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^--------------------^^
+   | |                    |
+   | |                    expected this to be of the form `wasm_import_module = "..."`
+   | help: must be of the form: `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...", /*opt*/ import_name_type = "decorated|noprefix|undecorated")]`
 
 error: `wasm_import_module` is incompatible with other arguments in `#[link]` attributes
   --> $DIR/wasm-import-module.rs:12:8
@@ -36,3 +45,4 @@ LL | #[link(wasm_import_module = "foo", cfg(false))]
 
 error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0539`.

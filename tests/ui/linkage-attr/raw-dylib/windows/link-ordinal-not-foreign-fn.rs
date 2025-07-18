@@ -10,7 +10,7 @@ fn test() {}
 //~^ ERROR attribute should be applied to a foreign function or static
 static mut imported_val: i32 = 123;
 
-#[link(name = "exporter", kind = "raw-dylib")]
+#[link(name = "exporter")]
 extern "C" {
     #[link_ordinal(13)]
     fn imported_function();

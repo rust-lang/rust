@@ -1,8 +1,12 @@
-error: link cfg must have a single predicate argument
-  --> $DIR/issue-43926.rs:1:22
+error[E0805]: malformed `link` attribute input
+  --> $DIR/issue-43926.rs:1:1
    |
 LL | #[link(name = "foo", cfg())]
-   |                      ^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^-----^^
+   | |                    |
+   | |                    expected a single argument here
+   | help: must be of the form: `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...", /*opt*/ import_name_type = "decorated|noprefix|undecorated")]`
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0805`.
