@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/10465
+
 pub mod a {
     pub trait A {
         fn foo(&self);

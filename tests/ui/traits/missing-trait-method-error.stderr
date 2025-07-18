@@ -1,5 +1,5 @@
 error[E0599]: no method named `foo` found for reference `&B` in the current scope
-  --> $DIR/issue-10465.rs:17:15
+  --> $DIR/missing-trait-method-error.rs:19:15
    |
 LL |             b.foo();
    |               ^^^ method not found in `&B`

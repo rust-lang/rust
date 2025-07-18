@@ -1,47 +1,47 @@
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:1:20
+  --> $DIR/keyword-self-lifetime-error.rs:3:20
    |
 LL | trait Serializable<'self, T> {
    |                    ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:3:24
+  --> $DIR/keyword-self-lifetime-error.rs:5:24
    |
 LL |     fn serialize(val: &'self T) -> Vec<u8>;
    |                        ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:4:37
+  --> $DIR/keyword-self-lifetime-error.rs:6:37
    |
 LL |     fn deserialize(repr: &[u8]) -> &'self T;
    |                                     ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:7:6
+  --> $DIR/keyword-self-lifetime-error.rs:9:6
    |
 LL | impl<'self> Serializable<str> for &'self str {
    |      ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:7:36
+  --> $DIR/keyword-self-lifetime-error.rs:9:36
    |
 LL | impl<'self> Serializable<str> for &'self str {
    |                                    ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:11:24
+  --> $DIR/keyword-self-lifetime-error.rs:13:24
    |
 LL |     fn serialize(val: &'self str) -> Vec<u8> {
    |                        ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:15:37
+  --> $DIR/keyword-self-lifetime-error.rs:17:37
    |
 LL |     fn deserialize(repr: &[u8]) -> &'self str {
    |                                     ^^^^^
 
 error[E0726]: implicit elided lifetime not allowed here
-  --> $DIR/issue-10412.rs:7:13
+  --> $DIR/keyword-self-lifetime-error.rs:9:13
    |
 LL | impl<'self> Serializable<str> for &'self str {
    |             ^^^^^^^^^^^^^^^^^ expected lifetime parameter

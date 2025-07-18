@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/10767
+
 //@ run-pass
 
 pub fn main() {

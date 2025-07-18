@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/11374
+
 use std::io::{self, Read};
 use std::vec;
 

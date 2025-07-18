@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/11267
+
 //@ run-pass
 // Tests that unary structs can be mutably borrowed.
 

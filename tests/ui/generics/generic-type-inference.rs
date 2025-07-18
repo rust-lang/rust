@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/10436
+
 //@ run-pass
 fn works<T>(x: T) -> Vec<T> { vec![x] }
 

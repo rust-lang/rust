@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/10853
+
 //@ check-pass
 
 #![deny(missing_docs)]

@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/10412
+
 trait Serializable<'self, T> {
     //~^ ERROR lifetimes cannot use keyword names
     fn serialize(val: &'self T) -> Vec<u8>; //~ ERROR lifetimes cannot use keyword names

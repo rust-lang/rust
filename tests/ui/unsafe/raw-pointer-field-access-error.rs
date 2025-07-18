@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/11004
+
 use std::mem;
 
 struct A { x: i32, y: f64 }

@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/11192
+
 struct Foo {
     x: isize
 }

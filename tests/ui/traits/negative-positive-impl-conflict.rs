@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/106755
+
 //@ compile-flags:-Ztranslate-lang=en_US
 
 #![feature(negative_impls)]

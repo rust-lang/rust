@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/10734
+
 //@ run-pass
 #![allow(non_upper_case_globals)]
 

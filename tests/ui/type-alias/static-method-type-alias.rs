@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/11047
+
 //@ run-pass
 // Test that static methods can be invoked on `type` aliases
 
