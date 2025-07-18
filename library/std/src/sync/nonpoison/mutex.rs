@@ -13,6 +13,8 @@ use crate::sys::sync as sys;
 /// For more information about mutexes, check out the documentation for the poisoning variant of
 /// this lock (which can be found at [`poison::Mutex`]).
 ///
+/// [`poison::Mutex`]: crate::sync::poison::Mutex
+///
 /// # Examples
 ///
 /// ```
@@ -143,8 +145,6 @@ use crate::sys::sync as sys;
 ///
 /// assert_eq!(*res_mutex.lock(), 800);
 /// ```
-///
-/// [`poison::Mutex`]: crate::sync::poison::Mutex
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "NonPoisonMutex")]
 pub struct Mutex<T: ?Sized> {
@@ -226,11 +226,11 @@ unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
 /// The data protected by the mutex can be accessed through this guard via its
 /// [`Deref`] and [`DerefMut`] implementations.
 ///
-/// This structure is created by the [`map`] and [`try_map`] methods on
+/// This structure is created by the [`map`] and [`filter_map`] methods on
 /// [`MutexGuard`].
 ///
 /// [`map`]: MutexGuard::map
-/// [`try_map`]: MutexGuard::try_map
+/// [`filter_map`]: MutexGuard::filter_map
 /// [`Condvar`]: crate::sync::Condvar
 #[must_use = "if unused the Mutex will immediately unlock"]
 #[must_not_suspend = "holding a MappedMutexGuard across suspend \
@@ -382,23 +382,20 @@ impl<T: ?Sized> Mutex<T> {
 
     /// Attempts to acquire this lock.
     ///
-    /// If the lock could not be acquired at this time, then [`None`] is returned.
-    /// Otherwise, an RAII guard is returned. The lock will be unlocked when the
-    /// guard is dropped.
+    /// This function does not block. If the lock could not be acquired at this time, then
+    /// [`WouldBlock`] is returned. Otherwise, an RAII guard is returned.
     ///
-    /// This function does not block.
+    /// The lock will be unlocked when the guard is dropped.
     ///
     /// # Errors
     ///
-    /// If the mutex could not be acquired because it is already locked, then
-    /// this call will return [`None`].
+    /// If the mutex could not be acquired because it is already locked, then this call will return
+    /// the [`WouldBlock`] error.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(nonpoison_mutex)]
-    ///
-    /// use std::sync::{Arc, nonpoison::Mutex};
+    /// use std::sync::{Arc, Mutex};
     /// use std::thread;
     ///
     /// let mutex = Arc::new(Mutex::new(0));
@@ -412,7 +409,7 @@ impl<T: ?Sized> Mutex<T> {
     ///         println!("try_lock failed");
     ///     }
     /// }).join().expect("thread::spawn failed");
-    /// assert_eq!(*mutex.lock(), 10);
+    /// assert_eq!(*mutex.lock().unwrap(), 10);
     /// ```
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
     pub fn try_lock(&self) -> TryLockResult<MutexGuard<'_, T>> {
@@ -567,7 +564,7 @@ impl<'a, T: ?Sized> MutexGuard<'a, T> {
         U: ?Sized,
     {
         // SAFETY: the conditions of `MutexGuard::new` were satisfied when the original guard
-        // was created, and have been upheld throughout `map` and/or `try_map`.
+        // was created, and have been upheld throughout `map` and/or `filter_map`.
         // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
         // passed to it. If the closure panics, the guard will be dropped.
         let data = NonNull::from(f(unsafe { &mut *orig.lock.data.get() }));
@@ -582,17 +579,16 @@ impl<'a, T: ?Sized> MutexGuard<'a, T> {
     /// The `Mutex` is already locked, so this cannot fail.
     ///
     /// This is an associated function that needs to be used as
-    /// `MutexGuard::try_map(...)`. A method would interfere with methods of the
+    /// `MutexGuard::filter_map(...)`. A method would interfere with methods of the
     /// same name on the contents of the `MutexGuard` used through `Deref`.
-    #[doc(alias = "filter_map")]
     #[unstable(feature = "mapped_lock_guards", issue = "117108")]
-    pub fn try_map<U, F>(orig: Self, f: F) -> Result<MappedMutexGuard<'a, U>, Self>
+    pub fn filter_map<U, F>(orig: Self, f: F) -> Result<MappedMutexGuard<'a, U>, Self>
     where
         F: FnOnce(&mut T) -> Option<&mut U>,
         U: ?Sized,
     {
         // SAFETY: the conditions of `MutexGuard::new` were satisfied when the original guard
-        // was created, and have been upheld throughout `map` and/or `try_map`.
+        // was created, and have been upheld throughout `map` and/or `filter_map`.
         // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
         // passed to it. If the closure panics, the guard will be dropped.
         match f(unsafe { &mut *orig.lock.data.get() }) {
