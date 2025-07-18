@@ -200,9 +200,10 @@ impl<T> UseCloned for NonZero<T> where T: ZeroablePrimitive {}
 impl<T> Copy for NonZero<T> where T: ZeroablePrimitive {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
-impl<T> PartialEq for NonZero<T>
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T> const PartialEq for NonZero<T>
 where
-    T: ZeroablePrimitive + PartialEq,
+    T: ZeroablePrimitive + ~const PartialEq,
 {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
