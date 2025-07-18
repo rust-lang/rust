@@ -253,6 +253,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return OperandValue::poison(bx, cast);
         }
 
+        // To or from pointers takes different methods, so we use this to restrict
+        // the SimdVector case to types which can be `bitcast` between each other.
+        #[inline]
+        fn vector_can_bitcast(x: abi::Scalar) -> bool {
+            matches!(
+                x,
+                abi::Scalar::Initialized {
+                    value: abi::Primitive::Int(..) | abi::Primitive::Float(..),
+                    ..
+                }
+            )
+        }
+
         let cx = bx.cx();
         match (operand.val, operand.layout.backend_repr, cast.backend_repr) {
             _ if cast.is_zst() => OperandValue::ZeroSized,
@@ -268,6 +281,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 abi::BackendRepr::Scalar(to_scalar),
             ) if from_scalar.size(cx) == to_scalar.size(cx) => {
                 OperandValue::Immediate(transmute_scalar(bx, imm, from_scalar, to_scalar))
+            }
+            (
+                OperandValue::Immediate(imm),
+                abi::BackendRepr::SimdVector { element: from_scalar, .. },
+                abi::BackendRepr::SimdVector { element: to_scalar, .. },
+            ) if vector_can_bitcast(from_scalar) && vector_can_bitcast(to_scalar) => {
+                let to_backend_ty = bx.cx().immediate_backend_type(cast);
+                OperandValue::Immediate(bx.bitcast(imm, to_backend_ty))
             }
             (
                 OperandValue::Pair(imm_a, imm_b),
