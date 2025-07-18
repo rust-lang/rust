@@ -272,6 +272,7 @@ target | std | host | notes
 [`aarch64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  | ARM64 VxWorks OS
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
+`aarch64_be-unknown-linux-musl` | ✓ | ✓ | ARM64 Linux (big-endian, musl-libc)
 [`aarch64_be-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD (big-endian)
 [`amdgcn-amd-amdhsa`](platform-support/amdgcn-amd-amdhsa.md) | * |  | `-Ctarget-cpu=gfx...` to specify [the AMD GPU] to compile for
 [`arm64_32-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | Arm Apple WatchOS 64-bit with 32-bit pointers
