@@ -326,7 +326,6 @@ pub(crate) trait Linker {
         link_or_cc_args(self, &[path]);
     }
     fn gc_sections(&mut self, keep_metadata: bool);
-    fn no_gc_sections(&mut self);
     fn full_relro(&mut self);
     fn partial_relro(&mut self);
     fn no_relro(&mut self);
@@ -688,12 +687,6 @@ impl<'a> Linker for GccLinker<'a> {
         }
     }
 
-    fn no_gc_sections(&mut self) {
-        if self.is_gnu || self.sess.target.is_like_wasm {
-            self.link_arg("--no-gc-sections");
-        }
-    }
-
     fn optimize(&mut self) {
         if !self.is_gnu && !self.sess.target.is_like_wasm {
             return;
@@ -1010,10 +1003,6 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    fn no_gc_sections(&mut self) {
-        self.link_arg("/OPT:NOREF,NOICF");
-    }
-
     fn full_relro(&mut self) {
         // noop
     }
@@ -1243,10 +1232,6 @@ impl<'a> Linker for EmLinker<'a> {
         // noop
     }
 
-    fn no_gc_sections(&mut self) {
-        // noop
-    }
-
     fn optimize(&mut self) {
         // Emscripten performs own optimizations
         self.cc_arg(match self.sess.opts.optimize {
@@ -1418,10 +1403,6 @@ impl<'a> Linker for WasmLd<'a> {
         self.link_arg("--gc-sections");
     }
 
-    fn no_gc_sections(&mut self) {
-        self.link_arg("--no-gc-sections");
-    }
-
     fn optimize(&mut self) {
         // The -O flag is, as of late 2023, only used for merging of strings and debuginfo, and
         // only differentiates -O0 and -O1. It does not apply to LTO.
@@ -1565,10 +1546,6 @@ impl<'a> Linker for L4Bender<'a> {
         if !keep_metadata {
             self.link_arg("--gc-sections");
         }
-    }
-
-    fn no_gc_sections(&mut self) {
-        self.link_arg("--no-gc-sections");
     }
 
     fn optimize(&mut self) {
@@ -1732,10 +1709,6 @@ impl<'a> Linker for AixLinker<'a> {
 
     fn gc_sections(&mut self, _keep_metadata: bool) {
         self.link_arg("-bgc");
-    }
-
-    fn no_gc_sections(&mut self) {
-        self.link_arg("-bnogc");
     }
 
     fn optimize(&mut self) {}
@@ -1982,8 +1955,6 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn gc_sections(&mut self, _keep_metadata: bool) {}
 
-    fn no_gc_sections(&mut self) {}
-
     fn pgo_gen(&mut self) {}
 
     fn no_crt_objects(&mut self) {}
@@ -2056,8 +2027,6 @@ impl<'a> Linker for LlbcLinker<'a> {
     fn no_relro(&mut self) {}
 
     fn gc_sections(&mut self, _keep_metadata: bool) {}
-
-    fn no_gc_sections(&mut self) {}
 
     fn pgo_gen(&mut self) {}
 
@@ -2138,8 +2107,6 @@ impl<'a> Linker for BpfLinker<'a> {
     fn no_relro(&mut self) {}
 
     fn gc_sections(&mut self, _keep_metadata: bool) {}
-
-    fn no_gc_sections(&mut self) {}
 
     fn pgo_gen(&mut self) {}
 
