@@ -9,6 +9,7 @@
 #![feature(sync_nonpoison)]
 #![feature(nonpoison_mutex)]
 #![allow(internal_features)]
+#![feature(macro_metavar_expr_concat)] // For the mutex test macros.
 
 mod barrier;
 mod condvar;
