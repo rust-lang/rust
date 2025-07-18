@@ -268,20 +268,21 @@ fn fn_abi_of_instance<'tcx>(
 }
 
 // Handle safe Rust thin and wide pointers.
-fn adjust_for_rust_scalar<'tcx>(
+fn arg_attrs_for_rust_scalar<'tcx>(
     cx: LayoutCx<'tcx>,
-    attrs: &mut ArgAttributes,
     scalar: Scalar,
     layout: TyAndLayout<'tcx>,
     offset: Size,
     is_return: bool,
     drop_target_pointee: Option<Ty<'tcx>>,
-) {
+) -> ArgAttributes {
+    let mut attrs = ArgAttributes::new();
+
     // Booleans are always a noundef i1 that needs to be zero-extended.
     if scalar.is_bool() {
         attrs.ext(ArgExtension::Zext);
         attrs.set(ArgAttribute::NoUndef);
-        return;
+        return attrs;
     }
 
     if !scalar.is_uninit_valid() {
@@ -289,7 +290,7 @@ fn adjust_for_rust_scalar<'tcx>(
     }
 
     // Only pointer types handled below.
-    let Scalar::Initialized { value: Pointer(_), valid_range } = scalar else { return };
+    let Scalar::Initialized { value: Pointer(_), valid_range } = scalar else { return attrs };
 
     // Set `nonnull` if the validity range excludes zero, or for the argument to `drop_in_place`,
     // which must be nonnull per its documented safety requirements.
@@ -358,6 +359,8 @@ fn adjust_for_rust_scalar<'tcx>(
             }
         }
     }
+
+    attrs
 }
 
 /// Ensure that the ABI makes basic sense.
@@ -530,17 +533,7 @@ fn fn_abi_new_uncached<'tcx>(
         };
 
         let mut arg = ArgAbi::new(cx, layout, |layout, scalar, offset| {
-            let mut attrs = ArgAttributes::new();
-            adjust_for_rust_scalar(
-                *cx,
-                &mut attrs,
-                scalar,
-                *layout,
-                offset,
-                is_return,
-                drop_target_pointee,
-            );
-            attrs
+            arg_attrs_for_rust_scalar(*cx, scalar, *layout, offset, is_return, drop_target_pointee)
         });
 
         if arg.layout.is_zst() {
