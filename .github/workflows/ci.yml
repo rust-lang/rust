@@ -226,7 +226,7 @@ jobs:
       
       - name: Free Diskspace
         shell: pwsh
-        if: ${{ runner.os }} == "Windows"
+        if: ${{ runner.os == "Windows" }}
         run: |
           Get-Volume | Out-String | Write-Host
           $dirs = 'C:\Program Files\LLVM\bin',
