@@ -199,12 +199,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             //        However, this can easily get out of sync! Ideally, we would perform this step
             //        where we are guaranteed to catch *all* bounds like in
             //        `Self::lower_poly_trait_ref`. List of concrete issues:
-            //        FIXME(more_maybe_bounds): We don't call this for e.g., trait object tys or
-            //                                  supertrait bounds!
+            //        FIXME(more_maybe_bounds): We don't call this for trait object tys, supertrait
+            //                                  bounds or associated type bounds (ATB)!
             //        FIXME(trait_alias, #143122): We don't call it for the RHS. Arguably however,
-            //                                       AST lowering should reject them outright.
-            //        FIXME(associated_type_bounds): We don't call this for them. However, AST
-            //                                       lowering should reject them outright (#135229).
+            //                                     AST lowering should reject them outright.
             let bounds = collect_relaxed_bounds(hir_bounds, self_ty_where_predicates);
             self.check_and_report_invalid_relaxed_bounds(bounds);
         }
