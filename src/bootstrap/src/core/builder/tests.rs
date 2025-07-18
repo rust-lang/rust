@@ -712,7 +712,11 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         ");
+    }
 
+    #[test]
+    fn build_rustc_no_explicit_stage() {
+        let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("build")
                 .path("rustc")
@@ -1299,7 +1303,11 @@ mod snapshot {
         [check] rustc 0 <host> -> cranelift 1 <host>
         [check] rustc 0 <host> -> gcc 1 <host>
         ");
+    }
 
+    #[test]
+    fn check_rustc_no_explicit_stage() {
+        let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("rustc")
