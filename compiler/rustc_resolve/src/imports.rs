@@ -334,8 +334,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Define the name or return the existing binding if there is a collision.
-    /// `update` indicates if the definition is a redefinition of an existing binding.
-    pub(crate) fn try_define(
+    pub(crate) fn try_define_local(
         &mut self,
         module: Module<'ra>,
         ident: Ident,
@@ -352,7 +351,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let key = BindingKey::new_disambiguated(ident, ns, || {
             (module.0.0.lazy_resolutions.borrow().len() + 1).try_into().unwrap()
         });
-        self.update_resolution(module, key, warn_ambiguity, |this, resolution| {
+        self.update_local_resolution(module, key, warn_ambiguity, |this, resolution| {
             if let Some(old_binding) = resolution.best_binding() {
                 if res == Res::Err && old_binding.res() != Res::Err {
                     // Do not override real bindings with `Res::Err`s from error recovery.
@@ -455,7 +454,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     // Use `f` to mutate the resolution of the name in the module.
     // If the resolution becomes a success, define it in the module's glob importers.
-    fn update_resolution<T, F>(
+    fn update_local_resolution<T, F>(
         &mut self,
         module: Module<'ra>,
         key: BindingKey,
@@ -465,6 +464,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     where
         F: FnOnce(&Resolver<'ra, 'tcx>, &mut NameResolution<'ra>) -> T,
     {
+        assert!(module.is_local());
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
         let (binding, t, warn_ambiguity) = {
@@ -496,7 +496,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             if self.is_accessible_from(binding.vis, scope) {
                 let imported_binding = self.import(binding, *import);
-                let _ = self.try_define(
+                let _ = self.try_define_local(
                     import.parent_scope.module,
                     ident,
                     key.ns,
@@ -522,11 +522,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let dummy_binding = self.import(dummy_binding, import);
             self.per_ns(|this, ns| {
                 let module = import.parent_scope.module;
-                let _ = this.try_define(module, target, ns, dummy_binding, false);
+                let _ = this.try_define_local(module, target, ns, dummy_binding, false);
                 // Don't remove underscores from `single_imports`, they were never added.
                 if target.name != kw::Underscore {
                     let key = BindingKey::new(target, ns);
-                    this.update_resolution(module, key, false, |_, resolution| {
+                    this.update_local_resolution(module, key, false, |_, resolution| {
                         resolution.single_imports.swap_remove(&import);
                     })
                 }
@@ -902,14 +902,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         // We need the `target`, `source` can be extracted.
                         let imported_binding = this.import(binding, import);
-                        this.define_binding(parent, target, ns, imported_binding);
+                        this.define_binding_local(parent, target, ns, imported_binding);
                         PendingBinding::Ready(Some(imported_binding))
                     }
                     Err(Determinacy::Determined) => {
                         // Don't remove underscores from `single_imports`, they were never added.
                         if target.name != kw::Underscore {
                             let key = BindingKey::new(target, ns);
-                            this.update_resolution(parent, key, false, |_, resolution| {
+                            this.update_local_resolution(parent, key, false, |_, resolution| {
                                 resolution.single_imports.swap_remove(&import);
                             });
                         }
@@ -1519,7 +1519,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .borrow()
                     .binding()
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
-                let _ = self.try_define(
+                let _ = self.try_define_local(
                     import.parent_scope.module,
                     key.ident,
                     key.ns,
