@@ -1,7 +1,7 @@
 
 running 2 tests
-test $DIR/merged-ignore-no_run.rs - ignored (line 7) ... ignored
-test $DIR/merged-ignore-no_run.rs - no_run (line 12) - compile ... ok
+test $DIR/merged-ignore-no_run.rs:12 - no_run - compile ... ok
+test $DIR/merged-ignore-no_run.rs:7 - ignored ... ignored
 
 test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in $TIME
 

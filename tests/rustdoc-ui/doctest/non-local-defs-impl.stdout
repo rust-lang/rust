@@ -1,11 +1,11 @@
 
 running 2 tests
-test $DIR/non-local-defs-impl.rs - doctest (line 13) - compile ... FAILED
-test $DIR/non-local-defs-impl.rs - doctest (line 25) - compile ... ok
+test $DIR/non-local-defs-impl.rs:13 - doctest - compile ... FAILED
+test $DIR/non-local-defs-impl.rs:25 - doctest - compile ... ok
 
 failures:
 
----- $DIR/non-local-defs-impl.rs - doctest (line 13) stdout ----
+---- $DIR/non-local-defs-impl.rs:13 - doctest stdout ----
 error: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/non-local-defs-impl.rs:20:5
    |
@@ -29,7 +29,7 @@ error: aborting due to 1 previous error
 Couldn't compile the test.
 
 failures:
-    $DIR/non-local-defs-impl.rs - doctest (line 13)
+    $DIR/non-local-defs-impl.rs:13 - doctest
 
 test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

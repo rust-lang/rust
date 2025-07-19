@@ -1,89 +1,22 @@
 
 running 13 tests
-test $DIR/dead-code-items.rs - A (line 32) - compile ... ok
-test $DIR/dead-code-items.rs - A (line 88) - compile ... ok
-test $DIR/dead-code-items.rs - A::field (line 39) - compile ... FAILED
-test $DIR/dead-code-items.rs - A::method (line 94) - compile ... ok
-test $DIR/dead-code-items.rs - C (line 22) - compile ... FAILED
-test $DIR/dead-code-items.rs - Enum (line 70) - compile ... FAILED
-test $DIR/dead-code-items.rs - Enum::Variant1 (line 77) - compile ... FAILED
-test $DIR/dead-code-items.rs - MyTrait (line 103) - compile ... FAILED
-test $DIR/dead-code-items.rs - MyTrait::my_trait_fn (line 110) - compile ... FAILED
-test $DIR/dead-code-items.rs - S (line 14) - compile ... ok
-test $DIR/dead-code-items.rs - U (line 48) - compile ... ok
-test $DIR/dead-code-items.rs - U::field (line 55) - compile ... FAILED
-test $DIR/dead-code-items.rs - U::field2 (line 61) - compile ... ok
+test $DIR/dead-code-items.rs:103 - MyTrait - compile ... FAILED
+test $DIR/dead-code-items.rs:110 - MyTrait::my_trait_fn - compile ... FAILED
+test $DIR/dead-code-items.rs:14 - S - compile ... ok
+test $DIR/dead-code-items.rs:22 - C - compile ... FAILED
+test $DIR/dead-code-items.rs:32 - A - compile ... ok
+test $DIR/dead-code-items.rs:39 - A::field - compile ... FAILED
+test $DIR/dead-code-items.rs:48 - U - compile ... ok
+test $DIR/dead-code-items.rs:55 - U::field - compile ... FAILED
+test $DIR/dead-code-items.rs:61 - U::field2 - compile ... ok
+test $DIR/dead-code-items.rs:70 - Enum - compile ... FAILED
+test $DIR/dead-code-items.rs:77 - Enum::Variant1 - compile ... FAILED
+test $DIR/dead-code-items.rs:88 - A - compile ... ok
+test $DIR/dead-code-items.rs:94 - A::method - compile ... ok
 
 failures:
 
----- $DIR/dead-code-items.rs - A::field (line 39) stdout ----
-error: trait `DeadCodeInField` is never used
-  --> $DIR/dead-code-items.rs:40:7
-   |
-LL | trait DeadCodeInField {}
-   |       ^^^^^^^^^^^^^^^
-   |
-note: the lint level is defined here
-  --> $DIR/dead-code-items.rs:38:9
-   |
-LL | #![deny(dead_code)]
-   |         ^^^^^^^^^
-
-error: aborting due to 1 previous error
-
-Couldn't compile the test.
----- $DIR/dead-code-items.rs - C (line 22) stdout ----
-error: unused variable: `unused_error`
-  --> $DIR/dead-code-items.rs:23:5
-   |
-LL | let unused_error = 5;
-   |     ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused_error`
-   |
-note: the lint level is defined here
-  --> $DIR/dead-code-items.rs:20:9
-   |
-LL | #![deny(warnings)]
-   |         ^^^^^^^^
-   = note: `#[deny(unused_variables)]` implied by `#[deny(warnings)]`
-
-error: aborting due to 1 previous error
-
-Couldn't compile the test.
----- $DIR/dead-code-items.rs - Enum (line 70) stdout ----
-error: unused variable: `not_dead_code_but_unused`
-  --> $DIR/dead-code-items.rs:71:5
-   |
-LL | let not_dead_code_but_unused = 5;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_not_dead_code_but_unused`
-   |
-note: the lint level is defined here
-  --> $DIR/dead-code-items.rs:68:9
-   |
-LL | #![deny(warnings)]
-   |         ^^^^^^^^
-   = note: `#[deny(unused_variables)]` implied by `#[deny(warnings)]`
-
-error: aborting due to 1 previous error
-
-Couldn't compile the test.
----- $DIR/dead-code-items.rs - Enum::Variant1 (line 77) stdout ----
-error: unused variable: `unused_in_variant`
-  --> $DIR/dead-code-items.rs:80:17
-   |
-LL | fn main() { let unused_in_variant = 5; }
-   |                 ^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused_in_variant`
-   |
-note: the lint level is defined here
-  --> $DIR/dead-code-items.rs:75:9
-   |
-LL | #![deny(warnings)]
-   |         ^^^^^^^^
-   = note: `#[deny(unused_variables)]` implied by `#[deny(warnings)]`
-
-error: aborting due to 1 previous error
-
-Couldn't compile the test.
----- $DIR/dead-code-items.rs - MyTrait (line 103) stdout ----
+---- $DIR/dead-code-items.rs:103 - MyTrait stdout ----
 error: trait `StillDeadCodeAtMyTrait` is never used
   --> $DIR/dead-code-items.rs:104:7
    |
@@ -99,7 +32,7 @@ LL | #![deny(dead_code)]
 error: aborting due to 1 previous error
 
 Couldn't compile the test.
----- $DIR/dead-code-items.rs - MyTrait::my_trait_fn (line 110) stdout ----
+---- $DIR/dead-code-items.rs:110 - MyTrait::my_trait_fn stdout ----
 error: unused variable: `unused_in_impl`
   --> $DIR/dead-code-items.rs:113:17
    |
@@ -116,7 +49,40 @@ LL | #![deny(warnings)]
 error: aborting due to 1 previous error
 
 Couldn't compile the test.
----- $DIR/dead-code-items.rs - U::field (line 55) stdout ----
+---- $DIR/dead-code-items.rs:22 - C stdout ----
+error: unused variable: `unused_error`
+  --> $DIR/dead-code-items.rs:23:5
+   |
+LL | let unused_error = 5;
+   |     ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused_error`
+   |
+note: the lint level is defined here
+  --> $DIR/dead-code-items.rs:20:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(unused_variables)]` implied by `#[deny(warnings)]`
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+---- $DIR/dead-code-items.rs:39 - A::field stdout ----
+error: trait `DeadCodeInField` is never used
+  --> $DIR/dead-code-items.rs:40:7
+   |
+LL | trait DeadCodeInField {}
+   |       ^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/dead-code-items.rs:38:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+---- $DIR/dead-code-items.rs:55 - U::field stdout ----
 error: trait `DeadCodeInUnionField` is never used
   --> $DIR/dead-code-items.rs:56:7
    |
@@ -132,15 +98,49 @@ LL | #![deny(dead_code)]
 error: aborting due to 1 previous error
 
 Couldn't compile the test.
+---- $DIR/dead-code-items.rs:70 - Enum stdout ----
+error: unused variable: `not_dead_code_but_unused`
+  --> $DIR/dead-code-items.rs:71:5
+   |
+LL | let not_dead_code_but_unused = 5;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_not_dead_code_but_unused`
+   |
+note: the lint level is defined here
+  --> $DIR/dead-code-items.rs:68:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(unused_variables)]` implied by `#[deny(warnings)]`
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+---- $DIR/dead-code-items.rs:77 - Enum::Variant1 stdout ----
+error: unused variable: `unused_in_variant`
+  --> $DIR/dead-code-items.rs:80:17
+   |
+LL | fn main() { let unused_in_variant = 5; }
+   |                 ^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused_in_variant`
+   |
+note: the lint level is defined here
+  --> $DIR/dead-code-items.rs:75:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(unused_variables)]` implied by `#[deny(warnings)]`
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
 
 failures:
-    $DIR/dead-code-items.rs - A::field (line 39)
-    $DIR/dead-code-items.rs - C (line 22)
-    $DIR/dead-code-items.rs - Enum (line 70)
-    $DIR/dead-code-items.rs - Enum::Variant1 (line 77)
-    $DIR/dead-code-items.rs - MyTrait (line 103)
-    $DIR/dead-code-items.rs - MyTrait::my_trait_fn (line 110)
-    $DIR/dead-code-items.rs - U::field (line 55)
+    $DIR/dead-code-items.rs:103 - MyTrait
+    $DIR/dead-code-items.rs:110 - MyTrait::my_trait_fn
+    $DIR/dead-code-items.rs:22 - C
+    $DIR/dead-code-items.rs:39 - A::field
+    $DIR/dead-code-items.rs:55 - U::field
+    $DIR/dead-code-items.rs:70 - Enum
+    $DIR/dead-code-items.rs:77 - Enum::Variant1
 
 test result: FAILED. 6 passed; 7 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 
