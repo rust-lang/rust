@@ -65,10 +65,8 @@ fn main() -> Result<(), ()> {
         }
     }
 
-    // FIXME(binarycat): once we get package.json in version control, this should be updated to install via that instead
-    let local_node_modules =
-        npm::install_one(&config.out_dir, &config.npm, "browser-ui-test", "0.21.1")
-            .expect("unable to install browser-ui-test");
+    let local_node_modules = npm::install(&config.rust_src, &config.out_dir, &config.npm)
+        .expect("unable to install browser-ui-test");
 
     let mut command = Command::new(&config.nodejs);
 

@@ -37,6 +37,8 @@ path = [
     "rust-bors.toml",
     "triagebot.toml",
     "typos.toml",
+    "package.json",
+    "package-lock.json",
     "x",
     "x.ps1",
     "x.py",
