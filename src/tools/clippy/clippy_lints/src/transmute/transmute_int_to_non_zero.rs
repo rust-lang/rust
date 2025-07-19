@@ -2,7 +2,7 @@ use super::TRANSMUTE_INT_TO_NON_ZERO;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg;
 use rustc_errors::Applicability;
-use rustc_hir::Expr;
+use rustc_hir::{Expr, LangItem};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::sym;
@@ -22,7 +22,7 @@ pub(super) fn check<'tcx>(
         return false;
     };
 
-    if !tcx.is_diagnostic_item(sym::NonZero, adt.did()) {
+    if !tcx.is_lang_item(adt.did(), LangItem::NonZero) {
         return false;
     }
 

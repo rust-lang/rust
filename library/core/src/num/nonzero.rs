@@ -123,7 +123,7 @@ impl_zeroable_primitive!(
 #[stable(feature = "generic_nonzero", since = "1.79.0")]
 #[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
-#[rustc_diagnostic_item = "NonZero"]
+#[lang = "NonZero"]
 pub struct NonZero<T: ZeroablePrimitive>(T::NonZeroInner);
 
 macro_rules! impl_nonzero_fmt {
