@@ -68,6 +68,7 @@ use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::vec::Vec;
 
+
 impl<T> [T] {
     /// Sorts the slice in ascending order, preserving initial order of equal elements.
     ///
@@ -446,11 +447,20 @@ impl<T> [T] {
         impl<T: Copy> ConvertVec for T {
             #[inline]
             fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
+                if s.is_empty() {
+                    // The early return is not necessary for correctness, but it helps
+                    // LLVM by avoiding phi nodes flowing into memcpy.
+                    // See codegen/lib-optimizations/append-elements.rs
+                    return Vec::new_in(alloc);
+                }
                 let mut v = Vec::with_capacity_in(s.len(), alloc);
                 // SAFETY:
                 // allocated above with the capacity of `s`, and initialize to `s.len()` in
                 // ptr::copy_to_non_overlapping below.
                 unsafe {
+                    use core::hint::assert_unchecked;
+
+                    assert_unchecked(v.capacity() != 0);
                     s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), s.len());
                     v.set_len(s.len());
                 }
