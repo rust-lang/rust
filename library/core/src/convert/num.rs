@@ -184,8 +184,7 @@ impl_from!(u32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0
 // impl_from!(u64 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 
 // float -> float
-// FIXME(f16_f128): adding additional `From<{float}>` impls to `f32` breaks inference. See
-// <https://github.com/rust-lang/rust/issues/123831>
+impl_from!(f16 => f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(f16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(f16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(f32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
