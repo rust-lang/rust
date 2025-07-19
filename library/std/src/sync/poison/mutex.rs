@@ -18,20 +18,54 @@ use crate::sys::sync as sys;
 /// # Poisoning
 ///
 /// The mutexes in this module implement a strategy called "poisoning" where a
-/// mutex is considered poisoned whenever a thread panics while holding the
-/// mutex. Once a mutex is poisoned, all other threads are unable to access the
-/// data by default as it is likely tainted (some invariant is not being
-/// upheld).
+/// mutex becomes poisoned if it recognizes that the thread holding it has
+/// panicked.
 ///
-/// For a mutex, this means that the [`lock`] and [`try_lock`] methods return a
+/// Once a mutex is poisoned, all other threads are unable to access the data by
+/// default as it is likely tainted (some invariant is not being upheld). For a
+/// mutex, this means that the [`lock`] and [`try_lock`] methods return a
 /// [`Result`] which indicates whether a mutex has been poisoned or not. Most
 /// usage of a mutex will simply [`unwrap()`] these results, propagating panics
 /// among threads to ensure that a possibly invalid invariant is not witnessed.
 ///
-/// A poisoned mutex, however, does not prevent all access to the underlying
-/// data. The [`PoisonError`] type has an [`into_inner`] method which will return
-/// the guard that would have otherwise been returned on a successful lock. This
-/// allows access to the data, despite the lock being poisoned.
+/// Poisoning is only advisory: the [`PoisonError`] type has an [`into_inner`]
+/// method which will return the guard that would have otherwise been returned
+/// on a successful lock. This allows access to the data, despite the lock being
+/// poisoned.
+///
+/// In addition, the panic detection is not ideal, so even unpoisoned mutexes
+/// need to be handled with care, since certain panics may have been skipped.
+/// Therefore, `unsafe` code cannot rely on poisoning for soundness. Here's an
+/// example of **incorrect** use of poisoning:
+///
+/// ```rust
+/// use std::sync::Mutex;
+///
+/// struct MutexBox<T> {
+///     data: Mutex<*mut T>,
+/// }
+///
+/// impl<T> MutexBox<T> {
+///     pub fn new(value: T) -> Self {
+///         Self {
+///             data: Mutex::new(Box::into_raw(Box::new(value))),
+///         }
+///     }
+///
+///     pub fn replace_with(&self, f: impl FnOnce(T) -> T) {
+///         let ptr = self.data.lock().expect("poisoned");
+///         // While `f` is running, the data is moved out of `*ptr`. If `f`
+///         // panics, `*ptr` keeps pointing at a dropped value. The intention
+///         // is that this will poison the mutex, so the following calls to
+///         // `replace_with` will panic without reading `*ptr`. But since
+///         // poisoning is not guaranteed to occur, this can lead to
+///         // use-after-free.
+///         unsafe {
+///             (*ptr).write(f((*ptr).read()));
+///         }
+///     }
+/// }
+/// ```
 ///
 /// [`new`]: Self::new
 /// [`lock`]: Self::lock
