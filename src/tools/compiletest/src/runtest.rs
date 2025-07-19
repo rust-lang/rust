@@ -1764,7 +1764,7 @@ impl<'test> TestCx<'test> {
 
         match self.config.compare_mode {
             Some(CompareMode::Polonius) => {
-                rustc.args(&["-Zpolonius"]);
+                rustc.args(&["-Zpolonius=next"]);
             }
             Some(CompareMode::NextSolver) => {
                 rustc.args(&["-Znext-solver"]);
