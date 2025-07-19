@@ -2,7 +2,9 @@ use rustc_ast::expand::autodiff_attrs::{AutoDiffItem, DiffActivity};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::ty::{self, Instance, PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
+use rustc_middle::ty::{
+    self, Instance, PseudoCanonicalInput, Ty, TyCtxt, TypingEnv, fnc_typetrees,
+};
 use rustc_symbol_mangling::symbol_name_for_instance_in_crate;
 use tracing::{debug, trace};
 
@@ -127,8 +129,14 @@ pub(crate) fn find_autodiff_source_functions<'tcx>(
         let symb = symbol_name_for_instance_in_crate(tcx, inst.clone(), LOCAL_CRATE);
 
         let mut new_target_attrs = target_attrs.clone();
-        new_target_attrs.input_activity = input_activities;
-        let itm = new_target_attrs.into_item(symb, target_symbol);
+        new_target_attrs.input_activity = input_activities.clone();
+
+        // generate typetrees for the function
+        let span = tcx.def_span(inst.def_id());
+        let fnc_tree = fnc_typetrees(tcx, fn_ty, &mut input_activities, Some(span));
+        let (inputs, output) = (fnc_tree.args, fnc_tree.ret);
+
+        let itm = new_target_attrs.into_item(symb, target_symbol, inputs, output);
         autodiff_items.push(itm);
     }
 
