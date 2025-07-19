@@ -49,8 +49,7 @@
 +         _9 = copy _3;
           _10 = copy ((_9.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *const () (Transmute);
           _4 = copy _10;
--         StorageLive(_5);
-+         nop;
+          StorageLive(_5);
           StorageLive(_6);
 -         _6 = copy _4;
 +         _6 = copy _10;
@@ -67,8 +66,7 @@
 +         _7 = copy ((_9.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *mut () (Transmute);
           StorageDead(_8);
           StorageDead(_7);
--         StorageDead(_5);
-+         nop;
+          StorageDead(_5);
           StorageDead(_4);
           drop(_3) -> [return: bb2, unwind: bb3];
       }

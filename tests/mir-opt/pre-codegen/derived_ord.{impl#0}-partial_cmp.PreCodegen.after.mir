@@ -21,6 +21,7 @@ fn <impl at $DIR/derived_ord.rs:5:10: 5:20>::partial_cmp(_1: &MultiField, _2: &M
     }
 
     bb0: {
+        StorageLive(_6);
         StorageLive(_3);
         _3 = copy ((*_1).0: char);
         StorageLive(_4);
@@ -53,6 +54,7 @@ fn <impl at $DIR/derived_ord.rs:5:10: 5:20>::partial_cmp(_1: &MultiField, _2: &M
     }
 
     bb3: {
+        StorageDead(_6);
         return;
     }
 }

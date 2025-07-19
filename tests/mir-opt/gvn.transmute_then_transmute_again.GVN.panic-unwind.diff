@@ -23,8 +23,7 @@
       }
   
       bb0: {
--         StorageLive(_3);
-+         nop;
+          StorageLive(_3);
           StorageLive(_4);
           _4 = copy _1;
 -         _3 = move _4 as char (Transmute);
@@ -43,8 +42,7 @@
       bb1: {
           StorageDead(_6);
           StorageDead(_5);
--         StorageLive(_8);
-+         nop;
+          StorageLive(_8);
           StorageLive(_9);
           _9 = copy _2;
 -         _8 = move _9 as u32 (Transmute);
@@ -64,10 +62,8 @@
           StorageDead(_11);
           StorageDead(_10);
           _0 = const ();
--         StorageDead(_8);
--         StorageDead(_3);
-+         nop;
-+         nop;
+          StorageDead(_8);
+          StorageDead(_3);
           return;
       }
   }
