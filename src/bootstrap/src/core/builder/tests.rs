@@ -1640,31 +1640,59 @@ mod snapshot {
     #[test]
     fn doc_core_no_std_target() {
         let ctx = TestCtx::new();
-        insta::assert_snapshot!(
-            ctx.config("doc")
-                .path("core")
-                .override_target_no_std(&host_target())
-                .render_steps(), @r"
-        [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustdoc 0 <host>
-        [doc] std 1 <host> crates=[core]
-        ");
+        if host_target() == "x86_64-unknown-linux-gnu" {
+            insta::assert_snapshot!(
+                ctx.config("doc")
+                    .path("core")
+                    .override_target_no_std(&host_target())
+                    .render_steps(), @r"
+            [build] llvm <host>
+            [build] rustc 0 <host> -> rustc 1 <host>
+            [build] rustc 0 <host> -> LldWrapper 1 <host>
+            [build] rustdoc 0 <host>
+            [doc] std 1 <host> crates=[core]
+            ");
+        } else {
+            insta::assert_snapshot!(
+                ctx.config("doc")
+                    .path("core")
+                    .override_target_no_std(&host_target())
+                    .render_steps(), @r"
+            [build] llvm <host>
+            [build] rustc 0 <host> -> rustc 1 <host>
+            [build] rustdoc 0 <host>
+            [doc] std 1 <host> crates=[core]
+            ");
+        }
     }
 
     #[test]
     fn doc_library_no_std_target() {
         let ctx = TestCtx::new();
-        insta::assert_snapshot!(
-            ctx.config("doc")
-                .path("library")
-                .override_target_no_std(&host_target())
-                .render_steps(), @r"
-        [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustdoc 0 <host>
-        [doc] std 1 <host> crates=[alloc,core]
-        ");
+        if host_target() == "x86_64-unknown-linux-gnu" {
+            insta::assert_snapshot!(
+                ctx.config("doc")
+                    .path("library")
+                    .override_target_no_std(&host_target())
+                    .render_steps(), @r"
+            [build] llvm <host>
+            [build] rustc 0 <host> -> rustc 1 <host>
+            [build] rustc 0 <host> -> LldWrapper 1 <host>
+            [build] rustdoc 0 <host>
+            [doc] std 1 <host> crates=[alloc,core]
+            ");
+        } else {
+            insta::assert_snapshot!(
+                ctx.config("doc")
+                    .path("library")
+                    .override_target_no_std(&host_target())
+                    .render_steps(), @r"
+            [build] llvm <host>
+            [build] rustc 0 <host> -> rustc 1 <host>
+            [build] rustdoc 0 <host>
+            [doc] std 1 <host> crates=[alloc,core]
+            ");
+        }
     }
 
     #[test]
