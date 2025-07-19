@@ -379,3 +379,51 @@ macro_rules! dbg {
         ($($crate::dbg!($val)),+,)
     };
 }
+
+/// Creates a [`HashMap`] containing the arguments.
+///
+/// This macro creates or either an empty [`HashMap`] using
+/// [`HashMap::new`] if there are no arguments, or generates
+/// a [`HashMap::insert`] call for each element.
+///
+/// This macro allows trailing commas.
+///
+/// This macro is used by concatenating comma separated sequences
+/// of `<key:expr> => <value:expr>`.
+///
+/// An example usage of this macro could be the following
+///
+/// ```rust
+/// #![feature(hash_map_macro)]
+///
+/// let map = hash_map!{
+///     "key" => "value",
+///     "key1" => "value1"
+/// };
+///
+/// for (key, value) in map {
+///     println!("{key:?} => {value:?}");
+/// }
+/// ```
+///
+/// Note that since this macro only generates [`HashMap::insert`]
+/// calls, the move semantics for the values are the same as
+/// the insert method.
+///
+/// [`HashMap`]: crate::collections::HashMap
+/// [`HashMap::new`]: crate::collections::HashMap::new
+/// [`HashMap::insert`]: crate::collections::HashMap::insert
+#[macro_export]
+#[allow_internal_unstable(hint_must_use)]
+#[unstable(feature = "hash_map_macro", issue = "144032")]
+macro_rules! hash_map {
+    () => {{
+        ::std::collections::HashMap::new()
+    }};
+
+    ( $( $key:expr => $value:expr ),* $(,)? ) => {{
+        let mut map = ::std::collections::HashMap::new();
+        $( map.insert($key, $value); )*
+        map
+    }}
+}
