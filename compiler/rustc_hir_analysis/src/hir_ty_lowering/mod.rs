@@ -2495,6 +2495,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     ty::List::empty(),
                     PredicateFilter::All,
                 );
+                self.add_sizedness_bounds(
+                    &mut bounds,
+                    self_ty,
+                    hir_bounds,
+                    None,
+                    None,
+                    hir_ty.span,
+                );
                 self.register_trait_ascription_bounds(bounds, hir_ty.hir_id, hir_ty.span);
                 self_ty
             }
