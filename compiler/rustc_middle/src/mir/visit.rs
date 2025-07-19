@@ -68,6 +68,8 @@ use crate::ty::CanonicalUserTypeAnnotation;
 macro_rules! make_mir_visitor {
     ($visitor_trait_name:ident, $($mutability:ident)?) => {
         pub trait $visitor_trait_name<'tcx> {
+            const VISIT_DEBUG_INFO: bool = false;
+
             // Override these, and call `self.super_xxx` to revert back to the
             // default behavior.
 
@@ -93,6 +95,24 @@ macro_rules! make_mir_visitor {
                 scope_data: & $($mutability)? SourceScopeData<'tcx>,
             ) {
                 self.super_source_scope_data(scope_data);
+            }
+
+            fn visit_statement_debuginfos(
+                &mut self,
+                stmt_debuginfo: & $($mutability)? [StmtDebugInfo<'tcx>],
+                location: Location
+            ) {
+                if Self::VISIT_DEBUG_INFO {
+                    self.super_statement_debuginfos(stmt_debuginfo, location);
+                }
+            }
+
+            fn visit_statement_debuginfo(
+                &mut self,
+                stmt_debuginfo: & $($mutability)? StmtDebugInfo<'tcx>,
+                location: Location
+            ) {
+                self.super_statement_debuginfo(stmt_debuginfo, location);
             }
 
             fn visit_statement(
@@ -301,6 +321,7 @@ macro_rules! make_mir_visitor {
             {
                 let BasicBlockData {
                     statements,
+                    after_last_stmt_debuginfos,
                     terminator,
                     is_cleanup: _
                 } = data;
@@ -312,8 +333,9 @@ macro_rules! make_mir_visitor {
                     index += 1;
                 }
 
+                let location = Location { block, statement_index: index };
+                self.visit_statement_debuginfos(after_last_stmt_debuginfos, location);
                 if let Some(terminator) = terminator {
-                    let location = Location { block, statement_index: index };
                     self.visit_terminator(terminator, location);
                 }
             }
@@ -376,14 +398,48 @@ macro_rules! make_mir_visitor {
                 }
             }
 
+            fn super_statement_debuginfos(
+                &mut self,
+                stmt_debuginfo: & $($mutability)? [StmtDebugInfo<'tcx>],
+                location: Location
+            ) {
+                for debuginfo in stmt_debuginfo {
+                    self.visit_statement_debuginfo(debuginfo, location);
+                }
+            }
+
+            fn super_statement_debuginfo(
+                &mut self,
+                stmt_debuginfo: & $($mutability)? StmtDebugInfo<'tcx>,
+                location: Location
+            ) {
+                match stmt_debuginfo {
+                    StmtDebugInfo::AssignRef(local, place) => {
+                        self.visit_local(
+                            $(& $mutability)? *local,
+                            PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                            location
+                        );
+                        if let Some(place) = place {
+                            self.visit_place(
+                                place,
+                                PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                                location
+                            );
+                        }
+                    },
+                }
+            }
+
             fn super_statement(
                 &mut self,
                 statement: & $($mutability)? Statement<'tcx>,
                 location: Location
             ) {
-                let Statement { source_info, kind } = statement;
+                let Statement { source_info, kind, debuginfos } = statement;
 
                 self.visit_source_info(source_info);
+                self.visit_statement_debuginfos(debuginfos, location);
                 match kind {
                     StatementKind::Assign(box (place, rvalue)) => {
                         self.visit_assign(place, rvalue, location);

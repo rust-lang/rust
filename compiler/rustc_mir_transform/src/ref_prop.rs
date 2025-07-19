@@ -284,6 +284,8 @@ fn compute_replacement<'tcx>(
     where
         F: FnMut(Place<'tcx>, Location) -> bool,
     {
+        const VISIT_DEBUG_INFO: bool = true;
+
         fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, loc: Location) {
             if matches!(ctxt, PlaceContext::NonUse(_)) {
                 // There is no need to check liveness for non-uses.
@@ -354,6 +356,8 @@ struct Replacer<'tcx> {
 }
 
 impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
+    const VISIT_DEBUG_INFO: bool = true;
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -409,7 +413,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
             StatementKind::StorageLive(l) | StatementKind::StorageDead(l)
                 if self.storage_to_remove.contains(l) =>
             {
-                stmt.make_nop();
+                stmt.make_nop(true);
             }
             // Do not remove assignments as they may still be useful for debuginfo.
             _ => self.super_statement(stmt, loc),

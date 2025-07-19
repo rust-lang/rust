@@ -34,10 +34,12 @@
 //! The normal logic that a program with UB can be changed to do anything does not apply to
 //! pre-"runtime" MIR!
 
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
 use tracing::{debug, trace};
@@ -141,7 +143,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         // statements itself to avoid moving the (relatively) large statements twice.
         // We do not push the statements directly into the target block (`bb`) as that is slower
         // due to additional reallocations
-        let mut merged_blocks = Vec::new();
+        let mut merged_blocks: Vec<BasicBlock> = Vec::new();
         let mut outer_changed = false;
         loop {
             let mut changed = false;
@@ -156,8 +158,21 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 let mut terminator =
                     self.basic_blocks[bb].terminator.take().expect("invalid terminator state");
 
-                terminator
-                    .successors_mut(|successor| self.collapse_goto_chain(successor, &mut changed));
+                let mut debuginfos = Vec::new();
+                if let Some(mut unique_succ) = terminator.identical_successor() {
+                    self.collapse_goto_chain(&mut unique_succ, &mut changed, &mut debuginfos);
+                    terminator.successors_mut(|successor| {
+                        *successor = unique_succ;
+                    });
+                    // Add debugging information from the goto chain only when all successors are identical,
+                    // otherwise, we may provide misleading debugging information within a branch.
+                    self.basic_blocks[bb].after_last_stmt_debuginfos.append(&mut debuginfos);
+                } else {
+                    terminator.successors_mut(|successor| {
+                        debuginfos.clear();
+                        self.collapse_goto_chain(successor, &mut changed, &mut debuginfos)
+                    });
+                }
 
                 let mut inner_changed = true;
                 merged_blocks.clear();
@@ -174,10 +189,19 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 if statements_to_merge > 0 {
                     let mut statements = std::mem::take(&mut self.basic_blocks[bb].statements);
                     statements.reserve(statements_to_merge);
+                    let mut parent_bb_last_debuginfos =
+                        std::mem::take(&mut self.basic_blocks[bb].after_last_stmt_debuginfos);
                     for &from in &merged_blocks {
+                        if let Some(stmt) = self.basic_blocks[from].statements.first_mut() {
+                            parent_bb_last_debuginfos.append(&mut stmt.debuginfos);
+                            std::mem::swap(&mut parent_bb_last_debuginfos, &mut stmt.debuginfos);
+                        }
                         statements.append(&mut self.basic_blocks[from].statements);
+                        parent_bb_last_debuginfos
+                            .append(&mut self.basic_blocks[from].after_last_stmt_debuginfos);
                     }
                     self.basic_blocks[bb].statements = statements;
+                    self.basic_blocks[bb].after_last_stmt_debuginfos = parent_bb_last_debuginfos;
                 }
 
                 self.basic_blocks[bb].terminator = Some(terminator);
@@ -212,7 +236,12 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     }
 
     /// Collapse a goto chain starting from `start`
-    fn collapse_goto_chain(&mut self, start: &mut BasicBlock, changed: &mut bool) {
+    fn collapse_goto_chain(
+        &mut self,
+        start: &mut BasicBlock,
+        changed: &mut bool,
+        pred_debuginfos: &mut Vec<StmtDebugInfo<'tcx>>,
+    ) {
         // Using `SmallVec` here, because in some logs on libcore oli-obk saw many single-element
         // goto chains. We should probably benchmark different sizes.
         let mut terminators: SmallVec<[_; 1]> = Default::default();
@@ -231,6 +260,13 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             else {
                 unreachable!();
             };
+            if *target != last {
+                self.basic_blocks[current]
+                    .after_last_stmt_debuginfos
+                    .extend_from_slice(pred_debuginfos);
+            }
+            pred_debuginfos
+                .extend_from_slice(&self.basic_blocks[current].after_last_stmt_debuginfos);
             *changed |= *target != last;
             *target = last;
             debug!("collapsing goto chain from {:?} to {:?}", current, target);
@@ -308,7 +344,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
     fn strip_nops(&mut self) {
         for blk in self.basic_blocks.iter_mut() {
-            blk.statements.retain(|stmt| !matches!(stmt.kind, StatementKind::Nop))
+            blk.strip_nops();
         }
     }
 }
@@ -481,17 +517,22 @@ fn make_local_map<V>(
 /// Keeps track of used & unused locals.
 struct UsedLocals {
     increment: bool,
-    arg_count: u32,
     use_count: IndexVec<Local, u32>,
+    always_used: DenseBitSet<Local>,
 }
 
 impl UsedLocals {
     /// Determines which locals are used & unused in the given body.
     fn new(body: &Body<'_>) -> Self {
+        let mut always_used = debuginfo_locals(body);
+        always_used.insert(RETURN_PLACE);
+        for arg in body.args_iter() {
+            always_used.insert(arg);
+        }
         let mut this = Self {
             increment: true,
-            arg_count: body.arg_count.try_into().unwrap(),
             use_count: IndexVec::from_elem(0, &body.local_decls),
+            always_used,
         };
         this.visit_body(body);
         this
@@ -499,10 +540,16 @@ impl UsedLocals {
 
     /// Checks if local is used.
     ///
-    /// Return place and arguments are always considered used.
+    /// Return place, arguments, var debuginfo are always considered used.
     fn is_used(&self, local: Local) -> bool {
-        trace!("is_used({:?}): use_count: {:?}", local, self.use_count[local]);
-        local.as_u32() <= self.arg_count || self.use_count[local] != 0
+        trace!(
+            "is_used({:?}): use_count: {:?}, always_used: {}",
+            local,
+            self.use_count[local],
+            self.always_used.contains(local)
+        );
+        // To keep things simple, we don't handle debugging information here, these are in DSE.
+        self.always_used.contains(local) || self.use_count[local] != 0
     }
 
     /// Updates the use counts to reflect the removal of given statement.
@@ -544,9 +591,10 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
                 self.super_statement(statement, location);
             }
 
-            StatementKind::ConstEvalCounter | StatementKind::Nop => {}
-
-            StatementKind::StorageLive(_local) | StatementKind::StorageDead(_local) => {}
+            StatementKind::ConstEvalCounter
+            | StatementKind::Nop
+            | StatementKind::StorageLive(..)
+            | StatementKind::StorageDead(..) => {}
 
             StatementKind::Assign(box (ref place, ref rvalue)) => {
                 if rvalue.is_safe_to_remove() {
@@ -565,7 +613,10 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
         }
     }
 
-    fn visit_local(&mut self, local: Local, _ctx: PlaceContext, _location: Location) {
+    fn visit_local(&mut self, local: Local, ctx: PlaceContext, _location: Location) {
+        if matches!(ctx, PlaceContext::NonUse(_)) {
+            return;
+        }
         if self.increment {
             self.use_count[local] += 1;
         } else {
@@ -588,28 +639,39 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
 
         for data in body.basic_blocks.as_mut_preserves_cfg() {
             // Remove unnecessary StorageLive and StorageDead annotations.
-            data.statements.retain(|statement| {
-                let keep = match &statement.kind {
+            for statement in data.statements.iter_mut() {
+                let keep_statement = match &statement.kind {
                     StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                         used_locals.is_used(*local)
                     }
-                    StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
-
-                    StatementKind::SetDiscriminant { place, .. }
-                    | StatementKind::BackwardIncompatibleDropHint { place, reason: _ }
-                    | StatementKind::Deinit(place) => used_locals.is_used(place.local),
-                    StatementKind::Nop => false,
-                    _ => true,
+                    StatementKind::Assign(box (place, _))
+                    | StatementKind::SetDiscriminant { box place, .. }
+                    | StatementKind::BackwardIncompatibleDropHint { box place, .. }
+                    | StatementKind::Deinit(box place) => used_locals.is_used(place.local),
+                    _ => continue,
                 };
-
-                if !keep {
-                    trace!("removing statement {:?}", statement);
-                    modified = true;
-                    used_locals.statement_removed(statement);
+                if keep_statement {
+                    continue;
                 }
+                trace!("removing statement {:?}", statement);
+                modified = true;
+                used_locals.statement_removed(statement);
+                statement.make_nop(true);
+            }
+            data.strip_nops();
+        }
+    }
+}
 
-                keep
-            });
+struct InvalidPlace<'a> {
+    map: &'a IndexVec<Local, Option<Local>>,
+    is_invalid: bool,
+}
+
+impl<'tcx, 'a> Visitor<'tcx> for InvalidPlace<'a> {
+    fn visit_local(&mut self, local: Local, _: PlaceContext, _: Location) {
+        if self.map[local].is_none() {
+            self.is_invalid = true;
         }
     }
 }
@@ -620,11 +682,77 @@ struct LocalUpdater<'tcx> {
 }
 
 impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
+    const VISIT_DEBUG_INFO: bool = true;
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
+    fn visit_statement_debuginfo(
+        &mut self,
+        stmt_debuginfo: &mut StmtDebugInfo<'tcx>,
+        location: Location,
+    ) {
+        match stmt_debuginfo {
+            StmtDebugInfo::AssignRef(_, place) => {
+                if place.is_some_and(|ref place| {
+                    let mut invalid_place = InvalidPlace { map: &self.map, is_invalid: false };
+                    invalid_place.visit_place(
+                        place,
+                        PlaceContext::NonUse(visit::NonUseContext::VarDebugInfo),
+                        location,
+                    );
+                    invalid_place.is_invalid
+                }) {
+                    *place = None;
+                }
+            }
+        }
+        self.super_statement_debuginfo(stmt_debuginfo, location);
+    }
+
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
         *l = self.map[*l].unwrap();
+    }
+}
+
+pub(crate) struct UsedInStmtLocals {
+    pub(crate) locals: DenseBitSet<Local>,
+}
+
+impl UsedInStmtLocals {
+    pub(crate) fn new(body: &Body<'_>) -> Self {
+        let mut this = Self { locals: DenseBitSet::new_empty(body.local_decls.len()) };
+        this.visit_body(body);
+        this
+    }
+
+    pub(crate) fn remove_unused_storage_annotations<'tcx>(&self, body: &mut Body<'tcx>) {
+        for data in body.basic_blocks.as_mut_preserves_cfg() {
+            // Remove unnecessary StorageLive and StorageDead annotations.
+            for statement in data.statements.iter_mut() {
+                let keep_statement = match &statement.kind {
+                    StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
+                        self.locals.contains(*local)
+                    }
+                    _ => continue,
+                };
+                if keep_statement {
+                    continue;
+                }
+                statement.make_nop(true);
+            }
+        }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for UsedInStmtLocals {
+    const VISIT_DEBUG_INFO: bool = true;
+
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
+        if matches!(context, PlaceContext::NonUse(_)) {
+            return;
+        }
+        self.locals.insert(local);
     }
 }
