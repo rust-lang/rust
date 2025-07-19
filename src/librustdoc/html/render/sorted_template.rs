@@ -63,7 +63,8 @@ impl<F: FileFormat> fmt::Display for SortedTemplate<F> {
         for (p, fragment) in self.fragments.iter().with_position() {
             let mut f = DeltaWriter { inner: &mut f, delta: 0 };
             let sep = if matches!(p, Position::First | Position::Only) { "" } else { F::SEPARATOR };
-            write!(f, "{}{}", sep, fragment)?;
+            f.write_str(sep)?;
+            f.write_str(fragment)?;
             fragment_lengths.push(f.delta);
         }
         let offset = Offset { start: self.before.len(), fragment_lengths };

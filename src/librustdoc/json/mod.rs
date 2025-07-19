@@ -133,7 +133,7 @@ fn target(sess: &rustc_session::Session) -> types::Target {
     let feature_stability: FxHashMap<&str, Stability> = sess
         .target
         .rust_target_features()
-        .into_iter()
+        .iter()
         .copied()
         .map(|(name, stability, _)| (name, stability))
         .collect();
@@ -143,7 +143,7 @@ fn target(sess: &rustc_session::Session) -> types::Target {
         target_features: sess
             .target
             .rust_target_features()
-            .into_iter()
+            .iter()
             .copied()
             .filter(|(_, stability, _)| {
                 // Describe only target features which the user can toggle
@@ -157,7 +157,7 @@ fn target(sess: &rustc_session::Session) -> types::Target {
                         _ => None,
                     },
                     implies_features: implied_features
-                        .into_iter()
+                        .iter()
                         .copied()
                         .filter(|name| {
                             // Imply only target features which the user can toggle

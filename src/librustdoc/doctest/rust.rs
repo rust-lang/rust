@@ -140,7 +140,7 @@ impl HirCollector<'_> {
                 .iter()
                 .filter(|a| a.has_name(sym::attr))
                 .flat_map(|a| a.meta_item_list().unwrap_or_default())
-                .map(|i| pprust::meta_list_item_to_string(i))
+                .map(pprust::meta_list_item_to_string)
             {
                 // Add the additional attributes to the global_crate_attrs vector
                 self.collector.global_crate_attrs.push(attr);

@@ -547,7 +547,7 @@ impl<'a> Iterator for TokenIter<'a> {
 fn get_real_ident_class(text: &str, allow_path_keywords: bool) -> Option<Class> {
     let ignore: &[&str] =
         if allow_path_keywords { &["self", "Self", "super", "crate"] } else { &["self", "Self"] };
-    if ignore.iter().any(|k| *k == text) {
+    if ignore.contains(&text) {
         return None;
     }
     Some(match text {
@@ -1159,7 +1159,7 @@ fn string_without_closing_tag<T: Display>(
         return Some("</a>");
     }
     if !open_tag {
-        write!(out, "{}", text_s).unwrap();
+        out.write_str(&text_s).unwrap();
         return None;
     }
     let klass_s = klass.as_html();

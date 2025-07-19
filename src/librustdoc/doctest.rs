@@ -632,7 +632,7 @@ fn run_test(
         // the user to exploit nightly-only features on stable
         runner_compiler.env("RUSTC_BOOTSTRAP", "1");
         runner_compiler.args(compiler_args);
-        runner_compiler.args(&["--crate-type=bin", "-o"]).arg(&output_file);
+        runner_compiler.args(["--crate-type=bin", "-o"]).arg(&output_file);
         let mut extern_path = std::ffi::OsString::from(format!(
             "--extern=doctest_bundle_{edition}=",
             edition = doctest.edition
@@ -657,7 +657,7 @@ fn run_test(
         extern_path.push(&output_bundle_file);
         runner_compiler.arg(extern_path);
         runner_compiler.arg(&runner_input_file);
-        if std::fs::write(&runner_input_file, &merged_test_code).is_err() {
+        if std::fs::write(&runner_input_file, merged_test_code).is_err() {
             // If we cannot write this file for any reason, we leave. All combined tests will be
             // tested as standalone tests.
             return Err(TestFailure::CompileError);
