@@ -1,10 +1,9 @@
 //! Cargo-like environment variables injection.
 use base_db::Env;
-use paths::{Utf8Path, Utf8PathBuf};
-use rustc_hash::FxHashMap;
+use paths::Utf8Path;
 use toolchain::Tool;
 
-use crate::{ManifestPath, PackageData, Sysroot, TargetKind, utf8_stdout};
+use crate::{ManifestPath, PackageData, TargetKind, cargo_config_file::CargoConfigFile};
 
 /// Recreates the compile-time environment variables that Cargo sets.
 ///
@@ -61,104 +60,68 @@ pub(crate) fn inject_rustc_tool_env(env: &mut Env, cargo_name: &str, kind: Targe
     env.set("CARGO_CRATE_NAME", cargo_name.replace('-', "_"));
 }
 
-pub(crate) fn cargo_config_env(
-    manifest: &ManifestPath,
-    extra_env: &FxHashMap<String, Option<String>>,
-    sysroot: &Sysroot,
-) -> Env {
-    let mut cargo_config = sysroot.tool(Tool::Cargo, manifest.parent(), extra_env);
-    cargo_config
-        .args(["-Z", "unstable-options", "config", "get", "env"])
-        .env("RUSTC_BOOTSTRAP", "1");
-    if manifest.is_rust_manifest() {
-        cargo_config.arg("-Zscript");
-    }
-    // if successful we receive `env.key.value = "value" per entry
-    tracing::debug!("Discovering cargo config env by {:?}", cargo_config);
-    utf8_stdout(&mut cargo_config)
-        .map(|stdout| parse_output_cargo_config_env(manifest, &stdout))
-        .inspect(|env| {
-            tracing::debug!("Discovered cargo config env: {:?}", env);
-        })
-        .inspect_err(|err| {
-            tracing::debug!("Failed to discover cargo config env: {:?}", err);
-        })
-        .unwrap_or_default()
-}
-
-fn parse_output_cargo_config_env(manifest: &ManifestPath, stdout: &str) -> Env {
+pub(crate) fn cargo_config_env(manifest: &ManifestPath, config: &Option<CargoConfigFile>) -> Env {
     let mut env = Env::default();
-    let mut relatives = vec![];
-    for (key, val) in
-        stdout.lines().filter_map(|l| l.strip_prefix("env.")).filter_map(|l| l.split_once(" = "))
-    {
-        let val = val.trim_matches('"').to_owned();
-        if let Some((key, modifier)) = key.split_once('.') {
-            match modifier {
-                "relative" => relatives.push((key, val)),
-                "value" => _ = env.insert(key, val),
-                _ => {
-                    tracing::warn!(
-                        "Unknown modifier in cargo config env: {}, expected `relative` or `value`",
-                        modifier
-                    );
-                    continue;
-                }
-            }
-        } else {
-            env.insert(key, val);
-        }
-    }
+    let Some(serde_json::Value::Object(env_json)) = config.as_ref().and_then(|c| c.get("env"))
+    else {
+        return env;
+    };
+
     // FIXME: The base here should be the parent of the `.cargo/config` file, not the manifest.
     // But cargo does not provide this information.
     let base = <_ as AsRef<Utf8Path>>::as_ref(manifest.parent());
-    for (key, relative) in relatives {
-        if relative != "true" {
-            continue;
-        }
-        if let Some(suffix) = env.get(key) {
-            env.insert(key, base.join(suffix).to_string());
-        }
-    }
-    env
-}
 
-pub(crate) fn cargo_config_build_target_dir(
-    manifest: &ManifestPath,
-    extra_env: &FxHashMap<String, Option<String>>,
-    sysroot: &Sysroot,
-) -> Option<Utf8PathBuf> {
-    let mut cargo_config = sysroot.tool(Tool::Cargo, manifest.parent(), extra_env);
-    cargo_config
-        .args(["-Z", "unstable-options", "config", "get", "build.target-dir"])
-        .env("RUSTC_BOOTSTRAP", "1");
-    if manifest.is_rust_manifest() {
-        cargo_config.arg("-Zscript");
+    for (key, entry) in env_json {
+        let serde_json::Value::Object(entry) = entry else {
+            continue;
+        };
+        let Some(value) = entry.get("value").and_then(|v| v.as_str()) else {
+            continue;
+        };
+
+        let value = if entry
+            .get("relative")
+            .and_then(|v| v.as_bool())
+            .is_some_and(std::convert::identity)
+        {
+            base.join(value).to_string()
+        } else {
+            value.to_owned()
+        };
+        env.insert(key, value);
     }
-    utf8_stdout(&mut cargo_config)
-        .map(|stdout| {
-            Utf8Path::new(stdout.trim_start_matches("build.target-dir = ").trim_matches('"'))
-                .to_owned()
-        })
-        .ok()
+
+    env
 }
 
 #[test]
 fn parse_output_cargo_config_env_works() {
-    let stdout = r#"
-env.CARGO_WORKSPACE_DIR.relative = true
-env.CARGO_WORKSPACE_DIR.value = ""
-env.RELATIVE.relative = true
-env.RELATIVE.value = "../relative"
-env.INVALID.relative = invalidbool
-env.INVALID.value = "../relative"
-env.TEST.value = "test"
-"#
-    .trim();
+    let raw = r#"
+{
+  "env": {
+    "CARGO_WORKSPACE_DIR": {
+      "relative": true,
+      "value": ""
+    },
+    "INVALID": {
+      "relative": "invalidbool",
+      "value": "../relative"
+    },
+    "RELATIVE": {
+      "relative": true,
+      "value": "../relative"
+    },
+    "TEST": {
+      "value": "test"
+    }
+  }
+}
+"#;
+    let config: CargoConfigFile = serde_json::from_str(raw).unwrap();
     let cwd = paths::Utf8PathBuf::try_from(std::env::current_dir().unwrap()).unwrap();
     let manifest = paths::AbsPathBuf::assert(cwd.join("Cargo.toml"));
     let manifest = ManifestPath::try_from(manifest).unwrap();
-    let env = parse_output_cargo_config_env(&manifest, stdout);
+    let env = cargo_config_env(&manifest, &Some(config));
     assert_eq!(env.get("CARGO_WORKSPACE_DIR").as_deref(), Some(cwd.join("").as_str()));
     assert_eq!(env.get("RELATIVE").as_deref(), Some(cwd.join("../relative").as_str()));
     assert_eq!(env.get("INVALID").as_deref(), Some("../relative"));

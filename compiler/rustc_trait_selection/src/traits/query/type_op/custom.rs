@@ -80,6 +80,11 @@ where
         pre_obligations.is_empty(),
         "scrape_region_constraints: incoming region obligations = {pre_obligations:#?}",
     );
+    let pre_assumptions = infcx.take_registered_region_assumptions();
+    assert!(
+        pre_assumptions.is_empty(),
+        "scrape_region_constraints: incoming region assumptions = {pre_assumptions:#?}",
+    );
 
     let value = infcx.commit_if_ok(|_| {
         let ocx = ObligationCtxt::new(infcx);
@@ -100,11 +105,13 @@ where
     let value = infcx.resolve_vars_if_possible(value);
 
     let region_obligations = infcx.take_registered_region_obligations();
+    let region_assumptions = infcx.take_registered_region_assumptions();
     let region_constraint_data = infcx.take_and_reset_region_constraints();
     let region_constraints = query_response::make_query_region_constraints(
         infcx.tcx,
         region_obligations,
         &region_constraint_data,
+        region_assumptions,
     );
 
     if region_constraints.is_empty() {

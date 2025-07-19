@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use rustc_data_structures::obligation_forest::{
     Error, ForestObligation, ObligationForest, ObligationProcessor, Outcome, ProcessResult,
 };
+use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::{
     FromSolverError, PolyTraitObligation, PredicateObligations, ProjectionCacheKey, SelectionError,
@@ -12,8 +13,10 @@ use rustc_middle::bug;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, Binder, Const, GenericArgsRef, TypeVisitableExt, TypingMode, may_use_unstable_feature,
+    self, Binder, Const, GenericArgsRef, TypeVisitable, TypeVisitableExt, TypingMode,
+    may_use_unstable_feature,
 };
+use rustc_span::DUMMY_SP;
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, debug_span, instrument};
 
@@ -26,6 +29,7 @@ use super::{
 };
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::infer::{InferCtxt, TyOrConstInferVar};
+use crate::solve::StalledOnCoroutines;
 use crate::traits::normalize::normalize_with_depth_to;
 use crate::traits::project::{PolyProjectionObligation, ProjectionCacheKeyExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -168,8 +172,25 @@ where
         &mut self,
         infcx: &InferCtxt<'tcx>,
     ) -> PredicateObligations<'tcx> {
-        let mut processor =
-            DrainProcessor { removed_predicates: PredicateObligations::new(), infcx };
+        let stalled_coroutines = match infcx.typing_mode() {
+            TypingMode::Analysis { defining_opaque_types_and_generators } => {
+                defining_opaque_types_and_generators
+            }
+            TypingMode::Coherence
+            | TypingMode::Borrowck { defining_opaque_types: _ }
+            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
+            | TypingMode::PostAnalysis => return Default::default(),
+        };
+
+        if stalled_coroutines.is_empty() {
+            return Default::default();
+        }
+
+        let mut processor = DrainProcessor {
+            infcx,
+            removed_predicates: PredicateObligations::new(),
+            stalled_coroutines,
+        };
         let outcome: Outcome<_, _> = self.predicates.process_obligations(&mut processor);
         assert!(outcome.errors.is_empty());
         return processor.removed_predicates;
@@ -177,6 +198,7 @@ where
         struct DrainProcessor<'a, 'tcx> {
             infcx: &'a InferCtxt<'tcx>,
             removed_predicates: PredicateObligations<'tcx>,
+            stalled_coroutines: &'tcx ty::List<LocalDefId>,
         }
 
         impl<'tcx> ObligationProcessor for DrainProcessor<'_, 'tcx> {
@@ -185,10 +207,14 @@ where
             type OUT = Outcome<Self::Obligation, Self::Error>;
 
             fn needs_process_obligation(&self, pending_obligation: &Self::Obligation) -> bool {
-                pending_obligation
-                    .stalled_on
-                    .iter()
-                    .any(|&var| self.infcx.ty_or_const_infer_var_changed(var))
+                self.infcx
+                    .resolve_vars_if_possible(pending_obligation.obligation.predicate)
+                    .visit_with(&mut StalledOnCoroutines {
+                        stalled_coroutines: self.stalled_coroutines,
+                        span: DUMMY_SP,
+                        cache: Default::default(),
+                    })
+                    .is_break()
             }
 
             fn process_obligation(

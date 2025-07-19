@@ -352,11 +352,6 @@ impl ConfigInfo {
             None => return Err("no host found".to_string()),
         };
 
-        if self.target_triple.is_empty()
-            && let Some(overwrite) = env.get("OVERWRITE_TARGET_TRIPLE")
-        {
-            self.target_triple = overwrite.clone();
-        }
         if self.target_triple.is_empty() {
             self.target_triple = self.host_triple.clone();
         }

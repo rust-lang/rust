@@ -560,7 +560,8 @@ passes_only_has_effect_on =
     `#[{$attr_name}]` only has an effect on {$target_name ->
         [function] functions
         [module] modules
-        [implementation_block] implementation blocks
+        [trait_implementation_block] trait implementation blocks
+        [inherent_implementation_block] inherent implementation blocks
         *[unspecified] (unspecified--this is a compiler bug)
     }
 

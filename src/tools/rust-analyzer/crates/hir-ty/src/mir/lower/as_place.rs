@@ -133,7 +133,7 @@ impl MirLowerCtx<'_> {
             }
             this.lower_expr_to_some_place_without_adjust(expr_id, current)
         };
-        match &self.body.exprs[expr_id] {
+        match &self.body[expr_id] {
             Expr::Path(p) => {
                 let resolver_guard =
                     self.resolver.update_to_inner_scope(self.db, self.owner, expr_id);

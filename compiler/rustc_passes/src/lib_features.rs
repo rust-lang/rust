@@ -44,7 +44,7 @@ impl<'tcx> LibFeatureCollector<'tcx> {
             StabilityLevel::Stable { since, .. } => FeatureStability::AcceptedSince(match since {
                 StableSince::Version(v) => Symbol::intern(&v.to_string()),
                 StableSince::Current => sym::env_CFG_RELEASE,
-                StableSince::Err => return None,
+                StableSince::Err(_) => return None,
             }),
         };
 
