@@ -3,7 +3,7 @@ use std::ops::{Index, IndexMut};
 use derive_where::derive_where;
 use rustc_index::IndexVec;
 
-use super::{AvailableDepth, Cx, CycleHeads, NestedGoals, PathKind, UsageKind};
+use crate::search_graph::{AvailableDepth, Cx, CycleHeads, NestedGoals, PathKind, UsageKind};
 
 rustc_index::newtype_index! {
     #[orderable]
@@ -79,6 +79,9 @@ impl<X: Cx> Stack<X> {
     }
 
     pub(super) fn push(&mut self, entry: StackEntry<X>) -> StackDepth {
+        if cfg!(debug_assertions) && self.entries.iter().any(|e| e.input == entry.input) {
+            panic!("pushing duplicate entry on stack: {entry:?} {:?}", self.entries);
+        }
         self.entries.push(entry)
     }
 
