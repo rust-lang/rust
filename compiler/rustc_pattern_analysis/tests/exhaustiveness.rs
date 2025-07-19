@@ -117,7 +117,7 @@ fn test_nested() {
 #[test]
 fn test_witnesses() {
     // TY = Option<bool>
-    const TY: Ty = Ty::Enum(&[Ty::Bool, Ty::Tuple(&[])]);
+    const TY: Ty = Ty::Enum(&[Ty::Bool, UNIT]);
     // ty = (Option<bool>, Option<bool>)
     let ty = Ty::Tuple(&[TY, TY]);
     assert_witnesses(AllOfThem, ty, vec![], vec!["(_, _)"]);
@@ -158,12 +158,30 @@ fn test_witnesses() {
         ),
         vec!["(_, Enum::Variant0(true))", "(_, Enum::Variant1(_))"],
     );
+
+    let ty = Ty::NonExhaustiveEnum(&[UNIT, UNIT, UNIT]);
+    assert_witnesses(
+        OnlySome,
+        ty,
+        pats!(ty;
+            Variant.0,
+        ),
+        vec!["_"],
+    );
+    assert_witnesses(
+        AllOfThem,
+        ty,
+        pats!(ty;
+            Variant.0,
+        ),
+        vec!["Enum::Variant1(_)", "Enum::Variant2(_)", "_"],
+    );
 }
 
 #[test]
 fn test_empty() {
     // `TY = Result<bool, !>`
-    const TY: Ty = Ty::Enum(&[Ty::Bool, Ty::Enum(&[])]);
+    const TY: Ty = Ty::Enum(&[Ty::Bool, NEVER]);
     assert_exhaustive(pats!(TY;
         Variant.0,
     ));

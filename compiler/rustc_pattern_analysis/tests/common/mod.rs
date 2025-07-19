@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use rustc_pattern_analysis::constructor::{
     Constructor, ConstructorSet, IntRange, MaybeInfiniteInt, RangeEnd, VariantVisibility,
 };
@@ -22,8 +23,10 @@ fn init_tracing() {
         .try_init();
 }
 
+pub const UNIT: Ty = Ty::Tuple(&[]);
+pub const NEVER: Ty = Ty::Enum(&[]);
+
 /// A simple set of types.
-#[allow(dead_code)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub(super) enum Ty {
     /// Booleans
@@ -38,6 +41,8 @@ pub(super) enum Ty {
     BigStruct { arity: usize, ty: &'static Ty },
     /// A enum with `arity` variants of type `ty`.
     BigEnum { arity: usize, ty: &'static Ty },
+    /// Like `Enum` but non-exhaustive.
+    NonExhaustiveEnum(&'static [Ty]),
 }
 
 /// The important logic.
@@ -47,7 +52,7 @@ impl Ty {
         match (ctor, *self) {
             (Struct, Ty::Tuple(tys)) => tys.iter().copied().collect(),
             (Struct, Ty::BigStruct { arity, ty }) => (0..arity).map(|_| *ty).collect(),
-            (Variant(i), Ty::Enum(tys)) => vec![tys[*i]],
+            (Variant(i), Ty::Enum(tys) | Ty::NonExhaustiveEnum(tys)) => vec![tys[*i]],
             (Variant(_), Ty::BigEnum { ty, .. }) => vec![*ty],
             (Bool(..) | IntRange(..) | NonExhaustive | Missing | Wildcard, _) => vec![],
             _ => panic!("Unexpected ctor {ctor:?} for type {self:?}"),
@@ -61,6 +66,7 @@ impl Ty {
             Ty::Enum(tys) => tys.iter().all(|ty| ty.is_empty()),
             Ty::BigStruct { arity, ty } => arity != 0 && ty.is_empty(),
             Ty::BigEnum { arity, ty } => arity == 0 || ty.is_empty(),
+            Ty::NonExhaustiveEnum(..) => false,
         }
     }
 
@@ -90,6 +96,19 @@ impl Ty {
                     .collect(),
                 non_exhaustive: false,
             },
+            Ty::NonExhaustiveEnum(tys) => ConstructorSet::Variants {
+                variants: tys
+                    .iter()
+                    .map(|ty| {
+                        if ty.is_empty() {
+                            VariantVisibility::Empty
+                        } else {
+                            VariantVisibility::Visible
+                        }
+                    })
+                    .collect(),
+                non_exhaustive: true,
+            },
             Ty::BigEnum { arity: 0, .. } => ConstructorSet::NoConstructors,
             Ty::BigEnum { arity, ty } => {
                 let vis = if ty.is_empty() {
@@ -113,7 +132,9 @@ impl Ty {
         match (*self, ctor) {
             (Ty::Tuple(..), _) => Ok(()),
             (Ty::BigStruct { .. }, _) => write!(f, "BigStruct"),
-            (Ty::Enum(..), Constructor::Variant(i)) => write!(f, "Enum::Variant{i}"),
+            (Ty::Enum(..) | Ty::NonExhaustiveEnum(..), Constructor::Variant(i)) => {
+                write!(f, "Enum::Variant{i}")
+            }
             (Ty::BigEnum { .. }, Constructor::Variant(i)) => write!(f, "BigEnum::Variant{i}"),
             _ => write!(f, "{:?}::{:?}", self, ctor),
         }
