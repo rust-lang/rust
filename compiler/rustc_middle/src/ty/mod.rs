@@ -2365,9 +2365,9 @@ use rustc_ast::expand::autodiff_attrs::DiffActivity;
 //    autodiff macro on top). Here we want to make sure that shadows are mutable internally.
 //    We know the outermost ref/ptr indirection is mutability - we generate it like that.
 //    We now have to make sure that inner ptr/ref are mutable too, or issue a warning.
-//    Not an error, becaues it only causes issues if they are actually read, which we don't check
+//    Not an error, because it only causes issues if they are actually read, which we don't check
 //    yet. We should add such analysis to relibably either issue an error or accept without warning.
-//    If there only were some reasearch to do that...
+//    If there only were some research to do that...
 pub fn fnc_typetrees<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_ty: Ty<'tcx>,
@@ -2408,7 +2408,7 @@ pub fn fnc_typetrees<'tcx>(
         visited.clear();
         if ty.is_raw_ptr() || ty.is_ref() || ty.is_box() {
             if ty.is_fn_ptr() {
-                unimplemented!("what to do whith fn ptr?");
+                unimplemented!("what to do with fn ptr?");
             }
             let (inner_ty, _is_mut) = match ty.kind() {
                 ty::RawPtr(inner_ty, mutbl) => (*inner_ty, *mutbl == hir::Mutability::Mut),
@@ -2484,7 +2484,7 @@ fn typetree_from_ty<'a>(
 
     if ty.is_raw_ptr() || ty.is_ref() || ty.is_box() {
         if ty.is_fn_ptr() {
-            unimplemented!("what to do whith fn ptr?");
+            unimplemented!("what to do with fn ptr?");
         }
 
         let (inner_ty, is_mut) = match ty.kind() {
