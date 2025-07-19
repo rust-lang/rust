@@ -1,0 +1,48 @@
+error[E0618]: expected function, found `T`
+  --> $DIR/suggest-call-on-generic-param.rs:2:18
+   |
+LL | fn return_type<T>(t: T) {
+   |                   - `t` has type `T`
+LL |     let x: u32 = t(1);
+   |                  ^---
+   |                  |
+   |                  call expression requires function
+   |
+help: consider restricting type parameter `T` with trait `Fn`
+   |
+LL | fn return_type<T: Fn(i32) -> u32>(t: T) {
+   |                 ++++++++++++++++
+
+error[E0618]: expected function, found `T`
+  --> $DIR/suggest-call-on-generic-param.rs:7:5
+   |
+LL | fn no_return_type<T>(t: T) {
+   |                      - `t` has type `T`
+LL |     t(1, 2, true);
+   |     ^------------
+   |     |
+   |     call expression requires function
+   |
+help: consider restricting type parameter `T` with trait `Fn`
+   |
+LL | fn no_return_type<T: Fn(i32, i32, bool)>(t: T) {
+   |                    ++++++++++++++++++++
+
+error[E0618]: expected function, found `T`
+  --> $DIR/suggest-call-on-generic-param.rs:12:5
+   |
+LL | fn existing_bound<T: Copy>(t: T) {
+   |                            - `t` has type `T`
+LL |     t(false);
+   |     ^-------
+   |     |
+   |     call expression requires function
+   |
+help: consider further restricting type parameter `T` with trait `Fn`
+   |
+LL | fn existing_bound<T: Copy + Fn(bool)>(t: T) {
+   |                           ++++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0618`.
