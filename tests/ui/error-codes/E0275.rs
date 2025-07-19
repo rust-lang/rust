@@ -1,3 +1,4 @@
+//@ compile-flags: -Zwrite-long-types-to-disk=yes
 trait Foo {}
 
 struct Bar<T>(T);
