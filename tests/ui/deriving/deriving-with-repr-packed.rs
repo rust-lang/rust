@@ -1,6 +1,7 @@
 //@ run-pass
 // check that derive on a packed struct does not call field
 // methods with a misaligned field.
+#![allow(dead_code)]
 
 use std::mem;
 

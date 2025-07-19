@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct A<'a> {
     x: i32,

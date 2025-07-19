@@ -421,9 +421,15 @@ impl Default for ListNesting {
 
 #[derive(Debug, PartialEq, Eq)]
 enum ListMarker {
-    Asterisk(usize),
+    Asterisk(
+        // FIXME(#143487): is it okay that the field is never read?
+        #[allow(dead_code)] usize,
+    ),
     Hyphen,
-    Dot(usize),
+    Dot(
+        // FIXME(#143487): is it okay that the field is never read?
+        #[allow(dead_code)] usize,
+    ),
 }
 
 impl ListMarker {

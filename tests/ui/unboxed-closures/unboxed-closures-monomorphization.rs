@@ -1,6 +1,7 @@
 //@ run-pass
 // Test that unboxed closures in contexts with free type parameters
 // monomorphize correctly (issue #16791)
+#![allow(dead_code)]
 
 fn main(){
     fn bar<'a, T:Clone+'a> (t: T) -> Box<dyn FnMut()->T + 'a> {

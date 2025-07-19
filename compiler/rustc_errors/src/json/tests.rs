@@ -13,6 +13,7 @@ struct TestData {
 }
 
 #[derive(Deserialize, Debug, PartialEq, Eq)]
+#[allow(dead_code, reason = "Fields are only used for equality comparisons")]
 struct SpanTestData {
     pub byte_start: u32,
     pub byte_end: u32,

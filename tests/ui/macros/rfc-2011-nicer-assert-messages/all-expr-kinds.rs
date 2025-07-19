@@ -4,6 +4,7 @@
 //@ run-pass
 //@ needs-unwind Asserting on contents of error message
 
+#![allow(dead_code)]
 #![allow(path_statements, unused_allocation)]
 #![feature(core_intrinsics, generic_assert)]
 

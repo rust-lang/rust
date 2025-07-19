@@ -26,7 +26,10 @@ use crate::errors::{
 enum Context {
     Normal,
     Fn,
-    Loop(hir::LoopSource),
+    Loop(
+        // FIXME(#143487): is it okay that this field is never read?
+        #[cfg_attr(not(bootstrap), expect(dead_code))] hir::LoopSource,
+    ),
     Closure(Span),
     Coroutine {
         coroutine_span: Span,
@@ -34,7 +37,10 @@ enum Context {
         source: hir::CoroutineSource,
     },
     UnlabeledBlock(Span),
-    UnlabeledIfBlock(Span),
+    UnlabeledIfBlock(
+        // FIXME(#143487): is it okay that this field is never read?
+        #[cfg_attr(not(bootstrap), expect(dead_code))] Span,
+    ),
     LabeledBlock,
     /// E.g. The labeled block inside `['_'; 'block: { break 'block 1 + 2; }]`.
     AnonConst,
