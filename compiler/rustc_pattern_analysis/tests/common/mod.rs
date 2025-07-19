@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, unreachable_pub)]
 use rustc_pattern_analysis::constructor::{
     Constructor, ConstructorSet, IntRange, MaybeInfiniteInt, RangeEnd, VariantVisibility,
 };
@@ -23,8 +23,8 @@ fn init_tracing() {
         .try_init();
 }
 
-pub const UNIT: Ty = Ty::Tuple(&[]);
-pub const NEVER: Ty = Ty::Enum(&[]);
+pub(super) const UNIT: Ty = Ty::Tuple(&[]);
+pub(super) const NEVER: Ty = Ty::Enum(&[]);
 
 /// A simple set of types.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
