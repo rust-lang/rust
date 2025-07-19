@@ -11,9 +11,7 @@ error[E0015]: cannot call non-const method `Formatter::<'_>::debug_tuple_field1_
   --> $DIR/derive-const-non-const-type.rs:12:16
    |
 LL | #[derive_const(Debug)]
-   |                ^^^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   |                ^^^^^ calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 2 previous errors
 
