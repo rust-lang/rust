@@ -4,9 +4,9 @@
 
 use std::assert_matches::assert_matches;
 use std::cell::{Cell, RefCell};
+use std::cmp;
 use std::fmt::{self, Display};
 use std::ops::ControlFlow;
-use std::{cmp, iter};
 
 use hir::def::DefKind;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -2117,7 +2117,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Char
             | ty::Ref(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -2188,35 +2187,30 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ty::Binder::dummy(vec![ty])
             }
 
-            ty::Coroutine(coroutine_def_id, args) => {
-                match self.tcx().coroutine_movability(coroutine_def_id) {
-                    hir::Movability::Static => {
-                        unreachable!("tried to assemble `Sized` for static coroutine")
-                    }
-                    hir::Movability::Movable => {
-                        if self.tcx().features().coroutine_clone() {
-                            ty::Binder::dummy(
+            ty::Coroutine(def_id, args) => match self.tcx().coroutine_movability(def_id) {
+                hir::Movability::Static => {
+                    unreachable!("tried to assemble `Sized` for static coroutine")
+                }
+                hir::Movability::Movable => {
+                    if self.tcx().features().coroutine_clone() {
+                        self.infcx
+                            .tcx
+                            .coroutine_hidden_types(def_id)
+                            .instantiate(self.infcx.tcx, args)
+                            .map_bound(|witness| {
                                 args.as_coroutine()
                                     .upvar_tys()
                                     .iter()
-                                    .chain([args.as_coroutine().witness()])
-                                    .collect::<Vec<_>>(),
-                            )
-                        } else {
-                            unreachable!(
-                                "tried to assemble `Sized` for coroutine without enabled feature"
-                            )
-                        }
+                                    .chain(witness.types.to_vec())
+                                    .collect()
+                            })
+                    } else {
+                        unreachable!(
+                            "tried to assemble `Sized` for coroutine without enabled feature"
+                        )
                     }
                 }
-            }
-
-            ty::CoroutineWitness(def_id, args) => self
-                .infcx
-                .tcx
-                .coroutine_hidden_types(def_id)
-                .instantiate(self.infcx.tcx, args)
-                .map_bound(|witness| witness.types.to_vec()),
+            },
 
             ty::Closure(_, args) => ty::Binder::dummy(args.as_closure().upvar_tys().to_vec()),
 
@@ -2330,24 +2324,17 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ty::Binder::dummy(AutoImplConstituents { types: vec![ty], assumptions: vec![] })
             }
 
-            ty::Coroutine(_, args) => {
+            ty::Coroutine(def_id, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
-                let witness = args.as_coroutine().witness();
-                ty::Binder::dummy(AutoImplConstituents {
-                    types: [ty].into_iter().chain(iter::once(witness)).collect(),
-                    assumptions: vec![],
-                })
+                self.infcx
+                    .tcx
+                    .coroutine_hidden_types(def_id)
+                    .instantiate(self.infcx.tcx, args)
+                    .map_bound(|witness| AutoImplConstituents {
+                        types: [ty].into_iter().chain(witness.types.to_vec()).collect(),
+                        assumptions: witness.assumptions.to_vec(),
+                    })
             }
-
-            ty::CoroutineWitness(def_id, args) => self
-                .infcx
-                .tcx
-                .coroutine_hidden_types(def_id)
-                .instantiate(self.infcx.tcx, args)
-                .map_bound(|witness| AutoImplConstituents {
-                    types: witness.types.to_vec(),
-                    assumptions: witness.assumptions.to_vec(),
-                }),
 
             // For `PhantomData<T>`, we pass `T`.
             ty::Adt(def, args) if def.is_phantom_data() => {

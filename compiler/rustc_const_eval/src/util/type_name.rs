@@ -58,7 +58,6 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
 
             ty::Alias(ty::Free, _) => bug!("type_name: unexpected free alias"),
             ty::Alias(ty::Inherent, _) => bug!("type_name: unexpected inherent projection"),
-            ty::CoroutineWitness(..) => bug!("type_name: unexpected `CoroutineWitness`"),
         }
     }
 

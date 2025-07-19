@@ -101,7 +101,6 @@ use crate::{self as ty, Interner};
 ///   `yield` inside the coroutine.
 /// * `GR`: The "return type", which is the type of value returned upon
 ///   completion of the coroutine.
-/// * `GW`: The "coroutine witness".
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 pub struct ClosureArgs<I: Interner> {
@@ -239,8 +238,6 @@ pub struct CoroutineClosureArgsParts<I: Interner> {
     /// while the `tupled_upvars_ty`, representing the by-move version of the same
     /// captures, will be `(String,)`.
     pub coroutine_captures_by_ref_ty: I::Ty,
-    /// Witness type returned by the generator produced by this coroutine-closure.
-    pub coroutine_witness_ty: I::Ty,
 }
 
 impl<I: Interner> CoroutineClosureArgs<I> {
@@ -251,7 +248,6 @@ impl<I: Interner> CoroutineClosureArgs<I> {
                 parts.signature_parts_ty.into(),
                 parts.tupled_upvars_ty.into(),
                 parts.coroutine_captures_by_ref_ty.into(),
-                parts.coroutine_witness_ty.into(),
             ])),
         }
     }
@@ -292,7 +288,6 @@ impl<I: Interner> CoroutineClosureArgs<I> {
     }
 
     pub fn coroutine_closure_sig(self) -> ty::Binder<I, CoroutineClosureSignature<I>> {
-        let interior = self.coroutine_witness_ty();
         let ty::FnPtr(sig_tys, hdr) = self.signature_parts_ty().kind() else { panic!() };
         sig_tys.map_bound(|sig_tys| {
             let [resume_ty, tupled_inputs_ty] = *sig_tys.inputs().as_slice() else {
@@ -302,7 +297,6 @@ impl<I: Interner> CoroutineClosureArgs<I> {
                 panic!()
             };
             CoroutineClosureSignature {
-                interior,
                 tupled_inputs_ty,
                 resume_ty,
                 yield_ty,
@@ -316,10 +310,6 @@ impl<I: Interner> CoroutineClosureArgs<I> {
 
     pub fn coroutine_captures_by_ref_ty(self) -> I::Ty {
         self.split().coroutine_captures_by_ref_ty
-    }
-
-    pub fn coroutine_witness_ty(self) -> I::Ty {
-        self.split().coroutine_witness_ty
     }
 
     pub fn has_self_borrows(&self) -> bool {
@@ -361,7 +351,6 @@ impl<I: Interner> TypeVisitor<I> for HasRegionsBoundAt {
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub struct CoroutineClosureSignature<I: Interner> {
-    pub interior: I::Ty,
     pub tupled_inputs_ty: I::Ty,
     pub resume_ty: I::Ty,
     pub yield_ty: I::Ty,
@@ -407,7 +396,6 @@ impl<I: Interner> CoroutineClosureSignature<I> {
                 resume_ty: self.resume_ty,
                 yield_ty: self.yield_ty,
                 return_ty: self.return_ty,
-                witness: self.interior,
                 tupled_upvars_ty,
             },
         );
@@ -587,11 +575,6 @@ pub struct CoroutineArgsParts<I: Interner> {
     pub yield_ty: I::Ty,
     pub return_ty: I::Ty,
 
-    /// The interior type of the coroutine.
-    /// Represents all types that are stored in locals
-    /// in the coroutine's body.
-    pub witness: I::Ty,
-
     /// The upvars captured by the closure. Remains an inference variable
     /// until the upvar analysis, which happens late in HIR typeck.
     pub tupled_upvars_ty: I::Ty,
@@ -607,7 +590,6 @@ impl<I: Interner> CoroutineArgs<I> {
                 parts.resume_ty.into(),
                 parts.yield_ty.into(),
                 parts.return_ty.into(),
-                parts.witness.into(),
                 parts.tupled_upvars_ty.into(),
             ])),
         }
@@ -627,15 +609,6 @@ impl<I: Interner> CoroutineArgs<I> {
     // Returns the kind of the coroutine. See docs on the `kind_ty` field.
     pub fn kind_ty(self) -> I::Ty {
         self.split().kind_ty
-    }
-
-    /// This describes the types that can be contained in a coroutine.
-    /// It will be a type variable initially and unified in the last stages of typeck of a body.
-    /// It contains a tuple of all the types that could end up on a coroutine frame.
-    /// The state transformation MIR pass may only produce layouts which mention types
-    /// in this tuple. Upvars are not counted here.
-    pub fn witness(self) -> I::Ty {
-        self.split().witness
     }
 
     /// Returns an iterator over the list of types of captured paths by the coroutine.

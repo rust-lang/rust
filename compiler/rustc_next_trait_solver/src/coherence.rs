@@ -442,10 +442,6 @@ where
                     self.found_non_local_ty(ty)
                 }
             }
-            // This should only be created when checking whether we have to check whether some
-            // auto trait impl applies. There will never be multiple impls, so we can just
-            // act as if it were a local type here.
-            ty::CoroutineWitness(..) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
         };
         // A bit of a hack, the `OrphanChecker` is only used to visit a `TraitRef`, so
         // the first type we visit is always the self type.

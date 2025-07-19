@@ -101,9 +101,6 @@ fn has_significant_drop_raw<'tcx>(
 struct NeedsDropTypes<'tcx, F> {
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    /// Whether to reveal coroutine witnesses, this is set
-    /// to `false` unless we compute `needs_drop` for a coroutine witness.
-    reveal_coroutine_witnesses: bool,
     query_ty: Ty<'tcx>,
     seen_tys: FxHashSet<Ty<'tcx>>,
     /// A stack of types left to process, and the recursion depth when we
@@ -131,7 +128,6 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
         Self {
             tcx,
             typing_env,
-            reveal_coroutine_witnesses: exhaustive,
             seen_tys,
             query_ty: ty,
             unchecked_tys: vec![(ty, 0)],
@@ -195,25 +191,25 @@ where
                     // for the coroutine witness and check whether any of the contained types
                     // need to be dropped, and only require the captured types to be live
                     // if they do.
-                    ty::Coroutine(_, args) => {
-                        if self.reveal_coroutine_witnesses {
-                            queue_type(self, args.as_coroutine().witness());
+                    ty::Coroutine(def_id, args) => {
+                        if self.exhaustive {
+                            for upvar in args.as_coroutine().upvar_tys() {
+                                queue_type(self, upvar);
+                            }
+                            queue_type(self, args.as_coroutine().resume_ty());
+                            if let Some(witness) = tcx.mir_coroutine_witnesses(def_id) {
+                                for field_ty in &witness.field_tys {
+                                    queue_type(
+                                        self,
+                                        EarlyBinder::bind(field_ty.ty).instantiate(tcx, args),
+                                    );
+                                }
+                            }
                         } else {
+                            // TODO: We could still recurse into upvars and the resume here.
                             return Some(self.always_drop_component(ty));
                         }
                     }
-                    ty::CoroutineWitness(def_id, args) => {
-                        if let Some(witness) = tcx.mir_coroutine_witnesses(def_id) {
-                            self.reveal_coroutine_witnesses = true;
-                            for field_ty in &witness.field_tys {
-                                queue_type(
-                                    self,
-                                    EarlyBinder::bind(field_ty.ty).instantiate(tcx, args),
-                                );
-                            }
-                        }
-                    }
-
                     ty::UnsafeBinder(bound_ty) => {
                         let ty = self.tcx.instantiate_bound_regions_with_erased(bound_ty.into());
                         queue_type(self, ty);

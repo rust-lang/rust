@@ -194,7 +194,6 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Alias(ty::Free, _)
             | ty::Bound(..)
             | ty::Placeholder(_)

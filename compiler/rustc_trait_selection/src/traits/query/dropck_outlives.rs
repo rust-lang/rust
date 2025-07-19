@@ -38,7 +38,6 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::FnDef(..)
         | ty::FnPtr(..)
         | ty::Char
-        | ty::CoroutineWitness(..)
         | ty::RawPtr(_, _)
         | ty::Ref(..)
         | ty::Str
@@ -279,8 +278,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
         | ty::RawPtr(..)
         | ty::Ref(..)
         | ty::FnDef(..)
-        | ty::FnPtr(..)
-        | ty::CoroutineWitness(..) => {
+        | ty::FnPtr(..) => {
             // these types never have a destructor
         }
 
@@ -318,7 +316,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             })
         }
 
-        ty::Coroutine(_, args) => {
+        ty::Coroutine(def_id, args) => {
             // rust-lang/rust#49918: types can be constructed, stored
             // in the interior, and sit idle when coroutine yields
             // (and is subsequently dropped).
@@ -346,7 +344,11 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             // While we conservatively assume that all coroutines require drop
             // to avoid query cycles during MIR building, we can check the actual
             // witness during borrowck to avoid unnecessary liveness constraints.
-            if args.witness().needs_drop(tcx, tcx.erase_regions(typing_env)) {
+            let typing_env = tcx.erase_regions(typing_env);
+            let needs_drop = tcx.mir_coroutine_witnesses(def_id).is_some_and(|witness| {
+                witness.field_tys.iter().any(|field| field.ty.needs_drop(tcx, typing_env))
+            });
+            if needs_drop {
                 constraints.outlives.extend(args.upvar_tys().iter().map(ty::GenericArg::from));
                 constraints.outlives.push(args.resume_ty().into());
             }
