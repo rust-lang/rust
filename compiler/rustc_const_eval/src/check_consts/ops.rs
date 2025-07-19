@@ -212,6 +212,7 @@ fn build_error_for_const_call<'tcx>(
 
     debug!(?call_kind);
 
+    let mut note = true;
     let mut err = match call_kind {
         CallKind::Normal { desugaring: Some((kind, self_ty)), .. } => {
             macro_rules! error {
@@ -362,6 +363,12 @@ fn build_error_for_const_call<'tcx>(
                 kind: ccx.const_kind(),
                 non_or_conditionally,
             });
+            let context_span = ccx.tcx.def_span(ccx.def_id());
+            err.span_label(context_span, format!(
+                "calls in {}s are limited to constant functions, tuple structs and tuple variants",
+                ccx.const_kind(),
+            ));
+            note = false;
             let def_kind = ccx.tcx.def_kind(callee);
             if let DefKind::AssocTy | DefKind::AssocConst | DefKind::AssocFn = def_kind {
                 let parent = ccx.tcx.parent(callee);
@@ -409,11 +416,12 @@ fn build_error_for_const_call<'tcx>(
         }
     };
 
-    err.note(format!(
-        "calls in {}s are limited to constant functions, \
-             tuple structs and tuple variants",
-        ccx.const_kind(),
-    ));
+    if note {
+        err.note(format!(
+            "calls in {}s are limited to constant functions, tuple structs and tuple variants",
+            ccx.const_kind(),
+        ));
+    }
 
     err
 }

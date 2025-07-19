@@ -9,10 +9,11 @@ LL |     vec![1, 2, 3]
 error[E0015]: cannot call non-const method `slice::<impl [i32]>::into_vec::<std::alloc::Global>` in constant functions
   --> $DIR/bad_const_fn_body_ice.rs:2:5
    |
+LL | const fn foo(a: i32) -> Vec<i32> {
+   | -------------------------------- calls in constant functions are limited to constant functions, tuple structs and tuple variants
 LL |     vec![1, 2, 3]
    |     ^^^^^^^^^^^^^
    |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
