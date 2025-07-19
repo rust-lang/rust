@@ -207,6 +207,11 @@ pub(crate) unsafe fn create_module<'ll>(
             // LLVM 21 updated the default layout on nvptx: https://github.com/llvm/llvm-project/pull/124961
             target_data_layout = target_data_layout.replace("e-p6:32:32-i64", "e-i64");
         }
+        if sess.target.arch == "amdgpu" {
+            // LLVM 21 adds the address width for address space 8.
+            // See https://github.com/llvm/llvm-project/pull/139419
+            target_data_layout = target_data_layout.replace("p8:128:128:128:48", "p8:128:128")
+        }
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.
