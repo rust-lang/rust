@@ -343,13 +343,11 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
         ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args: _ }) => {
-            let s = if let Some(def) = def.as_local() {
+            if let Some(def) = def.as_local() {
                 rendered_const(cx.tcx, cx.tcx.hir_body_owned_by(def), def)
             } else {
                 inline::print_inlined_const(cx.tcx, def)
-            };
-
-            s
+            }
         }
         // array lengths are obviously usize
         ty::ConstKind::Value(cv) if *cv.ty.kind() == ty::Uint(ty::UintTy::Usize) => {
