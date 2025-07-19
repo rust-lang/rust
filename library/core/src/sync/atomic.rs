@@ -1238,15 +1238,12 @@ impl AtomicBool {
 
     /// Returns a mutable pointer to the underlying [`bool`].
     ///
-    /// Doing non-atomic reads and writes on the resulting boolean can be a data race.
-    /// This method is mostly useful for FFI, where the function signature may use
-    /// `*mut bool` instead of `&AtomicBool`.
+    /// Note that doing non-atomic reads or writes on the resulting integer can be
+    /// Undefined Behavior due to a data race; see the [memory model section] for further information.
     ///
-    /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
-    /// atomic types work with interior mutability. All modifications of an atomic change the value
-    /// through a shared reference, and can do so safely as long as they use atomic operations. Any
-    /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
-    /// restriction: operations on it must be atomic.
+    /// This method is mostly useful for FFI, where the function signature may use
+    /// `*mut bool` instead of `&AtomicBool`. All modifications of an atomic change the value
+    /// through a shared reference, and can do so safely as long as they use atomic operations.
     ///
     /// # Examples
     ///
@@ -1259,11 +1256,14 @@ impl AtomicBool {
     /// }
     ///
     /// let mut atomic = AtomicBool::new(true);
+    ///
+    /// // SAFETY: `my_atomic_op` only uses atomic operations so it will not lead to a data race.
     /// unsafe {
     ///     my_atomic_op(atomic.as_ptr());
     /// }
     /// # }
     /// ```
+    /// [memory model section]: self#memory-model-for-atomic-accesses
     #[inline]
     #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
     #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
@@ -2480,15 +2480,12 @@ impl<T> AtomicPtr<T> {
 
     /// Returns a mutable pointer to the underlying pointer.
     ///
-    /// Doing non-atomic reads and writes on the resulting pointer can be a data race.
-    /// This method is mostly useful for FFI, where the function signature may use
-    /// `*mut *mut T` instead of `&AtomicPtr<T>`.
+    /// Note that doing non-atomic reads or writes on the resulting integer can be
+    /// Undefined Behavior due to a data race; see the [memory model section] for further information.
     ///
-    /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
-    /// atomic types work with interior mutability. All modifications of an atomic change the value
-    /// through a shared reference, and can do so safely as long as they use atomic operations. Any
-    /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
-    /// restriction: operations on it must be atomic.
+    /// This method is mostly useful for FFI, where the function signature may use
+    /// `*mut *mut T` instead of `&AtomicPtr<T>`. All modifications of an atomic change the value
+    /// through a shared reference, and can do so safely as long as they use atomic operations.
     ///
     /// # Examples
     ///
@@ -2507,6 +2504,7 @@ impl<T> AtomicPtr<T> {
     ///     my_atomic_op(atomic.as_ptr());
     /// }
     /// ```
+    /// [memory model section]: self#memory-model-for-atomic-accesses
     #[inline]
     #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
     #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
@@ -3610,15 +3608,13 @@ macro_rules! atomic_int {
 
             /// Returns a mutable pointer to the underlying integer.
             ///
-            /// Doing non-atomic reads and writes on the resulting integer can be a data race.
+            /// Note that doing non-atomic reads or writes on the resulting integer can be
+            /// Undefined Behavior due to a data race; see the [memory model section] for further information.
+            ///
             /// This method is mostly useful for FFI, where the function signature may use
             #[doc = concat!("`*mut ", stringify!($int_type), "` instead of `&", stringify!($atomic_type), "`.")]
-            ///
-            /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
-            /// atomic types work with interior mutability. All modifications of an atomic change the value
-            /// through a shared reference, and can do so safely as long as they use atomic operations. Any
-            /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
-            /// restriction: operations on it must be atomic.
+            /// All modifications of an atomic change the value through a shared reference, and can do so safely
+            /// as long as they use atomic operations.
             ///
             /// # Examples
             ///
@@ -3632,12 +3628,13 @@ macro_rules! atomic_int {
             ///
             #[doc = concat!("let atomic = ", stringify!($atomic_type), "::new(1);")]
             ///
-            /// // SAFETY: Safe as long as `my_atomic_op` is atomic.
+            /// // SAFETY: `my_atomic_op` only uses atomic operations so it will not lead to a data race.
             /// unsafe {
             ///     my_atomic_op(atomic.as_ptr());
             /// }
             /// # }
             /// ```
+            /// [memory model section]: self#memory-model-for-atomic-accesses
             #[inline]
             #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
             #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
