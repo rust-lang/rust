@@ -2,11 +2,11 @@
 //! characters.
 
 use std::ffi::OsStr;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
-use std::{fs, io};
 
-use build_helper::ci::CiEnv;
+use build_helper::npm;
 use ignore::DirEntry;
 
 use crate::walk::walk_no_read;
@@ -24,38 +24,9 @@ fn spawn_cmd(cmd: &mut Command) -> Result<Child, io::Error> {
 
 /// install all js dependencies from package.json.
 pub(super) fn npm_install(root_path: &Path, outdir: &Path) -> Result<(), super::Error> {
-    let copy_to_build = |p| {
-        fs::copy(root_path.join(p), outdir.join(p)).map_err(|e| {
-            eprintln!("unable to copy {p:?} to build directory: {e:?}");
-            e
-        })
-    };
-    // copy stuff to the output directory to make node_modules get put there.
-    copy_to_build("package.json")?;
-    copy_to_build("package-lock.json")?;
-
-    let mut cmd = Command::new("npm");
-    if CiEnv::is_ci() {
-        // `npm ci` redownloads every time and thus is too slow for local development.
-        cmd.arg("ci");
-    } else {
-        cmd.arg("install");
-    }
-    // disable a bunch of things we don't want.
-    // this makes tidy output less noisy, and also significantly improves runtime
-    // of repeated tidy invokations.
-    cmd.args(&["--audit=false", "--save=false", "--fund=false"]);
-    cmd.current_dir(outdir);
-    let mut child = spawn_cmd(&mut cmd)?;
-    match child.wait() {
-        Ok(exit_status) => {
-            if exit_status.success() {
-                return Ok(());
-            }
-            Err(super::Error::FailedCheck("npm install"))
-        }
-        Err(error) => Err(super::Error::Generic(format!("npm install failed: {error:?}"))),
-    }
+    // FIXME(lolbinarycat): make this obey build.npm bootstrap option
+    npm::install(root_path, outdir, Path::new("npm"))?;
+    Ok(())
 }
 
 fn rustdoc_js_files(librustdoc_path: &Path) -> Vec<PathBuf> {
