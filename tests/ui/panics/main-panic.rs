@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:thread 'main' panicked at
+//@ regex-error-pattern: thread 'main' \(\d+\) panicked at
 //@ needs-subprocess
 
 fn main() {

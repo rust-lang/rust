@@ -9,7 +9,7 @@ Test executable failed (exit status: 101).
 
 stderr:
 
-thread 'main' panicked at remapped_path/remap-path-prefix-failed-doctest-output.rs:3:1:
+thread 'main' ($TID) panicked at remapped_path/remap-path-prefix-failed-doctest-output.rs:3:1:
 oh no
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 

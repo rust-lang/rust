@@ -183,7 +183,7 @@ mod current;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use current::current;
-pub(crate) use current::{current_id, current_or_unnamed, drop_current};
+pub(crate) use current::{current_id, current_or_unnamed, current_os_id, drop_current};
 use current::{set_current, try_with_current};
 
 mod spawnhook;

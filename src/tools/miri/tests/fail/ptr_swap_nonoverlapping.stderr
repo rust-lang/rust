@@ -1,5 +1,5 @@
 
-thread 'main' panicked at tests/fail/ptr_swap_nonoverlapping.rs:LL:CC:
+thread 'main' ($TID) panicked at tests/fail/ptr_swap_nonoverlapping.rs:LL:CC:
 unsafe precondition(s) violated: ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null and the specified memory ranges do not overlap
 
 This indicates a bug in the program. This Undefined Behavior check is optional, and cannot be relied on for safety.
