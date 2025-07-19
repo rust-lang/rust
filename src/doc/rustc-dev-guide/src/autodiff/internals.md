@@ -2,11 +2,11 @@ The `std::autodiff` module in Rust allows differentiable programming:
 
 ```rust
 #![feature(autodiff)]
-use std::autodiff::autodiff;
+use std::autodiff::*;
 
 // f(x) = x * x, f'(x) = 2.0 * x
 // bar therefore returns (x * x, 2.0 * x)
-#[autodiff(bar, Reverse, Active, Active)]
+#[autodiff_reverse(bar, Active, Active)]
 fn foo(x: f32) -> f32 { x * x }
 
 fn main() {

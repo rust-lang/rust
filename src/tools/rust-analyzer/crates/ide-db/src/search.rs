@@ -317,7 +317,7 @@ impl Definition {
             };
             return match def {
                 Some(def) => SearchScope::file_range(
-                    def.as_ref().original_file_range_with_macro_call_body(db),
+                    def.as_ref().original_file_range_with_macro_call_input(db),
                 ),
                 None => SearchScope::single_file(file_id),
             };
@@ -332,7 +332,7 @@ impl Definition {
             };
             return match def {
                 Some(def) => SearchScope::file_range(
-                    def.as_ref().original_file_range_with_macro_call_body(db),
+                    def.as_ref().original_file_range_with_macro_call_input(db),
                 ),
                 None => SearchScope::single_file(file_id),
             };
@@ -341,7 +341,7 @@ impl Definition {
         if let Definition::SelfType(impl_) = self {
             return match impl_.source(db).map(|src| src.syntax().cloned()) {
                 Some(def) => SearchScope::file_range(
-                    def.as_ref().original_file_range_with_macro_call_body(db),
+                    def.as_ref().original_file_range_with_macro_call_input(db),
                 ),
                 None => SearchScope::single_file(file_id),
             };
@@ -360,7 +360,7 @@ impl Definition {
             };
             return match def {
                 Some(def) => SearchScope::file_range(
-                    def.as_ref().original_file_range_with_macro_call_body(db),
+                    def.as_ref().original_file_range_with_macro_call_input(db),
                 ),
                 None => SearchScope::single_file(file_id),
             };

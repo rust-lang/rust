@@ -1,6 +1,3 @@
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
-
 use std::borrow::Cow;
 
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
@@ -353,6 +350,9 @@ pub fn decorate_builtin_lint(
                 namespace,
             }
             .decorate_lint(diag);
+        }
+        BuiltinLintDiag::ReexportPrivateDependency { name, kind, krate } => {
+            lints::ReexportPrivateDependency { name, kind, krate }.decorate_lint(diag);
         }
         BuiltinLintDiag::UnusedQualifications { removal_span } => {
             lints::UnusedQualifications { removal_span }.decorate_lint(diag);

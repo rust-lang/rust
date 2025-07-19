@@ -79,7 +79,7 @@ pub fn compile_c_programs(compiler_commands: &[String]) -> bool {
                     false
                 }
             } else {
-                error!("Command failed: {:#?}", output);
+                error!("Command failed: {output:#?}");
                 false
             }
         })

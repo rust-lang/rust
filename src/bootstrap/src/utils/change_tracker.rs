@@ -446,4 +446,44 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Added new option `build.tidy-extra-checks` to specify a default value for the --extra-checks cli flag.",
     },
+    ChangeInfo {
+        change_id: 143493,
+        severity: ChangeSeverity::Warning,
+        summary: "The `spellcheck:fix` tidy extra check argument has been removed, use `--bless` instead",
+    },
+    ChangeInfo {
+        change_id: 143048,
+        severity: ChangeSeverity::Warning,
+        summary: "The default check stage has been changed to 1. It is no longer possible to `x check` with stage 0. All check commands have to be on stage 1+. Bootstrap tools can now also only be checked for the host target.",
+    },
+    ChangeInfo {
+        change_id: 143577,
+        severity: ChangeSeverity::Warning,
+        summary: "`download-rustc` has been temporarily disabled for the library profile due to implementation bugs (see #142505).",
+    },
+    ChangeInfo {
+        change_id: 143398,
+        severity: ChangeSeverity::Info,
+        summary: "The --extra-checks flag now supports prefixing any check with `auto:` to only run it if relevant files are modified",
+    },
+    ChangeInfo {
+        change_id: 143785,
+        severity: ChangeSeverity::Info,
+        summary: "A --compile-time-deps flag has been added to reduce the time it takes rust-analyzer to start",
+    },
+    ChangeInfo {
+        change_id: 143733,
+        severity: ChangeSeverity::Info,
+        summary: "Option `tool.TOOL_NAME.features` now works on any subcommand, not just `build`.",
+    },
+    ChangeInfo {
+        change_id: 143630,
+        severity: ChangeSeverity::Warning,
+        summary: "The current `./x suggest` implementation has been removed due to it being quite broken and a lack of maintenance bandwidth, with no prejudice against re-implementing it in a more maintainable form.",
+    },
+    ChangeInfo {
+        change_id: 143926,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `rust.description` and `llvm.ccache` as it was deprecated in #137723 and #136941 long time ago.",
+    },
 ];

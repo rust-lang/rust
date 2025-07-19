@@ -410,7 +410,7 @@ These tests revolve around command-line flags which change the way error/warning
 
 ## `tests/ui/diagnostic_namespace/`
 
-Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namepsace](https://github.com/rust-lang/rfcs/blob/master/text/3368-diagnostic-attribute-namespace.md).
+Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namespace](https://github.com/rust-lang/rfcs/blob/master/text/3368-diagnostic-attribute-namespace.md).
 
 ## `tests/ui/diagnostic-width/`: `--diagnostic-width`
 

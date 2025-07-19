@@ -326,5 +326,29 @@ LL -     let y = b.map_or(true, |b| b == *s);
 LL +     let y = b.is_none_or(|b| b == *s);
    |
 
-error: aborting due to 26 previous errors
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:140:9
+   |
+LL |     _ = s.lock().unwrap().map_or(false, |s| s == "foo");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use is_some_and instead
+   |
+LL -     _ = s.lock().unwrap().map_or(false, |s| s == "foo");
+LL +     _ = s.lock().unwrap().is_some_and(|s| s == "foo");
+   |
+
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:144:9
+   |
+LL |     _ = s.map_or(false, |s| s == "foo");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use is_some_and instead
+   |
+LL -     _ = s.map_or(false, |s| s == "foo");
+LL +     _ = s.is_some_and(|s| s == "foo");
+   |
+
+error: aborting due to 28 previous errors
 

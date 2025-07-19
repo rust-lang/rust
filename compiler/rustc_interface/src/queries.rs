@@ -45,10 +45,23 @@ impl Linker {
     }
 
     pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) {
-        let (codegen_results, work_products) = sess.time("finish_ongoing_codegen", || {
+        let (codegen_results, mut work_products) = sess.time("finish_ongoing_codegen", || {
             codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames)
         });
         sess.timings.end_section(sess.dcx(), TimingSection::Codegen);
+
+        if sess.opts.incremental.is_some()
+            && let Some(path) = self.metadata.path()
+            && let Some((id, product)) =
+                rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
+                    sess,
+                    "metadata",
+                    &[("rmeta", path)],
+                    &[],
+                )
+        {
+            work_products.insert(id, product);
+        }
 
         sess.dcx().abort_if_errors();
 

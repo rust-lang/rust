@@ -180,5 +180,41 @@ note: first possible panic found here
 LL |         *v.last().expect("passed an empty thing")
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 15 previous errors
+error: docs for function which may panic missing `# Panics` section
+  --> tests/ui/missing_panics_doc.rs:262:1
+   |
+LL | pub const fn unwrap_expect_etc_in_const_fn_fails() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first possible panic found here
+  --> tests/ui/missing_panics_doc.rs:264:13
+   |
+LL |     let a = std::num::NonZeroUsize::new(1).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: docs for function which may panic missing `# Panics` section
+  --> tests/ui/missing_panics_doc.rs:268:1
+   |
+LL | pub const fn assert_in_const_fn_fails() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first possible panic found here
+  --> tests/ui/missing_panics_doc.rs:272:9
+   |
+LL |         panic!();
+   |         ^^^^^^^^
+
+error: docs for function which may panic missing `# Panics` section
+  --> tests/ui/missing_panics_doc.rs:277:1
+   |
+LL | pub const fn in_const_fn<const N: usize>(n: usize) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first possible panic found here
+  --> tests/ui/missing_panics_doc.rs:279:5
+   |
+LL |     assert!(N > n);
+   |     ^^^^^^^^^^^^^^
+
+error: aborting due to 18 previous errors
 

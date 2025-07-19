@@ -131,7 +131,7 @@ impl LateLintPass<'_> for UpperCaseAcronyms {
             return;
         }
         match it.kind {
-            ItemKind::TyAlias(ident, ..) | ItemKind::Struct(ident, ..) | ItemKind::Trait(_, _, ident, ..) => {
+            ItemKind::TyAlias(ident, ..) | ItemKind::Struct(ident, ..) | ItemKind::Trait(_, _, _, ident, ..) => {
                 check_ident(cx, &ident, it.hir_id(), self.upper_case_acronyms_aggressive);
             },
             ItemKind::Enum(ident, _, ref enumdef) => {

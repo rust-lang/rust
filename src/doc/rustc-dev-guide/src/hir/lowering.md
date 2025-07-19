@@ -7,10 +7,8 @@ of such structures include but are not limited to
 
 * Parenthesis
     * Removed without replacement, the tree structure makes order explicit
-* `for` loops and `while (let)` loops
-    * Converted to `loop` + `match` and some `let` bindings
-* `if let`
-    * Converted to `match`
+* `for` loops
+    * Converted to `match` + `loop` + `match`
 * Universal `impl Trait`
     * Converted to generic arguments
       (but with some flags, to know that the user didn't write them)

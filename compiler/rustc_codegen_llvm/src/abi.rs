@@ -146,7 +146,7 @@ impl LlvmType for CastTarget {
                 "total size {:?} cannot be divided into units of zero size",
                 self.rest.total
             );
-            if self.rest.total.bytes() % self.rest.unit.size.bytes() != 0 {
+            if !self.rest.total.bytes().is_multiple_of(self.rest.unit.size.bytes()) {
                 assert_eq!(self.rest.unit.kind, RegKind::Integer, "only int regs can be split");
             }
             self.rest.total.bytes().div_ceil(self.rest.unit.size.bytes())

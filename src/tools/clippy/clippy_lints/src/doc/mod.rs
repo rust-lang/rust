@@ -740,7 +740,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                             );
                         }
                     },
-                    ItemKind::Trait(_, unsafety, ..) => match (headers.safety, unsafety) {
+                    ItemKind::Trait(_, _, unsafety, ..) => match (headers.safety, unsafety) {
                         (false, Safety::Unsafe) => span_lint(
                             cx,
                             MISSING_SAFETY_DOC,
@@ -1249,7 +1249,9 @@ fn looks_like_refdef(doc: &str, range: Range<usize>) -> Option<Range<usize>> {
             b'[' => {
                 start = Some(i + offset);
             },
-            b']' if let Some(start) = start => {
+            b']' if let Some(start) = start
+                && doc.as_bytes().get(i + offset + 1) == Some(&b':') =>
+            {
                 return Some(start..i + offset + 1);
             },
             _ => {},

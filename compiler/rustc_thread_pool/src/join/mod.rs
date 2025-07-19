@@ -1,10 +1,8 @@
-use std::any::Any;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::job::StackJob;
 use crate::latch::SpinLatch;
-use crate::registry::{self, WorkerThread};
-use crate::tlv::{self, Tlv};
-use crate::{FnContext, unwind};
+use crate::{FnContext, registry, tlv, unwind};
 
 #[cfg(test)]
 mod tests;
@@ -134,68 +132,38 @@ where
         // Create virtual wrapper for task b; this all has to be
         // done here so that the stack frame can keep it all live
         // long enough.
-        let job_b = StackJob::new(tlv, call_b(oper_b), SpinLatch::new(worker_thread));
+        let job_b_started = AtomicBool::new(false);
+        let job_b = StackJob::new(
+            tlv,
+            |migrated| {
+                job_b_started.store(true, Ordering::Relaxed);
+                call_b(oper_b)(migrated)
+            },
+            SpinLatch::new(worker_thread),
+        );
         let job_b_ref = job_b.as_job_ref();
         let job_b_id = job_b_ref.id();
         worker_thread.push(job_b_ref);
 
         // Execute task a; hopefully b gets stolen in the meantime.
         let status_a = unwind::halt_unwinding(call_a(oper_a, injected));
-        let result_a = match status_a {
-            Ok(v) => v,
-            Err(err) => join_recover_from_panic(worker_thread, &job_b.latch, err, tlv),
-        };
-
-        // Now that task A has finished, try to pop job B from the
-        // local stack. It may already have been popped by job A; it
-        // may also have been stolen. There may also be some tasks
-        // pushed on top of it in the stack, and we will have to pop
-        // those off to get to it.
-        while !job_b.latch.probe() {
-            if let Some(job) = worker_thread.take_local_job() {
-                if job_b_id == job.id() {
-                    // Found it! Let's run it.
-                    //
-                    // Note that this could panic, but it's ok if we unwind here.
-
-                    // Restore the TLV since we might have run some jobs overwriting it when waiting for job b.
-                    tlv::set(tlv);
-
-                    let result_b = job_b.run_inline(injected);
-                    return (result_a, result_b);
-                } else {
-                    worker_thread.execute(job);
-                }
-            } else {
-                // Local deque is empty. Time to steal from other
-                // threads.
-                worker_thread.wait_until(&job_b.latch);
-                debug_assert!(job_b.latch.probe());
-                break;
-            }
-        }
+        worker_thread.wait_for_jobs::<_, false>(
+            &job_b.latch,
+            || job_b_started.load(Ordering::Relaxed),
+            |job| job.id() == job_b_id,
+            |job| {
+                debug_assert_eq!(job.id(), job_b_id);
+                job_b.run_inline(injected);
+            },
+        );
 
         // Restore the TLV since we might have run some jobs overwriting it when waiting for job b.
         tlv::set(tlv);
 
+        let result_a = match status_a {
+            Ok(v) => v,
+            Err(err) => unwind::resume_unwinding(err),
+        };
         (result_a, job_b.into_result())
     })
-}
-
-/// If job A panics, we still cannot return until we are sure that job
-/// B is complete. This is because it may contain references into the
-/// enclosing stack frame(s).
-#[cold] // cold path
-unsafe fn join_recover_from_panic(
-    worker_thread: &WorkerThread,
-    job_b_latch: &SpinLatch<'_>,
-    err: Box<dyn Any + Send>,
-    tlv: Tlv,
-) -> ! {
-    unsafe { worker_thread.wait_until(job_b_latch) };
-
-    // Restore the TLV since we might have run some jobs overwriting it when waiting for job b.
-    tlv::set(tlv);
-
-    unwind::resume_unwinding(err)
 }

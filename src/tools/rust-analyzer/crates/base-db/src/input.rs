@@ -6,6 +6,7 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
+use std::error::Error;
 use std::hash::BuildHasherDefault;
 use std::{fmt, mem, ops};
 
@@ -22,7 +23,49 @@ use vfs::{AbsPathBuf, AnchoredPath, FileId, VfsPath, file_set::FileSet};
 
 use crate::{CrateWorkspaceData, EditionedFileId, FxIndexSet, RootQueryDb};
 
-pub type ProcMacroPaths = FxHashMap<CrateBuilderId, Result<(String, AbsPathBuf), String>>;
+pub type ProcMacroPaths =
+    FxHashMap<CrateBuilderId, Result<(String, AbsPathBuf), ProcMacroLoadingError>>;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ProcMacroLoadingError {
+    Disabled,
+    FailedToBuild,
+    MissingDylibPath,
+    NotYetBuilt,
+    NoProcMacros,
+    ProcMacroSrvError(Box<str>),
+}
+impl ProcMacroLoadingError {
+    pub fn is_hard_error(&self) -> bool {
+        match self {
+            ProcMacroLoadingError::Disabled | ProcMacroLoadingError::NotYetBuilt => false,
+            ProcMacroLoadingError::FailedToBuild
+            | ProcMacroLoadingError::MissingDylibPath
+            | ProcMacroLoadingError::NoProcMacros
+            | ProcMacroLoadingError::ProcMacroSrvError(_) => true,
+        }
+    }
+}
+
+impl Error for ProcMacroLoadingError {}
+impl fmt::Display for ProcMacroLoadingError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ProcMacroLoadingError::Disabled => write!(f, "proc-macro expansion is disabled"),
+            ProcMacroLoadingError::FailedToBuild => write!(f, "proc-macro failed to build"),
+            ProcMacroLoadingError::MissingDylibPath => {
+                write!(f, "proc-macro crate build data is missing a dylib path")
+            }
+            ProcMacroLoadingError::NotYetBuilt => write!(f, "proc-macro not yet built"),
+            ProcMacroLoadingError::NoProcMacros => {
+                write!(f, "proc macro library has no proc macros")
+            }
+            ProcMacroLoadingError::ProcMacroSrvError(msg) => {
+                write!(f, "proc macro server error: {msg}")
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct SourceRootId(pub u32);

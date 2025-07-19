@@ -458,6 +458,7 @@ fn expand_simple_derive(
     invoc_span: Span,
     tt: &tt::TopSubtree,
     trait_path: tt::TopSubtree,
+    allow_unions: bool,
     make_trait_body: impl FnOnce(&BasicAdtInfo) -> tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
     let info = match parse_adt(db, tt, invoc_span) {
@@ -469,6 +470,12 @@ fn expand_simple_derive(
             );
         }
     };
+    if !allow_unions && matches!(info.shape, AdtShape::Union) {
+        return ExpandResult::new(
+            tt::TopSubtree::empty(tt::DelimSpan::from_single(invoc_span)),
+            ExpandError::other(invoc_span, "this trait cannot be derived for unions"),
+        );
+    }
     ExpandResult::ok(expand_simple_derive_with_parsed(
         invoc_span,
         info,
@@ -535,7 +542,14 @@ fn copy_expand(
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
     let krate = dollar_crate(span);
-    expand_simple_derive(db, span, tt, quote! {span => #krate::marker::Copy }, |_| quote! {span =>})
+    expand_simple_derive(
+        db,
+        span,
+        tt,
+        quote! {span => #krate::marker::Copy },
+        true,
+        |_| quote! {span =>},
+    )
 }
 
 fn clone_expand(
@@ -544,7 +558,7 @@ fn clone_expand(
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
     let krate = dollar_crate(span);
-    expand_simple_derive(db, span, tt, quote! {span => #krate::clone::Clone }, |adt| {
+    expand_simple_derive(db, span, tt, quote! {span => #krate::clone::Clone }, true, |adt| {
         if matches!(adt.shape, AdtShape::Union) {
             let star = tt::Punct { char: '*', spacing: ::tt::Spacing::Alone, span };
             return quote! {span =>
@@ -599,41 +613,63 @@ fn default_expand(
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
-    expand_simple_derive(db, span, tt, quote! {span => #krate::default::Default }, |adt| {
-        let body = match &adt.shape {
-            AdtShape::Struct(fields) => {
-                let name = &adt.name;
-                fields.as_pattern_map(
-                    quote!(span =>#name),
+    let adt = match parse_adt(db, tt, span) {
+        Ok(info) => info,
+        Err(e) => {
+            return ExpandResult::new(
+                tt::TopSubtree::empty(tt::DelimSpan { open: span, close: span }),
+                e,
+            );
+        }
+    };
+    let (body, constrain_to_trait) = match &adt.shape {
+        AdtShape::Struct(fields) => {
+            let name = &adt.name;
+            let body = fields.as_pattern_map(
+                quote!(span =>#name),
+                span,
+                |_| quote!(span =>#krate::default::Default::default()),
+            );
+            (body, true)
+        }
+        AdtShape::Enum { default_variant, variants } => {
+            if let Some(d) = default_variant {
+                let (name, fields) = &variants[*d];
+                let adt_name = &adt.name;
+                let body = fields.as_pattern_map(
+                    quote!(span =>#adt_name :: #name),
                     span,
                     |_| quote!(span =>#krate::default::Default::default()),
-                )
-            }
-            AdtShape::Enum { default_variant, variants } => {
-                if let Some(d) = default_variant {
-                    let (name, fields) = &variants[*d];
-                    let adt_name = &adt.name;
-                    fields.as_pattern_map(
-                        quote!(span =>#adt_name :: #name),
-                        span,
-                        |_| quote!(span =>#krate::default::Default::default()),
-                    )
-                } else {
-                    // FIXME: Return expand error here
-                    quote!(span =>)
-                }
-            }
-            AdtShape::Union => {
-                // FIXME: Return expand error here
-                quote!(span =>)
-            }
-        };
-        quote! {span =>
-            fn default() -> Self {
-                #body
+                );
+                (body, false)
+            } else {
+                return ExpandResult::new(
+                    tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
+                    ExpandError::other(span, "`#[derive(Default)]` on enum with no `#[default]`"),
+                );
             }
         }
-    })
+        AdtShape::Union => {
+            return ExpandResult::new(
+                tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
+                ExpandError::other(span, "this trait cannot be derived for unions"),
+            );
+        }
+    };
+    ExpandResult::ok(expand_simple_derive_with_parsed(
+        span,
+        adt,
+        quote! {span => #krate::default::Default },
+        |_adt| {
+            quote! {span =>
+                fn default() -> Self {
+                    #body
+                }
+            }
+        },
+        constrain_to_trait,
+        tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
+    ))
 }
 
 fn debug_expand(
@@ -642,7 +678,7 @@ fn debug_expand(
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
-    expand_simple_derive(db, span, tt, quote! {span => #krate::fmt::Debug }, |adt| {
+    expand_simple_derive(db, span, tt, quote! {span => #krate::fmt::Debug }, false, |adt| {
         let for_variant = |name: String, v: &VariantShape| match v {
             VariantShape::Struct(fields) => {
                 let for_fields = fields.iter().map(|it| {
@@ -697,10 +733,7 @@ fn debug_expand(
                     }
                 })
                 .collect(),
-            AdtShape::Union => {
-                // FIXME: Return expand error here
-                vec![]
-            }
+            AdtShape::Union => unreachable!(),
         };
         quote! {span =>
             fn fmt(&self, f: &mut #krate::fmt::Formatter) -> #krate::fmt::Result {
@@ -718,11 +751,7 @@ fn hash_expand(
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
-    expand_simple_derive(db, span, tt, quote! {span => #krate::hash::Hash }, |adt| {
-        if matches!(adt.shape, AdtShape::Union) {
-            // FIXME: Return expand error here
-            return quote! {span =>};
-        }
+    expand_simple_derive(db, span, tt, quote! {span => #krate::hash::Hash }, false, |adt| {
         if matches!(&adt.shape, AdtShape::Enum { variants, .. } if variants.is_empty()) {
             let star = tt::Punct { char: '*', spacing: ::tt::Spacing::Alone, span };
             return quote! {span =>
@@ -769,7 +798,14 @@ fn eq_expand(
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
     let krate = dollar_crate(span);
-    expand_simple_derive(db, span, tt, quote! {span => #krate::cmp::Eq }, |_| quote! {span =>})
+    expand_simple_derive(
+        db,
+        span,
+        tt,
+        quote! {span => #krate::cmp::Eq },
+        true,
+        |_| quote! {span =>},
+    )
 }
 
 fn partial_eq_expand(
@@ -778,11 +814,7 @@ fn partial_eq_expand(
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
     let krate = dollar_crate(span);
-    expand_simple_derive(db, span, tt, quote! {span => #krate::cmp::PartialEq }, |adt| {
-        if matches!(adt.shape, AdtShape::Union) {
-            // FIXME: Return expand error here
-            return quote! {span =>};
-        }
+    expand_simple_derive(db, span, tt, quote! {span => #krate::cmp::PartialEq }, false, |adt| {
         let name = &adt.name;
 
         let (self_patterns, other_patterns) = self_and_other_patterns(adt, name, span);
@@ -854,7 +886,7 @@ fn ord_expand(
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
-    expand_simple_derive(db, span, tt, quote! {span => #krate::cmp::Ord }, |adt| {
+    expand_simple_derive(db, span, tt, quote! {span => #krate::cmp::Ord }, false, |adt| {
         fn compare(
             krate: &tt::Ident,
             left: tt::TopSubtree,
@@ -872,10 +904,6 @@ fn ord_expand(
                     c #fat_arrow2 return c,
                 }
             }
-        }
-        if matches!(adt.shape, AdtShape::Union) {
-            // FIXME: Return expand error here
-            return quote!(span =>);
         }
         let (self_patterns, other_patterns) = self_and_other_patterns(adt, &adt.name, span);
         let arms = izip!(self_patterns, other_patterns, adt.shape.field_names(span)).map(
@@ -916,7 +944,7 @@ fn partial_ord_expand(
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
-    expand_simple_derive(db, span, tt, quote! {span => #krate::cmp::PartialOrd }, |adt| {
+    expand_simple_derive(db, span, tt, quote! {span => #krate::cmp::PartialOrd }, false, |adt| {
         fn compare(
             krate: &tt::Ident,
             left: tt::TopSubtree,
@@ -934,10 +962,6 @@ fn partial_ord_expand(
                     c #fat_arrow2 return c,
                 }
             }
-        }
-        if matches!(adt.shape, AdtShape::Union) {
-            // FIXME: Return expand error here
-            return quote!(span =>);
         }
         let left = quote!(span =>#krate::intrinsics::discriminant_value(self));
         let right = quote!(span =>#krate::intrinsics::discriminant_value(other));

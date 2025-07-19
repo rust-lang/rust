@@ -1,0 +1,2 @@
+error: only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker` are stable, the `-Z unstable-options` flag must also be passed to use the unstable values
+

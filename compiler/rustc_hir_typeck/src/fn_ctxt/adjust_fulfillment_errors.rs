@@ -184,9 +184,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return true;
                 }
 
-                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
-                    .into_iter()
-                    .flatten()
+                for param in [
+                    predicate_self_type_to_point_at,
+                    param_to_point_at,
+                    fallback_param_to_point_at,
+                    self_param_to_point_at,
+                ]
+                .into_iter()
+                .flatten()
                 {
                     if self.blame_specific_arg_if_possible(
                         error,

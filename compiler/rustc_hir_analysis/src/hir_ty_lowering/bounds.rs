@@ -6,13 +6,13 @@ use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
-use rustc_hir::{AmbigArg, LangItem, PolyTraitRef};
+use rustc_hir::{AmbigArg, PolyTraitRef};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor, Upcast,
 };
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use rustc_trait_selection::traits;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
@@ -85,17 +85,17 @@ fn search_bounds_for<'tcx>(
     }
 }
 
-fn collect_unbounds<'tcx>(
+fn collect_relaxed_bounds<'tcx>(
     hir_bounds: &'tcx [hir::GenericBound<'tcx>],
     self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
 ) -> SmallVec<[&'tcx PolyTraitRef<'tcx>; 1]> {
-    let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
+    let mut relaxed_bounds: SmallVec<[_; 1]> = SmallVec::new();
     search_bounds_for(hir_bounds, self_ty_where_predicates, |ptr| {
         if matches!(ptr.modifiers.polarity, hir::BoundPolarity::Maybe(_)) {
-            unbounds.push(ptr);
+            relaxed_bounds.push(ptr);
         }
     });
-    unbounds
+    relaxed_bounds
 }
 
 fn collect_bounds<'a, 'tcx>(
@@ -124,13 +124,13 @@ fn collect_sizedness_bounds<'tcx>(
     self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
     span: Span,
 ) -> CollectedSizednessBounds {
-    let sized_did = tcx.require_lang_item(LangItem::Sized, span);
+    let sized_did = tcx.require_lang_item(hir::LangItem::Sized, span);
     let sized = collect_bounds(hir_bounds, self_ty_where_predicates, sized_did);
 
-    let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, span);
+    let meta_sized_did = tcx.require_lang_item(hir::LangItem::MetaSized, span);
     let meta_sized = collect_bounds(hir_bounds, self_ty_where_predicates, meta_sized_did);
 
-    let pointee_sized_did = tcx.require_lang_item(LangItem::PointeeSized, span);
+    let pointee_sized_did = tcx.require_lang_item(hir::LangItem::PointeeSized, span);
     let pointee_sized = collect_bounds(hir_bounds, self_ty_where_predicates, pointee_sized_did);
 
     CollectedSizednessBounds { sized, meta_sized, pointee_sized }
@@ -151,24 +151,6 @@ fn add_trait_bound<'tcx>(
 }
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
-    /// Skip `PointeeSized` bounds.
-    ///
-    /// `PointeeSized` is a "fake bound" insofar as anywhere a `PointeeSized` bound exists, there
-    /// is actually the absence of any bounds. This avoids limitations around non-global where
-    /// clauses being preferred over item bounds (where `PointeeSized` bounds would be
-    /// proven) - which can result in errors when a `PointeeSized` supertrait/bound/predicate is
-    /// added to some items.
-    pub(crate) fn should_skip_sizedness_bound<'hir>(
-        &self,
-        bound: &'hir hir::GenericBound<'tcx>,
-    ) -> bool {
-        bound
-            .trait_ref()
-            .and_then(|tr| tr.trait_def_id())
-            .map(|did| self.tcx().is_lang_item(did, LangItem::PointeeSized))
-            .unwrap_or(false)
-    }
-
     /// Adds sizedness bounds to a trait, trait alias, parameter, opaque type or associated type.
     ///
     /// - On parameters, opaque type and associated types, add default `Sized` bound if no explicit
@@ -193,8 +175,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return;
         }
 
-        let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, span);
-        let pointee_sized_did = tcx.require_lang_item(LangItem::PointeeSized, span);
+        let meta_sized_did = tcx.require_lang_item(hir::LangItem::MetaSized, span);
+        let pointee_sized_did = tcx.require_lang_item(hir::LangItem::PointeeSized, span);
 
         // If adding sizedness bounds to a trait, then there are some relevant early exits
         if let Some(trait_did) = trait_did {
@@ -209,9 +191,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 return;
             }
         } else {
-            // Report invalid unbounds on sizedness-bounded generic parameters.
-            let unbounds = collect_unbounds(hir_bounds, self_ty_where_predicates);
-            self.check_and_report_invalid_unbounds_on_param(unbounds);
+            // Report invalid relaxed bounds.
+            // FIXME: Since we only call this validation function here in this function, we only
+            //        fully validate relaxed bounds in contexts where we perform
+            //        "sized elaboration". In most cases that doesn't matter because we *usually*
+            //        reject such relaxed bounds outright during AST lowering.
+            //        However, this can easily get out of sync! Ideally, we would perform this step
+            //        where we are guaranteed to catch *all* bounds like in
+            //        `Self::lower_poly_trait_ref`. List of concrete issues:
+            //        FIXME(more_maybe_bounds): We don't call this for e.g., trait object tys or
+            //                                  supertrait bounds!
+            //        FIXME(trait_alias, #143122): We don't call it for the RHS. Arguably however,
+            //                                       AST lowering should reject them outright.
+            //        FIXME(associated_type_bounds): We don't call this for them. However, AST
+            //                                       lowering should reject them outright (#135229).
+            let bounds = collect_relaxed_bounds(hir_bounds, self_ty_where_predicates);
+            self.check_and_report_invalid_relaxed_bounds(bounds);
         }
 
         let collected = collect_sizedness_bounds(tcx, hir_bounds, self_ty_where_predicates, span);
@@ -231,7 +226,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             } else {
                 // If there are no explicit sizedness bounds on a parameter then add a default
                 // `Sized` bound.
-                let sized_did = tcx.require_lang_item(LangItem::Sized, span);
+                let sized_did = tcx.require_lang_item(hir::LangItem::Sized, span);
                 add_trait_bound(tcx, bounds, self_ty, sized_did, span);
             }
         }
@@ -334,7 +329,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         let (trait_generics, trait_bounds) = match parent_trait.kind {
-            hir::ItemKind::Trait(_, _, _, generics, supertraits, _) => (generics, supertraits),
+            hir::ItemKind::Trait(_, _, _, _, generics, supertraits, _) => (generics, supertraits),
             hir::ItemKind::TraitAlias(_, generics, supertraits) => (generics, supertraits),
             _ => unreachable!(),
         };
@@ -463,10 +458,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         'tcx: 'hir,
     {
         for hir_bound in hir_bounds {
-            if self.should_skip_sizedness_bound(hir_bound) {
-                continue;
-            }
-
             // In order to avoid cycles, when we're lowering `SelfTraitThatDefines`,
             // we skip over any traits that don't define the given associated type.
             if let PredicateFilter::SelfTraitThatDefines(assoc_ident) = predicate_filter {
@@ -482,12 +473,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             match hir_bound {
                 hir::GenericBound::Trait(poly_trait_ref) => {
-                    let hir::TraitBoundModifiers { constness, polarity } = poly_trait_ref.modifiers;
                     let _ = self.lower_poly_trait_ref(
-                        &poly_trait_ref.trait_ref,
-                        poly_trait_ref.span,
-                        constness,
-                        polarity,
+                        poly_trait_ref,
                         param_ty,
                         bounds,
                         predicate_filter,
@@ -888,7 +875,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     ty::INNERMOST,
                     ty::BoundRegion {
                         var: ty::BoundVar::from_usize(num_bound_vars),
-                        kind: ty::BoundRegionKind::Named(param.def_id, param.name),
+                        kind: ty::BoundRegionKind::Named(param.def_id),
                     },
                 )
                 .into(),
@@ -1006,12 +993,12 @@ fn check_assoc_const_binding_type<'tcx>(
             ty_note,
         }));
     }
-    for (var_def_id, var_name) in collector.vars {
+    for var_def_id in collector.vars {
         guar.get_or_insert(cx.dcx().emit_err(
             crate::errors::EscapingBoundVarInTyOfAssocConstBinding {
                 span: assoc_const.span,
                 assoc_const,
-                var_name,
+                var_name: cx.tcx().item_name(var_def_id),
                 var_def_kind: tcx.def_descr(var_def_id),
                 var_defined_here_label: tcx.def_ident_span(var_def_id).unwrap(),
                 ty_note,
@@ -1026,7 +1013,7 @@ fn check_assoc_const_binding_type<'tcx>(
 struct GenericParamAndBoundVarCollector<'a, 'tcx> {
     cx: &'a dyn HirTyLowerer<'tcx>,
     params: FxIndexSet<u32>,
-    vars: FxIndexSet<(DefId, Symbol)>,
+    vars: FxIndexSet<DefId>,
     depth: ty::DebruijnIndex,
 }
 
@@ -1050,7 +1037,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
             }
             ty::Bound(db, bt) if *db >= self.depth => {
                 self.vars.insert(match bt.kind {
-                    ty::BoundTyKind::Param(def_id, name) => (def_id, name),
+                    ty::BoundTyKind::Param(def_id) => def_id,
                     ty::BoundTyKind::Anon => {
                         let reported = self
                             .cx
@@ -1073,7 +1060,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
             }
             ty::ReBound(db, br) if db >= self.depth => {
                 self.vars.insert(match br.kind {
-                    ty::BoundRegionKind::Named(def_id, name) => (def_id, name),
+                    ty::BoundRegionKind::Named(def_id) => def_id,
                     ty::BoundRegionKind::Anon | ty::BoundRegionKind::ClosureEnv => {
                         let guar = self
                             .cx
@@ -1081,6 +1068,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
                             .delayed_bug(format!("unexpected bound region kind: {:?}", br.kind));
                         return ControlFlow::Break(guar);
                     }
+                    ty::BoundRegionKind::NamedAnon(_) => bug!("only used for pretty printing"),
                 });
             }
             _ => {}

@@ -4,7 +4,7 @@ use rustc_abi::{Align, ExternAbi};
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
 use rustc_attr_data_structures::{
-    AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr, ReprAttr, UsedBy, find_attr,
+    AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr, UsedBy, find_attr,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -109,14 +109,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
         if let hir::Attribute::Parsed(p) = attr {
             match p {
-                AttributeKind::Repr(reprs) => {
-                    codegen_fn_attrs.alignment = reprs
-                        .iter()
-                        .filter_map(
-                            |(r, _)| if let ReprAttr::ReprAlign(x) = r { Some(*x) } else { None },
-                        )
-                        .max();
-                }
                 AttributeKind::Cold(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
                 AttributeKind::ExportName { name, .. } => {
                     codegen_fn_attrs.export_name = Some(*name);
@@ -124,6 +116,10 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
                 AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
                 AttributeKind::LinkName { name, .. } => codegen_fn_attrs.link_name = Some(*name),
+                AttributeKind::LinkOrdinal { ordinal, span } => {
+                    codegen_fn_attrs.link_ordinal = Some(*ordinal);
+                    link_ordinal_span = Some(*span);
+                }
                 AttributeKind::LinkSection { name, .. } => {
                     codegen_fn_attrs.link_section = Some(*name)
                 }
@@ -211,6 +207,13 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     UsedBy::Compiler => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER,
                     UsedBy::Linker => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER,
                 },
+                AttributeKind::FfiConst(_) => {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST
+                }
+                AttributeKind::FfiPure(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE,
+                AttributeKind::StdInternalSymbol(_) => {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
+                }
                 _ => {}
             }
         }
@@ -221,16 +224,11 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
         match name {
             sym::rustc_allocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR,
-            sym::ffi_pure => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE,
-            sym::ffi_const => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST,
             sym::rustc_nounwind => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND,
             sym::rustc_reallocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR,
             sym::rustc_deallocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR,
             sym::rustc_allocator_zeroed => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
-            }
-            sym::rustc_std_internal_symbol => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
             sym::linkage => {
@@ -254,12 +252,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     } else {
                         codegen_fn_attrs.linkage = linkage;
                     }
-                }
-            }
-            sym::link_ordinal => {
-                link_ordinal_span = Some(attr.span());
-                if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
-                    codegen_fn_attrs.link_ordinal = ordinal;
                 }
             }
             sym::no_sanitize => {
@@ -572,45 +564,6 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 /// attribute on the method prototype (if any).
 fn inherited_align<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Align> {
     tcx.codegen_fn_attrs(opt_trait_item(tcx, def_id)?).alignment
-}
-
-fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Option<u16> {
-    use rustc_ast::{LitIntType, LitKind, MetaItemLit};
-    let meta_item_list = attr.meta_item_list()?;
-    let [sole_meta_list] = &meta_item_list[..] else {
-        tcx.dcx().emit_err(errors::InvalidLinkOrdinalNargs { span: attr.span() });
-        return None;
-    };
-    if let Some(MetaItemLit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) =
-        sole_meta_list.lit()
-    {
-        // According to the table at
-        // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header, the
-        // ordinal must fit into 16 bits. Similarly, the Ordinal field in COFFShortExport (defined
-        // in llvm/include/llvm/Object/COFFImportFile.h), which we use to communicate import
-        // information to LLVM for `#[link(kind = "raw-dylib"_])`, is also defined to be uint16_t.
-        //
-        // FIXME: should we allow an ordinal of 0?  The MSVC toolchain has inconsistent support for
-        // this: both LINK.EXE and LIB.EXE signal errors and abort when given a .DEF file that
-        // specifies a zero ordinal. However, llvm-dlltool is perfectly happy to generate an import
-        // library for such a .DEF file, and MSVC's LINK.EXE is also perfectly happy to consume an
-        // import library produced by LLVM with an ordinal of 0, and it generates an .EXE.  (I
-        // don't know yet if the resulting EXE runs, as I haven't yet built the necessary DLL --
-        // see earlier comment about LINK.EXE failing.)
-        if *ordinal <= u16::MAX as u128 {
-            Some(ordinal.get() as u16)
-        } else {
-            let msg = format!("ordinal value in `link_ordinal` is too large: `{ordinal}`");
-            tcx.dcx()
-                .struct_span_err(attr.span(), msg)
-                .with_note("the value may not exceed `u16::MAX`")
-                .emit();
-            None
-        }
-    } else {
-        tcx.dcx().emit_err(errors::InvalidLinkOrdinalFormat { span: attr.span() });
-        None
-    }
 }
 
 fn check_link_name_xor_ordinal(

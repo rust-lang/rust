@@ -1,0 +1,15 @@
+error: reached the type-length limit while instantiating `std::mem::drop::<Option<((((..., ..., ...), ..., ...), ..., ...), ..., ...)>>`
+  --> $DIR/type-length-limit-enforcement.rs:34:5
+   |
+LL |     drop::<Option<A>>(None);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a `#![type_length_limit="4010"]` attribute to your crate
+   = note: the full type name has been written to '$TEST_BUILD_DIR/type-length-limit-enforcement.long-type.txt'
+
+error: reached the type-length limit while instantiating `<{closure@rt::lang_start<()>::{closure#0}} as FnMut<()>>::call_mut`
+   |
+   = help: consider adding a `#![type_length_limit="10"]` attribute to your crate
+
+error: aborting due to 2 previous errors
+

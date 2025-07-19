@@ -97,9 +97,7 @@ pub type EvaluationCache<'tcx, ENV> = Cache<(ENV, ty::PolyTraitPredicate<'tcx>),
 pub enum SelectionCandidate<'tcx> {
     /// A built-in implementation for the `Sized` trait. This is preferred
     /// over all other candidates.
-    SizedCandidate {
-        has_nested: bool,
-    },
+    SizedCandidate,
 
     /// A builtin implementation for some specific traits, used in cases
     /// where we cannot rely an ordinary library implementations.
@@ -107,10 +105,7 @@ pub enum SelectionCandidate<'tcx> {
     /// The most notable examples are `Copy` and `Clone`. This is also
     /// used for the `DiscriminantKind` and `Pointee` trait, both of which have
     /// an associated type.
-    BuiltinCandidate {
-        /// `false` if there are no *further* obligations.
-        has_nested: bool,
-    },
+    BuiltinCandidate,
 
     /// Implementation of transmutability trait.
     TransmutabilityCandidate,

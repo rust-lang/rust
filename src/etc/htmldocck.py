@@ -147,48 +147,17 @@ def concat_multi_lines(f):
         print_err(lineno, line, "Trailing backslash at the end of the file")
 
 
-def get_known_directive_names():
-    def filter_line(line):
-        line = line.strip()
-        return line.startswith('"') and (line.endswith('",') or line.endswith('"'))
-
-    # Equivalent to `src/tools/compiletest/src/header.rs` constant of the same name.
-    with open(
-        os.path.join(
-            # We go back to `src`.
-            os.path.dirname(os.path.dirname(__file__)),
-            "tools/compiletest/src/directive-list.rs",
-        ),
-        "r",
-        encoding="utf8",
-    ) as fd:
-        content = fd.read()
-        return [
-            line.strip().replace('",', "").replace('"', "")
-            for line in content.split("\n")
-            if filter_line(line)
-        ]
-
-
-# To prevent duplicating the list of commmands between `compiletest` and `htmldocck`, we put
-# it into a common file which is included in rust code and parsed here.
-# FIXME: This setup is temporary until we figure out how to improve this situation.
-#        See <https://github.com/rust-lang/rust/issues/125813#issuecomment-2141953780>.
-KNOWN_DIRECTIVE_NAMES = get_known_directive_names()
-
 LINE_PATTERN = re.compile(
     r"""
     //@\s+
-    (?P<negated>!?)(?P<cmd>[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)
-    (?P<args>.*)$
+    (?P<negated>!?)(?P<cmd>.+?)
+    (?:[\s:](?P<args>.*))?$
 """,
     re.X | re.UNICODE,
 )
 
 DEPRECATED_LINE_PATTERN = re.compile(
-    r"""
-    //\s+@
-""",
+    r"//\s+@",
     re.X | re.UNICODE,
 )
 
@@ -209,12 +178,7 @@ def get_commands(template):
 
             cmd = m.group("cmd")
             negated = m.group("negated") == "!"
-            if not negated and cmd in KNOWN_DIRECTIVE_NAMES:
-                continue
-            args = m.group("args")
-            if args and not args[:1].isspace():
-                print_err(lineno, line, "Invalid template syntax")
-                continue
+            args = m.group("args") or ""
             try:
                 args = shlex.split(args)
             except UnicodeEncodeError:
@@ -564,10 +528,14 @@ def check_command(c, cache):
             # hasraw/matchesraw <path> <pat> = string test
             elif len(c.args) == 2 and "raw" in c.cmd:
                 cerr = "`PATTERN` did not match"
+                if c.negated:
+                    cerr = "`PATTERN` unexpectedly matched"
                 ret = check_string(cache.get_file(c.args[0]), c.args[1], regexp)
             # has/matches <path> <pat> <match> = XML tree test
             elif len(c.args) == 3 and "raw" not in c.cmd:
                 cerr = "`XPATH PATTERN` did not match"
+                if c.negated:
+                    cerr = "`XPATH PATTERN` unexpectedly matched"
                 ret = get_nb_matching_elements(cache, c, regexp, True) != 0
             else:
                 raise InvalidCheck("Invalid number of {} arguments".format(c.cmd))
@@ -632,14 +600,11 @@ def check_command(c, cache):
             else:
                 raise InvalidCheck("Invalid number of {} arguments".format(c.cmd))
 
-        elif c.cmd == "valid-html":
-            raise InvalidCheck("Unimplemented valid-html")
-
-        elif c.cmd == "valid-links":
-            raise InvalidCheck("Unimplemented valid-links")
-
         else:
-            raise InvalidCheck("Unrecognized {}".format(c.cmd))
+            # Ignore unknown directives as they might be compiletest directives
+            # since they share the same `//@` prefix by convention. In any case,
+            # compiletest rejects unknown directives for us.
+            return
 
         if ret == c.negated:
             raise FailedCheck(cerr)

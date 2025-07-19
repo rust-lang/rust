@@ -131,6 +131,11 @@ pub(crate) fn type_check<'tcx>(
         pre_obligations.is_empty(),
         "there should be no incoming region obligations = {pre_obligations:#?}",
     );
+    let pre_assumptions = infcx.take_registered_region_assumptions();
+    assert!(
+        pre_assumptions.is_empty(),
+        "there should be no incoming region assumptions = {pre_assumptions:#?}",
+    );
 
     debug!(?normalized_inputs_and_output);
 
@@ -786,8 +791,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     let region_ctxt_fn = || {
                         let reg_info = match br.kind {
                             ty::BoundRegionKind::Anon => sym::anon,
-                            ty::BoundRegionKind::Named(_, name) => name,
+                            ty::BoundRegionKind::Named(def_id) => tcx.item_name(def_id),
                             ty::BoundRegionKind::ClosureEnv => sym::env,
+                            ty::BoundRegionKind::NamedAnon(_) => {
+                                bug!("only used for pretty printing")
+                            }
                         };
 
                         RegionCtxt::LateBound(reg_info)

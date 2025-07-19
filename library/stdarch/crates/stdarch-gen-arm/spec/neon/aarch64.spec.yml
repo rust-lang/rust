@@ -1252,7 +1252,7 @@ intrinsics:
       - [i16, f16, 'h', 'i32', 'as i32']
     compose:
       - FnCall: [static_assert!, ['N >= 1 && N <= 16']]
-      - "vcvt{type[2]}_n_{type[1]}_{type[3]}::<N>(a {type[4]}) as {type[1]}"
+      - "vcvt{type[2]}_n_{type[1]}_{type[3]}::<N>(a {type[4]})"
 
 
   - name: "vcvt{type[2]}_n_{type[1]}_{type[0]}"
@@ -1270,7 +1270,7 @@ intrinsics:
       - [u16, f16, 'h', u32]
     compose:
       - FnCall: [static_assert!, ['N >= 1 && N <= 16']]
-      - "vcvt{type[2]}_n_{type[1]}_{type[3]}::<N>(a as {type[3]}) as {type[1]}"
+      - "vcvt{type[2]}_n_{type[1]}_{type[3]}::<N>(a as {type[3]})"
 
 
   - name: "vcvt{type[2]}"
@@ -2976,11 +2976,7 @@ intrinsics:
       - float64x1_t
       - float64x2_t
     compose:
-      - LLVMLink:
-          name: "llvm.rint.{neon_type}"
-          links:
-            - link: "llvm.rint.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_round_ties_even, [a]]
 
 
   - name: "vrndx{neon_type.no}"
@@ -2996,11 +2992,7 @@ intrinsics:
       - float16x4_t
       - float16x8_t
     compose:
-      - LLVMLink:
-          name: "llvm.rint.{neon_type}"
-          links:
-            - link: "llvm.rint.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_round_ties_even, [a]]
 
 
   - name: "vrndx{type[1]}{type[0]}"
@@ -5391,7 +5383,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmulx, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - *neon-fp16 
+      - *neon-fp16
       - *neon-unstable-f16
     static_defs: ["const LANE: i32"]
     safety: safe
@@ -5444,7 +5436,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmulx, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - *neon-fp16 
+      - *neon-fp16
       - *neon-unstable-f16
     static_defs: ["const LANE: i32"]
     safety: safe
@@ -5468,7 +5460,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmulx]]}]]
-      - *neon-fp16 
+      - *neon-fp16
       - *neon-unstable-f16
     safety: safe
     types:
@@ -5552,7 +5544,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {type[1]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - *neon-fp16 
+      - *neon-fp16
       - *neon-unstable-f16
     assert_instr: [fmla]
     safety: safe
@@ -7320,7 +7312,7 @@ intrinsics:
       - ["i64", "i32", "i32", "i64"]
     compose:
       - Let: [x, i64, {FnCall: [vqaddd_s64, [a, {FnCall: [vqdmulls_s32, [b, c]]}]]}]
-      - Identifier: ['x as i64', Symbol]
+      - Identifier: ['x', Symbol]
 
   - name: "vqdmlal{type[4]}"
     doc: "Signed saturating doubling multiply-add long"
@@ -7434,7 +7426,7 @@ intrinsics:
       - ["i64", "i32", "i32", "i64"]
     compose:
       - Let: [x, i64, {FnCall: [vqsubd_s64, [a, {FnCall: [vqdmulls_s32, [b, c]]}]]}]
-      - Identifier: ['x as i64', Symbol]
+      - Identifier: ['x', Symbol]
 
   - name: "vqdmlsl{type[4]}"
     doc: "Signed saturating doubling multiply-subtract long"
@@ -11697,7 +11689,6 @@ intrinsics:
     arguments: ["a: {type[1]}"]
     return_type: "{type[1]}"
     attr:
-      - *neon-fp16
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frsqrte]]}]]
       - *neon-fp16
       - *neon-unstable-f16
@@ -12104,7 +12095,7 @@ intrinsics:
       - [uint8x8_t, 'uint8x8_t', 'b']
       - [poly8x8_t, 'uint8x8_t', 'b']
     compose:
-      - FnCall: 
+      - FnCall:
           - 'vqtbl1{neon_type[0].no}'
           - - FnCall:
                 - 'vcombine{neon_type[0].no}'
@@ -12174,7 +12165,7 @@ intrinsics:
               - '{type[2]}_t'
               - - FnCall: ['vcombine{neon_type[1].no}', ['a.0', 'a.1']]
                 - FnCall: ['vcombine{neon_type[1].no}', ['a.2', 'unsafe {{ crate::mem::zeroed() }}']]
-      - FnCall: 
+      - FnCall:
           - transmute
           - - FnCall:
                 - vqtbl2
@@ -12193,7 +12184,7 @@ intrinsics:
     types:
       - [uint8x8x3_t, 'uint8x8_t', 'uint8x16x2', 'uint8x8_t']
       - [poly8x8x3_t, 'uint8x8_t', 'poly8x16x2', 'poly8x8_t']
-    big_endian_inverse: true 
+    big_endian_inverse: true
     compose:
       - Let:
           - x
@@ -12201,7 +12192,7 @@ intrinsics:
               - '{type[2]}_t'
               - - FnCall: ['vcombine{neon_type[3].no}', ['a.0', 'a.1']]
                 - FnCall: ['vcombine{neon_type[3].no}', ['a.2', 'unsafe {{ crate::mem::zeroed() }}']]
-      - FnCall: 
+      - FnCall:
           - transmute
           - - FnCall:
                 - vqtbl2
@@ -12288,18 +12279,16 @@ intrinsics:
       - [poly8x8_t, "poly8x16_t", uint8x8_t, "vqtbx1", "_p8"]
       - [uint8x16_t, "uint8x16_t", uint8x16_t, "vqtbx1q", "q_u8"]
       - [poly8x16_t, "poly8x16_t", uint8x16_t, "vqtbx1q", "q_p8"]
+    big_endian_inverse: false
     compose:
-      - Let:
-        - x
-        - FnCall:
-            - transmute
-            - - FnCall:
-                  - "{type[3]}"
-                  - - FnCall: [transmute, [a]]
-                    - FnCall: [transmute, [b]]
-                    - c
-      - Identifier: [x, Symbol]
-  
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - "{type[3]}"
+                - - FnCall: [transmute, [a]]
+                  - FnCall: [transmute, [b]]
+                  - c
+
   - name: "vtbx1{neon_type[0].no}"
     doc: "Extended table look-up"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
@@ -12315,13 +12304,13 @@ intrinsics:
     compose:
       - FnCall:
           - simd_select
-          - - FnCall: 
+          - - FnCall:
                 - "simd_lt::<{type[4]}_t, int8x8_t>"
                 - - c
                   - FnCall: [transmute, ["{type[3]}"]]
             - FnCall:
                 - transmute
-                - - FnCall: 
+                - - FnCall:
                       - "vqtbx1"
                       - - "transmute(a)"
                         - FnCall:
@@ -12470,16 +12459,14 @@ intrinsics:
       - ['poly8x16_t', uint8x8_t, 'vqtbl1', 'poly8x8_t']
       - ['uint8x16_t', uint8x16_t, 'vqtbl1q', 'uint8x16_t']
       - ['poly8x16_t', uint8x16_t, 'vqtbl1q', 'poly8x16_t']
+    big_endian_inverse: false
     compose:
-      - Let:
-          - x
-          - FnCall:
-              - transmute
-              - - FnCall: 
-                    - '{type[2]}'
-                    - - FnCall: [transmute, ['a']]
-                      - b
-      - Identifier: [x, Symbol]
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - '{type[2]}'
+                - - FnCall: [transmute, ['a']]
+                  - b
 
   - name: "vqtbl2{neon_type[3].no}"
     doc: "Table look-up"
@@ -12511,7 +12498,7 @@ intrinsics:
     compose:
       - FnCall:
           - transmute
-          - - FnCall: 
+          - - FnCall:
                 - '{type[2]}'
                 - - FnCall: [transmute, ['a.0']]
                   - FnCall: [transmute, ['a.1']]
@@ -12547,7 +12534,7 @@ intrinsics:
     compose:
       - FnCall:
           - transmute
-          - - FnCall: 
+          - - FnCall:
                 - '{type[3]}'
                 - - FnCall: [transmute, [a]]
                   - FnCall: [transmute, ['b.0']]
@@ -12584,7 +12571,7 @@ intrinsics:
     compose:
       - FnCall:
           - transmute
-          - - FnCall: 
+          - - FnCall:
                 - '{type[3]}'
                 - - FnCall: [transmute, ['a.0']]
                   - FnCall: [transmute, ['a.1']]
@@ -12621,7 +12608,7 @@ intrinsics:
     compose:
       - FnCall:
           - transmute
-          - - FnCall: 
+          - - FnCall:
                 - '{type[3]}'
                 - - FnCall: [transmute, [a]]
                   - FnCall: [transmute, ['b.0']]
@@ -12659,7 +12646,7 @@ intrinsics:
     compose:
       - FnCall:
           - transmute
-          - - FnCall: 
+          - - FnCall:
                 - '{type[2]}'
                 - - FnCall: [transmute, ['a.0']]
                   - FnCall: [transmute, ['a.1']]
@@ -12697,7 +12684,7 @@ intrinsics:
     compose:
       - FnCall:
           - transmute
-          - - FnCall: 
+          - - FnCall:
                 - '{type[3]}'
                 - - FnCall: [transmute, [a]]
                   - FnCall: [transmute, ['b.0']]
@@ -13204,7 +13191,7 @@ intrinsics:
     assert_instr: [addp]
     safety: safe
     types:
-      - [int32x2_t, i32] 
+      - [int32x2_t, i32]
     compose:
       - LLVMLink:
           name: "vaddv{neon_type[0].no}"
@@ -13259,7 +13246,7 @@ intrinsics:
     assert_instr: [addp]
     safety: safe
     types:
-      - [uint32x2_t, u32, i32] 
+      - [uint32x2_t, u32, i32]
     compose:
       - LLVMLink:
           name: "vaddv{neon_type[0].no}"
@@ -13335,7 +13322,7 @@ intrinsics:
     types:
       - [int8x8_t, i8, 'smaxv']
       - [int16x4_t, i16, 'smaxv']
-      - [int32x2_t, i32, 'smaxp'] 
+      - [int32x2_t, i32, 'smaxp']
       - [int8x16_t, i8, 'smaxv']
       - [int16x8_t, i16, 'smaxv']
       - [int32x4_t, i32, 'smaxv']
@@ -13357,7 +13344,7 @@ intrinsics:
     types:
       - [uint8x8_t, u8, 'umaxv']
       - [uint16x4_t, u16, 'umaxv']
-      - [uint32x2_t, u32, 'umaxp'] 
+      - [uint32x2_t, u32, 'umaxp']
       - [uint8x16_t, u8, 'umaxv']
       - [uint16x8_t, u16, 'umaxv']
       - [uint32x4_t, u32, 'umaxv']
@@ -13379,7 +13366,7 @@ intrinsics:
     types:
       - [float32x2_t, f32, 'fmaxp']
       - [float32x4_t, f32, 'fmaxv']
-      - [float64x2_t, f64, 'fmaxp'] 
+      - [float64x2_t, f64, 'fmaxp']
     compose:
       - LLVMLink:
           name: "vmaxv{neon_type[0].no}"
@@ -13398,7 +13385,7 @@ intrinsics:
     types:
       - [int8x8_t, i8, 'sminv']
       - [int16x4_t, i16, 'sminv']
-      - [int32x2_t, i32, 'sminp'] 
+      - [int32x2_t, i32, 'sminp']
       - [int8x16_t, i8, 'sminv']
       - [int16x8_t, i16, 'sminv']
       - [int32x4_t, i32, 'sminv']
@@ -13420,7 +13407,7 @@ intrinsics:
     types:
       - [uint8x8_t, u8, 'uminv']
       - [uint16x4_t, u16, 'uminv']
-      - [uint32x2_t, u32, 'uminp'] 
+      - [uint32x2_t, u32, 'uminp']
       - [uint8x16_t, u8, 'uminv']
       - [uint16x8_t, u16, 'uminv']
       - [uint32x4_t, u32, 'uminv']
@@ -13442,7 +13429,7 @@ intrinsics:
     types:
       - [float32x2_t, f32, 'fminp']
       - [float32x4_t, f32, 'fminv']
-      - [float64x2_t, f64, 'fminp'] 
+      - [float64x2_t, f64, 'fminp']
     compose:
       - LLVMLink:
           name: "vminv{neon_type[0].no}"
@@ -13498,7 +13485,7 @@ intrinsics:
     safety: safe
     types:
       - float32x4_t
-      - float64x2_t 
+      - float64x2_t
     compose:
       - LLVMLink:
           name: "vpmin{neon_type.no}"
@@ -13554,7 +13541,7 @@ intrinsics:
     safety: safe
     types:
       - float32x4_t
-      - float64x2_t 
+      - float64x2_t
     compose:
       - LLVMLink:
           name: "vpmax{neon_type.no}"

@@ -140,8 +140,13 @@ enum LocalRef<'tcx, V> {
     Place(PlaceRef<'tcx, V>),
     /// `UnsizedPlace(p)`: `p` itself is a thin pointer (indirect place).
     /// `*p` is the wide pointer that references the actual unsized place.
-    /// Every time it is initialized, we have to reallocate the place
-    /// and update the wide pointer. That's the reason why it is indirect.
+    ///
+    /// MIR only supports unsized args, not dynamically-sized locals, so
+    /// new unsized temps don't exist and we must reuse the referred-to place.
+    ///
+    /// FIXME: Since the removal of unsized locals in <https://github.com/rust-lang/rust/pull/142911>,
+    /// can we maybe use `Place` here? Or refactor it in another way? There are quite a few
+    /// `UnsizedPlace => bug` branches now.
     UnsizedPlace(PlaceRef<'tcx, V>),
     /// The backend [`OperandValue`] has already been generated.
     Operand(OperandRef<'tcx, V>),
@@ -385,9 +390,8 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let mut num_untupled = None;
 
-    let codegen_fn_attrs = bx.tcx().codegen_fn_attrs(fx.instance.def_id());
-    let naked = codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED);
-    if naked {
+    let codegen_fn_attrs = bx.tcx().codegen_instance_attrs(fx.instance.def);
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         return vec![];
     }
 
@@ -498,7 +502,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                         LocalRef::Place(PlaceRef::new_sized(llarg, arg.layout))
                     }
                 }
-                // Unsized indirect qrguments
+                // Unsized indirect arguments
                 PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
                     // As the storage for the indirect argument lives during
                     // the whole function call, we just copy the wide pointer.

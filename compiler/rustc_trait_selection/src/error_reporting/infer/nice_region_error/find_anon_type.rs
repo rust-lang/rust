@@ -75,7 +75,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
 
     fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx, AmbigArg>) -> Self::Result {
         match arg.kind {
-            hir::TyKind::BareFn(_) => {
+            hir::TyKind::FnPtr(_) => {
                 self.current_index.shift_in(1);
                 let _ = intravisit::walk_ty(self, arg);
                 self.current_index.shift_out(1);

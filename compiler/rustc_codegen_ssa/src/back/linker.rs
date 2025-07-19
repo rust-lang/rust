@@ -326,7 +326,6 @@ pub(crate) trait Linker {
         link_or_cc_args(self, &[path]);
     }
     fn gc_sections(&mut self, keep_metadata: bool);
-    fn no_gc_sections(&mut self);
     fn full_relro(&mut self);
     fn partial_relro(&mut self);
     fn no_relro(&mut self);
@@ -688,12 +687,6 @@ impl<'a> Linker for GccLinker<'a> {
         }
     }
 
-    fn no_gc_sections(&mut self) {
-        if self.is_gnu || self.sess.target.is_like_wasm {
-            self.link_arg("--no-gc-sections");
-        }
-    }
-
     fn optimize(&mut self) {
         if !self.is_gnu && !self.sess.target.is_like_wasm {
             return;
@@ -800,9 +793,7 @@ impl<'a> Linker for GccLinker<'a> {
             return;
         }
 
-        let is_windows = self.sess.target.is_like_windows;
-        let path = tmpdir.join(if is_windows { "list.def" } else { "list" });
-
+        let path = tmpdir.join(if self.sess.target.is_like_windows { "list.def" } else { "list" });
         debug!("EXPORTED SYMBOLS:");
 
         if self.sess.target.is_like_darwin {
@@ -817,7 +808,8 @@ impl<'a> Linker for GccLinker<'a> {
             if let Err(error) = res {
                 self.sess.dcx().emit_fatal(errors::LibDefWriteFailure { error });
             }
-        } else if is_windows {
+            self.link_arg("-exported_symbols_list").link_arg(path);
+        } else if self.sess.target.is_like_windows {
             let res: io::Result<()> = try {
                 let mut f = File::create_buffered(&path)?;
 
@@ -835,6 +827,21 @@ impl<'a> Linker for GccLinker<'a> {
             if let Err(error) = res {
                 self.sess.dcx().emit_fatal(errors::LibDefWriteFailure { error });
             }
+            self.link_arg(path);
+        } else if crate_type == CrateType::Executable && !self.sess.target.is_like_solaris {
+            let res: io::Result<()> = try {
+                let mut f = File::create_buffered(&path)?;
+                writeln!(f, "{{")?;
+                for (sym, _) in symbols {
+                    debug!(sym);
+                    writeln!(f, "  {sym};")?;
+                }
+                writeln!(f, "}};")?;
+            };
+            if let Err(error) = res {
+                self.sess.dcx().emit_fatal(errors::VersionScriptWriteFailure { error });
+            }
+            self.link_arg("--dynamic-list").link_arg(path);
         } else {
             // Write an LD version script
             let res: io::Result<()> = try {
@@ -852,18 +859,13 @@ impl<'a> Linker for GccLinker<'a> {
             if let Err(error) = res {
                 self.sess.dcx().emit_fatal(errors::VersionScriptWriteFailure { error });
             }
-        }
-
-        if self.sess.target.is_like_darwin {
-            self.link_arg("-exported_symbols_list").link_arg(path);
-        } else if self.sess.target.is_like_solaris {
-            self.link_arg("-M").link_arg(path);
-        } else if is_windows {
-            self.link_arg(path);
-        } else {
-            let mut arg = OsString::from("--version-script=");
-            arg.push(path);
-            self.link_arg(arg).link_arg("--no-undefined-version");
+            if self.sess.target.is_like_solaris {
+                self.link_arg("-M").link_arg(path);
+            } else {
+                let mut arg = OsString::from("--version-script=");
+                arg.push(path);
+                self.link_arg(arg).link_arg("--no-undefined-version");
+            }
         }
     }
 
@@ -999,10 +1001,6 @@ impl<'a> Linker for MsvcLinker<'a> {
             // implies ICF by default.
             self.link_arg("/OPT:REF,NOICF");
         }
-    }
-
-    fn no_gc_sections(&mut self) {
-        self.link_arg("/OPT:NOREF,NOICF");
     }
 
     fn full_relro(&mut self) {
@@ -1234,10 +1232,6 @@ impl<'a> Linker for EmLinker<'a> {
         // noop
     }
 
-    fn no_gc_sections(&mut self) {
-        // noop
-    }
-
     fn optimize(&mut self) {
         // Emscripten performs own optimizations
         self.cc_arg(match self.sess.opts.optimize {
@@ -1409,10 +1403,6 @@ impl<'a> Linker for WasmLd<'a> {
         self.link_arg("--gc-sections");
     }
 
-    fn no_gc_sections(&mut self) {
-        self.link_arg("--no-gc-sections");
-    }
-
     fn optimize(&mut self) {
         // The -O flag is, as of late 2023, only used for merging of strings and debuginfo, and
         // only differentiates -O0 and -O1. It does not apply to LTO.
@@ -1556,10 +1546,6 @@ impl<'a> Linker for L4Bender<'a> {
         if !keep_metadata {
             self.link_arg("--gc-sections");
         }
-    }
-
-    fn no_gc_sections(&mut self) {
-        self.link_arg("--no-gc-sections");
     }
 
     fn optimize(&mut self) {
@@ -1723,10 +1709,6 @@ impl<'a> Linker for AixLinker<'a> {
 
     fn gc_sections(&mut self, _keep_metadata: bool) {
         self.link_arg("-bgc");
-    }
-
-    fn no_gc_sections(&mut self) {
-        self.link_arg("-bnogc");
     }
 
     fn optimize(&mut self) {}
@@ -1973,8 +1955,6 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn gc_sections(&mut self, _keep_metadata: bool) {}
 
-    fn no_gc_sections(&mut self) {}
-
     fn pgo_gen(&mut self) {}
 
     fn no_crt_objects(&mut self) {}
@@ -2047,8 +2027,6 @@ impl<'a> Linker for LlbcLinker<'a> {
     fn no_relro(&mut self) {}
 
     fn gc_sections(&mut self, _keep_metadata: bool) {}
-
-    fn no_gc_sections(&mut self) {}
 
     fn pgo_gen(&mut self) {}
 
@@ -2129,8 +2107,6 @@ impl<'a> Linker for BpfLinker<'a> {
     fn no_relro(&mut self) {}
 
     fn gc_sections(&mut self, _keep_metadata: bool) {}
-
-    fn no_gc_sections(&mut self) {}
 
     fn pgo_gen(&mut self) {}
 

@@ -1,9 +1,10 @@
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{Decodable, Encodable, HashStable};
-use rustc_span::{Ident, Symbol, sym};
+use rustc_span::{Ident, Symbol};
 
 use super::{TyCtxt, Visibility};
 use crate::ty;
@@ -160,7 +161,7 @@ impl AssocItem {
             // Inherent impl but this attr is only applied to trait assoc items.
             (AssocItemContainer::Impl, None) => return true,
         };
-        tcx.has_attr(def_id, sym::type_const)
+        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_))
     }
 }
 
@@ -257,6 +258,16 @@ impl AssocItems {
     }
 
     /// Returns the associated item with the given identifier and `AssocKind`, if one exists.
+    /// The identifier is ignoring hygiene. This is meant to be used for lints and diagnostics.
+    pub fn filter_by_name_unhygienic_and_kind(
+        &self,
+        name: Symbol,
+        assoc_tag: AssocTag,
+    ) -> impl '_ + Iterator<Item = &ty::AssocItem> {
+        self.filter_by_name_unhygienic(name).filter(move |item| item.as_tag() == assoc_tag)
+    }
+
+    /// Returns the associated item with the given identifier and `AssocKind`, if one exists.
     /// The identifier is matched hygienically.
     pub fn find_by_ident_and_kind(
         &self,
@@ -282,5 +293,24 @@ impl AssocItems {
         self.filter_by_name_unhygienic(ident.name)
             .filter(|item| item.namespace() == ns)
             .find(|item| tcx.hygienic_eq(ident, item.ident(tcx), parent_def_id))
+    }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    /// Given an `fn_def_id` of a trait or a trait implementation:
+    ///
+    /// if `fn_def_id` is a function defined inside a trait, then it synthesizes
+    /// a new def id corresponding to a new associated type for each return-
+    /// position `impl Trait` in the signature.
+    ///
+    /// if `fn_def_id` is a function inside of an impl, then for each synthetic
+    /// associated type generated for the corresponding trait function described
+    /// above, synthesize a corresponding associated type in the impl.
+    pub fn associated_types_for_impl_traits_in_associated_fn(
+        self,
+        fn_def_id: DefId,
+    ) -> &'tcx [DefId] {
+        let parent_def_id = self.parent(fn_def_id);
+        &self.associated_types_for_impl_traits_in_trait_or_impl(parent_def_id)[&fn_def_id]
     }
 }

@@ -381,28 +381,16 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         })
     }
 
-    fn visit_trait_item_ref(&mut self, ii: &'hir TraitItemRef) {
-        // Do not visit the duplicate information in TraitItemRef. We want to
-        // map the actual nodes, not the duplicate ones in the *Ref.
-        let TraitItemRef { id, ident: _, kind: _, span: _ } = *ii;
-
-        self.visit_nested_trait_item(id);
+    fn visit_trait_item_ref(&mut self, id: &'hir TraitItemId) {
+        self.visit_nested_trait_item(*id);
     }
 
-    fn visit_impl_item_ref(&mut self, ii: &'hir ImplItemRef) {
-        // Do not visit the duplicate information in ImplItemRef. We want to
-        // map the actual nodes, not the duplicate ones in the *Ref.
-        let ImplItemRef { id, ident: _, kind: _, span: _, trait_item_def_id: _ } = *ii;
-
-        self.visit_nested_impl_item(id);
+    fn visit_impl_item_ref(&mut self, id: &'hir ImplItemId) {
+        self.visit_nested_impl_item(*id);
     }
 
-    fn visit_foreign_item_ref(&mut self, fi: &'hir ForeignItemRef) {
-        // Do not visit the duplicate information in ForeignItemRef. We want to
-        // map the actual nodes, not the duplicate ones in the *Ref.
-        let ForeignItemRef { id, ident: _, span: _ } = *fi;
-
-        self.visit_nested_foreign_item(id);
+    fn visit_foreign_item_ref(&mut self, id: &'hir ForeignItemId) {
+        self.visit_nested_foreign_item(*id);
     }
 
     fn visit_where_predicate(&mut self, predicate: &'hir WherePredicate<'hir>) {

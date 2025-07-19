@@ -27,18 +27,16 @@ extern "C" fn nop() {
     naked_asm!("nop")
 }
 
-// CHECK: .section  .text.weak_aligned_nop,"",@
-// CHECK: .weak weak_aligned_nop
+// CHECK: .section  .text.weak_nop,"",@
+// CHECK: .weak weak_nop
 // CHECK-LABEL: nop:
-// CHECK: .functype weak_aligned_nop () -> ()
+// CHECK: .functype weak_nop () -> ()
 // CHECK-NOT: .size
 // CHECK: end_function
 #[no_mangle]
 #[unsafe(naked)]
 #[linkage = "weak"]
-// wasm functions cannot be aligned, so this has no effect
-#[align(32)]
-extern "C" fn weak_aligned_nop() {
+extern "C" fn weak_nop() {
     naked_asm!("nop")
 }
 

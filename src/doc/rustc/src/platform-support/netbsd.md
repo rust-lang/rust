@@ -1,7 +1,5 @@
 # \*-unknown-netbsd
 
-**Tier: 3**
-
 [NetBSD] multi-platform 4.4BSD-based UNIX-like operating system.
 
 [NetBSD]: https://www.NetBSD.org/
@@ -11,19 +9,19 @@ where `$ARCH` specifies the target processor architecture and
 `-$SUFFIX` (optional) might indicate the ABI. The following targets
 are currently defined running NetBSD:
 
-|          Target name           | NetBSD Platform |
-|--------------------------------|-----------------|
-| `x86_64-unknown-netbsd`        | [amd64 / x86_64 systems](https://wiki.netbsd.org/ports/amd64/) |
-| `armv7-unknown-netbsd-eabihf`  | [32-bit ARMv7 systems with hard-float](https://wiki.netbsd.org/ports/evbarm/) |
-| `armv6-unknown-netbsd-eabihf`  | [32-bit ARMv6 systems with hard-float](https://wiki.netbsd.org/ports/evbarm/) |
-| `aarch64-unknown-netbsd`       | [64-bit ARM systems, little-endian](https://wiki.netbsd.org/ports/evbarm/) |
-| `aarch64_be-unknown-netbsd`    | [64-bit ARM systems, big-endian](https://wiki.netbsd.org/ports/evbarm/) |
-| `i586-unknown-netbsd`          | [32-bit i386, restricted to Pentium](https://wiki.netbsd.org/ports/i386/) |
-| `i686-unknown-netbsd`          | [32-bit i386 with SSE](https://wiki.netbsd.org/ports/i386/) |
-| `mipsel-unknown-netbsd`        | [32-bit mips, requires mips32 cpu support](https://wiki.netbsd.org/ports/evbmips/) |
-| `powerpc-unknown-netbsd`       | [Various 32-bit PowerPC systems, e.g. MacPPC](https://wiki.netbsd.org/ports/macppc/) |
-| `riscv64gc-unknown-netbsd`     | [64-bit RISC-V](https://wiki.netbsd.org/ports/riscv/) |
-| `sparc64-unknown-netbsd`       | [Sun UltraSPARC systems](https://wiki.netbsd.org/ports/sparc64/) |
+| Target tier         | Target name                   | NetBSD Platform                                                                      |
+|---------------------|-------------------------------|--------------------------------------------------------------------------------------|
+| 2 (with host tools) | `x86_64-unknown-netbsd`       | [amd64 / x86_64 systems](https://wiki.netbsd.org/ports/amd64/)                       |
+| 3                   | `armv7-unknown-netbsd-eabihf` | [32-bit ARMv7 systems with hard-float](https://wiki.netbsd.org/ports/evbarm/)        |
+| 3                   | `armv6-unknown-netbsd-eabihf` | [32-bit ARMv6 systems with hard-float](https://wiki.netbsd.org/ports/evbarm/)        |
+| 3                   | `aarch64-unknown-netbsd`      | [64-bit ARM systems, little-endian](https://wiki.netbsd.org/ports/evbarm/)           |
+| 3                   | `aarch64_be-unknown-netbsd`   | [64-bit ARM systems, big-endian](https://wiki.netbsd.org/ports/evbarm/)              |
+| 3                   | `i586-unknown-netbsd`         | [32-bit i386, restricted to Pentium](https://wiki.netbsd.org/ports/i386/)            |
+| 3                   | `i686-unknown-netbsd`         | [32-bit i386 with SSE](https://wiki.netbsd.org/ports/i386/)                          |
+| 3                   | `mipsel-unknown-netbsd`       | [32-bit mips, requires mips32 cpu support](https://wiki.netbsd.org/ports/evbmips/)   |
+| 3                   | `powerpc-unknown-netbsd`      | [Various 32-bit PowerPC systems, e.g. MacPPC](https://wiki.netbsd.org/ports/macppc/) |
+| 3                   | `riscv64gc-unknown-netbsd`    | [64-bit RISC-V](https://wiki.netbsd.org/ports/riscv/)                                |
+| 3                   | `sparc64-unknown-netbsd`      | [Sun UltraSPARC systems](https://wiki.netbsd.org/ports/sparc64/)                     |
 
 All use the "native" `stdc++` library which goes along with the natively
 supplied GNU C++ compiler for the given OS version.  Many of the bootstraps
@@ -34,10 +32,11 @@ are built for NetBSD 8.x but also work on newer OS versions).
 ## Target Maintainers
 
 [@he32](https://github.com/he32)
+[@0323pin](https://github.com/0323pin)
 
 Further contacts:
 
-- [NetBSD/pkgsrc-wip's rust](https://github.com/NetBSD/pkgsrc-wip/blob/master/rust185/Makefile) maintainer (see MAINTAINER variable). This package is part of "pkgsrc work-in-progress" and is used for deployment and testing of new versions of rust
+- [NetBSD/pkgsrc-wip's rust](https://github.com/NetBSD/pkgsrc-wip/blob/master/rust188/Makefile) maintainer (see MAINTAINER variable). This package is part of "pkgsrc work-in-progress" and is used for deployment and testing of new versions of rust.  Note that we have the convention of having multiple rust versions active in pkgsrc-wip at any one time, so the version number is part of the directory name, and from time to time old versions are culled so this is not a fully "stable" link.
 - [NetBSD's pkgsrc lang/rust](https://github.com/NetBSD/pkgsrc/tree/trunk/lang/rust) for the "proper" package in pkgsrc.
 - [NetBSD's pkgsrc lang/rust-bin](https://github.com/NetBSD/pkgsrc/tree/trunk/lang/rust-bin) which re-uses the bootstrap kit as a binary distribution and therefore avoids the rather protracted native build time of rust itself
 

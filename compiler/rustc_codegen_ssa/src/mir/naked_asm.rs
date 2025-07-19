@@ -128,7 +128,7 @@ fn prefix_and_suffix<'tcx>(
     let is_arm = tcx.sess.target.arch == "arm";
     let is_thumb = tcx.sess.unstable_target_features.contains(&sym::thumb_mode);
 
-    let attrs = tcx.codegen_fn_attrs(instance.def_id());
+    let attrs = tcx.codegen_instance_attrs(instance.def);
     let link_section = attrs.link_section.map(|symbol| symbol.as_str().to_string());
 
     // If no alignment is specified, an alignment of 4 bytes is used.
@@ -326,7 +326,7 @@ fn prefix_and_suffix<'tcx>(
 fn wasm_functype<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> String {
     let mut signature = String::with_capacity(64);
 
-    let ptr_type = match tcx.data_layout.pointer_size.bits() {
+    let ptr_type = match tcx.data_layout.pointer_size().bits() {
         32 => "i32",
         64 => "i64",
         other => bug!("wasm pointer size cannot be {other} bits"),

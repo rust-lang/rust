@@ -110,6 +110,7 @@ pub struct Config {
     pub include_default_paths: bool,
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
+    pub compile_time_deps: bool,
     pub test_compare_mode: bool,
     pub color: Color,
     pub patch_binaries_for_nix: Option<bool>,
@@ -421,6 +422,7 @@ impl Config {
             jobs: flags_jobs,
             warnings: flags_warnings,
             json_output: flags_json_output,
+            compile_time_deps: flags_compile_time_deps,
             color: flags_color,
             bypass_bootstrap_lock: flags_bypass_bootstrap_lock,
             rust_profile_generate: flags_rust_profile_generate,
@@ -468,6 +470,7 @@ impl Config {
         config.include_default_paths = flags_include_default_paths;
         config.rustc_error_format = flags_rustc_error_format;
         config.json_output = flags_json_output;
+        config.compile_time_deps = flags_compile_time_deps;
         config.on_fail = flags_on_fail;
         config.cmd = flags_cmd;
         config.incremental = flags_incremental;
@@ -694,7 +697,7 @@ impl Config {
         config.change_id = toml.change_id.inner;
 
         let Build {
-            mut description,
+            description,
             build,
             host,
             target,
@@ -746,7 +749,7 @@ impl Config {
             compiletest_diff_tool,
             compiletest_use_stage0_libtest,
             tidy_extra_checks,
-            mut ccache,
+            ccache,
             exclude,
         } = toml.build.unwrap_or_default();
 
@@ -939,7 +942,7 @@ impl Config {
         config.rust_profile_use = flags_rust_profile_use;
         config.rust_profile_generate = flags_rust_profile_generate;
 
-        config.apply_rust_config(toml.rust, flags_warnings, &mut description);
+        config.apply_rust_config(toml.rust, flags_warnings);
 
         config.reproducible_artifacts = flags_reproducible_artifact;
         config.description = description;
@@ -960,7 +963,7 @@ impl Config {
             config.channel = channel;
         }
 
-        config.apply_llvm_config(toml.llvm, &mut ccache);
+        config.apply_llvm_config(toml.llvm);
 
         config.apply_gcc_config(toml.gcc);
 
@@ -1025,7 +1028,7 @@ impl Config {
             || bench_stage.is_some();
 
         config.stage = match config.cmd {
-            Subcommand::Check { .. } => flags_stage.or(check_stage).unwrap_or(0),
+            Subcommand::Check { .. } => flags_stage.or(check_stage).unwrap_or(1),
             Subcommand::Clippy { .. } | Subcommand::Fix => flags_stage.or(check_stage).unwrap_or(1),
             // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
             Subcommand::Doc { .. } => {
@@ -1047,13 +1050,26 @@ impl Config {
             | Subcommand::Run { .. }
             | Subcommand::Setup { .. }
             | Subcommand::Format { .. }
-            | Subcommand::Suggest { .. }
             | Subcommand::Vendor { .. } => flags_stage.unwrap_or(0),
         };
 
         // Now check that the selected stage makes sense, and if not, print a warning and end
-        if let (0, Subcommand::Build) = (config.stage, &config.cmd) {
-            eprintln!("WARNING: cannot build anything on stage 0. Use at least stage 1.");
+        match (config.stage, &config.cmd) {
+            (0, Subcommand::Build) => {
+                eprintln!("WARNING: cannot build anything on stage 0. Use at least stage 1.");
+                exit!(1);
+            }
+            (0, Subcommand::Check { .. }) => {
+                eprintln!("WARNING: cannot check anything on stage 0. Use at least stage 1.");
+                exit!(1);
+            }
+            _ => {}
+        }
+
+        if config.compile_time_deps && !matches!(config.cmd, Subcommand::Check { .. }) {
+            eprintln!(
+                "WARNING: Can't use --compile-time-deps with any subcommand other than check."
+            );
             exit!(1);
         }
 
@@ -1081,7 +1097,6 @@ impl Config {
                 | Subcommand::Run { .. }
                 | Subcommand::Setup { .. }
                 | Subcommand::Format { .. }
-                | Subcommand::Suggest { .. }
                 | Subcommand::Vendor { .. }
                 | Subcommand::Perf { .. } => {}
             }

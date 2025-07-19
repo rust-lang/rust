@@ -500,7 +500,7 @@ pub fn _mm_maskz_expand_epi8(k: __mmask16, a: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldvq))]
 pub fn _mm512_shldv_epi64(a: __m512i, b: __m512i, c: __m512i) -> __m512i {
-    unsafe { transmute(vpshldvq(a.as_i64x8(), b.as_i64x8(), c.as_i64x8())) }
+    unsafe { transmute(simd_funnel_shl(a.as_i64x8(), b.as_i64x8(), c.as_i64x8())) }
 }
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -539,7 +539,7 @@ pub fn _mm512_maskz_shldv_epi64(k: __mmask8, a: __m512i, b: __m512i, c: __m512i)
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldvq))]
 pub fn _mm256_shldv_epi64(a: __m256i, b: __m256i, c: __m256i) -> __m256i {
-    unsafe { transmute(vpshldvq256(a.as_i64x4(), b.as_i64x4(), c.as_i64x4())) }
+    unsafe { transmute(simd_funnel_shl(a.as_i64x4(), b.as_i64x4(), c.as_i64x4())) }
 }
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -578,7 +578,7 @@ pub fn _mm256_maskz_shldv_epi64(k: __mmask8, a: __m256i, b: __m256i, c: __m256i)
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldvq))]
 pub fn _mm_shldv_epi64(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
-    unsafe { transmute(vpshldvq128(a.as_i64x2(), b.as_i64x2(), c.as_i64x2())) }
+    unsafe { transmute(simd_funnel_shl(a.as_i64x2(), b.as_i64x2(), c.as_i64x2())) }
 }
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -617,7 +617,7 @@ pub fn _mm_maskz_shldv_epi64(k: __mmask8, a: __m128i, b: __m128i, c: __m128i) ->
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldvd))]
 pub fn _mm512_shldv_epi32(a: __m512i, b: __m512i, c: __m512i) -> __m512i {
-    unsafe { transmute(vpshldvd(a.as_i32x16(), b.as_i32x16(), c.as_i32x16())) }
+    unsafe { transmute(simd_funnel_shl(a.as_i32x16(), b.as_i32x16(), c.as_i32x16())) }
 }
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -656,7 +656,7 @@ pub fn _mm512_maskz_shldv_epi32(k: __mmask16, a: __m512i, b: __m512i, c: __m512i
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldvd))]
 pub fn _mm256_shldv_epi32(a: __m256i, b: __m256i, c: __m256i) -> __m256i {
-    unsafe { transmute(vpshldvd256(a.as_i32x8(), b.as_i32x8(), c.as_i32x8())) }
+    unsafe { transmute(simd_funnel_shl(a.as_i32x8(), b.as_i32x8(), c.as_i32x8())) }
 }
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -695,7 +695,7 @@ pub fn _mm256_maskz_shldv_epi32(k: __mmask8, a: __m256i, b: __m256i, c: __m256i)
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldvd))]
 pub fn _mm_shldv_epi32(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
-    unsafe { transmute(vpshldvd128(a.as_i32x4(), b.as_i32x4(), c.as_i32x4())) }
+    unsafe { transmute(simd_funnel_shl(a.as_i32x4(), b.as_i32x4(), c.as_i32x4())) }
 }
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -734,7 +734,7 @@ pub fn _mm_maskz_shldv_epi32(k: __mmask8, a: __m128i, b: __m128i, c: __m128i) ->
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldvw))]
 pub fn _mm512_shldv_epi16(a: __m512i, b: __m512i, c: __m512i) -> __m512i {
-    unsafe { transmute(vpshldvw(a.as_i16x32(), b.as_i16x32(), c.as_i16x32())) }
+    unsafe { transmute(simd_funnel_shl(a.as_i16x32(), b.as_i16x32(), c.as_i16x32())) }
 }
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -773,7 +773,7 @@ pub fn _mm512_maskz_shldv_epi16(k: __mmask32, a: __m512i, b: __m512i, c: __m512i
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldvw))]
 pub fn _mm256_shldv_epi16(a: __m256i, b: __m256i, c: __m256i) -> __m256i {
-    unsafe { transmute(vpshldvw256(a.as_i16x16(), b.as_i16x16(), c.as_i16x16())) }
+    unsafe { transmute(simd_funnel_shl(a.as_i16x16(), b.as_i16x16(), c.as_i16x16())) }
 }
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -812,7 +812,7 @@ pub fn _mm256_maskz_shldv_epi16(k: __mmask16, a: __m256i, b: __m256i, c: __m256i
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldvw))]
 pub fn _mm_shldv_epi16(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
-    unsafe { transmute(vpshldvw128(a.as_i16x8(), b.as_i16x8(), c.as_i16x8())) }
+    unsafe { transmute(simd_funnel_shl(a.as_i16x8(), b.as_i16x8(), c.as_i16x8())) }
 }
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -851,7 +851,7 @@ pub fn _mm_maskz_shldv_epi16(k: __mmask8, a: __m128i, b: __m128i, c: __m128i) ->
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshrdvq))]
 pub fn _mm512_shrdv_epi64(a: __m512i, b: __m512i, c: __m512i) -> __m512i {
-    unsafe { transmute(vpshrdvq(b.as_i64x8(), a.as_i64x8(), c.as_i64x8())) }
+    unsafe { transmute(simd_funnel_shr(b.as_i64x8(), a.as_i64x8(), c.as_i64x8())) }
 }
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -890,7 +890,7 @@ pub fn _mm512_maskz_shrdv_epi64(k: __mmask8, a: __m512i, b: __m512i, c: __m512i)
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshrdvq))]
 pub fn _mm256_shrdv_epi64(a: __m256i, b: __m256i, c: __m256i) -> __m256i {
-    unsafe { transmute(vpshrdvq256(b.as_i64x4(), a.as_i64x4(), c.as_i64x4())) }
+    unsafe { transmute(simd_funnel_shr(b.as_i64x4(), a.as_i64x4(), c.as_i64x4())) }
 }
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -929,7 +929,7 @@ pub fn _mm256_maskz_shrdv_epi64(k: __mmask8, a: __m256i, b: __m256i, c: __m256i)
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshrdvq))]
 pub fn _mm_shrdv_epi64(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
-    unsafe { transmute(vpshrdvq128(b.as_i64x2(), a.as_i64x2(), c.as_i64x2())) }
+    unsafe { transmute(simd_funnel_shr(b.as_i64x2(), a.as_i64x2(), c.as_i64x2())) }
 }
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -968,7 +968,7 @@ pub fn _mm_maskz_shrdv_epi64(k: __mmask8, a: __m128i, b: __m128i, c: __m128i) ->
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshrdvd))]
 pub fn _mm512_shrdv_epi32(a: __m512i, b: __m512i, c: __m512i) -> __m512i {
-    unsafe { transmute(vpshrdvd(b.as_i32x16(), a.as_i32x16(), c.as_i32x16())) }
+    unsafe { transmute(simd_funnel_shr(b.as_i32x16(), a.as_i32x16(), c.as_i32x16())) }
 }
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1007,7 +1007,7 @@ pub fn _mm512_maskz_shrdv_epi32(k: __mmask16, a: __m512i, b: __m512i, c: __m512i
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshrdvd))]
 pub fn _mm256_shrdv_epi32(a: __m256i, b: __m256i, c: __m256i) -> __m256i {
-    unsafe { transmute(vpshrdvd256(b.as_i32x8(), a.as_i32x8(), c.as_i32x8())) }
+    unsafe { transmute(simd_funnel_shr(b.as_i32x8(), a.as_i32x8(), c.as_i32x8())) }
 }
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1046,7 +1046,7 @@ pub fn _mm256_maskz_shrdv_epi32(k: __mmask8, a: __m256i, b: __m256i, c: __m256i)
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshrdvd))]
 pub fn _mm_shrdv_epi32(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
-    unsafe { transmute(vpshrdvd128(b.as_i32x4(), a.as_i32x4(), c.as_i32x4())) }
+    unsafe { transmute(simd_funnel_shr(b.as_i32x4(), a.as_i32x4(), c.as_i32x4())) }
 }
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1085,7 +1085,7 @@ pub fn _mm_maskz_shrdv_epi32(k: __mmask8, a: __m128i, b: __m128i, c: __m128i) ->
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshrdvw))]
 pub fn _mm512_shrdv_epi16(a: __m512i, b: __m512i, c: __m512i) -> __m512i {
-    unsafe { transmute(vpshrdvw(b.as_i16x32(), a.as_i16x32(), c.as_i16x32())) }
+    unsafe { transmute(simd_funnel_shr(b.as_i16x32(), a.as_i16x32(), c.as_i16x32())) }
 }
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1124,7 +1124,7 @@ pub fn _mm512_maskz_shrdv_epi16(k: __mmask32, a: __m512i, b: __m512i, c: __m512i
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshrdvw))]
 pub fn _mm256_shrdv_epi16(a: __m256i, b: __m256i, c: __m256i) -> __m256i {
-    unsafe { transmute(vpshrdvw256(b.as_i16x16(), a.as_i16x16(), c.as_i16x16())) }
+    unsafe { transmute(simd_funnel_shr(b.as_i16x16(), a.as_i16x16(), c.as_i16x16())) }
 }
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1163,7 +1163,7 @@ pub fn _mm256_maskz_shrdv_epi16(k: __mmask16, a: __m256i, b: __m256i, c: __m256i
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshrdvw))]
 pub fn _mm_shrdv_epi16(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
-    unsafe { transmute(vpshrdvw128(b.as_i16x8(), a.as_i16x8(), c.as_i16x8())) }
+    unsafe { transmute(simd_funnel_shr(b.as_i16x8(), a.as_i16x8(), c.as_i16x8())) }
 }
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -2137,44 +2137,6 @@ unsafe extern "C" {
     fn vpexpandb256(a: i8x32, src: i8x32, mask: u32) -> i8x32;
     #[link_name = "llvm.x86.avx512.mask.expand.b.128"]
     fn vpexpandb128(a: i8x16, src: i8x16, mask: u16) -> i8x16;
-
-    #[link_name = "llvm.fshl.v8i64"]
-    fn vpshldvq(a: i64x8, b: i64x8, c: i64x8) -> i64x8;
-    #[link_name = "llvm.fshl.v4i64"]
-    fn vpshldvq256(a: i64x4, b: i64x4, c: i64x4) -> i64x4;
-    #[link_name = "llvm.fshl.v2i64"]
-    fn vpshldvq128(a: i64x2, b: i64x2, c: i64x2) -> i64x2;
-    #[link_name = "llvm.fshl.v16i32"]
-    fn vpshldvd(a: i32x16, b: i32x16, c: i32x16) -> i32x16;
-    #[link_name = "llvm.fshl.v8i32"]
-    fn vpshldvd256(a: i32x8, b: i32x8, c: i32x8) -> i32x8;
-    #[link_name = "llvm.fshl.v4i32"]
-    fn vpshldvd128(a: i32x4, b: i32x4, c: i32x4) -> i32x4;
-    #[link_name = "llvm.fshl.v32i16"]
-    fn vpshldvw(a: i16x32, b: i16x32, c: i16x32) -> i16x32;
-    #[link_name = "llvm.fshl.v16i16"]
-    fn vpshldvw256(a: i16x16, b: i16x16, c: i16x16) -> i16x16;
-    #[link_name = "llvm.fshl.v8i16"]
-    fn vpshldvw128(a: i16x8, b: i16x8, c: i16x8) -> i16x8;
-
-    #[link_name = "llvm.fshr.v8i64"]
-    fn vpshrdvq(a: i64x8, b: i64x8, c: i64x8) -> i64x8;
-    #[link_name = "llvm.fshr.v4i64"]
-    fn vpshrdvq256(a: i64x4, b: i64x4, c: i64x4) -> i64x4;
-    #[link_name = "llvm.fshr.v2i64"]
-    fn vpshrdvq128(a: i64x2, b: i64x2, c: i64x2) -> i64x2;
-    #[link_name = "llvm.fshr.v16i32"]
-    fn vpshrdvd(a: i32x16, b: i32x16, c: i32x16) -> i32x16;
-    #[link_name = "llvm.fshr.v8i32"]
-    fn vpshrdvd256(a: i32x8, b: i32x8, c: i32x8) -> i32x8;
-    #[link_name = "llvm.fshr.v4i32"]
-    fn vpshrdvd128(a: i32x4, b: i32x4, c: i32x4) -> i32x4;
-    #[link_name = "llvm.fshr.v32i16"]
-    fn vpshrdvw(a: i16x32, b: i16x32, c: i16x32) -> i16x32;
-    #[link_name = "llvm.fshr.v16i16"]
-    fn vpshrdvw256(a: i16x16, b: i16x16, c: i16x16) -> i16x16;
-    #[link_name = "llvm.fshr.v8i16"]
-    fn vpshrdvw128(a: i16x8, b: i16x8, c: i16x8) -> i16x8;
 
     #[link_name = "llvm.x86.avx512.mask.expand.load.b.128"]
     fn expandloadb_128(mem_addr: *const i8, a: i8x16, mask: u16) -> i8x16;

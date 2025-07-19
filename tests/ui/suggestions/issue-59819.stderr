@@ -28,10 +28,14 @@ error[E0308]: mismatched types
   --> $DIR/issue-59819.rs:34:21
    |
 LL |     let g: String = f;
-   |            ------   ^- help: try using a conversion method: `.to_string()`
-   |            |        |
-   |            |        expected `String`, found `Bar`
+   |            ------   ^ expected `String`, found `Bar`
+   |            |
    |            expected due to this
+   |
+help: try using a conversion method
+   |
+LL |     let g: String = f.to_string();
+   |                      ++++++++++++
 
 error: aborting due to 3 previous errors
 

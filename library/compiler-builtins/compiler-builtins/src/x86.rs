@@ -2,7 +2,7 @@
 
 use core::intrinsics;
 
-// NOTE These functions are implemented using assembly because they using a custom
+// NOTE These functions are implemented using assembly because they use a custom
 // calling convention which can't be implemented using a normal Rust function
 
 // NOTE These functions are never mangled as they are not tested against compiler-rt
@@ -13,10 +13,10 @@ intrinsics! {
         any(all(windows, target_env = "gnu"), target_os = "uefi"),
         not(feature = "no-asm")
     ))]
-    pub unsafe extern "C" fn __chkstk() {
+    pub unsafe extern "custom" fn __chkstk() {
         core::arch::naked_asm!(
-            "jmp __alloca", // Jump to __alloca since fallthrough may be unreliable"
-            options(att_syntax)
+            "jmp {}", // Jump to __alloca since fallthrough may be unreliable"
+            sym crate::x86::_alloca::_alloca,
         );
     }
 
@@ -25,7 +25,7 @@ intrinsics! {
         any(all(windows, target_env = "gnu"), target_os = "uefi"),
         not(feature = "no-asm")
     ))]
-    pub unsafe extern "C" fn _alloca() {
+    pub unsafe extern "custom" fn _alloca() {
         // __chkstk and _alloca are the same function
         core::arch::naked_asm!(
             "push   %ecx",

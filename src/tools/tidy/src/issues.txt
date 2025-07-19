@@ -276,7 +276,6 @@ ui/auto-traits/issue-23080-2.rs
 ui/auto-traits/issue-23080.rs
 ui/auto-traits/issue-83857-ub.rs
 ui/auto-traits/issue-84075.rs
-ui/auxiliary/issue-16822.rs
 ui/bench/issue-32062.rs
 ui/binding/issue-40402-1.rs
 ui/binding/issue-40402-2.rs
@@ -1022,7 +1021,6 @@ ui/foreign/issue-91370-foreign-fn-block-impl.rs
 ui/foreign/issue-99276-same-type-lifetimes.rs
 ui/function-pointer/issue-102289.rs
 ui/functions-closures/closure-expected-type/issue-38714.rs
-ui/generic-associated-types/bugs/issue-100013.rs
 ui/generic-associated-types/bugs/issue-80626.rs
 ui/generic-associated-types/bugs/issue-87735.rs
 ui/generic-associated-types/bugs/issue-87755.rs
@@ -1100,7 +1098,6 @@ ui/generic-associated-types/issue-90729.rs
 ui/generic-associated-types/issue-91139.rs
 ui/generic-associated-types/issue-91883.rs
 ui/generic-associated-types/issue-92033.rs
-ui/generic-associated-types/issue-92096.rs
 ui/generic-associated-types/issue-92280.rs
 ui/generic-associated-types/issue-92954.rs
 ui/generic-associated-types/issue-93141.rs
@@ -1367,9 +1364,6 @@ ui/infinite/issue-41731-infinite-macro-println.rs
 ui/intrinsics/issue-28575.rs
 ui/intrinsics/issue-84297-reifying-copy.rs
 ui/invalid/issue-114435-layout-type-err.rs
-ui/issue-15924.rs
-ui/issue-16822.rs
-ui/issues-71798.rs
 ui/issues/auxiliary/issue-11224.rs
 ui/issues/auxiliary/issue-11508.rs
 ui/issues/auxiliary/issue-11529.rs
@@ -2342,7 +2336,6 @@ ui/issues/issue-50415.rs
 ui/issues/issue-50442.rs
 ui/issues/issue-50471.rs
 ui/issues/issue-50518.rs
-ui/issues/issue-50571.rs
 ui/issues/issue-50581.rs
 ui/issues/issue-50582.rs
 ui/issues/issue-50585.rs

@@ -136,7 +136,7 @@ pub(super) fn check<'tcx>(
         fun_span: Option<Span>,
     ) -> bool {
         // (path, fn_has_argument, methods, suffix)
-        const KNOW_TYPES: [(Symbol, bool, &[Symbol], &str); 5] = [
+        const KNOW_TYPES: [(Symbol, bool, &[Symbol], &str); 7] = [
             (sym::BTreeEntry, false, &[sym::or_insert], "with"),
             (sym::HashMapEntry, false, &[sym::or_insert], "with"),
             (
@@ -146,7 +146,9 @@ pub(super) fn check<'tcx>(
                 "else",
             ),
             (sym::Option, false, &[sym::get_or_insert], "with"),
+            (sym::Option, true, &[sym::and], "then"),
             (sym::Result, true, &[sym::map_or, sym::or, sym::unwrap_or], "else"),
+            (sym::Result, true, &[sym::and], "then"),
         ];
 
         if KNOW_TYPES.iter().any(|k| k.2.contains(&name))

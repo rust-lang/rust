@@ -97,6 +97,7 @@ const _: () = {
         const LOCATION: salsa::plumbing::Location =
             salsa::plumbing::Location { file: file!(), line: line!() };
         const DEBUG_NAME: &'static str = "SyntaxContextData";
+        const REVISIONS: std::num::NonZeroUsize = std::num::NonZeroUsize::MAX;
         type Fields<'a> = SyntaxContextData;
         type Struct<'a> = SyntaxContext;
     }
@@ -108,7 +109,9 @@ const _: () = {
             static CACHE: zalsa_::IngredientCache<zalsa_struct_::IngredientImpl<SyntaxContext>> =
                 zalsa_::IngredientCache::new();
             CACHE.get_or_create(db.zalsa(), || {
-                db.zalsa().add_or_lookup_jar_by_type::<zalsa_struct_::JarImpl<SyntaxContext>>()
+                db.zalsa()
+                    .lookup_jar_by_type::<zalsa_struct_::JarImpl<SyntaxContext>>()
+                    .get_or_create()
             })
         }
     }
@@ -130,9 +133,12 @@ const _: () = {
         type MemoIngredientMap = salsa::plumbing::MemoIngredientSingletonIndex;
 
         fn lookup_or_create_ingredient_index(
-            aux: &salsa::plumbing::Zalsa,
+            zalsa: &salsa::plumbing::Zalsa,
         ) -> salsa::plumbing::IngredientIndices {
-            aux.add_or_lookup_jar_by_type::<zalsa_struct_::JarImpl<SyntaxContext>>().into()
+            zalsa
+                .lookup_jar_by_type::<zalsa_struct_::JarImpl<SyntaxContext>>()
+                .get_or_create()
+                .into()
         }
 
         #[inline]
@@ -326,14 +332,14 @@ impl<'db> SyntaxContext {
             None
         } else {
             // SAFETY: By our invariant, this is either a root (which we verified it's not) or a valid `salsa::Id`.
-            unsafe { Some(salsa::Id::from_u32(self.0)) }
+            unsafe { Some(salsa::Id::from_index(self.0)) }
         }
     }
 
     #[inline]
     fn from_salsa_id(id: salsa::Id) -> Self {
         // SAFETY: This comes from a Salsa ID.
-        unsafe { Self::from_u32(id.as_u32()) }
+        unsafe { Self::from_u32(id.index()) }
     }
 
     #[inline]

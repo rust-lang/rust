@@ -13,4 +13,8 @@ pub fn expected() {}
 //~^ WARNING unexpected `cfg` condition name
 pub fn unexpected() {}
 
+#[cfg(target(os = "windows", architecture = "arm"))]
+//~^ WARNING unexpected `cfg` condition name
+pub fn unexpected2() {}
+
 fn main() {}

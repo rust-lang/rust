@@ -1,5 +1,7 @@
 //! Assorted functions shared by several assists.
 
+use std::slice;
+
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{
     DisplayTarget, HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution,
@@ -592,12 +594,10 @@ fn generate_impl_text_inner(
     let generic_params = adt.generic_param_list().map(|generic_params| {
         let lifetime_params =
             generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
-        let ty_or_const_params = generic_params.type_or_const_params().map(|param| {
-            match param {
+        let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
+            let param = match param {
                 ast::TypeOrConstParam::Type(param) => {
-                    let param = param.clone_for_update();
                     // remove defaults since they can't be specified in impls
-                    param.remove_default();
                     let mut bounds =
                         param.type_bound_list().map_or_else(Vec::new, |it| it.bounds().collect());
                     if let Some(trait_) = trait_text {
@@ -608,17 +608,16 @@ fn generate_impl_text_inner(
                         }
                     };
                     // `{ty_param}: {bounds}`
-                    let param =
-                        make::type_param(param.name().unwrap(), make::type_bound_list(bounds));
+                    let param = make::type_param(param.name()?, make::type_bound_list(bounds));
                     ast::GenericParam::TypeParam(param)
                 }
                 ast::TypeOrConstParam::Const(param) => {
-                    let param = param.clone_for_update();
                     // remove defaults since they can't be specified in impls
-                    param.remove_default();
+                    let param = make::const_param(param.name()?, param.ty()?);
                     ast::GenericParam::ConstParam(param)
                 }
-            }
+            };
+            Some(param)
         });
 
         make::generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
@@ -693,12 +692,10 @@ fn generate_impl_inner(
     let generic_params = adt.generic_param_list().map(|generic_params| {
         let lifetime_params =
             generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
-        let ty_or_const_params = generic_params.type_or_const_params().map(|param| {
-            match param {
+        let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
+            let param = match param {
                 ast::TypeOrConstParam::Type(param) => {
-                    let param = param.clone_for_update();
                     // remove defaults since they can't be specified in impls
-                    param.remove_default();
                     let mut bounds =
                         param.type_bound_list().map_or_else(Vec::new, |it| it.bounds().collect());
                     if let Some(trait_) = &trait_ {
@@ -709,17 +706,16 @@ fn generate_impl_inner(
                         }
                     };
                     // `{ty_param}: {bounds}`
-                    let param =
-                        make::type_param(param.name().unwrap(), make::type_bound_list(bounds));
+                    let param = make::type_param(param.name()?, make::type_bound_list(bounds));
                     ast::GenericParam::TypeParam(param)
                 }
                 ast::TypeOrConstParam::Const(param) => {
-                    let param = param.clone_for_update();
                     // remove defaults since they can't be specified in impls
-                    param.remove_default();
+                    let param = make::const_param(param.name()?, param.ty()?);
                     ast::GenericParam::ConstParam(param)
                 }
-            }
+            };
+            Some(param)
         });
 
         make::generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
@@ -747,14 +743,21 @@ fn generate_impl_inner(
     .clone_for_update();
 
     // Copy any cfg attrs from the original adt
-    let cfg_attrs = adt
-        .attrs()
-        .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false));
-    for attr in cfg_attrs {
-        impl_.add_attr(attr.clone_for_update());
-    }
+    add_cfg_attrs_to(adt, &impl_);
 
     impl_
+}
+
+pub(crate) fn add_cfg_attrs_to<T, U>(from: &T, to: &U)
+where
+    T: HasAttrs,
+    U: AttrsOwnerEdit,
+{
+    let cfg_attrs =
+        from.attrs().filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
+    for attr in cfg_attrs {
+        to.add_attr(attr.clone_for_update());
+    }
 }
 
 pub(crate) fn add_method_to_adt(
@@ -912,7 +915,7 @@ fn handle_as_ref_str(
 ) -> Option<(ReferenceConversionType, bool)> {
     let str_type = hir::BuiltinType::str().ty(db);
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[str_type.clone()])
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, slice::from_ref(&str_type))
         .then_some((ReferenceConversionType::AsRefStr, could_deref_to_target(ty, &str_type, db)))
 }
 
@@ -924,7 +927,7 @@ fn handle_as_ref_slice(
     let type_argument = ty.type_arguments().next()?;
     let slice_type = hir::Type::new_slice(type_argument);
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[slice_type.clone()]).then_some((
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, slice::from_ref(&slice_type)).then_some((
         ReferenceConversionType::AsRefSlice,
         could_deref_to_target(ty, &slice_type, db),
     ))
@@ -937,10 +940,11 @@ fn handle_dereferenced(
 ) -> Option<(ReferenceConversionType, bool)> {
     let type_argument = ty.type_arguments().next()?;
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[type_argument.clone()]).then_some((
-        ReferenceConversionType::Dereferenced,
-        could_deref_to_target(ty, &type_argument, db),
-    ))
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, slice::from_ref(&type_argument))
+        .then_some((
+            ReferenceConversionType::Dereferenced,
+            could_deref_to_target(ty, &type_argument, db),
+        ))
 }
 
 fn handle_option_as_ref(

@@ -4,8 +4,9 @@
 
 use std::assert_matches::assert_matches;
 
-use rustc_abi::Size;
+use rustc_abi::{FieldIdx, HasDataLayout, Size};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_middle::mir::interpret::{read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -28,8 +29,85 @@ pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAll
     let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes(), ());
     tcx.mk_const_alloc(alloc)
 }
-
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
+    /// Generates a value of `TypeId` for `ty` in-place.
+    fn write_type_id(
+        &mut self,
+        ty: Ty<'tcx>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()> {
+        let tcx = self.tcx;
+        let type_id_hash = tcx.type_id_hash(ty).as_u128();
+        let op = self.const_val_to_op(
+            ConstValue::Scalar(Scalar::from_u128(type_id_hash)),
+            tcx.types.u128,
+            None,
+        )?;
+        self.copy_op_allow_transmute(&op, dest)?;
+
+        // Give the each pointer-sized chunk provenance that knows about the type id.
+        // Here we rely on `TypeId` being a newtype around an array of pointers, so we
+        // first project to its only field and then the array elements.
+        let alloc_id = tcx.reserve_and_set_type_id_alloc(ty);
+        let arr = self.project_field(dest, FieldIdx::ZERO)?;
+        let mut elem_iter = self.project_array_fields(&arr)?;
+        while let Some((_, elem)) = elem_iter.next(self)? {
+            // Decorate this part of the hash with provenance; leave the integer part unchanged.
+            let hash_fragment = self.read_scalar(&elem)?.to_target_usize(&tcx)?;
+            let ptr = Pointer::new(alloc_id.into(), Size::from_bytes(hash_fragment));
+            let ptr = self.global_root_pointer(ptr)?;
+            let val = Scalar::from_pointer(ptr, &tcx);
+            self.write_scalar(val, &elem)?;
+        }
+        interp_ok(())
+    }
+
+    /// Read a value of type `TypeId`, returning the type it represents.
+    pub(crate) fn read_type_id(
+        &self,
+        op: &OpTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, Ty<'tcx>> {
+        // `TypeId` is a newtype around an array of pointers. All pointers must have the same
+        // provenance, and that provenance represents the type.
+        let ptr_size = self.pointer_size().bytes_usize();
+        let arr = self.project_field(op, FieldIdx::ZERO)?;
+
+        let mut ty_and_hash = None;
+        let mut elem_iter = self.project_array_fields(&arr)?;
+        while let Some((idx, elem)) = elem_iter.next(self)? {
+            let elem = self.read_pointer(&elem)?;
+            let (elem_ty, elem_hash) = self.get_ptr_type_id(elem)?;
+            // If this is the first element, remember the type and its hash.
+            // If this is not the first element, ensure it is consistent with the previous ones.
+            let full_hash = match ty_and_hash {
+                None => {
+                    let hash = self.tcx.type_id_hash(elem_ty).as_u128();
+                    let mut hash_bytes = [0u8; 16];
+                    write_target_uint(self.data_layout().endian, &mut hash_bytes, hash).unwrap();
+                    ty_and_hash = Some((elem_ty, hash_bytes));
+                    hash_bytes
+                }
+                Some((ty, hash_bytes)) => {
+                    if ty != elem_ty {
+                        throw_ub_format!(
+                            "invalid `TypeId` value: not all bytes carry the same type id metadata"
+                        );
+                    }
+                    hash_bytes
+                }
+            };
+            // Ensure the elem_hash matches the corresponding part of the full hash.
+            let hash_frag = &full_hash[(idx as usize) * ptr_size..][..ptr_size];
+            if read_target_uint(self.data_layout().endian, hash_frag).unwrap() != elem_hash.into() {
+                throw_ub_format!(
+                    "invalid `TypeId` value: the hash does not match the type id metadata"
+                );
+            }
+        }
+
+        interp_ok(ty_and_hash.unwrap().0)
+    }
+
     /// Returns `true` if emulation happened.
     /// Here we implement the intrinsics that are common to all Miri instances; individual machines can add their own
     /// intrinsic handling.
@@ -63,9 +141,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::type_id => {
                 let tp_ty = instance.args.type_at(0);
                 ensure_monomorphic_enough(tcx, tp_ty)?;
-                let val = ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128());
-                let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
-                self.copy_op(&val, dest)?;
+                self.write_type_id(tp_ty, dest)?;
+            }
+            sym::type_id_eq => {
+                let a_ty = self.read_type_id(&args[0])?;
+                let b_ty = self.read_type_id(&args[1])?;
+                self.write_scalar(Scalar::from_bool(a_ty == b_ty), dest)?;
             }
             sym::vtable_for => {
                 let tp_ty = instance.args.type_at(0);

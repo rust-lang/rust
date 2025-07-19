@@ -25,7 +25,6 @@ use crate::{
     db::HirDatabase,
     display::{HirDisplay, HirDisplayError, HirFormatter},
     infer::BindingMode,
-    lang_items::is_box,
 };
 
 use self::pat_util::EnumerateAndAdjustIterator;
@@ -77,7 +76,7 @@ pub(crate) enum PatKind {
         subpatterns: Vec<FieldPat>,
     },
 
-    /// `box P`, `&P`, `&mut P`, etc.
+    /// `&P`, `&mut P`, etc.
     Deref {
         subpattern: Pat,
     },
@@ -151,7 +150,7 @@ impl<'a> PatCtxt<'a> {
             hir_def::hir::Pat::Bind { id, subpat, .. } => {
                 let bm = self.infer.binding_modes[pat];
                 ty = &self.infer[id];
-                let name = &self.body.bindings[id].name;
+                let name = &self.body[id].name;
                 match (bm, ty.kind(Interner)) {
                     (BindingMode::Ref(_), TyKind::Ref(.., rty)) => ty = rty,
                     (BindingMode::Ref(_), _) => {
@@ -406,7 +405,6 @@ impl HirDisplay for Pat {
             }
             PatKind::Deref { subpattern } => {
                 match self.ty.kind(Interner) {
-                    TyKind::Adt(adt, _) if is_box(f.db, adt.0) => write!(f, "box ")?,
                     &TyKind::Ref(mutbl, ..) => {
                         write!(f, "&{}", if mutbl == Mutability::Mut { "mut " } else { "" })?
                     }

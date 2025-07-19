@@ -92,7 +92,7 @@ pub(super) fn hints(
                 },
                 MirSpan::Unknown => continue,
             };
-            let binding = &hir.bindings[binding_idx];
+            let binding = &hir[binding_idx];
             let name = binding.name.display_no_db(display_target.edition).to_smolstr();
             if name.starts_with("<ra@") {
                 continue; // Ignore desugared variables

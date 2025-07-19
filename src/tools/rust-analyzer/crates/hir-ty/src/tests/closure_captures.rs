@@ -446,7 +446,7 @@ fn main() {
 }
 
 #[test]
-fn let_binding_is_a_ref_capture() {
+fn let_binding_is_a_ref_capture_in_ref_binding() {
     check_closure_captures(
         r#"
 //- minicore:copy
@@ -454,12 +454,36 @@ struct S;
 fn main() {
     let mut s = S;
     let s_ref = &mut s;
+    let mut s2 = S;
+    let s_ref2 = &mut s2;
     let closure = || {
         if let ref cb = s_ref {
+        } else if let ref mut cb = s_ref2 {
         }
     };
 }
 "#,
-        expect!["83..135;49..54;112..117 ByRef(Shared) s_ref &'? &'? mut S"],
+        expect![[r#"
+            129..225;49..54;149..155 ByRef(Shared) s_ref &'? &'? mut S
+            129..225;93..99;188..198 ByRef(Mut { kind: Default }) s_ref2 &'? mut &'? mut S"#]],
+    );
+}
+
+#[test]
+fn let_binding_is_a_value_capture_in_binding() {
+    check_closure_captures(
+        r#"
+//- minicore:copy, option
+struct Box(i32);
+fn main() {
+    let b = Some(Box(0));
+    let closure = || {
+        if let Some(b) = b {
+            let _move = b;
+        }
+    };
+}
+"#,
+        expect!["73..149;37..38;103..104 ByValue b Option<Box>"],
     );
 }

@@ -454,7 +454,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
         type Result = ControlFlow<Span>;
         fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) -> ControlFlow<Span> {
             match ty.kind {
-                hir::TyKind::BareFn(..) => {
+                hir::TyKind::FnPtr(..) => {
                     self.outer_index.shift_in(1);
                     let res = intravisit::walk_ty(self, ty);
                     self.outer_index.shift_out(1);

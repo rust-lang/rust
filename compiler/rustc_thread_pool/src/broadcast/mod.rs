@@ -1,6 +1,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::job::{ArcJob, StackJob};
 use crate::latch::{CountLatch, LatchRef};
@@ -97,13 +98,22 @@ where
     OP: Fn(BroadcastContext<'_>) -> R + Sync,
     R: Send,
 {
+    let current_thread = WorkerThread::current();
+    let current_thread_addr = current_thread.expose_provenance();
+    let started = &AtomicBool::new(false);
     let f = move |injected: bool| {
         debug_assert!(injected);
+
+        // Mark as started if we are the thread that initiated that broadcast.
+        if current_thread_addr == WorkerThread::current().expose_provenance() {
+            started.store(true, Ordering::Relaxed);
+        }
+
         BroadcastContext::with(&op)
     };
 
     let n_threads = registry.num_threads();
-    let current_thread = unsafe { WorkerThread::current().as_ref() };
+    let current_thread = unsafe { current_thread.as_ref() };
     let tlv = crate::tlv::get();
     let latch = CountLatch::with_count(n_threads, current_thread);
     let jobs: Vec<_> =
@@ -112,8 +122,16 @@ where
 
     registry.inject_broadcast(job_refs);
 
+    let current_thread_job_id = current_thread
+        .and_then(|worker| (registry.id() == worker.registry.id()).then(|| worker))
+        .map(|worker| unsafe { jobs[worker.index()].as_job_ref() }.id());
+
     // Wait for all jobs to complete, then collect the results, maybe propagating a panic.
-    latch.wait(current_thread);
+    latch.wait(
+        current_thread,
+        || started.load(Ordering::Relaxed),
+        |job| Some(job.id()) == current_thread_job_id,
+    );
     jobs.into_iter().map(|job| unsafe { job.into_result() }).collect()
 }
 
@@ -129,7 +147,7 @@ where
 {
     let job = ArcJob::new({
         let registry = Arc::clone(registry);
-        move || {
+        move |_| {
             registry.catch_unwind(|| BroadcastContext::with(&op));
             registry.terminate(); // (*) permit registry to terminate now
         }

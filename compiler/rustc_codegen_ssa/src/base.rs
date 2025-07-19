@@ -200,7 +200,7 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let vptr_entry_idx = cx.tcx().supertrait_vtable_slot((source, target));
 
             if let Some(entry_idx) = vptr_entry_idx {
-                let ptr_size = bx.data_layout().pointer_size;
+                let ptr_size = bx.data_layout().pointer_size();
                 let vtable_byte_offset = u64::try_from(entry_idx).unwrap() * ptr_size.bytes();
                 load_vtable(bx, old_info, bx.type_ptr(), vtable_byte_offset, source, true)
             } else {
@@ -577,8 +577,8 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(bx: &mut Bx) -> (Bx::Va
         // Params for UEFI
         let param_handle = bx.get_param(0);
         let param_system_table = bx.get_param(1);
-        let ptr_size = bx.tcx().data_layout.pointer_size;
-        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
+        let ptr_size = bx.tcx().data_layout.pointer_size();
+        let ptr_align = bx.tcx().data_layout.pointer_align().abi;
         let arg_argc = bx.const_int(bx.cx().type_isize(), 2);
         let arg_argv = bx.alloca(2 * ptr_size, ptr_align);
         bx.store(param_handle, arg_argv, ptr_align);
@@ -647,7 +647,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu);
+        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, &[]);
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -667,7 +667,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // codegen units.
     let MonoItemPartitions { codegen_units, autodiff_items, .. } =
         tcx.collect_and_partition_mono_items(());
-    let autodiff_fncs = autodiff_items.to_vec();
 
     // Force all codegen_unit queries so they are already either red or green
     // when compile_codegen_unit accesses them. We are not able to re-execute
@@ -680,7 +679,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, target_cpu);
+    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, target_cpu, autodiff_items);
 
     // Codegen an allocator shim, if necessary.
     if let Some(kind) = allocator_kind_for_codegen(tcx) {
@@ -708,10 +707,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             ModuleCodegen::new_allocator(llmod_id, module_llvm),
             cost,
         );
-    }
-
-    if !autodiff_fncs.is_empty() {
-        ongoing_codegen.submit_autodiff_items(autodiff_fncs);
     }
 
     // For better throughput during parallel processing by LLVM, we used to sort

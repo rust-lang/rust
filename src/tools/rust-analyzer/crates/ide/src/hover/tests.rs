@@ -10927,3 +10927,99 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn keyword_inside_link() {
+    check(
+        r#"
+enum Foo {
+    MacroExpansion,
+}
+
+/// I return a [macro expansion](Foo::MacroExpansion).
+fn bar$0() -> Foo {
+    Foo::MacroExpansion
+}
+    "#,
+        expect![[r#"
+            *bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn bar() -> Foo
+            ```
+
+            ---
+
+            I return a [macro expansion](https://docs.rs/ra_test_fixture/*/ra_test_fixture/enum.Foo.html#variant.MacroExpansion).
+        "#]],
+    );
+}
+
+#[test]
+fn regression_20190() {
+    check(
+        r#"
+struct Foo;
+
+/// [`foo` bar](Foo).
+fn has_docs$0() {}
+    "#,
+        expect![[r#"
+            *has_docs*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn has_docs()
+            ```
+
+            ---
+
+            [`foo` bar](https://docs.rs/ra_test_fixture/*/ra_test_fixture/struct.Foo.html).
+        "#]],
+    );
+}
+
+#[test]
+fn regression_20225() {
+    check(
+        r#"
+//- minicore: coerce_unsized
+trait Trait {
+    type Type<'a, T: ?Sized + 'a>;
+}
+
+enum Borrowed {}
+
+impl Trait for Borrowed {
+    type Type<'a, T: ?Sized + 'a> = &'a T;
+}
+
+enum Enum<'a, T: Trait + 'a> {
+    Variant1(T::Type<'a, [Enum<'a, T>]>),
+    Variant2,
+}
+
+impl Enum<'_, Borrowed> {
+    const CONSTANT$0: Self = Self::Variant1(&[Self::Variant2]);
+}
+    "#,
+        expect![[r#"
+            *CONSTANT*
+
+            ```rust
+            ra_test_fixture::Enum
+            ```
+
+            ```rust
+            const CONSTANT: Self = Variant1(&[Variant2])
+            ```
+        "#]],
+    );
+}

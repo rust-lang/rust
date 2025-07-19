@@ -19,7 +19,7 @@ If any of the following conditions are violated, the result is Undefined Behavio
 bounds of that allocation. In particular, this range must not "wrap around" the edge
 of the address space.
 
-Allocated objects can never be larger than `isize::MAX` bytes, so if the computed offset
+Allocations can never be larger than `isize::MAX` bytes, so if the computed offset
 stays in bounds of the allocation, it is guaranteed to satisfy the first requirement.
 This implies, for instance, that `vec.as_ptr().add(vec.len())` (for `vec: Vec<T>`) is always
 safe.

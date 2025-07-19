@@ -65,7 +65,7 @@ use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind, Canonica
 use crate::lint::lint_level;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
-use crate::middle::{resolve_bound_vars, stability};
+use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::query::plumbing::QuerySystem;
@@ -137,6 +137,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type FnInputTys = &'tcx [Ty<'tcx>];
     type ParamTy = ParamTy;
     type BoundTy = ty::BoundTy;
+    type Symbol = Symbol;
 
     type PlaceholderTy = ty::PlaceholderType;
     type ErrorGuaranteed = ErrorGuaranteed;
@@ -161,6 +162,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type LateParamRegion = ty::LateParamRegion;
     type BoundRegion = ty::BoundRegion;
     type PlaceholderRegion = ty::PlaceholderRegion;
+
+    type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>;
 
     type ParamEnv = ty::ParamEnv<'tcx>;
     type Predicate = Predicate<'tcx>;
@@ -713,17 +716,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         defining_anchor: Self::LocalDefId,
     ) -> Self::LocalDefIds {
-        if self.next_trait_solver_globally() {
-            let coroutines_defined_by = self
-                .nested_bodies_within(defining_anchor)
-                .iter()
-                .filter(|def_id| self.is_coroutine(def_id.to_def_id()));
-            self.mk_local_def_ids_from_iter(
-                self.opaque_types_defined_by(defining_anchor).iter().chain(coroutines_defined_by),
-            )
-        } else {
-            self.opaque_types_defined_by(defining_anchor)
-        }
+        let coroutines_defined_by = self
+            .nested_bodies_within(defining_anchor)
+            .iter()
+            .filter(|def_id| self.is_coroutine(def_id.to_def_id()));
+        self.mk_local_def_ids_from_iter(
+            self.opaque_types_defined_by(defining_anchor).iter().chain(coroutines_defined_by),
+        )
     }
 }
 
@@ -833,6 +832,13 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
     fn associated_const_equality(self) -> bool {
         self.associated_const_equality()
     }
+
+    fn feature_bound_holds_in_crate(self, symbol: Symbol) -> bool {
+        // We don't consider feature bounds to hold in the crate when `staged_api` feature is
+        // enabled, even if it is enabled through `#[feature]`.
+        // This is to prevent accidentally leaking unstable APIs to stable.
+        !self.staged_api() && self.enabled(symbol)
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Span<TyCtxt<'tcx>> for Span {
@@ -874,6 +880,7 @@ pub struct CtxtInterners<'tcx> {
     offset_of: InternedSet<'tcx, List<(VariantIdx, FieldIdx)>>,
     valtree: InternedSet<'tcx, ty::ValTreeKind<'tcx>>,
     patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
+    outlives: InternedSet<'tcx, List<ty::ArgOutlivesPredicate<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -911,6 +918,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             offset_of: InternedSet::with_capacity(N),
             valtree: InternedSet::with_capacity(N),
             patterns: InternedSet::with_capacity(N),
+            outlives: InternedSet::with_capacity(N),
         }
     }
 
@@ -1799,10 +1807,6 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    pub fn stability(self) -> &'tcx stability::Index {
-        self.stability_index(())
-    }
-
     pub fn features(self) -> &'tcx rustc_feature::Features {
         self.features_query(())
     }
@@ -2058,9 +2062,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> {
-        // Create a dependency to the red node to be sure we re-execute this when the amount of
-        // definitions change.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        // Depend on the `analysis` query to ensure compilation if finished.
+        self.ensure_ok().analysis(());
 
         let definitions = &self.untracked.definitions;
         gen {
@@ -2080,9 +2083,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn def_path_table(self) -> &'tcx rustc_hir::definitions::DefPathTable {
-        // Create a dependency to the crate to be sure we re-execute this when the amount of
-        // definitions change.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        // Depend on the `analysis` query to ensure compilation if finished.
+        self.ensure_ok().analysis(());
 
         // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
@@ -2694,6 +2696,7 @@ slice_interners!(
     captures: intern_captures(&'tcx ty::CapturedPlace<'tcx>),
     offset_of: pub mk_offset_of((VariantIdx, FieldIdx)),
     patterns: pub mk_patterns(Pattern<'tcx>),
+    outlives: pub mk_outlives(ty::ArgOutlivesPredicate<'tcx>),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -3109,6 +3112,17 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_bound_variable_kinds(xs))
     }
 
+    pub fn mk_outlives_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<
+                ty::ArgOutlivesPredicate<'tcx>,
+                &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>,
+            >,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_outlives(xs))
+    }
+
     /// Emit a lint at `span` from a lint struct (some type that implements `LintDiagnostic`,
     /// typically generated by `#[derive(LintDiagnostic)]`).
     #[track_caller]
@@ -3281,10 +3295,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     return ty::Region::new_late_param(
                         self,
                         new_parent.to_def_id(),
-                        ty::LateParamRegionKind::Named(
-                            lbv.to_def_id(),
-                            self.item_name(lbv.to_def_id()),
-                        ),
+                        ty::LateParamRegionKind::Named(lbv.to_def_id()),
                     );
                 }
                 resolve_bound_vars::ResolvedArg::Error(guar) => {
@@ -3366,6 +3377,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolver_for_lowering_raw(()).0
     }
 
+    pub fn metadata_dep_node(self) -> crate::dep_graph::DepNode {
+        crate::dep_graph::make_metadata(self)
+    }
+
     /// Given an `impl_id`, return the trait it implements.
     /// Return `None` if this is an inherent impl.
     pub fn impl_trait_ref(
@@ -3415,10 +3430,6 @@ pub struct DeducedParamAttrs {
 pub fn provide(providers: &mut Providers) {
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
-    providers.names_imported_by_glob_use = |tcx, id| {
-        tcx.arena.alloc(tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default())
-    };
-
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
     providers.is_panic_runtime =

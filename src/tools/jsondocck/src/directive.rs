@@ -105,13 +105,10 @@ impl DirectiveKind {
                 [_path, value] => Self::HasNotValue { value: value.clone() },
                 _ => panic!("`//@ !has` must have 2 or 3 arguments, but got {args:?}"),
             },
-            // Ignore compiletest directives, like //@ edition
-            (_, false) if KNOWN_DIRECTIVE_NAMES.contains(&directive_name) => {
-                return None;
-            }
-            _ => {
-                panic!("Invalid directive `//@ {}{directive_name}`", if negated { "!" } else { "" })
-            }
+            // Ignore unknown directives as they might be compiletest directives
+            // since they share the same `//@` prefix by convention. In any case,
+            // compiletest rejects unknown directives for us.
+            _ => return None,
         };
 
         Some((kind, &args[0]))
@@ -215,10 +212,6 @@ fn get_one<'a>(matches: &[&'a Value]) -> Result<&'a Value, String> {
         _ => Err(format!("matched to multiple values {matches:?}, but want exactly 1")),
     }
 }
-
-// FIXME: This setup is temporary until we figure out how to improve this situation.
-//        See <https://github.com/rust-lang/rust/issues/125813#issuecomment-2141953780>.
-include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../compiletest/src/directive-list.rs"));
 
 fn string_to_value<'a>(s: &str, cache: &'a Cache) -> Cow<'a, Value> {
     if s.starts_with("$") {

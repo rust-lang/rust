@@ -117,15 +117,15 @@ hir_analysis_coercion_between_struct_same_note = expected coercion between the s
 
 hir_analysis_coercion_between_struct_single_note = expected a single field to be coerced, none found
 
-hir_analysis_const_bound_for_non_const_trait = `{$modifier}` can only be applied to `#[const_trait]` traits
+hir_analysis_const_bound_for_non_const_trait = `{$modifier}` can only be applied to `const` traits
     .label = can't be applied to `{$trait_name}`
-    .note = `{$trait_name}` can't be used with `{$modifier}` because it isn't annotated with `#[const_trait]`
-    .suggestion = {$suggestion_pre}mark `{$trait_name}` as `#[const_trait]` to allow it to have `const` implementations
+    .note = `{$trait_name}` can't be used with `{$modifier}` because it isn't `const`
+    .suggestion = {$suggestion_pre}mark `{$trait_name}` as `const` to allow it to have `const` implementations
 
-hir_analysis_const_impl_for_non_const_trait = const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`
+hir_analysis_const_impl_for_non_const_trait = const `impl` for trait `{$trait_name}` which is not `const`
     .label = this trait is not `const`
-    .suggestion = {$suggestion_pre}mark `{$trait_name}` as `#[const_trait]` to allow it to have `const` implementations
-    .note = marking a trait with `#[const_trait]` ensures all default method bodies are `const`
+    .suggestion = {$suggestion_pre}mark `{$trait_name}` as `const` to allow it to have `const` implementations
+    .note = marking a trait with `const` ensures all default method bodies are `const`
     .adding = adding a non-const method body in the future would be a breaking change
 
 hir_analysis_const_param_ty_impl_on_non_adt =
@@ -158,7 +158,7 @@ hir_analysis_dispatch_from_dyn_zst = the trait `DispatchFromDyn` may only be imp
 hir_analysis_drop_impl_negative = negative `Drop` impls are not supported
 
 hir_analysis_drop_impl_on_wrong_item =
-    the `Drop` trait may only be implemented for local structs, enums, and unions
+    the `{$trait_}` trait may only be implemented for local structs, enums, and unions
     .label = must be a struct, enum, or union in the current crate
 
 hir_analysis_drop_impl_reservation = reservation `Drop` impls are not supported
@@ -371,9 +371,6 @@ hir_analysis_missing_type_params =
         *[other] parameters
     } must be specified on the object type
 
-hir_analysis_multiple_relaxed_default_bounds =
-    type parameter has more than one relaxed default bound, only one is supported
-
 hir_analysis_must_be_name_of_associated_function = must be a name of an associated function
 
 hir_analysis_must_implement_not_function = not a function
@@ -447,8 +444,6 @@ hir_analysis_parenthesized_fn_trait_expansion =
 
 hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
     .label = not allowed in type signatures
-
-hir_analysis_pointee_sized_trait_object = `PointeeSized` cannot be used with trait objects
 
 hir_analysis_precise_capture_self_alias = `Self` can't be captured in `use<...>` precise captures list, since it is an alias
     .label = `Self` is not a generic argument, but an alias to the type of the {$what}

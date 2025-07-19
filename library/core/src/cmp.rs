@@ -248,7 +248,7 @@ use crate::ops::ControlFlow;
 )]
 #[rustc_diagnostic_item = "PartialEq"]
 #[const_trait]
-#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 pub trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
     /// Tests for `self` and `other` values to be equal, and is used by `==`.
     #[must_use]
@@ -381,7 +381,8 @@ pub struct AssertParamIsEq<T: Eq + PointeeSized> {
 ///
 /// assert_eq!(2.cmp(&1), Ordering::Greater);
 /// ```
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive(Clone, Copy, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive_const(PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 // This is a lang item only so that `BinOp::Cmp` in MIR can return it.
 // It has no special behavior, but does require that the three variants
@@ -1809,7 +1810,7 @@ mod impls {
     macro_rules! partial_eq_impl {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
             impl const PartialEq for $t {
                 #[inline]
                 fn eq(&self, other: &Self) -> bool { *self == *other }
@@ -2017,7 +2018,7 @@ mod impls {
     // & pointers
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     impl<A: PointeeSized, B: PointeeSized> const PartialEq<&B> for &A
     where
         A: ~const PartialEq<B>,
@@ -2089,7 +2090,7 @@ mod impls {
     // &mut pointers
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     impl<A: PointeeSized, B: PointeeSized> const PartialEq<&mut B> for &mut A
     where
         A: ~const PartialEq<B>,
@@ -2159,7 +2160,7 @@ mod impls {
     impl<A: PointeeSized> Eq for &mut A where A: Eq {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     impl<A: PointeeSized, B: PointeeSized> const PartialEq<&mut B> for &A
     where
         A: ~const PartialEq<B>,
@@ -2175,7 +2176,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     impl<A: PointeeSized, B: PointeeSized> const PartialEq<&B> for &mut A
     where
         A: ~const PartialEq<B>,
