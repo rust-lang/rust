@@ -17,6 +17,7 @@ use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
+use std::mem;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
@@ -521,6 +522,11 @@ enum UpdateParentGoalCtxt<'a, X: Cx> {
     ProvisionalCacheHit,
 }
 
+pub struct WithCappedDepthInfo {
+    encountered_overflow: bool,
+    available_depth: AvailableDepth,
+}
+
 impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     pub fn new(root_depth: usize) -> SearchGraph<D> {
         Self {
@@ -592,6 +598,25 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         head: StackDepth,
     ) -> PathKind {
         stack.cycle_step_kinds(head).fold(step_kind_to_head, |curr, step| curr.extend(step))
+    }
+
+    pub fn with_capped_depth_start(&mut self, max_depth: usize) -> Option<WithCappedDepthInfo> {
+        let entry = self.stack.last_mut().unwrap();
+        if max_depth < entry.available_depth.0 {
+            let encountered_overflow = entry.encountered_overflow;
+            let available_depth =
+                mem::replace(&mut entry.available_depth, AvailableDepth(max_depth));
+            Some(WithCappedDepthInfo { encountered_overflow, available_depth })
+        } else {
+            None
+        }
+    }
+
+    pub fn with_capped_depth_end(&mut self, info: WithCappedDepthInfo) {
+        let entry = self.stack.last_mut().unwrap();
+        entry.encountered_overflow = info.encountered_overflow;
+        entry.available_depth = info.available_depth;
+        self.provisional_cache.clear();
     }
 
     /// Probably the most involved method of the whole solver.

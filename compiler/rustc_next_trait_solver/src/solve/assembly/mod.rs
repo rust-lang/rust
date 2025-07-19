@@ -13,7 +13,7 @@ use rustc_type_ir::{
     self as ty, Interner, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _,
     TypeVisitor, TypingMode, Upcast as _, elaborate,
 };
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, debug_span};
 
 use super::trait_goals::TraitGoalProvenVia;
 use super::{has_only_region_constraints, inspect};
@@ -958,13 +958,19 @@ where
                 // If the trait goal has been proven by using the environment, we want to treat
                 // aliases as rigid if there are no applicable projection bounds in the environment.
                 if considered_candidates.is_empty() {
+                    let _span = debug_span!("inject_normalize_to_rigid_candidate");
+                    let _span = _span.enter();
                     if let Ok(response) = inject_normalize_to_rigid_candidate(self) {
                         considered_candidates.push(response);
                     }
                 }
 
                 if let Some(response) = self.try_merge_responses(&considered_candidates) {
-                    Ok(response)
+                    if response.value.certainty == Certainty::Yes && response.value.external_constraints.normalization_nested_goals.is_empty() {
+                        Ok(response)
+                    } else {
+                        self.flounder(&considered_candidates)
+                    }
                 } else {
                     self.flounder(&considered_candidates)
                 }
