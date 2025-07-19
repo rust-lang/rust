@@ -201,6 +201,15 @@ impl<'a> Iterator for CharIndices<'a> {
     }
 
     #[inline]
+    fn advance_by(&mut self, remainder: usize) -> Result<(), NonZero<usize>> {
+        let pre_len = self.iter.iter.len();
+        let res = self.iter.advance_by(remainder);
+        let len = self.iter.iter.len();
+        self.front_offset += pre_len - len;
+        res
+    }
+
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
