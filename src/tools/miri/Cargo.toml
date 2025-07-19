@@ -49,7 +49,7 @@ ipc-channel = { version = "0.20.0", optional = true }
 capstone = { version = "0.13", optional = true }
 
 [dev-dependencies]
-ui_test = "0.29.1"
+ui_test = "0.30.2"
 colored = "3"
 rustc_version = "0.4"
 regex = "1.5.5"

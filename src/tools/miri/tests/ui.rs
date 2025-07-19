@@ -13,7 +13,8 @@ use ui_test::custom_flags::edition::Edition;
 use ui_test::dependencies::DependencyBuilder;
 use ui_test::per_test_config::TestConfig;
 use ui_test::spanned::Spanned;
-use ui_test::{CommandBuilder, Config, Format, Match, ignore_output_conflict, status_emitter};
+use ui_test::status_emitter::StatusEmitter;
+use ui_test::{CommandBuilder, Config, Match, ignore_output_conflict};
 
 #[derive(Copy, Clone, Debug)]
 enum Mode {
@@ -216,10 +217,7 @@ fn run_tests(
         // This could be used to overwrite the `Config` on a per-test basis.
         |_, _| {},
         // No GHA output as that would also show in the main rustc repo.
-        match args.format {
-            Format::Terse => status_emitter::Text::quiet(),
-            Format::Pretty => status_emitter::Text::verbose(),
-        },
+        Box::<dyn StatusEmitter>::from(args.format),
     )
 }
 
