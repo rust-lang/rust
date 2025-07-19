@@ -17,4 +17,5 @@ impl From<S> for S {
     }
 }
 
+
 fn main() {}

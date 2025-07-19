@@ -26,14 +26,16 @@ impl Error for TryFromIntError {
 }
 
 #[stable(feature = "try_from", since = "1.34.0")]
-impl From<Infallible> for TryFromIntError {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<Infallible> for TryFromIntError {
     fn from(x: Infallible) -> TryFromIntError {
         match x {}
     }
 }
 
 #[unstable(feature = "never_type", issue = "35121")]
-impl From<!> for TryFromIntError {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<!> for TryFromIntError {
     #[inline]
     fn from(never: !) -> TryFromIntError {
         // Match rather than coerce to make sure that code like

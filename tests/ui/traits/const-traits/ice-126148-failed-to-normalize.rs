@@ -6,20 +6,16 @@ struct TryMe;
 struct Error;
 
 impl const FromResidual<Error> for TryMe {}
-//~^ ERROR const `impl` for trait `FromResidual` which is not `const`
-//~| ERROR not all trait items implemented
+//~^ ERROR not all trait items implemented
 
 impl const Try for TryMe {
-    //~^ ERROR const `impl` for trait `Try` which is not `const`
-    //~| ERROR not all trait items implemented
+    //~^ ERROR not all trait items implemented
     type Output = ();
     type Residual = Error;
 }
 
 const fn t() -> TryMe {
     TryMe?;
-    //~^ ERROR `?` is not allowed on
-    //~| ERROR `?` is not allowed on
     TryMe
 }
 
