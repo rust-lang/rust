@@ -5,7 +5,7 @@
 //@ [aarch64] compile-flags: --target aarch64-unknown-none
 //@ [aarch64] needs-llvm-components: aarch64
 //@ [x86_64] compile-flags: --target x86_64-unknown-none
-//@ [x86_64] needs-llvm-components:
+//@ [x86_64] needs-llvm-components: x86
 //@ compile-flags: -Cno-prepopulate-passes -Zsanitizer=kcfi -Copt-level=0
 
 #![crate_type = "lib"]

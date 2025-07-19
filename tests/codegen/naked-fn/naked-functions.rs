@@ -8,7 +8,7 @@
 //@[win_i686] compile-flags: --target i686-pc-windows-gnu
 //@[win_i686] needs-llvm-components: x86
 //@[macos] compile-flags: --target aarch64-apple-darwin
-//@[macos] needs-llvm-components: arm
+//@[macos] needs-llvm-components: aarch64
 //@[thumb] compile-flags: --target thumbv7em-none-eabi
 //@[thumb] needs-llvm-components: arm
 

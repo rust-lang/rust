@@ -3,15 +3,15 @@
 //@ add-core-stubs
 //@ revisions:x86_64 i686 aarch64 arm riscv
 //@[x86_64] compile-flags: --target x86_64-unknown-uefi
-//@[x86_64] needs-llvm-components: aarch64 arm riscv
+//@[x86_64] needs-llvm-components: x86
 //@[i686] compile-flags: --target i686-unknown-linux-musl
-//@[i686] needs-llvm-components: aarch64 arm riscv
+//@[i686] needs-llvm-components: x86
 //@[aarch64] compile-flags: --target aarch64-unknown-none
-//@[aarch64] needs-llvm-components: aarch64 arm riscv
+//@[aarch64] needs-llvm-components: aarch64
 //@[arm] compile-flags: --target armv7r-none-eabi
-//@[arm] needs-llvm-components: aarch64 arm riscv
+//@[arm] needs-llvm-components: arm
 //@[riscv] compile-flags: --target riscv64gc-unknown-none-elf
-//@[riscv] needs-llvm-components: aarch64 arm riscv
+//@[riscv] needs-llvm-components: riscv
 //@ compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
