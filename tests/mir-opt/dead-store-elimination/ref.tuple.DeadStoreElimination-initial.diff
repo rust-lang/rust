@@ -13,7 +13,7 @@
   
       bb0: {
 -         StorageLive(_2);
-          _3 = deref_copy (_1.1: &Foo);
+-         _3 = deref_copy (_1.1: &Foo);
 -         _2 = &((*_3).2: i32);
 +         // DBG: _2 = &((*_3).2: i32);
           _4 = deref_copy (_1.1: &Foo);

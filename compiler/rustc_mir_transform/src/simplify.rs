@@ -657,6 +657,22 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
         self.tcx
     }
 
+    fn visit_statement_debuginfo(
+        &mut self,
+        stmt_debuginfo: &mut StmtDebugInfo<'tcx>,
+        location: Location,
+    ) {
+        match stmt_debuginfo {
+            StmtDebugInfo::AssignRef(local, place) => {
+                if place.as_ref().accessed_locals().any(|local| self.map[local].is_none()) {
+                    *stmt_debuginfo = StmtDebugInfo::InvalidAssign(*local);
+                }
+            }
+            StmtDebugInfo::InvalidAssign(_) => {}
+        }
+        self.super_statement_debuginfo(stmt_debuginfo, location);
+    }
+
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
         *l = self.map[*l].unwrap();
     }

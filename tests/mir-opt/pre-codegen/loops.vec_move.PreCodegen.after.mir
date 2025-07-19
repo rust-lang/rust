@@ -56,11 +56,11 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                             scope 40 (inlined alloc::raw_vec::RawVec::<impl Sized>::capacity) {
                                 debug self => _37;
                                 let mut _19: usize;
-                                let mut _42: &alloc::raw_vec::RawVecInner;
+                                let mut _39: &alloc::raw_vec::RawVecInner;
                                 scope 41 (inlined std::mem::size_of::<impl Sized>) {
                                 }
                                 scope 42 (inlined alloc::raw_vec::RawVecInner::capacity) {
-                                    debug self => _42;
+                                    debug self => _39;
                                     debug elem_size => _19;
                                     let mut _21: core::num::niche_types::UsizeNoHighBit;
                                     scope 43 (inlined core::num::niche_types::UsizeNoHighBit::as_inner) {
@@ -130,7 +130,6 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                 }
                 scope 18 (inlined alloc::raw_vec::RawVec::<impl Sized>::non_null) {
                     debug self => _31;
-                    let mut _41: &alloc::raw_vec::RawVecInner;
                     scope 19 (inlined alloc::raw_vec::RawVecInner::non_null::<impl Sized>) {
                         let mut _4: std::ptr::NonNull<u8>;
                         scope 20 (inlined Unique::<u8>::cast::<impl Sized>) {
@@ -150,9 +149,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
             }
             scope 12 (inlined Vec::<impl Sized>::allocator) {
                 debug self => _29;
-                let mut _39: &alloc::raw_vec::RawVec<impl Sized>;
                 scope 13 (inlined alloc::raw_vec::RawVec::<impl Sized>::allocator) {
-                    let mut _40: &alloc::raw_vec::RawVecInner;
                     scope 14 (inlined alloc::raw_vec::RawVecInner::allocator) {
                     }
                 }
@@ -183,13 +180,10 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         StorageLive(_3);
         // DBG: _30 = &_2;
         // DBG: _29 = &(_2.0: std::vec::Vec<impl Sized>);
-        // DBG: _39 = &((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
-        // DBG: _40 = &(((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner);
         _3 = &raw const ((((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).2: std::alloc::Global);
         StorageDead(_3);
         // DBG: _32 = &_2;
         // DBG: _31 = &((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
-        // DBG: _41 = &(((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner);
         _4 = copy (((((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
         _5 = copy _4 as *const impl Sized (Transmute);
         _6 = NonNull::<impl Sized> { pointer: copy _5 };
@@ -247,7 +241,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     bb4: {
         // DBG: _38 = &_2;
         // DBG: _37 = &((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
-        // DBG: _42 = &(((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner);
+        // DBG: _39 = &(((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner);
         StorageLive(_19);
         _19 = SizeOf(impl Sized);
         switchInt(move _19) -> [0: bb5, otherwise: bb6];

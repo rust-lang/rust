@@ -527,6 +527,20 @@ impl<'tcx> PlaceRef<'tcx> {
         })
     }
 
+    /// Return the place accessed locals that include the base local.
+    pub fn accessed_locals(self) -> impl Iterator<Item = Local> {
+        std::iter::once(self.local).chain(self.projection.iter().filter_map(|proj| match proj {
+            ProjectionElem::Index(local) => Some(*local),
+            ProjectionElem::Deref
+            | ProjectionElem::Field(_, _)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Downcast(_, _)
+            | ProjectionElem::OpaqueCast(_)
+            | ProjectionElem::UnwrapUnsafeBinder(_) => None,
+        }))
+    }
+
     /// Generates a new place by appending `more_projections` to the existing ones
     /// and interning the result.
     pub fn project_deeper(
@@ -1057,4 +1071,5 @@ impl<'tcx> ops::DerefMut for StmtDebugInfos<'tcx> {
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum StmtDebugInfo<'tcx> {
     AssignRef(Local, Place<'tcx>),
+    InvalidAssign(Local),
 }
