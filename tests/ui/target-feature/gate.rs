@@ -6,6 +6,7 @@
 // gate-test-arm_target_feature
 // gate-test-hexagon_target_feature
 // gate-test-mips_target_feature
+// gate-test-nvptx_target_feature
 // gate-test-wasm_target_feature
 // gate-test-adx_target_feature
 // gate-test-cmpxchg16b_target_feature

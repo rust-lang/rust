@@ -329,6 +329,7 @@ declare_features! (
     (unstable, m68k_target_feature, "1.85.0", Some(134328)),
     (unstable, mips_target_feature, "1.27.0", Some(44839)),
     (unstable, movrs_target_feature, "1.88.0", Some(137976)),
+    (unstable, nvptx_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
     (unstable, powerpc_target_feature, "1.27.0", Some(44839)),
     (unstable, prfchw_target_feature, "1.78.0", Some(44839)),
     (unstable, riscv_target_feature, "1.45.0", Some(44839)),
