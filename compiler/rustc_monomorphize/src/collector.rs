@@ -1582,6 +1582,11 @@ impl<'v> RootCollector<'_, 'v> {
             return;
         };
 
+        let main_instance = Instance::mono(self.tcx, main_def_id);
+        if self.tcx.should_codegen_locally(main_instance) {
+            self.output.push(create_fn_mono_item(self.tcx, main_instance, DUMMY_SP));
+        }
+
         let Some(start_def_id) = self.tcx.lang_items().start_fn() else {
             self.tcx.dcx().emit_fatal(errors::StartNotFound);
         };
