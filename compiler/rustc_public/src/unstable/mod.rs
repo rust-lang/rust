@@ -1,6 +1,6 @@
 //! Module that collects the things that have no stability guarantees.
 //!
-//! We want to keep StableMIR definitions and logic separate from
+//! We want to keep rustc_public's IR definitions and logic separate from
 //! any sort of conversion and usage of internal rustc code. So we
 //! restrict the usage of internal items to be inside this module.
 
@@ -10,7 +10,7 @@ use rustc_hir::def::DefKind;
 use rustc_middle::ty::{List, Ty, TyCtxt};
 use rustc_middle::{mir, ty};
 use rustc_public_bridge::Tables;
-use rustc_public_bridge::context::SmirCtxt;
+use rustc_public_bridge::context::CompilerCtxt;
 
 use super::compiler_interface::BridgeTys;
 use crate::{CtorKind, ItemKind};
@@ -21,7 +21,7 @@ mod internal_cx;
 /// Trait that defines the methods that are fine to call from [`RustcInternal`].
 ///
 /// This trait is only for [`RustcInternal`]. Any other other access to rustc's internals
-/// should go through [`rustc_public_bridge::context::SmirCtxt`].
+/// should go through [`rustc_public_bridge::context::CompilerCtxt`].
 pub trait InternalCx<'tcx>: Copy + Clone {
     fn tcx(self) -> TyCtxt<'tcx>;
 
@@ -53,29 +53,30 @@ pub trait InternalCx<'tcx>: Copy + Clone {
     fn adt_def(self, def_id: rustc_hir::def_id::DefId) -> ty::AdtDef<'tcx>;
 }
 
-/// Trait used to convert between an internal MIR type to a Stable MIR type.
+/// Trait used to convert between an internal MIR type to a rustc_public's IR type.
 ///
-/// This trait is currently exposed to users so they can have interoperability between internal MIR
-/// and StableMIR constructs. However, they should be used seldom and they have no influence
-/// in this crate semver.
+/// This trait is currently exposed to users so they can have interoperability
+/// between internal MIR and rustc_public's IR constructs.
+/// However, they should be used seldom and they have no influence in this crate semver.
 #[doc(hidden)]
 pub trait Stable<'tcx>: PointeeSized {
     /// The stable representation of the type implementing Stable.
     type T;
-    /// Converts an object to the equivalent Stable MIR representation.
+    /// Converts an object to the equivalent rustc_public's IR representation.
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
-        cx: &SmirCtxt<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T;
 }
 
-/// Trait used to translate a stable construct to its rustc counterpart.
+/// Trait used to translate a rustc_public's IR construct to its rustc counterpart.
 ///
 /// This is basically a mirror of [Stable].
 ///
-/// This trait is currently exposed to users so they can have interoperability between internal MIR
-/// and StableMIR constructs. They should be used seldom as they have no stability guarantees.
+/// This trait is currently exposed to users so they can have interoperability
+/// between internal MIR and rustc_public's IR constructs.
+/// They should be used seldom as they have no stability guarantees.
 #[doc(hidden)]
 pub trait RustcInternal {
     type T<'tcx>;

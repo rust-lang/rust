@@ -2,7 +2,7 @@
 
 use rustc_abi::FieldIdx;
 use rustc_public_bridge::Tables;
-use rustc_public_bridge::context::SmirCtxt;
+use rustc_public_bridge::context::CompilerCtxt;
 
 use super::Stable;
 use crate::compiler_interface::BridgeTys;
@@ -13,7 +13,7 @@ mod ty;
 
 impl<'tcx> Stable<'tcx> for rustc_hir::Safety {
     type T = crate::mir::Safety;
-    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             rustc_hir::Safety::Unsafe => crate::mir::Safety::Unsafe,
             rustc_hir::Safety::Safe => crate::mir::Safety::Safe,
@@ -23,14 +23,14 @@ impl<'tcx> Stable<'tcx> for rustc_hir::Safety {
 
 impl<'tcx> Stable<'tcx> for FieldIdx {
     type T = usize;
-    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
         self.as_usize()
     }
 }
 
 impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineSource {
     type T = crate::mir::CoroutineSource;
-    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
         use rustc_hir::CoroutineSource;
         match self {
             CoroutineSource::Block => crate::mir::CoroutineSource::Block,
@@ -45,7 +45,7 @@ impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineKind {
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
-        cx: &SmirCtxt<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use rustc_hir::{CoroutineDesugaring, CoroutineKind};
         match *self {
@@ -77,7 +77,7 @@ impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineKind {
 impl<'tcx> Stable<'tcx> for rustc_span::Symbol {
     type T = crate::Symbol;
 
-    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
         self.to_string()
     }
 }
@@ -88,7 +88,7 @@ impl<'tcx> Stable<'tcx> for rustc_span::Span {
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
-        _: &SmirCtxt<'cx, BridgeTys>,
+        _: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         tables.create_span(*self)
     }

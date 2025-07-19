@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 use std::io;
 
-use rustc_public_bridge::bridge::SmirError;
+use rustc_public_bridge::bridge;
 use serde::Serialize;
 
 use crate::abi::FnAbi;
@@ -62,7 +62,7 @@ impl Instance {
     /// For more information on fallback body, see <https://github.com/rust-lang/rust/issues/93145>.
     ///
     /// This call is much cheaper than `instance.body().is_some()`, since it doesn't try to build
-    /// the StableMIR body.
+    /// the rustc_public's IR body.
     pub fn has_body(&self) -> bool {
         with(|cx| cx.has_body(self.def.def_id()))
     }
@@ -120,9 +120,9 @@ impl Instance {
     /// Resolve an instance starting from a function definition and generic arguments.
     pub fn resolve(def: FnDef, args: &GenericArgs) -> Result<Instance, Error> {
         with(|context| {
-            context
-                .resolve_instance(def, args)
-                .ok_or_else(|| Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`")))
+            context.resolve_instance(def, args).ok_or_else(|| {
+                bridge::Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`"))
+            })
         })
     }
 
@@ -134,9 +134,9 @@ impl Instance {
     /// Resolve an instance for a given function pointer.
     pub fn resolve_for_fn_ptr(def: FnDef, args: &GenericArgs) -> Result<Instance, Error> {
         with(|context| {
-            context
-                .resolve_for_fn_ptr(def, args)
-                .ok_or_else(|| Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`")))
+            context.resolve_for_fn_ptr(def, args).ok_or_else(|| {
+                bridge::Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`"))
+            })
         })
     }
 
@@ -147,9 +147,9 @@ impl Instance {
         kind: ClosureKind,
     ) -> Result<Instance, Error> {
         with(|context| {
-            context
-                .resolve_closure(def, args, kind)
-                .ok_or_else(|| Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`")))
+            context.resolve_closure(def, args, kind).ok_or_else(|| {
+                bridge::Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`"))
+            })
         })
     }
 
@@ -157,7 +157,7 @@ impl Instance {
     ///
     /// Allow users to check if this shim can be ignored when called directly.
     ///
-    /// We have decided not to export different types of Shims to StableMIR users, however, this
+    /// We have decided not to export different types of Shims to rustc_public users, however, this
     /// is a query that can be very helpful for users when processing DropGlue.
     ///
     /// When generating code for a Drop terminator, users can ignore an empty drop glue.
@@ -201,7 +201,7 @@ impl TryFrom<CrateItem> for Instance {
             if !context.requires_monomorphization(def_id) {
                 Ok(context.mono_instance(def_id))
             } else {
-                Err(Error::new("Item requires monomorphization".to_string()))
+                Err(bridge::Error::new("Item requires monomorphization".to_string()))
             }
         })
     }
@@ -217,7 +217,7 @@ impl TryFrom<Instance> for CrateItem {
             if value.kind == InstanceKind::Item && context.has_body(value.def.def_id()) {
                 Ok(CrateItem(context.instance_def_id(value.def)))
             } else {
-                Err(Error::new(format!("Item kind `{:?}` cannot be converted", value.kind)))
+                Err(bridge::Error::new(format!("Item kind `{:?}` cannot be converted", value.kind)))
             }
         })
     }
@@ -263,7 +263,7 @@ impl TryFrom<CrateItem> for StaticDef {
         if matches!(value.kind(), ItemKind::Static) {
             Ok(StaticDef(value.0))
         } else {
-            Err(Error::new(format!("Expected a static item, but found: {value:?}")))
+            Err(bridge::Error::new(format!("Expected a static item, but found: {value:?}")))
         }
     }
 }

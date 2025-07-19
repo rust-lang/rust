@@ -41,7 +41,7 @@ fn serialize_to_json(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
 
 /// This test will generate and analyze a dummy crate using the stable mir.
 /// For that, it will first write the dummy crate into a file.
-/// Then it will create a `StableMir` using custom arguments and then
+/// Then it will create a `RustcPublic` using custom arguments and then
 /// it will run the compiler.
 fn main() {
     let path = "internal_input.rs";

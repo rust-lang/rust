@@ -7,7 +7,7 @@ use super::run;
 pub fn write_smir_pretty<'tcx, W: io::Write>(tcx: TyCtxt<'tcx>, w: &mut W) -> io::Result<()> {
     writeln!(
         w,
-        "// WARNING: This is highly experimental output it's intended for stable-mir developers only."
+        "// WARNING: This is highly experimental output it's intended for rustc_public developers only."
     )?;
     writeln!(
         w,

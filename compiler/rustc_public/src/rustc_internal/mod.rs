@@ -1,13 +1,13 @@
-//! Module that implements the bridge between Stable MIR and internal compiler MIR.
+//! Module that implements the bridge between rustc_public's IR and internal compiler MIR.
 //!
 //! For that, we define APIs that will temporarily be public to 3P that exposes rustc internal APIs
-//! until stable MIR is complete.
+//! until rustc_public's IR is complete.
 
 use std::cell::{Cell, RefCell};
 
 use rustc_middle::ty::TyCtxt;
-use rustc_public_bridge::context::SmirCtxt;
-use rustc_public_bridge::{Bridge, SmirContainer, Tables};
+use rustc_public_bridge::context::CompilerCtxt;
+use rustc_public_bridge::{Bridge, Container, Tables};
 use rustc_span::def_id::CrateNum;
 use scoped_tls::scoped_thread_local;
 
@@ -26,7 +26,7 @@ pub mod pretty;
 ///
 /// # Panics
 ///
-/// This function will panic if StableMIR has not been properly initialized.
+/// This function will panic if rustc_public has not been properly initialized.
 pub fn stable<'tcx, S: Stable<'tcx>>(item: S) -> S::T {
     with_container(|tables, cx| item.stable(tables, cx))
 }
@@ -41,7 +41,7 @@ pub fn stable<'tcx, S: Stable<'tcx>>(item: S) -> S::T {
 ///
 /// # Panics
 ///
-/// This function will panic if StableMIR has not been properly initialized.
+/// This function will panic if rustc_public has not been properly initialized.
 pub fn internal<'tcx, S>(tcx: TyCtxt<'tcx>, item: S) -> S::T<'tcx>
 where
     S: RustcInternal,
@@ -57,10 +57,10 @@ pub fn crate_num(item: &crate::Crate) -> CrateNum {
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
-// datastructures and stable MIR datastructures
+// datastructures and rustc_public's IR datastructures
 scoped_thread_local! (static TLV: Cell<*const ()>);
 
-pub(crate) fn init<'tcx, F, T, B: Bridge>(container: &SmirContainer<'tcx, B>, f: F) -> T
+pub(crate) fn init<'tcx, F, T, B: Bridge>(container: &Container<'tcx, B>, f: F) -> T
 where
     F: FnOnce() -> T,
 {
@@ -72,13 +72,13 @@ where
 /// Loads the current context and calls a function with it.
 /// Do not nest these, as that will ICE.
 pub(crate) fn with_container<R, B: Bridge>(
-    f: impl for<'tcx> FnOnce(&mut Tables<'tcx, B>, &SmirCtxt<'tcx, B>) -> R,
+    f: impl for<'tcx> FnOnce(&mut Tables<'tcx, B>, &CompilerCtxt<'tcx, B>) -> R,
 ) -> R {
     assert!(TLV.is_set());
     TLV.with(|tlv| {
         let ptr = tlv.get();
         assert!(!ptr.is_null());
-        let container = ptr as *const SmirContainer<'_, B>;
+        let container = ptr as *const Container<'_, B>;
         let mut tables = unsafe { (*container).tables.borrow_mut() };
         let cx = unsafe { (*container).cx.borrow() };
         f(&mut *tables, &*cx)
@@ -89,8 +89,8 @@ pub fn run<F, T>(tcx: TyCtxt<'_>, f: F) -> Result<T, Error>
 where
     F: FnOnce() -> T,
 {
-    let smir_cx = RefCell::new(SmirCtxt::new(tcx));
-    let container = SmirContainer { tables: RefCell::new(Tables::default()), cx: smir_cx };
+    let compiler_cx = RefCell::new(CompilerCtxt::new(tcx));
+    let container = Container { tables: RefCell::new(Tables::default()), cx: compiler_cx };
 
     crate::compiler_interface::run(&container, || init(&container, f))
 }
@@ -176,7 +176,7 @@ macro_rules! optional {
 
 /// Prefer using [run!] and [run_with_tcx] instead.
 ///
-/// This macro implements the instantiation of a StableMIR driver, and it will invoke
+/// This macro implements the instantiation of a rustc_public driver, and it will invoke
 /// the given callback after the compiler analyses.
 ///
 /// The third argument determines whether the callback requires `tcx` as an argument.
@@ -191,7 +191,7 @@ macro_rules! run_driver {
         use rustc_public::CompilerError;
         use std::ops::ControlFlow;
 
-        pub struct StableMir<B = (), C = (), F = fn($($crate::optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C>>
+        pub struct RustcPublic<B = (), C = (), F = fn($($crate::optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C>>
         where
             B: Send,
             C: Send,
@@ -201,15 +201,15 @@ macro_rules! run_driver {
             result: Option<ControlFlow<B, C>>,
         }
 
-        impl<B, C, F> StableMir<B, C, F>
+        impl<B, C, F> RustcPublic<B, C, F>
         where
             B: Send,
             C: Send,
             F: FnOnce($($crate::optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C> + Send,
         {
-            /// Creates a new `StableMir` instance, with given test_function and arguments.
+            /// Creates a new `RustcPublic` instance, with given test_function and arguments.
             pub fn new(callback: F) -> Self {
-                StableMir { callback: Some(callback), result: None }
+                RustcPublic { callback: Some(callback), result: None }
             }
 
             /// Runs the compiler against given target and tests it with `test_function`
@@ -236,7 +236,7 @@ macro_rules! run_driver {
             }
         }
 
-        impl<B, C, F> Callbacks for StableMir<B, C, F>
+        impl<B, C, F> Callbacks for RustcPublic<B, C, F>
         where
             B: Send,
             C: Send,
@@ -265,6 +265,6 @@ macro_rules! run_driver {
             }
         }
 
-        StableMir::new($callback).run($args)
+        RustcPublic::new($callback).run($args)
     }};
 }

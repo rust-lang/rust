@@ -24,7 +24,7 @@ use std::{fmt, io};
 
 pub(crate) use rustc_public_bridge::IndexedVal;
 use rustc_public_bridge::Tables;
-use rustc_public_bridge::context::SmirCtxt;
+use rustc_public_bridge::context::CompilerCtxt;
 /// Export the rustc_internal APIs. Note that this module has no stability
 /// guarantees and it is not taken into account for semver.
 #[cfg(feature = "rustc_internal")]
@@ -288,7 +288,7 @@ impl rustc_public_bridge::bridge::Allocation<compiler_interface::BridgeTys>
         align: u64,
         mutability: rustc_middle::mir::Mutability,
         tables: &mut Tables<'tcx, compiler_interface::BridgeTys>,
-        cx: &SmirCtxt<'tcx, compiler_interface::BridgeTys>,
+        cx: &CompilerCtxt<'tcx, compiler_interface::BridgeTys>,
     ) -> Self {
         Self {
             bytes,
