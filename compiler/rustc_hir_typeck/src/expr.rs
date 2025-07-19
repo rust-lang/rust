@@ -3847,16 +3847,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (ident, _def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
 
-                    if !self.tcx.features().offset_of_enum() {
-                        rustc_session::parse::feature_err(
-                            &self.tcx.sess,
-                            sym::offset_of_enum,
-                            ident.span,
-                            "using enums in offset_of is experimental",
-                        )
-                        .emit();
-                    }
-
                     let Some((index, variant)) = container_def
                         .variants()
                         .iter_enumerated()

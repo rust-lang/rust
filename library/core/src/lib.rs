@@ -114,7 +114,6 @@
 #![feature(is_ascii_octdigit)]
 #![feature(lazy_get)]
 #![feature(link_cfg)]
-#![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]

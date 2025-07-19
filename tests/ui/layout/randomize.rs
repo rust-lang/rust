@@ -2,8 +2,6 @@
 //@ revisions: normal randomize-layout
 //@ [randomize-layout]compile-flags: -Zrandomize-layout -Zlayout-seed=2
 
-#![feature(offset_of_enum)]
-
 use std::ptr;
 
 
