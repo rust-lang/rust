@@ -189,6 +189,12 @@ impl Bootstrap {
         self
     }
 
+    /// Rebuild rustc in case of statically linked LLVM
+    pub fn rustc_rebuild(mut self) -> Self {
+        self.cmd = self.cmd.arg("--keep-stage").arg("0");
+        self
+    }
+
     pub fn run(self, timer: &mut TimerSection) -> anyhow::Result<()> {
         self.cmd.run()?;
         let metrics = load_metrics(&self.metrics_path)?;
