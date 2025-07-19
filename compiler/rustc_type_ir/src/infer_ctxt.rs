@@ -117,11 +117,11 @@ impl<I: Interner> TypingMode<I> {
     }
 
     pub fn borrowck(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
-        let defining_opaque_types = cx.opaque_types_defined_by(body_def_id);
-        if defining_opaque_types.is_empty() {
+        // N.B. we can only use an analysis env if there are no coroutines defined.
+        if cx.opaque_types_and_coroutines_defined_by(body_def_id).is_empty() {
             TypingMode::non_body_analysis()
         } else {
-            TypingMode::Borrowck { defining_opaque_types }
+            TypingMode::Borrowck { defining_opaque_types: cx.opaque_types_defined_by(body_def_id) }
         }
     }
 
