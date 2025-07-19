@@ -1210,30 +1210,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }
 
                     for (assoc_item_def_id, term) in assoc_items {
-                        // Skip printing `<{coroutine@} as Coroutine<_>>::Return` from async blocks,
-                        // unless we can find out what coroutine return type it comes from.
-                        let term = if let Some(ty) = term.skip_binder().as_type()
-                            && let ty::Alias(ty::Projection, proj) = ty.kind()
-                            && let Some(assoc) = tcx.opt_associated_item(proj.def_id)
-                            && assoc
-                                .trait_container(tcx)
-                                .is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Coroutine))
-                            && assoc.opt_name() == Some(rustc_span::sym::Return)
-                        {
-                            if let ty::Coroutine(_, args) = args.type_at(0).kind() {
-                                let return_ty = args.as_coroutine().return_ty();
-                                if !return_ty.is_ty_var() {
-                                    return_ty.into()
-                                } else {
-                                    continue;
-                                }
-                            } else {
-                                continue;
-                            }
-                        } else {
-                            term.skip_binder()
-                        };
-
                         if first {
                             p!("<");
                             first = false;
@@ -1243,7 +1219,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                         p!(write("{} = ", tcx.associated_item(assoc_item_def_id).name()));
 
-                        match term.kind() {
+                        match term.skip_binder().kind() {
                             TermKind::Ty(ty) => p!(print(ty)),
                             TermKind::Const(c) => p!(print(c)),
                         };
