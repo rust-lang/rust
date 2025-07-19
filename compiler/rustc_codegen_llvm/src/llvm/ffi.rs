@@ -2149,7 +2149,7 @@ unsafe extern "C" {
         SPFlags: DISPFlags,
         MaybeFn: Option<&'a Value>,
         TParam: &'a DIArray,
-        Decl: Option<&'a DIDescriptor>,
+        Decl: Option<&'a DIDescriptor>, 
     ) -> &'a DISubprogram;
 
     pub(crate) fn LLVMRustDIBuilderCreateMethod<'a>(
@@ -2673,4 +2673,144 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustSetNoSanitizeAddress(Global: &Value);
     pub(crate) fn LLVMRustSetNoSanitizeHWAddress(Global: &Value);
+
+    // ========== ENZYME AUTODIFF FFI FUNCTIONS ==========
+
+    // Enzyme Type Tree Functions (minimal set for TypeTree support)
+    pub(crate) fn EnzymeNewTypeTree() -> CTypeTreeRef;
+    pub(crate) fn EnzymeFreeTypeTree(CTT: CTypeTreeRef);
+    pub(crate) fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef;
+    pub(crate) fn EnzymeNewTypeTreeTR(arg1: CTypeTreeRef) -> CTypeTreeRef;
+    pub(crate) fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef);
+    pub(crate) fn EnzymeTypeTreeShiftIndiciesEq(
+        arg1: CTypeTreeRef,
+        data_layout: *const c_char,
+        offset: i64,
+        max_size: i64,
+        add_offset: u64,
+    );
+    pub(crate) fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
+    pub(crate) fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
 }
+
+// ========== ENZYME TYPES AND ENUMS ==========
+
+// Type Tree Support for Autodiff
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub(crate) enum CConcreteType {
+    DT_Anything = 0,
+    DT_Integer = 1,
+    DT_Pointer = 2,
+    DT_Half = 3,
+    DT_Float = 4,
+    DT_Double = 5,
+    DT_Unknown = 6,
+}
+
+pub(crate) type CTypeTreeRef = *mut EnzymeTypeTree;
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct EnzymeTypeTree {
+    _unused: [u8; 0],
+}
+
+
+
+
+
+
+
+// TypeTree wrapper for Rust-side type safety and memory management
+pub(crate) struct TypeTree {
+    pub(crate) inner: CTypeTreeRef,
+}
+
+impl TypeTree {
+    pub(crate) fn new() -> TypeTree {
+        let inner = unsafe { EnzymeNewTypeTree() };
+        TypeTree { inner }
+    }
+
+    pub(crate) fn from_type(t: CConcreteType, ctx: &Context) -> TypeTree {
+        let inner = unsafe { EnzymeNewTypeTreeCT(t, ctx) };
+        TypeTree { inner }
+    }
+
+    pub(crate) fn merge(self, other: Self) -> Self {
+        unsafe {
+            EnzymeMergeTypeTree(self.inner, other.inner);
+        }
+        drop(other);
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn shift(self, layout: &str, offset: isize, max_size: isize, add_offset: usize) -> Self {
+        let layout = std::ffi::CString::new(layout).unwrap();
+
+        unsafe {
+            EnzymeTypeTreeShiftIndiciesEq(
+                self.inner,
+                layout.as_ptr(),
+                offset as i64,
+                max_size as i64,
+                add_offset as u64,
+            )
+        }
+
+        self
+    }
+}
+
+impl Clone for TypeTree {
+    fn clone(&self) -> Self {
+        let inner = unsafe { EnzymeNewTypeTreeTR(self.inner) };
+        TypeTree { inner }
+    }
+}
+
+impl std::fmt::Display for TypeTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let ptr = unsafe { EnzymeTypeTreeToString(self.inner) };
+        let cstr = unsafe { std::ffi::CStr::from_ptr(ptr) };
+        match cstr.to_str() {
+            Ok(x) => write!(f, "{}", x)?,
+            Err(err) => write!(f, "could not parse: {}", err)?,
+        }
+
+        // delete C string pointer
+        unsafe { EnzymeTypeTreeToStringFree(ptr) }
+
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for TypeTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <Self as std::fmt::Display>::fmt(self, f)
+    }
+}
+
+impl Drop for TypeTree {
+    fn drop(&mut self) {
+        unsafe { EnzymeFreeTypeTree(self.inner) }
+    }
+}
+
+
