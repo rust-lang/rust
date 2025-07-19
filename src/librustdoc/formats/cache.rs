@@ -28,6 +28,12 @@ use crate::visit_lib::RustdocEffectiveVisibilities;
 /// to be a fairly large and expensive structure to clone. Instead this adheres
 /// to `Send` so it may be stored in an `Arc` instance and shared among the various
 /// rendering threads.
+///
+/// To promote reproducibility across operating systems, this structure
+/// intentionally does not use [`rustc_data_structures::fx::FxHashMap`].
+/// Elements can be stored in different orders in an `FxHashMap`, even if the
+/// elements are inserted in the same order. Wherever an `FxHashMap` would be
+/// needed, an [`rustc_data_structures::fx::FxIndexMap`] is used instead.
 #[derive(Default)]
 pub(crate) struct Cache {
     /// Maps a type ID to all known implementations for that type. This is only
@@ -47,7 +53,7 @@ pub(crate) struct Cache {
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
-    pub(crate) external_paths: FxHashMap<DefId, (Vec<Symbol>, ItemType)>,
+    pub(crate) external_paths: FxIndexMap<DefId, (Vec<Symbol>, ItemType)>,
 
     /// Maps local `DefId`s of exported types to fully qualified paths.
     /// Unlike 'paths', this mapping ignores any renames that occur
