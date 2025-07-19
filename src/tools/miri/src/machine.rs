@@ -617,6 +617,8 @@ pub struct MiriMachine<'tcx> {
 
     /// Whether floating-point operations can behave non-deterministically.
     pub float_nondet: bool,
+    /// Whether floating-point operations can have a non-deterministic rounding error.
+    pub float_rounding_error: bool,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -775,6 +777,7 @@ impl<'tcx> MiriMachine<'tcx> {
             mangle_internal_symbol_cache: Default::default(),
             force_intrinsic_fallback: config.force_intrinsic_fallback,
             float_nondet: config.float_nondet,
+            float_rounding_error: config.float_rounding_error,
         }
     }
 
@@ -951,6 +954,7 @@ impl VisitProvenance for MiriMachine<'_> {
             mangle_internal_symbol_cache: _,
             force_intrinsic_fallback: _,
             float_nondet: _,
+            float_rounding_error: _,
         } = self;
 
         threads.visit_provenance(visit);
