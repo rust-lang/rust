@@ -1000,7 +1000,7 @@ fn preprocess_link(
     // If there's no backticks, be lenient and revert to the old behavior.
     // This is to prevent churn by linting on stuff that isn't meant to be a link.
     // only shortcut links have simple enough syntax that they
-    // are likely to be written accidentlly, collapsed and reference links
+    // are likely to be written accidentally, collapsed and reference links
     // need 4 metachars, and reference links will not usually use
     // backticks in the reference name.
     // therefore, only shortcut syntax gets the lenient behavior.
