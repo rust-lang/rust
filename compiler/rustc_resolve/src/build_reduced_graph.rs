@@ -61,7 +61,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ident: Ident,
         ns: Namespace,
         res: Res,
-        vis: Visibility, // Implictly local
+        vis: Visibility, // Implicitly local
         span: Span,
         expn_id: LocalExpnId,
     ) {
