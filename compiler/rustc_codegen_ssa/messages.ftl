@@ -97,6 +97,8 @@ codegen_ssa_invalid_monomorphization_basic_float_type = invalid monomorphization
 
 codegen_ssa_invalid_monomorphization_basic_integer_type = invalid monomorphization of `{$name}` intrinsic: expected basic integer type, found `{$ty}`
 
+codegen_ssa_invalid_monomorphization_basic_integer_or_ptr_type = invalid monomorphization of `{$name}` intrinsic: expected basic integer or pointer type, found `{$ty}`
+
 codegen_ssa_invalid_monomorphization_cannot_return = invalid monomorphization of `{$name}` intrinsic: cannot return `{$ret_ty}`, expected `u{$expected_int_bits}` or `[u8; {$expected_bytes}]`
 
 codegen_ssa_invalid_monomorphization_cast_wide_pointer = invalid monomorphization of `{$name}` intrinsic: cannot cast wide pointer `{$ty}`

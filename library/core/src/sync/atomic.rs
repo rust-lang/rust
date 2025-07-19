@@ -2291,7 +2291,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_byte_add(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_add(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
+        unsafe { atomic_add(self.p.get(), val, order).cast() }
     }
 
     /// Offsets the pointer's address by subtracting `val` *bytes*, returning the
@@ -2316,9 +2316,10 @@ impl<T> AtomicPtr<T> {
     /// #![feature(strict_provenance_atomic_ptr)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
-    /// let atom = AtomicPtr::<i64>::new(core::ptr::without_provenance_mut(1));
-    /// assert_eq!(atom.fetch_byte_sub(1, Ordering::Relaxed).addr(), 1);
-    /// assert_eq!(atom.load(Ordering::Relaxed).addr(), 0);
+    /// let mut arr = [0i64, 1];
+    /// let atom = AtomicPtr::<i64>::new(&raw mut arr[1]);
+    /// assert_eq!(atom.fetch_byte_sub(8, Ordering::Relaxed).addr(), (&raw const arr[1]).addr());
+    /// assert_eq!(atom.load(Ordering::Relaxed).addr(), (&raw const arr[0]).addr());
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
@@ -2326,7 +2327,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_byte_sub(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_sub(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
+        unsafe { atomic_sub(self.p.get(), val, order).cast() }
     }
 
     /// Performs a bitwise "or" operation on the address of the current pointer,
@@ -2377,7 +2378,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_or(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_or(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
+        unsafe { atomic_or(self.p.get(), val, order).cast() }
     }
 
     /// Performs a bitwise "and" operation on the address of the current
@@ -2427,7 +2428,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_and(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_and(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
+        unsafe { atomic_and(self.p.get(), val, order).cast() }
     }
 
     /// Performs a bitwise "xor" operation on the address of the current
@@ -2475,7 +2476,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_xor(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_xor(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
+        unsafe { atomic_xor(self.p.get(), val, order).cast() }
     }
 
     /// Returns a mutable pointer to the underlying pointer.
@@ -3975,15 +3976,15 @@ unsafe fn atomic_swap<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[inline]
 #[cfg(target_has_atomic)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-unsafe fn atomic_add<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_add<T: Copy, U: Copy>(dst: *mut T, val: U, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_add`.
     unsafe {
         match order {
-            Relaxed => intrinsics::atomic_xadd::<T, { AO::Relaxed }>(dst, val),
-            Acquire => intrinsics::atomic_xadd::<T, { AO::Acquire }>(dst, val),
-            Release => intrinsics::atomic_xadd::<T, { AO::Release }>(dst, val),
-            AcqRel => intrinsics::atomic_xadd::<T, { AO::AcqRel }>(dst, val),
-            SeqCst => intrinsics::atomic_xadd::<T, { AO::SeqCst }>(dst, val),
+            Relaxed => intrinsics::atomic_xadd::<T, U, { AO::Relaxed }>(dst, val),
+            Acquire => intrinsics::atomic_xadd::<T, U, { AO::Acquire }>(dst, val),
+            Release => intrinsics::atomic_xadd::<T, U, { AO::Release }>(dst, val),
+            AcqRel => intrinsics::atomic_xadd::<T, U, { AO::AcqRel }>(dst, val),
+            SeqCst => intrinsics::atomic_xadd::<T, U, { AO::SeqCst }>(dst, val),
         }
     }
 }
@@ -3992,15 +3993,15 @@ unsafe fn atomic_add<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[inline]
 #[cfg(target_has_atomic)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-unsafe fn atomic_sub<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_sub<T: Copy, U: Copy>(dst: *mut T, val: U, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_sub`.
     unsafe {
         match order {
-            Relaxed => intrinsics::atomic_xsub::<T, { AO::Relaxed }>(dst, val),
-            Acquire => intrinsics::atomic_xsub::<T, { AO::Acquire }>(dst, val),
-            Release => intrinsics::atomic_xsub::<T, { AO::Release }>(dst, val),
-            AcqRel => intrinsics::atomic_xsub::<T, { AO::AcqRel }>(dst, val),
-            SeqCst => intrinsics::atomic_xsub::<T, { AO::SeqCst }>(dst, val),
+            Relaxed => intrinsics::atomic_xsub::<T, U, { AO::Relaxed }>(dst, val),
+            Acquire => intrinsics::atomic_xsub::<T, U, { AO::Acquire }>(dst, val),
+            Release => intrinsics::atomic_xsub::<T, U, { AO::Release }>(dst, val),
+            AcqRel => intrinsics::atomic_xsub::<T, U, { AO::AcqRel }>(dst, val),
+            SeqCst => intrinsics::atomic_xsub::<T, U, { AO::SeqCst }>(dst, val),
         }
     }
 }
@@ -4141,15 +4142,15 @@ unsafe fn atomic_compare_exchange_weak<T: Copy>(
 #[inline]
 #[cfg(target_has_atomic)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-unsafe fn atomic_and<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_and<T: Copy, U: Copy>(dst: *mut T, val: U, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_and`
     unsafe {
         match order {
-            Relaxed => intrinsics::atomic_and::<T, { AO::Relaxed }>(dst, val),
-            Acquire => intrinsics::atomic_and::<T, { AO::Acquire }>(dst, val),
-            Release => intrinsics::atomic_and::<T, { AO::Release }>(dst, val),
-            AcqRel => intrinsics::atomic_and::<T, { AO::AcqRel }>(dst, val),
-            SeqCst => intrinsics::atomic_and::<T, { AO::SeqCst }>(dst, val),
+            Relaxed => intrinsics::atomic_and::<T, U, { AO::Relaxed }>(dst, val),
+            Acquire => intrinsics::atomic_and::<T, U, { AO::Acquire }>(dst, val),
+            Release => intrinsics::atomic_and::<T, U, { AO::Release }>(dst, val),
+            AcqRel => intrinsics::atomic_and::<T, U, { AO::AcqRel }>(dst, val),
+            SeqCst => intrinsics::atomic_and::<T, U, { AO::SeqCst }>(dst, val),
         }
     }
 }
@@ -4157,15 +4158,15 @@ unsafe fn atomic_and<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[inline]
 #[cfg(target_has_atomic)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-unsafe fn atomic_nand<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_nand<T: Copy, U: Copy>(dst: *mut T, val: U, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_nand`
     unsafe {
         match order {
-            Relaxed => intrinsics::atomic_nand::<T, { AO::Relaxed }>(dst, val),
-            Acquire => intrinsics::atomic_nand::<T, { AO::Acquire }>(dst, val),
-            Release => intrinsics::atomic_nand::<T, { AO::Release }>(dst, val),
-            AcqRel => intrinsics::atomic_nand::<T, { AO::AcqRel }>(dst, val),
-            SeqCst => intrinsics::atomic_nand::<T, { AO::SeqCst }>(dst, val),
+            Relaxed => intrinsics::atomic_nand::<T, U, { AO::Relaxed }>(dst, val),
+            Acquire => intrinsics::atomic_nand::<T, U, { AO::Acquire }>(dst, val),
+            Release => intrinsics::atomic_nand::<T, U, { AO::Release }>(dst, val),
+            AcqRel => intrinsics::atomic_nand::<T, U, { AO::AcqRel }>(dst, val),
+            SeqCst => intrinsics::atomic_nand::<T, U, { AO::SeqCst }>(dst, val),
         }
     }
 }
@@ -4173,15 +4174,15 @@ unsafe fn atomic_nand<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[inline]
 #[cfg(target_has_atomic)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-unsafe fn atomic_or<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_or<T: Copy, U: Copy>(dst: *mut T, val: U, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_or`
     unsafe {
         match order {
-            SeqCst => intrinsics::atomic_or::<T, { AO::SeqCst }>(dst, val),
-            Acquire => intrinsics::atomic_or::<T, { AO::Acquire }>(dst, val),
-            Release => intrinsics::atomic_or::<T, { AO::Release }>(dst, val),
-            AcqRel => intrinsics::atomic_or::<T, { AO::AcqRel }>(dst, val),
-            Relaxed => intrinsics::atomic_or::<T, { AO::Relaxed }>(dst, val),
+            SeqCst => intrinsics::atomic_or::<T, U, { AO::SeqCst }>(dst, val),
+            Acquire => intrinsics::atomic_or::<T, U, { AO::Acquire }>(dst, val),
+            Release => intrinsics::atomic_or::<T, U, { AO::Release }>(dst, val),
+            AcqRel => intrinsics::atomic_or::<T, U, { AO::AcqRel }>(dst, val),
+            Relaxed => intrinsics::atomic_or::<T, U, { AO::Relaxed }>(dst, val),
         }
     }
 }
@@ -4189,15 +4190,15 @@ unsafe fn atomic_or<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[inline]
 #[cfg(target_has_atomic)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-unsafe fn atomic_xor<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_xor<T: Copy, U: Copy>(dst: *mut T, val: U, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_xor`
     unsafe {
         match order {
-            SeqCst => intrinsics::atomic_xor::<T, { AO::SeqCst }>(dst, val),
-            Acquire => intrinsics::atomic_xor::<T, { AO::Acquire }>(dst, val),
-            Release => intrinsics::atomic_xor::<T, { AO::Release }>(dst, val),
-            AcqRel => intrinsics::atomic_xor::<T, { AO::AcqRel }>(dst, val),
-            Relaxed => intrinsics::atomic_xor::<T, { AO::Relaxed }>(dst, val),
+            SeqCst => intrinsics::atomic_xor::<T, U, { AO::SeqCst }>(dst, val),
+            Acquire => intrinsics::atomic_xor::<T, U, { AO::Acquire }>(dst, val),
+            Release => intrinsics::atomic_xor::<T, U, { AO::Release }>(dst, val),
+            AcqRel => intrinsics::atomic_xor::<T, U, { AO::AcqRel }>(dst, val),
+            Relaxed => intrinsics::atomic_xor::<T, U, { AO::Relaxed }>(dst, val),
         }
     }
 }
