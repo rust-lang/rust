@@ -235,22 +235,33 @@ impl ExternAbi {
         matches!(self, Rust | RustCall | RustCold)
     }
 
-    pub fn supports_varargs(self) -> bool {
+    /// Returns whether the ABI supports C variadics.
+    ///
+    /// Note that this is insta-stable if the ABI is stable! If you add a new unstable ABI that
+    /// supports variadics, it is fine to just add it here. But if you want to equip an existing
+    /// *stable* ABI with support for variadics, you cannot just add it here. Instead, add a feature
+    /// gate check in `require_supported_abi_if_c_variadic`, and only move it here once variadic
+    /// support os stable.
+    pub fn supports_c_variadic(self) -> bool {
         // * C and Cdecl obviously support varargs.
         // * C can be based on Aapcs, SysV64 or Win64, so they must support varargs.
         // * EfiApi is based on Win64 or C, so it also supports it.
+        // * System automatically falls back to C when used with variadics, therefore supports it.
         //
         // * Stdcall does not, because it would be impossible for the callee to clean
         //   up the arguments. (callee doesn't know how many arguments are there)
         // * Same for Fastcall, Vectorcall and Thiscall.
         // * Other calling conventions are related to hardware or the compiler itself.
+        //
+        // All of the supported ones must have a test in `tests/codegen/cffi/c-variadic-ffi.rs`.
         match self {
             Self::C { .. }
             | Self::Cdecl { .. }
             | Self::Aapcs { .. }
             | Self::Win64 { .. }
             | Self::SysV64 { .. }
-            | Self::EfiApi => true,
+            | Self::EfiApi
+            | Self::System { .. } => true,
             _ => false,
         }
     }
