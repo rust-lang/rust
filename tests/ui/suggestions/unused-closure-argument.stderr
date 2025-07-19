@@ -1,8 +1,8 @@
 error: unused variable: `x`
-  --> $DIR/unused-closure-argument.rs:12:23
+  --> $DIR/unused-closure-argument.rs:17:15
    |
-LL |         .map(|Point { x, y }| y)
-   |                       ^ help: try ignoring the field: `x: _`
+LL |         .map(|x| 4)
+   |               ^ help: if this is intentional, prefix it with an underscore: `_x`
    |
 note: the lint level is defined here
   --> $DIR/unused-closure-argument.rs:1:9
@@ -11,10 +11,10 @@ LL | #![deny(unused_variables)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unused variable: `x`
-  --> $DIR/unused-closure-argument.rs:17:15
+  --> $DIR/unused-closure-argument.rs:12:23
    |
-LL |         .map(|x| 4)
-   |               ^ help: if this is intentional, prefix it with an underscore: `_x`
+LL |         .map(|Point { x, y }| y)
+   |                       ^ help: try ignoring the field: `x: _`
 
 error: aborting due to 2 previous errors
 

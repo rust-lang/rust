@@ -1,6 +1,8 @@
 //@ run-pass
 #![feature(coroutines, stmt_expr_attributes)]
 #![feature(coroutine_trait)]
+#![allow(unused_assignments, unused_variables)]
+
 use std::cell::Cell;
 use std::mem;
 use std::ops::Coroutine;
