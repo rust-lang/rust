@@ -167,6 +167,11 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         throw_unsup_format!("cannot write to {}", self.name());
     }
 
+    /// Determines whether this FD non-deterministically has its reads and writes shortened.
+    fn nondet_short_accesses(&self) -> bool {
+        true
+    }
+
     /// Seeks to the given offset (which can be relative to the beginning, end, or current position).
     /// Returns the new position from the start of the stream.
     fn seek<'tcx>(
