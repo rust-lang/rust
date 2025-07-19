@@ -764,6 +764,14 @@ pub enum InvalidMonomorphization<'tcx> {
         ty: Ty<'tcx>,
     },
 
+    #[diag(codegen_ssa_invalid_monomorphization_basic_integer_or_ptr_type, code = E0511)]
+    BasicIntegerOrPtrType {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+        ty: Ty<'tcx>,
+    },
+
     #[diag(codegen_ssa_invalid_monomorphization_basic_float_type, code = E0511)]
     BasicFloatType {
         #[primary_span]
