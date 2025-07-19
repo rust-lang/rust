@@ -363,6 +363,8 @@ dependencies = [
  "core",
  "getopts",
  "libc",
+ "rand",
+ "rand_xorshift",
  "std",
 ]
 
