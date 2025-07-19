@@ -79,7 +79,7 @@ impl<'tcx> StatementKind<'tcx> {
             StatementKind::Assign(box (place, Rvalue::Ref(_, _, ref_place)))
                 if let Some(local) = place.as_local() =>
             {
-                Some(StmtDebugInfo::AssignRef(local, *ref_place))
+                Some(StmtDebugInfo::AssignRef(local, Some(*ref_place)))
             }
             _ => None,
         }
@@ -963,5 +963,5 @@ impl RawPtrKind {
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum StmtDebugInfo<'tcx> {
-    AssignRef(Local, Place<'tcx>),
+    AssignRef(Local, Option<Place<'tcx>>),
 }
