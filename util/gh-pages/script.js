@@ -208,7 +208,6 @@ const LEVEL_FILTERS_DEFAULT = {
     allow: true,
     warn: true,
     deny: true,
-    none: true,
 };
 const APPLICABILITIES_FILTER_DEFAULT = {
     Unspecified: true,
