@@ -1302,6 +1302,7 @@ impl AttributeExt for Attribute {
             // FIXME: should not be needed anymore when all attrs are parsed
             Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::MacroUse { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::MayDangle(span)) => *span,
             Attribute::Parsed(AttributeKind::Ignore { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::AutomaticallyDerived(span)) => *span,

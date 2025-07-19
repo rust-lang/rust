@@ -80,7 +80,7 @@ impl<S: Stage> AttributeParser<S> for StabilityParser {
         ),
     ];
 
-    fn finalize(mut self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(mut self, cx: &mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if let Some(atum) = self.allowed_through_unstable_modules {
             if let Some((
                 Stability {
@@ -135,7 +135,7 @@ impl<S: Stage> AttributeParser<S> for BodyStabilityParser {
         },
     )];
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         let (stability, span) = self.stability?;
 
         Some(AttributeKind::BodyStability { stability, span })
@@ -198,7 +198,7 @@ impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
         }),
     ];
 
-    fn finalize(mut self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(mut self, cx: &mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if self.promotable {
             if let Some((ref mut stab, _)) = self.stability {
                 stab.promotable = true;

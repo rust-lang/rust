@@ -7,8 +7,9 @@ use rustc_hir::{self as hir, AmbigArg};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition;
-use rustc_span::{Span, sym};
+use rustc_span::{Span};
 use std::collections::BTreeMap;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -99,15 +100,14 @@ impl LateLintPass<'_> for MacroUseImports {
             && let hir::ItemKind::Use(path, _kind) = &item.kind
             && let hir_id = item.hir_id()
             && let attrs = cx.tcx.hir_attrs(hir_id)
-            && let Some(mac_attr) = attrs.iter().find(|attr| attr.has_name(sym::macro_use))
+            && let Some(mac_attr_span) = find_attr!(attrs, AttributeKind::MacroUse {span, ..} => *span)
             && let Some(Res::Def(DefKind::Mod, id)) = path.res.type_ns
             && !id.is_local()
         {
             for kid in cx.tcx.module_children(id) {
                 if let Res::Def(DefKind::Macro(_mac_type), mac_id) = kid.res {
-                    let span = mac_attr.span();
                     let def_path = cx.tcx.def_path_str(mac_id);
-                    self.imports.push((def_path, span, hir_id));
+                    self.imports.push((def_path, mac_attr_span, hir_id));
                 }
             }
         } else if item.span.from_expansion() {
