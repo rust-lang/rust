@@ -1173,7 +1173,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
             bounds_span,
             where_span,
         })
-        .emit_unless(delay);
+        .emit_unless_delay(delay);
 
     Err(reported)
 }
@@ -1481,7 +1481,7 @@ fn compare_self_type<'tcx>(
             } else {
                 err.note_trait_signature(trait_m.name(), trait_m.signature(tcx));
             }
-            return Err(err.emit_unless(delay));
+            return Err(err.emit_unless_delay(delay));
         }
 
         (true, false) => {
@@ -1502,7 +1502,7 @@ fn compare_self_type<'tcx>(
                 err.note_trait_signature(trait_m.name(), trait_m.signature(tcx));
             }
 
-            return Err(err.emit_unless(delay));
+            return Err(err.emit_unless_delay(delay));
         }
     }
 
@@ -1662,7 +1662,7 @@ fn compare_number_of_generics<'tcx>(
                 err.span_label(*span, "`impl Trait` introduces an implicit type parameter");
             }
 
-            let reported = err.emit_unless(delay);
+            let reported = err.emit_unless_delay(delay);
             err_occurred = Some(reported);
         }
     }
@@ -1745,7 +1745,7 @@ fn compare_number_of_method_arguments<'tcx>(
             ),
         );
 
-        return Err(err.emit_unless(delay));
+        return Err(err.emit_unless_delay(delay));
     }
 
     Ok(())
@@ -1872,7 +1872,7 @@ fn compare_synthetic_generics<'tcx>(
                     );
                 };
             }
-            error_found = Some(err.emit_unless(delay));
+            error_found = Some(err.emit_unless_delay(delay));
         }
     }
     if let Some(reported) = error_found { Err(reported) } else { Ok(()) }
@@ -1974,7 +1974,7 @@ fn compare_generic_param_kinds<'tcx>(
             err.span_label(impl_header_span, "");
             err.span_label(param_impl_span, make_param_message("found", param_impl));
 
-            let reported = err.emit_unless(delay);
+            let reported = err.emit_unless_delay(delay);
             return Err(reported);
         }
     }

@@ -11,31 +11,31 @@ LL | #![deny(exported_private_dependencies)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: macro `m` from private dependency 'priv_dep' is re-exported
-  --> $DIR/pub-priv1.rs:94:9
+  --> $DIR/pub-priv1.rs:98:9
    |
 LL | pub use priv_dep::m;
    |         ^^^^^^^^^^^
 
 error: macro `fn_like` from private dependency 'pm' is re-exported
-  --> $DIR/pub-priv1.rs:96:9
+  --> $DIR/pub-priv1.rs:100:9
    |
 LL | pub use pm::fn_like;
    |         ^^^^^^^^^^^
 
 error: derive macro `PmDerive` from private dependency 'pm' is re-exported
-  --> $DIR/pub-priv1.rs:98:9
+  --> $DIR/pub-priv1.rs:102:9
    |
 LL | pub use pm::PmDerive;
    |         ^^^^^^^^^^^^
 
 error: attribute macro `pm_attr` from private dependency 'pm' is re-exported
-  --> $DIR/pub-priv1.rs:100:9
+  --> $DIR/pub-priv1.rs:104:9
    |
 LL | pub use pm::pm_attr;
    |         ^^^^^^^^^^^
 
 error: variant `V1` from private dependency 'priv_dep' is re-exported
-  --> $DIR/pub-priv1.rs:103:9
+  --> $DIR/pub-priv1.rs:107:9
    |
 LL | pub use priv_dep::E::V1;
    |         ^^^^^^^^^^^^^^^
@@ -65,61 +65,61 @@ LL |     type Foo: OtherTrait;
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:50:1
+  --> $DIR/pub-priv1.rs:54:1
    |
 LL | pub trait WithSuperTrait: OtherTrait {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:59:5
+  --> $DIR/pub-priv1.rs:63:5
    |
 LL |     type X = OtherType;
    |     ^^^^^^
 
 error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:63:1
+  --> $DIR/pub-priv1.rs:67:1
    |
 LL | pub fn in_bounds<T: OtherTrait>(x: T) { unimplemented!() }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:66:1
+  --> $DIR/pub-priv1.rs:70:1
    |
 LL | pub fn private_in_generic() -> std::num::Saturating<OtherType> { unimplemented!() }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:69:1
+  --> $DIR/pub-priv1.rs:73:1
    |
 LL | pub static STATIC: OtherType = OtherType;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:72:1
+  --> $DIR/pub-priv1.rs:76:1
    |
 LL | pub const CONST: OtherType = OtherType;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:75:1
+  --> $DIR/pub-priv1.rs:79:1
    |
 LL | pub type Alias = OtherType;
    | ^^^^^^^^^^^^^^
 
 error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:80:1
+  --> $DIR/pub-priv1.rs:84:1
    |
 LL | impl OtherTrait for PublicWithPrivateImpl {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:85:1
+  --> $DIR/pub-priv1.rs:89:1
    |
 LL | impl PubTraitOnPrivate for OtherType {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:85:1
+  --> $DIR/pub-priv1.rs:89:1
    |
 LL | impl PubTraitOnPrivate for OtherType {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

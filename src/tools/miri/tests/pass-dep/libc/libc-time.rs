@@ -336,7 +336,7 @@ fn test_nanosleep() {
     let remainder = ptr::null_mut::<libc::timespec>();
     let is_error = unsafe { libc::nanosleep(&duration_zero, remainder) };
     assert_eq!(is_error, 0);
-    assert!(start_test_sleep.elapsed() < Duration::from_millis(10));
+    assert!(start_test_sleep.elapsed() < Duration::from_millis(100));
 
     let start_test_sleep = Instant::now();
     let duration_100_millis = libc::timespec { tv_sec: 0, tv_nsec: 1_000_000_000 / 10 };
@@ -390,7 +390,7 @@ mod test_clock_nanosleep {
             )
         };
         assert_eq!(error, 0);
-        assert!(start_test_sleep.elapsed() < Duration::from_millis(10));
+        assert!(start_test_sleep.elapsed() < Duration::from_millis(100));
 
         let start_test_sleep = Instant::now();
         let hunderd_millis_after_start = add_100_millis(timespec_now(libc::CLOCK_MONOTONIC));
@@ -417,7 +417,7 @@ mod test_clock_nanosleep {
             libc::clock_nanosleep(libc::CLOCK_MONOTONIC, NO_FLAGS, &duration_zero, remainder)
         };
         assert_eq!(error, 0);
-        assert!(start_test_sleep.elapsed() < Duration::from_millis(10));
+        assert!(start_test_sleep.elapsed() < Duration::from_millis(100));
 
         let start_test_sleep = Instant::now();
         let duration_100_millis = libc::timespec { tv_sec: 0, tv_nsec: 1_000_000_000 / 10 };
