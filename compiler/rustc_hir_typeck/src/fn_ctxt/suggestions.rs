@@ -1302,8 +1302,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None => ".clone()".to_string(),
             };
 
+            let span = expr.span.find_oldest_ancestor_in_same_ctxt().shrink_to_hi();
+
             diag.span_suggestion_verbose(
-                expr.span.shrink_to_hi(),
+                span,
                 "consider using clone here",
                 suggestion,
                 Applicability::MachineApplicable,
