@@ -1463,6 +1463,31 @@ impl<'tcx> Ty<'tcx> {
         ty
     }
 
+    /// Peel off all (maybe-pinned) reference types in this type until there are none left.
+    ///
+    /// This method is idempotent, i.e. `ty.peel_pinned_refs().peel_pinned_refs() == ty.peel_pinned_refs()`.
+    ///
+    /// # Examples
+    ///
+    /// - `u8` -> `u8`
+    /// - `&'a mut u8` -> `u8`
+    /// - `&'a pin mut u8` -> `u8`
+    /// - `&'a &'b u8` -> `u8`
+    /// - `&'a pin const &'b u8` -> `u8`
+    /// - `&'a *const &'b u8 -> *const &'b u8`
+    /// - `&'a pin const *const &'b u8 -> *const &'b u8`
+    pub fn peel_pin_refs(self) -> Ty<'tcx> {
+        let mut ty = self;
+        loop {
+            ty = match ty.kind() {
+                ty::Ref(_, inner_ty, _) => *inner_ty,
+                ty::Adt(adt, args) if adt.is_pin() => args.type_at(0),
+                _ => break,
+            };
+        }
+        ty
+    }
+
     // FIXME(compiler-errors): Think about removing this.
     #[inline]
     pub fn outer_exclusive_binder(self) -> ty::DebruijnIndex {

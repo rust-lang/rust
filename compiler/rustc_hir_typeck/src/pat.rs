@@ -28,7 +28,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 use tracing::{debug, instrument, trace};
 use ty::VariantDef;
 use ty::adjustment::{PatAdjust, PatAdjustment};
@@ -403,19 +403,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.check_pat_inner(pat, opt_path_res, adjust_mode, expected, pat_info);
         self.write_ty(pat.hir_id, ty);
 
-        // If we implicitly inserted overloaded dereferences before matching, check the pattern to
-        // see if the dereferenced types need `DerefMut` bounds.
-        if let Some(derefed_tys) = self.typeck_results.borrow().pat_adjustments().get(pat.hir_id)
-            && derefed_tys.iter().any(|adjust| adjust.kind == PatAdjust::OverloadedDeref)
-        {
-            self.register_deref_mut_bounds_if_needed(
-                pat.span,
-                pat,
-                derefed_tys.iter().filter_map(|adjust| match adjust.kind {
-                    PatAdjust::OverloadedDeref => Some(adjust.source),
-                    PatAdjust::BuiltinDeref | PatAdjust::PinDeref => None,
-                }),
-            );
+        // If we implicitly inserted overloaded dereferences and pinned dereferences before matching,
+        // check the pattern to see if the dereferenced types need `DerefMut` or `!Unpin` bounds.
+        if let Some(derefed_tys) = self.typeck_results.borrow().pat_adjustments().get(pat.hir_id) {
+            let mut has_overloaded_deref = false;
+            let mut has_pin_deref = false;
+            derefed_tys.iter().for_each(|adjust| match adjust.kind {
+                PatAdjust::BuiltinDeref => {}
+                PatAdjust::OverloadedDeref => has_overloaded_deref = true,
+                PatAdjust::PinDeref => has_pin_deref = true,
+            });
+            if has_overloaded_deref {
+                self.register_deref_mut_bounds_if_needed(
+                    pat.span,
+                    pat,
+                    derefed_tys.iter().filter_map(|adjust| match adjust.kind {
+                        PatAdjust::OverloadedDeref => Some(adjust.source),
+                        PatAdjust::BuiltinDeref | PatAdjust::PinDeref => None,
+                    }),
+                );
+            }
+            if has_pin_deref {
+                self.register_not_unpin_bounds_if_needed(
+                    pat.span,
+                    pat,
+                    derefed_tys.iter().filter_map(|adjust| match adjust.kind {
+                        PatAdjust::BuiltinDeref | PatAdjust::OverloadedDeref => None,
+                        PatAdjust::PinDeref => Some(adjust.source.peel_pin_refs()),
+                    }),
+                );
+            }
         }
 
         // (note_1): In most of the cases where (note_1) is referenced
@@ -553,13 +570,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && let &ty::Ref(_, inner_ty, inner_mutability) = pinned_ty.kind() =>
             {
                 debug!("scrutinee ty {expected:?} is a pinned reference, inserting pin deref");
-                // Preserve the pinned type. We'll need it later during THIR lowering.
-                self.typeck_results
-                    .borrow_mut()
-                    .pat_adjustments_mut()
-                    .entry(pat.hir_id)
-                    .or_default()
-                    .push(PatAdjustment { kind: PatAdjust::PinDeref, source: expected });
 
                 let binding_mode = adjust_binding_mode(Pinnedness::Pinned, inner_mutability);
                 // If the pinnedness is `Not`, it means the pattern is unpinned
@@ -567,16 +577,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if binding_mode == ByRef::Yes(Pinnedness::Not, Mutability::Mut) {
                     self.register_bound(
                         inner_ty,
-                        self.tcx.require_lang_item(hir::LangItem::Unpin, Some(pat.span)),
+                        self.tcx.require_lang_item(hir::LangItem::Unpin, pat.span),
                         self.misc(pat.span),
-                    );
+                    )
                 }
+                // Once we've checked `pat`, we'll add a `!Unpin` bound if it contains any
+                // `ref pin` bindings. See `Self::register_not_unpin_bounds_if_needed`.
+
+                debug!("default binding mode is now {:?}", binding_mode);
+
                 // Use the old pat info to keep `current_depth` to its old value.
                 let new_pat_info = PatInfo { binding_mode, ..old_pat_info };
-                // Recurse with the new expected type.
-                // using `break` instead of `return` in case where any shared codes are added
-                // after the `match pat.kind {}`.
-                self.check_pat_inner(pat, opt_path_res, adjust_mode, inner_ty, new_pat_info)
+
+                self.check_deref_pattern(
+                    pat,
+                    opt_path_res,
+                    adjust_mode,
+                    expected,
+                    inner_ty,
+                    PatAdjust::PinDeref,
+                    new_pat_info,
+                )
             }
             // If `deref_patterns` is enabled, peel a smart pointer from the scrutinee type. See the
             // examples in `tests/ui/pattern/deref_patterns/`.
@@ -585,35 +606,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && pat.default_binding_modes
                 && self.should_peel_smart_pointer(peel_kind, expected) =>
             {
-                debug!("scrutinee ty {expected:?} is a smart pointer, inserting overloaded deref");
+                debug!("scrutinee ty {expected:?} is a smart pointer, inserting pin deref");
+
                 // The scrutinee is a smart pointer; implicitly dereference it. This adds a
                 // requirement that `expected: DerefPure`.
-                let mut inner_ty = self.deref_pat_target(pat.span, expected);
+                let inner_ty = self.deref_pat_target(pat.span, expected);
                 // Once we've checked `pat`, we'll add a `DerefMut` bound if it contains any
                 // `ref mut` bindings. See `Self::register_deref_mut_bounds_if_needed`.
 
-                let mut typeck_results = self.typeck_results.borrow_mut();
-                let mut pat_adjustments_table = typeck_results.pat_adjustments_mut();
-                let pat_adjustments = pat_adjustments_table.entry(pat.hir_id).or_default();
-                // We may reach the recursion limit if a user matches on a type `T` satisfying
-                // `T: Deref<Target = T>`; error gracefully in this case.
-                // FIXME(deref_patterns): If `deref_patterns` stabilizes, it may make sense to move
-                // this check out of this branch. Alternatively, this loop could be implemented with
-                // autoderef and this check removed. For now though, don't break code compiling on
-                // stable with lots of `&`s and a low recursion limit, if anyone's done that.
-                if self.tcx.recursion_limit().value_within_limit(pat_adjustments.len()) {
-                    // Preserve the smart pointer type for THIR lowering and closure upvar analysis.
-                    pat_adjustments
-                        .push(PatAdjustment { kind: PatAdjust::OverloadedDeref, source: expected });
-                } else {
-                    let guar = report_autoderef_recursion_limit_error(self.tcx, pat.span, expected);
-                    inner_ty = Ty::new_error(self.tcx, guar);
-                }
-                drop(typeck_results);
-
-                // Recurse, using the old pat info to keep `current_depth` to its old value.
-                // Peeling smart pointers does not update the default binding mode.
-                self.check_pat_inner(pat, opt_path_res, adjust_mode, inner_ty, old_pat_info)
+                self.check_deref_pattern(
+                    pat,
+                    opt_path_res,
+                    adjust_mode,
+                    expected,
+                    inner_ty,
+                    PatAdjust::OverloadedDeref,
+                    old_pat_info,
+                )
             }
             PatKind::Missing | PatKind::Wild | PatKind::Err(_) => expected,
             // We allow any type here; we ensure that the type is uninhabited during match checking.
@@ -682,6 +691,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_slice(pat.span, before, slice, after, expected, pat_info)
             }
         }
+    }
+
+    fn check_deref_pattern(
+        &self,
+        pat: &'tcx Pat<'tcx>,
+        opt_path_res: Option<Result<ResolvedPat<'tcx>, ErrorGuaranteed>>,
+        adjust_mode: AdjustMode,
+        expected: Ty<'tcx>,
+        mut inner_ty: Ty<'tcx>,
+        pat_adjust_kind: PatAdjust,
+        pat_info: PatInfo<'tcx>,
+    ) -> Ty<'tcx> {
+        debug_assert!(
+            !matches!(pat_adjust_kind, PatAdjust::BuiltinDeref),
+            "unexpected deref pattern for builtin reference type {expected:?}",
+        );
+
+        let mut typeck_results = self.typeck_results.borrow_mut();
+        let mut pat_adjustments_table = typeck_results.pat_adjustments_mut();
+        let pat_adjustments = pat_adjustments_table.entry(pat.hir_id).or_default();
+        // We may reach the recursion limit if a user matches on a type `T` satisfying
+        // `T: Deref<Target = T>`; error gracefully in this case.
+        // FIXME(deref_patterns): If `deref_patterns` stabilizes, it may make sense to move
+        // this check out of this branch. Alternatively, this loop could be implemented with
+        // autoderef and this check removed. For now though, don't break code compiling on
+        // stable with lots of `&`s and a low recursion limit, if anyone's done that.
+        if self.tcx.recursion_limit().value_within_limit(pat_adjustments.len()) {
+            // Preserve the smart pointer type for THIR lowering and closure upvar analysis.
+            pat_adjustments.push(PatAdjustment { kind: pat_adjust_kind, source: expected });
+        } else {
+            let guar = report_autoderef_recursion_limit_error(self.tcx, pat.span, expected);
+            inner_ty = Ty::new_error(self.tcx, guar);
+        }
+        drop(typeck_results);
+
+        // Recurse, using the old pat info to keep `current_depth` to its old value.
+        // Peeling smart pointers does not update the default binding mode.
+        self.check_pat_inner(pat, opt_path_res, adjust_mode, inner_ty, pat_info)
     }
 
     /// How should the binding mode and expected type be adjusted?
@@ -1195,7 +1242,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Wrapping the type into `Pin` if the binding is like `ref pin const|mut x`
             ByRef::Yes(Pinnedness::Pinned, mutbl) => Ty::new_adt(
                 self.tcx,
-                self.tcx.adt_def(self.tcx.require_lang_item(hir::LangItem::Pin, Some(pat.span))),
+                self.tcx.adt_def(self.tcx.require_lang_item(hir::LangItem::Pin, pat.span)),
                 self.tcx.mk_args(&[self.new_ref_ty(pat.span, mutbl, expected).into()]),
             ),
             // Otherwise, the type of x is the expected type `T`.
@@ -2632,6 +2679,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.register_bound(
                     mutably_derefed_ty,
                     self.tcx.require_lang_item(hir::LangItem::DerefMut, span),
+                    self.misc(span),
+                );
+            }
+        }
+    }
+
+    /// Check if the interior of a pin pattern (either explicit or implicit) has any `ref pin`
+    /// bindings of non-`Unpin` types, which would require `!Unpin` to be emitted.
+    fn register_not_unpin_bounds_if_needed(
+        &self,
+        span: Span,
+        inner: &'tcx Pat<'tcx>,
+        derefed_tys: impl IntoIterator<Item = Ty<'tcx>>,
+    ) {
+        // Check if there are subpatterns with `ref pin` binding modes of non-`Unpin` types.
+        let unpin = self.tcx.require_lang_item(hir::LangItem::Unpin, span);
+        let cause = self.misc(span);
+        let unpin_obligations = self.probe(|_| {
+            let obligation_ctxt = ObligationCtxt::new(&self);
+            self.typeck_results.borrow().pat_walk_ref_pin_binding_of_non_unpin_type(inner, |ty| {
+                let ty = obligation_ctxt.normalize(&cause, self.param_env, ty).peel_pin_refs();
+                obligation_ctxt.register_bound(cause.clone(), self.param_env, ty, unpin);
+            });
+            obligation_ctxt.select_all_or_error()
+        });
+
+        // If any, the current pattern type should implement `!Unpin`.
+        if !unpin_obligations.is_empty() {
+            for pinned_derefed_ty in derefed_tys {
+                self.register_negative_bound(
+                    pinned_derefed_ty,
+                    self.tcx.require_lang_item(hir::LangItem::Unpin, span),
                     self.misc(span),
                 );
             }

@@ -18,9 +18,9 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, ValTree, ValTreeKind};
+use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::constructor::RangeEnd;
 use rustc_pattern_analysis::rustc::{DeconstructedPat, RustcPatCtxt};
-use rustc_middle::{bug, span_bug};
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
@@ -2811,7 +2811,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.push_assign(block, source_info, pinned_temp, borrow);
         Rvalue::Aggregate(
             Box::new(AggregateKind::Adt(
-                self.tcx.require_lang_item(LangItem::Pin, Some(source_info.span)),
+                self.tcx.require_lang_item(LangItem::Pin, source_info.span),
                 FIRST_VARIANT,
                 self.tcx.mk_args(&[pinned_ty.into()]),
                 None,
