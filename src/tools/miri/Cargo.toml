@@ -50,7 +50,7 @@ capstone = { version = "0.13", optional = true }
 
 [dev-dependencies]
 ui_test = "0.29.1"
-colored = "2"
+colored = "3"
 rustc_version = "0.4"
 regex = "1.5.5"
 tempfile = "3"
