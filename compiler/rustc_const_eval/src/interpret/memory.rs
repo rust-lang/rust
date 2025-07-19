@@ -67,8 +67,8 @@ pub enum AllocKind {
     LiveData,
     /// A function allocation (that fn ptrs point to).
     Function,
-    /// A (symbolic) vtable allocation.
-    VTable,
+    /// A "virtual" allocation, used for vtables and TypeId.
+    Virtual,
     /// A dead allocation.
     Dead,
 }
@@ -950,11 +950,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let (size, align) = global_alloc.size_and_align(*self.tcx, self.typing_env);
             let mutbl = global_alloc.mutability(*self.tcx, self.typing_env);
             let kind = match global_alloc {
-                GlobalAlloc::TypeId { .. }
-                | GlobalAlloc::Static { .. }
-                | GlobalAlloc::Memory { .. } => AllocKind::LiveData,
+                GlobalAlloc::Static { .. } | GlobalAlloc::Memory { .. } => AllocKind::LiveData,
                 GlobalAlloc::Function { .. } => bug!("We already checked function pointers above"),
-                GlobalAlloc::VTable { .. } => AllocKind::VTable,
+                GlobalAlloc::VTable { .. } | GlobalAlloc::TypeId { .. } => AllocKind::Virtual,
             };
             return AllocInfo::new(size, align, kind, mutbl);
         }
