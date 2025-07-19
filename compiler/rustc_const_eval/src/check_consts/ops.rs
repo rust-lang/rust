@@ -1,9 +1,10 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use hir::{ConstContext, LangItem};
-use rustc_errors::Diag;
 use rustc_errors::codes::*;
+use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
@@ -352,13 +353,58 @@ fn build_error_for_const_call<'tcx>(
                 non_or_conditionally,
             })
         }
-        _ => ccx.dcx().create_err(errors::NonConstFnCall {
-            span,
-            def_descr: ccx.tcx.def_descr(callee),
-            def_path_str: ccx.tcx.def_path_str_with_args(callee, args),
-            kind: ccx.const_kind(),
-            non_or_conditionally,
-        }),
+        _ => {
+            let def_descr = ccx.tcx.def_descr(callee);
+            let mut err = ccx.dcx().create_err(errors::NonConstFnCall {
+                span,
+                def_descr,
+                def_path_str: ccx.tcx.def_path_str_with_args(callee, args),
+                kind: ccx.const_kind(),
+                non_or_conditionally,
+            });
+            let def_kind = ccx.tcx.def_kind(callee);
+            if let DefKind::AssocTy | DefKind::AssocConst | DefKind::AssocFn = def_kind {
+                let parent = ccx.tcx.parent(callee);
+                if let DefKind::Trait = ccx.tcx.def_kind(parent)
+                    && !ccx.tcx.is_const_trait(parent)
+                {
+                    let assoc_span = ccx.tcx.def_span(callee);
+                    let assoc_name = ccx.tcx.item_name(callee);
+                    let mut span: MultiSpan = ccx.tcx.def_span(parent).into();
+                    span.push_span_label(assoc_span, format!("this {def_descr} is not const"));
+                    let trait_descr = ccx.tcx.def_descr(parent);
+                    let trait_span = ccx.tcx.def_span(parent);
+                    let trait_name = ccx.tcx.item_name(parent);
+                    span.push_span_label(trait_span, format!("this {trait_descr} is not const"));
+                    err.span_note(
+                        span,
+                        format!(
+                            "{def_descr} `{assoc_name}` is not const because {trait_descr} \
+                            `{trait_name}` is not const",
+                        ),
+                    );
+                    let indentation = ccx
+                        .tcx
+                        .sess
+                        .source_map()
+                        .indentation_before(trait_span)
+                        .unwrap_or_default();
+                    err.span_suggestion_verbose(
+                        trait_span.shrink_to_lo(),
+                        format!("consider making trait `{trait_name}` const"),
+                        format!("#[const_trait]\n{indentation}"),
+                        Applicability::MachineApplicable,
+                    );
+                }
+            } else if ccx.tcx.constness(callee) != hir::Constness::Const {
+                let name = ccx.tcx.item_name(callee);
+                err.span_note(
+                    ccx.tcx.def_span(callee),
+                    format!("{def_descr} `{name}` is not const"),
+                );
+            }
+            err
+        }
     };
 
     err.note(format!(
