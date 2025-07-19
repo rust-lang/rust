@@ -30,11 +30,11 @@ help: use `.borrow_mut()` to mutably borrow the `Struct<u32>`, panicking if any 
 LL |     other_item.borrow_mut().some_mutable_method();
    |               +++++++++++++
 
-error[E0599]: no method named `method` found for struct `Mutex` in the current scope
+error[E0599]: no method named `method` found for struct `std::sync::Mutex` in the current scope
   --> $DIR/inner_type.rs:27:18
    |
 LL |     another_item.method();
-   |                  ^^^^^^ method not found in `Mutex<Struct<u32>>`
+   |                  ^^^^^^ method not found in `std::sync::Mutex<Struct<u32>>`
    |
 note: the method `method` exists on the type `Struct<u32>`
   --> $DIR/inner_type.rs:9:5
