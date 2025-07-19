@@ -64,4 +64,8 @@ fn main() {
     x.leak_foo();
     //~^ ERROR the trait bound `dyn Trait: Leak` is not satisfied
     x.maybe_leak_foo();
+    // Ensure that we validate the generic args of relaxed bounds in trait object types.
+    let _: dyn Trait + ?Leak<(), Undefined = ()>;
+    //~^ ERROR trait takes 0 generic arguments but 1 generic argument was supplied
+    //~| ERROR associated type `Undefined` not found for `Leak`
 }
