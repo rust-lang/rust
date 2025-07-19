@@ -200,7 +200,13 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         }
 
         let unwind_block = match unwind {
-            mir::UnwindAction::Cleanup(cleanup) => Some(self.llbb_with_cleanup(fx, cleanup)),
+            mir::UnwindAction::Cleanup(cleanup) => {
+                if !fx.nop_landing_pads.contains(cleanup) {
+                    Some(self.llbb_with_cleanup(fx, cleanup))
+                } else {
+                    None
+                }
+            }
             mir::UnwindAction::Continue => None,
             mir::UnwindAction::Unreachable => None,
             mir::UnwindAction::Terminate(reason) => {
@@ -286,7 +292,13 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         mergeable_succ: bool,
     ) -> MergingSucc {
         let unwind_target = match unwind {
-            mir::UnwindAction::Cleanup(cleanup) => Some(self.llbb_with_cleanup(fx, cleanup)),
+            mir::UnwindAction::Cleanup(cleanup) => {
+                if !fx.nop_landing_pads.contains(cleanup) {
+                    Some(self.llbb_with_cleanup(fx, cleanup))
+                } else {
+                    None
+                }
+            }
             mir::UnwindAction::Terminate(reason) => Some(fx.terminate_block(reason)),
             mir::UnwindAction::Continue => None,
             mir::UnwindAction::Unreachable => None,
