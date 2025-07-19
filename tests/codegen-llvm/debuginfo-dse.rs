@@ -1,4 +1,4 @@
-//@ compile-flags: -Copt-level=3 -g -Zverify-llvm-ir
+//@ compile-flags: -Copt-level=3 -g -Zverify-llvm-ir -Zmerge-functions=disabled
 //@ revisions: CODEGEN OPTIMIZED
 //@[CODEGEN] compile-flags: -Cno-prepopulate-passes
 // ignore-tidy-linelength
@@ -8,6 +8,13 @@
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Foo(i32, i64, i32);
+
+#[repr(C)]
+pub struct Bar<'a> {
+    a: i32,
+    b: i64,
+    foo: &'a Foo,
+}
 
 #[no_mangle]
 fn r#ref(ref_foo: &Foo) -> i32 {
@@ -79,10 +86,19 @@ pub fn fragment(fragment_v1: Foo, mut fragment_v2: Foo) -> Foo {
 }
 
 #[no_mangle]
+pub fn deref(bar: Bar) -> i32 {
+    // CHECK-LABEL: define {{.*}} i32 @deref
+    // We are unable to represent dereference within this expression.
+    // CHECK: #dbg_value(ptr poison, [[VAR_deref_dead:![0-9]+]], !DIExpression()
+    let deref_dead = &bar.foo.2;
+    bar.a
+}
+
+#[no_mangle]
 pub fn tuple(foo: (i32, &Foo)) -> i32 {
     // CHECK-LABEL: define{{.*}} i32 @tuple
-    // CHECK-SAME: (i32 {{.*}}, ptr {{.*}} [[ARG_tuple_foo_1:%.*]])
-    // CHECK: #dbg_value(ptr [[ARG_tuple_foo_1]], [[VAR_tuple_dead:![0-9]+]], !DIExpression(DW_OP_plus_uconst, 16, DW_OP_stack_value)
+    // Although there is no dereference here, there is a dereference in the MIR.
+    // CHECK: #dbg_value(ptr poison, [[VAR_tuple_dead:![0-9]+]], !DIExpression()
     let tuple_dead = &foo.1.2;
     foo.1.0
 }
@@ -148,6 +164,7 @@ pub fn non_arg_ref(scalar: i32, foo: Foo, a: &i32) -> i32 {
 // CHECK-DAG: [[VAR_ptr_v2]] = !DILocalVariable(name: "ptr_v2"
 // CODEGEN-DAG: [[VAR_val_ref]] = !DILocalVariable(name: "val_ref"
 // CHECK-DAG: [[VAR_fragment_f]] = !DILocalVariable(name: "fragment_f"
+// CHECK-DAG: [[VAR_deref_dead]] = !DILocalVariable(name: "deref_dead"
 // CHECK-DAG: [[VAR_tuple_dead]] = !DILocalVariable(name: "tuple_dead"
 // CHECK-DAG: [[ARG_dead_first_foo]] = !DILocalVariable(name: "dead_first_foo"
 // CHECK-DAG: [[VAR_dead_first_v0]] = !DILocalVariable(name: "dead_first_v0"
