@@ -28,7 +28,14 @@ function readFile(filePath) {
 }
 
 function contentToDiffLine(key, value) {
-    return `"${key}": "${value}",`;
+    if (typeof value === "object" && !Array.isArray(value) && value !== null) {
+        const out = Object.entries(value)
+            .filter(([subKey, _]) => ["path", "name"].includes(subKey))
+            .map(([subKey, subValue]) => `"${subKey}": ${JSON.stringify(subValue)}`)
+            .join(", ");
+        return `"${key}": ${out},`;
+    }
+    return `"${key}": ${JSON.stringify(value)},`;
 }
 
 function shouldIgnoreField(fieldName) {
@@ -37,47 +44,61 @@ function shouldIgnoreField(fieldName) {
         fieldName === "proposeCorrectionTo";
 }
 
+function valueMapper(key, testOutput) {
+    const isAlias = testOutput["is_alias"];
+    let value = testOutput[key];
+    // To make our life easier, if there is a "parent" type, we add it to the path.
+    if (key === "path") {
+        if (testOutput["parent"] !== undefined) {
+            if (value.length > 0) {
+                value += "::" + testOutput["parent"]["name"];
+            } else {
+                value = testOutput["parent"]["name"];
+            }
+        } else if (testOutput["is_alias"]) {
+            value = valueMapper(key, testOutput["original"]);
+        }
+    } else if (isAlias && key === "alias") {
+        value = testOutput["name"];
+    } else if (isAlias && ["name"].includes(key)) {
+        value = testOutput["original"][key];
+    }
+    return value;
+}
+
 // This function is only called when no matching result was found and therefore will only display
 // the diff between the two items.
-function betterLookingDiff(entry, data) {
+function betterLookingDiff(expected, testOutput) {
     let output = " {\n";
-    const spaces = "     ";
-    for (const key in entry) {
-        if (!Object.prototype.hasOwnProperty.call(entry, key)) {
+    const spaces = "    ";
+    for (const key in expected) {
+        if (!Object.prototype.hasOwnProperty.call(expected, key)) {
             continue;
         }
-        if (!data || !Object.prototype.hasOwnProperty.call(data, key)) {
-            output += "-" + spaces + contentToDiffLine(key, entry[key]) + "\n";
+        if (!testOutput || !Object.prototype.hasOwnProperty.call(testOutput, key)) {
+            output += "-" + spaces + contentToDiffLine(key, expected[key]) + "\n";
             continue;
         }
-        const value = data[key];
-        if (value !== entry[key]) {
-            output += "-" + spaces + contentToDiffLine(key, entry[key]) + "\n";
+        const value = valueMapper(key, testOutput);
+        if (value !== expected[key]) {
+            output += "-" + spaces + contentToDiffLine(key, expected[key]) + "\n";
             output += "+" + spaces + contentToDiffLine(key, value) + "\n";
         } else {
-            output += spaces + contentToDiffLine(key, value) + "\n";
+            output += spaces + " " + contentToDiffLine(key, value) + "\n";
         }
     }
     return output + " }";
 }
 
-function lookForEntry(entry, data) {
-    return data.findIndex(data_entry => {
+function lookForEntry(expected, testOutput) {
+    return testOutput.findIndex(testOutputEntry => {
         let allGood = true;
-        for (const key in entry) {
-            if (!Object.prototype.hasOwnProperty.call(entry, key)) {
+        for (const key in expected) {
+            if (!Object.prototype.hasOwnProperty.call(expected, key)) {
                 continue;
             }
-            let value = data_entry[key];
-            // To make our life easier, if there is a "parent" type, we add it to the path.
-            if (key === "path" && data_entry["parent"] !== undefined) {
-                if (value.length > 0) {
-                    value += "::" + data_entry["parent"]["name"];
-                } else {
-                    value = data_entry["parent"]["name"];
-                }
-            }
-            if (value !== entry[key]) {
+            const value = valueMapper(key, testOutputEntry);
+            if (value !== expected[key]) {
                 allGood = false;
                 break;
             }
