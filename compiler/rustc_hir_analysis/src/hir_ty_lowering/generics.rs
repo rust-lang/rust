@@ -570,7 +570,7 @@ pub(crate) fn check_generic_arg_count(
                     gen_args,
                     def_id,
                 ))
-                .emit_unless(all_params_are_binded)
+                .emit_unless_delay(all_params_are_binded)
         });
 
         Err(reported)

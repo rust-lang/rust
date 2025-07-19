@@ -2913,7 +2913,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     self.r
                         .dcx()
                         .create_err(errors::UnderscoreLifetimeIsReserved { span: param.ident.span })
-                        .emit_unless(is_raw_underscore_lifetime);
+                        .emit_unless_delay(is_raw_underscore_lifetime);
                     // Record lifetime res, so lowering knows there is something fishy.
                     self.record_lifetime_param(param.id, LifetimeRes::Error);
                     continue;

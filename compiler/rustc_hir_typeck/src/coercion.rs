@@ -1775,7 +1775,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     );
                 }
 
-                let reported = err.emit_unless(unsized_return);
+                let reported = err.emit_unless_delay(unsized_return);
 
                 self.final_ty = Some(Ty::new_error(fcx.tcx, reported));
             }
