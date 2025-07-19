@@ -331,11 +331,9 @@ fn collect_lang_features_in(features: &mut Features, base: &Path, file: &str, ba
             continue;
         }
 
-        if in_feature_group {
-            if let Some(doc_comment) = line.strip_prefix("///") {
-                doc_comments.push(doc_comment.trim().to_string());
-                continue;
-            }
+        if in_feature_group && let Some(doc_comment) = line.strip_prefix("///") {
+            doc_comments.push(doc_comment.trim().to_string());
+            continue;
         }
 
         let mut parts = line.split(',');
@@ -465,19 +463,20 @@ fn get_and_check_lib_features(
     map_lib_features(base_src_path, &mut |res, file, line| match res {
         Ok((name, f)) => {
             let mut check_features = |f: &Feature, list: &Features, display: &str| {
-                if let Some(s) = list.get(name) {
-                    if f.tracking_issue != s.tracking_issue && f.level != Status::Accepted {
-                        tidy_error!(
-                            bad,
-                            "{}:{}: feature gate {} has inconsistent `issue`: \"{}\" mismatches the {} `issue` of \"{}\"",
-                            file.display(),
-                            line,
-                            name,
-                            f.tracking_issue_display(),
-                            display,
-                            s.tracking_issue_display(),
-                        );
-                    }
+                if let Some(s) = list.get(name)
+                    && f.tracking_issue != s.tracking_issue
+                    && f.level != Status::Accepted
+                {
+                    tidy_error!(
+                        bad,
+                        "{}:{}: feature gate {} has inconsistent `issue`: \"{}\" mismatches the {} `issue` of \"{}\"",
+                        file.display(),
+                        line,
+                        name,
+                        f.tracking_issue_display(),
+                        display,
+                        s.tracking_issue_display(),
+                    );
                 }
             };
             check_features(&f, lang_features, "corresponding lang feature");

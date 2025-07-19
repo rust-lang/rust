@@ -13,8 +13,9 @@ use termcolor::WriteColor;
 
 macro_rules! static_regex {
     ($re:literal) => {{
-        static RE: ::std::sync::OnceLock<::regex::Regex> = ::std::sync::OnceLock::new();
-        RE.get_or_init(|| ::regex::Regex::new($re).unwrap())
+        static RE: ::std::sync::LazyLock<::regex::Regex> =
+            ::std::sync::LazyLock::new(|| ::regex::Regex::new($re).unwrap());
+        &*RE
     }};
 }
 
@@ -134,7 +135,7 @@ pub fn files_modified(ci_info: &CiInfo, pred: impl Fn(&str) -> bool) -> bool {
         eprintln!("No base commit, assuming all files are modified");
         return true;
     };
-    match crate::git_diff(&base_commit, "--name-status") {
+    match crate::git_diff(base_commit, "--name-status") {
         Some(output) => {
             let modified_files = output.lines().filter_map(|ln| {
                 let (status, name) = ln
