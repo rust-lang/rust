@@ -232,6 +232,7 @@ impl SourceCollector<'_, '_> {
             title: &title,
             css_class: "src",
             root_path: &root_path,
+            relative_url: None,
             static_root_path: shared.static_root_path.as_deref(),
             description: &desc,
             resource_suffix: &shared.resource_suffix,

@@ -1418,6 +1418,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
                         Some(
                             sym::html_favicon_url
+                            | sym::html_link_canonical
                             | sym::html_logo_url
                             | sym::html_playground_url
                             | sym::issue_tracker_base_url
