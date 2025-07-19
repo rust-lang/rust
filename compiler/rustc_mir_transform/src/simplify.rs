@@ -655,6 +655,19 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
     }
 }
 
+struct InvalidPlace<'a> {
+    map: &'a IndexVec<Local, Option<Local>>,
+    is_invalid: bool,
+}
+
+impl<'tcx, 'a> Visitor<'tcx> for InvalidPlace<'a> {
+    fn visit_local(&mut self, local: Local, _: PlaceContext, _: Location) {
+        if self.map[local].is_none() {
+            self.is_invalid = true;
+        }
+    }
+}
+
 struct LocalUpdater<'tcx> {
     map: IndexVec<Local, Option<Local>>,
     tcx: TyCtxt<'tcx>,
@@ -663,6 +676,29 @@ struct LocalUpdater<'tcx> {
 impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn visit_statement_debuginfo(
+        &mut self,
+        stmt_debuginfo: &mut StmtDebugInfo<'tcx>,
+        location: Location,
+    ) {
+        match stmt_debuginfo {
+            StmtDebugInfo::AssignRef(_, place) => {
+                if place.is_some_and(|ref place| {
+                    let mut invalid_place = InvalidPlace { map: &self.map, is_invalid: false };
+                    invalid_place.visit_place(
+                        place,
+                        PlaceContext::NonUse(visit::NonUseContext::VarDebugInfo),
+                        location,
+                    );
+                    invalid_place.is_invalid
+                }) {
+                    *place = None;
+                }
+            }
+        }
+        self.super_statement_debuginfo(stmt_debuginfo, location);
     }
 
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {

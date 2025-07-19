@@ -901,7 +901,8 @@ impl Debug for StmtDebugInfo<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match self {
             StmtDebugInfo::AssignRef(local, place) => {
-                write!(fmt, "{local:?} = &{place:?}")
+                write!(fmt, "{local:?} = &")?;
+                if let Some(place) = place { write!(fmt, "{place:?}") } else { write!(fmt, "?") }
             }
         }
     }

@@ -32,7 +32,7 @@ impl<'tcx> Statement<'tcx> {
                 StatementKind::Assign(box (place, Rvalue::Ref(_, _, ref_place)))
                     if let Some(local) = place.as_local() =>
                 {
-                    self.debuginfos.push(StmtDebugInfo::AssignRef(local, ref_place));
+                    self.debuginfos.push(StmtDebugInfo::AssignRef(local, Some(ref_place)));
                 }
                 _ => {
                     bug!("debuginfo is not yet supported.")
@@ -77,6 +77,17 @@ impl<'tcx> StatementKind<'tcx> {
     pub fn as_assign(&self) -> Option<&(Place<'tcx>, Rvalue<'tcx>)> {
         match self {
             StatementKind::Assign(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    pub fn as_debuginfo(&self) -> Option<StmtDebugInfo<'tcx>> {
+        match self {
+            StatementKind::Assign(box (place, Rvalue::Ref(_, _, ref_place)))
+                if let Some(local) = place.as_local() =>
+            {
+                Some(StmtDebugInfo::AssignRef(local, Some(*ref_place)))
+            }
             _ => None,
         }
     }
@@ -959,5 +970,5 @@ impl RawPtrKind {
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum StmtDebugInfo<'tcx> {
-    AssignRef(Local, Place<'tcx>),
+    AssignRef(Local, Option<Place<'tcx>>),
 }
