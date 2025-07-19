@@ -30,6 +30,7 @@ string_enum! {
         CoverageMap => "coverage-map",
         CoverageRun => "coverage-run",
         Crashes => "crashes",
+        Parallel => "parallel",
     }
 }
 
@@ -66,6 +67,7 @@ string_enum! {
         Debuginfo => "debuginfo",
         Incremental => "incremental",
         MirOpt => "mir-opt",
+        Parallel => "parallel",
         Pretty => "pretty",
         RunMake => "run-make",
         Rustdoc => "rustdoc",
