@@ -238,6 +238,34 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         }
     }
 
+    // FIXME(arbitrary_self_types): remove this interface
+    // when the new solver is stabilised.
+    /// Almost like `eq_trace` except this type relating procedure will
+    /// also generate the obligations arising from equating projection
+    /// candidates.
+    pub fn eq_with_proj<T>(
+        self,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
+    where
+        T: ToTrace<'tcx>,
+    {
+        assert!(!self.infcx.next_trait_solver);
+        let trace = ToTrace::to_trace(self.cause, expected, actual);
+        let mut op = TypeRelating::new(
+            self.infcx,
+            trace,
+            self.param_env,
+            define_opaque_types,
+            ty::Invariant,
+        )
+        .through_projections(true);
+        op.relate(expected, actual)?;
+        Ok(InferOk { value: (), obligations: op.into_obligations() })
+    }
+
     pub fn relate<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -366,6 +394,18 @@ impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
 impl<'tcx> ToTrace<'tcx> for ty::Term<'tcx> {
     fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace { cause: cause.clone(), values: ValuePairs::Terms(ExpectedFound::new(a, b)) }
+    }
+}
+
+impl<'tcx> ToTrace<'tcx> for ty::Binder<'tcx, ty::Term<'tcx>> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
+        TypeTrace {
+            cause: cause.clone(),
+            values: ValuePairs::Terms(ExpectedFound {
+                expected: a.skip_binder(),
+                found: b.skip_binder(),
+            }),
+        }
     }
 }
 
