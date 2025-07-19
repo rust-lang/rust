@@ -15,6 +15,10 @@ note: trait bound `NotClone: Clone` was not satisfied
    |
 LL | #[derive(Clone)]
    |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+LL | struct Bar<T: Foo> {
+   |            - implicit unsatisfied bound on this type parameter
+   = note: `#[derive(Clone)]` introduces `where`-bounds requiring every type parameter to implement `Clone`, even when not strictly necessary
+   = help: you can manually implement `Clone` with more targeted bounds: `impl<T> Clone for Bar<T> where T::X: Clone { /* .. */ }`
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

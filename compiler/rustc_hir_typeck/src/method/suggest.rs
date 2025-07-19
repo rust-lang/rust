@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use hir::Expr;
 use rustc_ast::ast::Mutability;
 use rustc_attr_data_structures::{AttributeKind, find_attr};
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
@@ -19,7 +19,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, ExprKind, HirId, Node, PathSegment, QPath};
 use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
@@ -1082,19 +1082,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Find all the requirements that come from a local `impl` block.
             let mut skip_list: UnordSet<_> = Default::default();
             let mut spanned_predicates = FxIndexMap::default();
+            let mut bounds = FxIndexMap::<String, FxIndexSet<String>>::default();
+            let mut impl_def_id_and_mac = None;
+
             for (p, parent_p, cause) in unsatisfied_predicates {
                 // Extract the predicate span and parent def id of the cause,
                 // if we have one.
-                let (item_def_id, cause_span) = match cause.as_ref().map(|cause| cause.code()) {
-                    Some(ObligationCauseCode::ImplDerived(data)) => {
-                        (data.impl_or_alias_def_id, data.span)
-                    }
-                    Some(
-                        ObligationCauseCode::WhereClauseInExpr(def_id, span, _, _)
-                        | ObligationCauseCode::WhereClause(def_id, span),
-                    ) if !span.is_dummy() => (*def_id, *span),
-                    _ => continue,
-                };
+                let (item_def_id, cause_span, pred_index) =
+                    match cause.as_ref().map(|cause| cause.code()) {
+                        Some(ObligationCauseCode::ImplDerived(data)) => {
+                            (data.impl_or_alias_def_id, data.span, data.impl_def_predicate_index)
+                        }
+                        Some(
+                            ObligationCauseCode::WhereClauseInExpr(def_id, span, _, _)
+                            | ObligationCauseCode::WhereClause(def_id, span),
+                        ) if !span.is_dummy() => (*def_id, *span, None),
+                        _ => continue,
+                    };
 
                 // Don't point out the span of `WellFormed` predicates.
                 if !matches!(
@@ -1112,14 +1116,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(Node::Item(hir::Item {
                         kind: hir::ItemKind::Impl(hir::Impl { of_trait, self_ty, .. }),
                         ..
-                    })) if matches!(
-                        self_ty.span.ctxt().outer_expn_data().kind,
-                        ExpnKind::Macro(MacroKind::Derive, _)
-                    ) || matches!(
-                        of_trait.as_ref().map(|t| t.path.span.ctxt().outer_expn_data().kind),
-                        Some(ExpnKind::Macro(MacroKind::Derive, _))
-                    ) =>
+                    })) if let (
+                        ExpnKind::Macro(MacroKind::Derive, mac), _)
+                        | (_, Some(ExpnKind::Macro(MacroKind::Derive, mac))
+                    ) = (
+                            self_ty.span.ctxt().outer_expn_data().kind,
+                            of_trait.as_ref().map(|t| t.path.span.ctxt().outer_expn_data().kind),
+                        ) =>
                     {
+                        impl_def_id_and_mac = Some((item_def_id, mac));
                         let span = self_ty.span.ctxt().outer_expn_data().call_site;
                         let entry = spanned_predicates.entry(span);
                         let entry = entry.or_insert_with(|| {
@@ -1130,6 +1135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             span,
                             "unsatisfied trait bound introduced in this `derive` macro",
                         ));
+                        self.extract_derive_bounds(self_ty, &mut entry.1, &mut bounds, pred_index, item_def_id);
                         entry.2.push(p);
                         skip_list.insert(p);
                     }
@@ -1248,6 +1254,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 err.span_note(span, msg);
                 unsatisfied_bounds = true;
+            }
+
+            if let Some((impl_def_id, mac)) = impl_def_id_and_mac {
+                self.suggest_manual_impl_for_derive(&mut err, impl_def_id, mac, &bounds);
             }
 
             let mut suggested_bounds = UnordSet::default();
@@ -1750,6 +1760,226 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_ident, expected);
         err.emit()
+    }
+
+    fn extract_derive_bounds(
+        &self,
+        self_ty: &hir::Ty<'_>,
+        entry: &mut FxIndexSet<(Span, &str)>,
+        bounds: &mut FxIndexMap<String, FxIndexSet<String>>,
+        pred_index: Option<usize>,
+        item_def_id: DefId,
+    ) {
+        let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = self_ty.kind else { return };
+        let hir::def::Res::Def(_, def_id) = path.res else { return };
+        let Some(index) = pred_index else { return };
+        let Some((original_predicate, _)) =
+            self.tcx.predicates_of(item_def_id).predicates.get(index)
+        else {
+            return;
+        };
+        let ty::ClauseKind::Trait(d) = original_predicate.kind().skip_binder() else { return };
+        let self_ty = d.self_ty();
+        let Some(Node::Item(item)) = self.tcx.hir_get_if_local(def_id) else { return };
+        let ty_generics = self.tcx.generics_of(def_id);
+        for param in &ty_generics.own_params {
+            if let ty::GenericParamDefKind::Type { synthetic: false, .. } = param.kind {
+                let _ = bounds.entry(param.name.to_string()).or_default();
+            }
+            if let ty::Param(p) = self_ty.kind()
+                && p.index == param.index
+                && p.name == param.name
+            {
+                // For every generic type parameter that had an implicit bound that
+                // couldn't be met, we point at it. If the implicit bound was met, we
+                // don't point at it as it is currently irrelevant.
+                let span = self.tcx.def_span(param.def_id);
+                entry.insert((span, "implicit unsatisfied bound on this type parameter"));
+            }
+        }
+
+        let variants = match item.kind {
+            hir::ItemKind::Struct(_, _hir_generics, variant) => vec![variant],
+            hir::ItemKind::Enum(_, _hir_generics, def) => {
+                def.variants.iter().map(|v| v.data).collect()
+            }
+            _ => return,
+        };
+
+        for variant in variants {
+            for field in variant.fields() {
+                // For every field in the type, we look for those that reference to a type
+                // parameter of the type. For something like `struct Foo<T>(Arc<T>)`, we will
+                // find `Arc<T>`. We check if `Arc` has an implementation for the macro being
+                // derived, and if so if it references `T` in any way. For example, when
+                // deriving `Clone`, `Arc<T>: Clone` doesn't impose `T: Clone`, but when
+                // deriving `PartialEq`, `Arc<T>: PartialEq` does impose `T: PartialEq`. With
+                // this information we can figure out what the appropriate "perfect derive"
+                // bounds could have been, to suggest a manual implementation of the trait.
+
+                let mut my_visitor = TypeParamFinder {
+                    places_found: vec![],
+                    target: self_ty,
+                    tcx: self.tcx,
+                    generics: ty_generics,
+                };
+                my_visitor.visit_ty_unambig(field.ty);
+                if !my_visitor.places_found.is_empty() {
+                    // The current field references the type parameter being bound in the
+                    // original predicate.
+
+                    let mut impls_trait_without_bounds = false;
+                    match field.ty.kind {
+                        hir::TyKind::Path(QPath::Resolved(
+                            _,
+                            hir::Path { res: hir::def::Res::Def(_, ty_def_id), .. },
+                        )) => {
+                            // We have something like `struct Foo<T>(Arc<T>);`. We check if
+                            // `impl<K> Trait for Arc<K>` places a bound on `K`. If it doesn't,
+                            // it means that the perfect derive implementation wouldn't impose
+                            // a bound on `T`, but rather on `Arc:<T>: Trait`.
+                            impls_trait_without_bounds =
+                                self.type_implements_trait_without_bounds(*ty_def_id, d.def_id());
+                        }
+                        _ => {}
+                    }
+                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(field.ty.span) {
+                        if impls_trait_without_bounds {
+                            bounds
+                                .entry(self_ty.to_string())
+                                .or_default()
+                                .insert("placeholder".to_string());
+                        } else {
+                            bounds
+                                .entry(self_ty.to_string())
+                                .or_default()
+                                .insert(format!("{snippet}"));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Whether there is any `ty_def_id` implementation for `trait_def_id` that has no trait bound
+    /// on its type parameters that constrains it to `trait_def_id`.
+    ///
+    /// For example, `Option<T>: Clone` has a `T: Clone` bound, hence this method would return
+    /// `false`, while `Arc<T, A = Allocator>: Clone` doesn't have a `T: Clone` bound, so this
+    /// method would return `true`.
+    fn type_implements_trait_without_bounds(&self, ty_def_id: DefId, trait_def_id: DefId) -> bool {
+        let generics = self.tcx.generics_of(ty_def_id);
+        // We skip defaulted params (like `A` in `struct Arc<T, A = Allocator>`) as a proxy for
+        // for that param not introducing additional bounds. This is not accurate, but good enough
+        // for std types like `Arc<T>: Clone` (and it only affects suggestions).
+        let defaulted_params: FxHashSet<Symbol> = generics
+            .own_params
+            .iter()
+            .filter_map(|param| param.default_value(self.tcx).map(|_| param.name))
+            .collect();
+        let mut implements = false;
+        // Find `impl trait_def_id for ty_def_id`.
+        for impl_def_id in self.tcx.all_impls(trait_def_id) {
+            let Some(header) = self.tcx.impl_trait_header(impl_def_id) else { continue };
+            let ty::Adt(def, _args) = header.trait_ref.skip_binder().self_ty().kind() else {
+                continue;
+            };
+            if def.did() != ty_def_id {
+                // This impl isn't for `ty_def_id`.
+                continue;
+            }
+            // Look at all the bounds on the impl and see if there are any bounds for the same trait
+            // being implemented (like `impl<T> Clone for Type<T> where T: Clone`).
+            for (pred, _span) in self.tcx.predicates_of(impl_def_id).predicates {
+                let Some(trait_clause) = pred.as_trait_clause() else { continue };
+                let clause = trait_clause.skip_binder();
+                if clause.def_id() != trait_def_id {
+                    continue;
+                }
+                let ty::Param(param) = clause.self_ty().kind() else { continue };
+                if defaulted_params.contains(&param.name) {
+                    continue;
+                }
+                // We found a `Param: Trait` bound on the impl of `Trait`.
+                return false;
+            }
+            implements = true;
+        }
+        implements
+    }
+
+    /// Given the `DefId` of a derived trait's impl, the macro name, and the evaluated bounds for
+    /// what "perfect derives" would have used in that impl, provide a message explaining the lack
+    /// of perfect derives and what the manual impl could look like.
+    fn suggest_manual_impl_for_derive(
+        &self,
+        err: &mut Diag<'_>,
+        impl_def_id: DefId,
+        mac: Symbol,
+        bounds: &FxIndexMap<String, FxIndexSet<String>>,
+    ) {
+        // Whether all of the type parameters are bounded to `mac`.
+        let mut all_params_bounded_directly = true;
+        let mut where_bounds = bounds
+            .iter()
+            .filter_map(|(name, bounds)| {
+                if bounds.is_empty() || bounds.contains("direct") {
+                    Some(format!("{name}: {mac}"))
+                } else {
+                    if bounds.contains(name) {
+                        // If we have `where Arc<T>: Clone, T: Clone`, we only want the later.
+                        Some(format!("{name}: {mac}"))
+                    } else {
+                        let bounds: Vec<String> =
+                            bounds.iter().filter(|b| *b != "placeholder").cloned().collect();
+                        all_params_bounded_directly = false;
+                        if !bounds.is_empty() {
+                            Some(
+                                bounds
+                                    .iter()
+                                    .map(|bound| format!("{bound}: {mac}"))
+                                    .collect::<Vec<String>>()
+                                    .join(", "),
+                            )
+                        } else {
+                            None
+                        }
+                    }
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        if !where_bounds.is_empty() {
+            where_bounds = format!("where {where_bounds} ");
+        }
+        let msg = format!(
+            "`#[derive({mac})]` introduces `where`-bounds requiring every type parameter to \
+             implement `{mac}`"
+        );
+        if let Some(header) = self.tcx.impl_trait_header(impl_def_id)
+            && !all_params_bounded_directly
+        {
+            err.note(format!("{msg}, even when not strictly necessary"));
+            let impl_args = format!(
+                "{}",
+                self.tcx
+                    .generics_of(impl_def_id)
+                    .own_params
+                    .iter()
+                    .map(|param| param.name.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+
+            let self_ty = header.trait_ref.skip_binder().self_ty();
+            let msg = format!(
+                "you can manually implement `{mac}` with more targeted bounds: \
+                 `impl<{impl_args}> {mac} for {self_ty} {where_bounds}{{ /* .. */ }}`",
+            );
+            err.help(msg);
+        } else {
+            err.note(msg);
+        }
     }
 
     /// If the predicate failure is caused by an unmet bound on a tuple, recheck if the bound would
@@ -4461,4 +4691,30 @@ fn print_disambiguation_help<'tcx>(
             format!("{trait_ref}::")
         },
     )
+}
+
+struct TypeParamFinder<'tcx> {
+    places_found: Vec<Span>,
+    target: Ty<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    generics: &'tcx ty::Generics,
+}
+
+impl<'v> Visitor<'v> for TypeParamFinder<'v> {
+    fn visit_ty(&mut self, t: &'v hir::Ty<'v, hir::AmbigArg>) {
+        if let hir::TyKind::Path(QPath::Resolved(
+            _,
+            hir::Path { res: hir::def::Res::Def(hir::def::DefKind::TyParam, def_id), .. },
+        )) = &t.kind
+        {
+            let index = self.generics.param_def_id_to_index[def_id];
+            let name = self.tcx.item_name(*def_id);
+            let ty = Ty::new_param(self.tcx, index, name);
+            if ty == self.target {
+                self.places_found.push(t.span);
+                return;
+            }
+        }
+        hir::intravisit::walk_ty(self, t);
+    }
 }
