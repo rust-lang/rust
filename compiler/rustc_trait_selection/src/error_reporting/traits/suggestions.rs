@@ -23,6 +23,7 @@ use rustc_hir::{
 };
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_middle::middle::privacy::Level;
+use rustc_middle::query::Key;
 use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::{
@@ -388,12 +389,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
 
                     if let Some((name, term)) = associated_ty {
-                        // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
-                        // That should be extracted into a helper function.
-                        if let Some(stripped) = constraint.strip_suffix('>') {
-                            constraint = format!("{stripped}, {name} = {term}>");
+                        let fn_def_id = self
+                            .tcx
+                            .require_lang_item(LangItem::Fn, body_id.default_span(self.tcx));
+                        if fn_def_id == trait_pred.skip_binder().trait_ref.def_id {
+                            constraint.push_str(&format!(" -> {term}"));
                         } else {
-                            constraint.push_str(&format!("<{name} = {term}>"));
+                            // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
+                            // That should be extracted into a helper function.
+                            if let Some(stripped) = constraint.strip_suffix('>') {
+                                constraint = format!("{stripped}, {name} = {term}>");
+                            } else {
+                                constraint.push_str(&format!("<{name} = {term}>"));
+                            }
                         }
                     }
 
