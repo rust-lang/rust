@@ -700,6 +700,10 @@ struct LLVMRustSanitizerOptions {
 #ifdef ENZYME
 extern "C" void registerEnzymeAndPassPipeline(llvm::PassBuilder &PB,
                                               /* augmentPassBuilder */ bool);
+
+extern "C" {
+extern llvm::cl::opt<std::string> EnzymeFunctionToAnalyze;
+}
 #endif
 
 extern "C" LLVMRustResult LLVMRustOptimize(
@@ -1067,6 +1071,15 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       std::string ErrMsg = toString(std::move(Err));
       LLVMRustSetLastError(ErrMsg.c_str());
       return LLVMRustResult::Failure;
+    }
+
+    // Check if PrintTAFn was used and add type analysis pass if needed
+    if (!EnzymeFunctionToAnalyze.empty()) {
+      if (auto Err = PB.parsePassPipeline(MPM, "print-type-analysis")) {
+        std::string ErrMsg = toString(std::move(Err));
+        LLVMRustSetLastError(ErrMsg.c_str());
+        return LLVMRustResult::Failure;
+      }
     }
 
     if (PrintAfterEnzyme) {
