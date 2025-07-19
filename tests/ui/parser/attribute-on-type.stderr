@@ -1,0 +1,68 @@
+error: attributes cannot be applied to generic type arguments
+  --> $DIR/attribute-on-type.rs:7:18
+   |
+LL |     let foo: Foo<#[cfg(not(wrong))] String> = todo!();
+   |                  ^^^^^^^^^^^^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to generic type arguments
+  --> $DIR/attribute-on-type.rs:10:23
+   |
+LL |     let _generic: Box<#[attr] i32> = Box::new(1);
+   |                       ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to a type
+  --> $DIR/attribute-on-type.rs:13:22
+   |
+LL |     let _assignment: #[attr] i32 = Box::new(1);
+   |                      ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to generic type arguments
+  --> $DIR/attribute-on-type.rs:16:23
+   |
+LL |     let _complex: Vec<#[derive(Debug)] String> = vec![];
+   |                       ^^^^^^^^^^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to generic type arguments
+  --> $DIR/attribute-on-type.rs:19:26
+   |
+LL |     let _nested: Box<Vec<#[cfg(feature = "test")] u64>> = Box::new(vec![]);
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to a function parameter's type
+  --> $DIR/attribute-on-type.rs:23:14
+   |
+LL | fn f(_param: #[attr] i32) {}
+   |              ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to a type
+  --> $DIR/attribute-on-type.rs:26:11
+   |
+LL | fn g() -> #[attr] i32 { 0 }
+   |           ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to a type
+  --> $DIR/attribute-on-type.rs:30:12
+   |
+LL |     field: #[attr] i32,
+   |            ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to a type
+  --> $DIR/attribute-on-type.rs:32:14
+   |
+LL |     field1: (#[attr] i32, i32),
+   |              ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to a type
+  --> $DIR/attribute-on-type.rs:36:15
+   |
+LL | type Tuple = (#[attr] i32, String);
+   |               ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to a type
+  --> $DIR/attribute-on-type.rs:39:6
+   |
+LL | impl #[attr] S {}
+   |      ^^^^^^^ attributes are not allowed here
+
+error: aborting due to 11 previous errors
+

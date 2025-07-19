@@ -17,8 +17,8 @@ use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
 use crate::ast::{PatKind, TyKind};
 use crate::errors::{
-    self, FnPathFoundNamedParams, PathFoundAttributeInParams, PathFoundCVariadicParams,
-    PathSingleColon, PathTripleColon,
+    self, AttributeOnGenericType, FnPathFoundNamedParams, PathFoundAttributeInParams,
+    PathFoundCVariadicParams, PathSingleColon, PathTripleColon,
 };
 use crate::exp;
 use crate::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
@@ -935,6 +935,32 @@ impl<'a> Parser<'a> {
         } else if self.token.is_keyword(kw::Const) {
             return self.recover_const_param_declaration(ty_generics);
         } else {
+            if self.token == token::Pound
+                && self.look_ahead(1, |t| matches!(t.kind, token::OpenBracket))
+            {
+                let lo_attr = self.token.span;
+
+                // eat attr
+                while self.token != token::CloseBracket && self.token != token::Eof {
+                    self.bump();
+                }
+                if self.token != token::Eof {
+                    self.bump(); // eat ']'
+                }
+
+                let attr_span = lo_attr.to(self.prev_token.span);
+
+                // eat type so it wont be a part of span
+                let mut full_span = attr_span;
+                if self.check_type() {
+                    if let Ok(ty) = self.parse_ty() {
+                        full_span = attr_span.to(ty.span);
+                    }
+                }
+
+                let guar = self.dcx().emit_err(AttributeOnGenericType { span: attr_span });
+                return Ok(Some(GenericArg::Type(self.mk_ty(full_span, TyKind::Err(guar)))));
+            }
             // Fall back by trying to parse a const-expr expression. If we successfully do so,
             // then we should report an error that it needs to be wrapped in braces.
             let snapshot = self.create_snapshot_for_diagnostic();

@@ -1490,6 +1490,22 @@ pub(crate) struct AttributeOnParamType {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_attribute_on_type)]
+pub(crate) struct AttributeOnType {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_attribute_on_generic_type)]
+pub(crate) struct AttributeOnGenericType {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_pattern_method_param_without_body, code = E0642)]
 pub(crate) struct PatternMethodParamWithoutBody {
     #[primary_span]

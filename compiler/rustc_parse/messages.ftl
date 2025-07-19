@@ -71,6 +71,12 @@ parse_attr_without_generics = attribute without generic parameters
 parse_attribute_on_param_type = attributes cannot be applied to a function parameter's type
     .label = attributes are not allowed here
 
+parse_attribute_on_type = attributes cannot be applied to a type
+    .label = attributes are not allowed here
+
+parse_attribute_on_generic_type = attributes cannot be applied to generic type arguments
+    .label = attributes are not allowed here
+
 parse_bad_assoc_type_bounds = bounds on associated types do not belong here
     .label = belongs in `where` clause
 
