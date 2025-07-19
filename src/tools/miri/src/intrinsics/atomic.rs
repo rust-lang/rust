@@ -105,27 +105,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "or" => {
-                let ord = get_ord_at(1);
+                let ord = get_ord_at(2);
                 this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitOr, false), rw_ord(ord))?;
             }
             "xor" => {
-                let ord = get_ord_at(1);
+                let ord = get_ord_at(2);
                 this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitXor, false), rw_ord(ord))?;
             }
             "and" => {
-                let ord = get_ord_at(1);
+                let ord = get_ord_at(2);
                 this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, false), rw_ord(ord))?;
             }
             "nand" => {
-                let ord = get_ord_at(1);
+                let ord = get_ord_at(2);
                 this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, true), rw_ord(ord))?;
             }
             "xadd" => {
-                let ord = get_ord_at(1);
+                let ord = get_ord_at(2);
                 this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Add, false), rw_ord(ord))?;
             }
             "xsub" => {
-                let ord = get_ord_at(1);
+                let ord = get_ord_at(2);
                 this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Sub, false), rw_ord(ord))?;
             }
             "min" => {
@@ -231,14 +231,13 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         let place = this.deref_pointer(place)?;
         let rhs = this.read_immediate(rhs)?;
 
-        if !place.layout.ty.is_integral() && !place.layout.ty.is_raw_ptr() {
+        if !(place.layout.ty.is_integral() || place.layout.ty.is_raw_ptr())
+            || !(rhs.layout.ty.is_integral() || rhs.layout.ty.is_raw_ptr())
+        {
             span_bug!(
                 this.cur_span(),
                 "atomic arithmetic operations only work on integer and raw pointer types",
             );
-        }
-        if rhs.layout.ty != place.layout.ty {
-            span_bug!(this.cur_span(), "atomic arithmetic operation type mismatch");
         }
 
         let old = match atomic_op {
