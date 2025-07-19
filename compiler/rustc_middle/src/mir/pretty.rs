@@ -1830,7 +1830,7 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
                 ascii.push('╼');
                 i += ptr_size;
             }
-        } else if let Some(prov) = alloc.provenance().get(i, &tcx) {
+        } else if let Some(prov) = alloc.provenance().get_byte(i, &tcx) {
             // Memory with provenance must be defined
             assert!(
                 alloc.init_mask().is_range_initialized(alloc_range(i, Size::from_bytes(1))).is_ok()

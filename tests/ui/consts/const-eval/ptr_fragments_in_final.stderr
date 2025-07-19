@@ -1,0 +1,10 @@
+error: encountered partial pointer in final value of constant
+  --> $DIR/ptr_fragments_in_final.rs:15:1
+   |
+LL | const MEMCPY_RET: MaybeUninit<*const i32> = unsafe {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: while pointers can be broken apart into individual bytes during const-evaluation, only complete pointers (with all their bytes in the right order) are supported in the final value
+
+error: aborting due to 1 previous error
+

@@ -79,10 +79,17 @@ fn intern_shallow<'tcx, M: CompileTimeMachine<'tcx>>(
                 // `const_make_global`. We want to error here, but we have to first put the
                 // allocation back into the `alloc_map` to keep things in a consistent state.
                 ecx.memory.alloc_map.insert(alloc_id, (kind, alloc));
+                ecx.tcx.dcx().delayed_bug("non-global heap allocation in const value");
                 return Err(InternError::ConstAllocNotGlobal);
             }
         }
         MemoryKind::Stack | MemoryKind::CallerLocation => {}
+    }
+    if !alloc.provenance_merge_bytes(&ecx.tcx) {
+        // Per-byte provenance is not supported by backends, so we cannot accept it here.
+        ecx.memory.alloc_map.insert(alloc_id, (kind, alloc));
+        ecx.tcx.dcx().delayed_bug("partial pointer in const value");
+        return Err(InternError::PartialPointer);
     }
 
     // Set allocation mutability as appropriate. This is used by LLVM to put things into
@@ -166,6 +173,7 @@ pub enum InternError {
     BadMutablePointer,
     DanglingPointer,
     ConstAllocNotGlobal,
+    PartialPointer,
 }
 
 /// Intern `ret` and everything it references.
@@ -225,9 +233,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx>>(
         alloc.1.mutability = base_mutability;
         alloc.1.provenance().ptrs().iter().map(|&(_, prov)| prov).collect()
     } else {
-        intern_shallow(ecx, base_alloc_id, base_mutability, Some(&mut disambiguator))
-            .unwrap()
-            .collect()
+        intern_shallow(ecx, base_alloc_id, base_mutability, Some(&mut disambiguator))?.collect()
     };
     // We need to distinguish "has just been interned" from "was already in `tcx`",
     // so we track this in a separate set.
@@ -235,7 +241,6 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx>>(
     // Whether we encountered a bad mutable pointer.
     // We want to first report "dangling" and then "mutable", so we need to delay reporting these
     // errors.
-    let mut result = Ok(());
     let mut found_bad_mutable_ptr = false;
 
     // Keep interning as long as there are things to intern.
@@ -310,20 +315,15 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx>>(
         // okay with losing some potential for immutability here. This can anyway only affect
         // `static mut`.
         just_interned.insert(alloc_id);
-        match intern_shallow(ecx, alloc_id, inner_mutability, Some(&mut disambiguator)) {
-            Ok(nested) => todo.extend(nested),
-            Err(err) => {
-                ecx.tcx.dcx().delayed_bug("error during const interning");
-                result = Err(err);
-            }
-        }
+        let next = intern_shallow(ecx, alloc_id, inner_mutability, Some(&mut disambiguator))?;
+        todo.extend(next);
     }
-    if found_bad_mutable_ptr && result.is_ok() {
+    if found_bad_mutable_ptr {
         // We found a mutable pointer inside a const where inner allocations should be immutable,
         // and there was no other error. This should usually never happen! However, this can happen
         // in unleash-miri mode, so report it as a normal error then.
         if ecx.tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you {
-            result = Err(InternError::BadMutablePointer);
+            return Err(InternError::BadMutablePointer);
         } else {
             span_bug!(
                 ecx.tcx.span,
@@ -331,7 +331,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx>>(
             );
         }
     }
-    result
+    Ok(())
 }
 
 /// Intern `ret`. This function assumes that `ret` references no other allocation.
