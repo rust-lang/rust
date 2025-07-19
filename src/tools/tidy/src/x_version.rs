@@ -25,12 +25,12 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
                 if let Some(version) = iter.next() {
                     // Check this is the rust-lang/rust x tool installation since it should be
                     // installed at a path containing `src/tools/x`.
-                    if let Some(path) = iter.next() {
-                        if path.contains("src/tools/x") {
-                            let version = version.strip_prefix("v").unwrap();
-                            installed = Some(Version::parse(version).unwrap());
-                            break;
-                        }
+                    if let Some(path) = iter.next()
+                        && path.contains("src/tools/x")
+                    {
+                        let version = version.strip_prefix("v").unwrap();
+                        installed = Some(Version::parse(version).unwrap());
+                        break;
                     };
                 }
             } else {
