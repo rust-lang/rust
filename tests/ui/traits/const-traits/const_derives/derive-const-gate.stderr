@@ -21,9 +21,7 @@ error[E0015]: cannot call non-const method `Formatter::<'_>::write_str` in const
   --> $DIR/derive-const-gate.rs:1:16
    |
 LL | #[derive_const(Debug)]
-   |                ^^^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   |                ^^^^^ calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 3 previous errors
 
