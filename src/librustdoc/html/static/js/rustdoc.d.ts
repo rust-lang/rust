@@ -219,6 +219,8 @@ declare namespace rustdoc {
         crate: string,
         descShard: SearchDescShard,
         id: number,
+        // This is the name of the item. For doc aliases, if you want the name of the aliased
+        // item, take a look at `Row.original.name`.
         name: string,
         normalizedName: string,
         word: string,
