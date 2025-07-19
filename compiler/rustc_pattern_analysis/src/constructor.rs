@@ -981,7 +981,7 @@ pub enum ConstructorSet<Cx: PatCx> {
     /// This type has the following list of constructors. If `variants` is empty and
     /// `non_exhaustive` is false, don't use this; use `NoConstructors` instead.
     Variants { variants: IndexVec<Cx::VariantIdx, VariantVisibility>, non_exhaustive: bool },
-    /// The type is `&T`
+    /// The type is `&T`.
     Ref,
     /// The type is a union.
     Union,

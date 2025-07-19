@@ -2272,6 +2272,52 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         }
     }
 
+    fn neg_unpin_conditions(&mut self, self_ty: Ty<'tcx>) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
+        match *self_ty.kind() {
+            ty::Array(ty, _) | ty::Slice(ty) => {
+                // (*) binder moved here
+                ty::Binder::dummy(vec![ty])
+            }
+            ty::Tuple(tys) => {
+                // (*) binder moved here
+                ty::Binder::dummy(tys.iter().collect())
+            }
+
+            // `Unpin` types
+            ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Error(_)
+            | ty::Uint(_)
+            | ty::Int(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Bool
+            | ty::Float(_)
+            | ty::Char
+            | ty::RawPtr(..)
+            | ty::Never
+            | ty::Ref(..)
+            | ty::Dynamic(..)
+            | ty::Str
+            | ty::Foreign(..)
+            | ty::UnsafeBinder(_)
+            | ty::Pat(..) => bug!("`Unpin` type cannot have `!Unpin` bound"),
+
+            ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Infer(ty::TyVar(_))
+            | ty::Bound(..)
+            | ty::Adt(..)
+            | ty::Alias(..)
+            | ty::Param(..)
+            | ty::Placeholder(..)
+            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty)
+            }
+        }
+    }
+
     fn coroutine_is_gen(&mut self, self_ty: Ty<'tcx>) -> bool {
         matches!(*self_ty.kind(), ty::Coroutine(did, ..)
             if self.tcx().coroutine_is_gen(did))
@@ -2422,6 +2468,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         trait_def_id: DefId,
+        polarity: ty::PredicatePolarity,
         types: Vec<Ty<'tcx>>,
     ) -> PredicateObligations<'tcx> {
         // Because the types were potentially derived from
@@ -2466,7 +2513,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     ty::TraitRef::new_from_args(tcx, trait_def_id, err_args)
                 };
 
-                let obligation = Obligation::new(self.tcx(), cause.clone(), param_env, trait_ref);
+                let trait_predicate = ty::TraitPredicate { trait_ref, polarity };
+
+                let obligation =
+                    Obligation::new(self.tcx(), cause.clone(), param_env, trait_predicate);
                 obligations.push(obligation);
                 obligations
             })
