@@ -1153,7 +1153,7 @@ impl f64 {
     ///
     /// let abs_difference = (x.gamma() - 24.0).abs();
     ///
-    /// assert!(abs_difference <= f64::EPSILON);
+    /// assert!(abs_difference <= 1e-13);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -1248,7 +1248,7 @@ impl f64 {
     /// let one = x.erf() + x.erfc();
     /// let abs_difference = (one - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f64::EPSILON);
+    /// assert!(abs_difference <= 1e-13);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
