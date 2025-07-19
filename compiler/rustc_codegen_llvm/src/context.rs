@@ -211,7 +211,7 @@ pub(crate) unsafe fn create_module<'ll>(
 
     // Ensure the data-layout values hardcoded remain the defaults.
     {
-        let tm = crate::back::write::create_informational_target_machine(tcx.sess, false);
+        let tm = crate::back::write::create_informational_target_machine(sess, false);
         unsafe {
             llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm.raw());
         }
@@ -678,6 +678,22 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
 
     pub(crate) fn get_const_int(&self, ty: &'ll Type, val: u64) -> &'ll Value {
         unsafe { llvm::LLVMConstInt(ty, val, llvm::False) }
+    }
+
+    pub(crate) fn get_const_i64(&self, n: u64) -> &'ll Value {
+        self.get_const_int(self.type_i64(), n)
+    }
+
+    pub(crate) fn get_const_i32(&self, n: u64) -> &'ll Value {
+        self.get_const_int(self.type_i32(), n)
+    }
+
+    pub(crate) fn get_const_i16(&self, n: u64) -> &'ll Value {
+        self.get_const_int(self.type_i16(), n)
+    }
+
+    pub(crate) fn get_const_i8(&self, n: u64) -> &'ll Value {
+        self.get_const_int(self.type_i8(), n)
     }
 
     pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {
