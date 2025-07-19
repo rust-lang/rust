@@ -1542,7 +1542,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 fn op_to_prop_const<'tcx>(
     ecx: &mut InterpCx<'tcx, DummyMachine>,
     op: &OpTy<'tcx>,
-) -> Option<ConstValue<'tcx>> {
+) -> Option<ConstValue> {
     // Do not attempt to propagate unsized locals.
     if op.layout.is_unsized() {
         return None;

@@ -87,22 +87,24 @@
           _1 = const "my favourite slice";
           StorageLive(_2);
           StorageLive(_3);
-          _3 = copy _1;
+-         _3 = copy _1;
 -         _2 = opaque::<&str>(move _3) -> [return: bb1, unwind continue];
-+         _2 = opaque::<&str>(copy _1) -> [return: bb1, unwind continue];
++         _3 = const "my favourite slice";
++         _2 = opaque::<&str>(const "my favourite slice") -> [return: bb1, unwind continue];
       }
   
       bb1: {
           StorageDead(_3);
           StorageDead(_2);
           StorageLive(_4);
-          _4 = copy _1;
+-         _4 = copy _1;
++         _4 = const "my favourite slice";
           StorageLive(_5);
           StorageLive(_6);
 -         _6 = copy _4;
 -         _5 = opaque::<&str>(move _6) -> [return: bb2, unwind continue];
-+         _6 = copy _1;
-+         _5 = opaque::<&str>(copy _1) -> [return: bb2, unwind continue];
++         _6 = const "my favourite slice";
++         _5 = opaque::<&str>(const "my favourite slice") -> [return: bb2, unwind continue];
       }
   
       bb2: {
@@ -314,4 +316,6 @@
 +         _48 = assert_failed::<*const u8, *const u8>(const core::panicking::AssertKind::Eq, move _50, move _52, move _54) -> unwind continue;
       }
   }
+  
+  ALLOC0 (size: 18, align: 1) { .. }
   

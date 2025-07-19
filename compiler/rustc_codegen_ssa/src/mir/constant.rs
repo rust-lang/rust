@@ -20,7 +20,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         OperandRef::from_const(bx, val, ty)
     }
 
-    pub fn eval_mir_constant(&self, constant: &mir::ConstOperand<'tcx>) -> mir::ConstValue<'tcx> {
+    pub fn eval_mir_constant(&self, constant: &mir::ConstOperand<'tcx>) -> mir::ConstValue {
         // `MirUsedCollector` visited all required_consts before codegen began, so if we got here
         // there can be no more constants that fail to evaluate.
         self.monomorphize(constant.const_)

@@ -4,6 +4,7 @@
 //! to help with the tedium.
 
 use std::fmt::{self, Debug};
+use std::marker::PhantomData;
 
 use rustc_abi::TyAndLayout;
 use rustc_hir::def::Namespace;
@@ -234,6 +235,7 @@ TrivialLiftImpls! {
     rustc_abi::ExternAbi,
     rustc_abi::Size,
     rustc_hir::Safety,
+    rustc_middle::mir::ConstValue,
     rustc_type_ir::BoundConstness,
     rustc_type_ir::PredicatePolarity,
     // tidy-alphabetical-end
@@ -250,7 +252,7 @@ TrivialTypeTraversalImpls! {
     crate::mir::BlockTailInfo,
     crate::mir::BorrowKind,
     crate::mir::CastKind,
-    crate::mir::ConstValue<'tcx>,
+    crate::mir::ConstValue,
     crate::mir::CoroutineSavedLocal,
     crate::mir::FakeReadCause,
     crate::mir::Local,
@@ -310,6 +312,13 @@ TrivialTypeTraversalAndLiftImpls! {
 
 ///////////////////////////////////////////////////////////////////////////
 // Lift implementations
+
+impl<'tcx> Lift<TyCtxt<'tcx>> for PhantomData<&()> {
+    type Lifted = PhantomData<&'tcx ()>;
+    fn lift_to_interner(self, _: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        Some(PhantomData)
+    }
+}
 
 impl<'tcx, T: Lift<TyCtxt<'tcx>>> Lift<TyCtxt<'tcx>> for Option<T> {
     type Lifted = Option<T::Lifted>;

@@ -338,7 +338,7 @@ impl<'tcx> NonCopyConst<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: TypingEnv<'tcx>,
         ty: Ty<'tcx>,
-        val: ConstValue<'tcx>,
+        val: ConstValue,
     ) -> Result<bool, ()> {
         let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
         match self.is_ty_freeze(tcx, typing_env, ty) {
@@ -477,7 +477,7 @@ impl<'tcx> NonCopyConst<'tcx> {
         typing_env: TypingEnv<'tcx>,
         typeck: &'tcx TypeckResults<'tcx>,
         mut src_expr: &'tcx Expr<'tcx>,
-        mut val: ConstValue<'tcx>,
+        mut val: ConstValue,
     ) -> Result<Option<BorrowSource<'tcx>>, ()> {
         let mut parents = tcx.hir_parent_iter(src_expr.hir_id);
         let mut ty = typeck.expr_ty(src_expr);

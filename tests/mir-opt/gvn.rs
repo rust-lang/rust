@@ -533,10 +533,10 @@ fn dereferences(t: &mut u32, u: &impl Copy, s: &S<u32>) {
 fn slices() {
     // CHECK-LABEL: fn slices(
     // CHECK: {{_.*}} = const "
-    // CHECK-NOT: {{_.*}} = const "
-    let s = "my favourite slice"; // This is a `Const::Slice` in MIR.
+    // CHECK: {{_.*}} = const "
+    let s = "my favourite slice";
     opaque(s);
-    let t = s; // This should be the same pointer, so cannot be a `Const::Slice`.
+    let t = s; // This should be the same pointer.
     opaque(t);
     assert_eq!(s.as_ptr(), t.as_ptr());
     let u = unsafe { transmute::<&str, &[u8]>(s) };
@@ -556,12 +556,12 @@ fn duplicate_slice() -> (bool, bool) {
         let d: &str;
         {
             // CHECK: [[a:_.*]] = (const "a",);
-            // CHECK: [[au:_.*]] = copy ([[a]].0: &str) as u128 (Transmute);
+            // CHECK: [[au:_.*]] = const "a" as u128 (Transmute);
             let a = ("a",);
             Call(au = transmute::<_, u128>(a.0), ReturnTo(bb1), UnwindContinue())
         }
         bb1 = {
-            // CHECK: [[c:_.*]] = identity::<&str>(copy ([[a]].0: &str))
+            // CHECK: [[c:_.*]] = identity::<&str>(const "a")
             Call(c = identity(a.0), ReturnTo(bb2), UnwindContinue())
         }
         bb2 = {
@@ -569,15 +569,13 @@ fn duplicate_slice() -> (bool, bool) {
             Call(cu = transmute::<_, u128>(c), ReturnTo(bb3), UnwindContinue())
         }
         bb3 = {
-            // This slice is different from `a.0`. Hence `bu` is not `au`.
             // CHECK: [[b:_.*]] = const "a";
-            // CHECK: [[bu:_.*]] = copy [[b]] as u128 (Transmute);
+            // CHECK: [[bu:_.*]] = copy [[au]];
             let b = "a";
             Call(bu = transmute::<_, u128>(b), ReturnTo(bb4), UnwindContinue())
         }
         bb4 = {
-            // This returns a copy of `b`, which is not `a`.
-            // CHECK: [[d:_.*]] = identity::<&str>(copy [[b]])
+            // CHECK: [[d:_.*]] = identity::<&str>(const "a")
             Call(d = identity(b), ReturnTo(bb5), UnwindContinue())
         }
         bb5 = {
@@ -585,8 +583,7 @@ fn duplicate_slice() -> (bool, bool) {
             Call(du = transmute::<_, u128>(d), ReturnTo(bb6), UnwindContinue())
         }
         bb6 = {
-            // `direct` must not fold to `true`, as `indirect` will not.
-            // CHECK: = Eq(copy [[au]], copy [[bu]]);
+            // CHECK: = const true;
             // CHECK: = Eq(copy [[cu]], copy [[du]]);
             let direct = au == bu;
             let indirect = cu == du;

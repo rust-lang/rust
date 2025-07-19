@@ -113,3 +113,19 @@
       }
   }
   
+  ALLOC0 (size: 1, align: 1) {
+      44                                              │ D
+  }
+  
+  ALLOC1 (size: 1, align: 1) {
+      43                                              │ C
+  }
+  
+  ALLOC2 (size: 8, align: 1) {
+      42 28 45 6d 70 74 79 29                         │ B(Empty)
+  }
+  
+  ALLOC3 (size: 8, align: 1) {
+      41 28 45 6d 70 74 79 29                         │ A(Empty)
+  }
+  

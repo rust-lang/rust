@@ -137,7 +137,7 @@ impl<'tcx> ValTreeCreationError<'tcx> {
 
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalStaticInitializerRawResult<'tcx> = Result<ConstAllocation<'tcx>, ErrorHandled>;
-pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
+pub type EvalToConstValueResult<'tcx> = Result<ConstValue, ErrorHandled>;
 pub type EvalToValTreeResult<'tcx> = Result<ValTree<'tcx>, ValTreeCreationError<'tcx>>;
 
 #[cfg(target_pointer_width = "64")]
