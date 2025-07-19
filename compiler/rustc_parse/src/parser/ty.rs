@@ -14,10 +14,10 @@ use thin_vec::{ThinVec, thin_vec};
 
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
 use crate::errors::{
-    self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
-    FnPtrWithGenerics, FnPtrWithGenericsSugg, HelpUseLatestEdition, InvalidDynKeyword,
-    LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, NestedCVariadicType,
-    ReturnTypesUseThinArrow,
+    self, AttributeOnEmptyType, AttributeOnType, DynAfterMut, ExpectedFnPathFoundFnKeyword,
+    ExpectedMutOrConstInRawPointerType, FnPtrWithGenerics, FnPtrWithGenericsSugg,
+    HelpUseLatestEdition, InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
+    NestedCVariadicType, ReturnTypesUseThinArrow,
 };
 use crate::parser::item::FrontMatterParsingMode;
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
@@ -253,7 +253,27 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
+        if self.token == token::Pound && self.look_ahead(1, |t| *t == token::OpenBracket) {
+            let attrs_wrapper = self.parse_outer_attributes()?;
+            let raw_attrs = attrs_wrapper.take_for_recovery(self.psess);
+            let attr_span = raw_attrs[0].span.to(raw_attrs.last().unwrap().span);
+            let (full_span, guar) = match self.parse_ty() {
+                Ok(ty) => {
+                    let full_span = attr_span.until(ty.span);
+                    let guar = self
+                        .dcx()
+                        .emit_err(AttributeOnType { span: attr_span, fix_span: full_span });
+                    (attr_span, guar)
+                }
+                Err(err) => {
+                    err.cancel();
+                    let guar = self.dcx().emit_err(AttributeOnEmptyType { span: attr_span });
+                    (attr_span, guar)
+                }
+            };
 
+            return Ok(self.mk_ty(full_span, TyKind::Err(guar)));
+        }
         if let Some(ty) = self.eat_metavar_seq_with_matcher(
             |mv_kind| matches!(mv_kind, MetaVarKind::Ty { .. }),
             |this| this.parse_ty_no_question_mark_recover(),

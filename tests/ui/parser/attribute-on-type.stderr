@@ -1,0 +1,92 @@
+error: attributes cannot be applied to generic arguments
+  --> $DIR/attribute-on-type.rs:13:18
+   |
+LL |     let foo: Foo<#[cfg(not(wrong))] i32> = Foo(2i32);
+   |                  ^^^^^^^^^^^^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to types
+  --> $DIR/attribute-on-type.rs:16:12
+   |
+LL |     let _: #[attr] &'static str = "123";
+   |            ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to generic arguments
+  --> $DIR/attribute-on-type.rs:19:16
+   |
+LL |     let _: Bar<#[cfg(any())] 'static> = Bar(&123);
+   |                ^^^^^^^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to generic arguments
+  --> $DIR/attribute-on-type.rs:22:16
+   |
+LL |     let _: Baz<#[cfg(any())] 42> = Baz(42);
+   |                ^^^^^^^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to generic arguments
+  --> $DIR/attribute-on-type.rs:25:16
+   |
+LL |     let _: Foo<#[cfg(not(wrong))]String> = Foo(String::new());
+   |                ^^^^^^^^^^^^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to generic arguments
+  --> $DIR/attribute-on-type.rs:28:16
+   |
+LL |     let _: Bar<#[cfg(any())]       'static> = Bar(&456);
+   |                ^^^^^^^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to generic arguments
+  --> $DIR/attribute-on-type.rs:31:23
+   |
+LL |     let _generic: Box<#[attr] i32> = Box::new(1);
+   |                       ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to types
+  --> $DIR/attribute-on-type.rs:34:22
+   |
+LL |     let _assignment: #[attr] i32 = *Box::new(1);
+   |                      ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to generic arguments
+  --> $DIR/attribute-on-type.rs:37:23
+   |
+LL |     let _complex: Vec<#[derive(Debug)] String> = vec![];
+   |                       ^^^^^^^^^^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to generic arguments
+  --> $DIR/attribute-on-type.rs:40:26
+   |
+LL |     let _nested: Box<Vec<#[cfg(feature = "test")] u64>> = Box::new(vec![]);
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to types
+  --> $DIR/attribute-on-type.rs:44:11
+   |
+LL | fn g() -> #[attr] i32 { 0 }
+   |           ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to types
+  --> $DIR/attribute-on-type.rs:48:12
+   |
+LL |     field: #[attr] i32,
+   |            ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to types
+  --> $DIR/attribute-on-type.rs:50:14
+   |
+LL |     field1: (#[attr] i32, i32),
+   |              ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to types
+  --> $DIR/attribute-on-type.rs:54:15
+   |
+LL | type Tuple = (#[attr] i32, String);
+   |               ^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to types
+  --> $DIR/attribute-on-type.rs:57:6
+   |
+LL | impl #[attr] S {}
+   |      ^^^^^^^ attributes are not allowed here
+
+error: aborting due to 15 previous errors
+

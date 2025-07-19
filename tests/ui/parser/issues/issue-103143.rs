@@ -1,5 +1,5 @@
 fn main() {
     x::<#[a]y::<z>>
-    //~^ ERROR invalid const generic expression
+    //~^ ERROR attributes cannot be applied to generic arguments
     //~| ERROR cannot find value `x` in this scope
 }
