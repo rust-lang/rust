@@ -527,7 +527,7 @@ macro_rules! common_visitor_and_walkers {
             }
         }
 
-        fn visit_defaultness<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, defaultness: &$($lt)? $($mut)? Defaultness) -> V::Result {
+        pub fn visit_defaultness<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, defaultness: &$($lt)? $($mut)? Defaultness) -> V::Result {
             match defaultness {
                 Defaultness::Default(span) => visit_span(vis, span),
                 Defaultness::Final => {
@@ -808,7 +808,7 @@ macro_rules! common_visitor_and_walkers {
             visit_foreign_items(vis, items)
         }
 
-        fn walk_define_opaques<$($lt,)? V: $Visitor$(<$lt>)?>(
+        pub fn walk_define_opaques<$($lt,)? V: $Visitor$(<$lt>)?>(
             visitor: &mut V,
             define_opaque: &$($lt)? $($mut)? Option<ThinVec<(NodeId, Path)>>,
         ) -> V::Result {
@@ -1223,6 +1223,27 @@ macro_rules! common_visitor_and_walkers {
                 try_visit!(vis.visit_ty(ty));
                 try_visit!(visit_span(vis, path_span));
             }
+            V::Result::output()
+        }
+
+        pub fn walk_stmt<$($lt,)? V: $Visitor$(<$lt>)?>(
+            vis: &mut V,
+            statement: &$($lt)? $($mut)? Stmt,
+        ) -> V::Result {
+            let Stmt { id, kind, span } = statement;
+            try_visit!(visit_id(vis, id));
+            match kind {
+                StmtKind::Let(local) => try_visit!(vis.visit_local(local)),
+                StmtKind::Item(item) => try_visit!(vis.visit_item(item)),
+                StmtKind::Expr(expr) | StmtKind::Semi(expr) => try_visit!(vis.visit_expr(expr)),
+                StmtKind::Empty => {}
+                StmtKind::MacCall(mac) => {
+                    let MacCallStmt { mac, attrs, style: _, tokens: _ } = &$($mut)? **mac;
+                    walk_list!(vis, visit_attribute, attrs);
+                    try_visit!(vis.visit_mac_call(mac));
+                }
+            }
+            try_visit!(visit_span(vis, span));
             V::Result::output()
         }
 
@@ -1944,21 +1965,4 @@ fn visit_nested_use_tree<'a, V: Visitor<'a>>(
     &nested_id: &NodeId,
 ) -> V::Result {
     vis.visit_nested_use_tree(nested_tree, nested_id)
-}
-
-pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) -> V::Result {
-    let Stmt { id, kind, span: _ } = statement;
-    try_visit!(visit_id(visitor, id));
-    match kind {
-        StmtKind::Let(local) => try_visit!(visitor.visit_local(local)),
-        StmtKind::Item(item) => try_visit!(visitor.visit_item(item)),
-        StmtKind::Expr(expr) | StmtKind::Semi(expr) => try_visit!(visitor.visit_expr(expr)),
-        StmtKind::Empty => {}
-        StmtKind::MacCall(mac) => {
-            let MacCallStmt { mac, attrs, style: _, tokens: _ } = &**mac;
-            walk_list!(visitor, visit_attribute, attrs);
-            try_visit!(visitor.visit_mac_call(mac));
-        }
-    }
-    V::Result::output()
 }

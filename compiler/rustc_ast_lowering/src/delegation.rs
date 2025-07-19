@@ -83,7 +83,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         item_id: NodeId,
         is_in_trait_impl: bool,
     ) -> DelegationResults<'hir> {
-        let span = self.lower_span(delegation.path.segments.last().unwrap().ident.span);
+        let span = delegation.path.segments.last().unwrap().ident.span;
         let sig_id = self.get_delegation_sig_id(item_id, delegation.id, span, is_in_trait_impl);
         match sig_id {
             Ok(sig_id) => {
@@ -92,9 +92,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let decl = self.lower_delegation_decl(sig_id, param_count, c_variadic, span);
                 let sig = self.lower_delegation_sig(sig_id, decl, span);
                 let body_id = self.lower_delegation_body(delegation, is_method, param_count, span);
-                let ident = self.lower_ident(delegation.ident);
                 let generics = self.lower_delegation_generics(span);
-                DelegationResults { body_id, sig, ident, generics }
+                DelegationResults { body_id, sig, ident: delegation.ident, generics }
             }
             Err(err) => self.generate_delegation_error(err, span),
         }
