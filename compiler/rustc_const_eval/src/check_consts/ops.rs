@@ -383,18 +383,20 @@ fn build_error_for_const_call<'tcx>(
                             `{trait_name}` is not const",
                         ),
                     );
-                    let indentation = ccx
-                        .tcx
-                        .sess
-                        .source_map()
-                        .indentation_before(trait_span)
-                        .unwrap_or_default();
-                    err.span_suggestion_verbose(
-                        trait_span.shrink_to_lo(),
-                        format!("consider making trait `{trait_name}` const"),
-                        format!("#[const_trait]\n{indentation}"),
-                        Applicability::MachineApplicable,
-                    );
+                    if parent.is_local() {
+                        let indentation = ccx
+                            .tcx
+                            .sess
+                            .source_map()
+                            .indentation_before(trait_span)
+                            .unwrap_or_default();
+                        err.span_suggestion_verbose(
+                            trait_span.shrink_to_lo(),
+                            format!("consider making trait `{trait_name}` const"),
+                            format!("#[const_trait]\n{indentation}"),
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 }
             } else if ccx.tcx.constness(callee) != hir::Constness::Const {
                 let name = ccx.tcx.item_name(callee);
