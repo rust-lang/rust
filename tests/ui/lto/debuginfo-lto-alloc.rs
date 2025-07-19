@@ -8,8 +8,9 @@
 // This test reproduces the circumstances that caused the error to appear, and checks
 // that compilation is successful.
 
-//@ check-pass
+//@ build-pass
 //@ compile-flags: --test -C debuginfo=2 -C lto=fat
+//@ no-prefer-dynamic
 //@ incremental
 
 extern crate alloc;
