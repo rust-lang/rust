@@ -31,7 +31,7 @@ runners:
     <<: *base-job
 
   - &job-windows
-    os: windows-2022
+    os: windows-2025
     <<: *base-job
 
   # NOTE: windows-2025 has less disk space available than windows-2022,
@@ -41,7 +41,7 @@ runners:
     <<: *base-job
 
   - &job-windows-8c
-    os: windows-2022-8core-32gb
+    os: windows-2025-8core-32gb
     <<: *base-job
 
   - &job-windows-25-8c
@@ -172,9 +172,9 @@ try:
 optional:
   # This job is used just to test optional jobs.
   # It will be replaced by tier 2 and tier 3 jobs in the future.
-  - name: optional-mingw-check-1
+  - name: optional-pr-check-1
     env:
-      IMAGE: mingw-check-1
+      IMAGE: pr-check-1
     <<: *job-linux-4c
 
 # Main CI jobs that have to be green to merge a commit into master
