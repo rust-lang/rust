@@ -49,7 +49,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ns: Namespace,
         binding: NameBinding<'ra>,
     ) {
-        if let Err(old_binding) = self.try_define(parent, ident, ns, binding, false) {
+        let key = self.new_disambiguated_key(ident, ns);
+        if let Err(old_binding) = self.try_define(parent, key, binding, false) {
             self.report_conflict(parent, ident, ns, old_binding, binding);
         }
     }
@@ -441,18 +442,16 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
 
         self.r.indeterminate_imports.push(import);
         match import.kind {
+            // Don't add unresolved underscore imports to modules
+            ImportKind::Single { target: Ident { name: kw::Underscore, .. }, .. } => {}
             ImportKind::Single { target, type_ns_only, .. } => {
-                // Don't add underscore imports to `single_imports`
-                // because they cannot define any usable names.
-                if target.name != kw::Underscore {
-                    self.r.per_ns(|this, ns| {
-                        if !type_ns_only || ns == TypeNS {
-                            let key = BindingKey::new(target, ns);
-                            let mut resolution = this.resolution(current_module, key).borrow_mut();
-                            resolution.single_imports.insert(import);
-                        }
-                    });
-                }
+                self.r.per_ns(|this, ns| {
+                    if !type_ns_only || ns == TypeNS {
+                        let key = BindingKey::new(target, ns);
+                        let mut resolution = this.resolution(current_module, key).borrow_mut();
+                        resolution.single_imports.insert(import);
+                    }
+                });
             }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
             // which are not relevant to import resolution.
@@ -1409,12 +1408,9 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             let parent = self.parent_scope.module;
             let expansion = self.parent_scope.expansion;
             self.r.define(parent, ident, ns, self.res(def_id), vis, item.span, expansion);
-        } else if !matches!(&item.kind, AssocItemKind::Delegation(deleg) if deleg.from_glob)
-            && ident.name != kw::Underscore
-        {
-            // Don't add underscore names, they cannot be looked up anyway.
+        } else if !matches!(&item.kind, AssocItemKind::Delegation(deleg) if deleg.from_glob) {
             let impl_def_id = self.r.tcx.local_parent(local_def_id);
-            let key = BindingKey::new(ident, ns);
+            let key = BindingKey::new(ident.normalize_to_macros_2_0(), ns);
             self.r.impl_binding_keys.entry(impl_def_id).or_default().insert(key);
         }
 
