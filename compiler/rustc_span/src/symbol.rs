@@ -2102,6 +2102,7 @@ symbols! {
         struct_field_attributes,
         struct_inherit,
         struct_variant,
+        structural_init,
         structural_match,
         structural_peq,
         sub,
