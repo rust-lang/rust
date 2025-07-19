@@ -11,6 +11,7 @@ LL | trait Dim {
    | ^^^^^^^^^ this trait is not const
 LL |     fn dim() -> usize;
    |     ------------------ this associated function is not const
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable `#[const_trait]`
 help: consider making trait `Dim` const
    |
 LL + #[const_trait]
@@ -30,6 +31,7 @@ LL | trait Dim {
    | ^^^^^^^^^ this trait is not const
 LL |     fn dim() -> usize;
    |     ------------------ this associated function is not const
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable `#[const_trait]`
 help: consider making trait `Dim` const
    |
 LL + #[const_trait]
