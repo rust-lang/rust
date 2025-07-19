@@ -511,7 +511,7 @@ impl CStore {
             // We're also sure to compare *paths*, not actual byte slices. The
             // `source` stores paths which are normalized which may be different
             // from the strings on the command line.
-            let source = self.get_crate_data(cnum).cdata.source();
+            let source = data.source();
             if let Some(entry) = externs.get(name.as_str()) {
                 // Only use `--extern crate_name=path` here, not `--extern crate_name`.
                 if let Some(mut files) = entry.files() {
