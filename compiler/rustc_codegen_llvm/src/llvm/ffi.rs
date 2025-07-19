@@ -2149,7 +2149,7 @@ unsafe extern "C" {
         SPFlags: DISPFlags,
         MaybeFn: Option<&'a Value>,
         TParam: &'a DIArray,
-        Decl: Option<&'a DIDescriptor>, 
+        Decl: Option<&'a DIDescriptor>,
     ) -> &'a DISubprogram;
 
     pub(crate) fn LLVMRustDIBuilderCreateMethod<'a>(
@@ -2697,19 +2697,6 @@ unsafe extern "C" {
 
 // Type Tree Support for Autodiff
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub(crate) enum CConcreteType {
@@ -2729,12 +2716,6 @@ pub(crate) type CTypeTreeRef = *mut EnzymeTypeTree;
 pub(crate) struct EnzymeTypeTree {
     _unused: [u8; 0],
 }
-
-
-
-
-
-
 
 // TypeTree wrapper for Rust-side type safety and memory management
 pub(crate) struct TypeTree {
@@ -2761,7 +2742,13 @@ impl TypeTree {
     }
 
     #[must_use]
-    pub(crate) fn shift(self, layout: &str, offset: isize, max_size: isize, add_offset: usize) -> Self {
+    pub(crate) fn shift(
+        self,
+        layout: &str,
+        offset: isize,
+        max_size: isize,
+        add_offset: usize,
+    ) -> Self {
         let layout = std::ffi::CString::new(layout).unwrap();
 
         unsafe {
@@ -2812,5 +2799,3 @@ impl Drop for TypeTree {
         unsafe { EnzymeFreeTypeTree(self.inner) }
     }
 }
-
-
