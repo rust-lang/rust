@@ -1624,6 +1624,10 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                 self.check(def_id, item_visibility, effective_vis).generics().predicates();
 
                 for assoc_item in tcx.associated_items(id.owner_id).in_definition_order() {
+                    if assoc_item.is_impl_trait_in_trait() {
+                        continue;
+                    }
+
                     self.check_assoc_item(assoc_item, item_visibility, effective_vis);
 
                     if assoc_item.is_type() {
@@ -1736,6 +1740,10 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                 check.ty().trait_ref();
 
                 for assoc_item in tcx.associated_items(id.owner_id).in_definition_order() {
+                    if assoc_item.is_impl_trait_in_trait() {
+                        continue;
+                    }
+
                     let impl_item_vis = if !of_trait {
                         min(tcx.local_visibility(assoc_item.def_id.expect_local()), impl_vis, tcx)
                     } else {

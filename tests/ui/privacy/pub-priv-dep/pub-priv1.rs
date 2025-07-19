@@ -44,8 +44,12 @@ impl PublicType {
 
 pub trait MyPubTrait {
     type Foo: OtherTrait;
+    //~^ ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
+
+    fn required() -> impl OtherTrait;
+
+    fn provided() -> impl OtherTrait { OtherType }
 }
-//~^^ ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
 
 pub trait WithSuperTrait: OtherTrait {}
 //~^ ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
