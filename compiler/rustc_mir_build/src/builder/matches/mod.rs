@@ -19,9 +19,9 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, ValTree, ValTreeKind};
+use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::constructor::RangeEnd;
 use rustc_pattern_analysis::rustc::{DeconstructedPat, RustcPatCtxt};
-use rustc_middle::{bug, span_bug};
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
