@@ -880,6 +880,14 @@ fn link_natively(
                             windows_registry::find_tool(&sess.target.arch, "link.exe").is_some();
 
                         sess.dcx().emit_note(errors::LinkExeUnexpectedError);
+
+                        // STATUS_STACK_BUFFER_OVERRUN is also used for fast abnormal program termination, e.g. abort().
+                        // Emit a special diagnostic to let people know that this most likely doesn't indicate a stack buffer overrun.
+                        const STATUS_STACK_BUFFER_OVERRUN: i32 = 0xc0000409u32 as _;
+                        if code == STATUS_STACK_BUFFER_OVERRUN {
+                            sess.dcx().emit_note(errors::LinkExeStatusStackBufferOverrun);
+                        }
+
                         if is_vs_installed && has_linker {
                             // the linker is broken
                             sess.dcx().emit_note(errors::RepairVSBuildTools);
