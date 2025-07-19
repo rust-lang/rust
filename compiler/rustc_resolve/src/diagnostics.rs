@@ -1081,7 +1081,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     let root_module = this.resolve_crate_root(root_ident);
                     this.add_module_candidates(root_module, &mut suggestions, filter_fn, None);
                 }
-                Scope::Module(module, _) => {
+                Scope::NonGlobModule(module, _) | Scope::GlobModule(module, _) => {
                     this.add_module_candidates(module, &mut suggestions, filter_fn, None);
                 }
                 Scope::MacroUsePrelude => {
@@ -1492,9 +1492,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             &parent_scope,
             ident.span.ctxt(),
             |this, scope, _use_prelude, _ctxt| {
-                let Scope::Module(m, _) = scope else {
-                    return None;
+                let m = match scope {
+                    Scope::NonGlobModule(module, _) | Scope::GlobModule(module, _) => module,
+                    _ => return None,
                 };
+
                 for (_, resolution) in this.resolutions(m).borrow().iter() {
                     let Some(binding) = resolution.borrow().best_binding() else {
                         continue;
