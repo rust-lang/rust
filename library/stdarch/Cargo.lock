@@ -575,18 +575,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "989e6739f80c4ad5b13e0fd7fe89531180375b18520cc8c82080e4dc4035b84f"
 
 [[package]]
-name = "rustc-std-workspace-alloc"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9d441c3b2ebf55cebf796bfdc265d67fa09db17b7bb6bd4be75c509e1e8fec3"
-
-[[package]]
-name = "rustc-std-workspace-core"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa9c45b374136f52f2d6311062c7146bff20fec063c3f5d46a410bd937746955"
-
-[[package]]
 name = "ryu"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -689,16 +677,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "std_detect"
-version = "0.1.5"
-dependencies = [
- "cfg-if",
- "libc",
- "rustc-std-workspace-alloc",
- "rustc-std-workspace-core",
-]
-
-[[package]]
 name = "stdarch-gen-arm"
 version = "0.1.0"
 dependencies = [
@@ -752,7 +730,6 @@ dependencies = [
  "core_arch",
  "quickcheck",
  "rand",
- "std_detect",
 ]
 
 [[package]]

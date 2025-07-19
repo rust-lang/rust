@@ -16,10 +16,7 @@ dox() {
   cargo clean --target "${1}"
 
   cargo build --verbose --target "${1}" --manifest-path crates/core_arch/Cargo.toml
-  cargo build --verbose --target "${1}" --manifest-path crates/std_detect/Cargo.toml
-
   cargo doc --verbose --target "${1}" --manifest-path crates/core_arch/Cargo.toml
-  cargo doc --verbose --target "${1}" --manifest-path crates/std_detect/Cargo.toml
 }
 
 if [ -z "$1" ]; then

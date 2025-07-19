@@ -119,16 +119,7 @@ fn _riscv_hwprobe(out: &mut [riscv_hwprobe]) -> bool {
         cpus: *mut libc::c_ulong,
         flags: libc::c_uint,
     ) -> libc::c_long {
-        unsafe {
-            libc::syscall(
-                __NR_riscv_hwprobe,
-                pairs,
-                pair_count,
-                cpu_set_size,
-                cpus,
-                flags,
-            )
-        }
+        unsafe { libc::syscall(__NR_riscv_hwprobe, pairs, pair_count, cpu_set_size, cpus, flags) }
     }
 
     unsafe { __riscv_hwprobe(out.as_mut_ptr(), out.len(), 0, ptr::null_mut(), 0) == 0 }

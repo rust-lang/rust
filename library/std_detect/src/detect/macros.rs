@@ -131,7 +131,7 @@ macro_rules! features {
             };
         }
 
-        #[test]
+        #[test] //tidy:skip
         #[deny(unexpected_cfgs)]
         #[deny(unfulfilled_lint_expectations)]
         fn unexpected_cfgs() {

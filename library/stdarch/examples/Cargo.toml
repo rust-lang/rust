@@ -12,7 +12,6 @@ default-run = "hex"
 
 [dependencies]
 core_arch = { path = "../crates/core_arch" }
-std_detect = { path = "../crates/std_detect" }
 quickcheck = "1.0"
 rand = "0.8"
 

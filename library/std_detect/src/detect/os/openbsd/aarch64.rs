@@ -4,8 +4,10 @@
 //! https://github.com/openbsd/src/commit/d335af936b9d7dd9cf655cae1ce19560c45de6c8
 //! https://github.com/golang/go/commit/cd54ef1f61945459486e9eea2f016d99ef1da925
 
+use core::mem::MaybeUninit;
+use core::ptr;
+
 use crate::detect::cache;
-use core::{mem::MaybeUninit, ptr};
 
 // Defined in machine/cpu.h.
 // https://github.com/openbsd/src/blob/72ccc03bd11da614f31f7ff76e3f6fce99bc1c79/sys/arch/arm64/include/cpu.h#L25-L40
