@@ -19,6 +19,13 @@ use rustc_span::{Ident, Span, Symbol};
 use crate::fluent_generated as fluent;
 
 #[derive(Diagnostic)]
+#[diag(hir_typeck_asm_const_ptr_unstable)]
+pub(crate) struct AsmConstPtrUnstable {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_typeck_base_expression_double_dot, code = E0797)]
 pub(crate) struct BaseExpressionDoubleDot {
     #[primary_span]
