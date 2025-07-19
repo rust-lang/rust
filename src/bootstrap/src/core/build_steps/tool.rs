@@ -1171,8 +1171,14 @@ pub struct LlvmBitcodeLinker {
 }
 
 impl LlvmBitcodeLinker {
+    /// Returns `LlvmBitcodeLinker` that will be **compiled** by the passed compiler, for the given
+    /// `target`.
+    pub fn from_build_compiler(build_compiler: Compiler, target: TargetSelection) -> Self {
+        Self { build_compiler, target }
+    }
+
     /// Returns `LlvmBitcodeLinker` that should be **used** by the passed compiler.
-    pub fn for_use_by_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
+    pub fn from_target_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
         Self {
             build_compiler: get_tool_target_compiler(
                 builder,
@@ -1180,6 +1186,14 @@ impl LlvmBitcodeLinker {
             ),
             target: target_compiler.host,
         }
+    }
+
+    /// Return a compiler that is able to build this tool for the given `target`.
+    pub fn get_build_compiler_for_target(
+        builder: &Builder<'_>,
+        target: TargetSelection,
+    ) -> Compiler {
+        get_tool_target_compiler(builder, ToolTargetBuildMode::Build(target))
     }
 }
 
@@ -1196,10 +1210,7 @@ impl Step for LlvmBitcodeLinker {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LlvmBitcodeLinker {
-            build_compiler: get_tool_target_compiler(
-                run.builder,
-                ToolTargetBuildMode::Build(run.target),
-            ),
+            build_compiler: Self::get_build_compiler_for_target(run.builder, run.target),
             target: run.target,
         });
     }

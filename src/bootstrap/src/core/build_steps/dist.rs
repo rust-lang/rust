@@ -1576,7 +1576,7 @@ impl Step for Extended {
             backend: "cranelift".to_string(),
         });
         add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {
-            target_compiler: compiler,
+            build_compiler: compiler,
             target
         });
 
@@ -2344,9 +2344,13 @@ impl Step for LlvmTools {
     }
 }
 
+/// Distributes the `llvm-bitcode-linker` tool so that it can be used by a compiler whose host
+/// is `target`.
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct LlvmBitcodeLinker {
-    pub target_compiler: Compiler,
+    /// The linker will be compiled by this compiler.
+    pub build_compiler: Compiler,
+    /// The linker will by usable by rustc on this host.
     pub target: TargetSelection,
 }
 
@@ -2362,7 +2366,10 @@ impl Step for LlvmBitcodeLinker {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LlvmBitcodeLinker {
-            target_compiler: run.builder.compiler(run.builder.top_stage, run.target),
+            build_compiler: tool::LlvmBitcodeLinker::get_build_compiler_for_target(
+                run.builder,
+                run.target,
+            ),
             target: run.target,
         });
     }
@@ -2371,7 +2378,7 @@ impl Step for LlvmBitcodeLinker {
         let target = self.target;
 
         let llbc_linker = builder
-            .ensure(tool::LlvmBitcodeLinker::for_use_by_compiler(builder, self.target_compiler));
+            .ensure(tool::LlvmBitcodeLinker::from_build_compiler(self.build_compiler, target));
 
         let self_contained_bin_dir = format!("lib/rustlib/{}/bin/self-contained", target.triple);
 

@@ -2056,7 +2056,7 @@ impl Step for Assemble {
             if builder.config.llvm_bitcode_linker_enabled {
                 trace!("llvm-bitcode-linker enabled, installing");
                 let llvm_bitcode_linker = builder.ensure(
-                    crate::core::build_steps::tool::LlvmBitcodeLinker::for_use_by_compiler(
+                    crate::core::build_steps::tool::LlvmBitcodeLinker::from_target_compiler(
                         builder,
                         target_compiler,
                     ),

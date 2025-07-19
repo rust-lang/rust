@@ -1293,7 +1293,6 @@ mod snapshot {
         [build] rustc 0 <host> -> miri 1 <target1>
         [build] rustc 0 <host> -> cargo-miri 1 <target1>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
-        [build] rustc 0 <host> -> LlvmBitcodeLinker 1 <host>
         ");
     }
 
