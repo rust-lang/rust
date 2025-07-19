@@ -4,7 +4,7 @@
 
 fn main() {}
 
-fn foo(_: Bar, ...) -> impl {}
+fn foo(_: Bar, _: ...) -> impl {}
 //~^ ERROR only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
 //~| ERROR cannot find type `Bar` in this scope
 //~| ERROR at least one trait must be specified
