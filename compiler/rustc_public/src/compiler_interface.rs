@@ -111,6 +111,9 @@ pub(crate) trait SmirInterface {
     /// Returns the name of given `DefId`
     fn def_name(&self, def_id: DefId, trimmed: bool) -> Symbol;
 
+    /// Returns the parent of the given `DefId`.
+    fn def_parent(&self, def_id: DefId) -> Option<DefId>;
+
     /// Return registered tool attributes with the given attribute name.
     ///
     /// FIXME(jdonszelmann): may panic on non-tool attributes. After more attribute work, non-tool
@@ -486,6 +489,14 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
         let cx = &*self.cx.borrow();
         let did = tables[def_id];
         cx.def_name(did, trimmed)
+    }
+
+    /// Returns the parent of the given `DefId`.
+    fn def_parent(&self, def_id: DefId) -> Option<DefId> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[def_id];
+        cx.def_parent(did).map(|did| tables.create_def_id(did))
     }
 
     /// Return registered tool attributes with the given attribute name.
