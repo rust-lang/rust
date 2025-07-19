@@ -434,8 +434,8 @@ pub(super) struct DropShimElaborator<'a, 'tcx> {
 }
 
 impl fmt::Debug for DropShimElaborator<'_, '_> {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        Ok(())
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        f.debug_struct("DropShimElaborator").finish_non_exhaustive()
     }
 }
 
