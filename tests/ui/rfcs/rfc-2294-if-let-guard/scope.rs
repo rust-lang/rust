@@ -1,21 +1,28 @@
 // Tests for #88015 when using if let chains in match guards
 
-//@run-pass
+//@ run-pass
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
-#![feature(if_let_guard)]
 #![allow(irrefutable_let_patterns)]
 
 fn lhs_let(opt: Option<bool>) {
     match opt {
-        None | Some(false) | Some(true) if let x = 42 && true => assert_eq!(x, 42),
-        _ => panic!()
+        None | Some(false) | Some(true)
+            if let x = 42
+                && true =>
+        {
+            assert_eq!(x, 42)
+        }
+        _ => panic!(),
     }
 }
 
 fn rhs_let(opt: Option<bool>) {
     match opt {
         None | Some(false) | Some(true) if true && let x = 41 => assert_eq!(x, 41),
-        _ => panic!()
+        _ => panic!(),
     }
 }
 

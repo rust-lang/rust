@@ -8,8 +8,6 @@
 // Rust syntax. We also test negative cases: the pretty-printer should not be
 // synthesizing parentheses indiscriminately; only where necessary.
 
-#![feature(if_let_guard)]
-
 macro_rules! expr {
     ($expr:expr) => { $expr };
 }
