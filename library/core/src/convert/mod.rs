@@ -965,7 +965,7 @@ impl Error for Infallible {
 }
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 impl const PartialEq for Infallible {
     fn eq(&self, _: &Infallible) -> bool {
         match *self {}
