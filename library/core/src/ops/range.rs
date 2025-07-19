@@ -1141,6 +1141,12 @@ impl<'a, T: ?Sized + 'a> RangeBounds<T> for (Bound<&'a T>, Bound<&'a T>) {
     }
 }
 
+/// This impl intentionally does not have `T: ?Sized` due to type inference issues.
+// see https://github.com/rust-lang/rust/pull/61584 for discussion of those issues
+///
+/// If you need to use this impl where `T` is unsized,
+/// consider using the `RangeBounds` impl for a 2-tuple of [`Bound<&T>`][Bound],
+/// e.g. replace `start..` with `(Bound::Included(start), Bound::Unbounded)`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 impl<T> RangeBounds<T> for RangeFrom<&T> {
     fn start_bound(&self) -> Bound<&T> {
@@ -1151,6 +1157,11 @@ impl<T> RangeBounds<T> for RangeFrom<&T> {
     }
 }
 
+/// This impl intentionally does not have `T: ?Sized` due to type inference issues.
+///
+/// If you need to use this impl where `T` is unsized,
+/// consider using the `RangeBounds` impl for a 2-tuple of [`Bound<&T>`][Bound],
+/// e.g. replace `..end` with `(Bound::Unbounded, Bound::Excluded(end))`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 impl<T> RangeBounds<T> for RangeTo<&T> {
     fn start_bound(&self) -> Bound<&T> {
@@ -1161,6 +1172,11 @@ impl<T> RangeBounds<T> for RangeTo<&T> {
     }
 }
 
+/// This impl intentionally does not have `T: ?Sized` due to type inference issues.
+///
+/// If you need to use this impl where `T` is unsized,
+/// consider using the `RangeBounds` impl for a 2-tuple of [`Bound<&T>`][Bound],
+/// e.g. replace `start..end` with `(Bound::Included(start), Bound::Excluded(end))`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 impl<T> RangeBounds<T> for Range<&T> {
     fn start_bound(&self) -> Bound<&T> {
@@ -1171,6 +1187,11 @@ impl<T> RangeBounds<T> for Range<&T> {
     }
 }
 
+/// This impl intentionally does not have `T: ?Sized` due to type inference issues.
+///
+/// If you need to use this impl where `T` is unsized,
+/// consider using the `RangeBounds` impl for a 2-tuple of [`Bound<&T>`][Bound],
+/// e.g. replace `start..=end` with `(Bound::Included(start), Bound::Included(end))`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 impl<T> RangeBounds<T> for RangeInclusive<&T> {
     fn start_bound(&self) -> Bound<&T> {
@@ -1181,6 +1202,11 @@ impl<T> RangeBounds<T> for RangeInclusive<&T> {
     }
 }
 
+/// This impl intentionally does not have `T: ?Sized` due to type inference issues.
+///
+/// If you need to use this impl where `T` is unsized,
+/// consider using the `RangeBounds` impl for a 2-tuple of [`Bound<&T>`][Bound],
+/// e.g. replace `..=end` with `(Bound::Unbounded, Bound::Included(end))`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 impl<T> RangeBounds<T> for RangeToInclusive<&T> {
     fn start_bound(&self) -> Bound<&T> {
