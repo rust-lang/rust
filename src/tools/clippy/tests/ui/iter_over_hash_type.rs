@@ -3,15 +3,18 @@
 #![warn(clippy::iter_over_hash_type)]
 use std::collections::{HashMap, HashSet};
 
-extern crate rustc_data_structures;
-
 extern crate proc_macros;
+
+// Ensure it also works via type aliases (this isn't really the Fx hasher but that does not matter).
+type FxBuildHasher = std::collections::hash_map::RandomState;
+type FxHashMap<K, V> = HashMap<K, V, FxBuildHasher>;
+type FxHashSet<K> = HashSet<K, FxBuildHasher>;
 
 fn main() {
     let mut hash_set = HashSet::<i32>::new();
     let mut hash_map = HashMap::<i32, i32>::new();
-    let mut fx_hash_map = rustc_data_structures::fx::FxHashMap::<i32, i32>::default();
-    let mut fx_hash_set = rustc_data_structures::fx::FxHashMap::<i32, i32>::default();
+    let mut fx_hash_map = FxHashMap::<i32, i32>::default();
+    let mut fx_hash_set = FxHashSet::<i32>::default();
     let vec = Vec::<i32>::new();
 
     // test hashset
