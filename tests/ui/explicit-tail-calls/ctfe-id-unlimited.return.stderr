@@ -9,7 +9,7 @@ note: inside `rec_id`
    |
 LL |     inner(0, n)
    |     ^^^^^^^^^^^
-note: [... 125 additional calls inside `inner` ...]
+note: [... 125 additional calls ...] inside `inner`
   --> $DIR/ctfe-id-unlimited.rs:17:42
    |
 LL |             #[cfg(r#return)] _ => return inner(acc + 1, n - 1),
