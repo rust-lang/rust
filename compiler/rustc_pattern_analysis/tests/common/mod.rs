@@ -126,10 +126,11 @@ pub(super) fn compute_match_usefulness<'p>(
     ty: Ty,
     scrut_validity: PlaceValidity,
     complexity_limit: usize,
+    exhaustive_witnesses: bool,
 ) -> Result<UsefulnessReport<'p, Cx>, ()> {
     init_tracing();
     rustc_pattern_analysis::usefulness::compute_match_usefulness(
-        &Cx,
+        &Cx { exhaustive_witnesses },
         arms,
         ty,
         scrut_validity,
@@ -138,7 +139,9 @@ pub(super) fn compute_match_usefulness<'p>(
 }
 
 #[derive(Debug)]
-pub(super) struct Cx;
+pub(super) struct Cx {
+    exhaustive_witnesses: bool,
+}
 
 /// The context for pattern analysis. Forwards anything interesting to `Ty` methods.
 impl PatCx for Cx {
@@ -151,6 +154,10 @@ impl PatCx for Cx {
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool {
         false
+    }
+
+    fn exhaustive_witnesses(&self) -> bool {
+        self.exhaustive_witnesses
     }
 
     fn ctor_arity(&self, ctor: &Constructor<Self>, ty: &Self::Ty) -> usize {
@@ -219,16 +226,18 @@ macro_rules! pats {
     // Entrypoint
     // Parse `type; ..`
     ($ty:expr; $($rest:tt)*) => {{
-        #[allow(unused_imports)]
+        #[allow(unused)]
         use rustc_pattern_analysis::{
             constructor::{Constructor, IntRange, MaybeInfiniteInt, RangeEnd},
-            pat::DeconstructedPat,
+            pat::{DeconstructedPat, IndexedPat},
         };
         let ty = $ty;
         // The heart of the macro is designed to push `IndexedPat`s into a `Vec`, so we work around
         // that.
+        #[allow(unused)]
         let sub_tys = ::std::iter::repeat(&ty);
-        let mut vec = Vec::new();
+        #[allow(unused)]
+        let mut vec: Vec<IndexedPat<_>> = Vec::new();
         pats!(@ctor(vec:vec, sub_tys:sub_tys, idx:0) $($rest)*);
         vec.into_iter().map(|ipat| ipat.pat).collect::<Vec<_>>()
     }};
@@ -263,6 +272,8 @@ macro_rules! pats {
         let ctor = Constructor::Wildcard;
         pats!(@pat($($args)*, ctor:ctor) $($rest)*)
     }};
+    // Nothing
+    (@ctor($($args:tt)*)) => {};
 
     // Integers and int ranges
     (@ctor($($args:tt)*) $($start:literal)?..$end:literal $($rest:tt)*) => {{
