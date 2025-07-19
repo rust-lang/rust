@@ -11,10 +11,11 @@ impl<T> From<T> for T {
 
 struct S;
 
-impl From<S> for S { //~ ERROR  conflicting implementations of trait `From<S>` for type `S`
-    fn from(s: S) -> S {
+impl From<S> for S {
+    fn from(s: S) -> S { //~ ERROR `from` specializes an item from a parent `impl`, but that item is not marked `default`
         s
     }
 }
+
 
 fn main() {}

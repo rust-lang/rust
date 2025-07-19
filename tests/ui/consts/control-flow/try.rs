@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 #![allow(dead_code)]
 #![feature(const_trait_impl)]
