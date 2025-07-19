@@ -39,7 +39,7 @@ use walkdir::WalkDir;
 
 use self::directives::{EarlyProps, make_test_description};
 use crate::common::{
-    CompareMode, Config, Debugger, PassMode, TestMode, TestPaths, UI_EXTENSIONS,
+    CodegenBackend, CompareMode, Config, Debugger, PassMode, TestMode, TestPaths, UI_EXTENSIONS,
     expected_output_path, output_base_dir, output_relative_path,
 };
 use crate::directives::DirectivesCache;
@@ -203,6 +203,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "debugger",
             "only test a specific debugger in debuginfo tests",
             "gdb | lldb | cdb",
+        )
+        .optopt(
+            "",
+            "codegen-backend",
+            "the codegen backend currently used",
+            "CODEGEN BACKEND NAME",
         );
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -263,6 +269,15 @@ pub fn parse_config(args: Vec<String>) -> Config {
         matches.opt_str("llvm-version").as_deref().map(directives::extract_llvm_version).or_else(
             || directives::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
         );
+
+    let codegen_backend = match matches.opt_str("codegen-backend").as_deref() {
+        Some(backend) => match CodegenBackend::try_from(backend) {
+            Ok(backend) => backend,
+            Err(error) => panic!("invalid value `{backend}` for `--codegen-backend`: {error}"),
+        },
+        // By default, it's always llvm.
+        None => CodegenBackend::Llvm,
+    };
 
     let run_ignored = matches.opt_present("ignored");
     let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
@@ -449,6 +464,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         diff_command: matches.opt_str("compiletest-diff-tool"),
 
         minicore_path: opt_path(matches, "minicore-path"),
+
+        codegen_backend,
     }
 }
 
