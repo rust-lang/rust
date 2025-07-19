@@ -2958,11 +2958,11 @@ impl<'a> Parser<'a> {
 
 
         // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
-        let self_attrs = self.parse_outer_attributes()?
+        let self_attrs = self.parse_outer_attributes()?;
         let self_param = if let Some(mut param) = this.parse_self_param()? {
             param.attrs = self_attrs;
-            return Ok((param, Trailing::No, UsePreAttrPos::No));
-        }
+            param
+        };
         
 
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
