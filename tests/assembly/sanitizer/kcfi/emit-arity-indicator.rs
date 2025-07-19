@@ -8,6 +8,14 @@
 //@ min-llvm-version: 21.0.0
 
 #![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
+
+extern crate minicore;
+
+unsafe extern "C" {
+    safe fn add(x: i32, y: i32) -> i32;
+}
 
 pub fn add_one(x: i32) -> i32 {
     // CHECK-LABEL: __cfi__{{.*}}7add_one{{.*}}:
@@ -23,7 +31,7 @@ pub fn add_one(x: i32) -> i32 {
     // CHECK-NEXT:  nop
     // CHECK-NEXT:  nop
     // CHECK-NEXT:  mov ecx, 2628068948
-    x + 1
+    add(x, 1)
 }
 
 pub fn add_two(x: i32, _y: i32) -> i32 {
@@ -40,7 +48,7 @@ pub fn add_two(x: i32, _y: i32) -> i32 {
     // CHECK-NEXT:  nop
     // CHECK-NEXT:  nop
     // CHECK-NEXT:  mov edx, 2505940310
-    x + 2
+    add(x, 2)
 }
 
 pub fn do_twice(f: fn(i32) -> i32, arg: i32) -> i32 {
@@ -57,5 +65,5 @@ pub fn do_twice(f: fn(i32) -> i32, arg: i32) -> i32 {
     // CHECK-NEXT:  nop
     // CHECK-NEXT:  nop
     // CHECK-NEXT:  mov edx, 653723426
-    f(arg) + f(arg)
+    add(f(arg), f(arg))
 }
