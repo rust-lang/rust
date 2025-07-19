@@ -994,7 +994,8 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
         if !missing_ctors.is_empty() && !report_individual_missing_ctors {
             // Report `_` as missing.
             missing_ctors = vec![Constructor::Wildcard];
-        } else if missing_ctors.iter().any(|c| c.is_non_exhaustive()) {
+        } else if missing_ctors.iter().any(|c| c.is_non_exhaustive()) && !cx.exhaustive_witnesses()
+        {
             // We need to report a `_` anyway, so listing other constructors would be redundant.
             // `NonExhaustive` is displayed as `_` just like `Wildcard`, but it will be picked
             // up by diagnostics to add a note about why `_` is required here.
