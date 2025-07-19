@@ -12,6 +12,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
+use rustc_data_structures::unord::UnordMap;
 use rustc_expand::base::SyntaxExtension;
 use rustc_fs_util::try_canonicalize;
 use rustc_hir as hir;
@@ -68,6 +69,9 @@ pub struct CStore {
     has_global_allocator: bool,
     /// This crate has a `#[alloc_error_handler]` item.
     has_alloc_error_handler: bool,
+
+    /// Names that were used to load the crates via `extern crate` or paths.
+    resolved_externs: UnordMap<Symbol, CrateNum>,
 
     /// Unused externs of the crate
     unused_externs: Vec<Symbol>,
@@ -247,6 +251,22 @@ impl CStore {
     fn set_crate_data(&mut self, cnum: CrateNum, data: CrateMetadata) {
         assert!(self.metas[cnum].is_none(), "Overwriting crate metadata entry");
         self.metas[cnum] = Some(Box::new(data));
+    }
+
+    /// Save the name used to resolve the extern crate in the local crate
+    ///
+    /// The name isn't always the crate's own name, because `sess.opts.externs` can assign it another name.
+    /// It's also not always the same as the `DefId`'s symbol due to renames `extern crate resolved_name as defid_name`.
+    pub(crate) fn set_resolved_extern_crate_name(&mut self, name: Symbol, extern_crate: CrateNum) {
+        self.resolved_externs.insert(name, extern_crate);
+    }
+
+    /// Crate resolved and loaded via the given extern name
+    /// (corresponds to names in `sess.opts.externs`)
+    ///
+    /// May be `None` if the crate wasn't used
+    pub fn resolved_extern_crate(&self, externs_name: Symbol) -> Option<CrateNum> {
+        self.resolved_externs.get(&externs_name).copied()
     }
 
     pub(crate) fn iter_crate_data(&self) -> impl Iterator<Item = (CrateNum, &CrateMetadata)> {
@@ -475,6 +495,7 @@ impl CStore {
             alloc_error_handler_kind: None,
             has_global_allocator: false,
             has_alloc_error_handler: false,
+            resolved_externs: UnordMap::default(),
             unused_externs: Vec::new(),
             used_extern_options: Default::default(),
         }
@@ -511,7 +532,7 @@ impl CStore {
             // We're also sure to compare *paths*, not actual byte slices. The
             // `source` stores paths which are normalized which may be different
             // from the strings on the command line.
-            let source = self.get_crate_data(cnum).cdata.source();
+            let source = data.source();
             if let Some(entry) = externs.get(name.as_str()) {
                 // Only use `--extern crate_name=path` here, not `--extern crate_name`.
                 if let Some(mut files) = entry.files() {
@@ -1308,6 +1329,7 @@ impl CStore {
                 let path_len = definitions.def_path(def_id).data.len();
                 self.update_extern_crate(
                     cnum,
+                    name,
                     ExternCrate {
                         src: ExternCrateSource::Extern(def_id.to_def_id()),
                         span: item.span,
@@ -1332,6 +1354,7 @@ impl CStore {
 
         self.update_extern_crate(
             cnum,
+            name,
             ExternCrate {
                 src: ExternCrateSource::Path,
                 span,
