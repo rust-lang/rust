@@ -562,6 +562,8 @@ fn main() {
             miri_config.force_intrinsic_fallback = true;
         } else if arg == "-Zmiri-deterministic-floats" {
             miri_config.float_nondet = false;
+        } else if arg == "-Zmiri-no-extra-rounding-error" {
+            miri_config.float_rounding_error = false;
         } else if arg == "-Zmiri-strict-provenance" {
             miri_config.provenance_mode = ProvenanceMode::Strict;
         } else if arg == "-Zmiri-permissive-provenance" {
