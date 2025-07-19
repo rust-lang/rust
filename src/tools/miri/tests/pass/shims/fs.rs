@@ -66,6 +66,10 @@ fn test_file() {
 
     assert!(!file.is_terminal());
 
+    // Writing to a file opened for reading should error (and not stop interpretation). std does not
+    // categorize the error so we don't check for details.
+    file.write(&[]).unwrap_err();
+
     // Removing file should succeed.
     remove_file(&path).unwrap();
 }
