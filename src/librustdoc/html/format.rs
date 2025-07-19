@@ -114,9 +114,9 @@ impl clean::Generics {
             let real_params =
                 fmt::from_fn(|f| real_params.clone().map(|g| g.print(cx)).joined(", ", f));
             if f.alternate() {
-                write!(f, "<{:#}>", real_params)
+                write!(f, "<{real_params:#}>")
             } else {
-                write!(f, "&lt;{}&gt;", real_params)
+                write!(f, "&lt;{real_params}&gt;")
             }
         })
     }
@@ -594,7 +594,7 @@ pub(crate) fn href_with_root_path(
             }
         }
     };
-    let url_parts = make_href(root_path, shortty, url_parts, &fqp, is_remote);
+    let url_parts = make_href(root_path, shortty, url_parts, fqp, is_remote);
     Ok((url_parts, shortty, fqp.clone()))
 }
 
@@ -1115,7 +1115,7 @@ impl clean::Impl {
                 {
                     let last = ty.last();
                     if f.alternate() {
-                        write!(f, "{}<", last)?;
+                        write!(f, "{last}<")?;
                         self.print_type(inner_type, f, use_absolute, cx)?;
                         write!(f, ">")?;
                     } else {
@@ -1219,7 +1219,7 @@ pub(crate) fn print_params(params: &[clean::Parameter], cx: &Context<'_>) -> imp
             .map(|param| {
                 fmt::from_fn(|f| {
                     if let Some(name) = param.name {
-                        write!(f, "{}: ", name)?;
+                        write!(f, "{name}: ")?;
                     }
                     param.type_.print(cx).fmt(f)
                 })
@@ -1341,7 +1341,7 @@ impl clean::FnDecl {
                     write!(f, "const ")?;
                 }
                 if let Some(name) = param.name {
-                    write!(f, "{}: ", name)?;
+                    write!(f, "{name}: ")?;
                 }
                 param.type_.print(cx).fmt(f)?;
             }
