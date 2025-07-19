@@ -1,3 +1,9 @@
+error: attributes cannot be applied to a type
+  --> $DIR/recover-where-clause-before-tuple-struct-body-0.rs:7:2
+   |
+LL | (#[allow(dead_code)] usize);
+   |  ^^^^^^^^^^^^^^^^^^^ attributes are not allowed here
+
 error: where clauses are not allowed before tuple struct bodies
   --> $DIR/recover-where-clause-before-tuple-struct-body-0.rs:5:1
    |
@@ -17,7 +23,7 @@ LL ~     (): Sized;
    |
 
 error: where clauses are not allowed before tuple struct bodies
-  --> $DIR/recover-where-clause-before-tuple-struct-body-0.rs:11:1
+  --> $DIR/recover-where-clause-before-tuple-struct-body-0.rs:12:1
    |
 LL |   struct _Demo
    |          ----- while parsing this tuple struct
@@ -36,5 +42,5 @@ LL |     (): Sized,
 LL ~     String: Clone;
    |
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 

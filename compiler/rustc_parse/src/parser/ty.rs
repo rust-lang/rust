@@ -14,10 +14,10 @@ use thin_vec::{ThinVec, thin_vec};
 
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
 use crate::errors::{
-    self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
-    FnPtrWithGenerics, FnPtrWithGenericsSugg, HelpUseLatestEdition, InvalidDynKeyword,
-    LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, NestedCVariadicType,
-    ReturnTypesUseThinArrow,
+    self, AttributeOnType, DynAfterMut, ExpectedFnPathFoundFnKeyword,
+    ExpectedMutOrConstInRawPointerType, FnPtrWithGenerics, FnPtrWithGenericsSugg,
+    HelpUseLatestEdition, InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
+    NestedCVariadicType, ReturnTypesUseThinArrow,
 };
 use crate::parser::item::FrontMatterParsingMode;
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
@@ -374,6 +374,27 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |tok| tok.kind == token::Lt)
         {
             self.parse_unsafe_binder_ty()?
+        } else if self.token == token::Pound
+            && self.look_ahead(1, |t| matches!(t.kind, token::OpenBracket))
+        {
+            let lo_attr = self.token.span;
+
+            while self.token != token::CloseBracket && self.token != token::Eof {
+                self.bump();
+            }
+
+            if self.token != token::Eof {
+                self.bump(); // eat ']'
+            }
+
+            let span = lo_attr.to(self.prev_token.span);
+
+            if self.token.is_ident() {
+                self.bump(); // eat type
+            }
+
+            let guar = self.dcx().emit_err(AttributeOnType { span });
+            return Ok(self.mk_ty(span, TyKind::Err(guar)));
         } else {
             let msg = format!("expected type, found {}", super::token_descr(&self.token));
             let mut err = self.dcx().struct_span_err(lo, msg);
