@@ -44,7 +44,6 @@ pub struct UnsupportedUnion {
     pub ty_name: String,
 }
 
-// FIXME(autodiff): I should get used somewhere
 #[derive(Diagnostic)]
 #[diag(middle_autodiff_unsafe_inner_const_ref)]
 pub struct AutodiffUnsafeInnerConstRef<'tcx> {
