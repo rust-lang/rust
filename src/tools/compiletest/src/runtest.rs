@@ -16,8 +16,8 @@ use regex::{Captures, Regex};
 use tracing::*;
 
 use crate::common::{
-    CompareMode, Config, Debugger, FailMode, PassMode, TestMode, TestPaths, TestSuite,
-    UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG,
+    CompareMode, Config, Debugger, FailMode, PassMode, RunFailMode, RunResult, TestMode, TestPaths,
+    TestSuite, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG,
     UI_WINDOWS_SVG, expected_output_path, incremental_dir, output_base_dir, output_base_name,
     output_testname_unique,
 };
@@ -282,7 +282,8 @@ impl<'test> TestCx<'test> {
     fn should_run(&self, pm: Option<PassMode>) -> WillExecute {
         let test_should_run = match self.config.mode {
             TestMode::Ui
-                if pm == Some(PassMode::Run) || self.props.fail_mode == Some(FailMode::Run) =>
+                if pm == Some(PassMode::Run)
+                    || matches!(self.props.fail_mode, Some(FailMode::Run(_))) =>
             {
                 true
             }

@@ -1,4 +1,4 @@
-//@ run-fail
+//@ run-crash
 //@ compile-flags: -C debug-assertions
 //@ error-pattern: null pointer dereference occurred
 

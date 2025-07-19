@@ -4,7 +4,7 @@
 //
 //@ compile-flags: -Z sanitizer=address -O
 //
-//@ run-fail
+//@ run-fail-or-crash
 //@ regex-error-pattern: AddressSanitizer: (SEGV|attempting free on address which was not malloc)
 
 use std::ffi::c_void;

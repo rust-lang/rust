@@ -15,7 +15,7 @@
 //
 //@ compile-flags: -Z sanitizer=thread -O
 //
-//@ run-fail
+//@ run-fail-or-crash
 //@ error-pattern: WARNING: ThreadSanitizer: data race
 //@ error-pattern: Location is heap block of size 4
 //@ error-pattern: allocated by main thread

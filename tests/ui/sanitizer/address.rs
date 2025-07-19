@@ -4,7 +4,7 @@
 //
 //@ compile-flags: -Z sanitizer=address -O -g
 //
-//@ run-fail
+//@ run-fail-or-crash
 //@ error-pattern: AddressSanitizer: stack-buffer-overflow
 //@ error-pattern: 'xs' (line 14) <== Memory access at offset
 
