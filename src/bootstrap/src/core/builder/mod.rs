@@ -984,6 +984,7 @@ impl<'a> Builder<'a> {
                 tool::CoverageDump,
                 tool::LlvmBitcodeLinker,
                 tool::RustcPerf,
+                tool::RelnotesApiList,
             ),
             Kind::Clippy => describe!(
                 clippy::Std,
@@ -1030,6 +1031,7 @@ impl<'a> Builder<'a> {
                 check::Compiletest,
                 check::FeaturesStatusDump,
                 check::CoverageDump,
+                check::Linkchecker,
                 // This has special staging logic, it may run on stage 1 while others run on stage 0.
                 // It takes quite some time to build stage 1, so put this at the end.
                 //
@@ -1159,7 +1161,8 @@ impl<'a> Builder<'a> {
                 dist::PlainSourceTarball,
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
-                dist::Gcc
+                dist::Gcc,
+                dist::RelnotesApiList,
             ),
             Kind::Install => describe!(
                 install::Docs,
