@@ -28,8 +28,9 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, DeepRejectCtxt, GenericArgsRef, PolyProjectionPredicate, SizedTraitKind, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, TypingMode, Upcast, elaborate, may_use_unstable_feature,
+    self, CandidatePreferenceMode, DeepRejectCtxt, GenericArgsRef, PolyProjectionPredicate,
+    SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Upcast, elaborate,
+    may_use_unstable_feature,
 };
 use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument, trace};
@@ -474,7 +475,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         } else {
             let has_non_region_infer = stack.obligation.predicate.has_non_region_infer();
-            if let Some(candidate) = self.winnow_candidates(has_non_region_infer, candidates) {
+            let candidate_preference_mode =
+                CandidatePreferenceMode::compute(self.tcx(), stack.obligation.predicate.def_id());
+            if let Some(candidate) =
+                self.winnow_candidates(has_non_region_infer, candidate_preference_mode, candidates)
+            {
                 self.filter_reservation_impls(candidate)
             } else {
                 Ok(None)
@@ -1824,6 +1829,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     fn winnow_candidates(
         &mut self,
         has_non_region_infer: bool,
+        candidate_preference_mode: CandidatePreferenceMode,
         mut candidates: Vec<EvaluatedCandidate<'tcx>>,
     ) -> Option<SelectionCandidate<'tcx>> {
         if candidates.len() == 1 {
@@ -1877,6 +1883,19 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             break;
         }
 
+        let alias_bound = candidates
+            .iter()
+            .filter_map(|c| if let ProjectionCandidate(i) = c.candidate { Some(i) } else { None })
+            .try_reduce(|c1, c2| if has_non_region_infer { None } else { Some(c1.min(c2)) });
+
+        if matches!(candidate_preference_mode, CandidatePreferenceMode::Marker) {
+            match alias_bound {
+                Some(Some(index)) => return Some(ProjectionCandidate(index)),
+                Some(None) => {}
+                None => return None,
+            }
+        }
+
         // The next highest priority is for non-global where-bounds. However, while we don't
         // prefer global where-clauses here, we do bail with ambiguity when encountering both
         // a global and a non-global where-clause.
@@ -1910,10 +1929,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // fairly arbitrary but once again necessary for backwards compatibility.
         // If there are multiple applicable candidates which don't affect type inference,
         // choose the one with the lowest index.
-        let alias_bound = candidates
-            .iter()
-            .filter_map(|c| if let ProjectionCandidate(i) = c.candidate { Some(i) } else { None })
-            .try_reduce(|c1, c2| if has_non_region_infer { None } else { Some(c1.min(c2)) });
         match alias_bound {
             Some(Some(index)) => return Some(ProjectionCandidate(index)),
             Some(None) => {}
