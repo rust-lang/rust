@@ -155,6 +155,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     self.debug_poison_to_local(bx, *dest);
                 }
             }
+            StmtDebugInfo::InvalidAssign(local) => {
+                self.debug_poison_to_local(bx, *local);
+            }
         }
     }
 
