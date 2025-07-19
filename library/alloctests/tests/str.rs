@@ -1156,6 +1156,99 @@ fn test_total_ord() {
     assert_eq!("22".cmp("1234"), Greater);
 }
 
+// There are only 1,114,112 code points (including surrogates for WTF-8). So we
+// can test `next_code_point` and `next_code_point_reverse` exhaustively on all
+// possible inputs.
+
+/// Assert that encoding a codepoint with `encode_utf8_raw` and then decoding it
+/// with `next_code_point` preserves the codepoint.
+fn test_next_code_point(codepoint: u32) {
+    let mut bytes = [0; 4];
+    let mut bytes = std::char::encode_utf8_raw(codepoint, &mut bytes).iter();
+
+    // SAFETY: `bytes` is UTF8-like
+    let got = unsafe { core::str::next_code_point(&mut bytes) };
+    assert_eq!(got, Some(codepoint));
+
+    // SAFETY: `bytes` is UTF8-like
+    let got = unsafe { core::str::next_code_point(&mut bytes) };
+    assert_eq!(got, None);
+}
+
+/// The same but for `next_code_point_reverse`.
+fn test_next_code_point_reverse(codepoint: u32) {
+    let mut bytes = [0; 4];
+    let mut bytes = std::char::encode_utf8_raw(codepoint, &mut bytes).iter();
+
+    // SAFETY: `bytes` is UTF8-like
+    let got = unsafe { core::str::next_code_point_reverse(&mut bytes) };
+    assert_eq!(got, Some(codepoint));
+
+    // SAFETY: `bytes` is UTF8-like
+    let got = unsafe { core::str::next_code_point_reverse(&mut bytes) };
+    assert_eq!(got, None);
+}
+
+#[test]
+fn test_next_code_point_1byte() {
+    for c in 0..0x80 {
+        test_next_code_point(c);
+    }
+}
+
+#[test]
+fn test_next_code_point_2byte() {
+    for c in 0x80..0x800 {
+        test_next_code_point(c);
+    }
+}
+
+#[test]
+#[cfg(not(miri))] // Disabled on Miri because it is too slow
+fn test_next_code_point_3byte() {
+    for c in 0x800..0x10_000 {
+        test_next_code_point(c);
+    }
+}
+
+#[test]
+// #[cfg(not(miri))] // Disabled on Miri because it is too slow
+fn test_next_code_point_4byte() {
+    for c in 0x10_000..=u32::from(char::MAX) {
+        test_next_code_point(c);
+    }
+}
+
+#[test]
+fn test_next_code_point_reverse_1byte() {
+    for c in 0..0x80 {
+        test_next_code_point_reverse(c);
+    }
+}
+
+#[test]
+fn test_next_code_point_reverse_2byte() {
+    for c in 0x80..0x800 {
+        test_next_code_point_reverse(c);
+    }
+}
+
+#[test]
+#[cfg(not(miri))] // Disabled on Miri because it is too slow
+fn test_next_code_point_reverse_3byte() {
+    for c in 0x800..0x10_000 {
+        test_next_code_point_reverse(c);
+    }
+}
+
+#[test]
+#[cfg(not(miri))] // Disabled on Miri because it is too slow
+fn test_next_code_point_reverse_4byte() {
+    for c in 0x10_000..=u32::from(char::MAX) {
+        test_next_code_point_reverse(c);
+    }
+}
+
 #[test]
 fn test_iterator() {
     let s = "ศไทย中华Việt Nam";
