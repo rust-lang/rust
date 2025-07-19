@@ -2945,7 +2945,6 @@ impl<'a> Parser<'a> {
 
     /// Parses the parameter list of a function, including the `(` and `)` delimiters.
     pub(super) fn parse_fn_params(&mut self, req_name: ReqName) -> PResult<'a, ThinVec<Param>> {
-        let mut first_param = true;
         // Parse the arguments, starting out with `self` being allowed...
         if self.token != TokenKind::OpenParen
         // might be typo'd trait impl, handled elsewhere
@@ -2957,10 +2956,19 @@ impl<'a> Parser<'a> {
             return Ok(ThinVec::new());
         }
 
+
+        // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
+        let self_attrs = self.parse_outer_attributes()?
+        let self_param = if let Some(mut param) = this.parse_self_param()? {
+            param.attrs = self_attrs;
+            return Ok((param, Trailing::No, UsePreAttrPos::No));
+        }
+        
+
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
             p.recover_vcs_conflict_marker();
             let snapshot = p.create_snapshot_for_diagnostic();
-            let param = p.parse_param_general(req_name, first_param, true).or_else(|e| {
+            let param = p.parse_param_general(req_name, true).or_else(|e| {
                 let guar = e.emit();
                 // When parsing a param failed, we should check to make the span of the param
                 // not contain '(' before it.
@@ -2976,10 +2984,14 @@ impl<'a> Parser<'a> {
                 // Create a placeholder argument for proper arg count (issue #34264).
                 Ok(dummy_arg(Ident::new(sym::dummy, lo.to(p.prev_token.span)), guar))
             });
-            // ...now that we've parsed the first argument, `self` is no longer allowed.
-            first_param = false;
+            
             param
         })?;
+
+        // FIXME: Need to prepend `self_param` to the beginning of `params`, 
+        // but I'm not sure this is the correct or most efficient way to do it.
+        params.insert(0, self_param);
+        
         // Replace duplicated recovered params with `_` pattern to avoid unnecessary errors.
         self.deduplicate_recovered_params_names(&mut params);
         Ok(params)
@@ -2987,24 +2999,15 @@ impl<'a> Parser<'a> {
 
     /// Parses a single function parameter.
     ///
-    /// - `self` is syntactically allowed when `first_param` holds.
     /// - `recover_arg_parse` is used to recover from a failed argument parse.
     pub(super) fn parse_param_general(
         &mut self,
         req_name: ReqName,
-        first_param: bool,
         recover_arg_parse: bool,
     ) -> PResult<'a, Param> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
-            // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
-            if let Some(mut param) = this.parse_self_param()? {
-                param.attrs = attrs;
-                let res = if first_param { Ok(param) } else { this.recover_bad_self_param(param) };
-                return Ok((res?, Trailing::No, UsePreAttrPos::No));
-            }
-
             let is_name_required = match this.token.kind {
                 token::DotDotDot => false,
                 _ => req_name(this.token.span.with_neighbor(this.prev_token.span).edition()),
@@ -3015,7 +3018,7 @@ impl<'a> Parser<'a> {
                 if !colon {
                     let mut err = this.unexpected().unwrap_err();
                     return if let Some(ident) =
-                        this.parameter_without_type(&mut err, pat, is_name_required, first_param)
+                        this.parameter_without_type(&mut err, pat, is_name_required, false)
                     {
                         let guar = err.emit();
                         Ok((dummy_arg(ident, guar), Trailing::No, UsePreAttrPos::No))
