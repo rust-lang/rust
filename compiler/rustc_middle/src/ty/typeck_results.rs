@@ -493,6 +493,32 @@ impl<'tcx> TypeckResults<'tcx> {
         has_ref_mut
     }
 
+    /// Visits the pattern recursively whether it contains a `ref pin` binding
+    /// of non-`Unpin` type in it.
+    ///
+    /// This is used to determined whether a `&pin` pattern should emit a `!Unpin`
+    /// call for its pattern scrutinee.
+    ///
+    /// This is computed from the typeck results since we want to make
+    /// sure to apply any match-ergonomics adjustments, which we cannot
+    /// determine from the HIR alone.
+    pub fn pat_walk_ref_pin_binding_of_non_unpin_type<'a>(
+        &self,
+        pat: &hir::Pat<'_>,
+        mut ty_visitor: impl FnMut(Ty<'tcx>) + 'a,
+    ) {
+        pat.walk(|pat| {
+            if let hir::PatKind::Binding(_, id, _, _) = pat.kind
+                && let Some(BindingMode(ByRef::Yes(Pinnedness::Pinned, _), _)) =
+                    self.pat_binding_modes().get(id)
+            {
+                let ty = self.pat_ty(pat);
+                ty_visitor(ty);
+            }
+            true
+        });
+    }
+
     /// How should a deref pattern find the place for its inner pattern to match on?
     ///
     /// In most cases, if the pattern recursively contains a `ref mut` binding, we find the inner

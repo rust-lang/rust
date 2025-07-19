@@ -52,20 +52,35 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
 
+        let def_id = obligation.predicate.def_id();
+        let tcx = self.tcx();
+
+        let lang_item = tcx.as_lang_item(def_id);
+
         // Negative trait predicates have different rules than positive trait predicates.
         if obligation.polarity() == ty::PredicatePolarity::Negative {
             self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
             self.assemble_candidates_from_impls(obligation, &mut candidates);
             self.assemble_candidates_from_caller_bounds(stack, &mut candidates)?;
+
+            match lang_item {
+                Some(LangItem::Unpin) if tcx.features().pin_ergonomics() => {
+                    debug!(obligation_self_ty = ?obligation.predicate.skip_binder().self_ty());
+
+                    // impl `!Unpin` automatically for tuples, slices, and arrays
+                    // to support projections for pinned patterns.
+                    self.assemble_builtin_neg_unpin_candidate(
+                        obligation.predicate.self_ty().skip_binder(),
+                        &mut candidates,
+                    );
+                }
+                _ => {}
+            }
         } else {
             self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
 
             // Other bounds. Consider both in-scope bounds from fn decl
             // and applicable impls. There is a certain set of precedence rules here.
-            let def_id = obligation.predicate.def_id();
-            let tcx = self.tcx();
-
-            let lang_item = tcx.as_lang_item(def_id);
             match lang_item {
                 Some(LangItem::Copy | LangItem::Clone) => {
                     debug!(obligation_self_ty = ?obligation.predicate.skip_binder().self_ty());
@@ -1215,6 +1230,59 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // Only appears when assembling higher-ranked `for<T> T: Clone`.
+            ty::Bound(..) => {}
+
+            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
+            }
+        }
+    }
+
+    /// Assembles `!Unpin` candidates for built-in types with no libcore-defined
+    /// `!Unpin` impls.
+    #[instrument(level = "debug", skip(self, candidates))]
+    fn assemble_builtin_neg_unpin_candidate(
+        &mut self,
+        self_ty: Ty<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        match *self_ty.kind() {
+            // `Unpin` types
+            ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Error(_)
+            | ty::Uint(_)
+            | ty::Int(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Bool
+            | ty::Float(_)
+            | ty::Char
+            | ty::RawPtr(..)
+            | ty::Never
+            | ty::Ref(..)
+            | ty::Dynamic(..)
+            | ty::Str
+            | ty::Foreign(..)
+            | ty::UnsafeBinder(_)
+            | ty::Pat(..) => {}
+
+            ty::Array(..) | ty::Slice(_) | ty::Tuple(_) => {
+                candidates.vec.push(BuiltinCandidate);
+            }
+
+            // FIXME(pin_ergonomics): should we impl `!Unpin` for coroutines or closures?
+            ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..) => {}
+
+            ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {}
+
+            ty::Infer(ty::TyVar(_)) => {
+                candidates.ambiguous = true;
+            }
+
+            // We can make this an ICE if/once we actually instantiate the trait obligation eagerly.
             ty::Bound(..) => {}
 
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
