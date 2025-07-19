@@ -268,7 +268,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
             let paths: Vec<_> = rx.try_iter().take(63).chain(std::iter::once(path)).collect();
 
             let child = rustfmt(&src, &rustfmt_path, paths.as_slice(), check);
-            children.push_back(child);
+            children.push_back(child); // WIP
 
             // Poll completion before waiting.
             for i in (0..children.len()).rev() {
