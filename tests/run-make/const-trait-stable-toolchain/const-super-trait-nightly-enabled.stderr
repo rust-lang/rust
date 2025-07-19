@@ -35,10 +35,23 @@ LL | #[const_trait] trait Bar: [const] Foo {}
 error[E0015]: cannot call non-const method `<T as Foo>::a` in constant functions
   --> const-super-trait.rs:10:7
    |
+LL | const fn foo<T: ~const Bar>(x: &T) {
+   | ---------------------------------- calls in constant functions are limited to constant functions, tuple structs and tuple variants
 LL |     x.a();
    |       ^^^
    |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+note: method `a` is not const because trait `Foo` is not const
+  --> const-super-trait.rs:3:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^ this trait is not const
+LL |     fn a(&self);
+   |     ------------ this method is not const
+help: consider making trait `Foo` const
+   |
+LL + #[const_trait]
+LL | trait Foo {
+   |
 
 error: aborting due to 4 previous errors
 

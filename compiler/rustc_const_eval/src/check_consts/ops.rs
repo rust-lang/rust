@@ -390,7 +390,13 @@ fn build_error_for_const_call<'tcx>(
                             `{trait_name}` is not const",
                         ),
                     );
-                    if parent.is_local() {
+                    if parent.is_local() && ccx.tcx.sess.is_nightly_build() {
+                        if !ccx.tcx.features().const_trait_impl() {
+                            err.help(
+                                "add `#![feature(const_trait_impl)]` to the crate attributes to \
+                                 enable `#[const_trait]`",
+                            );
+                        }
                         let indentation = ccx
                             .tcx
                             .sess
@@ -403,6 +409,8 @@ fn build_error_for_const_call<'tcx>(
                             format!("#[const_trait]\n{indentation}"),
                             Applicability::MachineApplicable,
                         );
+                    } else if !ccx.tcx.sess.is_nightly_build() {
+                        err.help("const traits are not yet supported on stable Rust");
                     }
                 }
             } else if ccx.tcx.constness(callee) != hir::Constness::Const {
