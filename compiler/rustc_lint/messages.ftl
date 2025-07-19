@@ -593,7 +593,7 @@ lint_non_camel_case_type = {$sort} `{$name}` should have an upper camel case nam
 
 lint_non_fmt_panic = panic message is not a string literal
     .note = this usage of `{$name}!()` is deprecated; it will be a hard error in Rust 2021
-    .more_info_note = for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+    .more_info_note = for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>
     .supports_fmt_note = the `{$name}!()` macro supports formatting, so there's no need for the `format!()` macro here
     .supports_fmt_suggestion = remove the `format!(..)` macro call
     .display_suggestion = add a "{"{"}{"}"}" format string to `Display` the message

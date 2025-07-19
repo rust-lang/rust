@@ -87,7 +87,7 @@ declare_lint! {
     rewriting in `match` is an option to preserve the semantics up to Edition 2021",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>",
     };
 }
 

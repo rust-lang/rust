@@ -5,7 +5,7 @@ LL | fn named<'a>(x: &'a i32) -> impl Sized { *x }
    |                             ^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024-machine-applicable.rs:9:10
    |

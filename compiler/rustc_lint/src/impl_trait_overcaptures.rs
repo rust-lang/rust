@@ -71,7 +71,7 @@ declare_lint! {
     "`impl Trait` will capture more lifetimes than possibly intended in edition 2024",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>",
     };
 }
 

@@ -27,7 +27,7 @@ LL | |     }, e.mark(3), e.ok(4));
    |                            `#1` will be dropped later as of Edition 2024
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 note: `#3` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |
@@ -75,7 +75,7 @@ LL | |     }, e.mark(1), e.ok(4));
    |                            `#1` will be dropped later as of Edition 2024
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 note: `#2` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |
@@ -107,7 +107,7 @@ LL | |     }, e.mark(1), e.ok(4));
    |                            `#1` will be dropped later as of Edition 2024
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 note: `#2` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |
@@ -139,7 +139,7 @@ LL | |     }, e.mark(2), e.ok(3));
    |                            `#1` will be dropped later as of Edition 2024
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 note: `#2` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |
@@ -171,7 +171,7 @@ LL | |     }, e.mark(2), e.ok(3));
    |                            `#1` will be dropped later as of Edition 2024
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 note: `#2` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |
@@ -193,7 +193,7 @@ LL |     _ = (if let Ok(_) = e.ok(4).as_ref() {
    |                         this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |
@@ -223,7 +223,7 @@ LL |     _ = (if let Ok(_) = e.err(4).as_ref() {} else {
    |                         this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |
@@ -252,7 +252,7 @@ LL |         if let Ok(_) = e.err(4).as_ref() {} else {
    |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |
@@ -281,7 +281,7 @@ LL |         if let true = e.err(9).is_ok() {} else {
    |                       this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |
@@ -310,7 +310,7 @@ LL |         if let Ok(_v) = e.err(8) {} else {
    |                         this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |
@@ -339,7 +339,7 @@ LL |         if let Ok(_) = e.err(7) {} else {
    |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |
@@ -368,7 +368,7 @@ LL |         if let Ok(_) = e.err(6).as_ref() {} else {
    |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |
@@ -397,7 +397,7 @@ LL |         if let Ok(_v) = e.err(5) {} else {
    |                         this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |
@@ -426,7 +426,7 @@ LL |         if let Ok(_) = e.err(4) {} else {
    |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |
@@ -455,7 +455,7 @@ LL |         if let Ok(_) = e.err(4).as_ref() {} else {
    |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:504:1
    |

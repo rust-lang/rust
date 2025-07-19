@@ -5,7 +5,7 @@ LL | fn named<'a>(x: &'a i32) -> impl Sized { *x }
    |                             ^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:7:10
    |
@@ -29,7 +29,7 @@ LL | fn implicit(x: &i32) -> impl Sized { *x }
    |                         ^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:11:16
    |
@@ -48,7 +48,7 @@ LL |     fn hello(&self, x: &i32) -> impl Sized + '_ { self }
    |                                 ^^^^^^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:17:24
    |
@@ -67,7 +67,7 @@ LL | fn hrtb() -> impl for<'a> Higher<'a, Output = impl Sized> {}
    |                                               ^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:29:23
    |
@@ -86,7 +86,7 @@ LL | fn apit(_: &impl Sized) -> impl Sized {}
    |                            ^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:33:12
    |
@@ -111,7 +111,7 @@ LL | fn apit2<U>(_: &impl Sized, _: U) -> impl Sized {}
    |                                      ^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:37:16
    |
@@ -136,7 +136,7 @@ LL | async fn async_fn<'a>(x: &'a ()) -> impl Sized {}
    |                                     ^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:41:19
    |
@@ -155,7 +155,7 @@ LL | pub fn parens(x: &i32) -> &impl Clone { x }
    |                            ^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:45:18
    |

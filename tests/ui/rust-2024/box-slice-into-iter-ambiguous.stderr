@@ -5,7 +5,7 @@ LL |     let y = points.into_iter();
    |             ^^^^^^^^^^^^^^^^^^ help: disambiguate the associated function: `MyIntoIter::into_iter(points)`
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/intoiterator-box-slice.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/intoiterator-box-slice.html>
 note: the lint level is defined here
   --> $DIR/box-slice-into-iter-ambiguous.rs:5:9
    |

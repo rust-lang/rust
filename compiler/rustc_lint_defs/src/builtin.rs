@@ -1814,7 +1814,7 @@ declare_lint! {
     "suggest using `dyn Trait` for trait objects",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>",
     };
 }
 
@@ -2472,7 +2472,7 @@ declare_lint! {
     "unsafe operations in unsafe functions without an explicit unsafe block are deprecated",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>",
         explain_reason: false
     };
     @edition Edition2024 => Warn;
@@ -3445,7 +3445,7 @@ declare_lint! {
     "detects usage of old versions of or-patterns",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/or-patterns-macro-rules.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2021/or-patterns-macro-rules.html>",
     };
 }
 
@@ -3494,7 +3494,7 @@ declare_lint! {
         prelude in future editions",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/prelude.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2021/prelude.html>",
     };
 }
 
@@ -3534,7 +3534,7 @@ declare_lint! {
         prelude in future editions",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/prelude.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/prelude.html>",
     };
 }
 
@@ -3571,7 +3571,7 @@ declare_lint! {
     "identifiers that will be parsed as a prefix in Rust 2021",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/reserving-syntax.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>",
     };
     crate_level_only
 }
@@ -4100,7 +4100,7 @@ declare_lint! {
     "never type fallback affecting unsafe function calls",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>",
         report_in_deps: true,
     };
     @edition Edition2024 => Deny;
@@ -4155,7 +4155,7 @@ declare_lint! {
     "never type fallback affecting unsafe function calls",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionAndFutureReleaseError(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>",
         report_in_deps: true,
     };
     report_in_external_macro
@@ -4740,7 +4740,7 @@ declare_lint! {
     "detects unsafe functions being used as safe functions",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/newly-unsafe-functions.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/newly-unsafe-functions.html>",
     };
 }
 
@@ -4776,7 +4776,7 @@ declare_lint! {
     "detects missing unsafe keyword on extern declarations",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-extern.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-extern.html>",
     };
 }
 
@@ -4817,7 +4817,7 @@ declare_lint! {
     "detects unsafe attributes outside of unsafe",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-attributes.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-attributes.html>",
     };
 }
 
@@ -5014,7 +5014,7 @@ declare_lint! {
     "Detect and warn on significant change in drop order in tail expression location",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>",
     };
 }
 
@@ -5053,7 +5053,7 @@ declare_lint! {
     "will be parsed as a guarded string in Rust 2024",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/reserved-syntax.html>",
     };
     crate_level_only
 }

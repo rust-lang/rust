@@ -54,7 +54,7 @@ declare_lint! {
     "creating a shared reference to mutable static",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>",
         explain_reason: false,
     };
     @edition Edition2024 => Deny;

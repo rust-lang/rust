@@ -4,7 +4,7 @@ error[E0133]: call to unsafe function `unsf` is unsafe and requires unsafe block
 LL |     unsf();
    |     ^^^^^^ call to unsafe function
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
    = note: consult the function's documentation for information on how to avoid undefined behavior
 note: an unsafe function restricts its caller, but its body is safe by default
   --> $DIR/wrapping-unsafe-block-sugg.rs:11:1
@@ -23,7 +23,7 @@ error[E0133]: call to unsafe function `unsf` is unsafe and requires unsafe block
 LL |     unsf();
    |     ^^^^^^ call to unsafe function
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
 error[E0133]: dereference of raw pointer is unsafe and requires unsafe block
@@ -32,7 +32,7 @@ error[E0133]: dereference of raw pointer is unsafe and requires unsafe block
 LL |     let y = *x;
    |             ^^ dereference of raw pointer
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
    = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
 note: an unsafe function restricts its caller, but its body is safe by default
   --> $DIR/wrapping-unsafe-block-sugg.rs:23:1
@@ -46,7 +46,7 @@ error[E0133]: dereference of raw pointer is unsafe and requires unsafe block
 LL |     y + *x
    |         ^^ dereference of raw pointer
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
    = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
 
 error[E0133]: use of mutable static is unsafe and requires unsafe block
@@ -55,7 +55,7 @@ error[E0133]: use of mutable static is unsafe and requires unsafe block
 LL |     let y = BAZ;
    |             ^^^ use of mutable static
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 note: an unsafe function restricts its caller, but its body is safe by default
   --> $DIR/wrapping-unsafe-block-sugg.rs:36:1
@@ -69,7 +69,7 @@ error[E0133]: use of mutable static is unsafe and requires unsafe block
 LL |     y + BAZ
    |         ^^^ use of mutable static
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
 error[E0133]: call to unsafe function `unsf` is unsafe and requires unsafe block
@@ -81,7 +81,7 @@ LL | macro_rules! unsafe_macro { () => (unsf()) }
 LL |     unsafe_macro!();
    |     --------------- in this macro invocation
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
    = note: consult the function's documentation for information on how to avoid undefined behavior
 note: an unsafe function restricts its caller, but its body is safe by default
   --> $DIR/wrapping-unsafe-block-sugg.rs:58:1
@@ -99,7 +99,7 @@ LL | macro_rules! unsafe_macro { () => (unsf()) }
 LL |     unsafe_macro!();
    |     --------------- in this macro invocation
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
    = note: consult the function's documentation for information on how to avoid undefined behavior
    = note: this error originates in the macro `unsafe_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
