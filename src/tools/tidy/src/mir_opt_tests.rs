@@ -55,22 +55,21 @@ fn check_dash_files(path: &Path, bless: bool, bad: &mut bool) {
         .filter(|e| e.file_type().is_file())
     {
         let path = file.path();
-        if path.extension() == Some("rs".as_ref()) {
-            if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
-                if name.contains('-') {
-                    if !bless {
-                        tidy_error!(
-                            bad,
-                            "mir-opt test files should not have dashes in them: {}",
-                            path.display()
-                        );
-                    } else {
-                        let new_name = name.replace('-', "_");
-                        let mut new_path = path.to_owned();
-                        new_path.set_file_name(new_name);
-                        let _ = std::fs::rename(path, new_path);
-                    }
-                }
+        if path.extension() == Some("rs".as_ref())
+            && let Some(name) = path.file_name().and_then(|s| s.to_str())
+            && name.contains('-')
+        {
+            if !bless {
+                tidy_error!(
+                    bad,
+                    "mir-opt test files should not have dashes in them: {}",
+                    path.display()
+                );
+            } else {
+                let new_name = name.replace('-', "_");
+                let mut new_path = path.to_owned();
+                new_path.set_file_name(new_name);
+                let _ = std::fs::rename(path, new_path);
             }
         }
     }

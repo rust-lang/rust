@@ -26,7 +26,7 @@ pub fn check(librustdoc_path: &Path, bad: &mut bool) {
                         None
                     // Then we check if this a comment tag.
                     } else if *tag != "{#" {
-                        return Some(false);
+                        Some(false)
                     // And finally we check if the comment is empty (ie, only there to strip
                     // extra whitespace characters).
                     } else if let Some(start_pos) = line.rfind(tag) {

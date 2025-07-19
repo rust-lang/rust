@@ -1677,7 +1677,7 @@ impl Type {
         }
     }
 
-    pub(crate) fn generics<'a>(&'a self) -> Option<impl Iterator<Item = &'a Type>> {
+    pub(crate) fn generics(&self) -> Option<impl Iterator<Item = &Type>> {
         match self {
             Type::Path { path, .. } => path.generics(),
             _ => None,
@@ -2227,7 +2227,7 @@ impl Path {
         self.segments.last().map(|seg| &seg.args)
     }
 
-    pub(crate) fn generics<'a>(&'a self) -> Option<impl Iterator<Item = &'a Type>> {
+    pub(crate) fn generics(&self) -> Option<impl Iterator<Item = &Type>> {
         self.segments.last().and_then(|seg| {
             if let GenericArgs::AngleBracketed { ref args, .. } = seg.args {
                 Some(args.iter().filter_map(|arg| match arg {

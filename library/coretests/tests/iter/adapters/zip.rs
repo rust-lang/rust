@@ -273,7 +273,7 @@ fn test_double_ended_zip() {
 
 #[test]
 #[cfg(panic = "unwind")]
-/// Regresion test for #137255
+/// Regression test for #137255
 /// A previous implementation of Zip TrustedRandomAccess specializations tried to do a lot of work
 /// to preserve side-effects of equalizing the iterator lengths during backwards iteration.
 /// This lead to several cases of unsoundness, twice due to being left in an inconsistent state

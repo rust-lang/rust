@@ -1451,7 +1451,7 @@ item_template!(
 
 impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
     fn render_union(&self) -> impl Display {
-        render_union(self.it, Some(&self.generics), &self.fields, self.cx)
+        render_union(self.it, Some(self.generics), self.fields, self.cx)
     }
 
     fn document_field(&self, field: &'a clean::Item) -> impl Display {
@@ -1982,16 +1982,14 @@ fn item_constant(
                 w.write_str(";")?;
             }
 
-            if !is_literal {
-                if let Some(value) = &value {
-                    let value_lowercase = value.to_lowercase();
-                    let expr_lowercase = expr.to_lowercase();
+            if !is_literal && let Some(value) = &value {
+                let value_lowercase = value.to_lowercase();
+                let expr_lowercase = expr.to_lowercase();
 
-                    if value_lowercase != expr_lowercase
-                        && value_lowercase.trim_end_matches("i32") != expr_lowercase
-                    {
-                        write!(w, " // {value}", value = Escape(value))?;
-                    }
+                if value_lowercase != expr_lowercase
+                    && value_lowercase.trim_end_matches("i32") != expr_lowercase
+                {
+                    write!(w, " // {value}", value = Escape(value))?;
                 }
             }
             Ok::<(), fmt::Error>(())
@@ -2071,41 +2069,39 @@ fn item_fields(
                 _ => None,
             })
             .peekable();
-        if let None | Some(CtorKind::Fn) = ctor_kind {
-            if fields.peek().is_some() {
-                let title = format!(
-                    "{}{}",
-                    if ctor_kind.is_none() { "Fields" } else { "Tuple Fields" },
-                    document_non_exhaustive_header(it),
-                );
+        if let None | Some(CtorKind::Fn) = ctor_kind
+            && fields.peek().is_some()
+        {
+            let title = format!(
+                "{}{}",
+                if ctor_kind.is_none() { "Fields" } else { "Tuple Fields" },
+                document_non_exhaustive_header(it),
+            );
+            write!(
+                w,
+                "{}",
+                write_section_heading(
+                    &title,
+                    "fields",
+                    Some("fields"),
+                    document_non_exhaustive(it)
+                )
+            )?;
+            for (index, (field, ty)) in fields.enumerate() {
+                let field_name =
+                    field.name.map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
+                let id = cx.derive_id(format!("{typ}.{field_name}", typ = ItemType::StructField));
                 write!(
                     w,
-                    "{}",
-                    write_section_heading(
-                        &title,
-                        "fields",
-                        Some("fields"),
-                        document_non_exhaustive(it)
-                    )
+                    "<span id=\"{id}\" class=\"{item_type} section-header\">\
+                        <a href=\"#{id}\" class=\"anchor field\">§</a>\
+                        <code>{field_name}: {ty}</code>\
+                    </span>\
+                    {doc}",
+                    item_type = ItemType::StructField,
+                    ty = ty.print(cx),
+                    doc = document(cx, field, Some(it), HeadingOffset::H3),
                 )?;
-                for (index, (field, ty)) in fields.enumerate() {
-                    let field_name = field
-                        .name
-                        .map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
-                    let id =
-                        cx.derive_id(format!("{typ}.{field_name}", typ = ItemType::StructField));
-                    write!(
-                        w,
-                        "<span id=\"{id}\" class=\"{item_type} section-header\">\
-                            <a href=\"#{id}\" class=\"anchor field\">§</a>\
-                            <code>{field_name}: {ty}</code>\
-                        </span>\
-                        {doc}",
-                        item_type = ItemType::StructField,
-                        ty = ty.print(cx),
-                        doc = document(cx, field, Some(it), HeadingOffset::H3),
-                    )?;
-                }
             }
         }
         Ok(())

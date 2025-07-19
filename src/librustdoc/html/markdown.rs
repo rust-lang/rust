@@ -251,7 +251,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                     if !parse_result.rust {
                         let added_classes = parse_result.added_classes;
                         let lang_string = if let Some(lang) = parse_result.unknown.first() {
-                            format!("language-{}", lang)
+                            format!("language-{lang}")
                         } else {
                             String::new()
                         };
@@ -999,7 +999,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
 
         if let Some((_, c)) = self.inner.next() {
             if c != '=' {
-                self.emit_error(format!("expected `=`, found `{}`", c));
+                self.emit_error(format!("expected `=`, found `{c}`"));
                 return None;
             }
         } else {
