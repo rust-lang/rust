@@ -241,16 +241,12 @@
 +         StorageLive(_52);
 +         StorageLive(_44);
 +         StorageLive(_45);
-+         StorageLive(_46);
-+         StorageLive(_49);
 +         _47 = copy (_19.0: &mut std::future::Ready<()>);
-+         StorageDead(_49);
 +         StorageLive(_50);
 +         _50 = Option::<()>::None;
 +         _45 = copy ((*_47).0: std::option::Option<()>);
 +         ((*_47).0: std::option::Option<()>) = copy _50;
 +         StorageDead(_50);
-+         StorageDead(_46);
 +         StorageLive(_51);
 +         _51 = discriminant(_45);
 +         switchInt(move _51) -> [0: bb16, 1: bb17, otherwise: bb7];

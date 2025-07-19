@@ -71,21 +71,17 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
         // DBG: _16 = &((*_3).3: usize);
         StorageLive(_6);
         // DBG: _17 = &_13;
-        // DBG: _18 = &_15;
+        // DBG: _18 = &?;
         _4 = copy ((*_3).0: usize);
         _5 = copy ((*_3).2: usize);
         _6 = Le(copy _4, copy _5);
-        switchInt(move _6) -> [0: bb1, otherwise: bb2];
+        switchInt(move _6) -> [0: bb2, otherwise: bb1];
     }
 
     bb1: {
-        goto -> bb4;
-    }
-
-    bb2: {
         StorageLive(_9);
         // DBG: _19 = &_16;
-        // DBG: _20 = &_14;
+        // DBG: _20 = &?;
         StorageLive(_7);
         _7 = copy ((*_3).3: usize);
         StorageLive(_8);
@@ -93,29 +89,25 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
         _9 = Le(move _7, move _8);
         StorageDead(_8);
         StorageDead(_7);
-        switchInt(move _9) -> [0: bb3, otherwise: bb8];
+        switchInt(move _9) -> [0: bb2, otherwise: bb6];
+    }
+
+    bb2: {
+        StorageLive(_10);
+        // DBG: _21 = &_15;
+        // DBG: _22 = &?;
+        _10 = Le(copy _5, copy _4);
+        switchInt(move _10) -> [0: bb3, otherwise: bb4];
     }
 
     bb3: {
-        goto -> bb4;
+        _0 = const false;
+        goto -> bb5;
     }
 
     bb4: {
-        StorageLive(_10);
-        // DBG: _21 = &_15;
-        // DBG: _22 = &_13;
-        _10 = Le(copy _5, copy _4);
-        switchInt(move _10) -> [0: bb5, otherwise: bb6];
-    }
-
-    bb5: {
-        _0 = const false;
-        goto -> bb7;
-    }
-
-    bb6: {
         // DBG: _23 = &_14;
-        // DBG: _24 = &_16;
+        // DBG: _24 = &?;
         StorageLive(_11);
         _11 = copy ((*_3).1: usize);
         StorageLive(_12);
@@ -123,20 +115,20 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
         _0 = Le(move _11, move _12);
         StorageDead(_12);
         StorageDead(_11);
+        goto -> bb5;
+    }
+
+    bb5: {
+        StorageDead(_10);
+        goto -> bb7;
+    }
+
+    bb6: {
+        _0 = const true;
         goto -> bb7;
     }
 
     bb7: {
-        StorageDead(_10);
-        goto -> bb9;
-    }
-
-    bb8: {
-        _0 = const true;
-        goto -> bb9;
-    }
-
-    bb9: {
         StorageDead(_9);
         StorageDead(_6);
         return;

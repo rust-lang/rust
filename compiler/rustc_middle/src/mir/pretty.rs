@@ -866,6 +866,9 @@ impl Debug for StmtDebugInfo<'_> {
             StmtDebugInfo::AssignRef(local, place) => {
                 write!(fmt, "{local:?} = &{place:?}")
             }
+            StmtDebugInfo::InvalidAssign(local) => {
+                write!(fmt, "{local:?} = &?")
+            }
         }
     }
 }

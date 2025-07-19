@@ -127,33 +127,41 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // Drop unsupported projections.
                     // FIXME: Add a test case.
                     place.projection.iter().all(|p| p.can_use_in_debuginfo()) &&
-                    // Only pointers can calculate addresses.
-                    bx.type_kind(bx.val_ty(place_ref.val.llval)) == TypeKind::Pointer
+                        // Only pointers can calculate addresses.
+                        bx.type_kind(bx.val_ty(place_ref.val.llval)) == TypeKind::Pointer
                 });
-                let (val, layout, projection) =
-                    match (place_ref, place.is_indirect_first_projection()) {
-                        (Some(place_ref), false) => {
-                            (place_ref.val, place_ref.layout, place.projection.as_slice())
-                        }
-                        (Some(place_ref), true) => {
-                            let projected_ty =
-                                place_ref.layout.ty.builtin_deref(true).unwrap_or_else(|| {
-                                    bug!("deref of non-pointer {:?}", place_ref)
-                                });
-                            let layout = bx.cx().layout_of(projected_ty);
-                            (place_ref.val, layout, &place.projection[1..])
-                        }
-                        _ => {
-                            // If the address cannot be computed, use poison to indicate that the value has been optimized out.
-                            let ty = self.monomorphize(self.mir.local_decls[*dest].ty);
-                            let layout = bx.cx().layout_of(ty);
-                            let to_backend_ty = bx.cx().immediate_backend_type(layout);
-                            let place_ref =
-                                PlaceRef::new_sized(bx.cx().const_poison(to_backend_ty), layout);
-                            (place_ref.val, layout, [].as_slice())
-                        }
-                    };
+                let assign_ref = match (place_ref, place.is_indirect_first_projection()) {
+                    (Some(place_ref), false) => {
+                        Some((place_ref.val, place_ref.layout, place.projection.as_slice()))
+                    }
+                    (Some(place_ref), true) => {
+                        let projected_ty = place_ref
+                            .layout
+                            .ty
+                            .builtin_deref(true)
+                            .unwrap_or_else(|| bug!("deref of non-pointer {:?}", place_ref));
+                        let layout = bx.cx().layout_of(projected_ty);
+                        Some((place_ref.val, layout, &place.projection[1..]))
+                    }
+                    _ => None,
+                };
+                let (val, layout, projection) = assign_ref.unwrap_or_else(|| {
+                    // If the address cannot be computed, use poison to indicate that the value has been optimized out.
+                    let ty = self.monomorphize(self.mir.local_decls[*dest].ty);
+                    let layout = bx.cx().layout_of(ty);
+                    let to_backend_ty = bx.cx().immediate_backend_type(layout);
+                    let place_ref =
+                        PlaceRef::new_sized(bx.cx().const_poison(to_backend_ty), layout);
+                    (place_ref.val, layout, [].as_slice())
+                });
                 self.debug_new_value_to_local(bx, *dest, val, layout, projection);
+            }
+            StmtDebugInfo::InvalidAssign(local) => {
+                let ty = self.monomorphize(self.mir.local_decls[*local].ty);
+                let layout = bx.cx().layout_of(ty);
+                let to_backend_ty = bx.cx().immediate_backend_type(layout);
+                let place_ref = PlaceRef::new_sized(bx.cx().const_poison(to_backend_ty), layout);
+                self.debug_new_value_to_local(bx, *local, place_ref.val, layout, &[]);
             }
         }
     }

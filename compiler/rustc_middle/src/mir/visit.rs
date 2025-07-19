@@ -406,6 +406,13 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     },
+                    StmtDebugInfo::InvalidAssign(local) => {
+                        self.visit_local(
+                            $(& $mutability)? *local,
+                            PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                            location
+                        );
+                    }
                 }
             }
 
