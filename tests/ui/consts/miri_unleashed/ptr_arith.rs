@@ -11,8 +11,8 @@ static PTR_INT_CAST: () = {
 
 static PTR_INT_TRANSMUTE: () = unsafe {
     let x: usize = std::mem::transmute(&0);
+    //~^ ERROR: constructing invalid value: encountered a pointer, but expected an integer
     let _v = x + 0;
-    //~^ ERROR unable to turn pointer into integer
 };
 
 // I'd love to test pointer comparison, but that is not possible since
