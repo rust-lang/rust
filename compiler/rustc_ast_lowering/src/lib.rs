@@ -874,25 +874,32 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// name resolver owing to lifetime elision; this also populates the resolver's node-id->def-id
     /// map, so that later calls to `opt_node_id_to_def_id` that refer to these extra lifetime
     /// parameters will be successful.
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     #[inline]
     fn lower_lifetime_binder(
         &mut self,
         binder: NodeId,
         generic_params: &[GenericParam],
     ) -> &'hir [hir::GenericParam<'hir>] {
-        let mut generic_params: Vec<_> = self
-            .lower_generic_params_mut(generic_params, hir::GenericParamSource::Binder)
-            .collect();
+        // Start by creating params for extra lifetimes params, as this creates the definitions
+        // that may be referred to by the AST inside `generic_params`.
         let extra_lifetimes = self.resolver.extra_lifetime_params(binder);
         debug!(?extra_lifetimes);
-        generic_params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
-            self.lifetime_res_to_generic_param(ident, node_id, res, hir::GenericParamSource::Binder)
-        }));
-        let generic_params = self.arena.alloc_from_iter(generic_params);
-        debug!(?generic_params);
-
-        generic_params
+        let extra_lifetimes: Vec<_> = extra_lifetimes
+            .into_iter()
+            .filter_map(|(ident, node_id, res)| {
+                self.lifetime_res_to_generic_param(
+                    ident,
+                    node_id,
+                    res,
+                    hir::GenericParamSource::Binder,
+                )
+            })
+            .collect();
+        let arena = self.arena;
+        let explicit_generic_params =
+            self.lower_generic_params_mut(generic_params, hir::GenericParamSource::Binder);
+        arena.alloc_from_iter(explicit_generic_params.chain(extra_lifetimes.into_iter()))
     }
 
     fn with_dyn_type_scope<T>(&mut self, in_scope: bool, f: impl FnOnce(&mut Self) -> T) -> T {
