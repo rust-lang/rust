@@ -941,13 +941,21 @@ fn preprocess_link(
     ori_link: &MarkdownLink,
     dox: &str,
 ) -> Option<Result<PreprocessingInfo, PreprocessingError>> {
+    // certain link kinds cannot have their path be urls,
+    // so they should not be ignored, no matter how much they look like urls.
+    // e.g. [https://example.com/] is not a link to example.com.
+    let can_be_url = !matches!(
+        ori_link.kind,
+        LinkType::ShortcutUnknown | LinkType::CollapsedUnknown | LinkType::ReferenceUnknown
+    );
+
     // [] is mostly likely not supposed to be a link
     if ori_link.link.is_empty() {
         return None;
     }
 
     // Bail early for real links.
-    if ori_link.link.contains('/') {
+    if can_be_url && ori_link.link.contains('/') {
         return None;
     }
 
@@ -972,7 +980,7 @@ fn preprocess_link(
         Ok(None) => (None, link, link),
         Err((err_msg, relative_range)) => {
             // Only report error if we would not have ignored this link. See issue #83859.
-            if !should_ignore_link_with_disambiguators(link) {
+            if !(can_be_url && should_ignore_link_with_disambiguators(link)) {
                 let disambiguator_range = match range_between_backticks(&ori_link.range, dox) {
                     MarkdownLinkRange::Destination(no_backticks_range) => {
                         MarkdownLinkRange::Destination(
@@ -989,7 +997,25 @@ fn preprocess_link(
         }
     };
 
-    if should_ignore_link(path_str) {
+    // If there's no backticks, be lenient and revert to the old behavior.
+    // This is to prevent churn by linting on stuff that isn't meant to be a link.
+    // only shortcut links have simple enough syntax that they
+    // are likely to be written accidentally, collapsed and reference links
+    // need 4 metachars, and reference links will not usually use
+    // backticks in the reference name.
+    // therefore, only shortcut syntax gets the lenient behavior.
+    //
+    // here's a truth table for how link kinds that cannot be urls are handled:
+    //
+    // |-------------------------------------------------------|
+    // |              |  is shortcut link  | not shortcut link |
+    // |--------------|--------------------|-------------------|
+    // | has backtick |    never ignore    |    never ignore   |
+    // | no backtick  | ignore if url-like |    never ignore   |
+    // |-------------------------------------------------------|
+    let ignore_urllike =
+        can_be_url || (ori_link.kind == LinkType::ShortcutUnknown && !ori_link.link.contains('`'));
+    if ignore_urllike && should_ignore_link(path_str) {
         return None;
     }
 
