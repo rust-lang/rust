@@ -287,9 +287,6 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         if let Some(destination) =
             Self::can_be_removed_if_dead(&statement.kind, &self.always_live, &self.debuginfo_locals)
             && !state.contains(destination.local)
-            // FIXME: We can eliminate the statement, but we'll need the statements it depends on
-            // for debuginfos. We need a way to handle this.
-            && !self.debuginfo_locals.contains(destination.local)
         {
             // This store is dead
             return;
