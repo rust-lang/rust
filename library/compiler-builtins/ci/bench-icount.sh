@@ -28,7 +28,7 @@ function run_icount_benchmarks() {
 
     iai_args=(
         "--home" "$(pwd)/$iai_home"
-        "--regression=ir=5.0"
+        "--callgrind-limits=ir=5.0"
         "--save-summary"
     )
 

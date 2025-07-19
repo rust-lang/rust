@@ -363,6 +363,7 @@ pub const fn f32_from_bits(bits: u32) -> f32 {
 }
 
 /// `f32::to_bits`
+#[allow(dead_code)] // workaround for false positive RUST-144060
 #[allow(unnecessary_transmutes)] // lint appears in newer versions of Rust
 pub const fn f32_to_bits(x: f32) -> u32 {
     // SAFETY: POD cast with no preconditions
@@ -377,6 +378,7 @@ pub const fn f64_from_bits(bits: u64) -> f64 {
 }
 
 /// `f64::to_bits`
+#[allow(dead_code)] // workaround for false positive RUST-144060
 #[allow(unnecessary_transmutes)] // lint appears in newer versions of Rust
 pub const fn f64_to_bits(x: f64) -> u64 {
     // SAFETY: POD cast with no preconditions

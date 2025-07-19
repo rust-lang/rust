@@ -3,13 +3,6 @@
 // FIXME(e2024): this eventually needs to be removed.
 #![allow(unsafe_op_in_unsafe_fn)]
 
-#[allow(warnings)]
-#[cfg(target_pointer_width = "16")]
-type c_int = i16;
-#[allow(warnings)]
-#[cfg(not(target_pointer_width = "16"))]
-type c_int = i32;
-
 // memcpy/memmove/memset have optimized implementations on some architectures
 #[cfg_attr(
     all(not(feature = "no-asm"), target_arch = "x86_64"),
@@ -38,18 +31,18 @@ intrinsics! {
     }
 
     #[mem_builtin]
-    pub unsafe extern "C" fn memset(s: *mut u8, c: crate::mem::c_int, n: usize) -> *mut u8 {
+    pub unsafe extern "C" fn memset(s: *mut u8, c: core::ffi::c_int, n: usize) -> *mut u8 {
         impls::set_bytes(s, c as u8, n);
         s
     }
 
     #[mem_builtin]
-    pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
+    pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> core::ffi::c_int {
         impls::compare_bytes(s1, s2, n)
     }
 
     #[mem_builtin]
-    pub unsafe extern "C" fn bcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
+    pub unsafe extern "C" fn bcmp(s1: *const u8, s2: *const u8, n: usize) -> core::ffi::c_int {
         memcmp(s1, s2, n)
     }
 
