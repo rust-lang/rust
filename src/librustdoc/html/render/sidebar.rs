@@ -541,7 +541,7 @@ fn sidebar_deref_methods<'a>(
                 .iter()
                 .filter(|i| {
                     i.inner_impl().trait_.is_none()
-                        && real_target.is_doc_subtype_of(&i.inner_impl().for_, &c)
+                        && real_target.is_doc_subtype_of(&i.inner_impl().for_, c)
                 })
                 .flat_map(|i| get_methods(i.inner_impl(), true, used_links, deref_mut, cx.tcx()))
                 .collect::<Vec<_>>();
