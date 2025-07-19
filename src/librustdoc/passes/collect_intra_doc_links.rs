@@ -944,9 +944,10 @@ fn preprocess_link(
     // certain link kinds cannot have their path be urls,
     // so they should not be ignored, no matter how much they look like urls.
     // e.g. [https://example.com/] is not a link to example.com.
-    let can_be_url = ori_link.kind != LinkType::ShortcutUnknown
-        && ori_link.kind != LinkType::CollapsedUnknown
-        && ori_link.kind != LinkType::ReferenceUnknown;
+    let can_be_url = !matches!(
+        ori_link.kind,
+        LinkType::ShortcutUnknown | LinkType::CollapsedUnknown | LinkType::ReferenceUnknown
+    );
 
     // [] is mostly likely not supposed to be a link
     if ori_link.link.is_empty() {
@@ -996,7 +997,7 @@ fn preprocess_link(
         }
     };
 
-    // If there's no backticks, be lenient revert to old behavior.
+    // If there's no backticks, be lenient and revert to the old behavior.
     // This is to prevent churn by linting on stuff that isn't meant to be a link.
     // only shortcut links have simple enough syntax that they
     // are likely to be written accidentlly, collapsed and reference links
