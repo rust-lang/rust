@@ -2422,10 +2422,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     expr = expr_
                 }
+                let expr_span = expr.span.find_oldest_ancestor_in_same_ctxt();
 
                 vec![
-                    (expr.span.shrink_to_lo(), format!("{prefix}{variant}{open}")),
-                    (expr.span.shrink_to_hi(), close.to_owned()),
+                    (expr_span.shrink_to_lo(), format!("{prefix}{variant}{open}")),
+                    (expr_span.shrink_to_hi(), close.to_owned()),
                 ]
             };
 
