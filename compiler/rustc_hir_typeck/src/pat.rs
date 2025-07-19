@@ -3145,11 +3145,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // so, we may want to inspect the span's source callee or macro backtrace.
             "occurs within macro expansion".to_owned()
         } else {
-            let dbm_str = match def_br_mutbl {
-                Mutability::Not => "ref",
-                Mutability::Mut => "ref mut",
-            };
-            format!("{pat_kind} not allowed under `{dbm_str}` default binding mode")
+            format!("explicit {pat_kind} not allowed within elided reference pattern")
         };
         info.primary_labels.push((trimmed_span, primary_label));
     }
