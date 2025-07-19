@@ -243,6 +243,9 @@ impl<'cx, 'a> Context<'cx, 'a> {
             ExprKind::Let(_, local_expr, _, _) => {
                 self.manage_cond_expr(local_expr);
             }
+            ExprKind::Is(local_expr, _) => {
+                self.manage_cond_expr(local_expr);
+            }
             ExprKind::Match(local_expr, ..) => {
                 self.manage_cond_expr(local_expr);
             }
