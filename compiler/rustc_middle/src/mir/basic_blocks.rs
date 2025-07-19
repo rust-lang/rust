@@ -33,6 +33,93 @@ struct Cache {
     predecessors: OnceLock<Predecessors>,
     reverse_postorder: OnceLock<Vec<BasicBlock>>,
     dominators: OnceLock<Dominators<BasicBlock>>,
+    is_cyclic: OnceLock<bool>,
+    sccs: OnceLock<SccData>,
+}
+
+#[derive(Clone, Default, Debug)]
+pub struct SccData {
+    pub component_count: usize,
+
+    /// The SCC of each block.
+    pub components: IndexVec<BasicBlock, u32>,
+
+    /// The contents of each SCC: its blocks, in RPO.
+    pub sccs: Vec<SmallVec<[BasicBlock; 2]>>,
+}
+
+use std::collections::VecDeque;
+
+struct PearceRecursive {
+    r_index: IndexVec<BasicBlock, u32>,
+    stack: VecDeque<BasicBlock>,
+    index: u32,
+    c: u32,
+}
+
+impl PearceRecursive {
+    fn new(node_count: usize) -> Self {
+        assert!(node_count > 0); // only a non-empty graph is supported
+        // todo: assert node_count is within overflow limits
+        Self {
+            r_index: IndexVec::from_elem_n(0, node_count),
+            stack: VecDeque::new(),
+            index: 1,
+            c: node_count.try_into().unwrap(),
+            // c: node_count - 1,
+        }
+    }
+
+    fn compute_sccs(&mut self, blocks: &IndexVec<BasicBlock, BasicBlockData<'_>>) {
+        for v in blocks.indices() {
+            if self.r_index[v] == 0 {
+                self.visit(v, blocks);
+            }
+        }
+
+        // The SCC labels are from N - 1 to zero, remap them from 0 to the component count, to match
+        // their position in an array of SCCs.
+        let node_count: u32 = blocks.len().try_into().unwrap();
+        for scc_index in self.r_index.iter_mut() {
+            *scc_index = node_count - *scc_index - 1;
+        }
+
+        // Adjust the component index counter to the component count
+        self.c = node_count - self.c;
+    }
+
+    fn visit(&mut self, v: BasicBlock, blocks: &IndexVec<BasicBlock, BasicBlockData<'_>>) {
+        let mut root = true;
+        self.r_index[v] = self.index;
+        self.index += 1;
+
+        for w in blocks[v].terminator().successors() {
+            if self.r_index[w] == 0 {
+                self.visit(w, blocks);
+            }
+            if self.r_index[w] < self.r_index[v] {
+                self.r_index[v] = self.r_index[w];
+                root = false;
+            }
+        }
+
+        if root {
+            self.index -= 1;
+            self.c -= 1;
+
+            while let Some(&w) = self.stack.front()
+                && self.r_index[v] <= self.r_index[w]
+            {
+                self.stack.pop_front();
+                self.r_index[w] = self.c;
+                self.index -= 1;
+            }
+
+            self.r_index[v] = self.c;
+        } else {
+            self.stack.push_front(v);
+        }
+    }
 }
 
 impl<'tcx> BasicBlocks<'tcx> {
@@ -41,8 +128,33 @@ impl<'tcx> BasicBlocks<'tcx> {
         BasicBlocks { basic_blocks, cache: Cache::default() }
     }
 
+    /// Returns true if control-flow graph contains a cycle reachable from the `START_BLOCK`.
+    #[inline]
+    pub fn is_cfg_cyclic(&self) -> bool {
+        *self.cache.is_cyclic.get_or_init(|| graph::is_cyclic(self))
+    }
+
+    #[inline]
     pub fn dominators(&self) -> &Dominators<BasicBlock> {
         self.cache.dominators.get_or_init(|| dominators(self))
+    }
+
+    #[inline]
+    pub fn sccs(&self) -> &SccData {
+        self.cache.sccs.get_or_init(|| {
+            let block_count = self.basic_blocks.len();
+
+            let mut pearce = PearceRecursive::new(block_count);
+            pearce.compute_sccs(&self.basic_blocks);
+            let component_count = pearce.c as usize;
+
+            let mut sccs = vec![smallvec::SmallVec::new(); component_count];
+            for &block in self.reverse_postorder().iter() {
+                let scc = pearce.r_index[block] as usize;
+                sccs[scc].push(block);
+            }
+            SccData { component_count, components: pearce.r_index, sccs }
+        })
     }
 
     /// Returns predecessors for each basic block.
