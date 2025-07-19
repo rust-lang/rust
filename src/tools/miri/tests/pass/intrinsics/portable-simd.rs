@@ -349,11 +349,14 @@ fn simd_mask() {
     // Non-power-of-2 multi-byte mask.
     #[repr(simd, packed)]
     #[allow(non_camel_case_types)]
-    #[derive(Copy, Clone, Debug, PartialEq)]
+    #[derive(Copy, Clone)]
     struct i32x10([i32; 10]);
     impl i32x10 {
         fn splat(x: i32) -> Self {
             Self([x; 10])
+        }
+        fn into_array(self) -> [i32; 10] {
+            unsafe { std::mem::transmute(self) }
         }
     }
     unsafe {
@@ -377,18 +380,21 @@ fn simd_mask() {
             i32x10::splat(!0), // yes
             i32x10::splat(0),  // no
         );
-        assert_eq!(selected1, mask);
-        assert_eq!(selected2, mask);
+        assert_eq!(selected1.into_array(), mask.into_array());
+        assert_eq!(selected2.into_array(), mask.into_array());
     }
 
     // Test for a mask where the next multiple of 8 is not a power of two.
     #[repr(simd, packed)]
     #[allow(non_camel_case_types)]
-    #[derive(Copy, Clone, Debug, PartialEq)]
+    #[derive(Copy, Clone)]
     struct i32x20([i32; 20]);
     impl i32x20 {
         fn splat(x: i32) -> Self {
             Self([x; 20])
+        }
+        fn into_array(self) -> [i32; 20] {
+            unsafe { std::mem::transmute(self) }
         }
     }
     unsafe {
@@ -419,8 +425,8 @@ fn simd_mask() {
             i32x20::splat(!0), // yes
             i32x20::splat(0),  // no
         );
-        assert_eq!(selected1, mask);
-        assert_eq!(selected2, mask);
+        assert_eq!(selected1.into_array(), mask.into_array());
+        assert_eq!(selected2.into_array(), mask.into_array());
     }
 }
 
@@ -708,12 +714,12 @@ fn simd_ops_non_pow2() {
     let x = SimdPacked([1u32; 3]);
     let y = SimdPacked([2u32; 3]);
     let z = unsafe { intrinsics::simd_add(x, y) };
-    assert_eq!({ z.0 }, [3u32; 3]);
+    assert_eq!(unsafe { *(&raw const z).cast::<[u32; 3]>() }, [3u32; 3]);
 
     let x = SimdPadded([1u32; 3]);
     let y = SimdPadded([2u32; 3]);
     let z = unsafe { intrinsics::simd_add(x, y) };
-    assert_eq!(z.0, [3u32; 3]);
+    assert_eq!(unsafe { *(&raw const z).cast::<[u32; 3]>() }, [3u32; 3]);
 }
 
 fn main() {

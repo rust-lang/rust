@@ -5,15 +5,11 @@
 #![no_std]
 #![crate_type = "lib"]
 
+#[path = "../../auxiliary/minisimd.rs"]
+mod minisimd;
 use core::intrinsics::simd::{simd_add, simd_extract};
 
-#[repr(simd)]
-#[derive(Clone, Copy)]
-pub struct Simd<T, const N: usize>([T; N]);
-
-#[repr(simd, packed)]
-#[derive(Clone, Copy)]
-pub struct PackedSimd<T, const N: usize>([T; N]);
+use minisimd::*;
 
 #[repr(transparent)]
 pub struct Transparent<T>(T);

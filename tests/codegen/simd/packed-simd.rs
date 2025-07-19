@@ -9,17 +9,13 @@
 use core::intrinsics::simd as intrinsics;
 use core::{mem, ptr};
 
+#[path = "../../auxiliary/minisimd.rs"]
+mod minisimd;
+use minisimd::{PackedSimd, Simd as FullSimd};
+
 // Test codegen for not only "packed" but also "fully aligned" SIMD types, and conversion between
 // them. A repr(packed,simd) type with 3 elements can't exceed its element alignment, whereas the
 // same type as repr(simd) will instead have padding.
-
-#[repr(simd, packed)]
-#[derive(Copy, Clone)]
-pub struct PackedSimd<T, const N: usize>([T; N]);
-
-#[repr(simd)]
-#[derive(Copy, Clone)]
-pub struct FullSimd<T, const N: usize>([T; N]);
 
 // non-powers-of-two have padding and need to be expanded to full vectors
 fn load<T, const N: usize>(v: PackedSimd<T, N>) -> FullSimd<T, N> {
