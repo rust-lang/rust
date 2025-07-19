@@ -2066,7 +2066,7 @@ impl<'test> TestCx<'test> {
         filecheck.arg("--allow-unused-prefixes");
 
         // Provide more context on failures.
-        filecheck.args(&["--dump-input-context", "100"]);
+        filecheck.args(&["--dump-input-context", "1000000"]);
 
         // Add custom flags supplied by the `filecheck-flags:` test directive.
         filecheck.args(&self.props.filecheck_flags);
