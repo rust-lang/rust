@@ -2948,6 +2948,7 @@ struct ProcArgs {
     args: Vec<OsString>,
 }
 
+#[derive(Clone)]
 pub struct ProcRes {
     status: ExitStatus,
     stdout: String,
