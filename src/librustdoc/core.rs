@@ -318,7 +318,7 @@ pub(crate) fn create_config(
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),
-        extra_symbols: Vec::new(),
+        preinterned_symbols: None,
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,
