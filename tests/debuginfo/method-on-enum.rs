@@ -61,7 +61,7 @@
 
 // STACK BY REF
 // lldb-command:v *self
-// lldb-check:[...] Variant2(117901063)
+// lldb-check:(method_on_enum::Enum) *self = { value = { 0 = 117901063 } $discr$ = 1 }
 // lldb-command:v arg1
 // lldb-check:[...] -1
 // lldb-command:v arg2
@@ -70,7 +70,7 @@
 
 // STACK BY VAL
 // lldb-command:v self
-// lldb-check:[...] Variant2(117901063)
+// lldb-check:(method_on_enum::Enum) self = { value = { 0 = 117901063 } $discr$ = 1 }
 // lldb-command:v arg1
 // lldb-check:[...] -3
 // lldb-command:v arg2
@@ -79,7 +79,7 @@
 
 // OWNED BY REF
 // lldb-command:v *self
-// lldb-check:[...] Variant1 { x: 1799, y: 1799 }
+// lldb-check:(method_on_enum::Enum) *self = { value = { x = 1799 y = 1799 } $discr$ = 0 }
 // lldb-command:v arg1
 // lldb-check:[...] -5
 // lldb-command:v arg2
@@ -88,7 +88,7 @@
 
 // OWNED BY VAL
 // lldb-command:v self
-// lldb-check:[...] Variant1 { x: 1799, y: 1799 }
+// lldb-check:(method_on_enum::Enum) self = { value = { x = 1799 y = 1799 } $discr$ = 0 }
 // lldb-command:v arg1
 // lldb-check:[...] -7
 // lldb-command:v arg2
@@ -97,7 +97,7 @@
 
 // OWNED MOVED
 // lldb-command:v *self
-// lldb-check:[...] Variant1 { x: 1799, y: 1799 }
+// lldb-check:(method_on_enum::Enum) *self = { value = { x = 1799 y = 1799 } $discr$ = 0 }
 // lldb-command:v arg1
 // lldb-check:[...] -9
 // lldb-command:v arg2
