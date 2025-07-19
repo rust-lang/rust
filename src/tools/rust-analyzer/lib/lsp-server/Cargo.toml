@@ -16,6 +16,9 @@ crossbeam-channel.workspace = true
 [dev-dependencies]
 lsp-types = "=0.95"
 ctrlc = "3.4.7"
+anyhow.workspace     = true
+rustc-hash.workspace = true
+toolchain.workspace  = true
 
 [lints]
 workspace = true

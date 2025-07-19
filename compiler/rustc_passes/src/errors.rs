@@ -1373,9 +1373,9 @@ pub(crate) struct UnstableAttrForAlreadyStableFeature {
     #[primary_span]
     #[label]
     #[help]
-    pub span: Span,
+    pub attr_span: Span,
     #[label(passes_item)]
-    pub item_sp: Span,
+    pub item_span: Span,
 }
 
 #[derive(Diagnostic)]

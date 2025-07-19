@@ -143,6 +143,8 @@ impl<'a> Ctx<'a> {
             ast::Item::MacroRules(ast) => self.lower_macro_rules(ast)?.into(),
             ast::Item::MacroDef(ast) => self.lower_macro_def(ast)?.into(),
             ast::Item::ExternBlock(ast) => self.lower_extern_block(ast).into(),
+            // FIXME: Handle `global_asm!()`.
+            ast::Item::AsmExpr(_) => return None,
         };
         let attrs = RawAttrs::new(self.db, item, self.span_map());
         self.add_attrs(mod_item.ast_id(), attrs);

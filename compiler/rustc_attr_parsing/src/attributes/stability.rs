@@ -292,12 +292,12 @@ pub(crate) fn parse_stability<S: Stage>(
         } else if let Some(version) = parse_version(since) {
             StableSince::Version(version)
         } else {
-            cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
-            StableSince::Err
+            let err = cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
+            StableSince::Err(err)
         }
     } else {
-        cx.emit_err(session_diagnostics::MissingSince { span: cx.attr_span });
-        StableSince::Err
+        let err = cx.emit_err(session_diagnostics::MissingSince { span: cx.attr_span });
+        StableSince::Err(err)
     };
 
     match feature {

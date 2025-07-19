@@ -219,7 +219,7 @@ impl<'a> MirPrettyCtx<'a> {
 
     fn local_name(&self, local: LocalId) -> LocalName {
         match self.local_to_binding.get(local) {
-            Some(b) => LocalName::Binding(self.hir_body.bindings[*b].name.clone(), local),
+            Some(b) => LocalName::Binding(self.hir_body[*b].name.clone(), local),
             None => LocalName::Unknown(local),
         }
     }

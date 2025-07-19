@@ -119,8 +119,7 @@ fn eval_expr(
         .unwrap();
     let hir_body = db.body(function_id.into());
     let b = hir_body
-        .bindings
-        .iter()
+        .bindings()
         .find(|x| x.1.name.display_no_db(file_id.edition(&db)).to_smolstr() == "goal")
         .unwrap()
         .0;

@@ -1940,6 +1940,7 @@ pub mod prelude {
             clone::Clone,                            // :clone
             cmp::{Eq, PartialEq},                    // :eq
             cmp::{Ord, PartialOrd},                  // :ord
+            convert::AsMut,                          // :as_mut
             convert::AsRef,                          // :as_ref
             convert::{From, Into, TryFrom, TryInto}, // :from
             default::Default,                        // :default

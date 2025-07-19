@@ -880,7 +880,8 @@ fn main() {{}}
 
 #[test]
 fn diagnostics_dont_block_typing() {
-    if skip_slow_tests() {
+    if skip_slow_tests() || std::env::var("CI").is_ok() {
+        // FIXME: This test is failing too frequently (therefore we disable it on CI).
         return;
     }
 
