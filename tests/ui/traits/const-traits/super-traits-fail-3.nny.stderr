@@ -104,6 +104,7 @@ LL | trait Foo {
    | ^^^^^^^^^ this trait is not const
 LL |     fn a(&self);
    |     ------------ this method is not const
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable `#[const_trait]`
 help: consider making trait `Foo` const
    |
 LL + #[const_trait]
