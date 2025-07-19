@@ -808,7 +808,10 @@ impl<D: Deps> DepGraph<D> {
     where
         F: FnOnce() -> String,
     {
-        let dep_node_debug = &self.data.as_ref().unwrap().dep_node_debug;
+        let Some(data) = &self.data.as_ref() else {
+            return;
+        };
+        let dep_node_debug = &data.dep_node_debug;
 
         if dep_node_debug.borrow().contains_key(&dep_node) {
             return;
