@@ -2285,7 +2285,7 @@ pub fn fnc_typetrees<'tcx>(
                 }
             };
             if inner_ty.is_slice() {
-                // We know that the lenght will be passed as extra arg.
+                // We know that the length will be passed as extra arg.
                 let child = typetree_from_ty(inner_ty, tcx, 1, safety, &mut visited, span);
                 let tt = Type { offset: -1, kind: Kind::Pointer, size: 8, child };
                 args.push(TypeTree(vec![tt]));
