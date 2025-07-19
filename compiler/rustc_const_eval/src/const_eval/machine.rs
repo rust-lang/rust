@@ -279,23 +279,15 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
     fn guaranteed_cmp(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, u8> {
         interp_ok(match (a, b) {
             // Comparisons between integers are always known.
-            (Scalar::Int { .. }, Scalar::Int { .. }) => {
-                if a == b {
-                    1
-                } else {
-                    0
-                }
-            }
-            // Comparisons of abstract pointers with null pointers are known if the pointer
-            // is in bounds, because if they are in bounds, the pointer can't be null.
-            // Inequality with integers other than null can never be known for sure.
-            (Scalar::Int(int), ptr @ Scalar::Ptr(..))
-            | (ptr @ Scalar::Ptr(..), Scalar::Int(int))
+            (Scalar::Int(a), Scalar::Int(b)) => (a == b) as u8,
+            // Comparisons of null with an arbitrary scalar can be known if `scalar_may_be_null`
+            // indicates that the scalar can definitely *not* be null.
+            (Scalar::Int(int), ptr) | (ptr, Scalar::Int(int))
                 if int.is_null() && !self.scalar_may_be_null(ptr)? =>
             {
                 0
             }
-            // Equality with integers can never be known for sure.
+            // Other ways of comparing integers and pointers can never be known for sure.
             (Scalar::Int { .. }, Scalar::Ptr(..)) | (Scalar::Ptr(..), Scalar::Int { .. }) => 2,
             // FIXME: return a `1` for when both sides are the same pointer, *except* that
             // some things (like functions and vtables) do not have stable addresses
