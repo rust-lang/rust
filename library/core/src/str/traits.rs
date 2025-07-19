@@ -826,7 +826,7 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[const_trait]
-#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
 pub trait FromStr: Sized {
     /// The associated error which can be returned from parsing.
     #[stable(feature = "rust1", since = "1.0.0")]

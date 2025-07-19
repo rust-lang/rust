@@ -1289,7 +1289,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+    #[rustc_const_unstable(feature = "const_try", issue = "74935")]
     pub const fn into_ok(self) -> T
     where
         E: ~const Into<!> + ~const Destruct,
@@ -1326,7 +1326,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+    #[rustc_const_unstable(feature = "const_try", issue = "74935")]
     pub const fn into_err(self) -> E
     where
         T: ~const Into<!> + ~const Destruct,
@@ -2057,7 +2057,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
 impl<T, E> const ops::Try for Result<T, E> {
     type Output = T;
     type Residual = Result<convert::Infallible, E>;
@@ -2077,7 +2077,7 @@ impl<T, E> const ops::Try for Result<T, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
 impl<T, E, F: ~const From<E>> const ops::FromResidual<Result<convert::Infallible, E>>
     for Result<T, F>
 {
@@ -2091,7 +2091,7 @@ impl<T, E, F: ~const From<E>> const ops::FromResidual<Result<convert::Infallible
 }
 #[diagnostic::do_not_recommend]
 #[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
-#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
 impl<T, E, F: ~const From<E>> const ops::FromResidual<ops::Yeet<E>> for Result<T, F> {
     #[inline]
     fn from_residual(ops::Yeet(e): ops::Yeet<E>) -> Self {
@@ -2100,7 +2100,7 @@ impl<T, E, F: ~const From<E>> const ops::FromResidual<ops::Yeet<E>> for Result<T
 }
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
 impl<T, E> const ops::Residual<T> for Result<convert::Infallible, E> {
     type TryType = Result<T, E>;
 }

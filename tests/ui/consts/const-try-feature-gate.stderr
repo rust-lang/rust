@@ -15,9 +15,9 @@ error: `Try` is not yet stable as a const trait
 LL |     Some(())?;
    |     ^^^^^^^^^
    |
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+help: add `#![feature(const_try)]` to the crate attributes to enable
    |
-LL + #![feature(const_trait_impl)]
+LL + #![feature(const_try)]
    |
 
 error[E0658]: `?` is not allowed on `Option<()>` in constant functions
@@ -37,9 +37,9 @@ error: `FromResidual` is not yet stable as a const trait
 LL |     Some(())?;
    |     ^^^^^^^^^
    |
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+help: add `#![feature(const_try)]` to the crate attributes to enable
    |
-LL + #![feature(const_trait_impl)]
+LL + #![feature(const_try)]
    |
 
 error: aborting due to 4 previous errors

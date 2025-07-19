@@ -2518,7 +2518,7 @@ impl<T> AtomicPtr<T> {
 
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "atomic_bool_from", since = "1.24.0")]
-#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
 impl const From<bool> for AtomicBool {
     /// Converts a `bool` into an `AtomicBool`.
     ///
@@ -2616,7 +2616,7 @@ macro_rules! atomic_int {
         }
 
         #[$stable_from]
-        #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+        #[rustc_const_unstable(feature = "const_try", issue = "74935")]
         impl const From<$int_type> for $atomic_type {
             #[doc = concat!("Converts an `", stringify!($int_type), "` into an `", stringify!($atomic_type), "`.")]
             #[inline]
