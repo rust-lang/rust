@@ -1,4 +1,3 @@
-//@ check-pass
 //@ compile-flags: --test
 
 #[test]
@@ -9,28 +8,32 @@ fn test1() {
 
 #[test]
 #[should_panic(expected)]
-//~^ WARN: argument must be of the form:
+//~^ ERROR malformed `should_panic` attribute input
+//~| NOTE expected this to be of the form `expected = "..."`
 fn test2() {
     panic!();
 }
 
 #[test]
 #[should_panic(expect)]
-//~^ WARN: argument must be of the form:
+//~^ ERROR malformed `should_panic` attribute input
+//~| NOTE the only valid argument here is "expected"
 fn test3() {
     panic!();
 }
 
 #[test]
 #[should_panic(expected(foo, bar))]
-//~^ WARN: argument must be of the form:
+//~^ ERROR malformed `should_panic` attribute input
+//~| NOTE expected this to be of the form `expected = "..."`
 fn test4() {
     panic!();
 }
 
 #[test]
 #[should_panic(expected = "foo", bar)]
-//~^ WARN: argument must be of the form:
+//~^ ERROR malformed `should_panic` attribute input
+//~| NOTE expected a single argument here
 fn test5() {
     panic!();
 }
