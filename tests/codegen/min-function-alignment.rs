@@ -5,6 +5,8 @@
 //@ ignore-wasm32 aligning functions is not currently supported on wasm (#143368)
 
 #![crate_type = "lib"]
+// FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
+#![feature(rustc_attrs)]
 #![feature(fn_align)]
 
 // Functions without explicit alignment use the global minimum.
@@ -21,7 +23,7 @@ pub fn no_explicit_align() {}
 // align16: align 16
 // align1024: align 1024
 #[no_mangle]
-#[align(8)]
+#[rustc_align(8)]
 pub fn lower_align() {}
 
 // the higher value of min-function-alignment and the align attribute wins out
@@ -30,7 +32,7 @@ pub fn lower_align() {}
 // align16: align 32
 // align1024: align 1024
 #[no_mangle]
-#[align(32)]
+#[rustc_align(32)]
 pub fn higher_align() {}
 
 // cold functions follow the same rules as other functions

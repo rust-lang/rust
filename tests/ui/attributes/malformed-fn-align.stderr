@@ -1,119 +1,119 @@
 error: expected unsuffixed literal, found `-`
-  --> $DIR/malformed-fn-align.rs:24:9
+  --> $DIR/malformed-fn-align.rs:29:15
    |
-LL | #[align(-1)]
-   |         ^
+LL | #[rustc_align(-1)]
+   |               ^
 
 error: suffixed literals are not allowed in attributes
-  --> $DIR/malformed-fn-align.rs:30:9
+  --> $DIR/malformed-fn-align.rs:35:15
    |
-LL | #[align(4usize)]
-   |         ^^^^^^
+LL | #[rustc_align(4usize)]
+   |               ^^^^^^
    |
    = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
 
-error[E0539]: malformed `align` attribute input
-  --> $DIR/malformed-fn-align.rs:5:5
+error[E0539]: malformed `rustc_align` attribute input
+  --> $DIR/malformed-fn-align.rs:10:5
    |
-LL |     #[align]
-   |     ^^^^^^^^
+LL |     #[rustc_align]
+   |     ^^^^^^^^^^^^^^
    |     |
    |     expected this to be a list
-   |     help: must be of the form: `#[align(<alignment in bytes>)]`
+   |     help: must be of the form: `#[rustc_align(<alignment in bytes>)]`
 
-error[E0805]: malformed `align` attribute input
-  --> $DIR/malformed-fn-align.rs:8:5
+error[E0805]: malformed `rustc_align` attribute input
+  --> $DIR/malformed-fn-align.rs:13:5
    |
-LL |     #[align(1, 2)]
-   |     ^^^^^^^------^
-   |     |      |
-   |     |      expected a single argument here
-   |     help: must be of the form: `#[align(<alignment in bytes>)]`
+LL |     #[rustc_align(1, 2)]
+   |     ^^^^^^^^^^^^^------^
+   |     |            |
+   |     |            expected a single argument here
+   |     help: must be of the form: `#[rustc_align(<alignment in bytes>)]`
 
-error[E0539]: malformed `align` attribute input
-  --> $DIR/malformed-fn-align.rs:12:1
+error[E0539]: malformed `rustc_align` attribute input
+  --> $DIR/malformed-fn-align.rs:17:1
    |
-LL | #[align = 16]
-   | ^^^^^^^^^^^^^
+LL | #[rustc_align = 16]
+   | ^^^^^^^^^^^^^^^^^^^
    | |
    | expected this to be a list
-   | help: must be of the form: `#[align(<alignment in bytes>)]`
+   | help: must be of the form: `#[rustc_align(<alignment in bytes>)]`
 
 error[E0589]: invalid alignment value: not an unsuffixed integer
-  --> $DIR/malformed-fn-align.rs:15:9
+  --> $DIR/malformed-fn-align.rs:20:15
    |
-LL | #[align("hello")]
-   |         ^^^^^^^
+LL | #[rustc_align("hello")]
+   |               ^^^^^^^
 
 error[E0589]: invalid alignment value: not a power of two
-  --> $DIR/malformed-fn-align.rs:18:9
+  --> $DIR/malformed-fn-align.rs:23:15
    |
-LL | #[align(0)]
-   |         ^
+LL | #[rustc_align(0)]
+   |               ^
 
 error[E0589]: invalid alignment value: not a power of two
-  --> $DIR/malformed-fn-align.rs:27:9
+  --> $DIR/malformed-fn-align.rs:32:15
    |
-LL | #[align(3)]
-   |         ^
+LL | #[rustc_align(3)]
+   |               ^
 
 error[E0589]: invalid alignment value: not an unsuffixed integer
-  --> $DIR/malformed-fn-align.rs:30:9
+  --> $DIR/malformed-fn-align.rs:35:15
    |
-LL | #[align(4usize)]
-   |         ^^^^^^
+LL | #[rustc_align(4usize)]
+   |               ^^^^^^
 
 error[E0589]: invalid alignment value: not a power of two
-  --> $DIR/malformed-fn-align.rs:35:9
+  --> $DIR/malformed-fn-align.rs:40:15
    |
-LL | #[align(3)]
-   |         ^
+LL | #[rustc_align(3)]
+   |               ^
 
 error: `#[repr(align(...))]` is not supported on function items
-  --> $DIR/malformed-fn-align.rs:21:8
+  --> $DIR/malformed-fn-align.rs:26:8
    |
 LL | #[repr(align(16))]
    |        ^^^^^^^^^
    |
-help: use `#[align(...)]` instead
-  --> $DIR/malformed-fn-align.rs:21:8
+help: use `#[rustc_align(...)]` instead
+  --> $DIR/malformed-fn-align.rs:26:8
    |
 LL | #[repr(align(16))]
    |        ^^^^^^^^^
 
-error: `#[align(...)]` is not supported on struct items
-  --> $DIR/malformed-fn-align.rs:39:1
+error: `#[rustc_align(...)]` is not supported on struct items
+  --> $DIR/malformed-fn-align.rs:44:1
    |
-LL | #[align(16)]
-   | ^^^^^^^^^^^^
+LL | #[rustc_align(16)]
+   | ^^^^^^^^^^^^^^^^^^
    |
 help: use `#[repr(align(...))]` instead
    |
-LL - #[align(16)]
+LL - #[rustc_align(16)]
 LL + #[repr(align(16))]
    |
 
-error: `#[align(...)]` should be applied to a function item
-  --> $DIR/malformed-fn-align.rs:42:1
+error: `#[rustc_align(...)]` should be applied to a function item
+  --> $DIR/malformed-fn-align.rs:47:1
    |
-LL | #[align(32)]
-   | ^^^^^^^^^^^^
+LL | #[rustc_align(32)]
+   | ^^^^^^^^^^^^^^^^^^
 LL | const FOO: i32 = 42;
    | -------------------- not a function item
 
-error: `#[align(...)]` should be applied to a function item
-  --> $DIR/malformed-fn-align.rs:45:1
+error: `#[rustc_align(...)]` should be applied to a function item
+  --> $DIR/malformed-fn-align.rs:50:1
    |
-LL | #[align(32)]
-   | ^^^^^^^^^^^^
+LL | #[rustc_align(32)]
+   | ^^^^^^^^^^^^^^^^^^
 LL | mod test {}
    | ----------- not a function item
 
-error: `#[align(...)]` should be applied to a function item
-  --> $DIR/malformed-fn-align.rs:48:1
+error: `#[rustc_align(...)]` should be applied to a function item
+  --> $DIR/malformed-fn-align.rs:53:1
    |
-LL | #[align(32)]
-   | ^^^^^^^^^^^^
+LL | #[rustc_align(32)]
+   | ^^^^^^^^^^^^^^^^^^
 LL | use ::std::iter;
    | ---------------- not a function item
 

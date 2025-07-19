@@ -1,15 +1,19 @@
 //@compile-flags: -Zmin-function-alignment=8
+
+// FIXME(rust-lang/rust#82232, rust-lang/rust#143834): temporarily renamed to mitigate `#[align]`
+// nameres ambiguity
+#![feature(rustc_attrs)]
 #![feature(fn_align)]
 
 // When a function uses `align(N)`, the function address should be a multiple of `N`.
 
-#[align(256)]
+#[rustc_align(256)]
 fn foo() {}
 
-#[align(16)]
+#[rustc_align(16)]
 fn bar() {}
 
-#[align(4)]
+#[rustc_align(4)]
 fn baz() {}
 
 fn main() {

@@ -1,12 +1,15 @@
 //@ run-pass
 //@ ignore-wasm32 aligning functions is not currently supported on wasm (#143368)
+
+// FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
+#![feature(rustc_attrs)]
 #![feature(fn_align)]
 
 trait Test {
-    #[align(4096)]
+    #[rustc_align(4096)]
     fn foo(&self);
 
-    #[align(4096)]
+    #[rustc_align(4096)]
     fn foo1(&self);
 }
 

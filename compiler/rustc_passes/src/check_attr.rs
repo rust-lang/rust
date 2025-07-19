@@ -1970,6 +1970,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[align]` attributes on `item` are valid.
+    // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     fn check_align(
         &self,
         span: Span,
