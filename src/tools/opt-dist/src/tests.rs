@@ -13,7 +13,7 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
     // and then use that extracted rustc as a stage0 compiler.
     // Then we run a subset of tests using that compiler, to have a basic smoke test which checks
     // whether the optimization pipeline hasn't broken something.
-    let build_dir = env.build_root().join("build");
+    let build_dir = env.build_root();
     let dist_dir = build_dir.join("dist");
     let unpacked_dist_dir = build_dir.join("unpacked-dist");
     std::fs::create_dir_all(&unpacked_dist_dir)?;
