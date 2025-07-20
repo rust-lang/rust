@@ -558,17 +558,7 @@ fn to_enzyme_typetree(
     enzyme_tt
 }
 
-/// Attaches TypeTree information to LLVM function as enzyme_type attributes.
-///
-/// This function converts Rust TypeTrees to Enzyme format and attaches them as
-/// LLVM string attributes. Enzyme reads these attributes during autodiff analysis
-/// to understand the memory layout and generate correct derivative code.
-///
-/// # Arguments
-/// * `llmod` - LLVM module containing the function
-/// * `llcx` - LLVM context for creating attributes 
-/// * `fn_def` - LLVM function to attach TypeTrees to
-/// * `tt` - Function TypeTree containing input and return type information
+// Attaches TypeTree information to LLVM function as enzyme_type attributes.
 pub(crate) fn add_tt<'ll>(
     llmod: &'ll llvm::Module,
     llcx: &'ll llvm::Context,
