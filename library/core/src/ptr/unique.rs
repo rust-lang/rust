@@ -32,6 +32,7 @@ use crate::ptr::NonNull;
 )]
 #[doc(hidden)]
 #[repr(transparent)]
+#[debuginfo_transparent]
 // Lang item used experimentally by Miri to define the semantics of `Unique`.
 #[lang = "ptr_unique"]
 pub struct Unique<T: PointeeSized> {

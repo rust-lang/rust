@@ -319,6 +319,7 @@ pub fn check_builtin_meta_item(
                 | sym::no_implicit_prelude
                 | sym::automatically_derived
                 | sym::coverage
+                | sym::debuginfo_transparent
         ) {
             return;
         }

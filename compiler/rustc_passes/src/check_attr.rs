@@ -170,6 +170,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         target,
                         Target::Impl { of_trait: true },
                     ),
+                Attribute::Parsed(AttributeKind::DebuginfoTransparent(attr_span)) => self
+                    .check_generic_attr(
+                        hir_id,
+                        sym::debuginfo_transparent,
+                        *attr_span,
+                        target,
+                        Target::Struct,
+                    ),
                 Attribute::Parsed(
                     AttributeKind::Stability {
                         span: attr_span,
