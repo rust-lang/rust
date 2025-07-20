@@ -663,8 +663,15 @@ fn generate_impl_text_inner(
 
 /// Generates the corresponding `impl Type {}` including type and lifetime
 /// parameters.
+pub(crate) fn generate_impl_with_item(
+    adt: &ast::Adt,
+    body: Option<ast::AssocItemList>,
+) -> ast::Impl {
+    generate_impl_inner(adt, None, true, body)
+}
+
 pub(crate) fn generate_impl(adt: &ast::Adt) -> ast::Impl {
-    generate_impl_inner(adt, None, true)
+    generate_impl_inner(adt, None, true, None)
 }
 
 /// Generates the corresponding `impl <trait> for Type {}` including type
@@ -672,7 +679,7 @@ pub(crate) fn generate_impl(adt: &ast::Adt) -> ast::Impl {
 ///
 /// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
 pub(crate) fn generate_trait_impl(adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
-    generate_impl_inner(adt, Some(trait_), true)
+    generate_impl_inner(adt, Some(trait_), true, None)
 }
 
 /// Generates the corresponding `impl <trait> for Type {}` including type
@@ -680,13 +687,14 @@ pub(crate) fn generate_trait_impl(adt: &ast::Adt, trait_: ast::Type) -> ast::Imp
 ///
 /// This is useful for traits like `From<T>`, since `impl<T> From<T> for U<T>` doesn't require `T: From<T>`.
 pub(crate) fn generate_trait_impl_intransitive(adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
-    generate_impl_inner(adt, Some(trait_), false)
+    generate_impl_inner(adt, Some(trait_), false, None)
 }
 
 fn generate_impl_inner(
     adt: &ast::Adt,
     trait_: Option<ast::Type>,
     trait_is_transitive: bool,
+    body: Option<ast::AssocItemList>,
 ) -> ast::Impl {
     // Ensure lifetime params are before type & const params
     let generic_params = adt.generic_param_list().map(|generic_params| {
@@ -736,9 +744,9 @@ fn generate_impl_inner(
             ty,
             None,
             adt.where_clause(),
-            None,
+            body,
         ),
-        None => make::impl_(generic_params, generic_args, ty, adt.where_clause(), None),
+        None => make::impl_(generic_params, generic_args, ty, adt.where_clause(), body),
     }
     .clone_for_update();
 
