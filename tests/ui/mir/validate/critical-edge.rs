@@ -21,6 +21,8 @@ pub fn f(a: u32) -> u32 {
         }
         bb1 = {
             Call(RET = f(1), ReturnTo(bb2), UnwindTerminate(ReasonAbi))
+//~^ ERROR broken MIR in Item
+//~| ERROR encountered critical edge in `Call` terminator
         }
 
         bb2 = {
@@ -29,5 +31,3 @@ pub fn f(a: u32) -> u32 {
         }
     }
 }
-
-//~? RAW encountered critical edge in `Call` terminator
