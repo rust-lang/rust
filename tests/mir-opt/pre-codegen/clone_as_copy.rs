@@ -22,22 +22,23 @@ enum Enum1 {
     B(NestCopy),
 }
 
-// EMIT_MIR clone_as_copy.clone_as_copy.PreCodegen.after.mir
-fn clone_as_copy(v: &NestCopy) -> NestCopy {
-    // CHECK-LABEL: fn clone_as_copy(
-    // CHECK: let [[DEAD_VAR:_.*]]: &AllCopy;
-    // CHECK: bb0: {
-    // CHECK-NEXT: DBG: [[DEAD_VAR]] = &((*_1).1: AllCopy)
-    // CHECK-NEXT: _0 = copy (*_1);
-    // CHECK-NEXT: return;
-    v.clone()
-}
+// EMIT_MIR clone_as_copy.{impl#0}-clone.PreCodegen.after.mir
+// CHECK-LABEL: fn <impl at {{.*}}>::clone(_1: &AllCopy) -> AllCopy {
+// CHECK: bb0: {
+// CHECK-NEXT: _0 = copy (*_1);
+// CHECK-NEXT: return;
 
-// EMIT_MIR clone_as_copy.enum_clone_as_copy.PreCodegen.after.mir
-fn enum_clone_as_copy(v: &Enum1) -> Enum1 {
-    // CHECK-LABEL: fn enum_clone_as_copy(
-    // CHECK: bb0: {
-    // CHECK-NEXT: _0 = copy (*_1);
-    // CHECK-NEXT: return;
-    v.clone()
-}
+// EMIT_MIR clone_as_copy.{impl#1}-clone.PreCodegen.after.mir
+// CHECK-LABEL: fn <impl at {{.*}}>::clone(_1: &NestCopy) -> NestCopy {
+// CHECK: scope 1 (inlined <AllCopy as Clone>::clone) {
+// CHECK-NEXT: debug self => [[inlined_AllCopy_self:_[0-9]+]];
+// CHECK: bb0: {
+// CHECK-NEXT: DBG: [[inlined_AllCopy_self]] = &((*_1).1: AllCopy)
+// CHECK-NEXT: _0 = copy (*_1);
+// CHECK-NEXT: return;
+
+// EMIT_MIR clone_as_copy.{impl#2}-clone.PreCodegen.after.mir
+// CHECK-LABEL: fn <impl at {{.*}}>::clone(_1: &Enum1) -> Enum1 {
+// CHECK: bb0: {
+// CHECK-NEXT: _0 = copy (*_1);
+// CHECK-NEXT: return;
