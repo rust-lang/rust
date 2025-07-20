@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: type `Foo<Void>` is non-empty
-  --> $DIR/uninhabited-unstable-field.rs:13:11
+  --> $DIR/uninhabited-unstable-field.rs:15:11
    |
 LL |     match x {}
    |           ^
@@ -17,6 +17,27 @@ LL +         _ => todo!(),
 LL ~     }
    |
 
-error: aborting due to 1 previous error
+error[E0004]: non-exhaustive patterns: `MyCoroutineState::Complete(_)` not covered
+  --> $DIR/uninhabited-unstable-field.rs:34:11
+   |
+LL |     match x {
+   |           ^ pattern `MyCoroutineState::Complete(_)` not covered
+   |
+note: `MyCoroutineState<i32, !>` defined here
+  --> $DIR/auxiliary/staged-api.rs:11:1
+   |
+LL | pub enum MyCoroutineState<Y, R> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     Yielded(Y),
+LL |     Complete(R),
+   |     -------- not covered
+   = note: the matched value is of type `MyCoroutineState<i32, !>`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         MyCoroutineState::Yielded(_) => {},
+LL +         MyCoroutineState::Complete(_) => todo!()
+   |
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0004`.
