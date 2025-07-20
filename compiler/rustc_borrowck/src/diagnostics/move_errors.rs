@@ -623,30 +623,51 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     && let Some(upvar_field) = self
                         .prefixes(original_path.as_ref(), PrefixSet::All)
                         .find_map(|p| self.is_upvar_field_projection(p))
-                    && let upvar = &self.upvars[upvar_field.index()]
-                    && let upvar_hir_id = upvar.get_root_variable()
-                    && let hir::Node::Param(param) = self.infcx.tcx.parent_hir_node(upvar_hir_id)
                 {
-                    // Instead of pointing at the path where we access the value within a closure,
-                    // we point at the type on the parameter from the definition of the outer
-                    // function:
-                    //
-                    // error[E0507]: cannot move out of `foo`, a captured
-                    //               variable in an `Fn` closure
-                    //   --> file.rs:14:25
-                    //    |
-                    // 13 | fn do_stuff(foo: Option<Foo>) {
-                    //    |             ---  ----------- move occurs because `foo` has type
-                    //    |             |                `Option<Foo>`, which does not implement
-                    //    |             |                the `Copy` trait
-                    //    |             captured outer variable
-                    // 14 |     require_fn_trait(|| async {
-                    //    |                      -- ^^^^^ `foo` is moved here
-                    //    |                      |
-                    //    |                      captured by this `Fn` closure
-                    // 15 |         if foo.map_or(false, |f| f.foo()) {
-                    //    |            --- variable moved due to use in coroutine
-                    use_span = param.ty_span;
+                    let upvar = &self.upvars[upvar_field.index()];
+                    let upvar_hir_id = upvar.get_root_variable();
+                    use_span = match self.infcx.tcx.parent_hir_node(upvar_hir_id) {
+                        hir::Node::Param(param) => {
+                            // Instead of pointing at the path where we access the value within a
+                            // closure, we point at the type on the parameter from the definition
+                            // of the outer function:
+                            //
+                            // error[E0507]: cannot move out of `foo`, a captured
+                            //               variable in an `Fn` closure
+                            //   --> file.rs:14:25
+                            //    |
+                            // 13 | fn do_stuff(foo: Option<Foo>) {
+                            //    |             ---  ----------- move occurs because `foo` has type
+                            //    |             |                `Option<Foo>`, which does not
+                            //    |             |                implement the `Copy` trait
+                            //    |             captured outer variable
+                            // 14 |     require_fn_trait(|| async {
+                            //    |                      -- ^^^^^ `foo` is moved here
+                            //    |                      |
+                            //    |                      captured by this `Fn` closure
+                            // 15 |         if foo.map_or(false, |f| f.foo()) {
+                            //    |            --- variable moved due to use in coroutine
+                            param.ty_span
+                        }
+                        hir::Node::LetStmt(stmt) => match (stmt.ty, stmt.init) {
+                            // 13 | fn do_stuff(foo: Option<Foo>) {
+                            // 14 |    let foo: Option<Foo> = foo;
+                            //    |        ---  ----------- move occurs because `foo` has type
+                            //    |        |                `Option<Foo>`, which does not implement
+                            //    |        |                the `Copy` trait
+                            //    |        captured outer variable
+                            (Some(ty), _) => ty.span,
+                            // 13 | fn do_stuff(bar: Option<Foo>) {
+                            // 14 |    let foo = bar;
+                            //    |        ---   --- move occurs because `foo` has type
+                            //    |        |         `Option<Foo>`, which does not implement the
+                            //    |        |         `Copy` trait
+                            //    |        captured outer variable
+                            (None, Some(init)) => init.span,
+                            (None, None) => use_span,
+                        },
+                        _ => use_span,
+                    };
                 }
 
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
@@ -656,12 +677,22 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     span: use_span,
                 });
 
+                let mut pointed_at_span = false;
                 use_spans.args_subdiag(err, |args_span| {
+                    if args_span == span || args_span == use_span {
+                        pointed_at_span = true;
+                    }
                     crate::session_diagnostics::CaptureArgLabel::MoveOutPlace {
-                        place: place_desc,
+                        place: place_desc.clone(),
                         args_span,
                     }
                 });
+                if !pointed_at_span && use_span != span {
+                    err.subdiagnostic(crate::session_diagnostics::CaptureArgLabel::MoveOutPlace {
+                        place: place_desc,
+                        args_span: span,
+                    });
+                }
 
                 self.add_note_for_packed_struct_derive(err, original_path.local);
             }

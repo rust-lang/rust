@@ -6,7 +6,7 @@ LL | fn f<'r, T>(v: &'r T) -> Box<dyn FnMut() -> T + 'r> {
    |             |
    |             captured outer variable
 LL |     id(Box::new(|| *v))
-   |                 -- ^^
+   |                 -- ^^ `*v` is moved here
    |                 |
    |                 captured by this `FnMut` closure
    |

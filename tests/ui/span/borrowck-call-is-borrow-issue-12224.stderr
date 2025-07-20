@@ -35,14 +35,18 @@ LL | fn test4(f: &mut Test) {
 error[E0507]: cannot move out of `f`, a captured variable in an `FnMut` closure
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:57:13
    |
-LL |     let mut f = move |g: Box<dyn FnMut(isize)>, b: isize| {
-   |         ----- captured outer variable
-...
-LL |     f(Box::new(|a| {
-   |                --- captured by this `FnMut` closure
+LL |       let mut f = move |g: Box<dyn FnMut(isize)>, b: isize| {
+   |  _________-----___-
+   | |         |
+   | |         captured outer variable
+LL | |         let _ = s.len();
+LL | |     };
+   | |_____- move occurs because `f` has type `{closure@$DIR/borrowck-call-is-borrow-issue-12224.rs:52:17: 52:58}`, which does not implement the `Copy` trait
+LL |       f(Box::new(|a| {
+   |                  --- captured by this `FnMut` closure
 LL |
-LL |         foo(f);
-   |             ^ move occurs because `f` has type `{closure@$DIR/borrowck-call-is-borrow-issue-12224.rs:52:17: 52:58}`, which does not implement the `Copy` trait
+LL |           foo(f);
+   |               ^ `f` is moved here
    |
 help: consider cloning the value if the performance cost is acceptable
    |
