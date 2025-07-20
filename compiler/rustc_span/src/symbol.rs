@@ -809,6 +809,8 @@ symbols! {
         debug_tuple,
         debug_tuple_fields_finish,
         debugger_visualizer,
+        debuginfo_attrs,
+        debuginfo_transparent,
         decl_macro,
         declare_lint_pass,
         decode,

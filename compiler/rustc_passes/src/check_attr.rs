@@ -138,6 +138,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::TypeConst(attr_span)) => {
                     self.check_type_const(hir_id, attr_span, target)
                 }
+                &Attribute::Parsed(AttributeKind::DebuginfoTransparent(attr_span)) => {
+                    self.check_debuginfo_transparent(attr_span, span, attrs)
+                },
                 Attribute::Parsed(
                     AttributeKind::Stability {
                         span: attr_span,
@@ -2012,6 +2015,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     "`#[type_const]` must only be applied to trait associated constants",
                 )
                 .emit();
+        }
+    }
+
+    fn check_debuginfo_transparent(&self, attr_span: Span, span: Span, attrs: &[Attribute]) {
+        if !find_attr!(attrs, AttributeKind::Repr { reprs, .. } => reprs.iter().any(|(r, _)| r == &ReprAttr::ReprTransparent))
+            .unwrap_or(false)
+        {
+            self.dcx().emit_err(errors::DebuginfoTransparent { span, attr_span });
         }
     }
 

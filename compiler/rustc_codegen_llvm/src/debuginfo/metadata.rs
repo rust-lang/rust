@@ -9,8 +9,10 @@ use libc::{c_longlong, c_uint};
 use rustc_abi::{Align, Size};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::find_attr;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{
     HasTypingEnv, LayoutOf, TyAndLayout, WIDE_PTR_ADDR, WIDE_PTR_EXTRA,
@@ -1069,6 +1071,16 @@ fn build_struct_type_di_node<'ll, 'tcx>(
     } else {
         None
     };
+
+    if find_attr!(cx.tcx.get_all_attrs(adt_def.did()), AttributeKind::DebuginfoTransparent(..)) {
+        let ty = struct_type_and_layout.non_1zst_field(cx).unwrap().1.ty;
+
+        let di_node = type_di_node(cx, ty);
+
+        return_if_di_node_created_in_meantime!(cx, unique_type_id);
+
+        return DINodeCreationResult::new(di_node, false);
+    }
 
     type_map::build_type_with_children(
         cx,

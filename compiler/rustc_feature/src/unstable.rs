@@ -459,6 +459,8 @@ declare_features! (
     (unstable, custom_inner_attributes, "1.30.0", Some(54726)),
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.
     (unstable, custom_test_frameworks, "1.30.0", Some(50297)),
+    /// Allows `debuginfo_*` attributes.
+    (unstable, debuginfo_attrs, "CURRENT_RUSTC_VERSION", None),
     /// Allows declarative macros 2.0 (`macro`).
     (unstable, decl_macro, "1.17.0", Some(39412)),
     /// Allows the use of default values on struct definitions and the construction of struct
