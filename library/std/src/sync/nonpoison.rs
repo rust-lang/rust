@@ -33,5 +33,10 @@ impl fmt::Display for WouldBlock {
 pub use self::mutex::MappedMutexGuard;
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 pub use self::mutex::{Mutex, MutexGuard};
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
+pub use self::rwlock::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
+#[unstable(feature = "nonpoison_rwlock", issue = "134645")]
+pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 mod mutex;
+mod rwlock;
