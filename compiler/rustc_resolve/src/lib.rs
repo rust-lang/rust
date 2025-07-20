@@ -1220,7 +1220,7 @@ pub struct Resolver<'ra, 'tcx> {
     // for APITs, so we don't want to leak details of resolution into these names.
     impl_trait_names: FxHashMap<NodeId, Symbol>,
 
-    /// Mapping of autodiff function IDs  
+    /// Mapping of autodiff function IDs
     autodiff_map: FxHashMap<LocalDefId, LocalDefId>,
 }
 
