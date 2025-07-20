@@ -11,7 +11,7 @@
 //@ compile-flags: -Zsanitizer=address -Clto=thin
 //@[opt0]compile-flags: -Copt-level=0
 //@[opt1]compile-flags: -Copt-level=1
-//@ run-fail
+//@ run-fail-or-crash
 //@ error-pattern: ERROR: AddressSanitizer: stack-use-after-scope
 
 static mut P: *mut usize = std::ptr::null_mut();
