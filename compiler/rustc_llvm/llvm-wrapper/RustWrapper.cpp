@@ -51,6 +51,14 @@
 //
 //===----------------------------------------------------------------------===
 
+// Define TailCallKind enum values to match LLVM's
+enum LLVMRustTailCallKind {
+  LLVMRustTailCallKindNone = 0,
+  LLVMRustTailCallKindTail = 1,
+  LLVMRustTailCallKindMustTail = 2,
+  LLVMRustTailCallKindNoTail = 3
+};
+
 using namespace llvm;
 using namespace llvm::sys;
 using namespace llvm::object;
@@ -1948,4 +1956,23 @@ extern "C" void LLVMRustSetNoSanitizeHWAddress(LLVMValueRef Global) {
     MD = GV.getSanitizerMetadata();
   MD.NoHWAddress = true;
   GV.setSanitizerMetadata(MD);
+}
+
+extern "C" void LLVMSetTailCallKind(LLVMValueRef Call,
+                                        LLVMRustTailCallKind Kind) {
+  CallInst *CI = unwrap<CallInst>(Call);
+  switch (Kind) {
+  case LLVMRustTailCallKindNone:
+    CI->setTailCallKind(CallInst::TCK_None);
+    break;
+  case LLVMRustTailCallKindTail:
+    CI->setTailCallKind(CallInst::TCK_Tail);
+    break;
+  case LLVMRustTailCallKindMustTail:
+    CI->setTailCallKind(CallInst::TCK_MustTail);
+    break;
+  case LLVMRustTailCallKindNoTail:
+    CI->setTailCallKind(CallInst::TCK_NoTail);
+    break;
+  }
 }
