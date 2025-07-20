@@ -1452,7 +1452,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             }
         }
 
-        llvm::LLVMSetTailCallKind(call, llvm::TailCallKind::MustTail);
+        llvm::LLVMRustSetTailCallKind(call, llvm::TailCallKind::MustTail);
     }
 
     fn zext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
