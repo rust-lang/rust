@@ -22,6 +22,7 @@ use crate::attributes::codegen_attrs::{
     TargetFeatureParser, TrackCallerParser, UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
+use crate::attributes::debuginfo::DebuginfoTransparentParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::dummy::DummyParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
@@ -186,6 +187,7 @@ attribute_parsers!(
         Single<WithoutArgs<ConstStabilityIndirectParser>>,
         Single<WithoutArgs<ConstTraitParser>>,
         Single<WithoutArgs<CoroutineParser>>,
+        Single<WithoutArgs<DebuginfoTransparentParser>>,
         Single<WithoutArgs<DenyExplicitImplParser>>,
         Single<WithoutArgs<DoNotImplementViaObjectParser>>,
         Single<WithoutArgs<ExportStableParser>>,
