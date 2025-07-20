@@ -41,7 +41,7 @@ impl<'tcx> MirPass<'tcx> for ImpossiblePredicates {
         tracing::trace!(def_id = ?body.source.def_id());
         let predicates = tcx.predicates_of(body.source.def_id()).instantiate_identity(tcx);
         tracing::trace!(?predicates);
-        let predicates = predicates
+        let predicates: Vec<_> = predicates
             .predicates
             .into_iter()
             .filter(|p| {
@@ -54,7 +54,7 @@ impl<'tcx> MirPass<'tcx> for ImpossiblePredicates {
             })
             .collect();
         tracing::trace!(?predicates);
-        if traits::impossible_predicates(tcx, predicates) {
+        if predicates.references_error() || traits::impossible_predicates(tcx, predicates) {
             trace!("found unsatisfiable predicates");
             // Clear the body to only contain a single `unreachable` statement.
             let bbs = body.basic_blocks.as_mut();
