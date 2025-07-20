@@ -115,11 +115,10 @@ const EXPECTED = [
         query: '加法',
         others: [
             {
-                name: "add",
+                name: "加法",
                 path: "non_english_identifier",
-                is_alias: true,
-                alias: "加法",
-                href: "../non_english_identifier/macro.add.html"
+                href: "../non_english_identifier/trait.加法.html",
+                desc: "Add"
             },
             {
                 name: "add",
@@ -129,11 +128,13 @@ const EXPECTED = [
                 href: "../non_english_identifier/fn.add.html"
             },
             {
-                name: "加法",
+                name: "add",
                 path: "non_english_identifier",
-                href: "../non_english_identifier/trait.加法.html",
-                desc: "Add"
-            }],
+                is_alias: true,
+                alias: "加法",
+                href: "../non_english_identifier/macro.add.html"
+            },
+        ],
         in_args: [{
             name: "加上",
             path: "non_english_identifier::加法",
