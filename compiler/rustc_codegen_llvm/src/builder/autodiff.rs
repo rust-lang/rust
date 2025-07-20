@@ -566,7 +566,7 @@ fn to_enzyme_typetree(
 ///
 /// # Arguments
 /// * `llmod` - LLVM module containing the function
-/// * `llcx` - LLVM context for creating attributes  
+/// * `llcx` - LLVM context for creating attributes 
 /// * `fn_def` - LLVM function to attach TypeTrees to
 /// * `tt` - Function TypeTree containing input and return type information
 pub(crate) fn add_tt<'ll>(
