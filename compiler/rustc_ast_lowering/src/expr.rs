@@ -13,7 +13,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
+use rustc_span::{DesugaringKind, Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 use visit::{Visitor, walk_expr};
 
@@ -508,7 +508,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let last_segment = path.segments.last_mut().unwrap();
         assert!(last_segment.args.is_none());
         last_segment.args = Some(AstP(GenericArgs::AngleBracketed(AngleBracketedArgs {
-            span: DUMMY_SP,
+            span: last_segment.span().shrink_to_hi(),
             args: generic_args,
         })));
 
