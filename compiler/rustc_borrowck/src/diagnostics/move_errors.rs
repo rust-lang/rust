@@ -663,8 +663,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             //    |        |         `Option<Foo>`, which does not implement the
                             //    |        |         `Copy` trait
                             //    |        captured outer variable
-                            (None, Some(init)) => init.span,
-                            (None, None) => use_span,
+                            //
+                            // We don't want the case where the initializer is something that spans
+                            // multiple lines, like a closure, as the ASCII art gets messy.
+                            (None, Some(init))
+                                if !self.infcx.tcx.sess.source_map().is_multiline(init.span) =>
+                            {
+                                init.span
+                            }
+                            _ => use_span,
                         },
                         _ => use_span,
                     };
