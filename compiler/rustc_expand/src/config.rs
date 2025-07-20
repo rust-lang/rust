@@ -12,16 +12,15 @@ use rustc_ast::{
 };
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::{
-    AttributeParser, CFG_TEMPLATE, EvalConfigResult, ShouldEmit, eval_config_entry, parse_cfg_attr,
+    AttributeParser, CFG_TEMPLATE, Early, EvalConfigResult, ShouldEmit, check_attribute_safety,
+    eval_config_entry, parse_cfg_attr,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::{
-    ACCEPTED_LANG_FEATURES, AttributeSafety, EnabledLangFeature, EnabledLibFeature, Features,
-    REMOVED_LANG_FEATURES, UNSTABLE_LANG_FEATURES,
+    ACCEPTED_LANG_FEATURES, EnabledLangFeature, EnabledLibFeature, Features, REMOVED_LANG_FEATURES,
+    UNSTABLE_LANG_FEATURES,
 };
 use rustc_lint_defs::BuiltinLintDiag;
-use rustc_parse::validate_attr;
-use rustc_parse::validate_attr::deny_builtin_meta_unsafety;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
 use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
@@ -292,12 +291,7 @@ impl<'a> StripUnconfigured<'a> {
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
     pub(crate) fn expand_cfg_attr(&self, cfg_attr: &Attribute, recursive: bool) -> Vec<Attribute> {
-        validate_attr::check_attribute_safety(
-            &self.sess.psess,
-            Some(AttributeSafety::Normal),
-            &cfg_attr,
-            ast::CRATE_NODE_ID,
-        );
+        check_attribute_safety::<Early>(self.sess, &cfg_attr, ast::CRATE_NODE_ID, &mut |_| {});
 
         // A trace attribute left in AST in place of the original `cfg_attr` attribute.
         // It can later be used by lints or other diagnostics.
@@ -415,22 +409,9 @@ impl<'a> StripUnconfigured<'a> {
         node: NodeId,
         emit_errors: ShouldEmit,
     ) -> EvalConfigResult {
-        // We need to run this to do basic validation of the attribute, such as that lits are valid, etc
-        // FIXME(jdonszelmann) this should not be necessary in the future
-        match validate_attr::parse_meta(&self.sess.psess, attr) {
-            Ok(_) => {}
-            Err(err) => {
-                err.emit();
-                return EvalConfigResult::True;
-            }
+        if !AttributeParser::validate_attribute_early(self.sess, attr, node) {
+            return EvalConfigResult::True;
         }
-
-        // Unsafety check needs to be done explicitly here because this attribute will be removed before the normal check
-        deny_builtin_meta_unsafety(
-            self.sess.dcx(),
-            attr.get_normal_item().unsafety,
-            &rustc_ast::Path::from_ident(attr.ident().unwrap()),
-        );
 
         let Some(cfg) = AttributeParser::parse_single(
             self.sess,

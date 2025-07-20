@@ -5,12 +5,12 @@ use std::sync::{Arc, OnceLock};
 use std::{env, thread};
 
 use rustc_ast as ast;
+use rustc_attr_parsing::emit_fatal_malformed_builtin_attribute;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::sync;
 use rustc_metadata::{DylibError, load_symbol_from_dylib};
 use rustc_middle::ty::CurrentGcx;
-use rustc_parse::validate_attr;
 use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple};
 use rustc_session::lint::{self, BuiltinLintDiag, LintBuffer};
 use rustc_session::output::{CRATE_TYPES, categorize_crate_type};
@@ -477,11 +477,7 @@ pub(crate) fn check_attr_crate_type(
                 // caught during semantic analysis via `TyCtxt::check_mod_attrs`,
                 // but by the time that runs the macro is expanded, and it doesn't
                 // give an error.
-                validate_attr::emit_fatal_malformed_builtin_attribute(
-                    &sess.psess,
-                    a,
-                    sym::crate_type,
-                );
+                emit_fatal_malformed_builtin_attribute(sess, a, sym::crate_type);
             }
         }
     }

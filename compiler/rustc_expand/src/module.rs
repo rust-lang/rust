@@ -3,8 +3,9 @@ use std::path::{self, Path, PathBuf};
 
 use rustc_ast::ptr::P;
 use rustc_ast::{AttrVec, Attribute, Inline, Item, ModSpans};
+use rustc_attr_parsing::emit_fatal_malformed_builtin_attribute;
 use rustc_errors::{Diag, ErrorGuaranteed};
-use rustc_parse::{exp, new_parser_from_file, unwrap_or_emit_fatal, validate_attr};
+use rustc_parse::{exp, new_parser_from_file, unwrap_or_emit_fatal};
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Ident, Span, sym};
@@ -190,7 +191,7 @@ pub(crate) fn mod_file_path_from_attr(
         // Usually bad forms are checked during semantic analysis via
         // `TyCtxt::check_mod_attrs`), but by the time that runs the macro
         // is expanded, and it doesn't give an error.
-        validate_attr::emit_fatal_malformed_builtin_attribute(&sess.psess, first_path, sym::path);
+        emit_fatal_malformed_builtin_attribute(sess, first_path, sym::path);
     };
 
     let path_str = path_sym.as_str();

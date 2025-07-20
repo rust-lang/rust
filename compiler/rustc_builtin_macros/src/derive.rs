@@ -1,10 +1,10 @@
 use rustc_ast as ast;
 use rustc_ast::{GenericParamKind, ItemKind, MetaItemInner, MetaItemKind, StmtKind};
+use rustc_attr_parsing::check_builtin_meta_item;
 use rustc_expand::base::{
     Annotatable, DeriveResolution, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier,
 };
 use rustc_feature::AttributeTemplate;
-use rustc_parse::validate_attr;
 use rustc_session::Session;
 use rustc_span::{ErrorGuaranteed, Ident, Span, sym};
 
@@ -36,13 +36,12 @@ impl MultiItemModifier for Expander {
             ecx.resolver.resolve_derives(ecx.current_expansion.id, ecx.force_mode, &|| {
                 let template =
                     AttributeTemplate { list: Some("Trait1, Trait2, ..."), ..Default::default() };
-                validate_attr::check_builtin_meta_item(
-                    &sess.psess,
+                check_builtin_meta_item(
+                    sess,
                     meta_item,
                     ast::AttrStyle::Outer,
                     sym::derive,
                     template,
-                    true,
                 );
 
                 let mut resolutions = match &meta_item.kind {

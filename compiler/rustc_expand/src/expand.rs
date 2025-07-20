@@ -13,7 +13,7 @@ use rustc_ast::{
     MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
-use rustc_attr_parsing::{EvalConfigResult, ShouldEmit};
+use rustc_attr_parsing::{AttributeParser, EvalConfigResult, ShouldEmit};
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::PResult;
 use rustc_feature::Features;
@@ -2119,17 +2119,15 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     // Detect use of feature-gated or invalid attributes on macro invocations
     // since they will not be detected after macro expansion.
-    fn check_attributes(&self, attrs: &[ast::Attribute], call: &ast::MacCall) {
+    fn check_attributes(&self, attrs: &[ast::Attribute], call: &ast::MacCall, call_id: NodeId) {
         let features = self.cx.ecfg.features;
         let mut attrs = attrs.iter().peekable();
         let mut span: Option<Span> = None;
         while let Some(attr) = attrs.next() {
+            // Attributes on a macro call will not be checked during late parsing since we'll remove them
+            // We do some basic checks now, but we don't fully parse them
             rustc_ast_passes::feature_gate::check_attribute(attr, self.cx.sess, features);
-            validate_attr::check_attr(
-                &self.cx.sess.psess,
-                attr,
-                self.cx.current_expansion.lint_node_id,
-            );
+            AttributeParser::validate_attribute_early(self.cx.sess, attr, call_id);
 
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
             span = Some(current_span);
@@ -2228,8 +2226,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     }
                 },
                 None if node.is_mac_call() => {
+                    let mac_node_id = node.node_id();
                     let (mac, attrs, add_semicolon) = node.take_mac_call();
-                    self.check_attributes(&attrs, &mac);
+                    self.check_attributes(&attrs, &mac, mac_node_id);
                     let mut res = self.collect_bang(mac, Node::KIND).make_ast::<Node>();
                     Node::post_flat_map_node_collect_bang(&mut res, add_semicolon);
                     res
@@ -2315,7 +2314,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 None if node.is_mac_call() => {
                     let n = mem::replace(node, Node::dummy());
                     let (mac, attrs, _) = n.take_mac_call();
-                    self.check_attributes(&attrs, &mac);
+                    self.check_attributes(&attrs, &mac, node.node_id());
 
                     *node = self.collect_bang(mac, Node::KIND).make_ast::<Node>().into()
                 }

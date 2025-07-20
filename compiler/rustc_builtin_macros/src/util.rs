@@ -1,13 +1,14 @@
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{self as ast, AttrStyle, Attribute, MetaItem, attr, token};
+use rustc_attr_parsing::check_builtin_meta_item;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt};
 use rustc_expand::expand::AstFragment;
 use rustc_feature::AttributeTemplate;
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::DUPLICATE_MACRO_ATTRIBUTES;
-use rustc_parse::{exp, parser, validate_attr};
+use rustc_parse::{exp, parser};
 use rustc_session::errors::report_lit_error;
 use rustc_span::{BytePos, Span, Symbol};
 
@@ -16,14 +17,7 @@ use crate::errors;
 pub(crate) fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
     // All the built-in macro attributes are "words" at the moment.
     let template = AttributeTemplate { word: true, ..Default::default() };
-    validate_attr::check_builtin_meta_item(
-        &ecx.sess.psess,
-        meta_item,
-        AttrStyle::Outer,
-        name,
-        template,
-        true,
-    );
+    check_builtin_meta_item(ecx.sess, meta_item, AttrStyle::Outer, name, template);
 }
 
 /// Emit a warning if the item is annotated with the given attribute. This is used to diagnose when

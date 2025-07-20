@@ -6,6 +6,7 @@ use std::sync::{Arc, LazyLock, OnceLock};
 use std::{env, fs, iter};
 
 use rustc_ast as ast;
+use rustc_attr_parsing::emit_fatal_malformed_builtin_attribute;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::steal::Steal;
@@ -25,9 +26,7 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepsType;
 use rustc_middle::ty::{self, CurrentGcx, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_parse::{
-    new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal, validate_attr,
-};
+use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_passes::{abi_test, input_stats, layout_test};
 use rustc_resolve::Resolver;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
@@ -1304,7 +1303,7 @@ fn validate_and_find_value_str_builtin_attr(
     // Validate *all* relevant attributes, not just the first occurrence.
     for attr in ast::attr::filter_by_name(krate_attrs, name) {
         let Some(value) = attr.value_str() else {
-            validate_attr::emit_fatal_malformed_builtin_attribute(&sess.psess, attr, name)
+            emit_fatal_malformed_builtin_attribute(sess, attr, name)
         };
         // Choose the first occurrence as our result.
         result.get_or_insert((value, attr.span));

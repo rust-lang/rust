@@ -1,9 +1,9 @@
 //! Implementation of the `#[cfg_accessible(path)]` attribute macro.
 
 use rustc_ast as ast;
+use rustc_attr_parsing::check_builtin_meta_item;
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
 use rustc_feature::AttributeTemplate;
-use rustc_parse::validate_attr;
 use rustc_span::{Span, sym};
 
 use crate::errors;
@@ -45,13 +45,12 @@ impl MultiItemModifier for Expander {
         _is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         let template = AttributeTemplate { list: Some("path"), ..Default::default() };
-        validate_attr::check_builtin_meta_item(
-            &ecx.sess.psess,
+        check_builtin_meta_item(
+            ecx.sess,
             meta_item,
             ast::AttrStyle::Outer,
             sym::cfg_accessible,
             template,
-            true,
         );
 
         let Some(path) = validate_input(ecx, meta_item) else {
