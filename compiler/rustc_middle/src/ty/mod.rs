@@ -2412,11 +2412,10 @@ fn typetree_from_ty<'a>(
 
         if adt_def.is_struct() {
             let (offsets, _memory_index) = match fields {
-                // Manuel TODO:
                 FieldsShape::Arbitrary { offsets: o, memory_index: m } => (o, m),
                 FieldsShape::Array { .. } => {
                     return TypeTree::new();
-                } //e.g. core::arch::x86_64::__m128i, TODO: later
+                } //e.g. core::arch::x86_64::__m128i
                 FieldsShape::Union(_) => {
                     return TypeTree::new();
                 }
@@ -2486,7 +2485,6 @@ fn typetree_from_ty<'a>(
         //        .flatten()
         //        .collect(),
         //);
-        // TODO
         visited.pop();
         return TypeTree::new();
     }
