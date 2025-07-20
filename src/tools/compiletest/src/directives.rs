@@ -9,7 +9,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 use tracing::*;
 
-use crate::common::{Config, Debugger, FailMode, PassMode, TestMode};
+use crate::common::{Config, Debugger, FailMode, PassMode, RunFailMode, TestMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
 use crate::directives::auxiliary::{AuxProps, parse_and_update_aux};
 use crate::directives::needs::CachedNeedsConditions;
@@ -654,7 +654,13 @@ impl TestProps {
             Some(FailMode::Build)
         } else if config.parse_name_directive(ln, "run-fail") {
             check_ui("run");
-            Some(FailMode::Run)
+            Some(FailMode::Run(RunFailMode::Fail))
+        } else if config.parse_name_directive(ln, "run-crash") {
+            check_ui("run");
+            Some(FailMode::Run(RunFailMode::Crash))
+        } else if config.parse_name_directive(ln, "run-fail-or-crash") {
+            check_ui("run");
+            Some(FailMode::Run(RunFailMode::FailOrCrash))
         } else {
             None
         };
@@ -1007,7 +1013,9 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "regex-error-pattern",
     "remap-src-base",
     "revisions",
+    "run-crash",
     "run-fail",
+    "run-fail-or-crash",
     "run-flags",
     "run-pass",
     "run-rustfix",

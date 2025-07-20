@@ -280,13 +280,6 @@ pub(crate) struct CopyImplOnTypeWithDtor {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_multiple_relaxed_default_bounds, code = E0203)]
-pub(crate) struct MultipleRelaxedDefaultBounds {
-    #[primary_span]
-    pub spans: Vec<Span>,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_copy_impl_on_non_adt, code = E0206)]
 pub(crate) struct CopyImplOnNonAdt {
     #[primary_span]
@@ -317,13 +310,6 @@ pub(crate) struct TraitObjectDeclaredWithNoTraits {
     pub span: Span,
     #[label(hir_analysis_alias_span)]
     pub trait_alias_span: Option<Span>,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_pointee_sized_trait_object)]
-pub(crate) struct PointeeSizedTraitObject {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]

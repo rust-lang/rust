@@ -1381,29 +1381,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match bound {
             GenericBound::Trait(trait_ref) => {
                 match (ctxt, trait_ref.modifiers.constness, trait_ref.modifiers.polarity) {
-                    (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_))
-                        if !self.features.more_maybe_bounds() =>
-                    {
-                        self.sess
-                            .create_feature_err(
-                                errors::OptionalTraitSupertrait {
-                                    span: trait_ref.span,
-                                    path_str: pprust::path_to_string(&trait_ref.trait_ref.path),
-                                },
-                                sym::more_maybe_bounds,
-                            )
-                            .emit();
-                    }
-                    (BoundKind::TraitObject, BoundConstness::Never, BoundPolarity::Maybe(_))
-                        if !self.features.more_maybe_bounds() =>
-                    {
-                        self.sess
-                            .create_feature_err(
-                                errors::OptionalTraitObject { span: trait_ref.span },
-                                sym::more_maybe_bounds,
-                            )
-                            .emit();
-                    }
                     (
                         BoundKind::TraitObject,
                         BoundConstness::Always(_),
