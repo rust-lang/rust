@@ -263,9 +263,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // manually normalized.
         let val = self.tcx.try_normalize_erasing_regions(self.typing_env, c.const_).ok()?;
 
-        self.use_ecx(|this| this.ecx.eval_mir_constant(&val, c.span, None))?
-            .as_mplace_or_imm()
-            .right()
+        self.use_ecx(|this| this.ecx.eval_mir_constant(&val, c.span, None))?.try_as_immediate()
     }
 
     /// Returns the value, if any, of evaluating `place`.

@@ -314,6 +314,14 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
 // These are defined here because they produce a place.
 impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
     #[inline(always)]
+    pub fn try_as_immediate(&self) -> Option<ImmTy<'tcx, Prov>> {
+        match self.op() {
+            Operand::Indirect(_) => None,
+            Operand::Immediate(imm) => ImmTy::try_from_immediate(*imm, self.layout),
+        }
+    }
+
+    #[inline(always)]
     pub fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
         match self.op() {
             Operand::Indirect(mplace) => Left(MPlaceTy { mplace: *mplace, layout: self.layout }),
