@@ -1,4 +1,4 @@
-error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: bound modifier `?` can only be applied to `Sized`
   --> $DIR/maybe-bound-has-path-args.rs:3:12
    |
 LL | fn test<T: ?self::<i32>::Trait>() {}

@@ -19,7 +19,7 @@ use serde_derive::Deserialize;
 use tracing::{instrument, span};
 
 use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
-use crate::core::build_steps::tool::SourceType;
+use crate::core::build_steps::tool::{SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
 use crate::core::builder::{
@@ -2050,19 +2050,20 @@ impl Step for Assemble {
             }
         }
 
-        let maybe_install_llvm_bitcode_linker = |compiler| {
+        let maybe_install_llvm_bitcode_linker = || {
             if builder.config.llvm_bitcode_linker_enabled {
                 trace!("llvm-bitcode-linker enabled, installing");
-                let llvm_bitcode_linker =
-                    builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
-                        build_compiler: compiler,
-                        target: target_compiler.host,
-                    });
+                let llvm_bitcode_linker = builder.ensure(
+                    crate::core::build_steps::tool::LlvmBitcodeLinker::from_target_compiler(
+                        builder,
+                        target_compiler,
+                    ),
+                );
 
                 // Copy the llvm-bitcode-linker to the self-contained binary directory
                 let bindir_self_contained = builder
-                    .sysroot(compiler)
-                    .join(format!("lib/rustlib/{}/bin/self-contained", compiler.host));
+                    .sysroot(target_compiler)
+                    .join(format!("lib/rustlib/{}/bin/self-contained", target_compiler.host));
                 let tool_exe = exe("llvm-bitcode-linker", target_compiler.host);
 
                 t!(fs::create_dir_all(&bindir_self_contained));
@@ -2089,9 +2090,9 @@ impl Step for Assemble {
                 builder.info(&format!("Creating a sysroot for stage{stage} compiler (use `rustup toolchain link 'name' build/host/stage{stage}`)", stage = target_compiler.stage));
             }
 
-            let mut precompiled_compiler = target_compiler;
-            precompiled_compiler.forced_compiler(true);
-            maybe_install_llvm_bitcode_linker(precompiled_compiler);
+            // FIXME: this is incomplete, we do not copy a bunch of other stuff to the downloaded
+            // sysroot...
+            maybe_install_llvm_bitcode_linker();
 
             return target_compiler;
         }
@@ -2256,10 +2257,12 @@ impl Step for Assemble {
         copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
 
         if builder.config.lld_enabled {
-            builder.ensure(crate::core::build_steps::tool::LldWrapper {
-                build_compiler,
-                target_compiler,
-            });
+            let lld_wrapper =
+                builder.ensure(crate::core::build_steps::tool::LldWrapper::for_use_by_compiler(
+                    builder,
+                    target_compiler,
+                ));
+            copy_lld_artifacts(builder, lld_wrapper, target_compiler);
         }
 
         if builder.config.llvm_enabled(target_compiler.host) && builder.config.llvm_tools_enabled {
@@ -2284,15 +2287,14 @@ impl Step for Assemble {
         }
 
         // In addition to `rust-lld` also install `wasm-component-ld` when
-        // LLD is enabled. This is a relatively small binary that primarily
-        // delegates to the `rust-lld` binary for linking and then runs
-        // logic to create the final binary. This is used by the
-        // `wasm32-wasip2` target of Rust.
+        // is enabled. This is used by the `wasm32-wasip2` target of Rust.
         if builder.tool_enabled("wasm-component-ld") {
-            let wasm_component = builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
-                compiler: build_compiler,
-                target: target_compiler.host,
-            });
+            let wasm_component = builder.ensure(
+                crate::core::build_steps::tool::WasmComponentLd::for_use_by_compiler(
+                    builder,
+                    target_compiler,
+                ),
+            );
             builder.copy_link(
                 &wasm_component.tool_path,
                 &libdir_bin.join(wasm_component.tool_path.file_name().unwrap()),
@@ -2300,7 +2302,7 @@ impl Step for Assemble {
             );
         }
 
-        maybe_install_llvm_bitcode_linker(target_compiler);
+        maybe_install_llvm_bitcode_linker();
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
         // so that it can be found when the newly built `rustc` is run.

@@ -212,11 +212,6 @@ ast_passes_nomangle_ascii = `#[no_mangle]` requires ASCII identifier
 ast_passes_obsolete_auto = `impl Trait for .. {"{}"}` is an obsolete syntax
     .help = use `auto trait Trait {"{}"}` instead
 
-ast_passes_optional_trait_object = `?Trait` is not permitted in trait object types
-
-ast_passes_optional_trait_supertrait = `?Trait` is not permitted in supertraits
-    .note = traits are `?{$path_str}` by default
-
 ast_passes_out_of_order_params = {$param_ord} parameters must be declared prior to {$max_param} parameters
     .suggestion = reorder the parameters: lifetimes, then consts and types
 

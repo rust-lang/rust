@@ -16,14 +16,11 @@ use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
-use super::errors::{
-    InvalidAbi, InvalidAbiSuggestion, MisplacedRelaxTraitBound, TupleStructWithDefault,
-    UnionWithDefault,
-};
+use super::errors::{InvalidAbi, InvalidAbiSuggestion, TupleStructWithDefault, UnionWithDefault};
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
     AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
-    ResolverAstLoweringExt,
+    RelaxedBoundForbiddenReason, RelaxedBoundPolicy, ResolverAstLoweringExt,
 };
 
 pub(super) struct ItemLowerer<'a, 'hir> {
@@ -435,6 +432,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         let bounds = this.lower_param_bounds(
                             bounds,
+                            RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::SuperTrait),
                             ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                         );
                         let items = this.arena.alloc_from_iter(
@@ -455,6 +453,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         this.lower_param_bounds(
                             bounds,
+                            RelaxedBoundPolicy::Allowed,
                             ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                         )
                     },
@@ -940,6 +939,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::TraitItemKind::Type(
                             this.lower_param_bounds(
                                 bounds,
+                                RelaxedBoundPolicy::Allowed,
                                 ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                             ),
                             ty,
@@ -1677,61 +1677,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         assert!(self.impl_trait_defs.is_empty());
         assert!(self.impl_trait_bounds.is_empty());
 
-        // Error if `?Trait` bounds in where clauses don't refer directly to type parameters.
-        // Note: we used to clone these bounds directly onto the type parameter (and avoid lowering
-        // these into hir when we lower thee where clauses), but this makes it quite difficult to
-        // keep track of the Span info. Now, `<dyn HirTyLowerer>::add_implicit_sized_bound`
-        // checks both param bounds and where clauses for `?Sized`.
-        for pred in &generics.where_clause.predicates {
-            let WherePredicateKind::BoundPredicate(bound_pred) = &pred.kind else {
-                continue;
-            };
-            let compute_is_param = || {
-                // Check if the where clause type is a plain type parameter.
-                match self
-                    .resolver
-                    .get_partial_res(bound_pred.bounded_ty.id)
-                    .and_then(|r| r.full_res())
-                {
-                    Some(Res::Def(DefKind::TyParam, def_id))
-                        if bound_pred.bound_generic_params.is_empty() =>
-                    {
-                        generics
-                            .params
-                            .iter()
-                            .any(|p| def_id == self.local_def_id(p.id).to_def_id())
-                    }
-                    // Either the `bounded_ty` is not a plain type parameter, or
-                    // it's not found in the generic type parameters list.
-                    _ => false,
-                }
-            };
-            // We only need to compute this once per `WherePredicate`, but don't
-            // need to compute this at all unless there is a Maybe bound.
-            let mut is_param: Option<bool> = None;
-            for bound in &bound_pred.bounds {
-                if !matches!(
-                    *bound,
-                    GenericBound::Trait(PolyTraitRef {
-                        modifiers: TraitBoundModifiers { polarity: BoundPolarity::Maybe(_), .. },
-                        ..
-                    })
-                ) {
-                    continue;
-                }
-                let is_param = *is_param.get_or_insert_with(compute_is_param);
-                if !is_param && !self.tcx.features().more_maybe_bounds() {
-                    self.tcx
-                        .sess
-                        .create_feature_err(
-                            MisplacedRelaxTraitBound { span: bound.span() },
-                            sym::more_maybe_bounds,
-                        )
-                        .emit();
-                }
-            }
-        }
-
         let mut predicates: SmallVec<[hir::WherePredicate<'hir>; 4]> = SmallVec::new();
         predicates.extend(generics.params.iter().filter_map(|param| {
             self.lower_generic_bound_predicate(
@@ -1741,6 +1686,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 &param.bounds,
                 param.colon_span,
                 generics.span,
+                RelaxedBoundPolicy::Allowed,
                 itctx,
                 PredicateOrigin::GenericParam,
             )
@@ -1750,7 +1696,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .where_clause
                 .predicates
                 .iter()
-                .map(|predicate| self.lower_where_predicate(predicate)),
+                .map(|predicate| self.lower_where_predicate(predicate, &generics.params)),
         );
 
         let mut params: SmallVec<[hir::GenericParam<'hir>; 4]> = self
@@ -1827,6 +1773,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         bounds: &[GenericBound],
         colon_span: Option<Span>,
         parent_span: Span,
+        rbp: RelaxedBoundPolicy<'_>,
         itctx: ImplTraitContext,
         origin: PredicateOrigin,
     ) -> Option<hir::WherePredicate<'hir>> {
@@ -1835,7 +1782,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             return None;
         }
 
-        let bounds = self.lower_param_bounds(bounds, itctx);
+        let bounds = self.lower_param_bounds(bounds, rbp, itctx);
 
         let param_span = ident.span;
 
@@ -1887,7 +1834,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         Some(hir::WherePredicate { hir_id, span, kind })
     }
 
-    fn lower_where_predicate(&mut self, pred: &WherePredicate) -> hir::WherePredicate<'hir> {
+    fn lower_where_predicate(
+        &mut self,
+        pred: &WherePredicate,
+        params: &[ast::GenericParam],
+    ) -> hir::WherePredicate<'hir> {
         let hir_id = self.lower_node_id(pred.id);
         let span = self.lower_span(pred.span);
         self.lower_attrs(hir_id, &pred.attrs, span);
@@ -1896,17 +1847,29 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 bound_generic_params,
                 bounded_ty,
                 bounds,
-            }) => hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
-                bound_generic_params: self
-                    .lower_generic_params(bound_generic_params, hir::GenericParamSource::Binder),
-                bounded_ty: self
-                    .lower_ty(bounded_ty, ImplTraitContext::Disallowed(ImplTraitPosition::Bound)),
-                bounds: self.lower_param_bounds(
-                    bounds,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
-                ),
-                origin: PredicateOrigin::WhereClause,
-            }),
+            }) => {
+                let rbp = if bound_generic_params.is_empty() {
+                    RelaxedBoundPolicy::AllowedIfOnTyParam(bounded_ty.id, params)
+                } else {
+                    RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::LateBoundVarsInScope)
+                };
+                hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
+                    bound_generic_params: self.lower_generic_params(
+                        bound_generic_params,
+                        hir::GenericParamSource::Binder,
+                    ),
+                    bounded_ty: self.lower_ty(
+                        bounded_ty,
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                    ),
+                    bounds: self.lower_param_bounds(
+                        bounds,
+                        rbp,
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                    ),
+                    origin: PredicateOrigin::WhereClause,
+                })
+            }
             WherePredicateKind::RegionPredicate(WhereRegionPredicate { lifetime, bounds }) => {
                 hir::WherePredicateKind::RegionPredicate(hir::WhereRegionPredicate {
                     lifetime: self.lower_lifetime(
@@ -1916,6 +1879,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ),
                     bounds: self.lower_param_bounds(
                         bounds,
+                        RelaxedBoundPolicy::Allowed,
                         ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                     ),
                     in_where_clause: true,

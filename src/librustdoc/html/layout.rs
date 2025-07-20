@@ -132,6 +132,5 @@ pub(crate) fn redirect(url: &str) -> String {
     <script>location.replace("{url}" + location.search + location.hash);</script>
 </body>
 </html>"##,
-        url = url,
     )
 }

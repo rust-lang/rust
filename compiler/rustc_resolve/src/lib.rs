@@ -45,7 +45,7 @@ use rustc_attr_data_structures::StrippedCfgItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::FreezeReadGuard;
+use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
@@ -58,7 +58,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, 
 use rustc_hir::definitions::DisambiguatorState;
 use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_index::bit_set::DenseBitSet;
-use rustc_metadata::creader::{CStore, CrateLoader};
+use rustc_metadata::creader::CStore;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
@@ -532,26 +532,15 @@ struct BindingKey {
     /// identifier.
     ident: Ident,
     ns: Namespace,
-    /// When we add an underscore binding (with ident `_`) to some module, this field has
-    /// a non-zero value that uniquely identifies this binding in that module.
-    /// For non-underscore bindings this field is zero.
-    /// When a key is constructed for name lookup (as opposed to name definition), this field is
-    /// also zero, even for underscore names, so for underscores the lookup will never succeed.
+    /// 0 if ident is not `_`, otherwise a value that's unique to the specific
+    /// `_` in the expanded AST that introduced this binding.
     disambiguator: u32,
 }
 
 impl BindingKey {
     fn new(ident: Ident, ns: Namespace) -> Self {
-        BindingKey { ident: ident.normalize_to_macros_2_0(), ns, disambiguator: 0 }
-    }
-
-    fn new_disambiguated(
-        ident: Ident,
-        ns: Namespace,
-        disambiguator: impl FnOnce() -> u32,
-    ) -> BindingKey {
-        let disambiguator = if ident.name == kw::Underscore { disambiguator() } else { 0 };
-        BindingKey { ident: ident.normalize_to_macros_2_0(), ns, disambiguator }
+        let ident = ident.normalize_to_macros_2_0();
+        BindingKey { ident, ns, disambiguator: 0 }
     }
 }
 
@@ -1098,6 +1087,8 @@ pub struct Resolver<'ra, 'tcx> {
     extern_module_map: RefCell<FxIndexMap<DefId, Module<'ra>>>,
     binding_parent_modules: FxHashMap<NameBinding<'ra>, Module<'ra>>,
 
+    underscore_disambiguator: u32,
+
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
     glob_error: Option<ErrorGuaranteed>,
@@ -1119,7 +1110,6 @@ pub struct Resolver<'ra, 'tcx> {
     builtin_types_bindings: FxHashMap<Symbol, NameBinding<'ra>>,
     builtin_attrs_bindings: FxHashMap<Symbol, NameBinding<'ra>>,
     registered_tool_bindings: FxHashMap<Ident, NameBinding<'ra>>,
-    used_extern_options: FxHashSet<Symbol>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Symbol, SyntaxExtensionKind>,
     registered_tools: &'tcx RegisteredTools,
@@ -1510,6 +1500,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             extern_crate_map: Default::default(),
             module_children: Default::default(),
             trait_map: NodeMap::default(),
+            underscore_disambiguator: 0,
             empty_module,
             local_module_map,
             extern_module_map: Default::default(),
@@ -1554,7 +1545,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     (*ident, binding)
                 })
                 .collect(),
-            used_extern_options: Default::default(),
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
             registered_tools,
@@ -1741,16 +1731,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         StableHashingContext::new(self.tcx.sess, self.tcx.untracked())
     }
 
-    fn crate_loader<T>(&mut self, f: impl FnOnce(&mut CrateLoader<'_, '_>) -> T) -> T {
-        f(&mut CrateLoader::new(
-            self.tcx,
-            &mut CStore::from_tcx_mut(self.tcx),
-            &mut self.used_extern_options,
-        ))
-    }
-
     fn cstore(&self) -> FreezeReadGuard<'_, CStore> {
         CStore::from_tcx(self.tcx)
+    }
+
+    fn cstore_mut(&self) -> FreezeWriteGuard<'_, CStore> {
+        CStore::from_tcx_mut(self.tcx)
     }
 
     fn dummy_ext(&self, macro_kind: MacroKind) -> Arc<SyntaxExtension> {
@@ -1798,7 +1784,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.tcx.sess.time("resolve_report_errors", || self.report_errors(krate));
             self.tcx
                 .sess
-                .time("resolve_postprocess", || self.crate_loader(|c| c.postprocess(krate)));
+                .time("resolve_postprocess", || self.cstore_mut().postprocess(self.tcx, krate));
         });
 
         // Make sure we don't mutate the cstore from here on.
@@ -1893,6 +1879,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             kind = &binding.kind;
         }
         import_ids
+    }
+
+    fn new_disambiguated_key(&mut self, ident: Ident, ns: Namespace) -> BindingKey {
+        let ident = ident.normalize_to_macros_2_0();
+        let disambiguator = if ident.name == kw::Underscore {
+            self.underscore_disambiguator += 1;
+            self.underscore_disambiguator
+        } else {
+            0
+        };
+        BindingKey { ident, ns, disambiguator }
     }
 
     fn resolutions(&mut self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
@@ -2153,7 +2150,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Some(if let Some(binding) = entry.binding {
                 if finalize {
                     if !entry.is_import() {
-                        self.crate_loader(|c| c.process_path_extern(ident.name, ident.span));
+                        self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span);
                     } else if entry.introduced_by_item {
                         self.record_use(ident, binding, Used::Other);
                     }
@@ -2162,13 +2159,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } else {
                 let crate_id = if finalize {
                     let Some(crate_id) =
-                        self.crate_loader(|c| c.process_path_extern(ident.name, ident.span))
+                        self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span)
                     else {
                         return Some(self.dummy_binding);
                     };
                     crate_id
                 } else {
-                    self.crate_loader(|c| c.maybe_process_path_extern(ident.name))?
+                    self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)?
                 };
                 let res = Res::Def(DefKind::Mod, crate_id.as_def_id());
                 self.arenas.new_pub_res_binding(res, DUMMY_SP, LocalExpnId::ROOT)

@@ -1425,7 +1425,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // otherwise cause duplicate suggestions.
                     continue;
                 }
-                let Some(crate_id) = self.crate_loader(|c| c.maybe_process_path_extern(ident.name))
+                let Some(crate_id) =
+                    self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)
                 else {
                     continue;
                 };

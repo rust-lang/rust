@@ -88,11 +88,37 @@ string_enum! {
     }
 }
 
+string_enum! {
+    #[derive(Clone, Copy, PartialEq, Debug, Hash)]
+    pub enum RunResult {
+        Pass => "run-pass",
+        Fail => "run-fail",
+        Crash => "run-crash",
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+pub enum RunFailMode {
+    /// Running the program must make it exit with a regular failure exit code
+    /// in the range `1..=127`. If the program is terminated by e.g. a signal
+    /// the test will fail.
+    Fail,
+    /// Running the program must result in a crash, e.g. by `SIGABRT` or
+    /// `SIGSEGV` on Unix or on Windows by having an appropriate NTSTATUS high
+    /// bit in the exit code.
+    Crash,
+    /// Running the program must either fail or crash. Useful for e.g. sanitizer
+    /// tests since some sanitizer implementations exit the process with code 1
+    /// to in the face of memory errors while others abort (crash) the process
+    /// in the face of memory errors.
+    FailOrCrash,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum FailMode {
     Check,
     Build,
-    Run,
+    Run(RunFailMode),
 }
 
 string_enum! {
