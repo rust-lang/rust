@@ -203,9 +203,10 @@ mod private {
 #[allow(private_interfaces)]
 pub trait Stage: Sized + 'static + Sealed {
     type Id: Copy;
-    const SHOULD_EMIT_LINTS: bool;
 
     fn parsers() -> &'static group_type!(Self);
+
+    fn should_emit_errors_and_lints(&self) -> bool;
 
     fn emit_err<'sess>(
         &self,
@@ -218,11 +219,15 @@ pub trait Stage: Sized + 'static + Sealed {
 #[allow(private_interfaces)]
 impl Stage for Early {
     type Id = NodeId;
-    const SHOULD_EMIT_LINTS: bool = false;
 
     fn parsers() -> &'static group_type!(Self) {
         &early::ATTRIBUTE_PARSERS
     }
+
+    fn should_emit_errors_and_lints(&self) -> bool {
+        self.emit_errors.should_emit()
+    }
+
     fn emit_err<'sess>(
         &self,
         sess: &'sess Session,
@@ -240,11 +245,15 @@ impl Stage for Early {
 #[allow(private_interfaces)]
 impl Stage for Late {
     type Id = HirId;
-    const SHOULD_EMIT_LINTS: bool = true;
 
     fn parsers() -> &'static group_type!(Self) {
         &late::ATTRIBUTE_PARSERS
     }
+
+    fn should_emit_errors_and_lints(&self) -> bool {
+        true
+    }
+
     fn emit_err<'sess>(
         &self,
         tcx: &'sess Session,
@@ -290,7 +299,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     /// must be delayed until after HIR is built. This method will take care of the details of
     /// that.
     pub(crate) fn emit_lint(&mut self, lint: AttributeLintKind, span: Span) {
-        if !S::SHOULD_EMIT_LINTS {
+        if !self.stage.should_emit_errors_and_lints() {
             return;
         }
         let id = self.target_id;
@@ -710,6 +719,10 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
 
     pub(crate) fn sess(&self) -> &'sess Session {
         &self.sess
+    }
+
+    pub(crate) fn stage(&self) -> &S {
+        &self.stage
     }
 
     pub(crate) fn features(&self) -> &'sess Features {
