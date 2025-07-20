@@ -1,6 +1,9 @@
 //@ aux-build: staged-api.rs
-//@ revisions: current exhaustive
-#![cfg_attr(exhaustive, feature(exhaustive_patterns))]
+//! The field of `Pin` used to be public, which would cause `Pin<Void>` to be uninhabited. To remedy
+//! this, we temporarily made it so unstable fields are always considered inhabited. This has now
+//! been reverted, and this file ensures that we don't special-case unstable fields wrt
+//! inhabitedness anymore.
+#![feature(exhaustive_patterns)]
 #![feature(never_type)]
 #![feature(my_coro_state)] // Custom feature from `staged-api.rs`
 #![deny(unreachable_patterns)]
@@ -13,31 +16,29 @@ enum Void {}
 
 fn demo(x: Foo<Void>) {
     match x {}
-    //~^ ERROR non-exhaustive patterns
 }
 
-// Ensure that the pattern is not considered unreachable.
+// Ensure that the pattern is considered unreachable.
 fn demo2(x: Foo<Void>) {
     match x {
-        Foo { .. } => {}
+        Foo { .. } => {} //~ ERROR unreachable
     }
 }
 
 // Same as above, but for wildcard.
 fn demo3(x: Foo<Void>) {
     match x {
-        _ => {}
+        _ => {} //~ ERROR unreachable
     }
 }
 
 fn unstable_enum(x: MyCoroutineState<i32, !>) {
     match x {
-        //~^ ERROR non-exhaustive patterns
         MyCoroutineState::Yielded(_) => {}
     }
     match x {
         MyCoroutineState::Yielded(_) => {}
-        MyCoroutineState::Complete(_) => {}
+        MyCoroutineState::Complete(_) => {} //~ ERROR unreachable
     }
 }
 
