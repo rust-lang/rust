@@ -10,6 +10,7 @@ use gccjit::{
 use rustc_abi as abi;
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
 use rustc_apfloat::{Float, Round, Status, ieee};
+use rustc_ast::expand::typetree::FncTree;
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{
     AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
@@ -1368,6 +1369,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _src_align: Align,
         size: RValue<'gcc>,
         flags: MemFlags,
+        tt: Option<FncTree>,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memcpy not supported");
         let size = self.intcast(size, self.type_size_t(), false);
@@ -1375,11 +1377,19 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let dst = self.pointercast(dst, self.type_i8p());
         let src = self.pointercast(src, self.type_ptr_to(self.type_void()));
         let memcpy = self.context.get_builtin_function("memcpy");
+
+        // Create the memcpy call
+        let call = self.context.new_call(self.location, memcpy, &[dst, src, size]);
+
+        // TypeTree metadata for memcpy: when Enzyme encounters a memcpy during autodiff,
+        if let Some(_tt) = tt {
+            // TODO(KMJ-007): implement TypeTree support for gcc backend
+            // For now, we just ignore the TypeTree since gcc backend doesn't support autodiff yet
+            // When autodiff support is added to gcc backend, this should attach TypeTree information
+            // as function attributes similar to how LLVM backend does it.
+        }
         // TODO(antoyo): handle aligns and is_volatile.
-        self.block.add_eval(
-            self.location,
-            self.context.new_call(self.location, memcpy, &[dst, src, size]),
-        );
+        self.block.add_eval(self.location, call);
     }
 
     fn memmove(
