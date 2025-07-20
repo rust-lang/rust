@@ -2908,7 +2908,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         .psess
                         .raw_identifier_spans
                         .iter()
-                        .any(|span| span == param.span());
+                        .any(|span| span == param.span().with_parent(None));
 
                     self.r
                         .dcx()
