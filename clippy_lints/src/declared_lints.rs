@@ -178,6 +178,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::format_impl::RECURSIVE_FORMAT_IMPL_INFO,
     crate::format_push_string::FORMAT_PUSH_STRING_INFO,
     crate::formatting::POSSIBLE_MISSING_COMMA_INFO,
+    crate::formatting::POSSIBLE_MISSING_ELSE_INFO,
     crate::formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING_INFO,
     crate::formatting::SUSPICIOUS_ELSE_FORMATTING_INFO,
     crate::formatting::SUSPICIOUS_UNARY_OP_FORMATTING_INFO,
