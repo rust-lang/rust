@@ -1,0 +1,29 @@
+// MIR for `<impl at $DIR/clone_as_copy.rs:19:10: 19:15>::clone` after PreCodegen
+
+fn <impl at $DIR/clone_as_copy.rs:19:10: 19:15>::clone(_1: &Enum1) -> Enum1 {
+    debug self => _1;
+    let mut _0: Enum1;
+    let mut _2: &AllCopy;
+    let mut _3: &NestCopy;
+    scope 1 {
+        debug __self_0 => _2;
+        scope 5 (inlined <AllCopy as Clone>::clone) {
+            debug self => _2;
+        }
+    }
+    scope 2 {
+        debug __self_0 => _3;
+        scope 3 (inlined <NestCopy as Clone>::clone) {
+            debug self => _3;
+            let _4: &AllCopy;
+            scope 4 (inlined <AllCopy as Clone>::clone) {
+                debug self => _4;
+            }
+        }
+    }
+
+    bb0: {
+        _0 = copy (*_1);
+        return;
+    }
+}
