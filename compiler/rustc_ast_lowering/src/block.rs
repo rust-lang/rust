@@ -23,7 +23,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::Block<'hir> {
         let (stmts, expr) = self.lower_stmts(&b.stmts);
         let rules = self.lower_block_check_mode(&b.rules);
-        hir::Block { hir_id, stmts, expr, rules, span: self.lower_span(b.span), targeted_by_break }
+        hir::Block { hir_id, stmts, expr, rules, span: b.span, targeted_by_break }
     }
 
     fn lower_stmts(
@@ -39,7 +39,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     let local = self.lower_local(local);
                     self.alias_attrs(hir_id, local.hir_id);
                     let kind = hir::StmtKind::Let(local);
-                    let span = self.lower_span(s.span);
+                    let span = s.span;
                     stmts.push(hir::Stmt { hir_id, kind, span });
                 }
                 StmtKind::Item(it) => {
@@ -50,7 +50,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 _ => self.next_id(),
                             };
                             let kind = hir::StmtKind::Item(item_id);
-                            let span = self.lower_span(s.span);
+                            let span = s.span;
                             hir::Stmt { hir_id, kind, span }
                         },
                     ));
@@ -63,7 +63,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let hir_id = self.lower_node_id(s.id);
                         self.alias_attrs(hir_id, e.hir_id);
                         let kind = hir::StmtKind::Expr(e);
-                        let span = self.lower_span(s.span);
+                        let span = s.span;
                         stmts.push(hir::Stmt { hir_id, kind, span });
                     }
                 }
@@ -72,7 +72,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     let hir_id = self.lower_node_id(s.id);
                     self.alias_attrs(hir_id, e.hir_id);
                     let kind = hir::StmtKind::Semi(e);
-                    let span = self.lower_span(s.span);
+                    let span = s.span;
                     stmts.push(hir::Stmt { hir_id, kind, span });
                 }
                 StmtKind::Empty => {}
@@ -107,7 +107,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             None
         };
-        let span = self.lower_span(l.span);
+        let span = l.span;
         let source = hir::LocalSource::Normal;
         self.lower_attrs(hir_id, &l.attrs, l.span);
         self.arena.alloc(hir::LetStmt { hir_id, super_, ty, pat, init, els, span, source })

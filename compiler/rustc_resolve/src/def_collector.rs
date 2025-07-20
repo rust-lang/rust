@@ -140,18 +140,12 @@ impl<'a, 'ra, 'tcx> mut_visit::MutVisitor for DefCollector<'a, 'ra, 'tcx> {
                     Vec::new(),
                     Early { emit_errors: ShouldEmit::Nothing },
                 );
-                let attrs = parser.parse_attribute_list(
-                    &i.attrs,
-                    i.span,
-                    i.id,
-                    OmitDoc::Skip,
-                    std::convert::identity,
-                    |_l| {
+                let attrs =
+                    parser.parse_attribute_list(&i.attrs, i.span, i.id, OmitDoc::Skip, |_l| {
                         // FIXME(jdonszelmann): emit lints here properly
                         // NOTE that before new attribute parsing, they didn't happen either
                         // but it would be nice if we could change that.
-                    },
-                );
+                    });
 
                 let macro_data =
                     self.resolver.compile_macro(def, *ident, &attrs, i.span, i.id, edition);

@@ -657,16 +657,10 @@ impl<'sess> AttributeParser<'sess, Early> {
             sess,
             stage: Early { emit_errors: ShouldEmit::Nothing },
         };
-        let mut parsed = p.parse_attribute_list(
-            attrs,
-            target_span,
-            target_node_id,
-            OmitDoc::Skip,
-            std::convert::identity,
-            |_lint| {
+        let mut parsed =
+            p.parse_attribute_list(attrs, target_span, target_node_id, OmitDoc::Skip, |_lint| {
                 panic!("can't emit lints here for now (nothing uses this atm)");
-            },
-        );
+            });
         assert!(parsed.len() <= 1);
 
         parsed.pop()
@@ -749,7 +743,6 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         target_id: S::Id,
         omit_doc: OmitDoc,
 
-        lower_span: impl Copy + Fn(Span) -> Span,
         mut emit_lint: impl FnMut(AttributeLint<S::Id>),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
@@ -781,7 +774,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                     attributes.push(Attribute::Parsed(AttributeKind::DocComment {
                         style: attr.style,
                         kind: *comment_kind,
-                        span: lower_span(attr.span),
+                        span: attr.span,
                         comment: *symbol,
                     }))
                 }
@@ -813,7 +806,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                                     target_id,
                                     emit_lint: &mut emit_lint,
                                 },
-                                attr_span: lower_span(attr.span),
+                                attr_span: attr.span,
                                 template,
                                 attr_path: path.get_attribute_path(),
                             };
@@ -838,10 +831,10 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
 
                         attributes.push(Attribute::Unparsed(Box::new(AttrItem {
                             path: AttrPath::from_ast(&n.item.path),
-                            args: self.lower_attr_args(&n.item.args, lower_span),
+                            args: self.lower_attr_args(&n.item.args),
                             id: HashIgnoredAttrId { attr_id: attr.id },
                             style: attr.style,
-                            span: lower_span(attr.span),
+                            span: attr.span,
                         })));
                     }
                 }
@@ -873,7 +866,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         Late::parsers().0.contains_key(path)
     }
 
-    fn lower_attr_args(&self, args: &ast::AttrArgs, lower_span: impl Fn(Span) -> Span) -> AttrArgs {
+    fn lower_attr_args(&self, args: &ast::AttrArgs) -> AttrArgs {
         match args {
             ast::AttrArgs::Empty => AttrArgs::Empty,
             ast::AttrArgs::Delimited(args) => AttrArgs::Delimited(args.clone()),
@@ -884,8 +877,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 // In valid code the value always ends up as a single literal. Otherwise, a dummy
                 // literal suffices because the error is handled elsewhere.
                 let lit = if let ast::ExprKind::Lit(token_lit) = expr.kind
-                    && let Ok(lit) =
-                        ast::MetaItemLit::from_token_lit(token_lit, lower_span(expr.span))
+                    && let Ok(lit) = ast::MetaItemLit::from_token_lit(token_lit, expr.span)
                 {
                     lit
                 } else {
@@ -900,7 +892,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         span: DUMMY_SP,
                     }
                 };
-                AttrArgs::Eq { eq_span: lower_span(*eq_span), expr: lit }
+                AttrArgs::Eq { eq_span: *eq_span, expr: lit }
             }
         }
     }
