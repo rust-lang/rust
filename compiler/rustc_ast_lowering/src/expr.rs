@@ -204,7 +204,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         MatchKind::Postfix => hir::MatchSource::Postfix,
                     },
                 ),
-                ExprKind::Await(expr, await_kw_span) => self.lower_expr_await(*await_kw_span, expr),
+                ExprKind::Await(expr, await_kw_span) => {
+                    self.lower_expr_await(*await_kw_span, e.span, expr)
+                }
                 ExprKind::Use(expr, use_kw_span) => self.lower_expr_use(*use_kw_span, expr),
                 ExprKind::Closure(box Closure {
                     binder,
@@ -816,20 +818,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ///     }
     /// }
     /// ```
-    fn lower_expr_await(&mut self, await_kw_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
+    fn lower_expr_await(
+        &mut self,
+        await_kw_span: Span,
+        full_span: Span,
+        expr: &Expr,
+    ) -> hir::ExprKind<'hir> {
         let expr = self.arena.alloc(self.lower_expr_mut(expr));
-        self.make_lowered_await(await_kw_span, expr, FutureKind::Future)
+        self.make_lowered_await(await_kw_span, full_span, expr, FutureKind::Future)
     }
 
     /// Takes an expr that has already been lowered and generates a desugared await loop around it
     fn make_lowered_await(
         &mut self,
         await_kw_span: Span,
+        full_span: Span,
         expr: &'hir hir::Expr<'hir>,
         await_kind: FutureKind,
     ) -> hir::ExprKind<'hir> {
-        let full_span = expr.span.to(await_kw_span);
-
         let is_async_gen = match self.coroutine_kind {
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => false,
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)) => true,
@@ -1794,7 +1800,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ));
                     // `unsafe { ... }`
                     let iter = self.arena.alloc(self.expr_unsafe(iter));
-                    let kind = self.make_lowered_await(head_span, iter, FutureKind::AsyncIterator);
+                    let kind = self.make_lowered_await(
+                        head_span,
+                        head_span,
+                        iter,
+                        FutureKind::AsyncIterator,
+                    );
                     self.arena.alloc(hir::Expr { hir_id: self.next_id(), kind, span: head_span })
                 }
             };
