@@ -6,9 +6,11 @@ use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Destination, Expr, ExprKind, HirId, InlineAsmOperand, Pat, Stmt, StmtKind, StructTailExpr};
+use rustc_hir::{
+    Block, Destination, Expr, ExprKind, HirId, InlineAsmOperand, Node, Pat, Stmt, StmtKind, StructTailExpr,
+};
 use rustc_lint::LateContext;
-use rustc_span::{Span, sym};
+use rustc_span::{BytePos, Span, sym};
 use std::iter::once;
 use std::ops::ControlFlow;
 
@@ -20,7 +22,7 @@ pub(super) fn check<'tcx>(
     for_loop: Option<&ForLoop<'_>>,
 ) {
     match never_loop_block(cx, block, &mut Vec::new(), loop_id) {
-        NeverLoopResult::Diverging => {
+        NeverLoopResult::Diverging { ref break_spans } => {
             span_lint_and_then(cx, NEVER_LOOP, span, "this loop never actually loops", |diag| {
                 if let Some(ForLoop {
                     arg: iterator,
@@ -38,10 +40,15 @@ pub(super) fn check<'tcx>(
                         Applicability::Unspecified
                     };
 
-                    diag.span_suggestion_verbose(
+                    let mut suggestions = vec![(
                         for_span.with_hi(iterator.span.hi()),
-                        "if you need the first element of the iterator, try writing",
                         for_to_if_let_sugg(cx, iterator, pat),
+                    )];
+                    // Make sure to clear up the diverging sites when we remove a loopp.
+                    suggestions.extend(break_spans.iter().map(|span| (*span, String::new())));
+                    diag.multipart_suggestion_verbose(
+                        "if you need the first element of the iterator, try writing",
+                        suggestions,
                         app,
                     );
                 }
@@ -70,22 +77,22 @@ fn contains_any_break_or_continue(block: &Block<'_>) -> bool {
 /// The first two bits of information are in this enum, and the last part is in the
 /// `local_labels` variable, which contains a list of `(block_id, reachable)` pairs ordered by
 /// scope.
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 enum NeverLoopResult {
     /// A continue may occur for the main loop.
     MayContinueMainLoop,
     /// We have not encountered any main loop continue,
     /// but we are diverging (subsequent control flow is not reachable)
-    Diverging,
+    Diverging { break_spans: Vec<Span> },
     /// We have not encountered any main loop continue,
     /// and subsequent control flow is (possibly) reachable
     Normal,
 }
 
 #[must_use]
-fn absorb_break(arg: NeverLoopResult) -> NeverLoopResult {
+fn absorb_break(arg: &NeverLoopResult) -> NeverLoopResult {
     match arg {
-        NeverLoopResult::Diverging | NeverLoopResult::Normal => NeverLoopResult::Normal,
+        NeverLoopResult::Diverging { .. } | NeverLoopResult::Normal => NeverLoopResult::Normal,
         NeverLoopResult::MayContinueMainLoop => NeverLoopResult::MayContinueMainLoop,
     }
 }
@@ -94,7 +101,7 @@ fn absorb_break(arg: NeverLoopResult) -> NeverLoopResult {
 #[must_use]
 fn combine_seq(first: NeverLoopResult, second: impl FnOnce() -> NeverLoopResult) -> NeverLoopResult {
     match first {
-        NeverLoopResult::Diverging | NeverLoopResult::MayContinueMainLoop => first,
+        NeverLoopResult::Diverging { .. } | NeverLoopResult::MayContinueMainLoop => first,
         NeverLoopResult::Normal => second(),
     }
 }
@@ -103,7 +110,7 @@ fn combine_seq(first: NeverLoopResult, second: impl FnOnce() -> NeverLoopResult)
 #[must_use]
 fn combine_seq_many(iter: impl IntoIterator<Item = NeverLoopResult>) -> NeverLoopResult {
     for e in iter {
-        if let NeverLoopResult::Diverging | NeverLoopResult::MayContinueMainLoop = e {
+        if let NeverLoopResult::Diverging { .. } | NeverLoopResult::MayContinueMainLoop = e {
             return e;
         }
     }
@@ -118,7 +125,19 @@ fn combine_branches(b1: NeverLoopResult, b2: NeverLoopResult) -> NeverLoopResult
             NeverLoopResult::MayContinueMainLoop
         },
         (NeverLoopResult::Normal, _) | (_, NeverLoopResult::Normal) => NeverLoopResult::Normal,
-        (NeverLoopResult::Diverging, NeverLoopResult::Diverging) => NeverLoopResult::Diverging,
+        (
+            NeverLoopResult::Diverging {
+                break_spans: mut break_spans1,
+            },
+            NeverLoopResult::Diverging {
+                break_spans: mut break_spans2,
+            },
+        ) => {
+            break_spans1.append(&mut break_spans2);
+            NeverLoopResult::Diverging {
+                break_spans: break_spans1,
+            }
+        },
     }
 }
 
@@ -136,7 +155,7 @@ fn never_loop_block<'tcx>(
     combine_seq_many(iter.map(|(e, els)| {
         let e = never_loop_expr(cx, e, local_labels, main_loop_id);
         // els is an else block in a let...else binding
-        els.map_or(e, |els| {
+        els.map_or(e.clone(), |els| {
             combine_seq(e, || match never_loop_block(cx, els, local_labels, main_loop_id) {
                 // Returning MayContinueMainLoop here means that
                 // we will not evaluate the rest of the body
@@ -144,7 +163,7 @@ fn never_loop_block<'tcx>(
                 // An else block always diverges, so the Normal case should not happen,
                 // but the analysis is approximate so it might return Normal anyway.
                 // Returning Normal here says that nothing more happens on the main path
-                NeverLoopResult::Diverging | NeverLoopResult::Normal => NeverLoopResult::Normal,
+                NeverLoopResult::Diverging { .. } | NeverLoopResult::Normal => NeverLoopResult::Normal,
             })
         })
     }))
@@ -157,6 +176,45 @@ fn stmt_to_expr<'tcx>(stmt: &Stmt<'tcx>) -> Option<(&'tcx Expr<'tcx>, Option<&'t
         StmtKind::Let(local) => local.init.map(|init| (init, local.els)),
         StmtKind::Item(..) => None,
     }
+}
+
+fn stmt_source_span(stmt: &Stmt<'_>) -> Span {
+    let call_span = stmt.span.source_callsite();
+    // if it is a macro call, the span will be missing the trailing semicolon
+    if stmt.span == call_span {
+        return call_span;
+    }
+
+    // An expression without a trailing semi-colon (must have unit type).
+    if let StmtKind::Expr(..) = stmt.kind {
+        return call_span;
+    }
+
+    call_span.with_hi(call_span.hi() + BytePos(1))
+}
+
+/// Returns a Vec of all the individual spans after the highlighted expression in a block
+fn all_spans_after_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> Vec<Span> {
+    if let Node::Stmt(stmt) = cx.tcx.parent_hir_node(expr.hir_id) {
+        if let Node::Block(block) = cx.tcx.parent_hir_node(stmt.hir_id) {
+            return block
+                .stmts
+                .iter()
+                .skip_while(|inner| inner.hir_id != stmt.hir_id)
+                .map(stmt_source_span)
+                .chain(if let Some(e) = block.expr { vec![e.span] } else { vec![] })
+                .collect();
+        }
+
+        return vec![stmt.span];
+    }
+
+    vec![]
+}
+
+fn is_label_for_block(cx: &LateContext<'_>, dest: &Destination) -> bool {
+    dest.target_id
+        .is_ok_and(|hir_id| matches!(cx.tcx.hir_node(hir_id), Node::Block(_)))
 }
 
 #[allow(clippy::too_many_lines)]
@@ -197,7 +255,7 @@ fn never_loop_expr<'tcx>(
         ExprKind::Loop(b, _, _, _) => {
             // We don't attempt to track reachability after a loop,
             // just assume there may have been a break somewhere
-            absorb_break(never_loop_block(cx, b, local_labels, main_loop_id))
+            absorb_break(&never_loop_block(cx, b, local_labels, main_loop_id))
         },
         ExprKind::If(e, e2, e3) => {
             let e1 = never_loop_expr(cx, e, local_labels, main_loop_id);
@@ -212,9 +270,10 @@ fn never_loop_expr<'tcx>(
         ExprKind::Match(e, arms, _) => {
             let e = never_loop_expr(cx, e, local_labels, main_loop_id);
             combine_seq(e, || {
-                arms.iter().fold(NeverLoopResult::Diverging, |a, b| {
-                    combine_branches(a, never_loop_expr(cx, b.body, local_labels, main_loop_id))
-                })
+                arms.iter()
+                    .fold(NeverLoopResult::Diverging { break_spans: vec![] }, |a, b| {
+                        combine_branches(a, never_loop_expr(cx, b.body, local_labels, main_loop_id))
+                    })
             })
         },
         ExprKind::Block(b, _) => {
@@ -224,7 +283,7 @@ fn never_loop_expr<'tcx>(
             let ret = never_loop_block(cx, b, local_labels, main_loop_id);
             let jumped_to = b.targeted_by_break && local_labels.pop().unwrap().1;
             match ret {
-                NeverLoopResult::Diverging if jumped_to => NeverLoopResult::Normal,
+                NeverLoopResult::Diverging { .. } if jumped_to => NeverLoopResult::Normal,
                 _ => ret,
             }
         },
@@ -235,25 +294,39 @@ fn never_loop_expr<'tcx>(
             if id == main_loop_id {
                 NeverLoopResult::MayContinueMainLoop
             } else {
-                NeverLoopResult::Diverging
+                NeverLoopResult::Diverging {
+                    break_spans: all_spans_after_expr(cx, expr),
+                }
             }
         },
-        ExprKind::Break(_, e) | ExprKind::Ret(e) => {
+        ExprKind::Ret(e) => {
             let first = e.as_ref().map_or(NeverLoopResult::Normal, |e| {
                 never_loop_expr(cx, e, local_labels, main_loop_id)
             });
             combine_seq(first, || {
                 // checks if break targets a block instead of a loop
-                if let ExprKind::Break(Destination { target_id: Ok(t), .. }, _) = expr.kind
-                    && let Some((_, reachable)) = local_labels.iter_mut().find(|(label, _)| *label == t)
-                {
-                    *reachable = true;
+                mark_block_as_reachable(expr, local_labels);
+                NeverLoopResult::Diverging { break_spans: vec![] }
+            })
+        },
+        ExprKind::Break(dest, e) => {
+            let first = e.as_ref().map_or(NeverLoopResult::Normal, |e| {
+                never_loop_expr(cx, e, local_labels, main_loop_id)
+            });
+            combine_seq(first, || {
+                // checks if break targets a block instead of a loop
+                mark_block_as_reachable(expr, local_labels);
+                NeverLoopResult::Diverging {
+                    break_spans: if is_label_for_block(cx, &dest) {
+                        vec![]
+                    } else {
+                        all_spans_after_expr(cx, expr)
+                    },
                 }
-                NeverLoopResult::Diverging
             })
         },
         ExprKind::Become(e) => combine_seq(never_loop_expr(cx, e, local_labels, main_loop_id), || {
-            NeverLoopResult::Diverging
+            NeverLoopResult::Diverging { break_spans: vec![] }
         }),
         ExprKind::InlineAsm(asm) => combine_seq_many(asm.operands.iter().map(|(o, _)| match o {
             InlineAsmOperand::In { expr, .. } | InlineAsmOperand::InOut { expr, .. } => {
@@ -283,12 +356,12 @@ fn never_loop_expr<'tcx>(
     };
     let result = combine_seq(result, || {
         if cx.typeck_results().expr_ty(expr).is_never() {
-            NeverLoopResult::Diverging
+            NeverLoopResult::Diverging { break_spans: vec![] }
         } else {
             NeverLoopResult::Normal
         }
     });
-    if let NeverLoopResult::Diverging = result
+    if let NeverLoopResult::Diverging { .. } = result
         && let Some(macro_call) = root_macro_call_first_node(cx, expr)
         && let Some(sym::todo_macro) = cx.tcx.get_diagnostic_name(macro_call.def_id)
     {
@@ -315,4 +388,12 @@ fn for_to_if_let_sugg(cx: &LateContext<'_>, iterator: &Expr<'_>, pat: &Pat<'_>) 
     let iter_snippet = make_iterator_snippet(cx, iterator, &mut Applicability::Unspecified);
 
     format!("if let Some({pat_snippet}) = {iter_snippet}.next()")
+}
+
+fn mark_block_as_reachable(expr: &Expr<'_>, local_labels: &mut [(HirId, bool)]) {
+    if let ExprKind::Break(Destination { target_id: Ok(t), .. }, _) = expr.kind
+        && let Some((_, reachable)) = local_labels.iter_mut().find(|(label, _)| *label == t)
+    {
+        *reachable = true;
+    }
 }
