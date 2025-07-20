@@ -1698,7 +1698,6 @@ symbols! {
         ptr_slice_from_raw_parts_mut,
         ptr_swap,
         ptr_swap_nonoverlapping,
-        ptr_unique,
         ptr_write,
         ptr_write_bytes,
         ptr_write_unaligned,
