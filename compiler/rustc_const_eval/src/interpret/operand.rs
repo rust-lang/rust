@@ -243,17 +243,6 @@ impl<'tcx, Prov: Provenance> std::ops::Deref for ImmTy<'tcx, Prov> {
 }
 
 impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
-    #[inline(always)]
-    pub fn try_from_immediate(imm: Immediate<Prov>, layout: TyAndLayout<'tcx>) -> Option<Self> {
-        let matches_abi = match (imm, layout.backend_repr) {
-            (Immediate::Scalar(..), BackendRepr::Scalar(..)) => true,
-            (Immediate::ScalarPair(..), BackendRepr::ScalarPair(..)) => true,
-            (Immediate::Uninit, _) => layout.is_sized(),
-            _ => false,
-        };
-        if matches_abi { Some(ImmTy { imm, layout }) } else { None }
-    }
-
     #[inline]
     pub fn from_scalar(val: Scalar<Prov>, layout: TyAndLayout<'tcx>) -> Self {
         debug_assert!(layout.backend_repr.is_scalar(), "`ImmTy::from_scalar` on non-scalar layout");
