@@ -115,10 +115,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     fn append_to_grouped_errors(
         &self,
         grouped_errors: &mut Vec<GroupedMoveError<'tcx>>,
-        error: MoveError<'tcx>,
+        MoveError { place: original_path, location, kind }: MoveError<'tcx>,
     ) {
-        let MoveError { place: original_path, location, kind } = error;
-
         // Note: that the only time we assign a place isn't a temporary
         // to a user variable is when initializing it.
         // If that ever stops being the case, then the ever initialized
@@ -251,54 +249,47 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 
     fn report(&mut self, error: GroupedMoveError<'tcx>) {
-        let (mut err, err_span) = {
-            let (span, use_spans, original_path, kind) = match error {
-                GroupedMoveError::MovesFromPlace { span, original_path, ref kind, .. }
-                | GroupedMoveError::MovesFromValue { span, original_path, ref kind, .. } => {
-                    (span, None, original_path, kind)
-                }
-                GroupedMoveError::OtherIllegalMove { use_spans, original_path, ref kind } => {
-                    (use_spans.args_or_use(), Some(use_spans), original_path, kind)
-                }
-            };
-            debug!(
-                "report: original_path={:?} span={:?}, kind={:?} \
-                   original_path.is_upvar_field_projection={:?}",
-                original_path,
-                span,
-                kind,
-                self.is_upvar_field_projection(original_path.as_ref())
-            );
-            if self.has_ambiguous_copy(original_path.ty(self.body, self.infcx.tcx).ty) {
-                // If the type may implement Copy, skip the error.
-                // It's an error with the Copy implementation (e.g. duplicate Copy) rather than borrow check
-                self.dcx().span_delayed_bug(
-                    span,
-                    "Type may implement copy, but there is no other error.",
-                );
-                return;
+        let (span, use_spans, original_path, kind) = match error {
+            GroupedMoveError::MovesFromPlace { span, original_path, ref kind, .. }
+            | GroupedMoveError::MovesFromValue { span, original_path, ref kind, .. } => {
+                (span, None, original_path, kind)
             }
-            (
-                match kind {
-                    &IllegalMoveOriginKind::BorrowedContent { target_place } => self
-                        .report_cannot_move_from_borrowed_content(
-                            original_path,
-                            target_place,
-                            span,
-                            use_spans,
-                        ),
-                    &IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
-                        self.cannot_move_out_of_interior_of_drop(span, ty)
-                    }
-                    &IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } => {
-                        self.cannot_move_out_of_interior_noncopy(span, ty, Some(is_index))
-                    }
-                },
-                span,
-            )
+            GroupedMoveError::OtherIllegalMove { use_spans, original_path, ref kind } => {
+                (use_spans.args_or_use(), Some(use_spans), original_path, kind)
+            }
+        };
+        debug!(
+            "report: original_path={:?} span={:?}, kind={:?} \
+             original_path.is_upvar_field_projection={:?}",
+            original_path,
+            span,
+            kind,
+            self.is_upvar_field_projection(original_path.as_ref())
+        );
+        if self.has_ambiguous_copy(original_path.ty(self.body, self.infcx.tcx).ty) {
+            // If the type may implement Copy, skip the error.
+            // It's an error with the Copy implementation (e.g. duplicate Copy) rather than borrow check
+            self.dcx()
+                .span_delayed_bug(span, "Type may implement copy, but there is no other error.");
+            return;
+        }
+        let mut err = match kind {
+            &IllegalMoveOriginKind::BorrowedContent { target_place } => self
+                .report_cannot_move_from_borrowed_content(
+                    original_path,
+                    target_place,
+                    span,
+                    use_spans,
+                ),
+            &IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
+                self.cannot_move_out_of_interior_of_drop(span, ty)
+            }
+            &IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } => {
+                self.cannot_move_out_of_interior_noncopy(span, ty, Some(is_index))
+            }
         };
 
-        self.add_move_hints(error, &mut err, err_span);
+        self.add_move_hints(error, &mut err, span);
         self.buffer_error(err);
     }
 
@@ -482,7 +473,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 self.cannot_move_out_of_interior_noncopy(span, ty, None)
             }
             ty::Closure(def_id, closure_args)
-                if def_id.as_local() == Some(self.mir_def_id()) && upvar_field.is_some() =>
+                if def_id.as_local() == Some(self.mir_def_id())
+                    && let Some(upvar_field) = upvar_field =>
             {
                 let closure_kind_ty = closure_args.as_closure().kind_ty();
                 let closure_kind = match closure_kind_ty.to_opt_closure_kind() {
@@ -495,7 +487,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 let capture_description =
                     format!("captured variable in an `{closure_kind}` closure");
 
-                let upvar = &self.upvars[upvar_field.unwrap().index()];
+                let upvar = &self.upvars[upvar_field.index()];
                 let upvar_hir_id = upvar.get_root_variable();
                 let upvar_name = upvar.to_string(tcx);
                 let upvar_span = tcx.hir_span(upvar_hir_id);
@@ -604,8 +596,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 self.add_move_error_details(err, &binds_to);
             }
             // No binding. Nothing to suggest.
-            GroupedMoveError::OtherIllegalMove { ref original_path, use_spans, .. } => {
-                let use_span = use_spans.var_or_use();
+            GroupedMoveError::OtherIllegalMove {
+                ref original_path, use_spans, ref kind, ..
+            } => {
+                let mut use_span = use_spans.var_or_use();
                 let place_ty = original_path.ty(self.body, self.infcx.tcx).ty;
                 let place_desc = match self.describe_place(original_path.as_ref()) {
                     Some(desc) => format!("`{desc}`"),
@@ -620,6 +614,39 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         expr,
                         Some(use_spans),
                     );
+                }
+
+                if let IllegalMoveOriginKind::BorrowedContent { target_place } = &kind
+                    && let ty = target_place.ty(self.body, self.infcx.tcx).ty
+                    && let ty::Closure(def_id, _) = ty.kind()
+                    && def_id.as_local() == Some(self.mir_def_id())
+                    && let Some(upvar_field) = self
+                        .prefixes(original_path.as_ref(), PrefixSet::All)
+                        .find_map(|p| self.is_upvar_field_projection(p))
+                    && let upvar = &self.upvars[upvar_field.index()]
+                    && let upvar_hir_id = upvar.get_root_variable()
+                    && let hir::Node::Param(param) = self.infcx.tcx.parent_hir_node(upvar_hir_id)
+                {
+                    // Instead of pointing at the path where we access the value within a closure,
+                    // we point at the type on the parameter from the definition of the outer
+                    // function:
+                    //
+                    // error[E0507]: cannot move out of `foo`, a captured
+                    //               variable in an `Fn` closure
+                    //   --> file.rs:14:25
+                    //    |
+                    // 13 | fn do_stuff(foo: Option<Foo>) {
+                    //    |             ---  ----------- move occurs because `foo` has type
+                    //    |             |                `Option<Foo>`, which does not implement
+                    //    |             |                the `Copy` trait
+                    //    |             captured outer variable
+                    // 14 |     require_fn_trait(|| async {
+                    //    |                      -- ^^^^^ `foo` is moved here
+                    //    |                      |
+                    //    |                      captured by this `Fn` closure
+                    // 15 |         if foo.map_or(false, |f| f.foo()) {
+                    //    |            --- variable moved due to use in coroutine
+                    use_span = param.ty_span;
                 }
 
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
