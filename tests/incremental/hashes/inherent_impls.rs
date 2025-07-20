@@ -660,7 +660,7 @@ impl Foo {
     //--------------------------
     //--------------------------
     //--------------------------
-    //----------
+    //------------------
     pub fn add_no_mangle_to_method(&self) { }
 }
 
@@ -674,7 +674,7 @@ impl Foo {
     #[rustc_clean(cfg="cfail3")]
     #[rustc_clean(cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub fn add_no_mangle_to_method(&self) { }
 }
 

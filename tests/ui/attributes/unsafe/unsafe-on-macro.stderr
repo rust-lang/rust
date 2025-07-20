@@ -1,0 +1,10 @@
+error: `rustc_dummy` is not an unsafe attribute
+  --> $DIR/unsafe-on-macro.rs:7:3
+   |
+LL | #[unsafe(rustc_dummy)]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: aborting due to 1 previous error
+
