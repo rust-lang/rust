@@ -149,14 +149,14 @@ fn parse_rust_feature_flag<'a>(
         if let Some(base_feature) = feature.strip_prefix('+') {
             // Skip features that are not target features, but rustc features.
             if RUSTC_SPECIFIC_FEATURES.contains(&base_feature) {
-                return;
+                continue;
             }
 
             callback(base_feature, sess.target.implied_target_features(base_feature), true)
         } else if let Some(base_feature) = feature.strip_prefix('-') {
             // Skip features that are not target features, but rustc features.
             if RUSTC_SPECIFIC_FEATURES.contains(&base_feature) {
-                return;
+                continue;
             }
 
             // If `f1` implies `f2`, then `!f2` implies `!f1` -- this is standard logical
