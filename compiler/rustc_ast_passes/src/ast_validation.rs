@@ -29,7 +29,6 @@ use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_feature::Features;
-use rustc_parse::validate_attr;
 use rustc_session::Session;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,
@@ -928,10 +927,6 @@ fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericPara
 }
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
-    fn visit_attribute(&mut self, attr: &Attribute) {
-        validate_attr::check_attr(&self.sess.psess, attr, self.lint_node_id);
-    }
-
     fn visit_ty(&mut self, ty: &'a Ty) {
         self.visit_ty_common(ty);
         self.walk_ty(ty)

@@ -89,6 +89,7 @@ pub(crate) mod context;
 mod lints;
 pub mod parser;
 mod session_diagnostics;
+mod validate_attr;
 
 pub use attributes::cfg::{CFG_TEMPLATE, EvalConfigResult, eval_config_entry, parse_cfg_attr};
 pub use attributes::cfg_old::*;
@@ -97,5 +98,8 @@ pub use attributes::util::{
 };
 pub use context::{AttributeParser, Early, Late, OmitDoc, ShouldEmit};
 pub use lints::emit_attribute_lint;
+pub use validate_attr::{
+    check_attribute_safety, check_builtin_meta_item, emit_fatal_malformed_builtin_attribute,
+};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

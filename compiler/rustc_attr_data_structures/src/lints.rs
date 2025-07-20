@@ -13,4 +13,5 @@ pub enum AttributeLintKind {
     UnusedDuplicate { this: Span, other: Span, warning: bool },
     IllFormedAttributeInput { suggestions: Vec<String> },
     EmptyAttribute { first_span: Span },
+    UnsafeAttrOutsideUnsafe { attribute_name_span: Span, sugg_spans: (Span, Span) },
 }

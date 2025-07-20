@@ -3461,38 +3461,6 @@ pub(crate) struct DotDotRangeAttribute {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_invalid_attr_unsafe)]
-#[note]
-pub(crate) struct InvalidAttrUnsafe {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub name: Path,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_unsafe_attr_outside_unsafe)]
-pub(crate) struct UnsafeAttrOutsideUnsafe {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[subdiagnostic]
-    pub suggestion: UnsafeAttrOutsideUnsafeSuggestion,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    parse_unsafe_attr_outside_unsafe_suggestion,
-    applicability = "machine-applicable"
-)]
-pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
-    #[suggestion_part(code = "unsafe(")]
-    pub left: Span,
-    #[suggestion_part(code = ")")]
-    pub right: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_binder_before_modifiers)]
 pub(crate) struct BinderBeforeModifiers {
     #[primary_span]

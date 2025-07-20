@@ -1,6 +1,7 @@
 use std::num::IntErrorKind;
 
 use rustc_ast as ast;
+use rustc_ast::Path;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
@@ -700,4 +701,45 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
 
         diag
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_unsafe_attr_outside_unsafe)]
+pub(crate) struct UnsafeAttrOutsideUnsafe {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub suggestion: UnsafeAttrOutsideUnsafeSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    attr_parsing_unsafe_attr_outside_unsafe_suggestion,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
+    #[suggestion_part(code = "unsafe(")]
+    pub left: Span,
+    #[suggestion_part(code = ")")]
+    pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_invalid_attr_unsafe)]
+#[note]
+pub(crate) struct InvalidAttrUnsafe {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub name: Path,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(attr_parsing_unsafe_attr_outside_unsafe)]
+pub(crate) struct UnsafeAttrOutsideUnsafeLint {
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub suggestion: UnsafeAttrOutsideUnsafeSuggestion,
 }

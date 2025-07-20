@@ -705,6 +705,22 @@ impl<'sess> AttributeParser<'sess, Early> {
         };
         parse_fn(&mut cx, args)
     }
+
+    /// Returns whether the attribute is valid
+    pub fn validate_attribute_early(
+        sess: &'sess Session,
+        attr: &ast::Attribute,
+        target_node_id: NodeId,
+    ) -> bool {
+        let parser = Self {
+            features: None,
+            tools: Vec::new(),
+            parse_only: None,
+            sess,
+            stage: Early { emit_errors: ShouldEmit::ErrorsAndLints },
+        };
+        parser.validate_attribute(attr, target_node_id, &mut |_| {}, true)
+    }
 }
 
 impl<'sess, S: Stage> AttributeParser<'sess, S> {
@@ -798,12 +814,14 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser::Ast(&n.item.path));
 
+                    // Parse attribute using new infra
                     let parser = MetaItemParser::from_attr(n, self.dcx());
                     let path = parser.path();
                     let args = parser.args();
                     let parts = path.segments().map(|i| i.name).collect::<Vec<_>>();
 
                     if let Some(accepts) = S::parsers().0.get(parts.as_slice()) {
+                        self.validate_attribute(attr, target_id, &mut emit_lint, true);
                         for (template, accept) in accepts {
                             let mut cx: AcceptContext<'_, 'sess, S> = AcceptContext {
                                 shared: SharedContext {
@@ -834,7 +852,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         //     // || FIXME_TEMPORARY_ATTR_ALLOWLIST.contains(&parts[0]),
                         //     "attribute {path} wasn't parsed and isn't a know tool attribute",
                         // );
-
+                        self.validate_attribute(attr, target_id, &mut emit_lint, false);
                         attributes.push(Attribute::Unparsed(Box::new(AttrItem {
                             path: AttrPath::from_ast(&n.item.path),
                             args: self.lower_attr_args(&n.item.args, lower_span),

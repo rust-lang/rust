@@ -3,6 +3,7 @@ use rustc_errors::{DiagArgValue, LintEmitter};
 use rustc_hir::HirId;
 
 use crate::session_diagnostics;
+use crate::session_diagnostics::{UnsafeAttrOutsideUnsafeLint, UnsafeAttrOutsideUnsafeSuggestion};
 
 pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<HirId>, lint_emitter: L) {
     let AttributeLint { id, span, kind } = lint;
@@ -34,5 +35,19 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<HirId>, lint_emi
             *first_span,
             session_diagnostics::EmptyAttributeList { attr_span: *first_span },
         ),
+        &AttributeLintKind::UnsafeAttrOutsideUnsafe { attribute_name_span, sugg_spans } => {
+            lint_emitter.emit_node_span_lint(
+                rustc_session::lint::builtin::UNSAFE_ATTR_OUTSIDE_UNSAFE,
+                *id,
+                *span,
+                UnsafeAttrOutsideUnsafeLint {
+                    span: attribute_name_span,
+                    suggestion: UnsafeAttrOutsideUnsafeSuggestion {
+                        left: sugg_spans.0.shrink_to_lo(),
+                        right: sugg_spans.1.shrink_to_hi(),
+                    },
+                },
+            )
+        }
     }
 }
