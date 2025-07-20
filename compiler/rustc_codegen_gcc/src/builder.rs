@@ -1742,6 +1742,21 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         call
     }
 
+    fn tail_call(
+        &mut self,
+        _llty: Self::Type,
+        _fn_attrs: Option<&CodegenFnAttrs>,
+        _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        _llfn: Self::Value,
+        _args: &[Self::Value],
+        _funclet: Option<&Self::Funclet>,
+        _instance: Option<Instance<'tcx>>,
+    ) {
+        bug!(
+            "Guaranteed tail calls with the 'become' keyword are not implemented in the GCC backend"
+        );
+    }
+
     fn zext(&mut self, value: RValue<'gcc>, dest_typ: Type<'gcc>) -> RValue<'gcc> {
         // FIXME(antoyo): this does not zero-extend.
         self.gcc_int_cast(value, dest_typ)
