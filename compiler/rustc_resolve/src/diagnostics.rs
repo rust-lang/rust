@@ -261,19 +261,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             false => errors::NameDefinedMultipleTimeLabel::Redefined { span },
         };
 
-        let old_binding_label =
-            (!old_binding.span.is_dummy() && old_binding.span != span).then(|| {
-                let span = self.tcx.sess.source_map().guess_head_span(old_binding.span);
-                match old_binding.is_import_user_facing() {
-                    true => {
-                        errors::NameDefinedMultipleTimeOldBindingLabel::Import { span, old_kind }
-                    }
-                    false => errors::NameDefinedMultipleTimeOldBindingLabel::Definition {
-                        span,
-                        old_kind,
-                    },
+        let old_binding_label = if !old_binding.span.is_dummy()
+            && old_binding.span.with_parent(None) != span.with_parent(None)
+        {
+            let span = self.tcx.sess.source_map().guess_head_span(old_binding.span);
+            Some(match old_binding.is_import_user_facing() {
+                true => errors::NameDefinedMultipleTimeOldBindingLabel::Import { span, old_kind },
+                false => {
+                    errors::NameDefinedMultipleTimeOldBindingLabel::Definition { span, old_kind }
                 }
-            });
+            })
+        } else {
+            None
+        };
 
         let mut err = self
             .dcx()
