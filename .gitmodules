@@ -24,8 +24,8 @@
 	shallow = true
 [submodule "src/llvm-project"]
 	path = src/llvm-project
-	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/20.1-2025-07-13
+	url = https://github.com/Gelbpunkt/llvm-project.git
+	branch = rust-ppc64-gnu-elfv2
 	shallow = true
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
