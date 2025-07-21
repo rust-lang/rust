@@ -1031,7 +1031,8 @@ pub(super) fn const_conditions<'tcx>(
         Node::Item(item) => match item.kind {
             hir::ItemKind::Impl(impl_) => (impl_.generics, None, false),
             hir::ItemKind::Fn { generics, .. } => (generics, None, false),
-            hir::ItemKind::Trait(_, _, _, _, generics, supertraits, _) => {
+            hir::ItemKind::TraitAlias(_, _, generics, supertraits)
+            | hir::ItemKind::Trait(_, _, _, _, generics, supertraits, _) => {
                 (generics, Some((item.owner_id.def_id, supertraits)), false)
             }
             _ => bug!("const_conditions called on wrong item: {def_id:?}"),
@@ -1143,13 +1144,14 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
             span_bug!(tcx.def_span(def_id), "RPITIT in impl should not have item bounds")
         }
         None => match tcx.hir_node_by_def_id(def_id) {
-            Node::Item(hir::Item { kind: hir::ItemKind::Trait(..), .. }) => {
-                implied_predicates_with_filter(
-                    tcx,
-                    def_id.to_def_id(),
-                    PredicateFilter::SelfConstIfConst,
-                )
-            }
+            Node::Item(hir::Item {
+                kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
+                ..
+            }) => implied_predicates_with_filter(
+                tcx,
+                def_id.to_def_id(),
+                PredicateFilter::SelfConstIfConst,
+            ),
             Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Type(..), .. })
             | Node::OpaqueTy(_) => {
                 explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst)
