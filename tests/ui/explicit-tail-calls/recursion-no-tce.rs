@@ -1,4 +1,4 @@
-//@ run-fail
+//@ run-crash
 
 use std::hint::black_box;
 
