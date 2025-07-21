@@ -75,7 +75,7 @@ pub enum Command {
     ///
     /// Also respects MIRIFLAGS environment variable.
     Run {
-        /// Build the program with the dependencies declared in `test_dependencies/Cargo.toml`.
+        /// Build the program with the dependencies declared in `tests/deps/Cargo.toml`.
         #[arg(long)]
         dep: bool,
         /// Show build progress.
