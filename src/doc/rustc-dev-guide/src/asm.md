@@ -157,7 +157,7 @@ Various tests for inline assembly are available:
 
 - `tests/assembly-llvm/asm`
 - `tests/ui/asm`
-- `tests/codegen/asm-*`
+- `tests/codegen-llvm/asm-*`
 
 Every architecture supported by inline assembly must have exhaustive tests in
 `tests/assembly-llvm/asm` which test all combinations of register classes and types.

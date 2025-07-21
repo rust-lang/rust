@@ -101,7 +101,7 @@ llvm-config = "{llvm_config}"
             "--stage",
             "0",
             "tests/assembly-llvm",
-            "tests/codegen",
+            "tests/codegen-llvm",
             "tests/codegen-units",
             "tests/incremental",
             "tests/mir-opt",

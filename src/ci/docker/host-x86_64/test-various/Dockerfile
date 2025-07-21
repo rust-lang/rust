@@ -65,7 +65,7 @@ ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_T
   tests/ui \
   tests/mir-opt \
   tests/codegen-units \
-  tests/codegen \
+  tests/codegen-llvm \
   tests/assembly-llvm \
   library/core
 

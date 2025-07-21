@@ -68,7 +68,7 @@ The following test suites are available, with links for more information:
 | [`pretty`](#pretty-printer-tests)         | Check pretty printing                                                                                               |
 | [`incremental`](#incremental-tests)       | Check incremental compilation behavior                                                                              |
 | [`debuginfo`](#debuginfo-tests)           | Check debuginfo generation running debuggers                                                                        |
-| [`codegen`](#codegen-tests)               | Check code generation                                                                                               |
+| [`codegen-*`](#codegen-tests)             | Check code generation                                                                                               |
 | [`codegen-units`](#codegen-units-tests)   | Check codegen unit partitioning                                                                                     |
 | [`assembly`](#assembly-tests)             | Check assembly output                                                                                               |
 | [`mir-opt`](#mir-opt-tests)               | Check MIR generation and optimizations                                                                              |
@@ -290,7 +290,7 @@ For example, `./x test tests/debuginfo -- --debugger gdb` will only test GDB com
 
 ### Codegen tests
 
-The tests in [`tests/codegen`] test LLVM code generation. They compile the test
+The tests in [`tests/codegen-llvm`] test LLVM code generation. They compile the test
 with the `--emit=llvm-ir` flag to emit LLVM IR. They then run the LLVM
 [FileCheck] tool. The test is annotated with various `// CHECK` comments to
 check the generated code. See the [FileCheck] documentation for a tutorial and
@@ -301,7 +301,7 @@ See also the [assembly tests](#assembly-tests) for a similar set of tests.
 If you need to work with `#![no_std]` cross-compiling tests, consult the
 [`minicore` test auxiliary](./minicore.md) chapter.
 
-[`tests/codegen`]: https://github.com/rust-lang/rust/tree/master/tests/codegen
+[`tests/codegen-llvm`]: https://github.com/rust-lang/rust/tree/master/tests/codegen-llvm
 [FileCheck]: https://llvm.org/docs/CommandGuide/FileCheck.html
 
 

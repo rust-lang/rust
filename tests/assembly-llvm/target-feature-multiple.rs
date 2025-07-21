@@ -15,7 +15,7 @@
 // > LLVM ERROR: Cannot select: 0x7f00f400c010: i32,i32,ch = X86ISD::RDSEED 0x7f00f400bfa8:2
 // > In function: foo
 //
-// See also tests/codegen/target-feature-overrides.rs
+// See also tests/codegen-llvm/target-feature-overrides.rs
 #![feature(no_core, lang_items, link_llvm_intrinsics, abi_unadjusted)]
 #![crate_type = "lib"]
 #![no_core]
