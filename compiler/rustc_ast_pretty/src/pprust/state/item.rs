@@ -385,8 +385,11 @@ impl<'a> State<'a> {
                 let empty = item.attrs.is_empty() && items.is_empty();
                 self.bclose(item.span, empty, cb);
             }
-            ast::ItemKind::TraitAlias(box TraitAlias { ident, generics, bounds }) => {
-                let (cb, ib) = self.head(visibility_qualified(&item.vis, "trait"));
+            ast::ItemKind::TraitAlias(box TraitAlias { constness, ident, generics, bounds }) => {
+                let (cb, ib) = self.head("");
+                self.print_visibility(&item.vis);
+                self.print_constness(*constness);
+                self.word_nbsp("trait");
                 self.print_ident(*ident);
                 self.print_generic_params(&generics.params);
                 self.nbsp();

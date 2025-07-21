@@ -167,7 +167,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 }
             }
             ItemKind::Trait(_, _, _, _, _, self_bounds, ..)
-            | ItemKind::TraitAlias(_, _, self_bounds) => {
+            | ItemKind::TraitAlias(_, _, _, self_bounds) => {
                 is_trait = Some((self_bounds, item.span));
             }
             _ => {}
@@ -654,7 +654,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 
     let (generics, superbounds) = match item.kind {
         hir::ItemKind::Trait(.., generics, supertraits, _) => (generics, supertraits),
-        hir::ItemKind::TraitAlias(_, generics, supertraits) => (generics, supertraits),
+        hir::ItemKind::TraitAlias(_, _, generics, supertraits) => (generics, supertraits),
         _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
     };
 

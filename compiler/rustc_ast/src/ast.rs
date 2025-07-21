@@ -3626,6 +3626,7 @@ impl Default for FnHeader {
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct TraitAlias {
+    pub constness: Const,
     pub ident: Ident,
     pub generics: Generics,
     #[visitable(extra = BoundKind::Bound)]

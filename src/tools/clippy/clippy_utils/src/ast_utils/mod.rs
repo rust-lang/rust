@@ -478,13 +478,20 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ident: li,
                 generics: lg,
                 bounds: lb,
+                constness: lc,
             }),
             TraitAlias(box ast::TraitAlias {
                 ident: ri,
                 generics: rg,
                 bounds: rb,
+                constness: rc,
             }),
-        ) => eq_id(*li, *ri) && eq_generics(lg, rg) && over(lb, rb, eq_generic_bound),
+        ) => {
+            matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
+                && eq_id(*li, *ri)
+                && eq_generics(lg, rg)
+                && over(lb, rb, eq_generic_bound)
+        },
         (
             Impl(ast::Impl {
                 generics: lg,
