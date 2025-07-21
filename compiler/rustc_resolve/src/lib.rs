@@ -579,6 +579,8 @@ struct ModuleData<'ra> {
     lazy_resolutions: Resolutions<'ra>,
     /// True if this is a module from other crate that needs to be populated on access.
     populate_on_access: Cell<bool>,
+    /// Used to disambiguate underscore items (`const _: T = ...`) in the module.
+    underscore_disambiguator: Cell<u32>,
 
     /// Macro invocations that can expand into items in this module.
     unexpanded_invocations: RefCell<FxHashSet<LocalExpnId>>,
@@ -639,6 +641,7 @@ impl<'ra> ModuleData<'ra> {
             kind,
             lazy_resolutions: Default::default(),
             populate_on_access: Cell::new(is_foreign),
+            underscore_disambiguator: Cell::new(0),
             unexpanded_invocations: Default::default(),
             no_implicit_prelude,
             glob_importers: RefCell::new(Vec::new()),
