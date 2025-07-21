@@ -69,7 +69,8 @@ macro_rules! impl_from {
     };
     ($Small:ty => $Large:ty, #[$attr:meta], $doc:expr $(,)?) => {
         #[$attr]
-        impl From<$Small> for $Large {
+        #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+        impl const From<$Small> for $Large {
             // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
             // Rustdocs on functions do not.
             #[doc = $doc]
@@ -200,7 +201,8 @@ macro_rules! impl_float_from_bool {
         )?
     ) => {
         #[stable(feature = "float_from_bool", since = "1.68.0")]
-        impl From<bool> for $float {
+        #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+            impl const From<bool> for $float {
             #[doc = concat!("Converts a [`bool`] to [`", stringify!($float),"`] losslessly.")]
             /// The resulting value is positive `0.0` for `false` and `1.0` for `true` values.
             ///
@@ -250,7 +252,8 @@ impl_float_from_bool!(
 macro_rules! impl_try_from_unbounded {
     ($source:ty => $($target:ty),+) => {$(
         #[stable(feature = "try_from", since = "1.34.0")]
-        impl TryFrom<$source> for $target {
+        #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+        impl const TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
             /// Tries to create the target number type from a source
@@ -268,7 +271,8 @@ macro_rules! impl_try_from_unbounded {
 macro_rules! impl_try_from_lower_bounded {
     ($source:ty => $($target:ty),+) => {$(
         #[stable(feature = "try_from", since = "1.34.0")]
-        impl TryFrom<$source> for $target {
+        #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+        impl const TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
             /// Tries to create the target number type from a source
@@ -290,7 +294,8 @@ macro_rules! impl_try_from_lower_bounded {
 macro_rules! impl_try_from_upper_bounded {
     ($source:ty => $($target:ty),+) => {$(
         #[stable(feature = "try_from", since = "1.34.0")]
-        impl TryFrom<$source> for $target {
+        #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+        impl const TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
             /// Tries to create the target number type from a source
@@ -312,7 +317,8 @@ macro_rules! impl_try_from_upper_bounded {
 macro_rules! impl_try_from_both_bounded {
     ($source:ty => $($target:ty),+) => {$(
         #[stable(feature = "try_from", since = "1.34.0")]
-        impl TryFrom<$source> for $target {
+        #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+        impl const TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
             /// Tries to create the target number type from a source
@@ -450,7 +456,8 @@ use crate::num::NonZero;
 macro_rules! impl_nonzero_int_from_nonzero_int {
     ($Small:ty => $Large:ty) => {
         #[stable(feature = "nz_int_conv", since = "1.41.0")]
-        impl From<NonZero<$Small>> for NonZero<$Large> {
+        #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+        impl const From<NonZero<$Small>> for NonZero<$Large> {
             // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
             // Rustdocs on functions do not.
             #[doc = concat!("Converts <code>[NonZero]\\<[", stringify!($Small), "]></code> ")]
@@ -540,7 +547,8 @@ impl_nonzero_int_try_from_int!(isize);
 macro_rules! impl_nonzero_int_try_from_nonzero_int {
     ($source:ty => $($target:ty),+) => {$(
         #[stable(feature = "nzint_try_from_nzint_conv", since = "1.49.0")]
-        impl TryFrom<NonZero<$source>> for NonZero<$target> {
+        #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+        impl const TryFrom<NonZero<$source>> for NonZero<$target> {
             type Error = TryFromIntError;
 
             // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
