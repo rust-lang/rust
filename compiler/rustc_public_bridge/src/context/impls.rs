@@ -1,4 +1,4 @@
-//! Implementation of StableMIR Context.
+//! Implementation of CompilerCtxt.
 
 #![allow(rustc::usage_of_qualified_ty)]
 
@@ -24,23 +24,23 @@ use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_span::{FileNameDisplayPreference, Span, Symbol};
 use rustc_target::callconv::FnAbi;
 
-use super::{SmirAllocRange, SmirCtxt, SmirTy, SmirTypingEnv};
+use super::{AllocRangeHelpers, CompilerCtxt, TyHelpers, TypingEnvHelpers};
 use crate::builder::BodyBuilder;
-use crate::{Bridge, SmirError, Tables, filter_def_ids};
+use crate::{Bridge, Error, Tables, filter_def_ids};
 
-impl<'tcx, B: Bridge> SmirTy<'tcx> for SmirCtxt<'tcx, B> {
+impl<'tcx, B: Bridge> TyHelpers<'tcx> for CompilerCtxt<'tcx, B> {
     fn new_foreign(&self, def_id: DefId) -> ty::Ty<'tcx> {
         ty::Ty::new_foreign(self.tcx, def_id)
     }
 }
 
-impl<'tcx, B: Bridge> SmirTypingEnv<'tcx> for SmirCtxt<'tcx, B> {
+impl<'tcx, B: Bridge> TypingEnvHelpers<'tcx> for CompilerCtxt<'tcx, B> {
     fn fully_monomorphized(&self) -> ty::TypingEnv<'tcx> {
         ty::TypingEnv::fully_monomorphized()
     }
 }
 
-impl<'tcx, B: Bridge> SmirAllocRange<'tcx> for SmirCtxt<'tcx, B> {
+impl<'tcx, B: Bridge> AllocRangeHelpers<'tcx> for CompilerCtxt<'tcx, B> {
     fn alloc_range(
         &self,
         offset: rustc_abi::Size,
@@ -50,7 +50,7 @@ impl<'tcx, B: Bridge> SmirAllocRange<'tcx> for SmirCtxt<'tcx, B> {
     }
 }
 
-impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
+impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     pub fn lift<T: ty::Lift<TyCtxt<'tcx>>>(&self, value: T) -> Option<T::Lifted> {
         self.tcx.lift(value)
     }
@@ -85,7 +85,7 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
     /// Return whether the item has a body defined by the user.
     ///
     /// Note that intrinsics may have a placeholder body that shouldn't be used in practice.
-    /// In StableMIR, we handle this case as if the body is not available.
+    /// In rustc_public, we handle this case as if the body is not available.
     pub(crate) fn item_has_body(&self, def_id: DefId) -> bool {
         let must_override = if let Some(intrinsic) = self.tcx.intrinsic(def_id) {
             intrinsic.must_be_overridden
@@ -426,7 +426,7 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
 
     /// Evaluate constant as a target usize.
     pub fn eval_target_usize(&self, cnst: MirConst<'tcx>) -> Result<u64, B::Error> {
-        use crate::context::SmirTypingEnv;
+        use crate::context::TypingEnvHelpers;
         cnst.try_eval_target_usize(self.tcx, self.fully_monomorphized())
             .ok_or_else(|| B::Error::new(format!("Const `{cnst:?}` cannot be encoded as u64")))
     }
