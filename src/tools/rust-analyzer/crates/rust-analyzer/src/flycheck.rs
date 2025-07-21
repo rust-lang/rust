@@ -31,6 +31,7 @@ pub(crate) enum InvocationStrategy {
 pub(crate) struct CargoOptions {
     pub(crate) target_tuples: Vec<String>,
     pub(crate) all_targets: bool,
+    pub(crate) set_test: bool,
     pub(crate) no_default_features: bool,
     pub(crate) all_features: bool,
     pub(crate) features: Vec<String>,
@@ -54,7 +55,13 @@ impl CargoOptions {
             cmd.args(["--target", target.as_str()]);
         }
         if self.all_targets {
-            cmd.arg("--all-targets");
+            if self.set_test {
+                cmd.arg("--all-targets");
+            } else {
+                // No --benches unfortunately, as this implies --tests (see https://github.com/rust-lang/cargo/issues/6454),
+                // and users setting `cfg.seTest = false` probably prefer disabling benches than enabling tests.
+                cmd.args(["--lib", "--bins", "--examples"]);
+            }
         }
         if self.all_features {
             cmd.arg("--all-features");

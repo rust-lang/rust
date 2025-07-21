@@ -2162,6 +2162,7 @@ impl Config {
             extra_test_bin_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
             extra_env: self.extra_env(source_root).clone(),
             target_dir: self.target_dir_from_config(source_root),
+            set_test: true,
         }
     }
 
@@ -2219,6 +2220,7 @@ impl Config {
                     extra_test_bin_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
                     extra_env: self.check_extra_env(source_root),
                     target_dir: self.target_dir_from_config(source_root),
+                    set_test: *self.cfg_setTest(source_root),
                 },
                 ansi_color_output: self.color_diagnostic_output(),
             },
