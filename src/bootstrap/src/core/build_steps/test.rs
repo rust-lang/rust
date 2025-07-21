@@ -228,7 +228,7 @@ impl Step for HtmlCheck {
 /// order to test cargo.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Cargotest {
-    stage: u32,
+    build_compiler: Compiler,
     host: TargetSelection,
 }
 
@@ -241,7 +241,12 @@ impl Step for Cargotest {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Cargotest { stage: run.builder.top_stage, host: run.target });
+        // FIXME: support testing stage 0 cargo?
+        assert!(run.builder.top_stage > 0);
+        run.builder.ensure(Cargotest {
+            build_compiler: run.builder.compiler(run.builder.top_stage - 1, run.target),
+            host: run.target,
+        });
     }
 
     /// Runs the `cargotest` tool as compiled in `stage` by the `host` compiler.
@@ -249,9 +254,13 @@ impl Step for Cargotest {
     /// This tool in `src/tools` will check out a few Rust projects and run `cargo
     /// test` to ensure that we don't regress the test suites there.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(self.stage, self.host);
-        builder.ensure(compile::Rustc::new(compiler, compiler.host));
-        let cargo = builder.ensure(tool::Cargo { compiler, target: compiler.host });
+        // Here we need to ensure that we run cargo with an in-tree compiler, because we test
+        // both their behavior together.
+        // We can build cargo with the earlier stage compiler though.
+        let cargo =
+            builder.ensure(tool::Cargo { compiler: self.build_compiler, target: self.host });
+        let tested_compiler = builder.compiler(self.build_compiler.stage + 1, self.host);
+        builder.std(tested_compiler, self.host);
 
         // Note that this is a short, cryptic, and not scoped directory name. This
         // is currently to minimize the length of path on Windows where we otherwise
@@ -264,16 +273,20 @@ impl Step for Cargotest {
         cmd.arg(&cargo.tool_path)
             .arg(&out_dir)
             .args(builder.config.test_args())
-            .env("RUSTC", builder.rustc(compiler))
-            .env("RUSTDOC", builder.rustdoc_for_compiler(compiler));
+            .env("RUSTC", builder.rustc(tested_compiler))
+            .env("RUSTDOC", builder.rustdoc_for_compiler(tested_compiler));
         add_rustdoc_cargo_linker_args(
             &mut cmd,
             builder,
-            compiler.host,
+            tested_compiler.host,
             LldThreads::No,
-            compiler.stage,
+            tested_compiler.stage,
         );
         cmd.delay_failure().run(builder);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::test("cargotest", self.host).stage(self.build_compiler.stage + 1))
     }
 }
 

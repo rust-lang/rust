@@ -1600,6 +1600,23 @@ mod snapshot {
     }
 
     #[test]
+    fn test_cargotest() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("cargotest")
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> cargo 1 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> CargoTest 1 <host>
+        [build] rustdoc 1 <host>
+        [test] cargotest 1 <host>
+        ");
+    }
+
+    #[test]
     fn doc_library() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
