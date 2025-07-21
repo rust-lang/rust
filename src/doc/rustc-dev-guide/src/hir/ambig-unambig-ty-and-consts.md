@@ -38,7 +38,7 @@ Note that places 3 and 4 would never actually be possible to encounter as we alw
 This has a few failure modes:
 - People may write visitors which check for `GenericArg::Infer` but forget to check for `hir::TyKind/ConstArgKind::Infer`, only handling infers in ambig positions by accident.
 - People may write visitors which check for `hir::TyKind/ConstArgKind::Infer` but forget to check for `GenericArg::Infer`, only handling infers in unambig positions by accident.
-- People may write visitors which check for `GenerArg::Type/Const(TyKind/ConstArgKind::Infer)` and `GenerigArg::Infer`, not realising that we never represent inferred types/consts in ambig positions as a `GenericArg::Type/Const`.
+- People may write visitors which check for `GenericArg::Type/Const(TyKind/ConstArgKind::Infer)` and `GenericArg::Infer`, not realising that we never represent inferred types/consts in ambig positions as a `GenericArg::Type/Const`.
 - People may write visitors which check for *only* `TyKind::Infer` and not `ConstArgKind::Infer` forgetting that there are also inferred const arguments (and vice versa).
 
 To make writing HIR visitors less error prone when caring about inferred types/consts we have a relatively complex system:
