@@ -802,6 +802,8 @@ impl Step for Rustdoc {
     }
 }
 
+/// Builds the cargo tool.
+/// Note that it can be built using a stable compiler.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Cargo {
     pub compiler: Compiler,
