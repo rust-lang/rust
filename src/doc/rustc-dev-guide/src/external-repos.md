@@ -80,6 +80,16 @@ switch to its repository checkout directory in your terminal).
 
 #### Performing push
 
+> NOTE:
+> If you use Git protocol to push to your fork of `rust-lang/rust`,
+> ensure that you have this entry in your Git config,
+> else the 2 steps that follow would prompt for a username and password:
+>
+> ```
+> [url "git@github.com:"]
+> insteadOf = "https://github.com/"
+> ```
+
 1) Run the push command to create a branch named `<branch-name>` in a `rustc` fork under the `<gh-username>` account
     ```
     rustc-josh-sync push <branch-name> <gh-username>
