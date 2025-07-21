@@ -81,14 +81,7 @@ switch to its repository checkout directory in your terminal).
 #### Performing push
 
 > NOTE:
-> If you use Git protocol to push to your fork of `rust-lang/rust`,
-> ensure that you have this entry in your Git config,
-> else the 2 steps that follow would prompt for a username and password:
->
-> ```
-> [url "git@github.com:"]
-> insteadOf = "https://github.com/"
-> ```
+> Before you proceed, look at some guidance related to Git [on josh-sync README],
 
 1) Run the push command to create a branch named `<branch-name>` in a `rustc` fork under the `<gh-username>` account
     ```
@@ -183,3 +176,4 @@ the week leading up to the beta cut.
 [Toolstate chapter]: https://forge.rust-lang.org/infra/toolstate.html
 [josh]: https://josh-project.github.io/josh/intro.html
 [josh-sync]: https://github.com/rust-lang/josh-sync
+[on josh-sync README]: https://github.com/rust-lang/josh-sync#git-peculiarities
