@@ -111,7 +111,9 @@ fn prepare_rootfs(target: &str, rootfs: &Path, server: &Path, rootfs_img: &Path)
         "arm-unknown-linux-gnueabihf" | "aarch64-unknown-linux-gnu" => {
             prepare_rootfs_cpio(rootfs, rootfs_img)
         }
-        "riscv64gc-unknown-linux-gnu" => prepare_rootfs_ext4(rootfs, rootfs_img),
+        "riscv64a23-unknown-linux-gnu" | "riscv64gc-unknown-linux-gnu" => {
+            prepare_rootfs_ext4(rootfs, rootfs_img)
+        }
         _ => panic!("{} is not supported", target),
     }
 }
@@ -232,6 +234,31 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
                 .arg("virtio-blk-device,drive=hd0")
                 .arg("-drive")
                 .arg(&format!("file={},format=raw,id=hd0", &rootfs_img.to_string_lossy()));
+            t!(cmd.spawn());
+        }
+        "riscv64a23-unknown-linux-gnu" => {
+            let mut cmd = Command::new("qemu-system-riscv64");
+            cmd.arg("-nographic")
+                .arg("-machine")
+                .arg("virt")
+                .arg("-cpu")
+                .arg("rva23s64")
+                .arg("-m")
+                .arg("1024")
+                .arg("-bios")
+                .arg("/tmp/fw_jump.bin")
+                .arg("-kernel")
+                .arg("/tmp/Image")
+                .arg("-append")
+                .arg("quiet console=ttyS0 root=/dev/vda rw")
+                .arg("-netdev")
+                .arg("user,id=net0,hostfwd=tcp::12345-:12345")
+                .arg("-device")
+                .arg("virtio-net-device,netdev=net0,mac=00:00:00:00:00:00")
+                .arg("-device")
+                .arg("virtio-blk-device,drive=hd0")
+                .arg("-drive")
+                .arg(&format!("file={},format=raw,id=hd0,if=none", &rootfs_img.to_string_lossy()));
             t!(cmd.spawn());
         }
         _ => panic!("cannot start emulator for: {}", target),
