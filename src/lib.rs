@@ -360,9 +360,9 @@ impl WriteBackendMethods for GccCodegenBackend {
         cgcx: &CodegenContext<Self>,
         modules: Vec<FatLtoInput<Self>>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-        diff_fncs: Vec<AutoDiffItem>,
+        diff_functions: Vec<AutoDiffItem>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        if !diff_fncs.is_empty() {
+        if !diff_functions.is_empty() {
             unimplemented!();
         }
 
