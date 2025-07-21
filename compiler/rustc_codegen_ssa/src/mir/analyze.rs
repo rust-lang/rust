@@ -100,33 +100,33 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
         context: PlaceContext,
         location: Location,
     ) {
-        const COPY_CONTEXT: PlaceContext =
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
-
-        // `PlaceElem::Index` is the only variant that can mention other `Local`s,
-        // so check for those up-front before any potential short-circuits.
-        for elem in place_ref.projection {
-            if let mir::PlaceElem::Index(index_local) = *elem {
-                self.visit_local(index_local, COPY_CONTEXT, location);
-            }
-        }
-
-        // If our local is already memory, nothing can make it *more* memory
-        // so we don't need to bother checking the projections further.
-        if self.locals[place_ref.local] == LocalKind::Memory {
-            return;
-        }
-
-        if place_ref.is_indirect_first_projection() {
-            // If this starts with a `Deref`, we only need to record a read of the
-            // pointer being dereferenced, as all the subsequent projections are
-            // working on a place which is always supported. (And because we're
-            // looking at codegen MIR, it can only happen as the first projection.)
-            self.visit_local(place_ref.local, COPY_CONTEXT, location);
-            return;
-        }
-
         if !place_ref.projection.is_empty() {
+            const COPY_CONTEXT: PlaceContext =
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
+
+            // `PlaceElem::Index` is the only variant that can mention other `Local`s,
+            // so check for those up-front before any potential short-circuits.
+            for elem in place_ref.projection {
+                if let mir::PlaceElem::Index(index_local) = *elem {
+                    self.visit_local(index_local, COPY_CONTEXT, location);
+                }
+            }
+
+            // If our local is already memory, nothing can make it *more* memory
+            // so we don't need to bother checking the projections further.
+            if self.locals[place_ref.local] == LocalKind::Memory {
+                return;
+            }
+
+            if place_ref.is_indirect_first_projection() {
+                // If this starts with a `Deref`, we only need to record a read of the
+                // pointer being dereferenced, as all the subsequent projections are
+                // working on a place which is always supported. (And because we're
+                // looking at codegen MIR, it can only happen as the first projection.)
+                self.visit_local(place_ref.local, COPY_CONTEXT, location);
+                return;
+            }
+
             if context.is_mutating_use() {
                 // If it's a mutating use it doesn't matter what the projections are,
                 // if there are *any* then we need a place to write. (For example,
@@ -199,6 +199,10 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
                 self.locals[place_ref.local] = LocalKind::Memory;
                 return;
             }
+            debug_assert!(
+                !self.fx.cx.is_backend_ref(layout),
+                "Post-projection {place_ref:?} layout should be non-Ref, but it's {layout:?}",
+            );
         }
 
         // Even with supported projections, we still need to have `visit_local`
