@@ -1031,9 +1031,11 @@ pub(super) fn const_conditions<'tcx>(
         Node::Item(item) => match item.kind {
             hir::ItemKind::Impl(impl_) => (impl_.generics, None, false),
             hir::ItemKind::Fn { generics, .. } => (generics, None, false),
-            hir::ItemKind::TraitAlias(_, _, generics, supertraits)
-            | hir::ItemKind::Trait(_, _, _, _, generics, supertraits, _) => {
-                (generics, Some((item.owner_id.def_id, supertraits)), false)
+            hir::ItemKind::Trait(_, _, _, _, generics, supertraits, _) => {
+                (generics, Some((Some(item.owner_id.def_id), supertraits)), false)
+            }
+            hir::ItemKind::TraitAlias(_, _, generics, supertraits) => {
+                (generics, Some((None, supertraits)), false)
             }
             _ => bug!("const_conditions called on wrong item: {def_id:?}"),
         },
@@ -1090,12 +1092,14 @@ pub(super) fn const_conditions<'tcx>(
     }
 
     if let Some((def_id, supertraits)) = trait_def_id_and_supertraits {
-        // We've checked above that the trait is conditionally const.
-        bounds.push((
-            ty::Binder::dummy(ty::TraitRef::identity(tcx, def_id.to_def_id()))
-                .to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
-            DUMMY_SP,
-        ));
+        if let Some(def_id) = def_id {
+            // We've checked above that the trait is conditionally const.
+            bounds.push((
+                ty::Binder::dummy(ty::TraitRef::identity(tcx, def_id.to_def_id()))
+                    .to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
+                DUMMY_SP,
+            ));
+        }
 
         icx.lowerer().lower_bounds(
             tcx.types.self_param,
