@@ -175,6 +175,36 @@ pub enum Sanitizer {
     Hwaddress,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum CodegenBackend {
+    Cranelift,
+    Gcc,
+    Llvm,
+}
+
+impl<'a> TryFrom<&'a str> for CodegenBackend {
+    type Error = &'static str;
+
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        match value.to_lowercase().as_str() {
+            "cranelift" => Ok(Self::Cranelift),
+            "gcc" => Ok(Self::Gcc),
+            "llvm" => Ok(Self::Llvm),
+            _ => Err("unknown backend"),
+        }
+    }
+}
+
+impl CodegenBackend {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Cranelift => "cranelift",
+            Self::Gcc => "gcc",
+            Self::Llvm => "llvm",
+        }
+    }
+}
+
 /// Configuration for `compiletest` *per invocation*.
 ///
 /// In terms of `bootstrap`, this means that `./x test tests/ui tests/run-make` actually correspond
@@ -651,6 +681,9 @@ pub struct Config {
     /// need `core` stubs in cross-compilation scenarios that do not otherwise want/need to
     /// `-Zbuild-std`. Used in e.g. ABI tests.
     pub minicore_path: Utf8PathBuf,
+
+    /// Current codegen backend used.
+    pub codegen_backend: CodegenBackend,
 }
 
 impl Config {
@@ -753,6 +786,7 @@ impl Config {
             profiler_runtime: Default::default(),
             diff_command: Default::default(),
             minicore_path: Default::default(),
+            codegen_backend: CodegenBackend::Llvm,
         }
     }
 

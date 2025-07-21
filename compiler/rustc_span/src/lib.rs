@@ -167,6 +167,7 @@ where
     }
 }
 
+#[inline]
 pub fn with_session_globals<R, F>(f: F) -> R
 where
     F: FnOnce(&SessionGlobals) -> R,
