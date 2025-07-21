@@ -415,7 +415,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::ItemKind::Trait(constness, *is_auto, safety, ident, generics, bounds, items)
             }
-            ItemKind::TraitAlias(ident, generics, bounds) => {
+            ItemKind::TraitAlias(box TraitAlias { ident, generics, bounds }) => {
                 let ident = self.lower_ident(*ident);
                 let (generics, bounds) = self.lower_generics(
                     generics,

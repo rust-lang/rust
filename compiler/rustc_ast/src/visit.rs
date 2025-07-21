@@ -833,7 +833,7 @@ macro_rules! common_visitor_and_walkers {
                         visit_visitable!($($mut)? vis, impl_),
                     ItemKind::Trait(trait_) =>
                         visit_visitable!($($mut)? vis, trait_),
-                    ItemKind::TraitAlias(ident, generics, bounds) => {
+                    ItemKind::TraitAlias(box TraitAlias { ident, generics, bounds }) => {
                         visit_visitable!($($mut)? vis, ident, generics);
                         visit_visitable_with!($($mut)? vis, bounds, BoundKind::Bound)
                     }
