@@ -1382,7 +1382,7 @@ mod snapshot {
         [check] rustc 1 <host> -> Miri 2 <target1>
         [check] rustc 1 <host> -> CargoMiri 2 <target1>
         [check] rustc 1 <host> -> Rustfmt 2 <target1>
-        [check] rustc 1 <host> -> rust-analyzer 2 <target1>
+        [check] rustc 1 <host> -> RustAnalyzer 2 <target1>
         [check] rustc 1 <host> -> TestFloatParse 2 <target1>
         [check] rustc 1 <host> -> std 1 <target1>
         ");
@@ -1530,7 +1530,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("compiletest")
-                .render_steps(), @"[check] compiletest <host>");
+                .render_steps(), @"[check] rustc 0 <host> -> Compiletest 1 <host>");
     }
 
     #[test]
@@ -1544,7 +1544,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [check] compiletest <host>
+        [check] rustc 1 <host> -> Compiletest 2 <host>
         ");
     }
 
@@ -1569,7 +1569,7 @@ mod snapshot {
                 .path("rust-analyzer")
                 .render_steps(), @r"
         [check] rustc 0 <host> -> rustc 1 <host>
-        [check] rustc 0 <host> -> rust-analyzer 1 <host>
+        [check] rustc 0 <host> -> RustAnalyzer 1 <host>
         ");
     }
 
