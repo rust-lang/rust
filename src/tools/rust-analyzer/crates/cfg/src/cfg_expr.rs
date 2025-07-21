@@ -68,6 +68,11 @@ impl CfgExpr {
         next_cfg_expr(&mut tt.iter()).unwrap_or(CfgExpr::Invalid)
     }
 
+    #[cfg(feature = "tt")]
+    pub fn parse_from_iter<S: Copy>(tt: &mut tt::iter::TtIter<'_, S>) -> CfgExpr {
+        next_cfg_expr(tt).unwrap_or(CfgExpr::Invalid)
+    }
+
     /// Fold the cfg by querying all basic `Atom` and `KeyValue` predicates.
     pub fn fold(&self, query: &dyn Fn(&CfgAtom) -> bool) -> Option<bool> {
         match self {
@@ -96,7 +101,14 @@ fn next_cfg_expr<S: Copy>(it: &mut tt::iter::TtIter<'_, S>) -> Option<CfgExpr> {
     };
 
     let ret = match it.peek() {
-        Some(TtElement::Leaf(tt::Leaf::Punct(punct))) if punct.char == '=' => {
+        Some(TtElement::Leaf(tt::Leaf::Punct(punct)))
+            // Don't consume on e.g. `=>`.
+            if punct.char == '='
+                && (punct.spacing == tt::Spacing::Alone
+                    || it.remaining().flat_tokens().get(1).is_none_or(|peek2| {
+                        !matches!(peek2, tt::TokenTree::Leaf(tt::Leaf::Punct(_)))
+                    })) =>
+        {
             match it.remaining().flat_tokens().get(1) {
                 Some(tt::TokenTree::Leaf(tt::Leaf::Literal(literal))) => {
                     it.next();

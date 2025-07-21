@@ -531,7 +531,7 @@ impl<'a> FindUsages<'a> {
         node.token_at_offset(offset)
             .find(|it| {
                 // `name` is stripped of raw ident prefix. See the comment on name retrieval below.
-                it.text().trim_start_matches("r#") == name
+                it.text().trim_start_matches('\'').trim_start_matches("r#") == name
             })
             .into_iter()
             .flat_map(move |token| {
@@ -938,7 +938,12 @@ impl<'a> FindUsages<'a> {
                     })
                 };
                 // We need to search without the `r#`, hence `as_str` access.
-                self.def.name(sema.db).or_else(self_kw_refs).map(|it| it.as_str().to_smolstr())
+                // We strip `'` from lifetimes and labels as otherwise they may not match with raw-escaped ones,
+                // e.g. if we search `'foo` we won't find `'r#foo`.
+                self.def
+                    .name(sema.db)
+                    .or_else(self_kw_refs)
+                    .map(|it| it.as_str().trim_start_matches('\'').to_smolstr())
             }
         };
         let name = match &name {
