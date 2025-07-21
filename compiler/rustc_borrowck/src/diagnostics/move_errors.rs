@@ -596,9 +596,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 self.add_move_error_details(err, &binds_to);
             }
             // No binding. Nothing to suggest.
-            GroupedMoveError::OtherIllegalMove {
-                ref original_path, use_spans, ref kind, ..
-            } => {
+            GroupedMoveError::OtherIllegalMove { ref original_path, use_spans, .. } => {
                 let mut use_span = use_spans.var_or_use();
                 let place_ty = original_path.ty(self.body, self.infcx.tcx).ty;
                 let place_desc = match self.describe_place(original_path.as_ref()) {
@@ -616,14 +614,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     );
                 }
 
-                if let IllegalMoveOriginKind::BorrowedContent { target_place } = &kind
-                    && let ty = target_place.ty(self.body, self.infcx.tcx).ty
-                    && let ty::Closure(def_id, _) = ty.kind()
-                    && def_id.as_local() == Some(self.mir_def_id())
-                    && let Some(upvar_field) = self
-                        .prefixes(original_path.as_ref(), PrefixSet::All)
-                        .find_map(|p| self.is_upvar_field_projection(p))
+                if let Some(upvar_field) = self
+                    .prefixes(original_path.as_ref(), PrefixSet::All)
+                    .find_map(|p| self.is_upvar_field_projection(p))
                 {
+                    // Look for the introduction of the original binding being moved.
                     let upvar = &self.upvars[upvar_field.index()];
                     let upvar_hir_id = upvar.get_root_variable();
                     use_span = match self.infcx.tcx.parent_hir_node(upvar_hir_id) {
