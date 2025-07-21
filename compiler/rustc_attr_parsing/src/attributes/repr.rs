@@ -274,7 +274,7 @@ fn parse_alignment(node: &LitKind) -> Result<Align, &'static str> {
 pub(crate) struct AlignParser(Option<(Align, Span)>);
 
 impl AlignParser {
-    const PATH: &'static [Symbol] = &[sym::align];
+    const PATH: &'static [Symbol] = &[sym::rustc_align];
     const TEMPLATE: AttributeTemplate = template!(List: "<alignment in bytes>");
 
     fn parse<'c, S: Stage>(
