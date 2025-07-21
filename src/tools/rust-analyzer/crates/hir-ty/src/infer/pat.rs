@@ -459,7 +459,7 @@ impl InferenceContext<'_> {
         expected: &Ty,
         decl: Option<DeclContext>,
     ) -> Ty {
-        let Binding { mode, .. } = self.body.bindings[binding];
+        let Binding { mode, .. } = self.body[binding];
         let mode = if mode == BindingAnnotation::Unannotated {
             default_bm
         } else {
@@ -639,7 +639,7 @@ impl InferenceContext<'_> {
 pub(super) fn contains_explicit_ref_binding(body: &Body, pat_id: PatId) -> bool {
     let mut res = false;
     body.walk_pats(pat_id, &mut |pat| {
-        res |= matches!(body[pat], Pat::Bind { id, .. } if body.bindings[id].mode == BindingAnnotation::Ref);
+        res |= matches!(body[pat], Pat::Bind { id, .. } if body[id].mode == BindingAnnotation::Ref);
     });
     res
 }

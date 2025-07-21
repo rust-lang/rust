@@ -118,6 +118,14 @@ impl AsmExpr {
     pub fn asm_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![asm]) }
     #[inline]
     pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
+    #[inline]
+    pub fn global_asm_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![global_asm])
+    }
+    #[inline]
+    pub fn naked_asm_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![naked_asm])
+    }
 }
 pub struct AsmLabel {
     pub(crate) syntax: SyntaxNode,
@@ -2087,6 +2095,7 @@ impl ast::HasAttrs for GenericParam {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Item {
+    AsmExpr(AsmExpr),
     Const(Const),
     Enum(Enum),
     ExternBlock(ExternBlock),
@@ -2106,7 +2115,6 @@ pub enum Item {
     Use(Use),
 }
 impl ast::HasAttrs for Item {}
-impl ast::HasDocComments for Item {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pat {
@@ -8409,6 +8417,10 @@ impl AstNode for GenericParam {
         }
     }
 }
+impl From<AsmExpr> for Item {
+    #[inline]
+    fn from(node: AsmExpr) -> Item { Item::AsmExpr(node) }
+}
 impl From<Const> for Item {
     #[inline]
     fn from(node: Const) -> Item { Item::Const(node) }
@@ -8482,7 +8494,8 @@ impl AstNode for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
-            CONST
+            ASM_EXPR
+                | CONST
                 | ENUM
                 | EXTERN_BLOCK
                 | EXTERN_CRATE
@@ -8504,6 +8517,7 @@ impl AstNode for Item {
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
+            ASM_EXPR => Item::AsmExpr(AsmExpr { syntax }),
             CONST => Item::Const(Const { syntax }),
             ENUM => Item::Enum(Enum { syntax }),
             EXTERN_BLOCK => Item::ExternBlock(ExternBlock { syntax }),
@@ -8528,6 +8542,7 @@ impl AstNode for Item {
     #[inline]
     fn syntax(&self) -> &SyntaxNode {
         match self {
+            Item::AsmExpr(it) => &it.syntax,
             Item::Const(it) => &it.syntax,
             Item::Enum(it) => &it.syntax,
             Item::ExternBlock(it) => &it.syntax,

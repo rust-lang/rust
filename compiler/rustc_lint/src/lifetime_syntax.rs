@@ -140,43 +140,115 @@ fn report_mismatches<'tcx>(
     }
 }
 
-fn lifetimes_use_matched_syntax(input_info: &[Info<'_>], output_info: &[Info<'_>]) -> bool {
-    // Categorize lifetimes into source/syntax buckets.
-    let mut n_hidden = 0;
-    let mut n_elided = 0;
-    let mut n_named = 0;
+#[derive(Debug, Copy, Clone, PartialEq)]
+enum LifetimeSyntaxCategory {
+    Hidden,
+    Elided,
+    Named,
+}
 
-    for info in input_info.iter().chain(output_info) {
+impl LifetimeSyntaxCategory {
+    fn new(syntax_source: (hir::LifetimeSyntax, LifetimeSource)) -> Option<Self> {
         use LifetimeSource::*;
         use hir::LifetimeSyntax::*;
 
-        let syntax_source = (info.lifetime.syntax, info.lifetime.source);
-
         match syntax_source {
-            // Ignore any other kind of lifetime.
-            (_, Other) => continue,
-
             // E.g. `&T`.
-            (Implicit, Reference | OutlivesBound | PreciseCapturing) |
+            (Implicit, Reference) |
             // E.g. `&'_ T`.
-            (ExplicitAnonymous, Reference | OutlivesBound | PreciseCapturing) |
+            (ExplicitAnonymous, Reference) |
             // E.g. `ContainsLifetime<'_>`.
-            (ExplicitAnonymous, Path { .. }) => n_elided += 1,
+            (ExplicitAnonymous, Path { .. }) |
+            // E.g. `+ '_`, `+ use<'_>`.
+            (ExplicitAnonymous, OutlivesBound | PreciseCapturing) => {
+                Some(Self::Elided)
+            }
 
             // E.g. `ContainsLifetime`.
-            (Implicit, Path { .. }) => n_hidden += 1,
+            (Implicit, Path { .. }) => {
+                Some(Self::Hidden)
+            }
 
             // E.g. `&'a T`.
-            (ExplicitBound, Reference | OutlivesBound | PreciseCapturing) |
+            (ExplicitBound, Reference) |
             // E.g. `ContainsLifetime<'a>`.
-            (ExplicitBound, Path { .. }) => n_named += 1,
-        };
+            (ExplicitBound, Path { .. }) |
+            // E.g. `+ 'a`, `+ use<'a>`.
+            (ExplicitBound, OutlivesBound | PreciseCapturing) => {
+                Some(Self::Named)
+            }
+
+            (Implicit, OutlivesBound | PreciseCapturing) |
+            (_, Other) => {
+                None
+            }
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct LifetimeSyntaxCategories<T> {
+    pub hidden: T,
+    pub elided: T,
+    pub named: T,
+}
+
+impl<T> LifetimeSyntaxCategories<T> {
+    fn select(&mut self, category: LifetimeSyntaxCategory) -> &mut T {
+        use LifetimeSyntaxCategory::*;
+
+        match category {
+            Elided => &mut self.elided,
+            Hidden => &mut self.hidden,
+            Named => &mut self.named,
+        }
+    }
+}
+
+impl<T> LifetimeSyntaxCategories<Vec<T>> {
+    pub fn len(&self) -> LifetimeSyntaxCategories<usize> {
+        LifetimeSyntaxCategories {
+            hidden: self.hidden.len(),
+            elided: self.elided.len(),
+            named: self.named.len(),
+        }
     }
 
-    let syntax_counts = (n_hidden, n_elided, n_named);
+    pub fn flatten(&self) -> impl Iterator<Item = &T> {
+        let Self { hidden, elided, named } = self;
+        [hidden.iter(), elided.iter(), named.iter()].into_iter().flatten()
+    }
+}
+
+impl std::ops::Add for LifetimeSyntaxCategories<usize> {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            hidden: self.hidden + rhs.hidden,
+            elided: self.elided + rhs.elided,
+            named: self.named + rhs.named,
+        }
+    }
+}
+
+fn lifetimes_use_matched_syntax(input_info: &[Info<'_>], output_info: &[Info<'_>]) -> bool {
+    let mut syntax_counts = LifetimeSyntaxCategories::<usize>::default();
+
+    for info in input_info.iter().chain(output_info) {
+        if let Some(category) = info.lifetime_syntax_category() {
+            *syntax_counts.select(category) += 1;
+        }
+    }
+
     tracing::debug!(?syntax_counts);
 
-    matches!(syntax_counts, (_, 0, 0) | (0, _, 0) | (0, 0, _))
+    matches!(
+        syntax_counts,
+        LifetimeSyntaxCategories { hidden: _, elided: 0, named: 0 }
+            | LifetimeSyntaxCategories { hidden: 0, elided: _, named: 0 }
+            | LifetimeSyntaxCategories { hidden: 0, elided: 0, named: _ }
+    )
 }
 
 fn emit_mismatch_diagnostic<'tcx>(
@@ -238,7 +310,7 @@ fn emit_mismatch_diagnostic<'tcx>(
         use LifetimeSource::*;
         use hir::LifetimeSyntax::*;
 
-        let syntax_source = (info.lifetime.syntax, info.lifetime.source);
+        let syntax_source = info.syntax_source();
 
         if let (_, Other) = syntax_source {
             // Ignore any other kind of lifetime.
@@ -259,7 +331,6 @@ fn emit_mismatch_diagnostic<'tcx>(
             // E.g. `&'_ T`.
             (ExplicitAnonymous, Reference) => {
                 suggest_change_to_implicit.push(info);
-                suggest_change_to_mixed_implicit.push(info);
                 suggest_change_to_explicit_bound.push(info);
             }
 
@@ -319,11 +390,21 @@ fn emit_mismatch_diagnostic<'tcx>(
         }
     }
 
+    let categorize = |infos: &[Info<'_>]| {
+        let mut categories = LifetimeSyntaxCategories::<Vec<_>>::default();
+        for info in infos {
+            if let Some(category) = info.lifetime_syntax_category() {
+                categories.select(category).push(info.reporting_span());
+            }
+        }
+        categories
+    };
+
+    let inputs = categorize(input_info);
+    let outputs = categorize(output_info);
+
     let make_implicit_suggestions =
         |infos: &[&Info<'_>]| infos.iter().map(|i| i.removing_span()).collect::<Vec<_>>();
-
-    let inputs = input_info.iter().map(|info| info.reporting_span()).collect();
-    let outputs = output_info.iter().map(|info| info.reporting_span()).collect();
 
     let explicit_bound_suggestion = bound_lifetime.map(|info| {
         build_mismatch_suggestion(info.lifetime_name(), &suggest_change_to_explicit_bound)
@@ -399,8 +480,6 @@ fn emit_mismatch_diagnostic<'tcx>(
         ?explicit_anonymous_suggestion,
     );
 
-    let lifetime_name = bound_lifetime.map(|info| info.lifetime_name()).unwrap_or("'_").to_owned();
-
     // We can produce a number of suggestions which may overwhelm
     // the user. Instead, we order the suggestions based on Rust
     // idioms. The "best" choice is shown to the user and the
@@ -413,8 +492,8 @@ fn emit_mismatch_diagnostic<'tcx>(
 
     cx.emit_span_lint(
         MISMATCHED_LIFETIME_SYNTAXES,
-        Vec::clone(&inputs),
-        lints::MismatchedLifetimeSyntaxes { lifetime_name, inputs, outputs, suggestions },
+        inputs.flatten().copied().collect::<Vec<_>>(),
+        lints::MismatchedLifetimeSyntaxes { inputs, outputs, suggestions },
     );
 }
 
@@ -422,12 +501,12 @@ fn build_mismatch_suggestion(
     lifetime_name: &str,
     infos: &[&Info<'_>],
 ) -> lints::MismatchedLifetimeSyntaxesSuggestion {
-    let lifetime_name_sugg = lifetime_name.to_owned();
+    let lifetime_name = lifetime_name.to_owned();
 
     let suggestions = infos.iter().map(|info| info.suggestion(&lifetime_name)).collect();
 
     lints::MismatchedLifetimeSyntaxesSuggestion::Explicit {
-        lifetime_name_sugg,
+        lifetime_name,
         suggestions,
         tool_only: false,
     }
@@ -441,6 +520,14 @@ struct Info<'tcx> {
 }
 
 impl<'tcx> Info<'tcx> {
+    fn syntax_source(&self) -> (hir::LifetimeSyntax, LifetimeSource) {
+        (self.lifetime.syntax, self.lifetime.source)
+    }
+
+    fn lifetime_syntax_category(&self) -> Option<LifetimeSyntaxCategory> {
+        LifetimeSyntaxCategory::new(self.syntax_source())
+    }
+
     fn lifetime_name(&self) -> &str {
         self.lifetime.ident.as_str()
     }

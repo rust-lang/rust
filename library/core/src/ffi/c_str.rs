@@ -135,15 +135,19 @@ pub enum FromBytesWithNulError {
 }
 
 #[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
-impl Error for FromBytesWithNulError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
+impl fmt::Display for FromBytesWithNulError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InteriorNul { .. } => "data provided contains an interior nul byte",
-            Self::NotNulTerminated => "data provided is not nul terminated",
+            Self::InteriorNul { position } => {
+                write!(f, "data provided contains an interior nul byte at byte position {position}")
+            }
+            Self::NotNulTerminated => write!(f, "data provided is not nul terminated"),
         }
     }
 }
+
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
+impl Error for FromBytesWithNulError {}
 
 /// An error indicating that no nul byte was present.
 ///
@@ -178,18 +182,6 @@ impl Default for &CStr {
         const SLICE: &[c_char] = &[0];
         // SAFETY: `SLICE` is indeed pointing to a valid nul-terminated string.
         unsafe { CStr::from_ptr(SLICE.as_ptr()) }
-    }
-}
-
-#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
-impl fmt::Display for FromBytesWithNulError {
-    #[allow(deprecated, deprecated_in_future)]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.description())?;
-        if let Self::InteriorNul { position } = self {
-            write!(f, " at byte pos {position}")?;
-        }
-        Ok(())
     }
 }
 

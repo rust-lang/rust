@@ -1,5 +1,5 @@
 error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/const_trait.rs:24:1
+  --> tests/ui/missing_const_for_fn/const_trait.rs:23:1
    |
 LL | / fn can_be_const() {
 LL | |     0u64.method();

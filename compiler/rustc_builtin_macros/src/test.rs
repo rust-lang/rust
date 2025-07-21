@@ -5,7 +5,7 @@ use std::assert_matches::assert_matches;
 use std::iter;
 
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, GenericParamKind, attr};
+use rustc_ast::{self as ast, GenericParamKind, attr, join_path_idents};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
@@ -446,12 +446,7 @@ fn get_location_info(cx: &ExtCtxt<'_>, fn_: &ast::Fn) -> (Symbol, usize, usize, 
 }
 
 fn item_path(mod_path: &[Ident], item_ident: &Ident) -> String {
-    mod_path
-        .iter()
-        .chain(iter::once(item_ident))
-        .map(|x| x.to_string())
-        .collect::<Vec<String>>()
-        .join("::")
+    join_path_idents(mod_path.iter().chain(iter::once(item_ident)))
 }
 
 enum ShouldPanic {

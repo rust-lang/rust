@@ -54,14 +54,14 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Option<Ar
     variances.is_empty().not().then(|| Arc::from_iter(variances))
 }
 
-pub(crate) fn variances_of_cycle_fn(
-    _db: &dyn HirDatabase,
-    _result: &Option<Arc<[Variance]>>,
-    _count: u32,
-    _def: GenericDefId,
-) -> salsa::CycleRecoveryAction<Option<Arc<[Variance]>>> {
-    salsa::CycleRecoveryAction::Iterate
-}
+// pub(crate) fn variances_of_cycle_fn(
+//     _db: &dyn HirDatabase,
+//     _result: &Option<Arc<[Variance]>>,
+//     _count: u32,
+//     _def: GenericDefId,
+// ) -> salsa::CycleRecoveryAction<Option<Arc<[Variance]>>> {
+//     salsa::CycleRecoveryAction::Iterate
+// }
 
 pub(crate) fn variances_of_cycle_initial(
     db: &dyn HirDatabase,
@@ -965,7 +965,7 @@ struct S3<T>(S<T, T>);
 struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
 "#,
             expect![[r#"
-                FixedPoint[T: covariant, U: covariant, V: covariant]
+                FixedPoint[T: bivariant, U: bivariant, V: bivariant]
             "#]],
         );
     }

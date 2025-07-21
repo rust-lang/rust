@@ -1219,10 +1219,8 @@ where
             // the type (even if after unification and processing nested goals
             // it does not hold) will disqualify the built-in auto impl.
             //
-            // This differs from the current stable behavior and fixes #84857.
-            // Due to breakage found via crater, we currently instead lint
-            // patterns which can be used to exploit this unsoundness on stable,
-            // see #93367 for more details.
+            // We've originally had a more permissive check here which resulted
+            // in unsoundness, see #84857.
             ty::Bool
             | ty::Char
             | ty::Int(_)

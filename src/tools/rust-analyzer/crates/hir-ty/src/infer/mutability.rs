@@ -273,7 +273,7 @@ impl InferenceContext<'_> {
     fn pat_bound_mutability(&self, pat: PatId) -> Mutability {
         let mut r = Mutability::Not;
         self.body.walk_bindings_in_pat(pat, |b| {
-            if self.body.bindings[b].mode == BindingAnnotation::RefMut {
+            if self.body[b].mode == BindingAnnotation::RefMut {
                 r = Mutability::Mut;
             }
         });

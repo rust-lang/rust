@@ -1421,7 +1421,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     ///
     /// See `emit` and `delay_as_bug` for details.
     #[track_caller]
-    pub fn emit_unless(mut self, delay: bool) -> G::EmitResult {
+    pub fn emit_unless_delay(mut self, delay: bool) -> G::EmitResult {
         if delay {
             self.downgrade_to_delayed_bug();
         }

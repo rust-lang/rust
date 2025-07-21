@@ -1575,7 +1575,10 @@ impl Step for Extended {
             compiler: builder.compiler(stage, target),
             backend: "cranelift".to_string(),
         });
-        add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {compiler, target});
+        add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {
+            build_compiler: compiler,
+            target
+        });
 
         let etc = builder.src.join("src/etc/installer");
 
@@ -2341,9 +2344,13 @@ impl Step for LlvmTools {
     }
 }
 
+/// Distributes the `llvm-bitcode-linker` tool so that it can be used by a compiler whose host
+/// is `target`.
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct LlvmBitcodeLinker {
-    pub compiler: Compiler,
+    /// The linker will be compiled by this compiler.
+    pub build_compiler: Compiler,
+    /// The linker will by usable by rustc on this host.
     pub target: TargetSelection,
 }
 
@@ -2359,9 +2366,8 @@ impl Step for LlvmBitcodeLinker {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LlvmBitcodeLinker {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.host_target,
+            build_compiler: tool::LlvmBitcodeLinker::get_build_compiler_for_target(
+                run.builder,
                 run.target,
             ),
             target: run.target,
@@ -2369,13 +2375,10 @@ impl Step for LlvmBitcodeLinker {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
         let target = self.target;
 
-        builder.ensure(compile::Rustc::new(compiler, target));
-
-        let llbc_linker =
-            builder.ensure(tool::LlvmBitcodeLinker { build_compiler: compiler, target });
+        let llbc_linker = builder
+            .ensure(tool::LlvmBitcodeLinker::from_build_compiler(self.build_compiler, target));
 
         let self_contained_bin_dir = format!("lib/rustlib/{}/bin/self-contained", target.triple);
 

@@ -125,6 +125,13 @@ impl<'a> SymbolCollector<'a> {
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(id)) => {
                     this.push_decl(id, name, false, None);
+                    let enum_name = this.db.enum_signature(id).name.as_str().to_smolstr();
+                    this.with_container_name(Some(enum_name), |this| {
+                        let variants = id.enum_variants(this.db);
+                        for (variant_id, variant_name, _) in &variants.variants {
+                            this.push_decl(*variant_id, variant_name, true, None);
+                        }
+                    });
                 }
                 ModuleDefId::AdtId(AdtId::UnionId(id)) => {
                     this.push_decl(id, name, false, None);

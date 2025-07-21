@@ -125,7 +125,7 @@ declare_lint_pass!(LenZero => [LEN_ZERO, LEN_WITHOUT_IS_EMPTY, COMPARISON_TO_EMP
 
 impl<'tcx> LateLintPass<'tcx> for LenZero {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Trait(_, _, ident, _, _, trait_items) = item.kind
+        if let ItemKind::Trait(_, _, _, ident, _, _, trait_items) = item.kind
             && !item.span.from_expansion()
         {
             check_trait_items(cx, item, ident, trait_items);

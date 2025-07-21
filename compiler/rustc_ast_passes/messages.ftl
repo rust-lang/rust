@@ -212,11 +212,6 @@ ast_passes_nomangle_ascii = `#[no_mangle]` requires ASCII identifier
 ast_passes_obsolete_auto = `impl Trait for .. {"{}"}` is an obsolete syntax
     .help = use `auto trait Trait {"{}"}` instead
 
-ast_passes_optional_trait_object = `?Trait` is not permitted in trait object types
-
-ast_passes_optional_trait_supertrait = `?Trait` is not permitted in supertraits
-    .note = traits are `?{$path_str}` by default
-
 ast_passes_out_of_order_params = {$param_ord} parameters must be declared prior to {$max_param} parameters
     .suggestion = reorder the parameters: lifetimes, then consts and types
 
@@ -240,10 +235,10 @@ ast_passes_static_without_body =
 ast_passes_tilde_const_disallowed = `[const]` is not allowed here
     .closure = closures cannot have `[const]` trait bounds
     .function = this function is not `const`, so it cannot have `[const]` trait bounds
-    .trait = this trait is not a `#[const_trait]`, so it cannot have `[const]` trait bounds
+    .trait = this trait is not `const`, so it cannot have `[const]` trait bounds
     .trait_impl = this impl is not `const`, so it cannot have `[const]` trait bounds
     .impl = inherent impls cannot have `[const]` trait bounds
-    .trait_assoc_ty = associated types in non-`#[const_trait]` traits cannot have `[const]` trait bounds
+    .trait_assoc_ty = associated types in non-`const` traits cannot have `[const]` trait bounds
     .trait_impl_assoc_ty = associated types in non-const impls cannot have `[const]` trait bounds
     .inherent_assoc_ty = inherent associated types cannot have `[const]` trait bounds
     .object = trait objects cannot have `[const]` trait bounds

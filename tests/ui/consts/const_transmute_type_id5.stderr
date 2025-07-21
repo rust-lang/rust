@@ -1,7 +1,7 @@
-error[E0080]: type_id_eq: one of the TypeId arguments is invalid, chunk 1 of the hash does not match the type it represents
-  --> $DIR/const_transmute_type_id5.rs:17:13
+error[E0080]: invalid `TypeId` value: the hash does not match the type id metadata
+  --> $DIR/const_transmute_type_id5.rs:16:13
    |
-LL |     assert!(a == b);
+LL |     assert!(b == b);
    |             ^^^^^^ evaluation of `_` failed inside this call
    |
 note: inside `<TypeId as PartialEq>::eq`

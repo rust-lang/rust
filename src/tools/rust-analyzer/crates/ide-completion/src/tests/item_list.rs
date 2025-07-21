@@ -458,6 +458,33 @@ type O = $0;
         r"
 struct A;
 trait B {
+type O<'a>
+where
+Self: 'a;
+}
+impl B for A {
+$0
+}
+",
+        r#"
+struct A;
+trait B {
+type O<'a>
+where
+Self: 'a;
+}
+impl B for A {
+type O<'a> = $0
+where
+Self: 'a;
+}
+"#,
+    );
+    check_edit(
+        "type O",
+        r"
+struct A;
+trait B {
 type O: ?Sized = u32;
 }
 impl B for A {

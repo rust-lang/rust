@@ -257,7 +257,7 @@ pub enum InvalidProgramInfo<'tcx> {
 /// Details of why a pointer had to be in-bounds.
 #[derive(Debug, Copy, Clone)]
 pub enum CheckInAllocMsg {
-    /// We are access memory.
+    /// We are accessing memory.
     MemoryAccess,
     /// We are doing pointer arithmetic.
     InboundsPointerArithmetic,

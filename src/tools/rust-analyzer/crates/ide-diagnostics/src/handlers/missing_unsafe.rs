@@ -983,4 +983,19 @@ fn test() {
             "#,
         );
     }
+
+    #[test]
+    fn naked_asm_is_safe() {
+        check_diagnostics(
+            r#"
+#[rustc_builtin_macro]
+macro_rules! naked_asm { () => {} }
+
+#[unsafe(naked)]
+extern "C" fn naked() {
+    naked_asm!("");
+}
+        "#,
+        );
+    }
 }

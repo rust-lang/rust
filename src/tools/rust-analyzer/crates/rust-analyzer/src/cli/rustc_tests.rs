@@ -9,6 +9,7 @@ use hir::{ChangeWithProcMacros, Crate};
 use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
 use ide_db::base_db;
 use itertools::Either;
+use paths::Utf8PathBuf;
 use profile::StopWatch;
 use project_model::toolchain_info::{QueryConfig, target_data_layout};
 use project_model::{
@@ -79,6 +80,7 @@ impl Tester {
             &RustSourceWorkspaceConfig::default_cargo(),
             false,
             &path,
+            &Utf8PathBuf::default(),
             &|_| (),
         );
         if let Some(loaded_sysroot) = loaded_sysroot {

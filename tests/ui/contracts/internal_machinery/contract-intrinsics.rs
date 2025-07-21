@@ -3,8 +3,8 @@
 //@ [default] run-pass
 //@ [unchk_pass] run-pass
 //@ [chk_pass] run-pass
-//@ [chk_fail_requires] run-fail
-//@ [chk_fail_ensures] run-fail
+//@ [chk_fail_requires] run-crash
+//@ [chk_fail_ensures] run-crash
 //
 //@ [unchk_pass] compile-flags: -Zcontract-checks=no
 //@ [chk_pass] compile-flags: -Zcontract-checks=yes
