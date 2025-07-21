@@ -8,9 +8,16 @@ struct MyType<'a, T: ?Sized>(&'a (), T);
 
 fn is_sized<T>() {}
 
+trait Id {
+    type This: ?Sized;
+}
+impl<T: ?Sized> Id for T {
+    type This = T;
+}
+
 fn foo<'a, T: ?Sized>()
 where
-    (MyType<'a, T>,): Sized,
+    (MyType<'a, <T as Id>::This>,): Sized,
     MyType<'static, T>: Sized,
 {
     // Preferring the builtin `Sized` impl of tuples

@@ -1,8 +1,6 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
-//@[next] compile-flags: -Znext-solver
-//@[next] known-bug: #92505
-//@[current] check-pass
+//@ check-pass
 
 trait Trait {
     type Assoc;
@@ -24,11 +22,11 @@ where
     //
     // We therefore check whether `T: Trait` is proven by the environment.
     // For that we try to apply the `<T as Trait>::Assoc: Trait` candidate,
-    // trying to normalize its self type results in overflow.
+    // trying to normalize its self type encounters a cycle.
     //
     // In the old solver we eagerly normalize the environment, ignoring the
     // unnormalized `<T as Trait>::Assoc: Trait` where-bound when normalizing
-    // `<T as Trait>::Asosc`
+    // `<T as Trait>::Assoc`.
     impls_trait::<T>();
 }
 

@@ -237,7 +237,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         kind: GoalEvaluationKind,
     ) -> ProofTreeBuilder<D> {
         self.opt_nested(|| match kind {
-            GoalEvaluationKind::Root => Some(WipGoalEvaluation {
+            GoalEvaluationKind::Root { in_hir_typeck: _ } => Some(WipGoalEvaluation {
                 uncanonicalized_goal,
                 orig_values: orig_values.to_vec(),
                 encountered_overflow: false,

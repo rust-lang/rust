@@ -197,7 +197,14 @@ where
             self.cx().recursion_limit(),
             GenerateProofTree::No,
             span,
-            |ecx| ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal, stalled_on),
+            |ecx| {
+                ecx.evaluate_goal(
+                    GoalEvaluationKind::Root { in_hir_typeck: self.in_hir_typeck() },
+                    GoalSource::Misc,
+                    goal,
+                    stalled_on,
+                )
+            },
         )
         .0
     }
@@ -209,7 +216,12 @@ where
     ) -> bool {
         self.probe(|| {
             EvalCtxt::enter_root(self, root_depth, GenerateProofTree::No, I::Span::dummy(), |ecx| {
-                ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal, None)
+                ecx.evaluate_goal(
+                    GoalEvaluationKind::Root { in_hir_typeck: self.in_hir_typeck() },
+                    GoalSource::Misc,
+                    goal,
+                    None,
+                )
             })
             .0
         })
@@ -230,7 +242,14 @@ where
             self.cx().recursion_limit(),
             GenerateProofTree::Yes,
             span,
-            |ecx| ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal, None),
+            |ecx| {
+                ecx.evaluate_goal_raw(
+                    GoalEvaluationKind::Root { in_hir_typeck: self.in_hir_typeck() },
+                    GoalSource::Misc,
+                    goal,
+                    None,
+                )
+            },
         );
         (result, proof_tree.unwrap())
     }
@@ -447,7 +466,10 @@ where
             ));
         }
 
-        let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
+        let is_hir_typeck_root_goal =
+            matches!(goal_evaluation_kind, GoalEvaluationKind::Root { in_hir_typeck: true });
+
+        let (orig_values, canonical_goal) = self.canonicalize_goal(is_hir_typeck_root_goal, goal);
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
         let canonical_result = self.search_graph.evaluate_goal(

@@ -43,7 +43,7 @@ const FIXPOINT_STEP_LIMIT: usize = 8;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum GoalEvaluationKind {
-    Root,
+    Root { in_hir_typeck: bool },
     Nested,
 }
 
