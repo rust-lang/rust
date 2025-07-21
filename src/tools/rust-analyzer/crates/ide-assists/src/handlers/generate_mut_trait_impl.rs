@@ -134,6 +134,9 @@ fn get_trait_mut(apply_trait: &hir::Trait, famous: FamousDefs<'_, '_>) -> Option
     if trait_ == famous.core_borrow_Borrow().as_ref() {
         return Some("BorrowMut");
     }
+    if trait_ == famous.core_ops_Deref().as_ref() {
+        return Some("DerefMut");
+    }
     None
 }
 
@@ -142,6 +145,7 @@ fn process_method_name(name: ast::Name) -> Option<(ast::Name, &'static str)> {
         "index" => "index_mut",
         "as_ref" => "as_mut",
         "borrow" => "borrow_mut",
+        "deref" => "deref_mut",
         _ => return None,
     };
     Some((name, new_name))
@@ -255,6 +259,39 @@ $0impl core::convert::AsMut<i32> for Foo {
 
 impl core::convert::AsRef<i32> for Foo {
     fn as_ref(&self) -> &i32 {
+        &self.0
+    }
+}
+"#,
+        );
+
+        check_assist(
+            generate_mut_trait_impl,
+            r#"
+//- minicore: deref
+struct Foo(i32);
+
+impl core::ops::Deref$0 for Foo {
+    type Target = i32;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+"#,
+            r#"
+struct Foo(i32);
+
+$0impl core::ops::DerefMut for Foo {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl core::ops::Deref for Foo {
+    type Target = i32;
+
+    fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
