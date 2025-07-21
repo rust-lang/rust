@@ -9,7 +9,7 @@
 #[inline(never)]
 pub fn fibonacci(n: u64, a: u64, b: u64) -> u64 {
     // CHECK: musttail call {{.*}}@fibonacci(
-    // CHECK-NEXT: ret u64
+    // CHECK-NEXT: ret i64
     match n {
         0 => a,
         1 => b,
