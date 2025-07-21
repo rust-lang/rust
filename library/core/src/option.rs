@@ -842,7 +842,7 @@ impl<T> Option<T> {
         // just needs to be aligned, which it is because `&self` is aligned and
         // the offset used is a multiple of alignment.
         //
-        // In the new version, the intrinsic always returns a pointer to an
+        // Here we assume that `offset_of!` always returns an offset to an
         // in-bounds and correctly aligned position for a `T` (even if in the
         // `None` case it's just padding).
         unsafe {
