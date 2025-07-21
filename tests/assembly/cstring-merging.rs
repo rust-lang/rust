@@ -2,7 +2,7 @@
 // other architectures (including ARM and x86-64) use the prefix `.Lanon.`
 //@ only-linux
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type=lib -Copt-level=3
+//@ compile-flags: --crate-type=lib -Copt-level=3 -Cllvm-args=-enable-global-merge=0
 //@ edition: 2024
 
 use std::ffi::CStr;

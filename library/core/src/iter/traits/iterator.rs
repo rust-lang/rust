@@ -3414,10 +3414,10 @@ pub trait Iterator {
     /// ```
     #[stable(feature = "iter_copied", since = "1.36.0")]
     #[rustc_diagnostic_item = "iter_copied"]
-    fn copied<'a, T: 'a>(self) -> Copied<Self>
+    fn copied<'a, T>(self) -> Copied<Self>
     where
+        T: Copy + 'a,
         Self: Sized + Iterator<Item = &'a T>,
-        T: Copy,
     {
         Copied::new(self)
     }
@@ -3462,10 +3462,10 @@ pub trait Iterator {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "iter_cloned"]
-    fn cloned<'a, T: 'a>(self) -> Cloned<Self>
+    fn cloned<'a, T>(self) -> Cloned<Self>
     where
+        T: Clone + 'a,
         Self: Sized + Iterator<Item = &'a T>,
-        T: Clone,
     {
         Cloned::new(self)
     }
