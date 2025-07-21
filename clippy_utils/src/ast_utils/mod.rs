@@ -473,9 +473,18 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && over(lb, rb, eq_generic_bound)
                 && over(lis, ris, |l, r| eq_item(l, r, eq_assoc_item_kind))
         },
-        (TraitAlias(li, lg, lb), TraitAlias(ri, rg, rb)) => {
-            eq_id(*li, *ri) && eq_generics(lg, rg) && over(lb, rb, eq_generic_bound)
-        },
+        (
+            TraitAlias(box ast::TraitAlias {
+                ident: li,
+                generics: lg,
+                bounds: lb,
+            }),
+            TraitAlias(box ast::TraitAlias {
+                ident: ri,
+                generics: rg,
+                bounds: rb,
+            }),
+        ) => eq_id(*li, *ri) && eq_generics(lg, rg) && over(lb, rb, eq_generic_bound),
         (
             Impl(ast::Impl {
                 generics: lg,
