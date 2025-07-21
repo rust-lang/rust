@@ -12,13 +12,9 @@ impl const Bar for () {}
 impl const Baz for () {}
 
 const trait Foo = [const] Bar + Baz;
-//~^ ERROR: `[const]` is not allowed here
 
 const fn foo<T: [const] Foo>(x: &T) {
-    //~^ ERROR: `[const]` can only be applied to `const` traits
-    //~| ERROR: `[const]` can only be applied to `const` traits
     x.bar();
-    //~^ ERROR: the trait bound `T: [const] Bar` is not satisfied
     #[cfg(fail)]
     {
         x.baz();
@@ -27,5 +23,6 @@ const fn foo<T: [const] Foo>(x: &T) {
 }
 
 const _: () = foo(&());
+//~^ ERROR: `(): const Foo` is not satisfied
 
 fn main() {}
