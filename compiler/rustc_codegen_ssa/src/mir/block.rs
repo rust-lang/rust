@@ -224,10 +224,6 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
         if tail {
             bx.tail_call(fn_ty, fn_attrs, fn_abi, fn_ptr, llargs, self.funclet(fx), instance);
-            for &(tmp, size) in lifetime_ends_after_call {
-                bx.lifetime_end(tmp, size);
-            }
-
             return MergingSucc::False;
         }
 
