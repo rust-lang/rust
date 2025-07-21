@@ -6,6 +6,9 @@ use std::convert::TryInto;
 use std::thread;
 use std::thread::spawn;
 
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
+
 // This is a set of testcases for blocking epoll.
 
 fn main() {
@@ -97,7 +100,7 @@ fn test_epoll_block_then_unblock() {
     let thread1 = spawn(move || {
         thread::yield_now();
         let data = "abcde".as_bytes().as_ptr();
-        let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
+        let res = unsafe { libc_utils::write_all(fds[1], data as *const libc::c_void, 5) };
         assert_eq!(res, 5);
     });
     check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], 10);
@@ -130,7 +133,7 @@ fn test_notification_after_timeout() {
 
     // Trigger epoll notification after timeout.
     let data = "abcde".as_bytes().as_ptr();
-    let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
+    let res = unsafe { libc_utils::write_all(fds[1], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
     // Check the result of the notification.
