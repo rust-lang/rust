@@ -350,7 +350,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // because they can be fetched by glob imports from those modules, and bring traits
         // into scope both directly and through glob imports.
         let key = BindingKey::new_disambiguated(ident, ns, || {
-            (module.0.0.lazy_resolutions.borrow().len() + 1).try_into().unwrap()
+            module.underscore_disambiguator.update(|d| d + 1);
+            module.underscore_disambiguator.get()
         });
         self.update_resolution(module, key, warn_ambiguity, |this, resolution| {
             if let Some(old_binding) = resolution.best_binding() {
