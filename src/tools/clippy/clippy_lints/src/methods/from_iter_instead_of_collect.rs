@@ -4,6 +4,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_path_diagnostic_item, sugg};
+use rustc_ast::join_path_idents;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{self as hir, Expr, ExprKind, GenericArg, QPath, TyKind};
@@ -47,7 +48,7 @@ fn build_full_type(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, app: &mut Applica
         && let QPath::Resolved(None, ty_path) = &ty_qpath
         && let Res::Def(_, ty_did) = ty_path.res
     {
-        let mut ty_str = itertools::join(ty_path.segments.iter().map(|s| s.ident), "::");
+        let mut ty_str = join_path_idents(ty_path.segments.iter().map(|seg| seg.ident));
         let mut first = true;
         let mut append = |arg: &str| {
             write!(&mut ty_str, "{}{arg}", [", ", "<"][usize::from(first)]).unwrap();

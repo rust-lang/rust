@@ -1,0 +1,10 @@
+// CHECK: callee - {[-1]:Integer} |{[-1]:Pointer}:{}
+// CHECK: ptr %{{[0-9]+}}: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer}
+// CHECK-DAG: %{{[0-9]+}} = load i16, ptr %{{[0-9]+}}, align 2, !dbg !{{[0-9]+}}, !noundef !{{[0-9]+}}: {[-1]:Integer}
+// CHECK-DAG: %{{[0-9]+}} = mul i16 %{{[0-9]+}}, %{{[0-9]+}}, !dbg !{{[0-9]+}}: {[-1]:Integer}
+// CHECK-DAG: ret i16 %{{[0-9]+}}, !dbg !{{[0-9]+}}: {}
+// CHECK: callee - {[-1]:Integer} |{[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer}:{}
+// CHECK: ptr %{{[0-9]+}}: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer}
+// CHECK-DAG: %{{[0-9]+}} = load i16, ptr %{{[0-9]+}}, align 2, !dbg !{{[0-9]+}}, !noundef !{{[0-9]+}}: {[-1]:Integer}
+// CHECK-DAG: %{{[0-9]+}} = mul i16 %{{[0-9]+}}, %{{[0-9]+}}, !dbg !{{[0-9]+}}: {[-1]:Integer}
+// CHECK-DAG: ret i16 %{{[0-9]+}}, !dbg !{{[0-9]+}}: {}

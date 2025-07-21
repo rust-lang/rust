@@ -101,7 +101,7 @@ impl ExprValidator {
             self.check_for_trailing_return(body.body_expr, &body);
         }
 
-        for (id, expr) in body.exprs.iter() {
+        for (id, expr) in body.exprs() {
             if let Some((variant, missed_fields, true)) =
                 record_literal_missing_fields(db, &self.infer, id, expr)
             {
@@ -132,7 +132,7 @@ impl ExprValidator {
             }
         }
 
-        for (id, pat) in body.pats.iter() {
+        for (id, pat) in body.pats() {
             if let Some((variant, missed_fields, true)) =
                 record_pattern_missing_fields(db, &self.infer, id, pat)
             {
@@ -389,7 +389,7 @@ impl ExprValidator {
         if !self.validate_lints {
             return;
         }
-        match &body.exprs[body_expr] {
+        match &body[body_expr] {
             Expr::Block { statements, tail, .. } => {
                 let last_stmt = tail.or_else(|| match statements.last()? {
                     Statement::Expr { expr, .. } => Some(*expr),
@@ -428,7 +428,7 @@ impl ExprValidator {
             if else_branch.is_none() {
                 return;
             }
-            if let Expr::Block { statements, tail, .. } = &self.body.exprs[*then_branch] {
+            if let Expr::Block { statements, tail, .. } = &self.body[*then_branch] {
                 let last_then_expr = tail.or_else(|| match statements.last()? {
                     Statement::Expr { expr, .. } => Some(*expr),
                     _ => None,

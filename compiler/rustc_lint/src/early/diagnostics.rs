@@ -351,6 +351,9 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
+        BuiltinLintDiag::ReexportPrivateDependency { name, kind, krate } => {
+            lints::ReexportPrivateDependency { name, kind, krate }.decorate_lint(diag);
+        }
         BuiltinLintDiag::UnusedQualifications { removal_span } => {
             lints::UnusedQualifications { removal_span }.decorate_lint(diag);
         }

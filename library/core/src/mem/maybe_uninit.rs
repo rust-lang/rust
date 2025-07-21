@@ -1005,28 +1005,6 @@ impl<T> MaybeUninit<T> {
         }
     }
 
-    /// Deprecated version of [`slice::assume_init_ref`].
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[deprecated(
-        note = "replaced by inherent assume_init_ref method; will eventually be removed",
-        since = "1.83.0"
-    )]
-    pub const unsafe fn slice_assume_init_ref(slice: &[Self]) -> &[T] {
-        // SAFETY: Same for both methods.
-        unsafe { slice.assume_init_ref() }
-    }
-
-    /// Deprecated version of [`slice::assume_init_mut`].
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[deprecated(
-        note = "replaced by inherent assume_init_mut method; will eventually be removed",
-        since = "1.83.0"
-    )]
-    pub const unsafe fn slice_assume_init_mut(slice: &mut [Self]) -> &mut [T] {
-        // SAFETY: Same for both methods.
-        unsafe { slice.assume_init_mut() }
-    }
-
     /// Gets a pointer to the first element of the array.
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
@@ -1039,94 +1017,6 @@ impl<T> MaybeUninit<T> {
     #[inline(always)]
     pub const fn slice_as_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
         this.as_mut_ptr() as *mut T
-    }
-
-    /// Deprecated version of [`slice::write_copy_of_slice`].
-    #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
-    #[deprecated(
-        note = "replaced by inherent write_copy_of_slice method; will eventually be removed",
-        since = "1.83.0"
-    )]
-    pub fn copy_from_slice<'a>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
-    where
-        T: Copy,
-    {
-        this.write_copy_of_slice(src)
-    }
-
-    /// Deprecated version of [`slice::write_clone_of_slice`].
-    #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
-    #[deprecated(
-        note = "replaced by inherent write_clone_of_slice method; will eventually be removed",
-        since = "1.83.0"
-    )]
-    pub fn clone_from_slice<'a>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
-    where
-        T: Clone,
-    {
-        this.write_clone_of_slice(src)
-    }
-
-    /// Deprecated version of [`slice::write_filled`].
-    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
-    #[deprecated(
-        note = "replaced by inherent write_filled method; will eventually be removed",
-        since = "1.83.0"
-    )]
-    pub fn fill<'a>(this: &'a mut [MaybeUninit<T>], value: T) -> &'a mut [T]
-    where
-        T: Clone,
-    {
-        this.write_filled(value)
-    }
-
-    /// Deprecated version of [`slice::write_with`].
-    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
-    #[deprecated(
-        note = "replaced by inherent write_with method; will eventually be removed",
-        since = "1.83.0"
-    )]
-    pub fn fill_with<'a, F>(this: &'a mut [MaybeUninit<T>], mut f: F) -> &'a mut [T]
-    where
-        F: FnMut() -> T,
-    {
-        this.write_with(|_| f())
-    }
-
-    /// Deprecated version of [`slice::write_iter`].
-    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
-    #[deprecated(
-        note = "replaced by inherent write_iter method; will eventually be removed",
-        since = "1.83.0"
-    )]
-    pub fn fill_from<'a, I>(
-        this: &'a mut [MaybeUninit<T>],
-        it: I,
-    ) -> (&'a mut [T], &'a mut [MaybeUninit<T>])
-    where
-        I: IntoIterator<Item = T>,
-    {
-        this.write_iter(it)
-    }
-
-    /// Deprecated version of [`slice::as_bytes`].
-    #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
-    #[deprecated(
-        note = "replaced by inherent as_bytes method; will eventually be removed",
-        since = "1.83.0"
-    )]
-    pub fn slice_as_bytes(this: &[MaybeUninit<T>]) -> &[MaybeUninit<u8>] {
-        this.as_bytes()
-    }
-
-    /// Deprecated version of [`slice::as_bytes_mut`].
-    #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
-    #[deprecated(
-        note = "replaced by inherent as_bytes_mut method; will eventually be removed",
-        since = "1.83.0"
-    )]
-    pub fn slice_as_bytes_mut(this: &mut [MaybeUninit<T>]) -> &mut [MaybeUninit<u8>] {
-        this.as_bytes_mut()
     }
 }
 
@@ -1304,7 +1194,7 @@ impl<T> [MaybeUninit<T>] {
     /// Fills a slice with elements returned by calling a closure for each index.
     ///
     /// This method uses a closure to create new values. If you'd rather `Clone` a given value, use
-    /// [`MaybeUninit::fill`]. If you want to use the `Default` trait to generate values, you can
+    /// [slice::write_filled]. If you want to use the `Default` trait to generate values, you can
     /// pass [`|_| Default::default()`][Default::default] as the argument.
     ///
     /// # Panics
@@ -1463,7 +1353,7 @@ impl<T> [MaybeUninit<T>] {
     /// use std::mem::MaybeUninit;
     ///
     /// let mut uninit = [MaybeUninit::<u16>::uninit(), MaybeUninit::<u16>::uninit()];
-    /// let uninit_bytes = MaybeUninit::slice_as_bytes_mut(&mut uninit);
+    /// let uninit_bytes = uninit.as_bytes_mut();
     /// uninit_bytes.write_copy_of_slice(&[0x12, 0x34, 0x56, 0x78]);
     /// let vals = unsafe { uninit.assume_init_ref() };
     /// if cfg!(target_endian = "little") {

@@ -505,7 +505,7 @@ fn map_links<'e>(
         Event::End(Tag::Link(link_type, target, _)) => {
             in_link = false;
             Event::End(Tag::Link(
-                end_link_type.unwrap_or(link_type),
+                end_link_type.take().unwrap_or(link_type),
                 end_link_target.take().unwrap_or(target),
                 CowStr::Borrowed(""),
             ))
@@ -514,7 +514,7 @@ fn map_links<'e>(
             let (link_type, link_target_s, link_name) =
                 callback(&end_link_target.take().unwrap(), &s, range, end_link_type.unwrap());
             end_link_target = Some(CowStr::Boxed(link_target_s.into()));
-            if !matches!(end_link_type, Some(LinkType::Autolink)) {
+            if !matches!(end_link_type, Some(LinkType::Autolink)) && link_type.is_some() {
                 end_link_type = link_type;
             }
             Event::Text(CowStr::Boxed(link_name.into()))
@@ -523,7 +523,7 @@ fn map_links<'e>(
             let (link_type, link_target_s, link_name) =
                 callback(&end_link_target.take().unwrap(), &s, range, end_link_type.unwrap());
             end_link_target = Some(CowStr::Boxed(link_target_s.into()));
-            if !matches!(end_link_type, Some(LinkType::Autolink)) {
+            if !matches!(end_link_type, Some(LinkType::Autolink)) && link_type.is_some() {
                 end_link_type = link_type;
             }
             Event::Code(CowStr::Boxed(link_name.into()))

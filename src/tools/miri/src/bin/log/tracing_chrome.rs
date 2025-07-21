@@ -1,8 +1,18 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: Copyright (c) 2020 Thoren Paulson
-//! This file is taken unmodified from the following link, except for file attributes and
-//! `extern crate` at the top.
-//! https://github.com/thoren-d/tracing-chrome/blob/7e2625ab4aeeef2f0ef9bde9d6258dd181c04472/src/lib.rs
+//! This file was initially taken from the following link:
+//! <https://github.com/thoren-d/tracing-chrome/blob/7e2625ab4aeeef2f0ef9bde9d6258dd181c04472/src/lib.rs>
+//!
+//! The precise changes that were made to the original file can be found in git history
+//! (`git log -- path/to/tracing_chrome.rs`), but in summary:
+//! - the file attributes were changed and `extern crate` was added at the top
+//! - if a tracing span has a field called "tracing_separate_thread", it will be given a separate
+//! span ID even in [TraceStyle::Threaded] mode, to make it appear on a separate line when viewing
+//! the trace in <https://ui.perfetto.dev>. This is the syntax to trigger this behavior:
+//!   ```rust
+//!   tracing::info_span!("my_span", tracing_separate_thread = tracing::field::Empty, /* ... */)
+//!   ```
+//!
 //! Depending on the tracing-chrome crate from crates.io is unfortunately not possible, since it
 //! depends on `tracing_core` which conflicts with rustc_private's `tracing_core` (meaning it would
 //! not be possible to use the [ChromeLayer] in a context that expects a [Layer] from
@@ -79,14 +89,26 @@ where
 }
 
 /// Decides how traces will be recorded.
+/// Also see <https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview#heading=h.jh64i9l3vwa1>
 #[derive(Default)]
 pub enum TraceStyle {
-    /// Traces will be recorded as a group of threads.
+    /// Traces will be recorded as a group of threads, and all spans on the same thread will appear
+    /// on a single trace line in <https://ui.perfetto.dev>.
     /// In this style, spans should be entered and exited on the same thread.
+    ///
+    /// If a tracing span has a field called "tracing_separate_thread", it will be given a separate
+    /// span ID even in this mode, to make it appear on a separate line when viewing the trace in
+    /// <https://ui.perfetto.dev>. This is the syntax to trigger this behavior:
+    /// ```rust
+    /// tracing::info_span!("my_span", tracing_separate_thread = tracing::field::Empty, /* ... */)
+    /// ```
+    /// [tracing::field::Empty] is used so that other tracing layers (e.g. the logger) will ignore
+    /// the "tracing_separate_thread" argument and not print out anything for it.
     #[default]
     Threaded,
 
-    /// Traces will recorded as a group of asynchronous operations.
+    /// Traces will recorded as a group of asynchronous operations. All spans will be given separate
+    /// span IDs and will appear on separate trace lines in <https://ui.perfetto.dev>.
     Async,
 }
 
@@ -497,31 +519,39 @@ where
         }
     }
 
-    fn get_root_id(span: SpanRef<S>) -> u64 {
-        span.scope()
-            .from_root()
-            .take(1)
-            .next()
-            .unwrap_or(span)
-            .id()
-            .into_u64()
+    fn get_root_id(&self, span: SpanRef<S>) -> Option<u64> {
+        match self.trace_style {
+            TraceStyle::Threaded => {
+                if span.fields().field("tracing_separate_thread").is_some() {
+                    // assign an independent "id" to spans with argument "tracing_separate_thread",
+                    // so they appear a separate trace line in trace visualization tools, see
+                    // https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview#heading=h.jh64i9l3vwa1
+                    Some(span.id().into_u64())
+                } else {
+                    None
+                }
+            },
+            TraceStyle::Async => Some(
+                span.scope()
+                    .from_root()
+                    .take(1)
+                    .next()
+                    .unwrap_or(span)
+                    .id()
+                    .into_u64()
+            ),
+        }
     }
 
     fn enter_span(&self, span: SpanRef<S>, ts: f64) {
         let callsite = self.get_callsite(EventOrSpan::Span(&span));
-        let root_id = match self.trace_style {
-            TraceStyle::Async => Some(ChromeLayer::get_root_id(span)),
-            _ => None,
-        };
+        let root_id = self.get_root_id(span);
         self.send_message(Message::Enter(ts, callsite, root_id));
     }
 
     fn exit_span(&self, span: SpanRef<S>, ts: f64) {
         let callsite = self.get_callsite(EventOrSpan::Span(&span));
-        let root_id = match self.trace_style {
-            TraceStyle::Async => Some(ChromeLayer::get_root_id(span)),
-            _ => None,
-        };
+        let root_id = self.get_root_id(span);
         self.send_message(Message::Exit(ts, callsite, root_id));
     }
 

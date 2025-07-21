@@ -795,6 +795,14 @@ fn render_const_scalar(
                 let Some(bytes) = memory_map.get(addr, size_one * count) else {
                     return f.write_str("<ref-data-not-available>");
                 };
+                let expected_len = count * size_one;
+                if bytes.len() < expected_len {
+                    never!(
+                        "Memory map size is too small. Expected {expected_len}, got {}",
+                        bytes.len(),
+                    );
+                    return f.write_str("<layout-error>");
+                }
                 f.write_str("&[")?;
                 let mut first = true;
                 for i in 0..count {
@@ -2328,6 +2336,7 @@ impl HirDisplayWithExpressionStore for TypeBound {
                 store[*path].hir_fmt(f, store)
             }
             TypeBound::Use(args) => {
+                write!(f, "use<")?;
                 let edition = f.edition();
                 let last = args.len().saturating_sub(1);
                 for (idx, arg) in args.iter().enumerate() {

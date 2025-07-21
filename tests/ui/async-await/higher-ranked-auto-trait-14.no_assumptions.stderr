@@ -1,0 +1,33 @@
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/higher-ranked-auto-trait-14.rs:20:5
+   |
+LL | /     async move {
+LL | |         let xs = unique_x.union(&cached)
+LL | |             // .copied() // works
+LL | |             .map(|x| *x) // error
+LL | |             ;
+LL | |         let blah = val.blah(xs.into_iter()).await;
+LL | |     }
+   | |_____^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'0 u32) -> u32` must implement `FnOnce<(&'1 u32,)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&u32,)>`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/higher-ranked-auto-trait-14.rs:20:5
+   |
+LL | /     async move {
+LL | |         let xs = unique_x.union(&cached)
+LL | |             // .copied() // works
+LL | |             .map(|x| *x) // error
+LL | |             ;
+LL | |         let blah = val.blah(xs.into_iter()).await;
+LL | |     }
+   | |_____^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'0 u32) -> u32` must implement `FnOnce<(&'1 u32,)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&u32,)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

@@ -35,10 +35,10 @@ use a::{c, d::{e}};
             #![no_std]
             #![doc = " another file comment"]
 
-            // AstId: ExternCrate[5A82, 0]
+            // AstId: ExternCrate[070B, 0]
             pub(self) extern crate self as renamed;
 
-            // AstId: ExternCrate[7E1C, 0]
+            // AstId: ExternCrate[1EA5, 0]
             pub(in super) extern crate bli;
 
             // AstId: Use[0000, 0]
@@ -78,15 +78,15 @@ extern "C" {
             // AstId: ExternBlock[0000, 0]
             extern {
                 #[on_extern_type]
-                // AstId: TypeAlias[9FDF, 0]
+                // AstId: TypeAlias[A09C, 0]
                 pub(self) type ExType;
 
                 #[on_extern_static]
-                // AstId: Static[43C1, 0]
+                // AstId: Static[D85E, 0]
                 pub(self) static EX_STATIC = _;
 
                 #[on_extern_fn]
-                // AstId: Fn[452D, 0]
+                // AstId: Fn[B240, 0]
                 pub(self) fn ex_fn;
             }
         "#]],
@@ -124,20 +124,20 @@ enum E {
 }
         "#,
         expect![[r#"
-            // AstId: Struct[DFF3, 0]
+            // AstId: Struct[ED35, 0]
             pub(self) struct Unit;
 
             #[derive(Debug)]
-            // AstId: Struct[C7A1, 0]
+            // AstId: Struct[A47C, 0]
             pub(self) struct Struct { ... }
 
-            // AstId: Struct[DAC2, 0]
+            // AstId: Struct[C8C9, 0]
             pub(self) struct Tuple(...);
 
-            // AstId: Union[2DBB, 0]
+            // AstId: Union[2797, 0]
             pub(self) union Ize { ... }
 
-            // AstId: Enum[7FF8, 0]
+            // AstId: Enum[7D23, 0]
             pub(self) enum E { ... }
         "#]],
     );
@@ -162,18 +162,18 @@ trait Tr: SuperTrait + 'lifetime {
 }
         "#,
         expect![[r#"
-            // AstId: Static[B393, 0]
+            // AstId: Static[F7C1, 0]
             pub static ST = _;
 
-            // AstId: Const[B309, 0]
+            // AstId: Const[84BB, 0]
             pub(self) const _ = _;
 
             #[attr]
             #[inner_attr_in_fn]
-            // AstId: Fn[75E3, 0]
+            // AstId: Fn[BE8F, 0]
             pub(self) fn f;
 
-            // AstId: Trait[2998, 0]
+            // AstId: Trait[9320, 0]
             pub(self) trait Tr { ... }
         "#]],
     );
@@ -197,16 +197,16 @@ mod outline;
         expect![[r##"
             #[doc = " outer"]
             #[doc = " inner"]
-            // AstId: Module[CF93, 0]
+            // AstId: Module[03AE, 0]
             pub(self) mod inline {
                 // AstId: Use[0000, 0]
                 pub(self) use super::*;
 
-                // AstId: Fn[1B26, 0]
+                // AstId: Fn[2A78, 0]
                 pub(self) fn fn_in_module;
             }
 
-            // AstId: Module[8994, 0]
+            // AstId: Module[C08B, 0]
             pub(self) mod outline;
         "##]],
     );
@@ -225,13 +225,13 @@ pub macro m2() {}
 m!();
         "#,
         expect![[r#"
-            // AstId: MacroRules[88CE, 0]
+            // AstId: MacroRules[7E68, 0]
             macro_rules! m { ... }
 
-            // AstId: MacroDef[DC34, 0]
+            // AstId: MacroDef[1C1E, 0]
             pub macro m2 { ... }
 
-            // AstId: MacroCall[612F, 0], SyntaxContextId: ROOT2024, ExpandTo: Items
+            // AstId: MacroCall[7E68, 0], SyntaxContextId: ROOT2024, ExpandTo: Items
             m!(...);
         "#]],
     );
@@ -244,7 +244,7 @@ fn pub_self() {
 pub(self) struct S;
         "#,
         expect![[r#"
-            // AstId: Struct[42E2, 0]
+            // AstId: Struct[5024, 0]
             pub(self) struct S;
         "#]],
     )

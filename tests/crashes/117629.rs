@@ -3,8 +3,7 @@
 
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait Tr {
+const trait Tr {
     async fn ft1() {}
 }
 

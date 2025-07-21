@@ -1,6 +1,7 @@
 use std::assert_matches::assert_matches;
 
 use hir::Node;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -162,7 +163,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                         .map(|t| ty::Binder::dummy(t.instantiate_identity()));
                 }
             }
-            ItemKind::Trait(_, _, _, _, self_bounds, ..)
+            ItemKind::Trait(_, _, _, _, _, self_bounds, ..)
             | ItemKind::TraitAlias(_, _, self_bounds) => {
                 is_trait = Some((self_bounds, item.span));
             }
@@ -266,20 +267,16 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         match predicate.kind {
             hir::WherePredicateKind::BoundPredicate(bound_pred) => {
                 let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
-
                 let bound_vars = tcx.late_bound_vars(predicate.hir_id);
-                // Keep the type around in a dummy predicate, in case of no bounds.
-                // That way, `where Ty:` is not a complete noop (see #53696) and `Ty`
-                // is still checked for WF.
+
+                // This is a `where Ty:` (sic!).
                 if bound_pred.bounds.is_empty() {
                     if let ty::Param(_) = ty.kind() {
-                        // This is a `where T:`, which can be in the HIR from the
-                        // transformation that moves `?Sized` to `T`'s declaration.
-                        // We can skip the predicate because type parameters are
-                        // trivially WF, but also we *should*, to avoid exposing
-                        // users who never wrote `where Type:,` themselves, to
-                        // compiler/tooling bugs from not handling WF predicates.
+                        // We can skip the predicate because type parameters are trivially WF.
                     } else {
+                        // Keep the type around in a dummy predicate. That way, it's not a complete
+                        // noop (see #53696) and `Ty` is still checked for WF.
+
                         let span = bound_pred.bounded_ty.span;
                         let predicate = ty::Binder::bind_with_vars(
                             ty::ClauseKind::WellFormed(ty.into()),
@@ -331,6 +328,19 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
     if tcx.features().generic_const_exprs() {
         predicates.extend(const_evaluatable_predicates_of(tcx, def_id, &predicates));
+    }
+
+    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
+    // FIXME(staged_api): We might want to look at the normal stability attributes too but
+    // first we would need a way to let std/core use APIs with unstable feature bounds from
+    // within stable APIs.
+    let allow_unstable_feature_attr =
+        find_attr!(attrs, AttributeKind::UnstableFeatureBound(i) => i)
+            .map(|i| i.as_slice())
+            .unwrap_or_default();
+
+    for (feat_name, span) in allow_unstable_feature_attr {
+        predicates.insert((ty::ClauseKind::UnstableFeature(*feat_name).upcast(tcx), *span));
     }
 
     let mut predicates: Vec<_> = predicates.into_iter().collect();
@@ -764,6 +774,7 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
                     ty::ClauseKind::RegionOutlives(_)
                     | ty::ClauseKind::ConstArgHasType(_, _)
                     | ty::ClauseKind::WellFormed(_)
+                    | ty::ClauseKind::UnstableFeature(_)
                     | ty::ClauseKind::ConstEvaluatable(_) => {
                         bug!(
                             "unexpected non-`Self` predicate when computing \
@@ -791,6 +802,7 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
                     | ty::ClauseKind::ConstArgHasType(_, _)
                     | ty::ClauseKind::WellFormed(_)
                     | ty::ClauseKind::ConstEvaluatable(_)
+                    | ty::ClauseKind::UnstableFeature(_)
                     | ty::ClauseKind::HostEffect(..) => {
                         bug!(
                             "unexpected non-`Self` predicate when computing \
@@ -1006,7 +1018,7 @@ pub(super) fn const_conditions<'tcx>(
         Node::Item(item) => match item.kind {
             hir::ItemKind::Impl(impl_) => (impl_.generics, None, false),
             hir::ItemKind::Fn { generics, .. } => (generics, None, false),
-            hir::ItemKind::Trait(_, _, _, generics, supertraits, _) => {
+            hir::ItemKind::Trait(_, _, _, _, generics, supertraits, _) => {
                 (generics, Some((item.owner_id.def_id, supertraits)), false)
             }
             _ => bug!("const_conditions called on wrong item: {def_id:?}"),

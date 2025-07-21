@@ -390,7 +390,8 @@ pub(crate) fn clean_predicate<'tcx>(
         ty::ClauseKind::ConstEvaluatable(..)
         | ty::ClauseKind::WellFormed(..)
         | ty::ClauseKind::ConstArgHasType(..)
-        // FIXME(const_trait_impl): We can probably use this `HostEffect` pred to render `[const]`.
+        | ty::ClauseKind::UnstableFeature(..)
+        // FIXME(const_trait_impl): We can probably use this `HostEffect` pred to render `~const`.
         | ty::ClauseKind::HostEffect(_) => None,
     }
 }
@@ -2864,7 +2865,7 @@ fn clean_maybe_renamed_item<'tcx>(
             ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
-            ItemKind::Trait(_, _, _, generics, bounds, item_ids) => {
+            ItemKind::Trait(_, _, _, _, generics, bounds, item_ids) => {
                 let items = item_ids
                     .iter()
                     .map(|&ti| clean_trait_item(cx.tcx.hir_trait_item(ti), cx))

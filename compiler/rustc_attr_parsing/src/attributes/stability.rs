@@ -98,6 +98,16 @@ impl<S: Stage> AttributeParser<S> for StabilityParser {
             }
         }
 
+        if let Some((Stability { level: StabilityLevel::Stable { .. }, .. }, _)) = self.stability {
+            for other_attr in cx.all_attrs {
+                if other_attr.word_is(sym::unstable_feature_bound) {
+                    cx.emit_err(session_diagnostics::UnstableFeatureBoundIncompatibleStability {
+                        span: cx.target_span,
+                    });
+                }
+            }
+        }
+
         let (stability, span) = self.stability?;
 
         Some(AttributeKind::Stability { stability, span })
@@ -282,12 +292,12 @@ pub(crate) fn parse_stability<S: Stage>(
         } else if let Some(version) = parse_version(since) {
             StableSince::Version(version)
         } else {
-            cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
-            StableSince::Err
+            let err = cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
+            StableSince::Err(err)
         }
     } else {
-        cx.emit_err(session_diagnostics::MissingSince { span: cx.attr_span });
-        StableSince::Err
+        let err = cx.emit_err(session_diagnostics::MissingSince { span: cx.attr_span });
+        StableSince::Err(err)
     };
 
     match feature {

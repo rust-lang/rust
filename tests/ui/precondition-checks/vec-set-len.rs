@@ -1,4 +1,4 @@
-//@ run-fail
+//@ run-crash
 //@ compile-flags: -Cdebug-assertions=yes
 //@ error-pattern: unsafe precondition(s) violated: Vec::set_len requires that new_len <= capacity()
 

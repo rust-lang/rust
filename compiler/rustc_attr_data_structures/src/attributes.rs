@@ -110,6 +110,22 @@ pub enum DeprecatedSince {
     Err,
 }
 
+#[derive(
+    Copy,
+    Debug,
+    Eq,
+    PartialEq,
+    Encodable,
+    Decodable,
+    Clone,
+    HashStable_Generic,
+    PrintAttribute
+)]
+pub enum CoverageStatus {
+    On,
+    Off,
+}
+
 impl Deprecation {
     /// Whether an item marked with #[deprecated(since = "X")] is currently
     /// deprecated (i.e., whether X is not greater than the current rustc
@@ -274,6 +290,9 @@ pub enum AttributeKind {
     /// Represents `#[const_trait]`.
     ConstTrait(Span),
 
+    /// Represents `#[coverage]`.
+    Coverage(Span, CoverageStatus),
+
     ///Represents `#[rustc_deny_explicit_impl]`.
     DenyExplicitImpl(Span),
 
@@ -419,6 +438,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_unsafe_specialization_marker]`.
     UnsafeSpecializationMarker(Span),
+
+    /// Represents `#[unstable_feature_bound]`.
+    UnstableFeatureBound(ThinVec<(Symbol, Span)>),
 
     /// Represents `#[used]`
     Used { used_by: UsedBy, span: Span },

@@ -1757,6 +1757,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--host").arg(&*compiler.host.triple);
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.host_target));
 
+        if let Some(codegen_backend) = builder.config.default_codegen_backend(compiler.host) {
+            cmd.arg("--codegen-backend").arg(&codegen_backend);
+        }
+
         if builder.build.config.llvm_enzyme {
             cmd.arg("--has-enzyme");
         }
@@ -1810,7 +1814,24 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         let mut flags = if is_rustdoc { Vec::new() } else { vec!["-Crpath".to_string()] };
-        flags.push(format!("-Cdebuginfo={}", builder.config.rust_debuginfo_level_tests));
+        flags.push(format!(
+            "-Cdebuginfo={}",
+            if suite == "codegen" {
+                // codegen tests typically check LLVM IR and are sensitive to additional debuginfo.
+                // So do not apply `rust.debuginfo-level-tests` for codegen tests.
+                if builder.config.rust_debuginfo_level_tests
+                    != crate::core::config::DebuginfoLevel::None
+                {
+                    println!(
+                        "NOTE: ignoring `rust.debuginfo-level-tests={}` for codegen tests",
+                        builder.config.rust_debuginfo_level_tests
+                    );
+                }
+                crate::core::config::DebuginfoLevel::None
+            } else {
+                builder.config.rust_debuginfo_level_tests
+            }
+        ));
         flags.extend(builder.config.cmd.compiletest_rustc_args().iter().map(|s| s.to_string()));
 
         if suite != "mir-opt" {
@@ -2945,7 +2966,8 @@ impl Step for RemoteCopyLibs {
 
         builder.info(&format!("REMOTE copy libs to emulator ({target})"));
 
-        let remote_test_server = builder.ensure(tool::RemoteTestServer { compiler, target });
+        let remote_test_server =
+            builder.ensure(tool::RemoteTestServer { build_compiler: compiler, target });
 
         // Spawn the emulator and wait for it to come online
         let tool = builder.tool_exe(Tool::RemoteTestClient);
@@ -3386,7 +3408,7 @@ impl Step for CodegenCranelift {
             cargo
                 .arg("--manifest-path")
                 .arg(builder.src.join("compiler/rustc_codegen_cranelift/build_system/Cargo.toml"));
-            compile::rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
+            compile::rustc_cargo_env(builder, &mut cargo, target);
 
             // Avoid incremental cache issues when changing rustc
             cargo.env("CARGO_BUILD_INCREMENTAL", "false");
@@ -3518,7 +3540,7 @@ impl Step for CodegenGCC {
             cargo
                 .arg("--manifest-path")
                 .arg(builder.src.join("compiler/rustc_codegen_gcc/build_system/Cargo.toml"));
-            compile::rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
+            compile::rustc_cargo_env(builder, &mut cargo, target);
             add_cg_gcc_cargo_flags(&mut cargo, &gcc);
 
             // Avoid incremental cache issues when changing rustc

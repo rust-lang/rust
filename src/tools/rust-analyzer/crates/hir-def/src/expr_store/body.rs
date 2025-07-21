@@ -36,6 +36,7 @@ pub struct Body {
 impl ops::Deref for Body {
     type Target = ExpressionStore;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.store
     }
@@ -61,6 +62,7 @@ pub struct BodySourceMap {
 impl ops::Deref for BodySourceMap {
     type Target = ExpressionStoreSourceMap;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.store
     }
@@ -102,9 +104,7 @@ impl Body {
             }
         };
         let module = def.module(db);
-        let (body, mut source_map) =
-            lower_body(db, def, file_id, module, params, body, is_async_fn);
-        source_map.store.shrink_to_fit();
+        let (body, source_map) = lower_body(db, def, file_id, module, params, body, is_async_fn);
 
         (Arc::new(body), Arc::new(source_map))
     }
