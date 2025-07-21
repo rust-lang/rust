@@ -4175,8 +4175,8 @@ impl<'hir> Item<'hir> {
             ItemKind::Trait(constness, is_auto, safety, ident, generics, bounds, items),
             (*constness, *is_auto, *safety, *ident, generics, bounds, items);
 
-        expect_trait_alias, (Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
-            ItemKind::TraitAlias(ident, generics, bounds), (*ident, generics, bounds);
+        expect_trait_alias, (Constness, Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
+            ItemKind::TraitAlias(constness, ident, generics, bounds), (*constness, *ident, generics, bounds);
 
         expect_impl, &'hir Impl<'hir>, ItemKind::Impl(imp), imp;
     }
@@ -4353,7 +4353,7 @@ pub enum ItemKind<'hir> {
         &'hir [TraitItemId],
     ),
     /// A trait alias.
-    TraitAlias(Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
+    TraitAlias(Constness, Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
 
     /// An implementation, e.g., `impl<A> Trait for Foo { .. }`.
     Impl(&'hir Impl<'hir>),
@@ -4396,7 +4396,7 @@ impl ItemKind<'_> {
             | ItemKind::Struct(ident, ..)
             | ItemKind::Union(ident, ..)
             | ItemKind::Trait(_, _, _, ident, ..)
-            | ItemKind::TraitAlias(ident, ..) => Some(ident),
+            | ItemKind::TraitAlias(_, ident, ..) => Some(ident),
 
             ItemKind::Use(_, UseKind::Glob | UseKind::ListStem)
             | ItemKind::ForeignMod { .. }
@@ -4414,7 +4414,7 @@ impl ItemKind<'_> {
             | ItemKind::Struct(_, generics, _)
             | ItemKind::Union(_, generics, _)
             | ItemKind::Trait(_, _, _, _, generics, _, _)
-            | ItemKind::TraitAlias(_, generics, _)
+            | ItemKind::TraitAlias(_, _, generics, _)
             | ItemKind::Impl(Impl { generics, .. }) => generics,
             _ => return None,
         })

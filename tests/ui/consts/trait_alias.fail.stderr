@@ -1,0 +1,46 @@
+error: `[const]` is not allowed here
+  --> $DIR/trait_alias.rs:14:19
+   |
+LL | const trait Foo = [const] Bar + Baz;
+   |                   ^^^^^^^
+   |
+   = note: this item cannot have `[const]` trait bounds
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/trait_alias.rs:17:17
+   |
+LL | const fn foo<T: [const] Foo>(x: &T) {
+   |                 ^^^^^^^ can't be applied to `Foo`
+   |
+help: mark `Foo` as `const` to allow it to have `const` implementations
+   |
+LL | #[const_trait] const trait Foo = [const] Bar + Baz;
+   | ++++++++++++++
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/trait_alias.rs:17:17
+   |
+LL | const fn foo<T: [const] Foo>(x: &T) {
+   |                 ^^^^^^^ can't be applied to `Foo`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: mark `Foo` as `const` to allow it to have `const` implementations
+   |
+LL | #[const_trait] const trait Foo = [const] Bar + Baz;
+   | ++++++++++++++
+
+error[E0277]: the trait bound `T: [const] Bar` is not satisfied
+  --> $DIR/trait_alias.rs:20:7
+   |
+LL |     x.bar();
+   |       ^^^
+
+error[E0277]: the trait bound `T: [const] Baz` is not satisfied
+  --> $DIR/trait_alias.rs:24:11
+   |
+LL |         x.baz();
+   |           ^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
