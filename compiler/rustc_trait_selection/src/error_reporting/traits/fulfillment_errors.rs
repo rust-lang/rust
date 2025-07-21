@@ -236,7 +236,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             (message, notes, append_const_msg)
                         };
 
-                        let err_msg = || self.get_standard_error_message(
+                        let default_err_msg = || self.get_standard_error_message(
                             main_trait_predicate,
                             message,
                             None,
@@ -261,7 +261,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     );
                                 }
                                 GetSafeTransmuteErrorAndReason::Default => {
-                                    (err_msg(), None)
+                                    (default_err_msg(), None)
                                 }
                                 GetSafeTransmuteErrorAndReason::Error {
                                     err_msg,
@@ -269,7 +269,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 } => (err_msg, safe_transmute_explanation),
                             }
                         } else {
-                            (err_msg(), None)
+                            (default_err_msg(), None)
                         };
 
                         let mut err = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
