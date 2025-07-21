@@ -3533,6 +3533,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .must_apply_modulo_regions()
         {
             let sm = self.tcx.sess.source_map();
+            // If the span of rhs_expr or lhs_expr is in an external macro,
+            // we should not suggest to swap the equality. See issue #139050
+            if rhs_expr.span.in_external_macro(sm) || lhs_expr.span.in_external_macro(sm) {
+                return;
+            }
+
             if let Ok(rhs_snippet) = sm.span_to_snippet(rhs_expr.span)
                 && let Ok(lhs_snippet) = sm.span_to_snippet(lhs_expr.span)
             {
