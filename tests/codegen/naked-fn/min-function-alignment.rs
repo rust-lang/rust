@@ -3,6 +3,8 @@
 //@ ignore-arm no "ret" mnemonic
 //@ ignore-wasm32 aligning functions is not currently supported on wasm (#143368)
 
+// FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
+#![feature(rustc_attrs)]
 #![feature(fn_align)]
 #![crate_type = "lib"]
 
@@ -17,7 +19,7 @@ pub extern "C" fn naked_no_explicit_align() {
 
 // CHECK: .balign 16
 #[no_mangle]
-#[align(8)]
+#[rustc_align(8)]
 #[unsafe(naked)]
 pub extern "C" fn naked_lower_align() {
     core::arch::naked_asm!("ret")
@@ -25,7 +27,7 @@ pub extern "C" fn naked_lower_align() {
 
 // CHECK: .balign 32
 #[no_mangle]
-#[align(32)]
+#[rustc_align(32)]
 #[unsafe(naked)]
 pub extern "C" fn naked_higher_align() {
     core::arch::naked_asm!("ret")
