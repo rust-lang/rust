@@ -955,7 +955,7 @@ impl<'a> Parser<'a> {
 
             self.psess.gated_spans.gate(sym::trait_alias, whole_span);
 
-            Ok(ItemKind::TraitAlias(ident, generics, bounds))
+            Ok(ItemKind::TraitAlias(Box::new(TraitAlias { ident, generics, bounds })))
         } else {
             // It's a normal trait.
             generics.where_clause = self.parse_where_clause()?;
