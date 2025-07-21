@@ -21,6 +21,10 @@ mod transmutability;
 #[unstable(feature = "transmutability", issue = "99571")]
 pub use transmutability::{Assume, TransmuteFrom};
 
+mod drop_guard;
+#[unstable(feature = "drop_guard", issue = "144426")]
+pub use drop_guard::DropGuard;
+
 // This one has to be a re-export (rather than wrapping the underlying intrinsic) so that we can do
 // the special magic "types have equal size" check at the call site.
 #[stable(feature = "rust1", since = "1.0.0")]
