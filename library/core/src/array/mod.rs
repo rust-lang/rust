@@ -198,7 +198,8 @@ impl Error for TryFromSliceError {
 }
 
 #[stable(feature = "try_from_slice_error", since = "1.36.0")]
-impl From<Infallible> for TryFromSliceError {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<Infallible> for TryFromSliceError {
     fn from(x: Infallible) -> TryFromSliceError {
         match x {}
     }
