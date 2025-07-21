@@ -117,7 +117,7 @@ fn if_expr_to_guarded_return(
 
     then_block.syntax().last_child_or_token().filter(|t| t.kind() == T!['}'])?;
 
-    let then_block_items = then_block.dedent(IndentLevel(1)).clone_for_update();
+    let then_block_items = then_block.dedent(IndentLevel(1));
 
     let end_of_then = then_block_items.syntax().last_child_or_token()?;
     let end_of_then = if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
@@ -143,7 +143,7 @@ fn if_expr_to_guarded_return(
                         let cond = invert_boolean_expression_legacy(cond_expr);
                         make::expr_if(cond, then_branch, None).indent(if_indent_level)
                     };
-                    new_expr.syntax().clone_for_update()
+                    new_expr.syntax().clone()
                 }
                 Some(pat) => {
                     // If-let.
@@ -154,7 +154,7 @@ fn if_expr_to_guarded_return(
                         ast::make::tail_only_block_expr(early_expression),
                     );
                     let let_else_stmt = let_else_stmt.indent(if_indent_level);
-                    let_else_stmt.syntax().clone_for_update()
+                    let_else_stmt.syntax().clone()
                 }
             };
 
@@ -225,7 +225,7 @@ fn let_stmt_to_guarded_return(
                     ast::make::tail_only_block_expr(early_expression),
                 );
                 let let_else_stmt = let_else_stmt.indent(let_indent_level);
-                let_else_stmt.syntax().clone_for_update()
+                let_else_stmt.syntax().clone()
             };
 
             ted::replace(let_stmt.syntax(), replacement)

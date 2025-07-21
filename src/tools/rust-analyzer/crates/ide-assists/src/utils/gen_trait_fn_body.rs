@@ -139,7 +139,7 @@ fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         }
     };
     let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
-    ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
+    ted::replace(func.body()?.syntax(), body.syntax());
     Some(())
 }
 
@@ -248,7 +248,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
             let body = make::block_expr(None, Some(match_expr.into()));
             let body = body.indent(ast::edit::IndentLevel(1));
-            ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
+            ted::replace(func.body()?.syntax(), body.syntax());
             Some(())
         }
 
@@ -296,7 +296,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let method = make::name_ref("finish");
             let expr = make::expr_method_call(expr, method, make::arg_list(None)).into();
             let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
-            ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
+            ted::replace(func.body()?.syntax(), body.syntax());
             Some(())
         }
     }
@@ -342,7 +342,7 @@ fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 }
             };
             let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
-            ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
+            ted::replace(func.body()?.syntax(), body.syntax());
             Some(())
         }
     }
@@ -400,7 +400,7 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         },
     };
 
-    ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
+    ted::replace(func.body()?.syntax(), body.syntax());
     Some(())
 }
 
@@ -595,7 +595,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef<'_>
         },
     };
 
-    ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
+    ted::replace(func.body()?.syntax(), body.syntax());
     Some(())
 }
 
@@ -686,7 +686,7 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef<'_
         },
     };
 
-    ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
+    ted::replace(func.body()?.syntax(), body.syntax());
     Some(())
 }
 
