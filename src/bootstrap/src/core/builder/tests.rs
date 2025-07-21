@@ -1006,11 +1006,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("build")
                 .paths(&["cargo"])
-            .render_steps(), @r"
-        [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> cargo 2 <host>
-        ");
+            .render_steps(), @"[build] rustc 0 <host> -> cargo 1 <host>");
     }
 
     #[test]

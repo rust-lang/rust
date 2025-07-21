@@ -822,7 +822,7 @@ impl Step for Cargo {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
+            compiler: get_tool_target_compiler(run.builder, ToolTargetBuildMode::Build(run.target)),
             target: run.target,
         });
     }
@@ -834,7 +834,7 @@ impl Step for Cargo {
             build_compiler: self.compiler,
             target: self.target,
             tool: "cargo",
-            mode: Mode::ToolRustc,
+            mode: Mode::ToolTarget,
             path: "src/tools/cargo",
             source_type: SourceType::Submodule,
             extra_features: Vec::new(),
@@ -845,11 +845,7 @@ impl Step for Cargo {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        // FIXME: fix staging logic
-        Some(
-            StepMetadata::build("cargo", self.target)
-                .built_by(self.compiler.with_stage(self.compiler.stage - 1)),
-        )
+        Some(StepMetadata::build("cargo", self.target).built_by(self.compiler))
     }
 }
 
