@@ -7,6 +7,7 @@ use std::{iter, ptr};
 
 use libc::{c_longlong, c_uint};
 use rustc_abi::{Align, Size};
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -1069,6 +1070,16 @@ fn build_struct_type_di_node<'ll, 'tcx>(
     } else {
         None
     };
+
+    if find_attr!(cx.tcx.get_all_attrs(adt_def.did()), AttributeKind::DebuginfoTransparent(..)) {
+        let ty = struct_type_and_layout.non_1zst_field(cx).unwrap().1.ty;
+
+        let di_node = type_di_node(cx, ty);
+
+        return_if_di_node_created_in_meantime!(cx, unique_type_id);
+
+        return DINodeCreationResult::new(di_node, false);
+    }
 
     type_map::build_type_with_children(
         cx,

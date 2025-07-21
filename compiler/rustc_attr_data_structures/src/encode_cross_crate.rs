@@ -29,6 +29,7 @@ impl AttributeKind {
             ConstStabilityIndirect => No,
             ConstTrait(..) => No,
             Coverage(..) => No,
+            DebuginfoTransparent { .. } => Yes,
             DenyExplicitImpl(..) => No,
             Deprecation { .. } => Yes,
             DoNotImplementViaObject(..) => No,
