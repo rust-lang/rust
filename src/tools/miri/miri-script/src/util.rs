@@ -38,6 +38,8 @@ pub struct MiriEnv {
     pub miri_dir: PathBuf,
     /// active_toolchain is passed as `+toolchain` argument to cargo/rustc invocations.
     toolchain: String,
+    /// The cargo binary to use.
+    cargo_bin: String,
     /// Extra flags to pass to cargo.
     cargo_extra_flags: Vec<String>,
     /// The rustc sysroot
@@ -106,6 +108,9 @@ impl MiriEnv {
             sh.set_var("PATH", new_path);
         }
 
+        // Get the cargo binary to use, if one is set.
+        let cargo_bin = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
+
         // Get extra flags for cargo.
         let cargo_extra_flags = std::env::var("CARGO_EXTRA_FLAGS").unwrap_or_default();
         let mut cargo_extra_flags = flagsplit(&cargo_extra_flags);
@@ -119,7 +124,7 @@ impl MiriEnv {
         // Also set `-Zroot-dir` for cargo, to print diagnostics relative to the miri dir.
         cargo_extra_flags.push(format!("-Zroot-dir={}", miri_dir.display()));
 
-        Ok(MiriEnv { miri_dir, toolchain, sh, sysroot, cargo_extra_flags, libdir })
+        Ok(MiriEnv { miri_dir, toolchain, sh, sysroot, cargo_bin, cargo_extra_flags, libdir })
     }
 
     /// Make sure the `features` you pass here exist for the specified `crate_dir`. For example, the
@@ -130,12 +135,12 @@ impl MiriEnv {
         cmd: &str,
         features: &[String],
     ) -> Cmd<'_> {
-        let MiriEnv { toolchain, cargo_extra_flags, .. } = self;
+        let MiriEnv { toolchain, cargo_extra_flags, cargo_bin, .. } = self;
         let manifest_path = path!(self.miri_dir / crate_dir.as_ref() / "Cargo.toml");
         let features = features_to_args(features);
         cmd!(
             self.sh,
-            "cargo +{toolchain} {cmd} {cargo_extra_flags...} --manifest-path {manifest_path} {features...}"
+            "{cargo_bin} +{toolchain} {cmd} {cargo_extra_flags...} --manifest-path {manifest_path} {features...}"
         )
     }
 
@@ -147,12 +152,12 @@ impl MiriEnv {
         features: &[String],
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> Result<()> {
-        let MiriEnv { sysroot, toolchain, cargo_extra_flags, .. } = self;
+        let MiriEnv { sysroot, toolchain, cargo_extra_flags, cargo_bin, .. } = self;
         let path = path!(self.miri_dir / crate_dir.as_ref());
         let features = features_to_args(features);
         // Install binaries to the miri toolchain's `sysroot` so they do not interact with other toolchains.
         // (Not using `cargo_cmd` as `install` is special and doesn't use `--manifest-path`.)
-        cmd!(self.sh, "cargo +{toolchain} install {cargo_extra_flags...} --path {path} --force --root {sysroot} {features...} {args...}").run()?;
+        cmd!(self.sh, "{cargo_bin} +{toolchain} install {cargo_extra_flags...} --path {path} --force --root {sysroot} {features...} {args...}").run()?;
         Ok(())
     }
 
