@@ -81,7 +81,7 @@ switch to its repository checkout directory in your terminal).
 #### Performing push
 
 > NOTE:
-> Before you proceed, look at some guidance related to Git [on josh-sync README],
+> Before you proceed, look at some guidance related to Git [on josh-sync README].
 
 1) Run the push command to create a branch named `<branch-name>` in a `rustc` fork under the `<gh-username>` account
     ```
