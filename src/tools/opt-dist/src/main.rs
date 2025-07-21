@@ -62,7 +62,7 @@ enum EnvironmentCmd {
         python: String,
 
         /// Directory where artifacts (like PGO profiles or rustc-perf) of this workflow
-        /// will be stored.
+        /// will be stored. Relative to `checkout_dir`
         #[arg(long, default_value = "opt-artifacts")]
         artifact_dir: Utf8PathBuf,
 
@@ -150,7 +150,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .python_binary(python)
                 .checkout_dir(checkout_dir.clone())
                 .host_llvm_dir(llvm_dir)
-                .artifact_dir(artifact_dir)
+                .artifact_dir(checkout_dir.join(artifact_dir))
                 .build_dir(checkout_dir.join(build_dir))
                 .prebuilt_rustc_perf(rustc_perf_checkout_dir)
                 .shared_llvm(llvm_shared)
