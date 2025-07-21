@@ -302,7 +302,7 @@ trigger_files = [
     "compiler",
 
     # Tests
-    "tests/assembly",
+    "tests/assembly-llvm",
     "tests/auxiliary",
     "tests/codegen",
     "tests/codegen-units",

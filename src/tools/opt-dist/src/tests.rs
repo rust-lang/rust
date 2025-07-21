@@ -100,7 +100,7 @@ llvm-config = "{llvm_config}"
             env.host_tuple(),
             "--stage",
             "0",
-            "tests/assembly",
+            "tests/assembly-llvm",
             "tests/codegen",
             "tests/codegen-units",
             "tests/incremental",

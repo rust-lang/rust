@@ -307,7 +307,7 @@ If you need to work with `#![no_std]` cross-compiling tests, consult the
 
 ### Assembly tests
 
-The tests in [`tests/assembly`] test LLVM assembly output. They compile the test
+The tests in [`tests/assembly-llvm`] test LLVM assembly output. They compile the test
 with the `--emit=asm` flag to emit a `.s` file with the assembly output. They
 then run the LLVM [FileCheck] tool.
 
@@ -324,7 +324,7 @@ See also the [codegen tests](#codegen-tests) for a similar set of tests.
 If you need to work with `#![no_std]` cross-compiling tests, consult the
 [`minicore` test auxiliary](./minicore.md) chapter.
 
-[`tests/assembly`]: https://github.com/rust-lang/rust/tree/master/tests/assembly
+[`tests/assembly-llvm`]: https://github.com/rust-lang/rust/tree/master/tests/assembly-llvm
 
 
 ### Codegen-units tests

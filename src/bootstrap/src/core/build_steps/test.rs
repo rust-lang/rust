@@ -1407,7 +1407,12 @@ test!(Pretty {
 
 test!(RunMake { path: "tests/run-make", mode: "run-make", suite: "run-make", default: true });
 
-test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly", default: true });
+test!(AssemblyLlvm {
+    path: "tests/assembly-llvm",
+    mode: "assembly",
+    suite: "assembly-llvm",
+    default: true
+});
 
 /// Runs the coverage test suite at `tests/coverage` in some or all of the
 /// coverage test modes.
