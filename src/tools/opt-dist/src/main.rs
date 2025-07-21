@@ -206,7 +206,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .skipped_tests(vec![])
                 .run_tests(true)
                 .fast_try_build(is_fast_try_build)
-                .build_llvm(true)
+                .build_llvm(false)
                 .build()?;
 
             (env, shared.build_args)
