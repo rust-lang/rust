@@ -13,7 +13,7 @@ use rustc_ast::{
     MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
-use rustc_attr_parsing::EvalConfigResult;
+use rustc_attr_parsing::{EvalConfigResult, ShouldEmit};
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::PResult;
 use rustc_feature::Features;
@@ -2171,7 +2171,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         attr: ast::Attribute,
         pos: usize,
     ) -> EvalConfigResult {
-        let res = self.cfg().cfg_true(&attr, node.node_id());
+        let res = self.cfg().cfg_true(&attr, node.node_id(), ShouldEmit::ErrorsAndLints);
         if res.as_bool() {
             // A trace attribute left in AST in place of the original `cfg` attribute.
             // It can later be used by lints or other diagnostics.

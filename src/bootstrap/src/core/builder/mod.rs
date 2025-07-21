@@ -845,7 +845,6 @@ pub enum Kind {
     #[value(alias = "r")]
     Run,
     Setup,
-    Suggest,
     Vendor,
     Perf,
 }
@@ -869,7 +868,6 @@ impl Kind {
             Kind::Install => "install",
             Kind::Run => "run",
             Kind::Setup => "setup",
-            Kind::Suggest => "suggest",
             Kind::Vendor => "vendor",
             Kind::Perf => "perf",
         }
@@ -881,7 +879,6 @@ impl Kind {
             Kind::Bench => "Benchmarking",
             Kind::Doc => "Documenting",
             Kind::Run => "Running",
-            Kind::Suggest => "Suggesting",
             Kind::Clippy => "Linting",
             Kind::Perf => "Profiling & benchmarking",
             _ => {
@@ -966,6 +963,7 @@ impl<'a> Builder<'a> {
                 tool::RemoteTestServer,
                 tool::RemoteTestClient,
                 tool::RustInstaller,
+                tool::FeaturesStatusDump,
                 tool::Cargo,
                 tool::RustAnalyzer,
                 tool::RustAnalyzerProcMacroSrv,
@@ -987,6 +985,8 @@ impl<'a> Builder<'a> {
                 tool::CoverageDump,
                 tool::LlvmBitcodeLinker,
                 tool::RustcPerf,
+                tool::WasmComponentLd,
+                tool::LldWrapper
             ),
             Kind::Clippy => describe!(
                 clippy::Std,
@@ -1201,7 +1201,7 @@ impl<'a> Builder<'a> {
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
             Kind::Vendor => describe!(vendor::Vendor),
             // special-cased in Build::build()
-            Kind::Format | Kind::Suggest | Kind::Perf => vec![],
+            Kind::Format | Kind::Perf => vec![],
             Kind::MiriTest | Kind::MiriSetup => unreachable!(),
         }
     }
@@ -1269,7 +1269,6 @@ impl<'a> Builder<'a> {
             Subcommand::Run { .. } => (Kind::Run, &paths[..]),
             Subcommand::Clean { .. } => (Kind::Clean, &paths[..]),
             Subcommand::Format { .. } => (Kind::Format, &[][..]),
-            Subcommand::Suggest { .. } => (Kind::Suggest, &[][..]),
             Subcommand::Setup { profile: ref path } => (
                 Kind::Setup,
                 path.as_ref().map_or([].as_slice(), |path| std::slice::from_ref(path)),

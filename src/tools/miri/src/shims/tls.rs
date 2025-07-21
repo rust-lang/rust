@@ -302,7 +302,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Windows has a special magic linker section that is run on certain events.
         // We don't support most of that, but just enough to make thread-local dtors in `std` work.
-        interp_ok(this.lookup_link_section(".CRT$XLB")?)
+        interp_ok(this.lookup_link_section(|section| section == ".CRT$XLB")?)
     }
 
     fn schedule_windows_tls_dtor(&mut self, dtor: ImmTy<'tcx>) -> InterpResult<'tcx> {

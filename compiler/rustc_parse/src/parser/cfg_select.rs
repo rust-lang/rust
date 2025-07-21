@@ -7,7 +7,7 @@ use rustc_span::Span;
 use crate::exp;
 use crate::parser::Parser;
 
-pub enum CfgSelectRule {
+pub enum CfgSelectPredicate {
     Cfg(MetaItemInner),
     Wildcard(Token),
 }
@@ -20,7 +20,7 @@ pub struct CfgSelectBranches {
     pub wildcard: Option<(Token, TokenStream, Span)>,
     /// All branches after the first wildcard, including further wildcards.
     /// These branches are kept for formatting.
-    pub unreachable: Vec<(CfgSelectRule, TokenStream, Span)>,
+    pub unreachable: Vec<(CfgSelectPredicate, TokenStream, Span)>,
 }
 
 /// Parses a `TokenTree` that must be of the form `{ /* ... */ }`, and returns a `TokenStream` where
@@ -52,7 +52,7 @@ pub fn parse_cfg_select<'a>(p: &mut Parser<'a>) -> PResult<'a, CfgSelectBranches
             match branches.wildcard {
                 None => branches.wildcard = Some((underscore, tts, span)),
                 Some(_) => {
-                    branches.unreachable.push((CfgSelectRule::Wildcard(underscore), tts, span))
+                    branches.unreachable.push((CfgSelectPredicate::Wildcard(underscore), tts, span))
                 }
             }
         } else {
@@ -64,7 +64,9 @@ pub fn parse_cfg_select<'a>(p: &mut Parser<'a>) -> PResult<'a, CfgSelectBranches
 
             match branches.wildcard {
                 None => branches.reachable.push((meta_item, tts, span)),
-                Some(_) => branches.unreachable.push((CfgSelectRule::Cfg(meta_item), tts, span)),
+                Some(_) => {
+                    branches.unreachable.push((CfgSelectPredicate::Cfg(meta_item), tts, span))
+                }
             }
         }
     }

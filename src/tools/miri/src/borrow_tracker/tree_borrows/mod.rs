@@ -314,7 +314,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let span = this.machine.current_span();
 
         // Store initial permissions and their corresponding range.
-        let mut perms_map: RangeMap<LocationState> = RangeMap::new(
+        let mut perms_map: DedupRangeMap<LocationState> = DedupRangeMap::new(
             ptr_size,
             LocationState::new_accessed(Permission::new_disabled(), IdempotentForeignAccess::None), // this will be overwritten
         );
@@ -673,7 +673,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 trace!("Tree Borrows tag {tag:?} exposed in {alloc_id:?}");
                 alloc_extra.borrow_tracker_tb().borrow_mut().expose_tag(tag);
             }
-            AllocKind::Function | AllocKind::VTable | AllocKind::Dead => {
+            AllocKind::Function | AllocKind::Virtual | AllocKind::Dead => {
                 // No tree borrows on these allocations.
             }
         }

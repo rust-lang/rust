@@ -27,6 +27,7 @@ pub struct Environment {
     shared_llvm: bool,
     run_tests: bool,
     fast_try_build: bool,
+    build_llvm: bool,
 }
 
 impl Environment {
@@ -110,6 +111,10 @@ impl Environment {
 
     pub fn is_fast_try_build(&self) -> bool {
         self.fast_try_build
+    }
+
+    pub fn build_llvm(&self) -> bool {
+        self.build_llvm
     }
 }
 

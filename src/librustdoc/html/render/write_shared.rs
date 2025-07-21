@@ -26,6 +26,7 @@ use std::{fmt, fs};
 
 use indexmap::IndexMap;
 use regex::Regex;
+use rustc_ast::join_path_syms;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_middle::ty::TyCtxt;
@@ -43,7 +44,6 @@ use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
-use crate::html::format::join_with_double_colon;
 use crate::html::layout;
 use crate::html::render::ordered_json::{EscapedJson, OrderedJson};
 use crate::html::render::search_index::{SerializedSearchIndex, build_index};
@@ -608,7 +608,7 @@ impl TypeAliasPart {
                     for &(type_alias_fqp, type_alias_item) in type_aliases {
                         cx.id_map.borrow_mut().clear();
                         cx.deref_id_map.borrow_mut().clear();
-                        let type_alias_fqp = join_with_double_colon(&type_alias_fqp);
+                        let type_alias_fqp = join_path_syms(type_alias_fqp);
                         if let Some(ret) = &mut ret {
                             ret.aliases.push(type_alias_fqp);
                         } else {

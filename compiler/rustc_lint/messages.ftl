@@ -440,6 +440,7 @@ lint_invalid_asm_label_named = avoid using named labels in inline assembly
     .help = only local labels of the form `<number>:` should be used in inline asm
     .note = see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 lint_invalid_asm_label_no_span = the label may be declared in the expansion of a macro
+
 lint_invalid_crate_type_value = invalid `crate_type` value
     .suggestion = did you mean
 
@@ -508,27 +509,50 @@ lint_metavariable_still_repeating = variable `{$name}` is still repeating at thi
 
 lint_metavariable_wrong_operator = meta-variable repeats with different Kleene operator
 
-lint_mismatched_lifetime_syntaxes =
-    lifetime flowing from input to output with different syntax can be confusing
-    .label_mismatched_lifetime_syntaxes_inputs =
-        {$n_inputs ->
-            [one] this lifetime flows
-            *[other] these lifetimes flow
-        } to the output
-    .label_mismatched_lifetime_syntaxes_outputs =
-        the {$n_outputs ->
-            [one] lifetime gets
-            *[other] lifetimes get
-        } resolved as `{$lifetime_name}`
+lint_mismatched_lifetime_syntaxes_eliding_while_named =
+    eliding a lifetime that's named elsewhere is confusing
+
+lint_mismatched_lifetime_syntaxes_help =
+    the same lifetime is referred to in inconsistent ways, making the signature confusing
+
+lint_mismatched_lifetime_syntaxes_hiding_and_eliding_while_named =
+    hiding or eliding a lifetime that's named elsewhere is confusing
+
+lint_mismatched_lifetime_syntaxes_hiding_while_elided =
+    hiding a lifetime that's elided elsewhere is confusing
+
+lint_mismatched_lifetime_syntaxes_hiding_while_named =
+    hiding a lifetime that's named elsewhere is confusing
+
+lint_mismatched_lifetime_syntaxes_input_elided =
+    the lifetime is elided here
+
+lint_mismatched_lifetime_syntaxes_input_hidden =
+    the lifetime is hidden here
+
+lint_mismatched_lifetime_syntaxes_input_named =
+    the lifetime is named here
+
+lint_mismatched_lifetime_syntaxes_output_elided =
+    the same lifetime is elided here
+
+lint_mismatched_lifetime_syntaxes_output_hidden =
+    the same lifetime is hidden here
+
+lint_mismatched_lifetime_syntaxes_output_named =
+    the same lifetime is named here
 
 lint_mismatched_lifetime_syntaxes_suggestion_explicit =
-    one option is to consistently use `{$lifetime_name}`
+    consistently use `{$lifetime_name}`
 
 lint_mismatched_lifetime_syntaxes_suggestion_implicit =
-    one option is to consistently remove the lifetime
+    remove the lifetime name from references
 
 lint_mismatched_lifetime_syntaxes_suggestion_mixed =
-    one option is to remove the lifetime for references and use the anonymous lifetime for paths
+    remove the lifetime name from references and use `'_` for type paths
+
+lint_mismatched_lifetime_syntaxes_suggestion_mixed_only_paths =
+    use `'_` for type paths
 
 lint_missing_unsafe_on_extern = extern blocks should be unsafe
     .suggestion = needs `unsafe` before the extern keyword
@@ -744,6 +768,9 @@ lint_redundant_semicolons_suggestion = remove {$multiple_semicolons ->
         *[false] this semicolon
     }
 
+lint_reexport_private_dependency =
+    {$kind} `{$name}` from private dependency '{$krate}' is re-exported
+
 lint_remove_mut_from_pattern = remove `mut` from the parameter
 
 lint_removed_lint = lint `{$name}` has been removed: {$reason}
@@ -790,6 +817,9 @@ lint_supertrait_as_deref_target = this `Deref` implementation is covered by an i
     .label2 = target type is a supertrait of `{$self_ty}`
     .help = consider removing this implementation or replacing it with a method instead
 
+lint_surrogate_char_cast = surrogate values are not valid for `char`
+    .note = `0xD800..=0xDFFF` are reserved for Unicode surrogates and are not valid `char` values
+
 lint_suspicious_double_ref_clone =
     using `.clone()` on a double reference, which returns `{$ty}` instead of cloning the inner type
 
@@ -798,6 +828,9 @@ lint_suspicious_double_ref_deref =
 
 lint_symbol_intern_string_literal = using `Symbol::intern` on a string literal
     .help = consider adding the symbol to `compiler/rustc_span/src/symbol.rs`
+
+lint_too_large_char_cast = value exceeds maximum `char` value
+    .note = maximum valid `char` value is `0x10FFFF`
 
 lint_trailing_semi_macro = trailing semicolon in macro used in expression position
     .note1 = macro invocations at the end of a block are treated as expressions

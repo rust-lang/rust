@@ -56,6 +56,17 @@ const_eval_const_context = {$kind ->
     *[other] {""}
 }
 
+const_eval_const_heap_ptr_in_final = encountered `const_allocate` pointer in final value that was not made global
+    .note = use `const_make_global` to make allocated pointers immutable before returning
+
+const_eval_const_make_global_ptr_already_made_global = attempting to call `const_make_global` twice on the same allocation {$alloc}
+
+const_eval_const_make_global_ptr_is_non_heap = pointer passed to `const_make_global` does not point to a heap allocation: {$ptr}
+
+const_eval_const_make_global_with_dangling_ptr = pointer passed to `const_make_global` is dangling: {$ptr}
+
+const_eval_const_make_global_with_offset = making {$ptr} global which does not point to the beginning of an object
+
 const_eval_copy_nonoverlapping_overlapping =
     `copy_nonoverlapping` called on overlapping ranges
 
@@ -296,19 +307,22 @@ const_eval_pointer_arithmetic_overflow =
     overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
 
 const_eval_pointer_out_of_bounds =
-    {const_eval_bad_pointer_op_attempting}, but got {$pointer} which {$inbounds_size_is_neg ->
-        [false] {$alloc_size_minus_ptr_offset ->
-                [0] is at or beyond the end of the allocation of size {$alloc_size ->
-                    [1] 1 byte
-                    *[x] {$alloc_size} bytes
+    {const_eval_bad_pointer_op_attempting}, but got {$pointer} which {$ptr_offset_is_neg ->
+        [true] points to before the beginning of the allocation
+        *[false] {$inbounds_size_is_neg ->
+            [false] {$alloc_size_minus_ptr_offset ->
+                        [0] is at or beyond the end of the allocation of size {$alloc_size ->
+                            [1] 1 byte
+                            *[x] {$alloc_size} bytes
+                        }
+                        [1] is only 1 byte from the end of the allocation
+                        *[x] is only {$alloc_size_minus_ptr_offset} bytes from the end of the allocation
+                    }
+            *[true] {$ptr_offset_abs ->
+                    [0] is at the beginning of the allocation
+                    *[other] is only {$ptr_offset_abs} bytes from the beginning of the allocation
                 }
-                [1] is only 1 byte from the end of the allocation
-                *[x] is only {$alloc_size_minus_ptr_offset} bytes from the end of the allocation
-            }
-        *[true] {$ptr_offset_abs ->
-                [0] is at the beginning of the allocation
-                *[other] is only {$ptr_offset_abs} bytes from the beginning of the allocation
-            }
+        }
     }
 
 const_eval_pointer_use_after_free =

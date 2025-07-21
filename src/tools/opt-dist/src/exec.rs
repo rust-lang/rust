@@ -139,8 +139,10 @@ impl Bootstrap {
         self
     }
 
-    pub fn llvm_pgo_optimize(mut self, profile: &LlvmPGOProfile) -> Self {
-        self.cmd = self.cmd.arg("--llvm-profile-use").arg(profile.0.as_str());
+    pub fn llvm_pgo_optimize(mut self, profile: Option<&LlvmPGOProfile>) -> Self {
+        if let Some(prof) = profile {
+            self.cmd = self.cmd.arg("--llvm-profile-use").arg(prof.0.as_str());
+        }
         self
     }
 
@@ -174,8 +176,10 @@ impl Bootstrap {
         self
     }
 
-    pub fn with_bolt_profile(mut self, profile: BoltProfile) -> Self {
-        self.cmd = self.cmd.arg("--reproducible-artifact").arg(profile.0.as_str());
+    pub fn with_bolt_profile(mut self, profile: Option<BoltProfile>) -> Self {
+        if let Some(prof) = profile {
+            self.cmd = self.cmd.arg("--reproducible-artifact").arg(prof.0.as_str());
+        }
         self
     }
 

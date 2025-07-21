@@ -14,15 +14,17 @@ mod x86;
 pub mod env;
 pub mod extern_static;
 pub mod foreign_items;
+pub mod global_ctor;
 pub mod io_error;
 pub mod os_str;
 pub mod panic;
 pub mod time;
 pub mod tls;
+pub mod unwind;
 
 pub use self::files::FdTable;
-//#[cfg(target_os = "linux")]
-//pub use self::native_lib::trace::{init_sv, register_retcode_sv};
+#[cfg(target_os = "linux")]
+pub use self::native_lib::trace::{init_sv, register_retcode_sv};
 pub use self::unix::{DirTable, EpollInterestTable};
 
 /// What needs to be done after emulating an item (a shim or an intrinsic) is done.

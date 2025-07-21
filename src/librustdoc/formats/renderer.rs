@@ -81,7 +81,7 @@ fn run_format_inner<'tcx, T: FormatRenderer<'tcx>>(
         let _timer =
             prof.generic_activity_with_arg("render_mod_item", item.name.unwrap().to_string());
 
-        cx.mod_item_in(&item)?;
+        cx.mod_item_in(item)?;
         let (clean::StrippedItem(box clean::ModuleItem(ref module))
         | clean::ModuleItem(ref module)) = item.inner.kind
         else {
@@ -99,7 +99,7 @@ fn run_format_inner<'tcx, T: FormatRenderer<'tcx>>(
     } else if let Some(item_name) = item.name
         && !item.is_extern_crate()
     {
-        prof.generic_activity_with_arg("render_item", item_name.as_str()).run(|| cx.item(&item))?;
+        prof.generic_activity_with_arg("render_item", item_name.as_str()).run(|| cx.item(item))?;
     }
     Ok(())
 }

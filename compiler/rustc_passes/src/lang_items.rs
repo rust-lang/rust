@@ -287,7 +287,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             ast::ItemKind::Union(..) => Target::Union,
             ast::ItemKind::Trait(_) => Target::Trait,
             ast::ItemKind::TraitAlias(..) => Target::TraitAlias,
-            ast::ItemKind::Impl(_) => Target::Impl,
+            ast::ItemKind::Impl(imp_) => Target::Impl { of_trait: imp_.of_trait.is_some() },
             ast::ItemKind::MacroDef(..) => Target::MacroDef,
             ast::ItemKind::MacCall(_) | ast::ItemKind::DelegationMac(_) => {
                 unreachable!("macros should have been expanded")

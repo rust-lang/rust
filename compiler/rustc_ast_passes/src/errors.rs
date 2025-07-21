@@ -567,22 +567,6 @@ pub(crate) struct NestedLifetimes {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_optional_trait_supertrait)]
-#[note]
-pub(crate) struct OptionalTraitSupertrait {
-    #[primary_span]
-    pub span: Span,
-    pub path_str: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_optional_trait_object)]
-pub(crate) struct OptionalTraitObject {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_const_bound_trait_object)]
 pub(crate) struct ConstBoundTraitObject {
     #[primary_span]
@@ -590,7 +574,7 @@ pub(crate) struct ConstBoundTraitObject {
 }
 
 // FIXME(const_trait_impl): Consider making the note/reason the message of the diagnostic.
-// FIXME(const_trait_impl): Provide structured suggestions (e.g., add `const` / `#[const_trait]` here).
+// FIXME(const_trait_impl): Provide structured suggestions (e.g., add `const` here).
 #[derive(Diagnostic)]
 #[diag(ast_passes_tilde_const_disallowed)]
 pub(crate) struct TildeConstDisallowed {

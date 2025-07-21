@@ -47,13 +47,11 @@ impl DocFolder for NonLocalStripper<'_> {
         // FIXME(#125009): Not-local should probably consider same Cargo workspace
         if let Some(def_id) = i.def_id()
             && !def_id.is_local()
-        {
-            if i.is_doc_hidden()
+            && (i.is_doc_hidden()
                 // Default to *not* stripping items with inherited visibility.
-                || i.visibility(self.tcx).is_some_and(|viz| viz != Visibility::Public)
-            {
-                return Some(strip_item(i));
-            }
+                || i.visibility(self.tcx).is_some_and(|viz| viz != Visibility::Public))
+        {
+            return Some(strip_item(i));
         }
 
         Some(self.fold_item_recur(i))

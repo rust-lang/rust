@@ -4,7 +4,10 @@ use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
 };
 use crate::core::build_steps::tool;
-use crate::core::build_steps::tool::{COMPILETEST_ALLOW_FEATURES, SourceType, prepare_tool_cargo};
+use crate::core::build_steps::tool::{
+    COMPILETEST_ALLOW_FEATURES, SourceType, ToolTargetBuildMode, get_tool_target_compiler,
+    prepare_tool_cargo,
+};
 use crate::core::builder::{
     self, Alias, Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
 };
@@ -252,8 +255,10 @@ fn prepare_compiler_for_check(
     mode: Mode,
 ) -> Compiler {
     let host = builder.host_target;
+
     match mode {
         Mode::ToolBootstrap => builder.compiler(0, host),
+        Mode::ToolTarget => get_tool_target_compiler(builder, ToolTargetBuildMode::Build(target)),
         Mode::ToolStd => {
             if builder.config.compile_time_deps {
                 // When --compile-time-deps is passed, we can't use any rustc
@@ -350,7 +355,7 @@ impl Step for CodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
-        rustc_cargo_env(builder, &mut cargo, target, build_compiler.stage);
+        rustc_cargo_env(builder, &mut cargo, target);
 
         let _guard = builder.msg_check(format!("rustc_codegen_{backend}"), target, None);
 

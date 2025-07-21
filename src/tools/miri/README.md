@@ -342,9 +342,9 @@ environment variable. We first document the most relevant and most commonly used
   is enabled (the default), this is also used to emulate system entropy. The default seed is 0. You
   can increase test coverage by running Miri multiple times with different seeds.
 * `-Zmiri-strict-provenance` enables [strict
-  provenance](https://github.com/rust-lang/rust/issues/95228) checking in Miri. This means that
-  casting an integer to a pointer will stop execution because the provenance of the pointer
-  cannot be determined.
+  provenance](https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance) checking in
+  Miri. This means that casting an integer to a pointer will stop execution because the provenance
+  of the pointer cannot be determined.
 * `-Zmiri-symbolic-alignment-check` makes the alignment check more strict.  By default, alignment is
   checked by casting the pointer to an integer, and making sure that is a multiple of the alignment.
   This can lead to cases where a program passes the alignment check by pure chance, because things

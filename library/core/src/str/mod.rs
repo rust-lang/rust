@@ -589,8 +589,9 @@ impl str {
     /// assert!(v.get(..42).is_none());
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_index", issue = "143775")]
     #[inline]
-    pub fn get<I: SliceIndex<str>>(&self, i: I) -> Option<&I::Output> {
+    pub const fn get<I: ~const SliceIndex<str>>(&self, i: I) -> Option<&I::Output> {
         i.get(self)
     }
 
@@ -621,8 +622,9 @@ impl str {
     /// assert_eq!("HEllo", v);
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_index", issue = "143775")]
     #[inline]
-    pub fn get_mut<I: SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output> {
+    pub const fn get_mut<I: ~const SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output> {
         i.get_mut(self)
     }
 
@@ -952,6 +954,7 @@ impl str {
     ///
     /// The caller must ensure that `mid` is a valid byte offset from the start
     /// of the string and falls on the boundary of a UTF-8 code point.
+    #[inline]
     const unsafe fn split_at_unchecked(&self, mid: usize) -> (&str, &str) {
         let len = self.len();
         let ptr = self.as_ptr();
@@ -2648,7 +2651,6 @@ impl str {
     /// you're trying to parse into.
     ///
     /// `parse` can parse into any type that implements the [`FromStr`] trait.
-
     ///
     /// # Errors
     ///

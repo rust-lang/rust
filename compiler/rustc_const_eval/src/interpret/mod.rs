@@ -26,7 +26,7 @@ pub use self::call::FnArg;
 pub use self::eval_context::{InterpCx, format_interp_error};
 use self::eval_context::{from_known_layout, mir_assign_valid_types};
 pub use self::intern::{
-    HasStaticRootDefId, InternKind, InternResult, intern_const_alloc_for_constprop,
+    HasStaticRootDefId, InternError, InternKind, intern_const_alloc_for_constprop,
     intern_const_alloc_recursive,
 };
 pub use self::machine::{AllocMap, Machine, MayLeak, ReturnAction, compile_time_machine};
