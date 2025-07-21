@@ -1316,15 +1316,10 @@ pub fn rustc_cargo(
         cargo.env("RUSTC_WRAPPER", ccache);
     }
 
-    rustc_cargo_env(builder, cargo, target, build_compiler.stage);
+    rustc_cargo_env(builder, cargo, target);
 }
 
-pub fn rustc_cargo_env(
-    builder: &Builder<'_>,
-    cargo: &mut Cargo,
-    target: TargetSelection,
-    build_stage: u32,
-) {
+pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo
@@ -1379,18 +1374,24 @@ pub fn rustc_cargo_env(
         cargo.rustflag("--cfg=llvm_enzyme");
     }
 
-    // Note that this is disabled if LLVM itself is disabled or we're in a check
-    // build. If we are in a check build we still go ahead here presuming we've
-    // detected that LLVM is already built and good to go which helps prevent
-    // busting caches (e.g. like #71152).
+    // These conditionals represent a tension between three forces:
+    // - For non-check builds, we need to define some LLVM-related environment
+    //   variables, requiring LLVM to have been built.
+    // - For check builds, we want to avoid building LLVM if possible.
+    // - Check builds and non-check builds should have the same environment if
+    //   possible, to avoid unnecessary rebuilds due to cache-busting.
+    //
+    // Therefore we try to avoid building LLVM for check builds, but only if
+    // building LLVM would be expensive. If "building" LLVM is cheap
+    // (i.e. it's already built or is downloadable), we prefer to maintain a
+    // consistent environment between check and non-check builds.
     if builder.config.llvm_enabled(target) {
-        let building_is_expensive =
+        let building_llvm_is_expensive =
             crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target, false)
                 .should_build();
-        // `top_stage == stage` might be false for `check --stage 1`, if we are building the stage 1 compiler
-        let can_skip_build = builder.kind == Kind::Check && builder.top_stage == build_stage;
-        let should_skip_build = building_is_expensive && can_skip_build;
-        if !should_skip_build {
+
+        let skip_llvm = (builder.kind == Kind::Check) && building_llvm_is_expensive;
+        if !skip_llvm {
             rustc_llvm_env(builder, cargo, target)
         }
     }
@@ -1407,6 +1408,9 @@ pub fn rustc_cargo_env(
 
 /// Pass down configuration from the LLVM build into the build of
 /// rustc_llvm and rustc_codegen_llvm.
+///
+/// Note that this has the side-effect of _building LLVM_, which is sometimes
+/// unwanted (e.g. for check builds).
 fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     if builder.config.is_rust_llvm(target) {
         cargo.env("LLVM_RUSTLLVM", "1");
@@ -1665,7 +1669,7 @@ impl Step for CodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
-        rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
+        rustc_cargo_env(builder, &mut cargo, target);
 
         // Ideally, we'd have a separate step for the individual codegen backends,
         // like we have in tests (test::CodegenGCC) but that would require a lot of restructuring.
