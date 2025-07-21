@@ -107,6 +107,10 @@ enum EnvironmentCmd {
         /// in bootstrap.toml via `build.build-dir` option
         #[arg(long, default_value = "build")]
         build_dir: Utf8PathBuf,
+
+        /// Path to custom stage0 root
+        #[arg(long)]
+        stage0_root: Option<Utf8PathBuf>,
     },
     /// Perform an optimized build on Linux CI, from inside Docker.
     LinuxCi {
@@ -144,6 +148,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             run_tests,
             build_llvm,
             build_dir,
+            stage0_root,
         } => {
             let env = EnvironmentBuilder::default()
                 .host_tuple(target_triple)
@@ -160,6 +165,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .run_tests(run_tests)
                 .fast_try_build(is_fast_try_build)
                 .build_llvm(build_llvm)
+                .stage0_root(stage0_root)
                 .build()?;
 
             (env, shared.build_args)
