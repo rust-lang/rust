@@ -1,9 +1,5 @@
 //! Implements calling functions from a native library.
 
-// FIXME: disabled since it fails to build on many targets.
-//#[cfg(target_os = "linux")]
-//pub mod trace;
-
 use std::ops::Deref;
 
 use libffi::high::call as ffi;
@@ -13,14 +9,68 @@ use rustc_middle::mir::interpret::Pointer;
 use rustc_middle::ty::{self as ty, IntTy, UintTy};
 use rustc_span::Symbol;
 
-//#[cfg(target_os = "linux")]
-//use self::trace::Supervisor;
+#[cfg_attr(
+    not(all(
+        target_os = "linux",
+        target_env = "gnu",
+        any(target_arch = "x86", target_arch = "x86_64")
+    )),
+    path = "trace/stub.rs"
+)]
+pub mod trace;
+
 use crate::*;
 
-//#[cfg(target_os = "linux")]
-//type CallResult<'tcx> = InterpResult<'tcx, (ImmTy<'tcx>, Option<self::trace::messages::MemEvents>)>;
-//#[cfg(not(target_os = "linux"))]
-type CallResult<'tcx> = InterpResult<'tcx, (ImmTy<'tcx>, Option<!>)>;
+/// The final results of an FFI trace, containing every relevant event detected
+/// by the tracer.
+#[allow(dead_code)]
+#[cfg_attr(target_os = "linux", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug)]
+pub struct MemEvents {
+    /// An list of memory accesses that occurred, in the order they occurred in.
+    pub acc_events: Vec<AccessEvent>,
+}
+
+/// A single memory access.
+#[allow(dead_code)]
+#[cfg_attr(target_os = "linux", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug)]
+pub enum AccessEvent {
+    /// A read occurred on this memory range.
+    Read(AccessRange),
+    /// A write may have occurred on this memory range.
+    /// Some instructions *may* write memory without *always* doing that,
+    /// so this can be an over-approximation.
+    /// The range info, however, is reliable if the access did happen.
+    /// If the second field is true, the access definitely happened.
+    Write(AccessRange, bool),
+}
+
+impl AccessEvent {
+    fn get_range(&self) -> AccessRange {
+        match self {
+            AccessEvent::Read(access_range) => access_range.clone(),
+            AccessEvent::Write(access_range, _) => access_range.clone(),
+        }
+    }
+}
+
+/// The memory touched by a given access.
+#[allow(dead_code)]
+#[cfg_attr(target_os = "linux", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug)]
+pub struct AccessRange {
+    /// The base address in memory where an access occurred.
+    pub addr: usize,
+    /// The number of bytes affected from the base.
+    pub size: usize,
+}
+
+impl AccessRange {
+    fn end(&self) -> usize {
+        self.addr.strict_add(self.size)
+    }
+}
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
@@ -31,18 +81,17 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: &MPlaceTy<'tcx>,
         ptr: CodePtr,
         libffi_args: Vec<libffi::high::Arg<'a>>,
-    ) -> CallResult<'tcx> {
+    ) -> InterpResult<'tcx, (crate::ImmTy<'tcx>, Option<MemEvents>)> {
         let this = self.eval_context_mut();
-        //#[cfg(target_os = "linux")]
-        //let alloc = this.machine.allocator.as_ref().unwrap();
+        #[cfg(target_os = "linux")]
+        let alloc = this.machine.allocator.as_ref().unwrap();
+        #[cfg(not(target_os = "linux"))]
+        // Placeholder value.
+        let alloc = ();
 
-        // SAFETY: We don't touch the machine memory past this point.
-        //#[cfg(target_os = "linux")]
-        //let (guard, stack_ptr) = unsafe { Supervisor::start_ffi(alloc) };
-
-        // Call the function (`ptr`) with arguments `libffi_args`, and obtain the return value
-        // as the specified primitive integer type
-        let res = 'res: {
+        trace::Supervisor::do_ffi(alloc, || {
+            // Call the function (`ptr`) with arguments `libffi_args`, and obtain the return value
+            // as the specified primitive integer type
             let scalar = match dest.layout.ty.kind() {
                 // ints
                 ty::Int(IntTy::I8) => {
@@ -93,7 +142,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // have the output_type `Tuple([])`.
                 ty::Tuple(t_list) if (*t_list).deref().is_empty() => {
                     unsafe { ffi::call::<()>(ptr, libffi_args.as_slice()) };
-                    break 'res interp_ok(ImmTy::uninit(dest.layout));
+                    return interp_ok(ImmTy::uninit(dest.layout));
                 }
                 ty::RawPtr(..) => {
                     let x = unsafe { ffi::call::<*const ()>(ptr, libffi_args.as_slice()) };
@@ -101,23 +150,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Scalar::from_pointer(ptr, this)
                 }
                 _ =>
-                    break 'res Err(err_unsup_format!(
+                    return Err(err_unsup_format!(
                         "unsupported return type for native call: {:?}",
                         link_name
                     ))
                     .into(),
             };
             interp_ok(ImmTy::from_scalar(scalar, dest.layout))
-        };
-
-        // SAFETY: We got the guard and stack pointer from start_ffi, and
-        // the allocator is the same
-        //#[cfg(target_os = "linux")]
-        //let events = unsafe { Supervisor::end_ffi(alloc, guard, stack_ptr) };
-        //#[cfg(not(target_os = "linux"))]
-        let events = None;
-
-        interp_ok((res?, events))
+        })
     }
 
     /// Get the pointer to the function of the specified name in the shared object file,
@@ -169,6 +209,73 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         None
     }
+
+    /// Applies the `events` to Miri's internal state. The event vector must be
+    /// ordered sequentially by when the accesses happened, and the sizes are
+    /// assumed to be exact.
+    fn tracing_apply_accesses(&mut self, events: MemEvents) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        for evt in events.acc_events {
+            let evt_rg = evt.get_range();
+            // LLVM at least permits vectorising accesses to adjacent allocations,
+            // so we cannot assume 1 access = 1 allocation. :(
+            let mut rg = evt_rg.addr..evt_rg.end();
+            while let Some(curr) = rg.next() {
+                let Some(alloc_id) = this.alloc_id_from_addr(
+                    curr.to_u64(),
+                    rg.len().try_into().unwrap(),
+                    /* only_exposed_allocations */ true,
+                ) else {
+                    throw_ub_format!("Foreign code did an out-of-bounds access!")
+                };
+                let alloc = this.get_alloc_raw(alloc_id)?;
+                // The logical and physical address of the allocation coincide, so we can use
+                // this instead of `addr_from_alloc_id`.
+                let alloc_addr = alloc.get_bytes_unchecked_raw().addr();
+
+                // Determine the range inside the allocation that this access covers. This range is
+                // in terms of offsets from the start of `alloc`. The start of the overlap range
+                // will be `curr`; the end will be the minimum of the end of the allocation and the
+                // end of the access' range.
+                let overlap = curr.strict_sub(alloc_addr)
+                    ..std::cmp::min(alloc.len(), rg.end.strict_sub(alloc_addr));
+                // Skip forward however many bytes of the access are contained in the current
+                // allocation, subtracting 1 since the overlap range includes the current addr
+                // that was already popped off of the range.
+                rg.advance_by(overlap.len().strict_sub(1)).unwrap();
+
+                match evt {
+                    AccessEvent::Read(_) => {
+                        // FIXME: ProvenanceMap should have something like get_range().
+                        let p_map = alloc.provenance();
+                        for idx in overlap {
+                            // If a provenance was read by the foreign code, expose it.
+                            if let Some(prov) = p_map.get(Size::from_bytes(idx), this) {
+                                this.expose_provenance(prov)?;
+                            }
+                        }
+                    }
+                    AccessEvent::Write(_, certain) => {
+                        // Sometimes we aren't certain if a write happened, in which case we
+                        // only initialise that data if the allocation is mutable.
+                        if certain || alloc.mutability.is_mut() {
+                            let (alloc, cx) = this.get_alloc_raw_mut(alloc_id)?;
+                            alloc.process_native_write(
+                                &cx.tcx,
+                                Some(AllocRange {
+                                    start: Size::from_bytes(overlap.start),
+                                    size: Size::from_bytes(overlap.len()),
+                                }),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        interp_ok(())
+    }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -194,6 +301,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         };
 
+        // Do we have ptrace?
+        let tracing = trace::Supervisor::is_enabled();
+
         // Get the function arguments, and convert them to `libffi`-compatible form.
         let mut libffi_args = Vec::<CArg>::with_capacity(args.len());
         for arg in args.iter() {
@@ -213,12 +323,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // The first time this happens, print a warning.
                 if !this.machine.native_call_mem_warned.replace(true) {
                     // Newly set, so first time we get here.
-                    this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem {
-                        //#[cfg(target_os = "linux")]
-                        //tracing: self::trace::Supervisor::is_enabled(),
-                        //#[cfg(not(target_os = "linux"))]
-                        tracing: false,
-                    });
+                    this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem { tracing });
                 }
 
                 this.expose_provenance(prov)?;
@@ -245,15 +350,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // be read by FFI. The `black_box` is defensive programming as LLVM likes
             // to (incorrectly) optimize away ptr2int casts whose result is unused.
             std::hint::black_box(alloc.get_bytes_unchecked_raw().expose_provenance());
-            // Expose all provenances in this allocation, since the native code can do $whatever.
-            for prov in alloc.provenance().provenances() {
-                this.expose_provenance(prov)?;
+
+            if !tracing {
+                // Expose all provenances in this allocation, since the native code can do $whatever.
+                // Can be skipped when tracing; in that case we'll expose just the actually-read parts later.
+                for prov in alloc.provenance().provenances() {
+                    this.expose_provenance(prov)?;
+                }
             }
 
             // Prepare for possible write from native code if mutable.
             if info.mutbl.is_mut() {
                 let (alloc, cx) = this.get_alloc_raw_mut(alloc_id)?;
-                alloc.process_native_write(&cx.tcx, None);
+                // These writes could initialize everything and wreck havoc with the pointers.
+                // We can skip that when tracing; in that case we'll later do that only for the memory that got actually written.
+                if !tracing {
+                    alloc.process_native_write(&cx.tcx, None);
+                }
                 // Also expose *mutable* provenance for the interpreter-level allocation.
                 std::hint::black_box(alloc.get_bytes_unchecked_raw_mut().expose_provenance());
             }
@@ -265,10 +378,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (ret, maybe_memevents) =
             this.call_native_with_args(link_name, dest, code_ptr, libffi_args)?;
 
-        if cfg!(target_os = "linux")
-            && let Some(events) = maybe_memevents
-        {
-            trace!("Registered FFI events:\n{events:#0x?}");
+        if tracing {
+            this.tracing_apply_accesses(maybe_memevents.unwrap())?;
         }
 
         this.write_immediate(*ret, dest)?;

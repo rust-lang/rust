@@ -1,0 +1,49 @@
+error: lifetime bound not satisfied
+  --> $DIR/higher-ranked-auto-trait-2.rs:16:9
+   |
+LL | /         async move {
+LL | |             // asks for an unspecified lifetime to outlive itself? weird diagnostics
+LL | |             self.run(t).await;
+LL | |         }
+   | |_________^
+   |
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
+
+error: lifetime bound not satisfied
+  --> $DIR/higher-ranked-auto-trait-2.rs:16:9
+   |
+LL | /         async move {
+LL | |             // asks for an unspecified lifetime to outlive itself? weird diagnostics
+LL | |             self.run(t).await;
+LL | |         }
+   | |_________^
+   |
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: lifetime bound not satisfied
+  --> $DIR/higher-ranked-auto-trait-2.rs:16:9
+   |
+LL | /         async move {
+LL | |             // asks for an unspecified lifetime to outlive itself? weird diagnostics
+LL | |             self.run(t).await;
+LL | |         }
+   | |_________^
+   |
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: lifetime bound not satisfied
+  --> $DIR/higher-ranked-auto-trait-2.rs:16:9
+   |
+LL | /         async move {
+LL | |             // asks for an unspecified lifetime to outlive itself? weird diagnostics
+LL | |             self.run(t).await;
+LL | |         }
+   | |_________^
+   |
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+

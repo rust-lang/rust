@@ -84,7 +84,7 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 impl<'tcx> InferCtxt<'tcx> {
     pub fn register_outlives_constraint(
         &self,
-        ty::OutlivesPredicate(arg, r2): ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
+        ty::OutlivesPredicate(arg, r2): ty::ArgOutlivesPredicate<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) {
         match arg.kind() {
@@ -170,6 +170,16 @@ impl<'tcx> InferCtxt<'tcx> {
         std::mem::take(&mut self.inner.borrow_mut().region_obligations)
     }
 
+    pub fn register_region_assumption(&self, assumption: ty::ArgOutlivesPredicate<'tcx>) {
+        let mut inner = self.inner.borrow_mut();
+        inner.undo_log.push(UndoLog::PushRegionAssumption);
+        inner.region_assumptions.push(assumption);
+    }
+
+    pub fn take_registered_region_assumptions(&self) -> Vec<ty::ArgOutlivesPredicate<'tcx>> {
+        std::mem::take(&mut self.inner.borrow_mut().region_assumptions)
+    }
+
     /// Process the region obligations that must be proven (during
     /// `regionck`) for the given `body_id`, given information about
     /// the region bounds in scope and so forth.
@@ -219,6 +229,14 @@ impl<'tcx> InferCtxt<'tcx> {
                 // in our param-env.
                 let (sup_type, sub_region) =
                     (sup_type, sub_region).fold_with(&mut OpportunisticRegionResolver::new(self));
+
+                if self.tcx.sess.opts.unstable_opts.higher_ranked_assumptions
+                    && outlives_env
+                        .higher_ranked_assumptions()
+                        .contains(&ty::OutlivesPredicate(sup_type.into(), sub_region))
+                {
+                    continue;
+                }
 
                 debug!(?sup_type, ?sub_region, ?origin);
 

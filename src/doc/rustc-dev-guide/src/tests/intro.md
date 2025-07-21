@@ -111,12 +111,14 @@ and it can be invoked so:
 
 This requires building all of the documentation, which might take a while.
 
-### Dist check
+### `distcheck`
 
 `distcheck` verifies that the source distribution tarball created by the build
 system will unpack, build, and run all tests.
 
-> Example: `./x test distcheck`
+```console
+./x test distcheck
+```
 
 ### Tool tests
 

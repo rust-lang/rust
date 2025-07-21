@@ -11,14 +11,14 @@ use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::layout::LayoutCx;
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutCx};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::EntryFnType;
 
 use crate::concurrency::GenmcCtx;
 use crate::concurrency::thread::TlsAllocAction;
 use crate::diagnostics::report_leaks;
-use crate::shims::tls;
+use crate::shims::{global_ctor, tls};
 use crate::*;
 
 #[derive(Copy, Clone, Debug)]
@@ -216,9 +216,17 @@ impl Default for MiriConfig {
 }
 
 /// The state of the main thread. Implementation detail of `on_main_stack_empty`.
-#[derive(Default, Debug)]
+#[derive(Debug)]
 enum MainThreadState<'tcx> {
-    #[default]
+    GlobalCtors {
+        ctor_state: global_ctor::GlobalCtorState<'tcx>,
+        /// The main function to call.
+        entry_id: DefId,
+        entry_type: MiriEntryFnType,
+        /// Arguments passed to `main`.
+        argc: ImmTy<'tcx>,
+        argv: ImmTy<'tcx>,
+    },
     Running,
     TlsDtors(tls::TlsDtorsState<'tcx>),
     Yield {
@@ -234,6 +242,15 @@ impl<'tcx> MainThreadState<'tcx> {
     ) -> InterpResult<'tcx, Poll<()>> {
         use MainThreadState::*;
         match self {
+            GlobalCtors { ctor_state, entry_id, entry_type, argc, argv } => {
+                match ctor_state.on_stack_empty(this)? {
+                    Poll::Pending => {} // just keep going
+                    Poll::Ready(()) => {
+                        call_main(this, *entry_id, *entry_type, argc.clone(), argv.clone())?;
+                        *self = Running;
+                    }
+                }
+            }
             Running => {
                 *self = TlsDtors(Default::default());
             }
@@ -309,13 +326,6 @@ pub fn create_ecx<'tcx>(
         MiriMachine::new(config, layout_cx, genmc_ctx),
     );
 
-    // Some parts of initialization require a full `InterpCx`.
-    MiriMachine::late_init(&mut ecx, config, {
-        let mut state = MainThreadState::default();
-        // Cannot capture anything GC-relevant here.
-        Box::new(move |m| state.on_main_stack_empty(m))
-    })?;
-
     // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
     let sentinel =
         helpers::try_resolve_path(tcx, &["core", "ascii", "escape_default"], Namespace::ValueNS);
@@ -326,15 +336,9 @@ pub fn create_ecx<'tcx>(
         );
     }
 
-    // Setup first stack frame.
-    let entry_instance = ty::Instance::mono(tcx, entry_id);
-
-    // First argument is constructed later, because it's skipped for `miri_start.`
-
-    // Second argument (argc): length of `config.args`.
+    // Compute argc and argv from `config.args`.
     let argc =
         ImmTy::from_int(i64::try_from(config.args.len()).unwrap(), ecx.machine.layouts.isize);
-    // Third argument (`argv`): created from `config.args`.
     let argv = {
         // Put each argument in memory, collect pointers.
         let mut argvs = Vec::<Immediate<Provenance>>::with_capacity(config.args.len());
@@ -359,7 +363,7 @@ pub fn create_ecx<'tcx>(
             ecx.write_immediate(arg, &place)?;
         }
         ecx.mark_immutable(&argvs_place);
-        // Store `argc` and `argv` for macOS `_NSGetArg{c,v}`.
+        // Store `argc` and `argv` for macOS `_NSGetArg{c,v}`, and for the GC to see them.
         {
             let argc_place =
                 ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
@@ -374,7 +378,7 @@ pub fn create_ecx<'tcx>(
             ecx.machine.argv = Some(argv_place.ptr());
         }
         // Store command line as UTF-16 for Windows `GetCommandLineW`.
-        {
+        if tcx.sess.target.os == "windows" {
             // Construct a command string with all the arguments.
             let cmd_utf16: Vec<u16> = args_to_utf16_command_string(config.args.iter());
 
@@ -395,11 +399,43 @@ pub fn create_ecx<'tcx>(
         ImmTy::from_immediate(imm, layout)
     };
 
+    // Some parts of initialization require a full `InterpCx`.
+    MiriMachine::late_init(&mut ecx, config, {
+        let mut main_thread_state = MainThreadState::GlobalCtors {
+            entry_id,
+            entry_type,
+            argc,
+            argv,
+            ctor_state: global_ctor::GlobalCtorState::default(),
+        };
+
+        // Cannot capture anything GC-relevant here.
+        // `argc` and `argv` *are* GC_relevant, but they also get stored in `machine.argc` and
+        // `machine.argv` so we are good.
+        Box::new(move |m| main_thread_state.on_main_stack_empty(m))
+    })?;
+
+    interp_ok(ecx)
+}
+
+// Call the entry function.
+fn call_main<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    entry_id: DefId,
+    entry_type: MiriEntryFnType,
+    argc: ImmTy<'tcx>,
+    argv: ImmTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let tcx = ecx.tcx();
+
+    // Setup first stack frame.
+    let entry_instance = ty::Instance::mono(tcx, entry_id);
+
     // Return place (in static memory so that it does not count as leak).
     let ret_place = ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
     ecx.machine.main_fn_ret_place = Some(ret_place.clone());
-    // Call start function.
 
+    // Call start function.
     match entry_type {
         MiriEntryFnType::Rustc(EntryFnType::Main { .. }) => {
             let start_id = tcx.lang_items().start_fn().unwrap_or_else(|| {
@@ -409,7 +445,7 @@ pub fn create_ecx<'tcx>(
             let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
             let start_instance = ty::Instance::try_resolve(
                 tcx,
-                typing_env,
+                ecx.typing_env(),
                 start_id,
                 tcx.mk_args(&[ty::GenericArg::from(main_ret_ty)]),
             )
@@ -427,7 +463,7 @@ pub fn create_ecx<'tcx>(
                 ExternAbi::Rust,
                 &[
                     ImmTy::from_scalar(
-                        Scalar::from_pointer(main_ptr, &ecx),
+                        Scalar::from_pointer(main_ptr, ecx),
                         // FIXME use a proper fn ptr type
                         ecx.machine.layouts.const_raw_ptr,
                     ),
@@ -450,7 +486,7 @@ pub fn create_ecx<'tcx>(
         }
     }
 
-    interp_ok(ecx)
+    interp_ok(())
 }
 
 /// Evaluates the entry function specified by `entry_id`.

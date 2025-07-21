@@ -34,7 +34,6 @@ use smallvec::SmallVec;
 
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
-use crate::common::AsCCharPtr;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
 use crate::llvm::Metadata;
 use crate::type_::Type;
@@ -169,6 +168,8 @@ pub(crate) unsafe fn create_module<'ll>(
     let mod_name = SmallCStr::new(mod_name);
     let llmod = unsafe { llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx) };
 
+    let cx = SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size());
+
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
 
@@ -205,6 +206,11 @@ pub(crate) unsafe fn create_module<'ll>(
         if sess.target.arch == "nvptx64" {
             // LLVM 21 updated the default layout on nvptx: https://github.com/llvm/llvm-project/pull/124961
             target_data_layout = target_data_layout.replace("e-p6:32:32-i64", "e-i64");
+        }
+        if sess.target.arch == "amdgpu" {
+            // LLVM 21 adds the address width for address space 8.
+            // See https://github.com/llvm/llvm-project/pull/139419
+            target_data_layout = target_data_layout.replace("p8:128:128:128:48", "p8:128:128")
         }
     }
 
@@ -473,18 +479,14 @@ pub(crate) unsafe fn create_module<'ll>(
     #[allow(clippy::option_env_unwrap)]
     let rustc_producer =
         format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"));
-    let name_metadata = unsafe {
-        llvm::LLVMMDStringInContext2(
-            llcx,
-            rustc_producer.as_c_char_ptr(),
-            rustc_producer.as_bytes().len(),
-        )
-    };
+
+    let name_metadata = cx.create_metadata(rustc_producer.as_bytes());
+
     unsafe {
         llvm::LLVMAddNamedMetadataOperand(
             llmod,
             c"llvm.ident".as_ptr(),
-            &llvm::LLVMMetadataAsValue(llcx, llvm::LLVMMDNodeInContext2(llcx, &name_metadata, 1)),
+            &cx.get_metadata_value(llvm::LLVMMDNodeInContext2(llcx, &name_metadata, 1)),
         );
     }
 
@@ -698,10 +700,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         }
     }
 
-    pub(crate) fn create_metadata(&self, name: String) -> Option<&'ll Metadata> {
-        Some(unsafe {
+    pub(crate) fn create_metadata(&self, name: &[u8]) -> &'ll Metadata {
+        unsafe {
             llvm::LLVMMDStringInContext2(self.llcx(), name.as_ptr() as *const c_char, name.len())
-        })
+        }
     }
 
     pub(crate) fn get_functions(&self) -> Vec<&'ll Value> {

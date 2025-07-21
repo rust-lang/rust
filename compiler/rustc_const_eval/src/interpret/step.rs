@@ -5,7 +5,6 @@
 use either::Either;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_index::IndexSlice;
-use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::source_map::Spanned;

@@ -1,0 +1,22 @@
+error[E0574]: expected struct, variant or union type, found type parameter `T`
+  --> $DIR/shadowing-generic-item.rs:5:13
+   |
+LL | struct T { i: i32 }
+   |        - you might have meant to refer to this struct
+LL | fn f<T>() {
+   |      - found this type parameter
+LL |     let t = T { i: 0 };
+   |             ^ not a struct, variant or union type
+
+error[E0599]: no function or associated item named `f` found for type parameter `Foo` in the current scope
+  --> $DIR/shadowing-generic-item.rs:12:10
+   |
+LL | fn g<Foo>() {
+   |      --- function or associated item `f` not found for this type parameter
+LL |     Foo::f();
+   |          ^ function or associated item not found in `Foo`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0574, E0599.
+For more information about an error, try `rustc --explain E0574`.

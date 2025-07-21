@@ -217,10 +217,8 @@ pub(crate) fn SetUniqueComdat(llmod: &Module, val: &Value) {
     set_comdat(llmod, val, &name);
 }
 
-pub(crate) fn SetUnnamedAddress(global: &Value, unnamed: UnnamedAddr) {
-    unsafe {
-        LLVMSetUnnamedAddress(global, unnamed);
-    }
+pub(crate) fn set_unnamed_address(global: &Value, unnamed: UnnamedAddr) {
+    LLVMSetUnnamedAddress(global, unnamed);
 }
 
 pub(crate) fn set_thread_local_mode(global: &Value, mode: ThreadLocalMode) {
@@ -260,9 +258,7 @@ pub(crate) fn set_initializer(llglobal: &Value, constant_val: &Value) {
 }
 
 pub(crate) fn set_global_constant(llglobal: &Value, is_constant: bool) {
-    unsafe {
-        LLVMSetGlobalConstant(llglobal, if is_constant { ffi::True } else { ffi::False });
-    }
+    LLVMSetGlobalConstant(llglobal, if is_constant { ffi::True } else { ffi::False });
 }
 
 pub(crate) fn get_linkage(llglobal: &Value) -> Linkage {

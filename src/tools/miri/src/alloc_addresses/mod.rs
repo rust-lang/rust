@@ -157,7 +157,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.get_alloc_bytes_unchecked_raw(alloc_id)?
                     }
                 }
-                AllocKind::Function | AllocKind::VTable => {
+                AllocKind::Function | AllocKind::Virtual => {
                     // Allocate some dummy memory to get a unique address for this function/vtable.
                     let alloc_bytes = MiriAllocBytes::from_bytes(
                         &[0u8; 1],

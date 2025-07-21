@@ -10,7 +10,7 @@
 //! (some invariant is not being upheld).
 //!
 //! The specifics of how this "poisoned" state affects other threads
-//! depend on the primitive. See [#Overview] bellow.
+//! depend on the primitive. See [#Overview] below.
 //!
 //! For the alternative implementations that do not employ poisoning,
 //! see `std::sync::nonpoisoning`.

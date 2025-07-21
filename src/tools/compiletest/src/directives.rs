@@ -9,7 +9,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 use tracing::*;
 
-use crate::common::{Config, Debugger, FailMode, PassMode, TestMode};
+use crate::common::{CodegenBackend, Config, Debugger, FailMode, PassMode, RunFailMode, TestMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
 use crate::directives::auxiliary::{AuxProps, parse_and_update_aux};
 use crate::directives::needs::CachedNeedsConditions;
@@ -654,7 +654,13 @@ impl TestProps {
             Some(FailMode::Build)
         } else if config.parse_name_directive(ln, "run-fail") {
             check_ui("run");
-            Some(FailMode::Run)
+            Some(FailMode::Run(RunFailMode::Fail))
+        } else if config.parse_name_directive(ln, "run-crash") {
+            check_ui("run");
+            Some(FailMode::Run(RunFailMode::Crash))
+        } else if config.parse_name_directive(ln, "run-fail-or-crash") {
+            check_ui("run");
+            Some(FailMode::Run(RunFailMode::FailOrCrash))
         } else {
             None
         };
@@ -812,6 +818,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-arm-unknown-linux-musleabihf",
     "ignore-auxiliary",
     "ignore-avr",
+    "ignore-backends",
     "ignore-beta",
     "ignore-cdb",
     "ignore-compare-mode-next-solver",
@@ -901,6 +908,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "min-llvm-version",
     "min-system-llvm-version",
     "needs-asm-support",
+    "needs-backends",
     "needs-crate-type",
     "needs-deterministic-layouts",
     "needs-dlltool",
@@ -971,6 +979,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-mips64",
     "only-msp430",
     "only-msvc",
+    "only-musl",
     "only-nightly",
     "only-nvptx64",
     "only-powerpc",
@@ -1006,7 +1015,9 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "regex-error-pattern",
     "remap-src-base",
     "revisions",
+    "run-crash",
     "run-fail",
+    "run-fail-or-crash",
     "run-flags",
     "run-pass",
     "run-rustfix",
@@ -1660,6 +1671,8 @@ pub(crate) fn make_test_description<R: Read>(
             decision!(cfg::handle_only(config, ln));
             decision!(needs::handle_needs(&cache.needs, config, ln));
             decision!(ignore_llvm(config, path, ln));
+            decision!(ignore_backends(config, path, ln));
+            decision!(needs_backends(config, path, ln));
             decision!(ignore_cdb(config, ln));
             decision!(ignore_gdb(config, ln));
             decision!(ignore_lldb(config, ln));
@@ -1781,6 +1794,49 @@ fn ignore_lldb(config: &Config, line: &str) -> IgnoreDecision {
                     reason: format!("ignored when the LLDB version is {rest}"),
                 };
             }
+        }
+    }
+    IgnoreDecision::Continue
+}
+
+fn ignore_backends(config: &Config, path: &Utf8Path, line: &str) -> IgnoreDecision {
+    if let Some(backends_to_ignore) = config.parse_name_value_directive(line, "ignore-backends") {
+        for backend in backends_to_ignore.split_whitespace().map(|backend| {
+            match CodegenBackend::try_from(backend) {
+                Ok(backend) => backend,
+                Err(error) => {
+                    panic!("Invalid ignore-backends value `{backend}` in `{path}`: {error}")
+                }
+            }
+        }) {
+            if config.codegen_backend == backend {
+                return IgnoreDecision::Ignore {
+                    reason: format!("{} backend is marked as ignore", backend.as_str()),
+                };
+            }
+        }
+    }
+    IgnoreDecision::Continue
+}
+
+fn needs_backends(config: &Config, path: &Utf8Path, line: &str) -> IgnoreDecision {
+    if let Some(needed_backends) = config.parse_name_value_directive(line, "needs-backends") {
+        if !needed_backends
+            .split_whitespace()
+            .map(|backend| match CodegenBackend::try_from(backend) {
+                Ok(backend) => backend,
+                Err(error) => {
+                    panic!("Invalid needs-backends value `{backend}` in `{path}`: {error}")
+                }
+            })
+            .any(|backend| config.codegen_backend == backend)
+        {
+            return IgnoreDecision::Ignore {
+                reason: format!(
+                    "{} backend is not part of required backends",
+                    config.codegen_backend.as_str()
+                ),
+            };
         }
     }
     IgnoreDecision::Continue

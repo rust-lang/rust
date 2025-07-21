@@ -11,9 +11,8 @@ error: this file contains an unclosed delimiter
   --> $DIR/issue-81827.rs:7:27
    |
 LL | fn r()->i{0|{#[cfg(r(0{]0
-   |          -  -          - ^
-   |          |  |          |
-   |          |  |          missing open `[` for this delimiter
+   |          -  -            ^
+   |          |  |
    |          |  unclosed delimiter
    |          unclosed delimiter
 

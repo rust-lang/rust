@@ -105,7 +105,7 @@ build/
       debuginfo/
       ...
 
-    # Bootstrap host tools (which are always compiled with the stage0 compiler)
+    # Host tools (which are always compiled with the stage0 compiler)
     # are stored here.
     bootstrap-tools/
 

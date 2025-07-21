@@ -80,7 +80,7 @@ pub use crate::macros::builtin::{
     alloc_error_handler, bench, derive, global_allocator, test, test_case,
 };
 
-#[unstable(feature = "derive_const", issue = "none")]
+#[unstable(feature = "derive_const", issue = "118304")]
 pub use crate::macros::builtin::derive_const;
 
 #[unstable(

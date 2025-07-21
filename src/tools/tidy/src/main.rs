@@ -155,6 +155,8 @@ fn main() {
 
         check!(triagebot, &root_path);
 
+        check!(filenames, &root_path);
+
         let collected = {
             drain_handles(&mut handles);
 

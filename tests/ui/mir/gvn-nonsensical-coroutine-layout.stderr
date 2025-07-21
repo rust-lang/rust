@@ -1,0 +1,26 @@
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/gvn-nonsensical-coroutine-layout.rs:6:14
+   |
+LL |     TestSome(T),
+   |              ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | pub enum Request<T> {
+   |                 +++
+
+error[E0574]: expected struct, variant or union type, found enum `Request`
+  --> $DIR/gvn-nonsensical-coroutine-layout.rs:12:36
+   |
+LL |         static instance: Request = Request { bar: 17 };
+   |                                    ^^^^^^^ not a struct, variant or union type
+   |
+help: consider importing this struct instead
+   |
+LL + use std::error::Request;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0412, E0574.
+For more information about an error, try `rustc --explain E0412`.

@@ -2,7 +2,7 @@ use std::mem;
 
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
-use rustc_attr_parsing::{AttributeParser, Early, OmitDoc};
+use rustc_attr_parsing::{AttributeParser, Early, OmitDoc, ShouldEmit};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
@@ -132,7 +132,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     &self.resolver.tcx.sess,
                     self.resolver.tcx.features(),
                     Vec::new(),
-                    Early { emit_errors: false },
+                    Early { emit_errors: ShouldEmit::Nothing },
                 );
                 let attrs = parser.parse_attribute_list(
                     &i.attrs,

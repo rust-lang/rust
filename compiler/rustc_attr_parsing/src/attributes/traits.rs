@@ -91,6 +91,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for DoNotImplementViaObjectParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::DoNotImplementViaObject;
 }
 
+// FIXME(const_trait_impl): remove this
 // Const traits
 
 pub(crate) struct ConstTraitParser;
@@ -144,4 +145,11 @@ impl<S: Stage> NoArgsAttributeParser<S> for FundamentalParser {
     const PATH: &[Symbol] = &[sym::fundamental];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Fundamental;
+}
+
+pub(crate) struct PointeeParser;
+impl<S: Stage> NoArgsAttributeParser<S> for PointeeParser {
+    const PATH: &[Symbol] = &[sym::pointee];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::Pointee;
 }

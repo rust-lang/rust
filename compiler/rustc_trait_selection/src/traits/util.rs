@@ -80,6 +80,7 @@ pub fn expand_trait_aliases<'tcx>(
             | ty::ClauseKind::ConstArgHasType(_, _)
             | ty::ClauseKind::WellFormed(_)
             | ty::ClauseKind::ConstEvaluatable(_)
+            | ty::ClauseKind::UnstableFeature(_)
             | ty::ClauseKind::HostEffect(..) => {}
         }
     }
@@ -364,7 +365,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
     }
 }
 
-pub fn sizedness_fast_path<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tcx>) -> bool {
+pub fn sizedness_fast_path<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicate: ty::Predicate<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> bool {
     // Proving `Sized`/`MetaSized`, very often on "obviously sized" types like
     // `&T`, accounts for about 60% percentage of the predicates we have to prove. No need to
     // canonicalize and all that for such cases.
@@ -378,9 +383,30 @@ pub fn sizedness_fast_path<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
             _ => return false,
         };
 
+        // FIXME(sized_hierarchy): this temporarily reverts the `sized_hierarchy` feature
+        // while a proper fix for `tests/ui/sized-hierarchy/incomplete-inference-issue-143992.rs`
+        // is pending a proper fix
+        if !tcx.features().sized_hierarchy() && matches!(sizedness, SizedTraitKind::MetaSized) {
+            return true;
+        }
+
         if trait_pred.self_ty().has_trivial_sizedness(tcx, sizedness) {
             debug!("fast path -- trivial sizedness");
             return true;
+        }
+
+        if matches!(trait_pred.self_ty().kind(), ty::Param(_) | ty::Placeholder(_)) {
+            for clause in param_env.caller_bounds() {
+                if let ty::ClauseKind::Trait(clause_pred) = clause.kind().skip_binder()
+                    && clause_pred.polarity == ty::PredicatePolarity::Positive
+                    && clause_pred.self_ty() == trait_pred.self_ty()
+                    && (clause_pred.def_id() == trait_pred.def_id()
+                        || (sizedness == SizedTraitKind::MetaSized
+                            && tcx.is_lang_item(clause_pred.def_id(), LangItem::Sized)))
+                {
+                    return true;
+                }
+            }
         }
     }
 

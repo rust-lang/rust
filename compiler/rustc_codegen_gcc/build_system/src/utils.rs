@@ -303,19 +303,6 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> Result<(), String> {
     })
 }
 
-pub fn copy_file<F: AsRef<Path>, T: AsRef<Path>>(from: F, to: T) -> Result<(), String> {
-    fs::copy(&from, &to)
-        .map_err(|error| {
-            format!(
-                "Failed to copy file `{}` into `{}`: {:?}",
-                from.as_ref().display(),
-                to.as_ref().display(),
-                error
-            )
-        })
-        .map(|_| ())
-}
-
 /// This function differs from `git_clone` in how it handles *where* the repository will be cloned.
 /// In `git_clone`, it is cloned in the provided path. In this function, the path you provide is
 /// the parent folder. So if you pass "a" as folder and try to clone "b.git", it will be cloned into

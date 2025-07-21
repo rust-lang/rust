@@ -625,50 +625,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // trigger query cycle ICEs, as doing so requires MIR.
         self.select_obligations_where_possible(|_| {});
 
-        let coroutines = std::mem::take(&mut *self.deferred_coroutine_interiors.borrow_mut());
-        debug!(?coroutines);
+        let ty::TypingMode::Analysis { defining_opaque_types_and_generators } = self.typing_mode()
+        else {
+            bug!();
+        };
 
-        let mut obligations = vec![];
-
-        if !self.next_trait_solver() {
-            for &(coroutine_def_id, interior) in coroutines.iter() {
-                debug!(?coroutine_def_id);
-
-                // Create the `CoroutineWitness` type that we will unify with `interior`.
-                let args = ty::GenericArgs::identity_for_item(
-                    self.tcx,
-                    self.tcx.typeck_root_def_id(coroutine_def_id.to_def_id()),
-                );
-                let witness =
-                    Ty::new_coroutine_witness(self.tcx, coroutine_def_id.to_def_id(), args);
-
-                // Unify `interior` with `witness` and collect all the resulting obligations.
-                let span = self.tcx.hir_body_owned_by(coroutine_def_id).value.span;
-                let ty::Infer(ty::InferTy::TyVar(_)) = interior.kind() else {
-                    span_bug!(span, "coroutine interior witness not infer: {:?}", interior.kind())
-                };
-                let ok = self
-                    .at(&self.misc(span), self.param_env)
-                    // Will never define opaque types, as all we do is instantiate a type variable.
-                    .eq(DefineOpaqueTypes::Yes, interior, witness)
-                    .expect("Failed to unify coroutine interior type");
-
-                obligations.extend(ok.obligations);
-            }
-        }
-
-        if !coroutines.is_empty() {
-            obligations.extend(
+        if defining_opaque_types_and_generators
+            .iter()
+            .any(|def_id| self.tcx.is_coroutine(def_id.to_def_id()))
+        {
+            self.typeck_results.borrow_mut().coroutine_stalled_predicates.extend(
                 self.fulfillment_cx
                     .borrow_mut()
-                    .drain_stalled_obligations_for_coroutines(&self.infcx),
+                    .drain_stalled_obligations_for_coroutines(&self.infcx)
+                    .into_iter()
+                    .map(|o| (o.predicate, o.cause)),
             );
         }
-
-        self.typeck_results
-            .borrow_mut()
-            .coroutine_stalled_predicates
-            .extend(obligations.into_iter().map(|o| (o.predicate, o.cause)));
     }
 
     #[instrument(skip(self), level = "debug")]

@@ -297,6 +297,7 @@ pub fn check_builtin_meta_item(
                 | sym::align
                 | sym::deprecated
                 | sym::optimize
+                | sym::pointee
                 | sym::cold
                 | sym::target_feature
                 | sym::rustc_allow_const_fn_unstable
@@ -317,6 +318,7 @@ pub fn check_builtin_meta_item(
                 | sym::rustc_layout_scalar_valid_range_end
                 | sym::no_implicit_prelude
                 | sym::automatically_derived
+                | sym::coverage
         ) {
             return;
         }

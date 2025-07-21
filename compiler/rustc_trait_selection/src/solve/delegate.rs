@@ -12,11 +12,11 @@ use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::{
-    self, SizedTraitKind, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt as _, TypingMode,
+    self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt as _, TypingMode,
 };
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
-use crate::traits::{EvaluateConstErr, ObligationCause, specialization_graph};
+use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
 
 #[repr(transparent)]
 pub struct SolverDelegate<'tcx>(InferCtxt<'tcx>);
@@ -76,19 +76,11 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
             if trait_pred.polarity() == ty::PredicatePolarity::Positive {
                 match self.0.tcx.as_lang_item(trait_pred.def_id()) {
-                    Some(LangItem::Sized)
-                        if self
-                            .resolve_vars_if_possible(trait_pred.self_ty().skip_binder())
-                            .has_trivial_sizedness(self.0.tcx, SizedTraitKind::Sized) =>
-                    {
-                        return Some(Certainty::Yes);
-                    }
-                    Some(LangItem::MetaSized)
-                        if self
-                            .resolve_vars_if_possible(trait_pred.self_ty().skip_binder())
-                            .has_trivial_sizedness(self.0.tcx, SizedTraitKind::MetaSized) =>
-                    {
-                        return Some(Certainty::Yes);
+                    Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
+                        let predicate = self.resolve_vars_if_possible(goal.predicate);
+                        if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
+                            return Some(Certainty::Yes);
+                        }
                     }
                     Some(LangItem::Copy | LangItem::Clone) => {
                         let self_ty =
@@ -206,14 +198,18 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         .map(|obligations| obligations.into_iter().map(|obligation| obligation.as_goal()).collect())
     }
 
-    fn make_deduplicated_outlives_constraints(
-        &self,
-    ) -> Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>> {
+    fn make_deduplicated_outlives_constraints(&self) -> Vec<ty::ArgOutlivesPredicate<'tcx>> {
         // Cannot use `take_registered_region_obligations` as we may compute the response
         // inside of a `probe` whenever we have multiple choices inside of the solver.
         let region_obligations = self.0.inner.borrow().region_obligations().to_owned();
+        let region_assumptions = self.0.inner.borrow().region_assumptions().to_owned();
         let region_constraints = self.0.with_region_constraints(|region_constraints| {
-            make_query_region_constraints(self.tcx, region_obligations, region_constraints)
+            make_query_region_constraints(
+                self.tcx,
+                region_obligations,
+                region_constraints,
+                region_assumptions,
+            )
         });
 
         let mut seen = FxHashSet::default();

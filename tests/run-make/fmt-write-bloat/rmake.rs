@@ -20,7 +20,7 @@
 use run_make_support::artifact_names::bin_name;
 use run_make_support::env::std_debug_assertions_enabled;
 use run_make_support::rustc;
-use run_make_support::symbols::any_symbol_contains;
+use run_make_support::symbols::object_contains_any_symbol_substring;
 
 fn main() {
     rustc().input("main.rs").opt().run();
@@ -31,5 +31,5 @@ fn main() {
         // otherwise, add them to the list of symbols to deny.
         panic_syms.extend_from_slice(&["panicking", "panic_fmt", "pad_integral", "Display"]);
     }
-    assert!(!any_symbol_contains(bin_name("main"), &panic_syms));
+    assert!(!object_contains_any_symbol_substring(bin_name("main"), &panic_syms));
 }

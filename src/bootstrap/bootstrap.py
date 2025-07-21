@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import sys
+import sysconfig
 import tarfile
 import tempfile
 
@@ -333,7 +334,11 @@ def default_build_triple(verbose):
         if ostype == "Android":
             kernel = "linux-android"
         else:
-            kernel = "unknown-linux-gnu"
+            python_soabi = sysconfig.get_config_var("SOABI")
+            if python_soabi is not None and "musl" in python_soabi:
+                kernel = "unknown-linux-musl"
+            else:
+                kernel = "unknown-linux-gnu"
     elif kernel == "SunOS":
         kernel = "pc-solaris"
         # On Solaris, uname -m will return a machine classification instead

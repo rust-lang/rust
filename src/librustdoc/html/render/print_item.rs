@@ -4,6 +4,7 @@ use std::iter;
 
 use askama::Template;
 use rustc_abi::VariantIdx;
+use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -30,8 +31,8 @@ use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyTextWithWbr};
 use crate::html::format::{
-    Ending, PrintWithSpace, join_with_double_colon, print_abi_with_space,
-    print_constness_with_space, print_where_clause, visibility_print_with_space,
+    Ending, PrintWithSpace, print_abi_with_space, print_constness_with_space, print_where_clause,
+    visibility_print_with_space,
 };
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
@@ -1424,7 +1425,7 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
                 iter::repeat_n("..", cx.current.len()).chain(iter::once("type.impl")).collect();
             js_src_path.extend(target_fqp[..target_fqp.len() - 1].iter().copied());
             js_src_path.push_fmt(format_args!("{target_type}.{}.js", target_fqp.last().unwrap()));
-            let self_path = fmt::from_fn(|f| self_fqp.iter().joined("::", f));
+            let self_path = join_path_syms(self_fqp);
             write!(
                 w,
                 "<script src=\"{src}\" data-self-path=\"{self_path}\" async></script>",
@@ -1450,7 +1451,7 @@ item_template!(
 
 impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
     fn render_union(&self) -> impl Display {
-        render_union(self.it, Some(&self.generics), &self.fields, self.cx)
+        render_union(self.it, Some(self.generics), self.fields, self.cx)
     }
 
     fn document_field(&self, field: &'a clean::Item) -> impl Display {
@@ -1487,12 +1488,11 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
                     self.cx.cache(),
                     self.def_id,
                     ItemType::Union,
-                    false,
                 ) {
                     writeln!(f, "{repr}")?;
                 };
             } else {
-                for a in self.it.attributes(self.cx.tcx(), self.cx.cache(), false) {
+                for a in self.it.attributes(self.cx.tcx(), self.cx.cache()) {
                     writeln!(f, "{a}")?;
                 }
             }
@@ -1982,16 +1982,14 @@ fn item_constant(
                 w.write_str(";")?;
             }
 
-            if !is_literal {
-                if let Some(value) = &value {
-                    let value_lowercase = value.to_lowercase();
-                    let expr_lowercase = expr.to_lowercase();
+            if !is_literal && let Some(value) = &value {
+                let value_lowercase = value.to_lowercase();
+                let expr_lowercase = expr.to_lowercase();
 
-                    if value_lowercase != expr_lowercase
-                        && value_lowercase.trim_end_matches("i32") != expr_lowercase
-                    {
-                        write!(w, " // {value}", value = Escape(value))?;
-                    }
+                if value_lowercase != expr_lowercase
+                    && value_lowercase.trim_end_matches("i32") != expr_lowercase
+                {
+                    write!(w, " // {value}", value = Escape(value))?;
                 }
             }
             Ok::<(), fmt::Error>(())
@@ -2071,41 +2069,39 @@ fn item_fields(
                 _ => None,
             })
             .peekable();
-        if let None | Some(CtorKind::Fn) = ctor_kind {
-            if fields.peek().is_some() {
-                let title = format!(
-                    "{}{}",
-                    if ctor_kind.is_none() { "Fields" } else { "Tuple Fields" },
-                    document_non_exhaustive_header(it),
-                );
+        if let None | Some(CtorKind::Fn) = ctor_kind
+            && fields.peek().is_some()
+        {
+            let title = format!(
+                "{}{}",
+                if ctor_kind.is_none() { "Fields" } else { "Tuple Fields" },
+                document_non_exhaustive_header(it),
+            );
+            write!(
+                w,
+                "{}",
+                write_section_heading(
+                    &title,
+                    "fields",
+                    Some("fields"),
+                    document_non_exhaustive(it)
+                )
+            )?;
+            for (index, (field, ty)) in fields.enumerate() {
+                let field_name =
+                    field.name.map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
+                let id = cx.derive_id(format!("{typ}.{field_name}", typ = ItemType::StructField));
                 write!(
                     w,
-                    "{}",
-                    write_section_heading(
-                        &title,
-                        "fields",
-                        Some("fields"),
-                        document_non_exhaustive(it)
-                    )
+                    "<span id=\"{id}\" class=\"{item_type} section-header\">\
+                        <a href=\"#{id}\" class=\"anchor field\">§</a>\
+                        <code>{field_name}: {ty}</code>\
+                    </span>\
+                    {doc}",
+                    item_type = ItemType::StructField,
+                    ty = ty.print(cx),
+                    doc = document(cx, field, Some(it), HeadingOffset::H3),
                 )?;
-                for (index, (field, ty)) in fields.enumerate() {
-                    let field_name = field
-                        .name
-                        .map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
-                    let id =
-                        cx.derive_id(format!("{typ}.{field_name}", typ = ItemType::StructField));
-                    write!(
-                        w,
-                        "<span id=\"{id}\" class=\"{item_type} section-header\">\
-                            <a href=\"#{id}\" class=\"anchor field\">§</a>\
-                            <code>{field_name}: {ty}</code>\
-                        </span>\
-                        {doc}",
-                        item_type = ItemType::StructField,
-                        ty = ty.print(cx),
-                        doc = document(cx, field, Some(it), HeadingOffset::H3),
-                    )?;
-                }
             }
         }
         Ok(())
@@ -2257,7 +2253,7 @@ pub(crate) fn compare_names(left: &str, right: &str) -> Ordering {
 }
 
 pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
-    let mut s = join_with_double_colon(&cx.current);
+    let mut s = join_path_syms(&cx.current);
     s.push_str("::");
     s.push_str(item.name.unwrap().as_str());
     s

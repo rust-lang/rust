@@ -702,8 +702,11 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         read_provenance: bool,
     ) -> AllocResult<Scalar<Prov>> {
         // First and foremost, if anything is uninit, bail.
-        if self.init_mask.is_range_initialized(range).is_err() {
-            return Err(AllocError::InvalidUninitBytes(None));
+        if let Err(bad) = self.init_mask.is_range_initialized(range) {
+            return Err(AllocError::InvalidUninitBytes(Some(BadBytesAccess {
+                access: range,
+                bad,
+            })));
         }
 
         // Get the integer part of the result. We HAVE TO check provenance before returning this!
