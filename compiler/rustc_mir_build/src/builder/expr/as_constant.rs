@@ -1,6 +1,6 @@
 //! See docs in build/expr/mod.rs
 
-use rustc_abi::Size;
+use rustc_abi::{BackendRepr, Size};
 use rustc_ast as ast;
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, LitToConstInput, Scalar};
@@ -83,8 +83,10 @@ pub(crate) fn as_constant_inner<'tcx>(
             ConstOperand { user_ty: None, span, const_ }
         }
         ExprKind::StaticRef { alloc_id, ty, .. } => {
-            let pointee = ty.builtin_deref(true).expect("StaticRef's type must be pointer");
-            let const_ = if pointee.is_sized(tcx, typing_env) {
+            let layout = tcx.layout_of(typing_env.as_query_input(ty));
+            let const_ = if let Ok(layout) = layout
+                && let BackendRepr::Scalar(..) = layout.backend_repr
+            {
                 let const_val = ConstValue::Scalar(Scalar::from_pointer(alloc_id.into(), &tcx));
                 Const::Val(const_val, ty)
             } else {
@@ -92,8 +94,10 @@ pub(crate) fn as_constant_inner<'tcx>(
                 // This should be reported by wfcheck on the static itself.
                 // Still, producing a single scalar constant would be inconsistent, as pointers to
                 // non-`Sized` types are scalar pairs. Avoid an ICE by producing an error constant.
-                let guar =
-                    tcx.dcx().span_delayed_bug(span, format!("static's type `{ty}` is not Sized"));
+                let guar = tcx.dcx().span_delayed_bug(
+                    span,
+                    format!("pointer to static's type `{ty}` is not scalar"),
+                );
                 Const::Ty(ty, ty::Const::new_error(tcx, guar))
             };
 
