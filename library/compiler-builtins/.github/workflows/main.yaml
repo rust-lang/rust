@@ -311,8 +311,8 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
-    - name: Install stable `rustfmt`
-      run: rustup set profile minimal && rustup default stable && rustup component add rustfmt
+    - name: Install nightly `rustfmt`
+      run: rustup set profile minimal && rustup default nightly && rustup component add rustfmt
     - run: cargo fmt -- --check
 
   extensive:
