@@ -1046,9 +1046,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let mut lifetime_ends_after_call: Vec<(Bx::Value, Size)> = Vec::new();
         'make_args: for (i, arg) in first_args.iter().enumerate() {
             if tail && matches!(fn_abi.args[i].mode, PassMode::Indirect { .. }) {
-                bug!(
-                    r"Arguments using PassMode::Indirect are currently not supported for tail calls.
-                    See https://github.com/rust-lang/rust/pull/144232#discussion_r2218543841 for more information."
+                span_bug!(
+                    fn_span,
+                    "arguments using PassMode::Indirect are currently not supported for tail calls"
                 );
             }
 
