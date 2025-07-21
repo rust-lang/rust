@@ -530,7 +530,6 @@ pub struct MiriMachine<'tcx> {
     pub(crate) rng: RefCell<StdRng>,
 
     /// The allocator used for the machine's `AllocBytes` in native-libs mode.
-    #[cfg(target_os = "linux")]
     pub(crate) allocator: Option<Rc<RefCell<crate::alloc::isolated_alloc::IsolatedAlloc>>>,
 
     /// The allocation IDs to report when they are being allocated
@@ -554,9 +553,9 @@ pub struct MiriMachine<'tcx> {
     pub(crate) basic_block_count: u64,
 
     /// Handle of the optional shared object file for native functions.
-    #[cfg(unix)]
+    #[cfg(all(unix, feature = "native-lib"))]
     pub native_lib: Vec<(libloading::Library, std::path::PathBuf)>,
-    #[cfg(not(unix))]
+    #[cfg(not(all(unix, feature = "native-lib")))]
     pub native_lib: Vec<!>,
 
     /// Run a garbage collector for BorTags every N basic blocks.
@@ -603,7 +602,7 @@ pub struct MiriMachine<'tcx> {
     /// Remembers whether we already warned about an extern type with Stacked Borrows.
     pub(crate) sb_extern_type_warned: Cell<bool>,
     /// Remember whether we already warned about sharing memory with a native call.
-    #[cfg(unix)]
+    #[allow(unused)]
     pub(crate) native_call_mem_warned: Cell<bool>,
     /// Remembers which shims have already shown the warning about erroring in isolation.
     pub(crate) reject_in_isolation_warned: RefCell<FxHashSet<String>>,
@@ -618,6 +617,8 @@ pub struct MiriMachine<'tcx> {
 
     /// Whether floating-point operations can behave non-deterministically.
     pub float_nondet: bool,
+    /// Whether floating-point operations can have a non-deterministic rounding error.
+    pub float_rounding_error: bool,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -718,7 +719,6 @@ impl<'tcx> MiriMachine<'tcx> {
             local_crates,
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
-            #[cfg(target_os = "linux")]
             allocator: if !config.native_lib.is_empty() {
                 Some(Rc::new(RefCell::new(crate::alloc::isolated_alloc::IsolatedAlloc::new())))
             } else { None },
@@ -730,7 +730,7 @@ impl<'tcx> MiriMachine<'tcx> {
             report_progress: config.report_progress,
             basic_block_count: 0,
             monotonic_clock: MonotonicClock::new(config.isolated_op == IsolatedOp::Allow),
-            #[cfg(unix)]
+            #[cfg(all(unix, feature = "native-lib"))]
             native_lib: config.native_lib.iter().map(|lib_file_path| {
                 let host_triple = rustc_session::config::host_tuple();
                 let target_triple = tcx.sess.opts.target_triple.tuple();
@@ -752,9 +752,9 @@ impl<'tcx> MiriMachine<'tcx> {
                     lib_file_path.clone(),
                 )
             }).collect(),
-            #[cfg(not(unix))]
+            #[cfg(not(all(unix, feature = "native-lib")))]
             native_lib: config.native_lib.iter().map(|_| {
-                panic!("calling functions from native libraries via FFI is only supported on Unix")
+                panic!("calling functions from native libraries via FFI is not supported in this build of Miri")
             }).collect(),
             gc_interval: config.gc_interval,
             since_gc: 0,
@@ -771,13 +771,13 @@ impl<'tcx> MiriMachine<'tcx> {
             pthread_rwlock_sanity: Cell::new(false),
             pthread_condvar_sanity: Cell::new(false),
             sb_extern_type_warned: Cell::new(false),
-            #[cfg(unix)]
             native_call_mem_warned: Cell::new(false),
             reject_in_isolation_warned: Default::default(),
             int2ptr_warned: Default::default(),
             mangle_internal_symbol_cache: Default::default(),
             force_intrinsic_fallback: config.force_intrinsic_fallback,
             float_nondet: config.float_nondet,
+            float_rounding_error: config.float_rounding_error,
         }
     }
 
@@ -924,7 +924,6 @@ impl VisitProvenance for MiriMachine<'_> {
             backtrace_style: _,
             local_crates: _,
             rng: _,
-            #[cfg(target_os = "linux")]
             allocator: _,
             tracked_alloc_ids: _,
             track_alloc_accesses: _,
@@ -949,13 +948,13 @@ impl VisitProvenance for MiriMachine<'_> {
             pthread_rwlock_sanity: _,
             pthread_condvar_sanity: _,
             sb_extern_type_warned: _,
-            #[cfg(unix)]
             native_call_mem_warned: _,
             reject_in_isolation_warned: _,
             int2ptr_warned: _,
             mangle_internal_symbol_cache: _,
             force_intrinsic_fallback: _,
             float_nondet: _,
+            float_rounding_error: _,
         } = self;
 
         threads.visit_provenance(visit);
@@ -1817,13 +1816,10 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn get_default_alloc_params(&self) -> <Self::Bytes as AllocBytes>::AllocParams {
         use crate::alloc::MiriAllocParams;
 
-        #[cfg(target_os = "linux")]
         match &self.allocator {
             Some(alloc) => MiriAllocParams::Isolated(alloc.clone()),
             None => MiriAllocParams::Global,
         }
-        #[cfg(not(target_os = "linux"))]
-        MiriAllocParams::Global
     }
 
     fn enter_trace_span(span: impl FnOnce() -> tracing::Span) -> impl EnteredTraceSpan {

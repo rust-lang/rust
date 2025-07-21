@@ -1,20 +1,18 @@
 use std::alloc::Layout;
 use std::borrow::Cow;
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::{alloc, slice};
-#[cfg(target_os = "linux")]
-use std::{cell::RefCell, rc::Rc};
 
 use rustc_abi::{Align, Size};
 use rustc_middle::mir::interpret::AllocBytes;
 
-#[cfg(target_os = "linux")]
 use crate::alloc::isolated_alloc::IsolatedAlloc;
 use crate::helpers::ToU64 as _;
 
 #[derive(Clone, Debug)]
 pub enum MiriAllocParams {
     Global,
-    #[cfg(target_os = "linux")]
     Isolated(Rc<RefCell<IsolatedAlloc>>),
 }
 
@@ -56,7 +54,6 @@ impl Drop for MiriAllocBytes {
         unsafe {
             match self.params.clone() {
                 MiriAllocParams::Global => alloc::dealloc(self.ptr, alloc_layout),
-                #[cfg(target_os = "linux")]
                 MiriAllocParams::Isolated(alloc) =>
                     alloc.borrow_mut().dealloc(self.ptr, alloc_layout),
             }
@@ -123,7 +120,6 @@ impl AllocBytes for MiriAllocBytes {
         let alloc_fn = |layout, params: &MiriAllocParams| unsafe {
             match params {
                 MiriAllocParams::Global => alloc::alloc(layout),
-                #[cfg(target_os = "linux")]
                 MiriAllocParams::Isolated(alloc) => alloc.borrow_mut().alloc(layout),
             }
         };
@@ -144,7 +140,6 @@ impl AllocBytes for MiriAllocBytes {
         let alloc_fn = |layout, params: &MiriAllocParams| unsafe {
             match params {
                 MiriAllocParams::Global => alloc::alloc_zeroed(layout),
-                #[cfg(target_os = "linux")]
                 MiriAllocParams::Isolated(alloc) => alloc.borrow_mut().alloc_zeroed(layout),
             }
         };
