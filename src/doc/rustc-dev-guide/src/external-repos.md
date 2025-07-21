@@ -80,6 +80,9 @@ switch to its repository checkout directory in your terminal).
 
 #### Performing push
 
+> NOTE:
+> Before you proceed, look at some guidance related to Git [on josh-sync README],
+
 1) Run the push command to create a branch named `<branch-name>` in a `rustc` fork under the `<gh-username>` account
     ```
     rustc-josh-sync push <branch-name> <gh-username>
@@ -173,3 +176,4 @@ the week leading up to the beta cut.
 [Toolstate chapter]: https://forge.rust-lang.org/infra/toolstate.html
 [josh]: https://josh-project.github.io/josh/intro.html
 [josh-sync]: https://github.com/rust-lang/josh-sync
+[on josh-sync README]: https://github.com/rust-lang/josh-sync#git-peculiarities
