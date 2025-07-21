@@ -11,6 +11,5 @@ pub fn count(curr: u64, top: u64) -> u64 {
 }
 
 fn main() {
-    println!("{}",
-    count(0, black_box(1000000)));
+    println!("{}", count(0, black_box(1000000)));
 }
