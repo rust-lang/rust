@@ -75,7 +75,7 @@ impl<D: Decoder> Decodable<D> for MyStruct {
 
 rustc has a lot of [arena allocated types].
 Deserializing these types isn't possible without access to the arena that they need to be allocated on.
-The [`TyDecoder`] and [`TyEncoder`] traits are supertraits of [`Decoder`] and [`Encoder`] that allow access to a [`TyCtxt`].
+The [`TyDecoder`] and [`TyEncoder`] traits are subtraits of [`Decoder`] and [`Encoder`] that allow access to a [`TyCtxt`].
 
 Types which contain `arena` allocated types can then bound the type parameter of their
 [`Encodable`] and [`Decodable`] implementations with these traits.
