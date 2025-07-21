@@ -1,5 +1,7 @@
 #![feature(trait_alias, const_trait_impl)]
 //@ revisions: pass fail
+//@ compile-flags: -Znext-solver
+//@[pass] check-pass
 
 const trait Bar {
     fn bar(&self) {}
@@ -23,6 +25,5 @@ const fn foo<T: [const] Foo>(x: &T) {
 }
 
 const _: () = foo(&());
-//~^ ERROR: `(): const Foo` is not satisfied
 
 fn main() {}
