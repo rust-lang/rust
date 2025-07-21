@@ -1085,7 +1085,7 @@ mod snapshot {
         [dist] rustc <host>
         [dist] rustc 1 <host> -> std 1 <host>
         [dist] src <>
-        [build] rustc 0 <host> -> cargo 1 <host>
+        [build] rustc 1 <host> -> cargo 2 <host>
         [build] rustc 1 <host> -> rust-analyzer 2 <host>
         [build] rustc 1 <host> -> rustfmt 2 <host>
         [build] rustc 1 <host> -> cargo-fmt 2 <host>
@@ -1278,7 +1278,7 @@ mod snapshot {
         [dist] rustc <target1>
         [dist] rustc 1 <host> -> std 1 <target1>
         [dist] src <>
-        [build] rustc 0 <host> -> cargo 1 <target1>
+        [build] rustc 1 <host> -> cargo 2 <target1>
         [build] rustc 1 <host> -> rust-analyzer 2 <target1>
         [build] rustc 1 <host> -> rustfmt 2 <target1>
         [build] rustc 1 <host> -> cargo-fmt 2 <target1>
@@ -1597,6 +1597,39 @@ mod snapshot {
         // Ensure tests for rustc are not skipped.
         steps.assert_contains(StepMetadata::test("CrateLibrustc", host));
         steps.assert_contains_fuzzy(StepMetadata::build("rustc", host));
+    }
+
+    #[test]
+    fn test_cargo_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("cargo")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> cargo 3 <host>
+        [build] rustdoc 2 <host>
+        ");
+    }
+
+    #[test]
+    fn test_cargo_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("cargo")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> cargo 3 <host>
+        [build] rustdoc 2 <host>
+        ");
     }
 
     #[test]
