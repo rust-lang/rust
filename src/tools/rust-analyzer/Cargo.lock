@@ -1268,7 +1268,7 @@ dependencies = [
  "expect-test",
  "intern",
  "parser",
- "ra-ap-rustc_lexer",
+ "ra-ap-rustc_lexer 0.122.0",
  "rustc-hash 2.1.1",
  "smallvec",
  "span",
@@ -1504,8 +1504,8 @@ dependencies = [
  "drop_bomb",
  "edition",
  "expect-test",
- "ra-ap-rustc_lexer",
- "rustc-literal-escaper 0.0.4",
+ "ra-ap-rustc_lexer 0.122.0",
+ "rustc-literal-escaper",
  "stdx",
  "tracing",
 ]
@@ -1614,7 +1614,7 @@ dependencies = [
  "object",
  "paths",
  "proc-macro-test",
- "ra-ap-rustc_lexer",
+ "ra-ap-rustc_lexer 0.122.0",
  "span",
  "syntax-bridge",
  "tt",
@@ -1798,6 +1798,17 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_lexer"
+version = "0.121.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22944e31fb91e9b3e75bcbc91e37d958b8c0825a6160927f2856831d2ce83b36"
+dependencies = [
+ "memchr",
+ "unicode-properties",
+ "unicode-xid",
+]
+
+[[package]]
+name = "ra-ap-rustc_lexer"
 version = "0.122.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "415f0821f512608d825b3215489a6a6a2c18ed9f0045953d514e7ec23d4b90ab"
@@ -1809,12 +1820,12 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_parse_format"
-version = "0.122.0"
+version = "0.121.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18d2c4b48fa26e031b1cca0c8ca7433770f5e35e33da56da8636dae2cd45d4e1"
+checksum = "81057891bc2063ad9e353f29462fbc47a0f5072560af34428ae9313aaa5e9d97"
 dependencies = [
- "ra-ap-rustc_lexer",
- "rustc-literal-escaper 0.0.5",
+ "ra-ap-rustc_lexer 0.121.0",
+ "rustc-literal-escaper",
 ]
 
 [[package]]
@@ -1971,12 +1982,6 @@ name = "rustc-literal-escaper"
 version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab03008eb631b703dd16978282ae36c73282e7922fe101a4bd072a40ecea7b8b"
-
-[[package]]
-name = "rustc-literal-escaper"
-version = "0.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4ee29da77c5a54f42697493cd4c9b9f31b74df666a6c04dfc4fde77abe0438b"
 
 [[package]]
 name = "rustc-stable-hash"
@@ -2265,7 +2270,7 @@ dependencies = [
  "rayon",
  "rowan",
  "rustc-hash 2.1.1",
- "rustc-literal-escaper 0.0.4",
+ "rustc-literal-escaper",
  "rustc_apfloat",
  "smol_str",
  "stdx",
@@ -2587,7 +2592,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "intern",
- "ra-ap-rustc_lexer",
+ "ra-ap-rustc_lexer 0.122.0",
  "stdx",
  "text-size",
 ]
