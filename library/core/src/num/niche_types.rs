@@ -14,7 +14,8 @@ macro_rules! define_valid_range_type {
         $(#[$m:meta])*
         $vis:vis struct $name:ident($int:ident as $uint:ident in $low:literal..=$high:literal);
     )+) => {$(
-        #[derive(Clone, Copy, Eq)]
+        #[derive(Eq)]
+        #[derive_const(Clone, Copy)]
         #[repr(transparent)]
         #[rustc_layout_scalar_valid_range_start($low)]
         #[rustc_layout_scalar_valid_range_end($high)]
