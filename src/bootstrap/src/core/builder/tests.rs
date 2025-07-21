@@ -1646,22 +1646,15 @@ mod snapshot {
 
     #[test]
     fn test_lld_opt_in() {
-        let target: &'static str = Box::leak(Box::new(host_target()));
-        let slice: &'static [&'static str] = Box::leak(Box::new([target]));
-
-        with_lld_opt_in_targets(slice, || {
+        with_lld_opt_in_targets(vec![host_target()], || {
             let ctx = TestCtx::new();
-
             insta::assert_snapshot!(
-                ctx.config("doc")
-                    .path("core")
-                    .override_target_no_std(&host_target())
+                ctx.config("build")
+                    .path("compiler")
                     .render_steps(), @r"
             [build] llvm <host>
             [build] rustc 0 <host> -> rustc 1 <host>
             [build] rustc 0 <host> -> LldWrapper 1 <host>
-            [build] rustdoc 0 <host>
-            [doc] std 1 <host> crates=[core]
             ");
         });
     }
