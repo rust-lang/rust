@@ -412,6 +412,20 @@ impl ModuleLlvm {
         }
     }
 
+    fn tm_from_cgcx(
+        cgcx: &CodegenContext<LlvmCodegenBackend>,
+        name: &str,
+        dcx: DiagCtxtHandle<'_>,
+    ) -> Result<OwnedTargetMachine, FatalError> {
+        let tm_factory_config = TargetMachineFactoryConfig::new(cgcx, name);
+        match (cgcx.tm_factory)(tm_factory_config) {
+            Ok(m) => Ok(m),
+            Err(e) => {
+                return Err(dcx.emit_almost_fatal(ParseTargetMachineConfig(e)));
+            }
+        }
+    }
+
     fn parse(
         cgcx: &CodegenContext<LlvmCodegenBackend>,
         name: &CStr,
@@ -421,13 +435,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
             let llmod_raw = back::lto::parse_module(llcx, name, buffer, dcx)?;
-            let tm_factory_config = TargetMachineFactoryConfig::new(cgcx, name.to_str().unwrap());
-            let tm = match (cgcx.tm_factory)(tm_factory_config) {
-                Ok(m) => m,
-                Err(e) => {
-                    return Err(dcx.emit_almost_fatal(ParseTargetMachineConfig(e)));
-                }
-            };
+            let tm = ModuleLlvm::tm_from_cgcx(cgcx, name.to_str().unwrap(), dcx)?;
 
             Ok(ModuleLlvm { llmod_raw, llcx, tm: ManuallyDrop::new(tm) })
         }
