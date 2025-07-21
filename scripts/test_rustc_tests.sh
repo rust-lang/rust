@@ -10,7 +10,7 @@ pushd rust
 
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
-rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
+rm -r tests/ui/{lto/,linkage*} || true
 for test in $(rg --files-with-matches "lto" tests/{codegen-units,ui,incremental}); do
   rm $test
 done
@@ -39,7 +39,6 @@ rm tests/ui/simd/intrinsic/generic-arithmetic-pass.rs # unimplemented simd_funne
 # exotic linkages
 rm tests/incremental/hashes/function_interfaces.rs
 rm tests/incremental/hashes/statics.rs
-rm -r tests/run-make/naked-symbol-visibility
 
 # variadic arguments
 rm tests/ui/abi/mir/mir_codegen_calls_variadic.rs # requires float varargs
