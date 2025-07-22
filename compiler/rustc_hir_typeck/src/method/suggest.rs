@@ -3980,11 +3980,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if self
                         .tcx
                         .all_impls(candidate.def_id)
-                        .map(|imp_did| {
-                            self.tcx.impl_trait_header(imp_did).expect(
-                                "inherent impls can't be candidates, only trait impls can be",
-                            )
-                        })
+                        .map(|imp_did| self.tcx.impl_trait_header(imp_did))
                         .filter(|header| header.polarity != ty::ImplPolarity::Positive)
                         .any(|header| {
                             let imp = header.trait_ref.instantiate_identity();

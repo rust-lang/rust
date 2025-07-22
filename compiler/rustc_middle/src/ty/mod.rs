@@ -1614,8 +1614,8 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id1: DefId,
         def_id2: DefId,
     ) -> Option<ImplOverlapKind> {
-        let impl1 = self.impl_trait_header(def_id1).unwrap();
-        let impl2 = self.impl_trait_header(def_id2).unwrap();
+        let impl1 = self.impl_trait_header(def_id1);
+        let impl2 = self.impl_trait_header(def_id2);
 
         let trait_ref1 = impl1.trait_ref.skip_binder();
         let trait_ref2 = impl2.trait_ref.skip_binder();
@@ -1973,7 +1973,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
-        self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
+        self.impl_trait_header(def_id).polarity
     }
 
     /// Given an `impl_id`, return the trait it implements.
@@ -1981,7 +1981,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: impl IntoQueryParam<DefId>,
     ) -> ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>> {
-        self.impl_opt_trait_ref(def_id).unwrap()
+        self.impl_trait_header(def_id).trait_ref
     }
 
     /// Given an `impl_id`, return the trait it implements.
@@ -1990,7 +1990,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: impl IntoQueryParam<DefId>,
     ) -> Option<ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>> {
-        self.impl_trait_header(def_id).map(|header| header.trait_ref)
+        let def_id = def_id.into_query_param();
+        self.impl_is_of_trait(def_id).then(|| self.impl_trait_ref(def_id))
     }
 
     /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.
@@ -2097,7 +2098,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let def_id: DefId = def_id.into();
         match self.def_kind(def_id) {
             DefKind::Impl { of_trait: true } => {
-                let header = self.impl_trait_header(def_id).unwrap();
+                let header = self.impl_trait_header(def_id);
                 header.constness == hir::Constness::Const
                     && self.is_const_trait(header.trait_ref.skip_binder().def_id)
             }

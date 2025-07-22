@@ -806,10 +806,10 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
         DefKind::Impl { of_trait } => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
-            tcx.ensure_ok().impl_trait_header(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().associated_items(def_id);
-            if of_trait && let Some(impl_trait_header) = tcx.impl_trait_header(def_id) {
+            if of_trait {
+                let impl_trait_header = tcx.impl_trait_header(def_id);
                 res = res.and(
                     tcx.ensure_ok()
                         .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id),

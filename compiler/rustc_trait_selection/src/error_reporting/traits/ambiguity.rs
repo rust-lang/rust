@@ -57,7 +57,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
                 return false;
             }
 
-            let impl_trait_header = tcx.impl_trait_header(impl_def_id).unwrap();
+            let impl_trait_header = tcx.impl_trait_header(impl_def_id);
             let impl_polarity = impl_trait_header.polarity;
 
             match (impl_polarity, predicate_polarity) {

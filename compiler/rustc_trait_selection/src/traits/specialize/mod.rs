@@ -252,7 +252,7 @@ pub(super) fn specializes(
         }
     }
 
-    let specializing_impl_trait_header = tcx.impl_trait_header(specializing_impl_def_id).unwrap();
+    let specializing_impl_trait_header = tcx.impl_trait_header(specializing_impl_def_id);
 
     // We determine whether there's a subset relationship by:
     //

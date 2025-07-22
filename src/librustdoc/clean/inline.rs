@@ -566,7 +566,11 @@ pub(crate) fn build_impl(
             clean::enter_impl_trait(cx, |cx| clean_ty_generics(cx, did)),
         ),
     };
-    let polarity = tcx.impl_polarity(did);
+    let polarity = if associated_trait.is_some() {
+        tcx.impl_polarity(did)
+    } else {
+        ty::ImplPolarity::Positive
+    };
     let trait_ = associated_trait
         .map(|t| clean_trait_ref_with_constraints(cx, ty::Binder::dummy(t), ThinVec::new()));
     if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() {

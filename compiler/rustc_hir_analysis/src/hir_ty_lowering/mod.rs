@@ -1615,7 +1615,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         .is_accessible_from(self.item_def_id(), tcx)
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
-                            let header = tcx.impl_trait_header(impl_def_id).unwrap();
+                            let header = tcx.impl_trait_header(impl_def_id);
                             let trait_ref = header.trait_ref.instantiate(
                                 tcx,
                                 infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),
