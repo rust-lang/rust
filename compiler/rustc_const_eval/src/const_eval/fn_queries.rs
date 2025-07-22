@@ -8,6 +8,9 @@ fn parent_impl_or_trait_constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::C
     let parent_id = tcx.local_parent(def_id);
     match tcx.def_kind(parent_id) {
         DefKind::Impl { of_trait: true } => tcx.impl_trait_header(parent_id).constness,
+        DefKind::Impl { of_trait: false } => {
+            tcx.hir_node_by_def_id(parent_id).expect_item().expect_impl().constness
+        }
         DefKind::Trait => {
             if tcx.is_const_trait(parent_id.into()) {
                 hir::Constness::Const
