@@ -1821,7 +1821,7 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
 
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single {
-        /// Always `0` for types that cannot have multiple variants.
+        /// Always [`FIRST_VARIANT`] for types that cannot have multiple variants.
         index: VariantIdx,
     },
 

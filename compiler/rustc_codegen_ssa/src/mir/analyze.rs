@@ -6,7 +6,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, DefLocation, Location, TerminatorKind, traversal};
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{bug, span_bug};
 use tracing::debug;
 
@@ -99,63 +99,46 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
         context: PlaceContext,
         location: Location,
     ) {
-        let cx = self.fx.cx;
+        if !place_ref.projection.is_empty() {
+            const COPY_CONTEXT: PlaceContext =
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
 
-        if let Some((place_base, elem)) = place_ref.last_projection() {
-            let mut base_context = if context.is_mutating_use() {
-                PlaceContext::MutatingUse(MutatingUseContext::Projection)
-            } else {
-                PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
-            };
-
-            // Allow uses of projections that are ZSTs or from scalar fields.
-            let is_consume = matches!(
-                context,
-                PlaceContext::NonMutatingUse(
-                    NonMutatingUseContext::Copy | NonMutatingUseContext::Move,
-                )
-            );
-            if is_consume {
-                let base_ty = place_base.ty(self.fx.mir, cx.tcx());
-                let base_ty = self.fx.monomorphize(base_ty);
-
-                // ZSTs don't require any actual memory access.
-                let elem_ty = base_ty.projection_ty(cx.tcx(), self.fx.monomorphize(elem)).ty;
-                let span = self.fx.mir.local_decls[place_ref.local].source_info.span;
-                if cx.spanned_layout_of(elem_ty, span).is_zst() {
-                    return;
-                }
-
-                if let mir::ProjectionElem::Field(..) = elem {
-                    let layout = cx.spanned_layout_of(base_ty.ty, span);
-                    if cx.is_backend_immediate(layout) || cx.is_backend_scalar_pair(layout) {
-                        // Recurse with the same context, instead of `Projection`,
-                        // potentially stopping at non-operand projections,
-                        // which would trigger `not_ssa` on locals.
-                        base_context = context;
-                    }
+            // `PlaceElem::Index` is the only variant that can mention other `Local`s,
+            // so check for those up-front before any potential short-circuits.
+            for elem in place_ref.projection {
+                if let mir::PlaceElem::Index(index_local) = *elem {
+                    self.visit_local(index_local, COPY_CONTEXT, location);
                 }
             }
 
-            if let mir::ProjectionElem::Deref = elem {
-                // Deref projections typically only read the pointer.
-                base_context = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
+            // If our local is already memory, nothing can make it *more* memory
+            // so we don't need to bother checking the projections further.
+            if self.locals[place_ref.local] == LocalKind::Memory {
+                return;
             }
 
-            self.process_place(&place_base, base_context, location);
-            // HACK(eddyb) this emulates the old `visit_projection_elem`, this
-            // entire `visit_place`-like `process_place` method should be rewritten,
-            // now that we have moved to the "slice of projections" representation.
-            if let mir::ProjectionElem::Index(local) = elem {
-                self.visit_local(
-                    local,
-                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
-                    location,
-                );
+            if place_ref.is_indirect_first_projection() {
+                // If this starts with a `Deref`, we only need to record a read of the
+                // pointer being dereferenced, as all the subsequent projections are
+                // working on a place which is always supported. (And because we're
+                // looking at codegen MIR, it can only happen as the first projection.)
+                self.visit_local(place_ref.local, COPY_CONTEXT, location);
+                return;
             }
-        } else {
-            self.visit_local(place_ref.local, context, location);
+
+            if context.is_mutating_use() {
+                // If it's a mutating use it doesn't matter what the projections are,
+                // if there are *any* then we need a place to write. (For example,
+                // `_1 = Foo()` works in SSA but `_2.0 = Foo()` does not.)
+                let mut_projection = PlaceContext::MutatingUse(MutatingUseContext::Projection);
+                self.visit_local(place_ref.local, mut_projection, location);
+                return;
+            }
         }
+
+        // Even with supported projections, we still need to have `visit_local`
+        // check for things that can't be done in SSA (like `SharedBorrow`).
+        self.visit_local(place_ref.local, context, location);
     }
 }
 

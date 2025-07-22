@@ -12,6 +12,7 @@ use tracing::{debug, warn};
 use crate::mir::{FunctionCx, LocalRef};
 use crate::traits::BuilderMethods;
 
+#[derive(Debug)]
 pub(super) struct Locals<'tcx, V> {
     values: IndexVec<mir::Local, LocalRef<'tcx, V>>,
 }

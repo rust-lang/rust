@@ -126,7 +126,7 @@ pub struct OperandRef<'tcx, V> {
     pub layout: TyAndLayout<'tcx>,
 }
 
-impl<V: CodegenObject> fmt::Debug for OperandRef<'_, V> {
+impl<V: fmt::Debug> fmt::Debug for OperandRef<'_, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "OperandRef({:?} @ {:?})", self.val, self.layout)
     }
@@ -319,16 +319,40 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         OperandRef { val, layout }
     }
 
+    /// Extracts field `field_idx` from `self`, after downcasting to
+    /// `downcast_variant` if it's specified.
+    ///
+    /// Reading from things like tuples or structs, which are always single-variant,
+    /// don't need to pass a downcast variant since downcasting them to
+    /// `FIRST_VARIANT` doesn't actually change anything.
+    /// Things like enums and coroutines, though, must pass the variant from which
+    /// they want to read unless they're specifically reading the tag field
+    /// (which is the index at the type level, not inside one of the variants).
     pub(crate) fn extract_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         bx: &mut Bx,
-        i: usize,
+        downcast_variant: Option<VariantIdx>,
+        field_idx: FieldIdx,
     ) -> Self {
-        let field = self.layout.field(bx.cx(), i);
-        let offset = self.layout.fields.offset(i);
+        let layout = if let Some(vidx) = downcast_variant {
+            self.layout.for_variant(bx.cx(), vidx)
+        } else {
+            debug_assert!(
+                match self.layout.variants {
+                    Variants::Empty => true,
+                    Variants::Single { index } => index == FIRST_VARIANT,
+                    Variants::Multiple { tag_field, .. } => tag_field == field_idx,
+                },
+                "Should have specified a variant to read field {field_idx:?} of {self:?}",
+            );
+            self.layout
+        };
 
-        if !bx.is_backend_ref(self.layout) && bx.is_backend_ref(field) {
+        let field = layout.field(bx.cx(), field_idx.as_usize());
+        let offset = layout.fields.offset(field_idx.as_usize());
+
+        if !bx.is_backend_ref(layout) && bx.is_backend_ref(field) {
             // Part of https://github.com/rust-lang/compiler-team/issues/838
             span_bug!(
                 fx.mir.span,
@@ -338,27 +362,35 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
         let val = if field.is_zst() {
             OperandValue::ZeroSized
-        } else if let BackendRepr::SimdVector { .. } = self.layout.backend_repr {
+        } else if let BackendRepr::SimdVector { .. } = layout.backend_repr {
             // codegen_transmute_operand doesn't support SIMD, but since the previous
             // check handled ZSTs, the only possible field access into something SIMD
             // is to the `non_1zst_field` that's the same SIMD. (Other things, even
             // just padding, would change the wrapper's representation type.)
-            assert_eq!(field.size, self.layout.size);
+            assert_eq!(field.size, layout.size);
             self.val
-        } else if field.size == self.layout.size {
-            assert_eq!(offset.bytes(), 0);
-            fx.codegen_transmute_operand(bx, *self, field)
+        } else if field.size == layout.size {
+            debug_assert_eq!(offset.bytes(), 0);
+            if downcast_variant.is_some() || self.layout.ty.is_union() {
+                fx.codegen_transmute_operand(bx, *self, field)
+            } else {
+                self.val
+            }
         } else {
-            let (in_scalar, imm) = match (self.val, self.layout.backend_repr) {
+            let (in_scalar, imm) = match (self.val, layout.backend_repr) {
                 // Extract a scalar component from a pair.
                 (OperandValue::Pair(a_llval, b_llval), BackendRepr::ScalarPair(a, b)) => {
-                    if offset.bytes() == 0 {
+                    // This needs to look at `offset`, rather than `i`, because
+                    // for a type like `Option<u32>`, the first thing in the pair
+                    // is the tag, so `(_2 as Some).0` needs to read the *second*
+                    // thing in the pair despite it being "field zero".
+                    if offset == Size::ZERO {
                         assert_eq!(field.size, a.size(bx.cx()));
-                        (Some(a), a_llval)
+                        (a, a_llval)
                     } else {
                         assert_eq!(offset, a.size(bx.cx()).align_to(b.align(bx.cx()).abi));
                         assert_eq!(field.size, b.size(bx.cx()));
-                        (Some(b), b_llval)
+                        (b, b_llval)
                     }
                 }
 
@@ -367,30 +399,18 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 }
             };
             OperandValue::Immediate(match field.backend_repr {
-                BackendRepr::SimdVector { .. } => imm,
-                BackendRepr::Scalar(out_scalar) => {
-                    let Some(in_scalar) = in_scalar else {
-                        span_bug!(
-                            fx.mir.span,
-                            "OperandRef::extract_field({:?}): missing input scalar for output scalar",
-                            self
-                        )
-                    };
-                    if in_scalar != out_scalar {
-                        // If the backend and backend_immediate types might differ,
-                        // flip back to the backend type then to the new immediate.
-                        // This avoids nop truncations, but still handles things like
-                        // Bools in union fields needs to be truncated.
-                        let backend = bx.from_immediate(imm);
-                        bx.to_immediate_scalar(backend, out_scalar)
-                    } else {
-                        imm
-                    }
+                BackendRepr::Scalar(out_scalar) if downcast_variant.is_some() => {
+                    // For a type like `Result<usize, &u32>` the layout is `Pair(i64, ptr)`.
+                    // But if we're reading the `Ok` payload, we need to turn that `ptr`
+                    // back into an integer. To avoid repeating logic we do that by
+                    // calling the transmute code, which is legal thanks to the size
+                    // assert we did when pulling it out of the pair.
+                    transmute_scalar(bx, imm, in_scalar, out_scalar)
                 }
+                BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => imm,
                 BackendRepr::ScalarPair(_, _) | BackendRepr::Memory { .. } => bug!(),
             })
         };
-
         OperandRef { val, layout: field }
     }
 
@@ -438,7 +458,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         let tag_op = match self.val {
             OperandValue::ZeroSized => bug!(),
             OperandValue::Immediate(_) | OperandValue::Pair(_, _) => {
-                self.extract_field(fx, bx, tag_field.as_usize())
+                self.extract_field(fx, bx, None, tag_field)
             }
             OperandValue::Ref(place) => {
                 let tag = place.with_type(self.layout).project_field(bx, tag_field.as_usize());
@@ -929,34 +949,28 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Option<OperandRef<'tcx, Bx::Value>> {
         debug!("maybe_codegen_consume_direct(place_ref={:?})", place_ref);
 
+        let mut downcast_variant = None;
         match self.locals[place_ref.local] {
             LocalRef::Operand(mut o) => {
                 // Moves out of scalar and scalar pair fields are trivial.
                 for elem in place_ref.projection.iter() {
-                    match elem {
+                    match *elem {
                         mir::ProjectionElem::Field(f, _) => {
                             assert!(
                                 !o.layout.ty.is_any_ptr(),
                                 "Bad PlaceRef: destructing pointers should use cast/PtrMetadata, \
                                  but tried to access field {f:?} of pointer {o:?}",
                             );
-                            o = o.extract_field(self, bx, f.index());
+                            o = o.extract_field(self, bx, downcast_variant, f);
+                            downcast_variant = None;
                         }
-                        mir::ProjectionElem::Index(_)
-                        | mir::ProjectionElem::ConstantIndex { .. } => {
-                            // ZSTs don't require any actual memory access.
-                            // FIXME(eddyb) deduplicate this with the identical
-                            // checks in `codegen_consume` and `extract_field`.
-                            let elem = o.layout.field(bx.cx(), 0);
-                            if elem.is_zst() {
-                                o = OperandRef::zero_sized(elem);
-                            } else {
-                                return None;
-                            }
+                        mir::ProjectionElem::Downcast(_sym, variant_idx) => {
+                            downcast_variant = Some(variant_idx);
                         }
                         _ => return None,
                     }
                 }
+                debug_assert_eq!(downcast_variant, None);
 
                 Some(o)
             }

@@ -137,9 +137,15 @@ pub fn test_CUnionU128(_: CUnionU128) {
 pub union UnionBool {
     b: bool,
 }
-// CHECK: define {{(dso_local )?}}noundef zeroext i1 @test_UnionBool(i8{{.*}} %b)
+// CHECK: define {{(dso_local )?}}noundef zeroext i1 @test_UnionBool(i8 %b)
 #[no_mangle]
 pub fn test_UnionBool(b: UnionBool) -> bool {
+    // Note the lack of `noundef` on the parameter, because (at least for now)
+    // all unions are allowed to be fully-uninitialized.
+
+    // CHECK-NOT: alloca
+    // CHECK: %[[BOOL:.+]] = trunc nuw i8 %b to i1
+    // CHECK: ret i1 %[[BOOL]]
+
     unsafe { b.b }
 }
-// CHECK: %_0 = trunc{{( nuw)?}} i8 %b to i1

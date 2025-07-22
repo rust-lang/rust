@@ -1,6 +1,6 @@
 use std::cmp;
 
-use rustc_abi::{Align, BackendRepr, ExternAbi, HasDataLayout, Reg, Size, WrappingRange};
+use rustc_abi::{Align, BackendRepr, ExternAbi, FieldIdx, HasDataLayout, Reg, Size, WrappingRange};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::packed::Pu128;
@@ -1038,7 +1038,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             let (idx, _) = op.layout.non_1zst_field(bx).expect(
                                 "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
                             );
-                            op = op.extract_field(self, bx, idx.as_usize());
+                            op = op.extract_field(self, bx, None, idx);
                         }
 
                         // Now that we have `*dyn Trait` or `&dyn Trait`, split it up into its
@@ -1598,7 +1598,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             // If the tuple is immediate, the elements are as well.
             for i in 0..tuple.layout.fields.count() {
-                let op = tuple.extract_field(self, bx, i);
+                let op = tuple.extract_field(self, bx, None, FieldIdx::from_usize(i));
                 self.codegen_argument(bx, op, llargs, &args[i], lifetime_ends_after_call);
             }
         }
