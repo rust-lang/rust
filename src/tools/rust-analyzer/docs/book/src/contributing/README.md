@@ -282,26 +282,27 @@ There are two sets of people with extra permissions:
 ## Synchronizing subtree changes
 `rust-analyzer` is a [josh](https://josh-project.github.io/josh/intro.html) subtree of the [rust-lang/rust](https://github.com/rust-lang/rust)
 repository. We use the [rustc-josh-sync](https://github.com/rust-lang/josh-sync) tool to perform synchronization between these two
-repositories. You can find documentation of the tool [here](https://github.com/rust-lang/josh-sync?tab=readme-ov-file#performing-pull).
+repositories. You can find documentation of the tool [here](https://github.com/rust-lang/josh-sync).
 
 You can install the synchronization tool using the following commands:
 ```
 cargo install --locked --git https://github.com/rust-lang/josh-sync
 ```
 
-Both pulls (synchronize changes from rust-lang/rust into rust-analyzer) and pushes (synchronize
+Both pulls (synchronizing changes from rust-lang/rust into rust-analyzer) and pushes (synchronizing
+changes from rust-analyzer into rust-lang/rust) are performed from this repository.
 changes from rust-analyzer to rust-lang/rust) are performed from this repository.
 
 Usually we first perform a pull, wait for it to be merged, and then perform a push.
 
 ### Performing a pull
-1) Checkout a new branch that will be used to create a PR into rust-analyzer
+1) Checkout a new branch that will be used to create a PR against rust-analyzer
 2) Run the pull command
     ```
     rustc-josh-sync pull
     ```
 3) Push the branch to your fork of `rust-analyzer` and create a PR
-  - If you have `gh` CLI installed, `rustc-josh-sync` can create the PR for you.
+  - If you have the `gh` CLI installed, `rustc-josh-sync` can create the PR for you.
 
 ### Performing a push
 
