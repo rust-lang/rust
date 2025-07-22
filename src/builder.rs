@@ -540,8 +540,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn ret(&mut self, mut value: RValue<'gcc>) {
         let expected_return_type = self.current_func().get_return_type();
         if !expected_return_type.is_compatible_with(value.get_type()) {
-            // NOTE: due to opaque pointers now being used, we need to cast here.
-            value = self.context.new_cast(self.location, value, expected_return_type);
+            // NOTE: due to opaque pointers now being used, we need to bitcast here.
+            value = self.context.new_bitcast(self.location, value, expected_return_type);
         }
         self.llbb().end_with_return(self.location, value);
     }
