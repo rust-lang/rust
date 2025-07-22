@@ -317,7 +317,7 @@ pub unsafe fn prefetch_write_instruction<T>(data: *const T, locality: i32);
 
 /// Executes a breakpoint trap, for inspection by a debugger.
 ///
-/// This intrinsic does not have a stable counterpart.
+/// The stabilized version of this intrinsic is [`core::arch::breakpoint`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn breakpoint();

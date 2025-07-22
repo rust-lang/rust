@@ -70,8 +70,7 @@ pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?
 ///
 /// - On x86 targets, this produces an `int3` instruction.
 /// - On aarch64 targets, this produces a `brk #0xf000` instruction.
-// When stabilizing this, update the comment on `core::intrinsics::breakpoint`.
-#[unstable(feature = "breakpoint", issue = "133724")]
+#[stable(feature = "breakpoint", since = "CURRENT_RUSTC_VERSION")]
 #[inline(always)]
 pub fn breakpoint() {
     core::intrinsics::breakpoint();
