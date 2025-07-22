@@ -22,7 +22,7 @@ foreach ($dir in $dirs) {
 # Wait for deletion to finish
 Get-Job -State Running | Wait-Job
 # Print any errors
-$warnings = Get-Job | Receive-Job
+$warnings = Get-Job | Receive-Job -ErrorAction Continue
 foreach ($warning in $warnings) {
     Write-Ouptut "::warning $warning"
 }
