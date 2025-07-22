@@ -720,6 +720,26 @@ mod snapshot {
     }
 
     #[test]
+    fn build_compiler_codegen_backend() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx
+                .config("build")
+                .args(&["--set", "rust.codegen-backends=['llvm', 'cranelift']"])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> rustc_codegen_cranelift 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
+        [build] rustdoc 1 <host>
+        "
+        );
+    }
+
+    #[test]
     fn build_compiler_tools() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
