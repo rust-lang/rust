@@ -242,6 +242,20 @@ impl<'a> AstValidator<'a> {
         }
     }
 
+    fn check_impl_fn_not_const(&self, constness: Const, parent_constness: Const) {
+        let Const::Yes(span) = constness else {
+            return;
+        };
+
+        let span = self.sess.source_map().span_extend_while_whitespace(span);
+
+        let Const::Yes(parent_constness) = parent_constness else {
+            return;
+        };
+
+        self.dcx().emit_err(errors::ImplFnConst { span, parent_constness });
+    }
+
     fn check_trait_fn_not_const(&self, constness: Const, parent: &TraitOrImpl) {
         let Const::Yes(span) = constness else {
             return;
@@ -1689,14 +1703,23 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             );
         }
 
-        if let Some(parent @ (TraitOrImpl::Trait { .. } | TraitOrImpl::TraitImpl { .. })) =
-            &self.outer_trait_or_trait_impl
-        {
-            self.visibility_not_permitted(&item.vis, errors::VisibilityNotPermittedNote::TraitImpl);
-            if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
-                self.check_trait_fn_not_const(sig.header.constness, parent);
-                self.check_async_fn_in_const_trait_or_impl(sig, parent);
+        match &self.outer_trait_or_trait_impl {
+            Some(parent @ (TraitOrImpl::Trait { .. } | TraitOrImpl::TraitImpl { .. })) => {
+                self.visibility_not_permitted(
+                    &item.vis,
+                    errors::VisibilityNotPermittedNote::TraitImpl,
+                );
+                if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
+                    self.check_trait_fn_not_const(sig.header.constness, parent);
+                    self.check_async_fn_in_const_trait_or_impl(sig, parent);
+                }
             }
+            Some(TraitOrImpl::Impl { constness }) => {
+                if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
+                    self.check_impl_fn_not_const(sig.header.constness, *constness);
+                }
+            }
+            None => {}
         }
 
         if let AssocItemKind::Const(ci) = &item.kind {
