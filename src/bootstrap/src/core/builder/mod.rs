@@ -16,6 +16,7 @@ use tracing::instrument;
 pub use self::cargo::{Cargo, cargo_profile_var};
 pub use crate::Compiler;
 use crate::core::build_steps::compile::{Std, StdLink};
+use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
 };
@@ -1554,10 +1555,13 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             return cmd;
         }
 
-        let _ =
-            self.ensure(tool::Clippy { compiler: run_compiler, target: self.build.host_target });
-        let cargo_clippy = self
-            .ensure(tool::CargoClippy { compiler: run_compiler, target: self.build.host_target });
+        // FIXME: double check that `run_compiler`'s stage is what we want to use
+        let compilers =
+            RustcPrivateCompilers::new(self, run_compiler.stage, self.build.host_target);
+        assert_eq!(run_compiler, compilers.link_compiler());
+
+        let _ = self.ensure(tool::Clippy::from_compilers(compilers));
+        let cargo_clippy = self.ensure(tool::CargoClippy::from_compilers(compilers));
         let mut dylib_path = helpers::dylib_path();
         dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
 
@@ -1569,11 +1573,14 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
 
     pub fn cargo_miri_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
         assert!(run_compiler.stage > 0, "miri can not be invoked at stage 0");
+
+        let compilers =
+            RustcPrivateCompilers::new(self, run_compiler.stage, self.build.host_target);
+        assert_eq!(run_compiler, compilers.link_compiler());
+
         // Prepare the tools
-        let miri =
-            self.ensure(tool::Miri { compiler: run_compiler, target: self.build.host_target });
-        let cargo_miri =
-            self.ensure(tool::CargoMiri { compiler: run_compiler, target: self.build.host_target });
+        let miri = self.ensure(tool::Miri::from_compilers(compilers));
+        let cargo_miri = self.ensure(tool::CargoMiri::from_compilers(compilers));
         // Invoke cargo-miri, make sure it can find miri and cargo.
         let mut cmd = command(cargo_miri.tool_path);
         cmd.env("MIRI", &miri.tool_path);
