@@ -99,8 +99,9 @@ macro_rules! integer_sum_product {
 }
 
 macro_rules! saturating_integer_sum_product {
-    (@impls $zero:expr, $one:expr, #[$attr:meta], $($a:ty)*) => ($(
+    (@impls $zero:expr, $one:expr, $doc:expr, #[$attr:meta], $($a:ty)*) => ($(
         #[$attr]
+        #[doc = $doc]
         impl Sum for $a {
             fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
                 iter.fold(
@@ -112,6 +113,7 @@ macro_rules! saturating_integer_sum_product {
         }
 
         #[$attr]
+        #[doc = $doc]
         impl Product for $a {
             fn product<I: Iterator<Item=Self>>(iter: I) -> Self {
                 iter.fold(
@@ -123,6 +125,7 @@ macro_rules! saturating_integer_sum_product {
         }
 
         #[$attr]
+        #[doc = $doc]
         impl<'a> Sum<&'a $a> for $a {
             fn sum<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
                 iter.fold(
@@ -134,6 +137,7 @@ macro_rules! saturating_integer_sum_product {
         }
 
         #[$attr]
+        #[doc = $doc]
         impl<'a> Product<&'a $a> for $a {
             fn product<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
                 iter.fold(
@@ -145,8 +149,9 @@ macro_rules! saturating_integer_sum_product {
         }
     )*);
     ($($a:ty)*) => (
-        integer_sum_product!(@impls Saturating(0), Saturating(1),
-                #[stable(feature = "saturating_iter_arith", since = "1.14.0")],
+        saturating_integer_sum_product!(@impls Saturating(0), Saturating(1),
+                "The short-circuiting behavior of this implementation is unspecified. If you care about short-circuiting, use [`Iterator::fold`] directly.",
+                #[stable(feature = "saturating_iter_arith", since = "CURRENT_RUSTC_VERSION")],
                 $(Saturating<$a>)*);
     );
 }
