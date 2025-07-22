@@ -250,29 +250,22 @@ impl<'a> Parser<'a> {
         } else if self.check_keyword(exp!(Trait)) || self.check_trait_front_matter() {
             // TRAIT ITEM
             self.parse_item_trait(attrs, lo)?
-        } else if let Const::Yes(const_span) = self.parse_constness(Case::Sensitive) {
-            // CONST ITEM
-            if self.token.is_keyword(kw::Impl) {
-                // recover from `const impl`, suggest `impl const`
-                self.recover_const_impl(const_span, attrs, def_())?
-            } else {
-                self.recover_const_mut(const_span);
-                self.recover_missing_kw_before_item()?;
-                let (ident, generics, ty, rhs) = self.parse_const_item(attrs)?;
-                ItemKind::Const(Box::new(ConstItem {
-                    defaultness: def_(),
-                    ident,
-                    generics,
-                    ty,
-                    rhs,
-                    define_opaque: None,
-                }))
-            }
-        } else if self.check_keyword(exp!(Impl))
-            || self.check_keyword(exp!(Unsafe)) && self.is_keyword_ahead(1, &[kw::Impl])
-        {
+        } else if self.check_impl_frontmatter() {
             // IMPL ITEM
             self.parse_item_impl(attrs, def_())?
+        } else if let Const::Yes(const_span) = self.parse_constness(Case::Sensitive) {
+            // CONST ITEM
+            self.recover_const_mut(const_span);
+            self.recover_missing_kw_before_item()?;
+            let (ident, generics, ty, rhs) = self.parse_const_item(attrs)?;
+            ItemKind::Const(Box::new(ConstItem {
+                defaultness: def_(),
+                ident,
+                generics,
+                ty,
+                rhs,
+                define_opaque: None,
+            }))
         } else if self.is_reuse_path_item() {
             self.parse_item_delegation()?
         } else if self.check_keyword(exp!(Mod))
@@ -569,6 +562,9 @@ impl<'a> Parser<'a> {
         attrs: &mut AttrVec,
         defaultness: Defaultness,
     ) -> PResult<'a, ItemKind> {
+        if self.eat_keyword(exp!(Const)) {
+            return self.recover_const_impl(self.prev_token.span, attrs, defaultness);
+        }
         let safety = self.parse_safety(Case::Sensitive);
         self.expect_keyword(exp!(Impl))?;
 
@@ -2622,6 +2618,33 @@ impl<'a> Parser<'a> {
         };
         attrs.extend(inner_attrs);
         Ok(body)
+    }
+
+    fn check_impl_frontmatter(&mut self) -> bool {
+        const ALL_QUALS: &[Symbol] = &[kw::Const, kw::Unsafe];
+        // In contrast to the loop below, this call inserts `impl` into the
+        // list of expected tokens shown in diagnostics.
+        if self.check_keyword(exp!(Impl)) {
+            return true;
+        }
+        let mut i = 0;
+        while i < ALL_QUALS.len() {
+            let action = self.look_ahead(i, |token| {
+                if token.is_keyword(kw::Impl) {
+                    return Some(true);
+                }
+                if ALL_QUALS.iter().any(|&qual| token.is_keyword(qual)) {
+                    // Ok, we found a legal keyword, keep looking for `impl`
+                    return None;
+                }
+                Some(false)
+            });
+            if let Some(ret) = action {
+                return ret;
+            }
+            i += 1;
+        }
+        self.is_keyword_ahead(i, &[kw::Impl])
     }
 
     /// Is the current token the start of an `FnHeader` / not a valid parse?
