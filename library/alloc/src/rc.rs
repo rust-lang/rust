@@ -352,25 +352,28 @@ impl<T: ?Sized> Rc<T> {
 
 impl<T: ?Sized, A: Allocator> Rc<T, A> {
     #[inline(always)]
-    fn inner(&self) -> &RcInner<T> {
+    const fn inner(&self) -> &RcInner<T> {
         // This unsafety is ok because while this Rc is alive we're guaranteed
         // that the inner pointer is valid.
         unsafe { self.ptr.as_ref() }
     }
 
     #[inline]
-    fn into_inner_with_allocator(this: Self) -> (NonNull<RcInner<T>>, A) {
+    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    const fn into_inner_with_allocator(this: Self) -> (NonNull<RcInner<T>>, A) {
         let this = mem::ManuallyDrop::new(this);
         (this.ptr, unsafe { ptr::read(&this.alloc) })
     }
 
     #[inline]
-    unsafe fn from_inner_in(ptr: NonNull<RcInner<T>>, alloc: A) -> Self {
+    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    const unsafe fn from_inner_in(ptr: NonNull<RcInner<T>>, alloc: A) -> Self {
         Self { ptr, phantom: PhantomData, alloc }
     }
 
     #[inline]
-    unsafe fn from_ptr_in(ptr: *mut RcInner<T>, alloc: A) -> Self {
+    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    const unsafe fn from_ptr_in(ptr: *mut RcInner<T>, alloc: A) -> Self {
         unsafe { Self::from_inner_in(NonNull::new_unchecked(ptr), alloc) }
     }
 
@@ -1452,7 +1455,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn into_raw_with_allocator(this: Self) -> (*const T, A) {
+    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    pub const fn into_raw_with_allocator(this: Self) -> (*const T, A) {
         let this = mem::ManuallyDrop::new(this);
         let ptr = Self::as_ptr(&this);
         // Safety: `this` is ManuallyDrop so the allocator will not be double-dropped
@@ -1478,7 +1482,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// ```
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     #[rustc_never_returns_null_ptr]
-    pub fn as_ptr(this: &Self) -> *const T {
+    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    pub const fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut RcInner<T> = NonNull::as_ptr(this.ptr);
 
         // SAFETY: This cannot go through Deref::deref or Rc::inner because
@@ -1555,7 +1560,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// }
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub unsafe fn from_raw_in(ptr: *const T, alloc: A) -> Self {
+    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    pub const unsafe fn from_raw_in(ptr: *const T, alloc: A) -> Self {
         let offset = unsafe { data_offset(ptr) };
 
         // Reverse the offset to find the original RcInner.
@@ -2248,7 +2254,8 @@ impl<T: Copy> RcFromSlice<T> for Rc<[T]> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, A: Allocator> Deref for Rc<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: ?Sized, A: Allocator> const Deref for Rc<T, A> {
     type Target = T;
 
     #[inline(always)]
@@ -2853,7 +2860,8 @@ where
 }
 
 #[stable(feature = "shared_from_str", since = "1.62.0")]
-impl From<Rc<str>> for Rc<[u8]> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<A: Allocator> const From<Rc<str, A>> for Rc<[u8], A> {
     /// Converts a reference-counted string slice into a byte slice.
     ///
     /// # Example
@@ -2865,14 +2873,16 @@ impl From<Rc<str>> for Rc<[u8]> {
     /// assert_eq!("eggplant".as_bytes(), bytes.as_ref());
     /// ```
     #[inline]
-    fn from(rc: Rc<str>) -> Self {
+    fn from(rc: Rc<str, A>) -> Self {
+        let (raw, alloc) = Rc::into_raw_with_allocator(rc);
         // SAFETY: `str` has the same layout as `[u8]`.
-        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const [u8]) }
+        unsafe { Rc::from_raw_in(raw as *const [u8], alloc) }
     }
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
-impl<T, A: Allocator, const N: usize> TryFrom<Rc<[T], A>> for Rc<[T; N], A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, A: Allocator, const N: usize> const TryFrom<Rc<[T], A>> for Rc<[T; N], A> {
     type Error = Rc<[T], A>;
 
     fn try_from(boxed_slice: Rc<[T], A>) -> Result<Self, Self::Error> {
@@ -3641,14 +3651,16 @@ impl<'a> RcInnerPtr for WeakInner<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, A: Allocator> borrow::Borrow<T> for Rc<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: ?Sized, A: Allocator> const borrow::Borrow<T> for Rc<T, A> {
     fn borrow(&self) -> &T {
         &**self
     }
 }
 
 #[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
-impl<T: ?Sized, A: Allocator> AsRef<T> for Rc<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: ?Sized, A: Allocator> const AsRef<T> for Rc<T, A> {
     fn as_ref(&self) -> &T {
         &**self
     }
@@ -3663,7 +3675,8 @@ impl<T: ?Sized, A: Allocator> Unpin for Rc<T, A> {}
 ///
 /// The pointer must point to (and have valid metadata for) a previously
 /// valid instance of T, but the T is allowed to be dropped.
-unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
+#[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+const unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
     // Align the unsized value to the end of the RcInner.
     // Because RcInner is repr(C), it will always be the last field in memory.
     // SAFETY: since the only unsized types possible are slices, trait objects,
@@ -3674,7 +3687,8 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
 }
 
 #[inline]
-fn data_offset_align(align: usize) -> usize {
+#[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+const fn data_offset_align(align: usize) -> usize {
     let layout = Layout::new::<RcInner<()>>();
     layout.size() + layout.padding_needed_for(align)
 }
@@ -3773,28 +3787,32 @@ impl<T: ?Sized, A: Allocator> fmt::Pointer for UniqueRc<T, A> {
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
-impl<T: ?Sized, A: Allocator> borrow::Borrow<T> for UniqueRc<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: ?Sized, A: Allocator> const borrow::Borrow<T> for UniqueRc<T, A> {
     fn borrow(&self) -> &T {
         &**self
     }
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
-impl<T: ?Sized, A: Allocator> borrow::BorrowMut<T> for UniqueRc<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: ?Sized, A: Allocator> const borrow::BorrowMut<T> for UniqueRc<T, A> {
     fn borrow_mut(&mut self) -> &mut T {
         &mut **self
     }
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
-impl<T: ?Sized, A: Allocator> AsRef<T> for UniqueRc<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: ?Sized, A: Allocator> const AsRef<T> for UniqueRc<T, A> {
     fn as_ref(&self) -> &T {
         &**self
     }
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
-impl<T: ?Sized, A: Allocator> AsMut<T> for UniqueRc<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: ?Sized, A: Allocator> const AsMut<T> for UniqueRc<T, A> {
     fn as_mut(&mut self) -> &mut T {
         &mut **self
     }
@@ -4058,7 +4076,8 @@ impl<T: ?Sized, A: Allocator + Clone> UniqueRc<T, A> {
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
-impl<T: ?Sized, A: Allocator> Deref for UniqueRc<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: ?Sized, A: Allocator> const Deref for UniqueRc<T, A> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -4068,7 +4087,8 @@ impl<T: ?Sized, A: Allocator> Deref for UniqueRc<T, A> {
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
-impl<T: ?Sized, A: Allocator> DerefMut for UniqueRc<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: ?Sized, A: Allocator> const DerefMut for UniqueRc<T, A> {
     fn deref_mut(&mut self) -> &mut T {
         // SAFETY: This pointer was allocated at creation time so we know it is valid. We know we
         // have unique ownership and therefore it's safe to make a mutable reference because

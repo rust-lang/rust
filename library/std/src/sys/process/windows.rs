@@ -776,7 +776,8 @@ impl fmt::Display for ExitStatus {
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct ExitStatusError(NonZero<u32>);
 
-impl Into<ExitStatus> for ExitStatusError {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
         ExitStatus(self.0.into())
     }
@@ -801,13 +802,15 @@ impl ExitCode {
     }
 }
 
-impl From<u8> for ExitCode {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const From<u8> for ExitCode {
     fn from(code: u8) -> Self {
         ExitCode(u32::from(code))
     }
 }
 
-impl From<u32> for ExitCode {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const From<u32> for ExitCode {
     fn from(code: u32) -> Self {
         ExitCode(u32::from(code))
     }

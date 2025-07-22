@@ -15,7 +15,8 @@ use linewritershim::LineWriterShim;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::{bufreader::BufReader, bufwriter::BufWriter, linewriter::LineWriter};
 use crate::io::Error;
-use crate::{error, fmt};
+use crate::marker::Destruct;
+use crate::{error, fmt, mem, ptr};
 
 /// An error returned by [`BufWriter::into_inner`] which combines an error that
 /// happened while writing out the buffer, and the buffered writer object
@@ -172,9 +173,17 @@ impl<W> IntoInnerError<W> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<W> From<IntoInnerError<W>> for Error {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<W: [const] Destruct> const From<IntoInnerError<W>> for Error {
     fn from(iie: IntoInnerError<W>) -> Error {
-        iie.1
+        // FIXME: rustc_allow_const_fn_unstable doesn't work for const traits,
+        //   need const_precise_live_drops
+        let iie = mem::ManuallyDrop::new(iie);
+
+        // drop `W`
+        unsafe { ptr::read(&iie.0) };
+
+        unsafe { ptr::read(&iie.1) }
     }
 }
 

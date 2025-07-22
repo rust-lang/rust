@@ -190,19 +190,12 @@ impl Repr {
     }
 
     #[inline]
-    pub(super) fn new_simple(kind: ErrorKind) -> Self {
+    pub(super) const fn new_simple(kind: ErrorKind) -> Self {
         let utagged = ((kind as usize) << 32) | TAG_SIMPLE;
         // Safety: `TAG_SIMPLE` is not zero, so the result of the `|` is not 0.
         let res = Self(
             NonNull::without_provenance(unsafe { NonZeroUsize::new_unchecked(utagged) }),
             PhantomData,
-        );
-        // quickly smoke-check we encoded the right thing (This generally will
-        // only run in std's tests, unless the user uses -Zbuild-std)
-        debug_assert!(
-            matches!(res.data(), ErrorData::Simple(k) if k == kind),
-            "repr(simple) encoding failed {:?}",
-            kind,
         );
         res
     }

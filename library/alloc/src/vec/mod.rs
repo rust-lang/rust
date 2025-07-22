@@ -1057,7 +1057,13 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {
+    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    pub const unsafe fn from_raw_parts_in(
+        ptr: *mut T,
+        length: usize,
+        capacity: usize,
+        alloc: A,
+    ) -> Self {
         ub_checks::assert_unsafe_precondition!(
             check_library_ub,
             "Vec::from_raw_parts_in requires that length <= capacity",
@@ -3486,7 +3492,8 @@ impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> ops::Deref for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, A: Allocator> const ops::Deref for Vec<T, A> {
     type Target = [T];
 
     #[inline]
@@ -3496,7 +3503,8 @@ impl<T, A: Allocator> ops::Deref for Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, A: Allocator> const ops::DerefMut for Vec<T, A> {
     #[inline]
     fn deref_mut(&mut self) -> &mut [T] {
         self.as_mut_slice()
@@ -3926,6 +3934,27 @@ impl<T, A: Allocator> Vec<T, A> {
     }
 }
 
+impl Vec<u8> {
+    /// Private function solely to make `CString::into_bytes` const without marking any methods
+    /// here const-unstable.
+    ///
+    /// # Safety
+    ///
+    /// The vec must be nonempty.
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    #[allow(dead_code)] // some tests include code directly and this might not be used there
+    pub(crate) const unsafe fn pop_zero_byte(&mut self) {
+        // SAFETY: The vec is nonempty.
+        unsafe {
+            self.len -= 1;
+            core::hint::assert_unchecked(self.len < self.capacity());
+        }
+
+        // SAFETY: The vec was nonempty.
+        debug_assert!(unsafe { ptr::read(self.as_ptr().add(self.len())) } == 0);
+    }
+}
+
 /// Extend implementation that copies elements out of references before pushing them onto the Vec.
 ///
 /// This implementation is specialized for slice iterators, where it uses [`copy_from_slice`] to
@@ -4021,28 +4050,32 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> AsRef<Vec<T, A>> for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, A: Allocator> const AsRef<Vec<T, A>> for Vec<T, A> {
     fn as_ref(&self) -> &Vec<T, A> {
         self
     }
 }
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
-impl<T, A: Allocator> AsMut<Vec<T, A>> for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, A: Allocator> const AsMut<Vec<T, A>> for Vec<T, A> {
     fn as_mut(&mut self) -> &mut Vec<T, A> {
         self
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> AsRef<[T]> for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, A: Allocator> const AsRef<[T]> for Vec<T, A> {
     fn as_ref(&self) -> &[T] {
         self
     }
 }
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
-impl<T, A: Allocator> AsMut<[T]> for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, A: Allocator> const AsMut<[T]> for Vec<T, A> {
     fn as_mut(&mut self) -> &mut [T] {
         self
     }
@@ -4155,7 +4188,8 @@ where
 
 // note: test pulls in std, which causes errors here
 #[stable(feature = "vec_from_box", since = "1.18.0")]
-impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, A: Allocator> const From<Box<[T], A>> for Vec<T, A> {
     /// Converts a boxed slice into a vector by transferring ownership of
     /// the existing heap allocation.
     ///

@@ -142,7 +142,8 @@ pub struct Wtf8Buf {
     is_known_utf8: bool,
 }
 
-impl ops::Deref for Wtf8Buf {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const ops::Deref for Wtf8Buf {
     type Target = Wtf8;
 
     fn deref(&self) -> &Wtf8 {
@@ -150,7 +151,8 @@ impl ops::Deref for Wtf8Buf {
     }
 }
 
-impl ops::DerefMut for Wtf8Buf {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const ops::DerefMut for Wtf8Buf {
     fn deref_mut(&mut self) -> &mut Wtf8 {
         self.as_mut_slice()
     }
@@ -199,7 +201,8 @@ impl Wtf8Buf {
     /// Since the byte vec is not checked for valid WTF-8, this function is
     /// marked unsafe.
     #[inline]
-    pub unsafe fn from_bytes_unchecked(value: Vec<u8>) -> Wtf8Buf {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const unsafe fn from_bytes_unchecked(value: Vec<u8>) -> Wtf8Buf {
         Wtf8Buf { bytes: value, is_known_utf8: false }
     }
 
@@ -262,12 +265,14 @@ impl Wtf8Buf {
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &Wtf8 {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn as_slice(&self) -> &Wtf8 {
         unsafe { Wtf8::from_bytes_unchecked(&self.bytes) }
     }
 
     #[inline]
-    pub fn as_mut_slice(&mut self) -> &mut Wtf8 {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn as_mut_slice(&mut self) -> &mut Wtf8 {
         // Safety: `Wtf8` doesn't expose any way to mutate the bytes that would
         // cause them to change from well-formed UTF-8 to ill-formed UTF-8,
         // which would break the assumptions of the `is_known_utf8` field.
@@ -489,7 +494,8 @@ impl Wtf8Buf {
     }
 
     /// Converts a `Box<Wtf8>` into a `Wtf8Buf`.
-    pub fn from_box(boxed: Box<Wtf8>) -> Wtf8Buf {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn from_box(boxed: Box<Wtf8>) -> Wtf8Buf {
         let bytes: Box<[u8]> = unsafe { mem::transmute(boxed) };
         Wtf8Buf { bytes: bytes.into_vec(), is_known_utf8: false }
     }
@@ -614,7 +620,8 @@ impl Wtf8 {
     ///
     /// Since WTF-8 is a superset of UTF-8, this always succeeds.
     #[inline]
-    pub fn from_str(value: &str) -> &Wtf8 {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn from_str(value: &str) -> &Wtf8 {
         unsafe { Wtf8::from_bytes_unchecked(value.as_bytes()) }
     }
 
@@ -623,7 +630,8 @@ impl Wtf8 {
     /// Since the byte slice is not checked for valid WTF-8, this functions is
     /// marked unsafe.
     #[inline]
-    pub unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
         // SAFETY: start with &[u8], end with fancy &[u8]
         unsafe { &*(value as *const [u8] as *const Wtf8) }
     }
@@ -633,7 +641,8 @@ impl Wtf8 {
     /// Since the byte slice is not checked for valid WTF-8, this functions is
     /// marked unsafe.
     #[inline]
-    unsafe fn from_mut_bytes_unchecked(value: &mut [u8]) -> &mut Wtf8 {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    const unsafe fn from_mut_bytes_unchecked(value: &mut [u8]) -> &mut Wtf8 {
         // SAFETY: start with &mut [u8], end with fancy &mut [u8]
         unsafe { &mut *(value as *mut [u8] as *mut Wtf8) }
     }
@@ -681,7 +690,8 @@ impl Wtf8 {
     ///
     /// This does not copy the data.
     #[inline]
-    pub fn as_str(&self) -> Result<&str, str::Utf8Error> {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn as_str(&self) -> Result<&str, str::Utf8Error> {
         str::from_utf8(&self.bytes)
     }
 

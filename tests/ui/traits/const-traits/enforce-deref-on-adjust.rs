@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(const_deref)]
+#![feature(const_convert)]
 #![feature(const_trait_impl)]
 
 use std::ops::Deref;

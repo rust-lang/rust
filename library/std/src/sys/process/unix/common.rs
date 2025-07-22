@@ -595,7 +595,8 @@ impl ExitCode {
     }
 }
 
-impl From<u8> for ExitCode {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const From<u8> for ExitCode {
     fn from(code: u8) -> Self {
         Self(code)
     }

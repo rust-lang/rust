@@ -63,7 +63,8 @@ pub use wait_status::ExitStatus;
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct ExitStatusError(NonZero<c_int>);
 
-impl Into<ExitStatus> for ExitStatusError {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
         ExitStatus::from(c_int::from(self.0))
     }

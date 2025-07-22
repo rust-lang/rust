@@ -27,6 +27,8 @@ pub mod wtf8;
 
 /// A trait for viewing representations from std types
 #[doc(hidden)]
+#[const_trait]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[allow(dead_code)] // not used on all platforms
 pub trait AsInner<Inner: ?Sized> {
     fn as_inner(&self) -> &Inner;
@@ -34,6 +36,8 @@ pub trait AsInner<Inner: ?Sized> {
 
 /// A trait for viewing representations from std types
 #[doc(hidden)]
+#[const_trait]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[allow(dead_code)] // not used on all platforms
 pub trait AsInnerMut<Inner: ?Sized> {
     fn as_inner_mut(&mut self) -> &mut Inner;
@@ -41,12 +45,16 @@ pub trait AsInnerMut<Inner: ?Sized> {
 
 /// A trait for extracting representations from std types
 #[doc(hidden)]
+#[const_trait]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 pub trait IntoInner<Inner> {
     fn into_inner(self) -> Inner;
 }
 
 /// A trait for creating std types from internal representations
 #[doc(hidden)]
+#[const_trait]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 pub trait FromInner<Inner> {
     fn from_inner(inner: Inner) -> Self;
 }

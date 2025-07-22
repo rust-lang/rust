@@ -412,7 +412,8 @@ impl fmt::Display for TryLockError {
 }
 
 #[stable(feature = "file_lock", since = "1.89.0")]
-impl From<TryLockError> for io::Error {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const From<TryLockError> for io::Error {
     fn from(err: TryLockError) -> io::Error {
         match err {
             TryLockError::Error(err) => err,

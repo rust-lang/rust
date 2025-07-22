@@ -15,6 +15,7 @@ use core::ops::{
 use core::str::FromStr;
 use core::{fmt, hash};
 
+use crate::alloc::Allocator;
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 #[cfg(not(no_rc))]
@@ -48,23 +49,27 @@ pub struct ByteString(pub Vec<u8>);
 
 impl ByteString {
     #[inline]
-    pub(crate) fn as_bytes(&self) -> &[u8] {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub(crate) const fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 
     #[inline]
-    pub(crate) fn as_bytestr(&self) -> &ByteStr {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub(crate) const fn as_bytestr(&self) -> &ByteStr {
         ByteStr::new(&self.0)
     }
 
     #[inline]
-    pub(crate) fn as_mut_bytestr(&mut self) -> &mut ByteStr {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub(crate) const fn as_mut_bytestr(&mut self) -> &mut ByteStr {
         ByteStr::from_bytes_mut(&mut self.0)
     }
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl Deref for ByteString {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const Deref for ByteString {
     type Target = Vec<u8>;
 
     #[inline]
@@ -74,7 +79,8 @@ impl Deref for ByteString {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl DerefMut for ByteString {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const DerefMut for ByteString {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
@@ -101,7 +107,8 @@ impl fmt::Display for ByteString {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl AsRef<[u8]> for ByteString {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const AsRef<[u8]> for ByteString {
     #[inline]
     fn as_ref(&self) -> &[u8] {
         &self.0
@@ -109,7 +116,8 @@ impl AsRef<[u8]> for ByteString {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl AsRef<ByteStr> for ByteString {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const AsRef<ByteStr> for ByteString {
     #[inline]
     fn as_ref(&self) -> &ByteStr {
         self.as_bytestr()
@@ -117,7 +125,8 @@ impl AsRef<ByteStr> for ByteString {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl AsMut<[u8]> for ByteString {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const AsMut<[u8]> for ByteString {
     #[inline]
     fn as_mut(&mut self) -> &mut [u8] {
         &mut self.0
@@ -125,7 +134,8 @@ impl AsMut<[u8]> for ByteString {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl AsMut<ByteStr> for ByteString {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const AsMut<ByteStr> for ByteString {
     #[inline]
     fn as_mut(&mut self) -> &mut ByteStr {
         self.as_mut_bytestr()
@@ -133,7 +143,8 @@ impl AsMut<ByteStr> for ByteString {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl Borrow<[u8]> for ByteString {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const Borrow<[u8]> for ByteString {
     #[inline]
     fn borrow(&self) -> &[u8] {
         &self.0
@@ -141,7 +152,8 @@ impl Borrow<[u8]> for ByteString {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl Borrow<ByteStr> for ByteString {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const Borrow<ByteStr> for ByteString {
     #[inline]
     fn borrow(&self) -> &ByteStr {
         self.as_bytestr()
@@ -152,7 +164,8 @@ impl Borrow<ByteStr> for ByteString {
 // `impl Borrow<ByteStr> for String` omitted to avoid inference failures
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl BorrowMut<[u8]> for ByteString {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const BorrowMut<[u8]> for ByteString {
     #[inline]
     fn borrow_mut(&mut self) -> &mut [u8] {
         &mut self.0
@@ -160,7 +173,8 @@ impl BorrowMut<[u8]> for ByteString {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl BorrowMut<ByteStr> for ByteString {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const BorrowMut<ByteStr> for ByteString {
     #[inline]
     fn borrow_mut(&mut self) -> &mut ByteStr {
         self.as_mut_bytestr()
@@ -211,7 +225,8 @@ impl Default for ByteString {
 // }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl From<ByteString> for Vec<u8> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const From<ByteString> for Vec<u8> {
     #[inline]
     fn from(s: ByteString) -> Self {
         s.0
@@ -245,7 +260,8 @@ impl<'a> From<&'a ByteStr> for ByteString {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl<'a> From<ByteString> for Cow<'a, ByteStr> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<'a> const From<ByteString> for Cow<'a, ByteStr> {
     #[inline]
     fn from(s: ByteString) -> Self {
         Cow::Owned(s)
@@ -253,7 +269,8 @@ impl<'a> From<ByteString> for Cow<'a, ByteStr> {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl<'a> From<&'a ByteString> for Cow<'a, ByteStr> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<'a> const From<&'a ByteString> for Cow<'a, ByteStr> {
     #[inline]
     fn from(s: &'a ByteString) -> Self {
         Cow::Borrowed(s.as_bytestr())
@@ -568,7 +585,8 @@ impl ToOwned for ByteStr {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl TryFrom<ByteString> for String {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const TryFrom<ByteString> for String {
     type Error = crate::string::FromUtf8Error;
 
     #[inline]
@@ -578,7 +596,8 @@ impl TryFrom<ByteString> for String {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl<'a> TryFrom<&'a ByteString> for &'a str {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<'a> const TryFrom<&'a ByteString> for &'a str {
     type Error = crate::str::Utf8Error;
 
     #[inline]
@@ -598,7 +617,8 @@ impl Clone for Box<ByteStr> {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl<'a> From<&'a ByteStr> for Cow<'a, ByteStr> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<'a> const From<&'a ByteStr> for Cow<'a, ByteStr> {
     #[inline]
     fn from(s: &'a ByteStr) -> Self {
         Cow::Borrowed(s)
@@ -606,60 +626,74 @@ impl<'a> From<&'a ByteStr> for Cow<'a, ByteStr> {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl From<Box<[u8]>> for Box<ByteStr> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<A: Allocator> const From<Box<[u8], A>> for Box<ByteStr, A> {
     #[inline]
-    fn from(s: Box<[u8]>) -> Box<ByteStr> {
+    fn from(s: Box<[u8], A>) -> Box<ByteStr, A> {
+        let (raw, alloc) = Box::into_raw_with_allocator(s);
+
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
-        unsafe { Box::from_raw(Box::into_raw(s) as _) }
+        unsafe { Box::from_raw_in(raw as _, alloc) }
     }
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl From<Box<ByteStr>> for Box<[u8]> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<A: Allocator> const From<Box<ByteStr, A>> for Box<[u8], A> {
     #[inline]
-    fn from(s: Box<ByteStr>) -> Box<[u8]> {
+    fn from(s: Box<ByteStr, A>) -> Box<[u8], A> {
+        let (raw, alloc) = Box::into_raw_with_allocator(s);
+
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
-        unsafe { Box::from_raw(Box::into_raw(s) as _) }
+        unsafe { Box::from_raw_in(raw as _, alloc) }
     }
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(not(no_rc))]
-impl From<Rc<[u8]>> for Rc<ByteStr> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<A: Allocator> const From<Rc<[u8], A>> for Rc<ByteStr, A> {
     #[inline]
-    fn from(s: Rc<[u8]>) -> Rc<ByteStr> {
+    fn from(s: Rc<[u8], A>) -> Rc<ByteStr, A> {
+        let (raw, alloc) = Rc::into_raw_with_allocator(s);
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
-        unsafe { Rc::from_raw(Rc::into_raw(s) as _) }
+        unsafe { Rc::from_raw_in(raw as _, alloc) }
     }
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(not(no_rc))]
-impl From<Rc<ByteStr>> for Rc<[u8]> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<A: Allocator> const From<Rc<ByteStr, A>> for Rc<[u8], A> {
     #[inline]
-    fn from(s: Rc<ByteStr>) -> Rc<[u8]> {
+    fn from(s: Rc<ByteStr, A>) -> Rc<[u8], A> {
+        let (raw, alloc) = Rc::into_raw_with_allocator(s);
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
-        unsafe { Rc::from_raw(Rc::into_raw(s) as _) }
+        unsafe { Rc::from_raw_in(raw as _, alloc) }
     }
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
-impl From<Arc<[u8]>> for Arc<ByteStr> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<A: Allocator> const From<Arc<[u8], A>> for Arc<ByteStr, A> {
     #[inline]
-    fn from(s: Arc<[u8]>) -> Arc<ByteStr> {
+    fn from(s: Arc<[u8], A>) -> Arc<ByteStr, A> {
+        let (raw, alloc) = Arc::into_raw_with_allocator(s);
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
-        unsafe { Arc::from_raw(Arc::into_raw(s) as _) }
+        unsafe { Arc::from_raw_in(raw as _, alloc) }
     }
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
-impl From<Arc<ByteStr>> for Arc<[u8]> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<A: Allocator> const From<Arc<ByteStr, A>> for Arc<[u8], A> {
     #[inline]
-    fn from(s: Arc<ByteStr>) -> Arc<[u8]> {
+    fn from(s: Arc<ByteStr, A>) -> Arc<[u8], A> {
+        let (raw, alloc) = Arc::into_raw_with_allocator(s);
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
-        unsafe { Arc::from_raw(Arc::into_raw(s) as _) }
+        unsafe { Arc::from_raw_in(raw as _, alloc) }
     }
 }
 

@@ -178,8 +178,9 @@ impl FromVecWithNulError {
     /// ```
     #[must_use]
     #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.bytes[..]
+    #[rustc_const_unstable(feature = "const_convert_methods", issue = "144288")]
+    pub const fn as_bytes(&self) -> &[u8] {
+        &*self.bytes
     }
 
     /// Returns the bytes that were attempted to convert to a [`CString`].
@@ -204,7 +205,8 @@ impl FromVecWithNulError {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
-    pub fn into_bytes(self) -> Vec<u8> {
+    #[rustc_const_unstable(feature = "const_convert_methods", issue = "144288")]
+    pub const fn into_bytes(self) -> Vec<u8> {
         self.bytes
     }
 }
@@ -470,11 +472,13 @@ impl CString {
     /// assert_eq!(err.utf8_error().valid_up_to(), 1);
     /// ```
     #[stable(feature = "cstring_into", since = "1.7.0")]
-    pub fn into_string(self) -> Result<String, IntoStringError> {
-        String::from_utf8(self.into_bytes()).map_err(|e| IntoStringError {
-            error: e.utf8_error(),
-            inner: unsafe { Self::_from_vec_unchecked(e.into_bytes()) },
-        })
+    #[rustc_const_unstable(feature = "const_convert_methods", issue = "144288")]
+    pub const fn into_string(self) -> Result<String, IntoStringError> {
+        match str::from_utf8(self.as_bytes_with_nul()) {
+            // SAFETY: We verified that the string is valid UTF-8.
+            Ok(_) => Ok(unsafe { String::from_utf8_unchecked(self.into_bytes()) }),
+            Err(error) => Err(IntoStringError { error, inner: self }),
+        }
     }
 
     /// Consumes the `CString` and returns the underlying byte buffer.
@@ -494,10 +498,15 @@ impl CString {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "cstring_into", since = "1.7.0")]
-    pub fn into_bytes(self) -> Vec<u8> {
+    #[rustc_const_unstable(feature = "const_convert_methods", issue = "144288")]
+    pub const fn into_bytes(self) -> Vec<u8> {
         let mut vec = self.into_inner().into_vec();
-        let _nul = vec.pop();
-        debug_assert_eq!(_nul, Some(0u8));
+
+        // SAFETY: CString invariant.
+        unsafe {
+            vec.pop_zero_byte();
+        }
+
         vec
     }
 
@@ -515,7 +524,8 @@ impl CString {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "cstring_into", since = "1.7.0")]
-    pub fn into_bytes_with_nul(self) -> Vec<u8> {
+    #[rustc_const_unstable(feature = "const_convert_methods", issue = "144288")]
+    pub const fn into_bytes_with_nul(self) -> Vec<u8> {
         self.into_inner().into_vec()
     }
 
@@ -538,7 +548,8 @@ impl CString {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn as_bytes(&self) -> &[u8] {
+    #[rustc_const_unstable(feature = "const_convert_methods", issue = "144288")]
+    pub const fn as_bytes(&self) -> &[u8] {
         // SAFETY: CString has a length at least 1
         unsafe { self.inner.get_unchecked(..self.inner.len() - 1) }
     }
@@ -558,7 +569,8 @@ impl CString {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn as_bytes_with_nul(&self) -> &[u8] {
+    #[rustc_const_unstable(feature = "const_convert_methods", issue = "144288")]
+    pub const fn as_bytes_with_nul(&self) -> &[u8] {
         &self.inner
     }
 
@@ -578,7 +590,8 @@ impl CString {
     #[must_use]
     #[stable(feature = "as_c_str", since = "1.20.0")]
     #[rustc_diagnostic_item = "cstring_as_c_str"]
-    pub fn as_c_str(&self) -> &CStr {
+    #[rustc_const_unstable(feature = "const_convert_methods", issue = "144288")]
+    pub const fn as_c_str(&self) -> &CStr {
         unsafe { CStr::from_bytes_with_nul_unchecked(self.as_bytes_with_nul()) }
     }
 
@@ -599,7 +612,8 @@ impl CString {
 
     /// Bypass "move out of struct which implements [`Drop`] trait" restriction.
     #[inline]
-    fn into_inner(self) -> Box<[u8]> {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    const fn into_inner(self) -> Box<[u8]> {
         // Rationale: `mem::forget(self)` invalidates the previous call to `ptr::read(&self.inner)`
         // so we use `ManuallyDrop` to ensure `self` is not dropped.
         // Then we can return the box directly without invalidating it.
@@ -705,7 +719,8 @@ impl Drop for CString {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Deref for CString {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const ops::Deref for CString {
     type Target = CStr;
 
     #[inline]
@@ -724,7 +739,8 @@ impl fmt::Debug for CString {
 }
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
-impl From<CString> for Vec<u8> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const From<CString> for Vec<u8> {
     /// Converts a [`CString`] into a <code>[Vec]<[u8]></code>.
     ///
     /// The conversion consumes the [`CString`], and removes the terminating NUL byte.
@@ -744,7 +760,8 @@ impl Default for CString {
 }
 
 #[stable(feature = "cstr_borrow", since = "1.3.0")]
-impl Borrow<CStr> for CString {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const Borrow<CStr> for CString {
     #[inline]
     fn borrow(&self) -> &CStr {
         self
@@ -794,12 +811,13 @@ impl From<Cow<'_, CStr>> for Box<CStr> {
 }
 
 #[stable(feature = "c_string_from_box", since = "1.18.0")]
-impl From<Box<CStr>> for CString {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const From<Box<CStr>> for CString {
     /// Converts a <code>[Box]<[CStr]></code> into a [`CString`] without copying or allocating.
     #[inline]
     fn from(s: Box<CStr>) -> CString {
-        let raw = Box::into_raw(s) as *mut [u8];
-        CString { inner: unsafe { Box::from_raw(raw) } }
+        let (raw, alloc) = Box::into_raw_with_allocator(s);
+        CString { inner: unsafe { Box::from_raw_in(raw as *mut [u8], alloc) } }
     }
 }
 
@@ -839,7 +857,8 @@ impl FromStr for CString {
 }
 
 #[stable(feature = "c_string_from_str", since = "1.85.0")]
-impl TryFrom<CString> for String {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const TryFrom<CString> for String {
     type Error = IntoStringError;
 
     /// Converts a [`CString`] into a [`String`] if it contains valid UTF-8 data.
@@ -869,7 +888,8 @@ impl From<CString> for Box<CStr> {
 }
 
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
-impl<'a> From<CString> for Cow<'a, CStr> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<'a> const From<CString> for Cow<'a, CStr> {
     /// Converts a [`CString`] into an owned [`Cow`] without copying or allocating.
     #[inline]
     fn from(s: CString) -> Cow<'a, CStr> {
@@ -878,7 +898,8 @@ impl<'a> From<CString> for Cow<'a, CStr> {
 }
 
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
-impl<'a> From<&'a CStr> for Cow<'a, CStr> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<'a> const From<&'a CStr> for Cow<'a, CStr> {
     /// Converts a [`CStr`] into a borrowed [`Cow`] without copying or allocating.
     #[inline]
     fn from(s: &'a CStr) -> Cow<'a, CStr> {
@@ -887,7 +908,8 @@ impl<'a> From<&'a CStr> for Cow<'a, CStr> {
 }
 
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
-impl<'a> From<&'a CString> for Cow<'a, CStr> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<'a> const From<&'a CString> for Cow<'a, CStr> {
     /// Converts a `&`[`CString`] into a borrowed [`Cow`] without copying or allocating.
     #[inline]
     fn from(s: &'a CString) -> Cow<'a, CStr> {
@@ -1049,14 +1071,16 @@ impl IntoStringError {
     /// error.
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "cstring_into", since = "1.7.0")]
-    pub fn into_cstring(self) -> CString {
+    #[rustc_const_unstable(feature = "const_convert_methods", issue = "144288")]
+    pub const fn into_cstring(self) -> CString {
         self.inner
     }
 
     /// Access the underlying UTF-8 error that was the cause of this error.
     #[must_use]
     #[stable(feature = "cstring_into", since = "1.7.0")]
-    pub fn utf8_error(&self) -> Utf8Error {
+    #[rustc_const_unstable(feature = "const_convert_methods", issue = "144288")]
+    pub const fn utf8_error(&self) -> Utf8Error {
         self.error
     }
 }
@@ -1150,7 +1174,8 @@ impl ops::Index<ops::RangeFull> for CString {
 }
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
-impl AsRef<CStr> for CString {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const AsRef<CStr> for CString {
     #[inline]
     fn as_ref(&self) -> &CStr {
         self

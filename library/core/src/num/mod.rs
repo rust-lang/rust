@@ -1378,7 +1378,7 @@ const fn from_ascii_radix_panic(radix: u32) -> ! {
 macro_rules! from_str_int_impl {
     ($signedness:ident $($int_ty:ty)+) => {$(
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
         impl const FromStr for $int_ty {
             type Err = ParseIntError;
 

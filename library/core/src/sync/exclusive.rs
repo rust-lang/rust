@@ -163,7 +163,8 @@ impl<T: ?Sized> Exclusive<T> {
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T> From<T> for Exclusive<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const From<T> for Exclusive<T> {
     #[inline]
     fn from(t: T) -> Self {
         Self::new(t)

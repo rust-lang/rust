@@ -4,6 +4,7 @@
 
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
+use core::intrinsics::const_eval_select;
 #[cfg(not(no_global_oom_handling))]
 use core::intrinsics::{const_allocate, const_make_global};
 use core::marker::PhantomData;
@@ -138,7 +139,8 @@ impl<T: ?Sized + Display> Display for ThinBox<T> {
 }
 
 #[unstable(feature = "thin_box", issue = "92791")]
-impl<T: ?Sized> Deref for ThinBox<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: ?Sized> const Deref for ThinBox<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -150,6 +152,7 @@ impl<T: ?Sized> Deref for ThinBox<T> {
 }
 
 #[unstable(feature = "thin_box", issue = "92791")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> DerefMut for ThinBox<T> {
     fn deref_mut(&mut self) -> &mut T {
         let value = self.data();
@@ -172,17 +175,20 @@ impl<T: ?Sized> Drop for ThinBox<T> {
 
 #[unstable(feature = "thin_box", issue = "92791")]
 impl<T: ?Sized> ThinBox<T> {
-    fn meta(&self) -> <T as Pointee>::Metadata {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    const fn meta(&self) -> <T as Pointee>::Metadata {
         //  Safety:
         //  -   NonNull and valid.
         unsafe { *self.with_header().header() }
     }
 
-    fn data(&self) -> *mut u8 {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    const fn data(&self) -> *mut u8 {
         self.with_header().value()
     }
 
-    fn with_header(&self) -> &WithHeader<<T as Pointee>::Metadata> {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    const fn with_header(&self) -> &WithHeader<<T as Pointee>::Metadata> {
         // SAFETY: both types are transparent to `NonNull<u8>`
         unsafe { &*((&raw const self.ptr) as *const WithHeader<_>) }
     }
@@ -398,7 +404,8 @@ impl<H> WithHeader<H> {
         }
     }
 
-    fn header(&self) -> *mut H {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    const fn header(&self) -> *mut H {
         //  Safety:
         //  - At least `size_of::<H>()` bytes are allocated ahead of the pointer.
         //  - We know that H will be aligned because the middle pointer is aligned to the greater
@@ -407,11 +414,18 @@ impl<H> WithHeader<H> {
         //    will always result in an aligned header pointer, it just may not point to the
         //    beginning of the allocation.
         let hp = unsafe { self.0.as_ptr().sub(Self::header_size()) as *mut H };
-        debug_assert!(hp.is_aligned());
+
+        const fn ignore_alignment_const<H>(_hp: *mut H) {}
+        fn check_alignment_rt<H>(hp: *mut H) {
+            debug_assert!(hp.is_aligned());
+        }
+        const_eval_select((hp,), ignore_alignment_const, check_alignment_rt);
+
         hp
     }
 
-    fn value(&self) -> *mut u8 {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    const fn value(&self) -> *mut u8 {
         self.0.as_ptr()
     }
 

@@ -1143,7 +1143,8 @@ impl<T> error::Error for TrySendError<T> {
 }
 
 #[stable(feature = "mpsc_error_conversions", since = "1.24.0")]
-impl<T> From<SendError<T>> for TrySendError<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const From<SendError<T>> for TrySendError<T> {
     /// Converts a `SendError<T>` into a `TrySendError<T>`.
     ///
     /// This conversion always returns a `TrySendError::Disconnected` containing the data in the `SendError<T>`.
@@ -1193,7 +1194,8 @@ impl error::Error for TryRecvError {
 }
 
 #[stable(feature = "mpsc_error_conversions", since = "1.24.0")]
-impl From<RecvError> for TryRecvError {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const From<RecvError> for TryRecvError {
     /// Converts a `RecvError` into a `TryRecvError`.
     ///
     /// This conversion always returns `TryRecvError::Disconnected`.
@@ -1228,7 +1230,8 @@ impl error::Error for RecvTimeoutError {
 }
 
 #[stable(feature = "mpsc_error_conversions", since = "1.24.0")]
-impl From<RecvError> for RecvTimeoutError {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const From<RecvError> for RecvTimeoutError {
     /// Converts a `RecvError` into a `RecvTimeoutError`.
     ///
     /// This conversion always returns `RecvTimeoutError::Disconnected`.

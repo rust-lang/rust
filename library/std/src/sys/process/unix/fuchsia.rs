@@ -304,7 +304,8 @@ impl fmt::Display for ExitStatus {
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct ExitStatusError(NonZero<i64>);
 
-impl Into<ExitStatus> for ExitStatusError {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
         ExitStatus(self.0.into())
     }

@@ -6,7 +6,6 @@
 // Many of the usings in this module are only used in the test configuration.
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![allow(unused_imports)]
-
 use core::borrow::{Borrow, BorrowMut};
 use core::iter::FusedIterator;
 use core::mem::MaybeUninit;
@@ -49,6 +48,7 @@ pub use core::str::{from_raw_parts, from_raw_parts_mut};
 use core::unicode::conversions;
 use core::{mem, ptr};
 
+use crate::alloc::Allocator;
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::slice::{Concat, Join, SliceIndex};
@@ -186,18 +186,20 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Borrow<str> for String {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const Borrow<str> for String {
     #[inline]
     fn borrow(&self) -> &str {
-        &self[..]
+        &**self
     }
 }
 
 #[stable(feature = "string_borrow_mut", since = "1.36.0")]
-impl BorrowMut<str> for String {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const BorrowMut<str> for String {
     #[inline]
     fn borrow_mut(&mut self) -> &mut str {
-        &mut self[..]
+        &mut **self
     }
 }
 
@@ -234,8 +236,10 @@ impl str {
     #[stable(feature = "str_box_extras", since = "1.20.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub fn into_boxed_bytes(self: Box<Self>) -> Box<[u8]> {
-        self.into()
+    #[rustc_const_unstable(feature = "const_convert_methods", issue = "144288")]
+    pub const fn into_boxed_bytes<A: Allocator>(self: Box<Self, A>) -> Box<[u8], A> {
+        let (raw, alloc) = Box::into_raw_with_allocator(self);
+        unsafe { Box::from_raw_in(raw as *mut [u8], alloc) }
     }
 
     /// Replaces all matches of a pattern with another string.
@@ -498,7 +502,8 @@ impl str {
     #[rustc_allow_incoherent_impl]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub fn into_string(self: Box<Self>) -> String {
+    #[rustc_const_unstable(feature = "const_convert_methods", issue = "144288")]
+    pub const fn into_string(self: Box<Self>) -> String {
         let slice = Box::<[u8]>::from(self);
         unsafe { String::from_utf8_unchecked(slice.into_vec()) }
     }

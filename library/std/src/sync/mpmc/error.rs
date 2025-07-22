@@ -40,7 +40,8 @@ impl<T> fmt::Display for SendTimeoutError<T> {
 impl<T> error::Error for SendTimeoutError<T> {}
 
 #[unstable(feature = "mpmc_channel", issue = "126840")]
-impl<T> From<SendError<T>> for SendTimeoutError<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const From<SendError<T>> for SendTimeoutError<T> {
     fn from(err: SendError<T>) -> SendTimeoutError<T> {
         match err {
             SendError(e) => SendTimeoutError::Disconnected(e),

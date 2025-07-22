@@ -425,7 +425,8 @@ impl<'a, T: 'a, P: FnMut(&T) -> bool> Split<'a, T, P> {
     /// assert_eq!(split.as_slice(), &[3,4,5]);
     /// ```
     #[unstable(feature = "split_as_slice", issue = "96137")]
-    pub fn as_slice(&self) -> &'a [T] {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn as_slice(&self) -> &'a [T] {
         if self.finished { &[] } else { &self.v }
     }
 }

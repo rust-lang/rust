@@ -40,7 +40,8 @@ impl<T> From<T> for Box<T> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<T: ?Sized, A: Allocator> From<Box<T, A>> for Pin<Box<T, A>>
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: ?Sized, A: Allocator> const From<Box<T, A>> for Pin<Box<T, A>>
 where
     A: 'static,
 {
@@ -228,7 +229,8 @@ impl From<Cow<'_, str>> for Box<str> {
 }
 
 #[stable(feature = "boxed_str_conv", since = "1.19.0")]
-impl<A: Allocator> From<Box<str, A>> for Box<[u8], A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<A: Allocator> const From<Box<str, A>> for Box<[u8], A> {
     /// Converts a `Box<str>` into a `Box<[u8]>`
     ///
     /// This conversion does not allocate on the heap and happens in place.
@@ -247,8 +249,7 @@ impl<A: Allocator> From<Box<str, A>> for Box<[u8], A> {
     /// ```
     #[inline]
     fn from(s: Box<str, A>) -> Self {
-        let (raw, alloc) = Box::into_raw_with_allocator(s);
-        unsafe { Box::from_raw_in(raw as *mut [u8], alloc) }
+        s.into_boxed_bytes()
     }
 }
 
@@ -275,10 +276,11 @@ impl<T, const N: usize> From<[T; N]> for Box<[T]> {
 /// # Safety
 ///
 /// `boxed_slice.len()` must be exactly `N`.
-unsafe fn boxed_slice_as_array_unchecked<T, A: Allocator, const N: usize>(
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+const unsafe fn boxed_slice_as_array_unchecked<T, A: Allocator, const N: usize>(
     boxed_slice: Box<[T], A>,
 ) -> Box<[T; N], A> {
-    debug_assert_eq!(boxed_slice.len(), N);
+    debug_assert!(boxed_slice.len() == N);
 
     let (ptr, alloc) = Box::into_raw_with_allocator(boxed_slice);
     // SAFETY: Pointer and allocator came from an existing box,
@@ -287,6 +289,7 @@ unsafe fn boxed_slice_as_array_unchecked<T, A: Allocator, const N: usize>(
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
     type Error = Box<[T]>;
 

@@ -1996,7 +1996,8 @@ impl ExitStatusError {
 }
 
 #[unstable(feature = "exit_status_error", issue = "84908")]
-impl From<ExitStatusError> for ExitStatus {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const From<ExitStatusError> for ExitStatus {
     fn from(error: ExitStatusError) -> Self {
         Self(error.0.into())
     }
@@ -2161,7 +2162,8 @@ impl Default for ExitCode {
 }
 
 #[stable(feature = "process_exitcode", since = "1.61.0")]
-impl From<u8> for ExitCode {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const From<u8> for ExitCode {
     /// Constructs an `ExitCode` from an arbitrary u8 value.
     fn from(code: u8) -> Self {
         ExitCode(imp::ExitCode::from(code))

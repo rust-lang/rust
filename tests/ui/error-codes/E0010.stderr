@@ -6,16 +6,18 @@ LL | const CON: Vec<i32> = vec![1, 2, 3];
    |
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0015]: cannot call non-const method `slice::<impl [i32]>::into_vec::<std::alloc::Global>` in constants
+error: `slice::<impl [T]>::into_vec` is not yet stable as a const fn
   --> $DIR/E0010.rs:3:23
    |
 LL | const CON: Vec<i32> = vec![1, 2, 3];
    |                       ^^^^^^^^^^^^^
    |
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: add `#![feature(const_convert_methods)]` to the crate attributes to enable
+   |
+LL + #![feature(const_convert_methods)]
+   |
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0010, E0015.
-For more information about an error, try `rustc --explain E0010`.
+For more information about this error, try `rustc --explain E0010`.
