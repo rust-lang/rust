@@ -425,7 +425,7 @@ impl Step for Rustc {
                 .as_ref()
                 .is_none_or(|tools| tools.iter().any(|tool| tool == "rustdoc"))
             {
-                let rustdoc = builder.rustdoc(compiler);
+                let rustdoc = builder.rustdoc_for_compiler(compiler);
                 builder.install(&rustdoc, &image.join("bin"), FileType::Executable);
             }
 

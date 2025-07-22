@@ -723,7 +723,7 @@ impl Step for RemoteTestServer {
 pub struct Rustdoc {
     /// This should only ever be 0 or 2.
     /// We sometimes want to reference the "bootstrap" rustdoc, which is why this option is here.
-    pub compiler: Compiler,
+    pub target_compiler: Compiler,
 }
 
 impl Step for Rustdoc {
@@ -736,12 +736,13 @@ impl Step for Rustdoc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder
-            .ensure(Rustdoc { compiler: run.builder.compiler(run.builder.top_stage, run.target) });
+        run.builder.ensure(Rustdoc {
+            target_compiler: run.builder.compiler(run.builder.top_stage, run.target),
+        });
     }
 
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
-        let target_compiler = self.compiler;
+        let target_compiler = self.target_compiler;
         let target = target_compiler.host;
 
         if target_compiler.stage == 0 {
@@ -838,11 +839,11 @@ impl Step for Rustdoc {
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
-            StepMetadata::build("rustdoc", self.compiler.host)
+            StepMetadata::build("rustdoc", self.target_compiler.host)
                 // rustdoc is ToolRustc, so stage N rustdoc is built by stage N-1 rustc
                 // FIXME: make this stage deduction automatic somehow
                 // FIXME: log the compiler that actually built ToolRustc steps
-                .stage(self.compiler.stage.saturating_sub(1)),
+                .stage(self.target_compiler.stage.saturating_sub(1)),
         )
     }
 }

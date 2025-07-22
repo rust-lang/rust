@@ -1534,8 +1534,11 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             .map(|entry| entry.path())
     }
 
-    pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
-        self.ensure(tool::Rustdoc { compiler }).tool_path
+    /// Returns a path to `Rustdoc` that "belongs" to the `target_compiler`.
+    /// It can be either a stage0 rustdoc or a locally built rustdoc that *links* to
+    /// `target_compiler`.
+    pub fn rustdoc_for_compiler(&self, target_compiler: Compiler) -> PathBuf {
+        self.ensure(tool::Rustdoc { target_compiler }).tool_path
     }
 
     pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
@@ -1595,7 +1598,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             // equivalently to rustc.
             .env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler))
             .env("CFG_RELEASE_CHANNEL", &self.config.channel)
-            .env("RUSTDOC_REAL", self.rustdoc(compiler))
+            .env("RUSTDOC_REAL", self.rustdoc_for_compiler(compiler))
             .env("RUSTC_BOOTSTRAP", "1");
 
         cmd.arg("-Wrustdoc::invalid_codeblock_attributes");

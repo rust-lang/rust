@@ -284,7 +284,7 @@ mod defaults {
         // not the one it was built by.
         assert_eq!(
             first(cache.all::<tool::Rustdoc>()),
-            &[tool::Rustdoc { compiler: Compiler::new(1, a) },]
+            &[tool::Rustdoc { target_compiler: Compiler::new(1, a) },]
         );
     }
 }
@@ -341,7 +341,7 @@ mod dist {
         // stage minus 1 if --stage is not 0. Very confusing!
         assert_eq!(
             first(builder.cache.all::<tool::Rustdoc>()),
-            &[tool::Rustdoc { compiler: Compiler::new(2, a) },]
+            &[tool::Rustdoc { target_compiler: Compiler::new(2, a) },]
         );
     }
 }
