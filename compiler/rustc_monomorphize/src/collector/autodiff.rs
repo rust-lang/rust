@@ -1,10 +1,13 @@
 use rustc_middle::bug;
-use rustc_middle::ty::{self, IntrinsicDef, TyCtxt};
-use tracing::debug;
+use rustc_middle::ty::{self, GenericArg, IntrinsicDef, TyCtxt};
 
 use crate::collector::{MonoItems, create_fn_mono_item};
 
-pub(crate) fn collect_enzyme_autodiff_source_fn<'tcx>(
+// Here, we force both primal and diff function to be collected in
+// mono so this does not interfere in `enzyme_autodiff` intrinsics
+// codegen process. If they are unused, they will be removed later and
+// won't be present at LLVM-IR.
+pub(crate) fn collect_enzyme_autodiff_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
     intrinsic: IntrinsicDef,
@@ -14,8 +17,16 @@ pub(crate) fn collect_enzyme_autodiff_source_fn<'tcx>(
         return;
     };
 
-    debug!("enzyme_autodiff found");
-    let (primal, span) = match instance.args[0].kind() {
+    collect_autodiff_fn_from_arg(instance.args[0], tcx, output);
+    collect_autodiff_fn_from_arg(instance.args[1], tcx, output);
+}
+
+fn collect_autodiff_fn_from_arg<'tcx>(
+    arg: GenericArg<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    output: &mut MonoItems<'tcx>,
+) {
+    let (instance, span) = match arg.kind() {
         rustc_middle::infer::canonical::ir::GenericArgKind::Type(ty) => match ty.kind() {
             ty::FnDef(def_id, substs) => {
                 let span = tcx.def_span(def_id);
@@ -34,5 +45,5 @@ pub(crate) fn collect_enzyme_autodiff_source_fn<'tcx>(
         _ => bug!("expected type"),
     };
 
-    output.push(create_fn_mono_item(tcx, primal, span));
+    output.push(create_fn_mono_item(tcx, instance, span));
 }
