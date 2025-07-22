@@ -14,7 +14,7 @@ fn add_unnamed_global_in_addrspace<'ll>(
     addrspace: u32,
 ) -> &'ll llvm::Value {
     let llglobal = add_global_in_addrspace(cx, name, initializer, l, addrspace);
-    unsafe { llvm::LLVMSetUnnamedAddress(llglobal, llvm::UnnamedAddr::Global) };
+    llvm::LLVMSetUnnamedAddress(llglobal, llvm::UnnamedAddr::Global);
     llglobal
 }
 

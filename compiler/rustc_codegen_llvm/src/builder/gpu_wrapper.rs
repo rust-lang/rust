@@ -6,7 +6,7 @@ use rustc_codegen_ssa::back::write::CodegenContext;
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods;
 
 use crate::builder::gpu_offload::*;
-use crate::llvm::{self, Linkage, Type, Value, Visibility};
+use crate::llvm::{self, Linkage, Type, Visibility};
 use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx};
 
 pub(crate) fn create_struct_ty<'ll>(
