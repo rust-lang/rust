@@ -3,6 +3,7 @@
 #![feature(rustc_attrs)]
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(allow_internal_unstable)]
+// FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
 #![feature(fn_align)]
 #![feature(optimize_attribute)]
 #![feature(dropck_eyepatch)]
@@ -53,7 +54,7 @@
 #[inline = 5]
 //~^ ERROR valid forms for the attribute are
 //~| WARN this was previously accepted by the compiler
-#[align]
+#[rustc_align]
 //~^ ERROR malformed
 #[optimize]
 //~^ ERROR malformed
