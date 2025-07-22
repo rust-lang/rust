@@ -86,7 +86,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::{fmt, hash, intrinsics};
+use crate::{fmt, hash, intrinsics, ptr};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -895,4 +895,23 @@ pub const fn type_name<T: ?Sized>() -> &'static str {
 #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
 pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
     type_name::<T>()
+}
+
+#[allow(missing_docs)]
+#[must_use]
+#[unstable(feature = "downcast_trait", issue = "69420")]
+pub const fn downcast_trait<
+    T: Any + 'static,
+    U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
+>(
+    t: &T,
+) -> Option<&U> {
+    let vtable: Option<ptr::DynMetadata<U>> = const { intrinsics::vtable_for::<T, U>() };
+    match vtable {
+        Some(dyn_metadata) => {
+            let pointer = ptr::from_raw_parts(t, dyn_metadata);
+            Some(unsafe { &*pointer })
+        }
+        None => None,
+    }
 }
