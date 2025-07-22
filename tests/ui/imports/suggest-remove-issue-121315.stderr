@@ -6,7 +6,6 @@ LL |     use std::convert::TryFrom;
   --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
    |
    = note: the item `TryFrom` is already defined here
-   |
 note: the lint level is defined here
   --> $DIR/suggest-remove-issue-121315.rs:2:25
    |

@@ -6,7 +6,6 @@ LL | struct Foo<T> where T: Bar, <T as Bar>::Baz: String {
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
    = note: similarly named trait `ToString` defined here
-   |
 help: constrain the associated type to `String`
    |
 LL - struct Foo<T> where T: Bar, <T as Bar>::Baz: String {
@@ -25,7 +24,6 @@ LL | struct Qux<'a, T> where T: Bar, <&'a T as Bar>::Baz: String {
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
    = note: similarly named trait `ToString` defined here
-   |
 help: constrain the associated type to `String`
    |
 LL - struct Qux<'a, T> where T: Bar, <&'a T as Bar>::Baz: String {
@@ -44,7 +42,6 @@ LL | fn foo<T: Bar>(_: T) where <T as Bar>::Baz: String {
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
    = note: similarly named trait `ToString` defined here
-   |
 help: constrain the associated type to `String`
    |
 LL - fn foo<T: Bar>(_: T) where <T as Bar>::Baz: String {
@@ -63,7 +60,6 @@ LL | fn qux<'a, T: Bar>(_: &'a T) where <&'a T as Bar>::Baz: String {
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
    = note: similarly named trait `ToString` defined here
-   |
 help: constrain the associated type to `String`
    |
 LL - fn qux<'a, T: Bar>(_: &'a T) where <&'a T as Bar>::Baz: String {
