@@ -1467,7 +1467,6 @@ fn should_run_extended_rustc_tool<'a>(
     )
 }
 
-#[expect(clippy::too_many_arguments)] // silence overeager clippy lint
 fn build_extended_rustc_tool(
     builder: &Builder<'_>,
     compilers: RustcPrivateCompilers,
