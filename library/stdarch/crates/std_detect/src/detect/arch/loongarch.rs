@@ -2,7 +2,7 @@
 
 features! {
     @TARGET: loongarch;
-    @CFG: target_arch = "loongarch64";
+    @CFG: any(target_arch = "loongarch32", target_arch = "loongarch64");
     @MACRO_NAME: is_loongarch_feature_detected;
     @MACRO_ATTRS:
     /// Checks if `loongarch` feature is enabled.

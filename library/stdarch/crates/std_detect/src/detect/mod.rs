@@ -103,6 +103,7 @@ pub fn features() -> impl Iterator<Item = (&'static str, bool)> {
             target_arch = "powerpc64",
             target_arch = "mips",
             target_arch = "mips64",
+            target_arch = "loongarch32",
             target_arch = "loongarch64",
             target_arch = "s390x",
         ))] {
