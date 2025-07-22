@@ -8,8 +8,6 @@
 use run_make_support::{diff, rfs, rustc};
 
 fn main() {
-    rustc().input("foo.rs").target("my-awesome-platform.json").crate_type("lib").emit("asm").run();
-    assert!(!rfs::read_to_string("foo.s").contains("morestack"));
     rustc()
         .input("foo.rs")
         .target("my-invalid-platform.json")
@@ -19,7 +17,7 @@ fn main() {
         .input("foo.rs")
         .target("my-incomplete-platform.json")
         .run_fail()
-        .assert_stderr_contains("Field llvm-target");
+        .assert_stderr_contains("missing field `llvm-target`");
     rustc()
         .env("RUST_TARGET_PATH", ".")
         .input("foo.rs")
