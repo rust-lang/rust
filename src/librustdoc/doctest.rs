@@ -410,7 +410,7 @@ pub(crate) fn run_tests(
         std::mem::drop(temp_dir);
         times.display_times();
         // libtest::ERROR_EXIT_CODE is not public but it's the same value.
-        std::process::exit(101);
+        std::process::exit(test::ERROR_EXIT_CODE);
     }
 }
 
