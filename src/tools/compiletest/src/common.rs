@@ -57,8 +57,8 @@ impl TestMode {
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
     pub enum TestSuite {
-        Assembly => "assembly",
-        Codegen => "codegen",
+        AssemblyLlvm => "assembly-llvm",
+        CodegenLlvm => "codegen-llvm",
         CodegenUnits => "codegen-units",
         Coverage => "coverage",
         CoverageRunRustdoc => "coverage-run-rustdoc",

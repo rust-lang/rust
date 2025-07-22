@@ -8,7 +8,7 @@ use std::path::Path;
 use crate::walk::{filter_not_rust, walk};
 
 const TARGET_DEFINITIONS_PATH: &str = "compiler/rustc_target/src/spec/targets/";
-const ASSEMBLY_TEST_PATH: &str = "tests/assembly/targets/";
+const ASSEMBLY_LLVM_TEST_PATH: &str = "tests/assembly-llvm/targets/";
 const REVISION_LINE_START: &str = "//@ revisions: ";
 const EXCEPTIONS: &[&str] = &[
     // FIXME: disabled since it fails on CI saying the csky component is missing
@@ -43,7 +43,7 @@ pub fn check(root_path: &Path, bad: &mut bool) {
         let _ = targets_to_find.insert(target_name);
     }
 
-    walk(&root_path.join(ASSEMBLY_TEST_PATH), |_, _| false, &mut |_, contents| {
+    walk(&root_path.join(ASSEMBLY_LLVM_TEST_PATH), |_, _| false, &mut |_, contents| {
         for line in contents.lines() {
             let Some(_) = line.find(REVISION_LINE_START) else {
                 continue;
@@ -55,7 +55,7 @@ pub fn check(root_path: &Path, bad: &mut bool) {
 
     for target in targets_to_find {
         if !EXCEPTIONS.contains(&target.as_str()) {
-            tidy_error!(bad, "{ASSEMBLY_TEST_PATH}: missing assembly test for {target}")
+            tidy_error!(bad, "{ASSEMBLY_LLVM_TEST_PATH}: missing assembly test for {target}")
         }
     }
 }

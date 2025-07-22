@@ -302,9 +302,9 @@ trigger_files = [
     "compiler",
 
     # Tests
-    "tests/assembly",
+    "tests/assembly-llvm",
     "tests/auxiliary",
-    "tests/codegen",
+    "tests/codegen-llvm",
     "tests/codegen-units",
     "tests/COMPILER_TESTS.md",
     "tests/coverage",
@@ -558,10 +558,10 @@ trigger_files = [
     "src/doc/unstable-book/src/language-features/cfg-sanitize.md",
     "src/doc/unstable-book/src/language-features/cfi-encoding.md",
     "src/doc/unstable-book/src/language-features/no-sanitize.md",
-    "tests/codegen/sanitizer",
-    "tests/codegen/split-lto-unit.rs",
-    "tests/codegen/stack-probes-inline.rs",
-    "tests/codegen/stack-protector.rs",
+    "tests/codegen-llvm/sanitizer",
+    "tests/codegen-llvm/split-lto-unit.rs",
+    "tests/codegen-llvm/stack-probes-inline.rs",
+    "tests/codegen-llvm/stack-protector.rs",
     "tests/ui/sanitizer",
     "tests/ui/stack-protector"
 ]
@@ -1183,16 +1183,16 @@ cc = ["@Urgau"]
 [mentions."src/doc/rustc/src/platform-support"]
 cc = ["@Noratrieb"]
 
-[mentions."tests/codegen/sanitizer"]
+[mentions."tests/codegen-llvm/sanitizer"]
 cc = ["@rcvalle"]
 
-[mentions."tests/codegen/split-lto-unit.rs"]
+[mentions."tests/codegen-llvm/split-lto-unit.rs"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
-[mentions."tests/codegen/stack-probes-inline.rs"]
+[mentions."tests/codegen-llvm/stack-probes-inline.rs"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
-[mentions."tests/codegen/stack-protector.rs"]
+[mentions."tests/codegen-llvm/stack-protector.rs"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."tests/ui/sanitizer"]
