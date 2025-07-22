@@ -111,7 +111,13 @@ impl Step for ToolBuild {
         let path = self.path;
 
         match self.mode {
-            Mode::ToolRustc => {}
+            Mode::ToolRustc => {
+                // FIXME: remove this, it's only needed for download-rustc...
+                if !self.build_compiler.is_forced_compiler() && builder.download_rustc() {
+                    builder.std(self.build_compiler, self.build_compiler.host);
+                    builder.ensure(compile::Rustc::new(self.build_compiler, target));
+                }
+            }
             Mode::ToolStd => {
                 // If compiler was forced, its artifacts should have been prepared earlier.
                 if !self.build_compiler.is_forced_compiler() {
