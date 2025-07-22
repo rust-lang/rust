@@ -1097,6 +1097,7 @@ mod snapshot {
         [dist] docs <host>
         [doc] std 2 <host> crates=[]
         [dist] mingw <host>
+        [build] rustc 0 <host> -> rust-analyzer-proc-macro-srv 1 <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
         [dist] rustc 1 <host> -> std 1 <host>
@@ -1289,6 +1290,7 @@ mod snapshot {
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustc 1 <host> -> WasmComponentLd 2 <target1>
         [build] rustdoc 1 <target1>
+        [build] rustc 0 <host> -> rust-analyzer-proc-macro-srv 1 <target1>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <target1>
         [dist] rustc 1 <host> -> std 1 <target1>

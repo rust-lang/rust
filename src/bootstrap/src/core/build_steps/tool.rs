@@ -1179,6 +1179,14 @@ impl Step for RustAnalyzerProcMacroSrv {
 
         tool_result
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        // FIXME: fix ToolRust staging logic
+        Some(
+            StepMetadata::build("rust-analyzer-proc-macro-srv", self.target)
+                .built_by(self.compiler.with_stage(self.compiler.stage - 1)),
+        )
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
