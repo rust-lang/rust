@@ -1,8 +1,12 @@
-error: expected identifier, found keyword `impl`
-  --> $DIR/const-impl-norecover.rs:5:7
+error: inherent impls cannot be const
+  --> $DIR/const-impl-norecover.rs:5:12
    |
 LL | const impl Foo {
-   |       ^^^^ expected identifier, found keyword
+   | -----      ^^^ inherent impl for this type
+   | |
+   | const because of this
+   |
+   = note: only trait implementations may be annotated with `const`
 
 error: aborting due to 1 previous error
 
