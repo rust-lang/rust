@@ -6,12 +6,12 @@
 //! for pivot selection. Using this as a fallback ensures O(n) worst case running time with
 //! better performance than one would get using heapsort as fallback.
 
-use crate::cfg_select;
 use crate::mem::{self, SizedTypeProperties};
 #[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::pivot::choose_pivot;
 use crate::slice::sort::shared::smallsort::insertion_sort_shift_left;
 use crate::slice::sort::unstable::quicksort::partition;
+use crate::{cfg_select, hint};
 
 /// Reorders the slice such that the element at `index` is at its final sorted position.
 pub(crate) fn partition_at_index<T, F>(
@@ -214,6 +214,10 @@ fn median_of_medians<T, F: FnMut(&T, &T) -> bool>(mut v: &mut [T], is_less: &mut
 // as close as possible to the median of the slice. For more details on how the algorithm
 // operates, refer to the paper <https://drops.dagstuhl.de/opus/volltexte/2017/7612/pdf/LIPIcs-SEA-2017-24.pdf>.
 fn median_of_ninthers<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F) -> usize {
+    if v.is_empty() {
+        return 0;
+    }
+
     // use `saturating_mul` so the multiplication doesn't overflow on 16-bit platforms.
     let frac = if v.len() <= 1024 {
         v.len() / 12
@@ -226,6 +230,14 @@ fn median_of_ninthers<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F)
     let pivot = frac / 2;
     let lo = v.len() / 2 - pivot;
     let hi = frac + lo;
+
+    // LLVM loses track of integer ranges after division
+    // SAFETY: v is not empty, and frac is < v.len()/2
+    unsafe {
+        hint::assert_unchecked(lo <= hi);
+        hint::assert_unchecked(hi < v.len());
+    }
+
     let gap = (v.len() - 9 * frac) / 4;
     let mut a = lo - 4 * frac - gap;
     let mut b = hi + gap;
