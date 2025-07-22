@@ -17,13 +17,14 @@ $dirs = 'Does not exit',
 'C:\does not exist', 'oh no'
 
 foreach ($dir in $dirs) {
-    Start-ThreadJob { Remove-Item -Recurse -Force $dir }
+    Start-ThreadJob { Remove-Item -Recurse -Force -LiteralPath $dir }
 }
 
 foreach ($job in Get-Job) {
     Wait-Job $job > $null
     if ($job.Error) {
-        Write-Output "::warning file=$PSCommandPath::$($job.Error)"
+        $line = $job.Error.InvocationInfo.ScriptLineNumber
+        Write-Output "::warning file=$PSCommandPath,line=$line::$($job.Error)"
     }
     Remove-Job $job
 }
