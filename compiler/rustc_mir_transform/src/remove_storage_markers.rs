@@ -14,7 +14,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveStorageMarkers {
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("Running RemoveStorageMarkers on {:?}", body.source);
         for data in body.basic_blocks.as_mut_preserves_cfg() {
-            data.statements.retain(|statement| match statement.kind {
+            data.retain_statements(|statement| match statement.kind {
                 StatementKind::StorageLive(..)
                 | StatementKind::StorageDead(..)
                 | StatementKind::Nop => false,
