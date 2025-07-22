@@ -263,7 +263,7 @@ impl Step for Cargotest {
             .arg(&out_dir)
             .args(builder.config.test_args())
             .env("RUSTC", builder.rustc(compiler))
-            .env("RUSTDOC", builder.rustdoc(compiler));
+            .env("RUSTDOC", builder.rustdoc_for_compiler(compiler));
         add_rustdoc_cargo_linker_args(
             &mut cmd,
             builder,
@@ -878,7 +878,7 @@ impl Step for RustdocTheme {
             .env("RUSTC_SYSROOT", builder.sysroot(self.compiler))
             .env("RUSTDOC_LIBDIR", builder.sysroot_target_libdir(self.compiler, self.compiler.host))
             .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
-            .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
+            .env("RUSTDOC_REAL", builder.rustdoc_for_compiler(self.compiler))
             .env("RUSTC_BOOTSTRAP", "1");
         cmd.args(linker_args(builder, self.compiler.host, LldThreads::No, self.compiler.stage));
 
@@ -1037,7 +1037,11 @@ impl Step for RustdocGUI {
         let mut cmd = builder.tool_cmd(Tool::RustdocGUITest);
 
         let out_dir = builder.test_out(self.target).join("rustdoc-gui");
-        build_stamp::clear_if_dirty(builder, &out_dir, &builder.rustdoc(self.compiler));
+        build_stamp::clear_if_dirty(
+            builder,
+            &out_dir,
+            &builder.rustdoc_for_compiler(self.compiler),
+        );
 
         if let Some(src) = builder.config.src.to_str() {
             cmd.arg("--rust-src").arg(src);
@@ -1053,7 +1057,7 @@ impl Step for RustdocGUI {
 
         cmd.arg("--jobs").arg(builder.jobs().to_string());
 
-        cmd.env("RUSTDOC", builder.rustdoc(self.compiler))
+        cmd.env("RUSTDOC", builder.rustdoc_for_compiler(self.compiler))
             .env("RUSTC", builder.rustc(self.compiler));
 
         add_rustdoc_cargo_linker_args(
@@ -1742,7 +1746,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             || mode == "rustdoc-json"
             || suite == "coverage-run-rustdoc"
         {
-            cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
+            cmd.arg("--rustdoc-path").arg(builder.rustdoc_for_compiler(compiler));
         }
 
         if mode == "rustdoc-json" {
@@ -2258,7 +2262,7 @@ impl BookTest {
 
         // mdbook just executes a binary named "rustdoc", so we need to update
         // PATH so that it points to our rustdoc.
-        let mut rustdoc_path = builder.rustdoc(compiler);
+        let mut rustdoc_path = builder.rustdoc_for_compiler(compiler);
         rustdoc_path.pop();
         let old_path = env::var_os("PATH").unwrap_or_default();
         let new_path = env::join_paths(iter::once(rustdoc_path).chain(env::split_paths(&old_path)))
