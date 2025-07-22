@@ -1559,7 +1559,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
         // FIXME: double check that `run_compiler`'s stage is what we want to use
         let compilers =
             RustcPrivateCompilers::new(self, run_compiler.stage, self.build.host_target);
-        assert_eq!(run_compiler, compilers.link_compiler());
+        assert_eq!(run_compiler, compilers.target_compiler());
 
         let _ = self.ensure(tool::Clippy::from_compilers(compilers));
         let cargo_clippy = self.ensure(tool::CargoClippy::from_compilers(compilers));
@@ -1577,7 +1577,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
 
         let compilers =
             RustcPrivateCompilers::new(self, run_compiler.stage, self.build.host_target);
-        assert_eq!(run_compiler, compilers.link_compiler());
+        assert_eq!(run_compiler, compilers.target_compiler());
 
         // Prepare the tools
         let miri = self.ensure(tool::Miri::from_compilers(compilers));
