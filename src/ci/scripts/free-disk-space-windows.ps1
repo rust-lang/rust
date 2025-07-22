@@ -17,7 +17,7 @@ $dirs = 'Does not exit',
 'C:\does not exist', 'oh no'
 
 foreach ($dir in $dirs) {
-    Start-ThreadJob { Remove-Item -Recurse -Force -LiteralPath $dir }
+    Start-ThreadJob -InputObject $dir -ScriptBlock { Remove-Item -Recurse -Force -LiteralPath $dir }
 }
 
 foreach ($job in Get-Job) {
