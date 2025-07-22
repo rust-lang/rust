@@ -20,6 +20,8 @@ foreach ($dir in $dirs) {
 
 # Wait for deletion to finish
 Get-Job -State Running | Wait-Job
+# Print any errors
+Get-Job | Receive-Job | Write-Output
 # Cleanup finished jobs
 Get-Job | Remove-Job
 
