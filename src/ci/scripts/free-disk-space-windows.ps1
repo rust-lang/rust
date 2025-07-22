@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 Get-Volume | Out-String | Write-Output
 
 # Exclude directory from Defender to make this faster
-#Add-MpPreference -ExclusionPath C:\
+Add-MpPreference -ExclusionPath C:\
 
 $available = $(Get-Volume C).SizeRemaining
 
@@ -30,5 +30,3 @@ Get-Volume | Out-String | Write-Output
 
 $saved = ($(Get-Volume C).SizeRemaining - $available) / 1gb
 Write-Output "total space saved $saved GB"
-
-exit 1
