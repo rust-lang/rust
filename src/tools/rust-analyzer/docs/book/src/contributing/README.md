@@ -252,18 +252,8 @@ Release steps:
 4. Commit & push the changelog.
 5. Run `cargo xtask publish-release-notes <CHANGELOG>` -- this will convert the changelog entry in AsciiDoc to Markdown and update the body of GitHub Releases entry.
 6. Tweet.
-7. Make a new branch and run `cargo xtask rustc-pull`, open a PR, and merge it.
-   This will pull any changes from `rust-lang/rust` into `rust-analyzer`.
-8. Switch to `master`, pull, then run `cargo xtask rustc-push --rust-path ../rust-rust-analyzer --rust-fork matklad/rust`.
-   Replace `matklad/rust` with your own fork of `rust-lang/rust`.
-   You can use the token to authenticate when you get prompted for a password, since `josh` will push over HTTPS, not SSH.
-   This will push the `rust-analyzer` changes to your fork.
-   You can then open a PR against `rust-lang/rust`.
-
-Note: besides the `rust-rust-analyzer` clone, the Josh cache (stored under `~/.cache/rust-analyzer-josh`) will contain a bare clone of `rust-lang/rust`.
-This currently takes about 3.5 GB.
-
-This [HackMD](https://hackmd.io/7pOuxnkdQDaL1Y1FQr65xg) has details about how `josh` syncs work.
+7. Perform a subtree [pull](#performing-a-pull).
+8. Perform a subtree [push](#performing-a-push).
 
 If the GitHub Actions release fails because of a transient problem like a timeout, you can re-run the job from the Actions console.
 If it fails because of something that needs to be fixed, remove the release tag (if needed), fix the problem, then start over.
@@ -288,3 +278,43 @@ There are two sets of people with extra permissions:
   If you don't feel like reviewing for whatever reason, someone else will pick the review up (but please speak up if you don't feel like it)!
 * The [rust-lang](https://github.com/rust-lang) team [t-rust-analyzer-contributors]([https://github.com/orgs/rust-analyzer/teams/triage](https://github.com/rust-lang/team/blob/master/teams/rust-analyzer-contributors.toml)).
   This team has general triaging permissions allowing to label, close and re-open issues.
+
+## Synchronizing subtree changes
+`rust-analyzer` is a [josh](https://josh-project.github.io/josh/intro.html) subtree of the [rust-lang/rust](https://github.com/rust-lang/rust)
+repository. We use the [rustc-josh-sync](https://github.com/rust-lang/josh-sync) tool to perform synchronization between these two
+repositories. You can find documentation of the tool [here](https://github.com/rust-lang/josh-sync).
+
+You can install the synchronization tool using the following commands:
+```
+cargo install --locked --git https://github.com/rust-lang/josh-sync
+```
+
+Both pulls (synchronizing changes from rust-lang/rust into rust-analyzer) and pushes (synchronizing
+changes from rust-analyzer into rust-lang/rust) are performed from this repository.
+changes from rust-analyzer to rust-lang/rust) are performed from this repository.
+
+Usually we first perform a pull, wait for it to be merged, and then perform a push.
+
+### Performing a pull
+1) Checkout a new branch that will be used to create a PR against rust-analyzer
+2) Run the pull command
+    ```
+    rustc-josh-sync pull
+    ```
+3) Push the branch to your fork of `rust-analyzer` and create a PR
+  - If you have the `gh` CLI installed, `rustc-josh-sync` can create the PR for you.
+
+### Performing a push
+
+Wait for the previous pull to be merged.
+
+1) Switch to `master` and pull
+2) Run the push command to create a branch named `<branch-name>` in a `rustc` fork under the `<gh-username>` account
+    ```
+    rustc-josh-sync push <branch-name> <gh-username>
+    ```
+   - The push will ask you to download a checkout of the `rust-lang/rust` repository.
+   - If you get prompted for a password, see [this](https://github.com/rust-lang/josh-sync?tab=readme-ov-file#git-peculiarities).
+3) Create a PR from `<branch-name>` into `rust-lang/rust`
+
+> Besides the `rust` checkout, the Josh cache (stored under `~/.cache/rustc-josh`) will contain a bare clone of `rust-lang/rust`. This currently takes several GBs.
