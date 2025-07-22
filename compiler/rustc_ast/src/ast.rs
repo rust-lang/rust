@@ -3761,15 +3761,19 @@ pub struct TyAlias {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Impl {
-    pub defaultness: Defaultness,
-    pub safety: Safety,
     pub generics: Generics,
-    pub constness: Const,
-    pub polarity: ImplPolarity,
-    /// The trait being implemented, if any.
-    pub of_trait: Option<TraitRef>,
+    pub of_trait: Option<Box<TraitImplHeader>>,
     pub self_ty: P<Ty>,
     pub items: ThinVec<P<AssocItem>>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct TraitImplHeader {
+    pub defaultness: Defaultness,
+    pub safety: Safety,
+    pub constness: Const,
+    pub polarity: ImplPolarity,
+    pub trait_ref: TraitRef,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Default, Walkable)]
@@ -3893,7 +3897,7 @@ pub enum ItemKind {
     /// An implementation.
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
-    Impl(Box<Impl>),
+    Impl(Impl),
     /// A macro invocation.
     ///
     /// E.g., `foo!(..)`.
@@ -3980,7 +3984,7 @@ impl ItemKind {
             | Self::Union(_, generics, _)
             | Self::Trait(box Trait { generics, .. })
             | Self::TraitAlias(_, generics, _)
-            | Self::Impl(box Impl { generics, .. }) => Some(generics),
+            | Self::Impl(Impl { generics, .. }) => Some(generics),
             _ => None,
         }
     }
@@ -4140,7 +4144,7 @@ mod size_asserts {
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 40);
-    static_assert_size!(Impl, 136);
+    static_assert_size!(Impl, 64);
     static_assert_size!(Item, 144);
     static_assert_size!(ItemKind, 80);
     static_assert_size!(LitKind, 24);
@@ -4153,6 +4157,7 @@ mod size_asserts {
     static_assert_size!(PathSegment, 24);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
+    static_assert_size!(TraitImplHeader, 80);
     static_assert_size!(Ty, 64);
     static_assert_size!(TyKind, 40);
     // tidy-alphabetical-end
