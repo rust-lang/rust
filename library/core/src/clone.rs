@@ -155,7 +155,7 @@ mod uninit;
 /// rely on their keys respecting this property for correct behavior.
 ///
 /// This property is automatically satisfied when deriving both `Clone` and [`PartialEq`]
-/// using `#[derive(Clone, PartialEq)]` or when additionally deriving [`Eq`] 
+/// using `#[derive(Clone, PartialEq)]` or when additionally deriving [`Eq`]
 /// using `#[derive(Clone, PartialEq, Eq)]`.
 ///
 /// Violating this property is a logic error. The behavior resulting from a logic error is not
