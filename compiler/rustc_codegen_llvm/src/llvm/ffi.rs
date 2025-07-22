@@ -1015,7 +1015,6 @@ unsafe extern "C" {
     ) -> MetadataKindId;
 
     // Create modules.
-    pub(crate) fn LLVMCloneModule(M: &Module) -> &Module;
     pub(crate) fn LLVMModuleCreateWithNameInContext(
         ModuleID: *const c_char,
         C: &Context,
