@@ -1,5 +1,8 @@
 use core::any::TypeId;
-use core::intrinsics::assume;
+use core::intrinsics::{assume, vtable_for};
+use std::fmt::Debug;
+use std::option::Option;
+use std::ptr::DynMetadata;
 
 #[test]
 fn test_typeid_sized_types() {
@@ -195,18 +198,16 @@ fn carrying_mul_add_fallback_i128() {
 }
 
 #[test]
+#[allow(dead_code)]
 fn test_vtable_for() {
-    use std::fmt::Debug;
-    use std::intrinsics::vtable_for;
-    use std::option::Option;
-    use std::ptr::DynMetadata;
-
-    #[allow(dead_code)]
     #[derive(Debug)]
-    struct A {
-        index: usize,
-    }
-    const debug_vtable: Option<DynMetadata<dyn Debug>> = vtable_for::<A, dyn Debug>();
+    struct A {}
 
-    println!("{debug_vtable:?}");
+    struct B {}
+
+    const A_VTABLE: Option<DynMetadata<dyn Debug>> = vtable_for::<A, dyn Debug>();
+    assert!(A_VTABLE.is_some());
+
+    const B_VTABLE: Option<DynMetadata<dyn Debug>> = vtable_for::<B, dyn Debug>();
+    assert!(B_VTABLE.is_none());
 }

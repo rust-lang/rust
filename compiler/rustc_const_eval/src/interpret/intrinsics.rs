@@ -4,14 +4,16 @@
 
 use std::assert_matches::assert_matches;
 
-use rustc_abi::{FieldIdx, HasDataLayout, Size};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, HasDataLayout, Size};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::{read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, ty};
 use rustc_span::{Symbol, sym};
+use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use tracing::trace;
 
 use super::memory::MemoryKind;
@@ -19,7 +21,7 @@ use super::util::ensure_monomorphic_enough;
 use super::{
     Allocation, CheckInAllocMsg, ConstAllocation, ImmTy, InterpCx, InterpResult, Machine, OpTy,
     PlaceTy, Pointer, PointerArithmetic, Provenance, Scalar, err_ub_custom, err_unsup_format,
-    interp_ok, throw_inval, throw_ub_custom, throw_ub_format,
+    interp_ok, throw_inval, throw_ub_custom, throw_ub_format, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
 
@@ -151,18 +153,41 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::vtable_for => {
                 let tp_ty = instance.args.type_at(0);
                 let result_ty = instance.args.type_at(1);
-                //let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, span);
 
                 ensure_monomorphic_enough(tcx, tp_ty)?;
                 ensure_monomorphic_enough(tcx, result_ty)?;
 
-                // Get vtable
-                //let vtable_ptr = self.get_vtable_ptr(tp_ty, result_ty.into())?;
+                let ty::Dynamic(preds, _, ty::Dyn) = result_ty.kind() else {
+                    throw_unsup_format!(
+                        "Invalid type provided to vtable_for::<T, U>. U must be dyn Trait, got {result_ty}."
+                    );
+                };
 
-                //let dyn_metadata = metadata(vtable_ptr);
-                //let val = ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128());
-                //let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
-                //self.copy_op(&val, dest)?;
+                let (infcx, param_env) = self
+                    .tcx
+                    .infer_ctxt()
+                    .build_with_typing_env(ty::TypingEnv::fully_monomorphized());
+
+                let type_impls_trait = preds.iter().all(|pred| {
+                    let trait_ref = ty::TraitRef::new(tcx, pred.def_id(), [tp_ty]);
+                    let pred: ty::Predicate<'tcx> = trait_ref.upcast(tcx);
+
+                    let ocx = ObligationCtxt::new(&infcx);
+                    ocx.register_obligation(Obligation::new(
+                        tcx,
+                        ObligationCause::dummy(),
+                        param_env,
+                        pred,
+                    ));
+                    ocx.select_all_or_error().is_empty()
+                });
+
+                if type_impls_trait {
+                    let vtable_ptr = self.get_vtable_ptr(tp_ty, preds)?;
+                    self.write_pointer(vtable_ptr, dest)?;
+                } else {
+                    self.write_discriminant(FIRST_VARIANT, dest)?;
+                }
             }
             sym::variant_count => {
                 let tp_ty = instance.args.type_at(0);
