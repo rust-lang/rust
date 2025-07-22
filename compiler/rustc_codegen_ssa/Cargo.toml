@@ -30,6 +30,7 @@ rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_middle = { path = "../rustc_middle" }
+rustc_mir_transform = { path = "../rustc_mir_transform" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
