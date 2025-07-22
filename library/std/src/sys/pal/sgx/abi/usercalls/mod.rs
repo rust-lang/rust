@@ -2,6 +2,7 @@ use crate::cmp;
 use crate::io::{
     BorrowedCursor, Error as IoError, ErrorKind, IoSlice, IoSliceMut, Result as IoResult,
 };
+use crate::ops::RangeInclusive;
 use crate::random::random;
 use crate::time::{Duration, Instant};
 
@@ -166,24 +167,58 @@ pub fn exit(panic: bool) -> ! {
     unsafe { raw::exit(panic) }
 }
 
-/// Usercall `wait`. See the ABI documentation for more information.
-#[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn wait(event_mask: u64, mut timeout: u64) -> IoResult<u64> {
-    if timeout != WAIT_NO && timeout != WAIT_INDEFINITE {
-        // We don't want people to rely on accuracy of timeouts to make
-        // security decisions in an SGX enclave. That's why we add a random
-        // amount not exceeding +/- 10% to the timeout value to discourage
-        // people from relying on accuracy of timeouts while providing a way
-        // to make things work in other cases. Note that in the SGX threat
-        // model the enclave runner which is serving the wait usercall is not
-        // trusted to ensure accurate timeouts.
-        if let Ok(timeout_signed) = i64::try_from(timeout) {
-            let tenth = timeout_signed / 10;
-            let deviation = random::<i64>(..).checked_rem(tenth).unwrap_or(0);
-            timeout = timeout_signed.saturating_add(deviation) as _;
+/// Pick a random `timeout` within the specified range (in percentages)
+fn pick_timeout(timeout: u64, rand_perc: RangeInclusive<i8>) -> u64 {
+    fn calc_perc(value: i64, perc: i8) -> Option<i64> {
+        value.checked_mul(i64::from(perc)).map(|v| v / 100)
+    }
+
+    fn pick_random(range: &RangeInclusive<i64>) -> i64 {
+        let abs_range = range.end().abs_diff(*range.start()).try_into().unwrap_or(0);
+        let r: i64 =
+            random::<u64>(..).checked_rem(abs_range).and_then(|v| v.try_into().ok()).unwrap_or(0);
+        r.saturating_add(*range.start())
+    }
+
+    if timeout == WAIT_NO || timeout == WAIT_INDEFINITE {
+        return timeout;
+    }
+
+    if let Ok(timeout_signed) = i64::try_from(timeout) {
+        let timeout_range = RangeInclusive::new(
+            calc_perc(timeout_signed, *rand_perc.start()).unwrap_or(timeout_signed),
+            calc_perc(timeout_signed, *rand_perc.end()).unwrap_or(timeout_signed),
+        );
+
+        if !timeout_range.is_empty() {
+            let deviation = pick_random(&timeout_range);
+            return timeout_signed.saturating_add(deviation).try_into().unwrap_or(timeout);
         }
     }
+    timeout
+}
+
+/// Wait for a specific event and/or timeout. Also see the ABI documentation.
+///
+/// We don't want people to rely on accuracy of timeouts to make security
+/// decisions in an SGX enclave. We add a random amount to discourage people
+/// from relying on accuracy of timeouts while providing a way to make
+/// things work in other cases.
+/// Some functions require a minimum waiting period (e.g., std::thread::sleep
+/// must not return before a period of time has passed). Others can deal with
+/// some randomness in both directions. In this private function we allow the
+/// user to specify a range of randomness to add/subtract to the timeout.
+/// Note that in the SGX threat model the enclave runner which is serving the
+/// wait usercall is not trusted to ensure accurate timeouts.
+fn wait_ex(event_mask: u64, timeout: u64, rand_perc: RangeInclusive<i8>) -> IoResult<u64> {
+    let timeout = pick_timeout(timeout, rand_perc);
     unsafe { raw::wait(event_mask, timeout).from_sgx_result() }
+}
+
+/// Usercall `wait`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub fn wait(event_mask: u64, timeout: u64) -> IoResult<u64> {
+    wait_ex(event_mask, timeout, -10..=10)
 }
 
 /// Makes an effort to wait for a non-spurious event at least as long as
