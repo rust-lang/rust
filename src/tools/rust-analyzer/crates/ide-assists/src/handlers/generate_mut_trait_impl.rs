@@ -94,7 +94,7 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
     })?;
     let _ = process_ref_mut(&fn_);
 
-    let assoc_list = make::assoc_item_list().clone_for_update();
+    let assoc_list = make::assoc_item_list(None).clone_for_update();
     ted::replace(impl_def.assoc_item_list()?.syntax(), assoc_list.syntax());
     impl_def.get_or_create_assoc_item_list().add_item(syntax::ast::AssocItem::Fn(fn_));
 
