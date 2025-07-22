@@ -15,6 +15,6 @@ fn main() {
 }
 
 // CHECK: .section .debug_info
-// CHECK-NOT: {{\.(short|hword|2byte)}} 2
-// CHECK-NOT: {{\.(short|hword|2byte)}} 4
-// CHECK: {{\.(short|hword|2byte)}} 5
+// CHECK-NOT: {{\.(short|hword|2byte|half)}} 2
+// CHECK-NOT: {{\.(short|hword|2byte|half)}} 4
+// CHECK: {{\.(short|hword|2byte|half)}} 5
