@@ -767,7 +767,7 @@ fn func_assoc_item(
     )
     .clone_for_update();
 
-    Some(AssocItem::Fn(func.indent(edit::IndentLevel(1)).clone_for_update()))
+    Some(AssocItem::Fn(func.indent(edit::IndentLevel(1))))
 }
 
 fn ty_assoc_item(item: syntax::ast::TypeAlias, qual_path_ty: Path) -> Option<AssocItem> {

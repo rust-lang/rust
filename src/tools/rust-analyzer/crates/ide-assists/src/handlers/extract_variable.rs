@@ -7,7 +7,9 @@ use syntax::{
     NodeOrToken, SyntaxKind, SyntaxNode, T,
     algo::ancestors_at_offset,
     ast::{
-        self, AstNode, edit::IndentLevel, edit_in_place::Indent, make,
+        self, AstNode,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
         syntax_factory::SyntaxFactory,
     },
     syntax_editor::Position,
@@ -253,12 +255,11 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                             // `expr_replace` is a descendant of `to_wrap`, so we just replace it with `name_expr`.
                             editor.replace(expr_replace, name_expr.syntax());
                             make.block_expr([new_stmt], Some(to_wrap.clone()))
-                        };
+                        }
+                        // fixup indentation of block
+                        .indent_with_mapping(indent_to, &make);
 
                         editor.replace(to_wrap.syntax(), block.syntax());
-
-                        // fixup indentation of block
-                        block.indent(indent_to);
                     }
                 }
 

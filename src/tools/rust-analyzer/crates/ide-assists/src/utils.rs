@@ -236,7 +236,7 @@ pub fn add_trait_assoc_items_to_impl(
                     ),
                     new_indent_level,
                 );
-                ted::replace(fn_.get_or_create_body().syntax(), body.clone_for_update().syntax())
+                ted::replace(fn_.get_or_create_body().syntax(), body.syntax())
             }
             ast::AssocItem::TypeAlias(type_alias) => {
                 if let Some(type_bound_list) = type_alias.type_bound_list() {
