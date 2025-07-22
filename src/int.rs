@@ -367,6 +367,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let new_type = self.context.new_c_type(new_type);
         let lhs = self.context.new_cast(self.location, lhs, new_type);
         let rhs = self.context.new_cast(self.location, rhs, new_type);
+        let res = self.context.new_cast(self.location, res, new_type.make_pointer());
         let overflow = self.overflow_call(intrinsic, &[lhs, rhs, res], None);
         (res.dereference(self.location).to_rvalue(), overflow)
     }
