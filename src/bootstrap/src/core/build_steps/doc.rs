@@ -811,7 +811,7 @@ impl Step for Rustc {
         let compiler = builder.compiler(stage, builder.config.host_target);
         builder.std(compiler, builder.config.host_target);
 
-        let _guard = builder.msg_sysroot_tool(
+        let _guard = builder.msg_rustc_tool(
             Kind::Doc,
             stage,
             format!("compiler{}", crate_description(&self.crates)),
