@@ -223,11 +223,7 @@ where
         // So even if its mode is LocalCopy, we need to treat it like a root.
         match mono_item.instantiation_mode(cx.tcx) {
             InstantiationMode::GloballyShared { .. } => {}
-            InstantiationMode::LocalCopy => {
-                if !cx.tcx.is_lang_item(mono_item.def_id(), LangItem::Start) {
-                    continue;
-                }
-            }
+            InstantiationMode::LocalCopy => continue,
         }
 
         let characteristic_def_id = characteristic_def_id_of_mono_item(cx.tcx, mono_item);
@@ -821,10 +817,9 @@ fn mono_item_visibility<'tcx>(
         | InstanceKind::FnPtrAddrShim(..) => return Visibility::Hidden,
     };
 
-    // The `start_fn` lang item is actually a monomorphized instance of a
-    // function in the standard library, used for the `main` function. We don't
-    // want to export it so we tag it with `Hidden` visibility but this symbol
-    // is only referenced from the actual `main` symbol which we unfortunately
+    // Both the `start_fn` lang item and `main` itself should not be exported,
+    // so we give them with `Hidden` visibility but these symbols are
+    // only referenced from the actual `main` symbol which we unfortunately
     // don't know anything about during partitioning/collection. As a result we
     // forcibly keep this symbol out of the `internalization_candidates` set.
     //
@@ -834,7 +829,7 @@ fn mono_item_visibility<'tcx>(
     //        from the `main` symbol we'll generate later.
     //
     //        This may be fixable with a new `InstanceKind` perhaps? Unsure!
-    if tcx.is_lang_item(def_id, LangItem::Start) {
+    if tcx.is_entrypoint(def_id) {
         *can_be_internalized = false;
         return Visibility::Hidden;
     }
