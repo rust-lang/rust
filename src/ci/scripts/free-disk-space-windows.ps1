@@ -4,9 +4,6 @@ $ErrorActionPreference = 'Stop'
 
 Get-Volume | Out-String | Write-Output
 
-# Exclude directory from Defender to make this faster
-Add-MpPreference -ExclusionPath C:\
-
 $available = $(Get-Volume C).SizeRemaining
 
 $dirs = 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm',
