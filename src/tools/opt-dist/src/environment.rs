@@ -28,6 +28,8 @@ pub struct Environment {
     run_tests: bool,
     fast_try_build: bool,
     build_llvm: bool,
+    #[builder(default)]
+    stage0_root: Option<Utf8PathBuf>,
 }
 
 impl Environment {
@@ -56,17 +58,11 @@ impl Environment {
     }
 
     pub fn cargo_stage_0(&self) -> Utf8PathBuf {
-        self.build_artifacts()
-            .join("stage0")
-            .join("bin")
-            .join(format!("cargo{}", executable_extension()))
+        self.stage0().join("bin").join(format!("cargo{}", executable_extension()))
     }
 
     pub fn rustc_stage_0(&self) -> Utf8PathBuf {
-        self.build_artifacts()
-            .join("stage0")
-            .join("bin")
-            .join(format!("rustc{}", executable_extension()))
+        self.stage0().join("bin").join(format!("rustc{}", executable_extension()))
     }
 
     pub fn rustc_stage_2(&self) -> Utf8PathBuf {
@@ -115,6 +111,10 @@ impl Environment {
 
     pub fn build_llvm(&self) -> bool {
         self.build_llvm
+    }
+
+    pub fn stage0(&self) -> Utf8PathBuf {
+        self.stage0_root.clone().unwrap_or_else(|| self.build_artifacts().join("stage0"))
     }
 }
 
