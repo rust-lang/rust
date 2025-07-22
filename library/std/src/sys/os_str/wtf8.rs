@@ -8,7 +8,7 @@ use crate::rc::Rc;
 use crate::sync::Arc;
 use crate::sys_common::wtf8::{Wtf8, Wtf8Buf, check_utf8_boundary};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
-use crate::{fmt, mem};
+use crate::{fmt, mem, ptr};
 
 #[derive(Hash)]
 pub struct Buf {
@@ -20,19 +20,24 @@ pub struct Slice {
     pub inner: Wtf8,
 }
 
-impl IntoInner<Wtf8Buf> for Buf {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const IntoInner<Wtf8Buf> for Buf {
     fn into_inner(self) -> Wtf8Buf {
-        self.inner
+        // FIXME: const Destruct
+        let buf = mem::ManuallyDrop::new(self);
+        unsafe { ptr::read(&buf.inner) }
     }
 }
 
-impl FromInner<Wtf8Buf> for Buf {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const FromInner<Wtf8Buf> for Buf {
     fn from_inner(inner: Wtf8Buf) -> Self {
         Buf { inner }
     }
 }
 
-impl AsInner<Wtf8> for Buf {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const AsInner<Wtf8> for Buf {
     #[inline]
     fn as_inner(&self) -> &Wtf8 {
         &self.inner
@@ -92,6 +97,7 @@ impl Buf {
     }
 
     #[inline]
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
     pub const fn from_string(s: String) -> Buf {
         Buf { inner: Wtf8Buf::from_string(s) }
     }
@@ -152,7 +158,8 @@ impl Buf {
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &Slice {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn as_slice(&self) -> &Slice {
         // SAFETY: Slice is just a wrapper for Wtf8,
         // and self.inner.as_slice() returns &Wtf8.
         // Therefore, transmuting &Wtf8 to &Slice is safe.
@@ -160,7 +167,8 @@ impl Buf {
     }
 
     #[inline]
-    pub fn as_mut_slice(&mut self) -> &mut Slice {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn as_mut_slice(&mut self) -> &mut Slice {
         // SAFETY: Slice is just a wrapper for Wtf8,
         // and self.inner.as_mut_slice() returns &mut Wtf8.
         // Therefore, transmuting &mut Wtf8 to &mut Slice is safe.
@@ -180,7 +188,8 @@ impl Buf {
     }
 
     #[inline]
-    pub fn from_box(boxed: Box<Slice>) -> Buf {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn from_box(boxed: Box<Slice>) -> Buf {
         let inner: Box<Wtf8> = unsafe { mem::transmute(boxed) };
         Buf { inner: Wtf8Buf::from_box(inner) }
     }
@@ -231,7 +240,8 @@ impl Slice {
     }
 
     #[inline]
-    pub unsafe fn from_encoded_bytes_unchecked(s: &[u8]) -> &Slice {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const unsafe fn from_encoded_bytes_unchecked(s: &[u8]) -> &Slice {
         unsafe { mem::transmute(Wtf8::from_bytes_unchecked(s)) }
     }
 
@@ -242,12 +252,14 @@ impl Slice {
     }
 
     #[inline]
-    pub fn from_str(s: &str) -> &Slice {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn from_str(s: &str) -> &Slice {
         unsafe { mem::transmute(Wtf8::from_str(s)) }
     }
 
     #[inline]
-    pub fn to_str(&self) -> Result<&str, crate::str::Utf8Error> {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn to_str(&self) -> Result<&str, crate::str::Utf8Error> {
         self.inner.as_str()
     }
 

@@ -678,7 +678,8 @@ impl<T: Default> Default for RwLock<T> {
 }
 
 #[stable(feature = "rw_lock_from", since = "1.24.0")]
-impl<T> From<T> for RwLock<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const From<T> for RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.
     /// This is equivalent to [`RwLock::new`].
     fn from(t: T) -> Self {

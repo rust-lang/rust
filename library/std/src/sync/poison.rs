@@ -341,7 +341,8 @@ impl<T> PoisonError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> From<PoisonError<T>> for TryLockError<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const From<PoisonError<T>> for TryLockError<T> {
     fn from(err: PoisonError<T>) -> TryLockError<T> {
         TryLockError::Poisoned(err)
     }

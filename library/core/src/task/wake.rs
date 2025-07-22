@@ -901,7 +901,8 @@ impl Clone for LocalWaker {
 }
 
 #[unstable(feature = "local_waker", issue = "118959")]
-impl AsRef<LocalWaker> for Waker {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const AsRef<LocalWaker> for Waker {
     fn as_ref(&self) -> &LocalWaker {
         // SAFETY: LocalWaker is just Waker without thread safety
         unsafe { transmute(self) }

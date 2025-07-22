@@ -242,7 +242,8 @@ impl fmt::Debug for ExitStatusError {
     }
 }
 
-impl Into<ExitStatus> for ExitStatusError {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
         self.0
     }
@@ -266,7 +267,8 @@ impl ExitCode {
     }
 }
 
-impl From<u8> for ExitCode {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const From<u8> for ExitCode {
     fn from(code: u8) -> Self {
         Self(code)
     }
