@@ -600,7 +600,7 @@ impl Step for Miri {
         cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
 
         {
-            let _guard = builder.msg_sysroot_tool(Kind::Test, stage, "miri", host, target);
+            let _guard = builder.msg_rustc_tool(Kind::Test, stage, "miri", host, target);
             let _time = helpers::timeit(builder);
             cargo.run(builder);
         }
@@ -616,7 +616,7 @@ impl Step for Miri {
             cargo.args(["tests/pass", "tests/panic"]);
 
             {
-                let _guard = builder.msg_sysroot_tool(
+                let _guard = builder.msg_rustc_tool(
                     Kind::Test,
                     stage,
                     "miri (mir-opt-level 4)",
@@ -693,7 +693,7 @@ impl Step for CargoMiri {
         // Finally, run everything.
         let mut cargo = BootstrapCommand::from(cargo);
         {
-            let _guard = builder.msg_sysroot_tool(Kind::Test, stage, "cargo-miri", host, target);
+            let _guard = builder.msg_rustc_tool(Kind::Test, stage, "cargo-miri", host, target);
             let _time = helpers::timeit(builder);
             cargo.run(builder);
         }
@@ -820,8 +820,7 @@ impl Step for Clippy {
         cargo.add_rustc_lib_path(builder);
         let cargo = prepare_cargo_test(cargo, &[], &[], host, builder);
 
-        let _guard =
-            builder.msg_sysroot_tool(Kind::Test, build_compiler.stage, "clippy", host, host);
+        let _guard = builder.msg_rustc_tool(Kind::Test, build_compiler.stage, "clippy", host, host);
 
         // Clippy reports errors if it blessed the outputs
         if cargo.allow_failure().run(builder) {
@@ -1088,7 +1087,7 @@ impl Step for RustdocGUI {
         }
 
         let _time = helpers::timeit(builder);
-        let _guard = builder.msg_sysroot_tool(
+        let _guard = builder.msg_rustc_tool(
             Kind::Test,
             self.compiler.stage,
             "rustdoc-gui",
@@ -2573,7 +2572,7 @@ fn run_cargo_test<'a>(
     let mut cargo = prepare_cargo_test(cargo, libtest_args, crates, target, builder);
     let _time = helpers::timeit(builder);
     let _group = description.into().and_then(|what| {
-        builder.msg_sysroot_tool(Kind::Test, compiler.stage, what, compiler.host, target)
+        builder.msg_rustc_tool(Kind::Test, compiler.stage, what, compiler.host, target)
     });
 
     #[cfg(feature = "build-metrics")]

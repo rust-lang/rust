@@ -1060,17 +1060,6 @@ impl Build {
         self.msg(Kind::Doc, compiler.stage, what, compiler.host, target.into())
     }
 
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_build(
-        &self,
-        compiler: Compiler,
-        what: impl Display,
-        target: impl Into<Option<TargetSelection>>,
-    ) -> Option<gha::Group> {
-        self.msg(Kind::Build, compiler.stage, what, compiler.host, target)
-    }
-
     /// Return a `Group` guard for a [`Step`] that is built for each `--stage`.
     ///
     /// [`Step`]: crate::core::builder::Step
@@ -1117,7 +1106,7 @@ impl Build {
 
     #[must_use = "Groups should not be dropped until the Step finishes running"]
     #[track_caller]
-    fn msg_sysroot_tool(
+    fn msg_rustc_tool(
         &self,
         action: impl Into<Kind>,
         build_stage: u32,

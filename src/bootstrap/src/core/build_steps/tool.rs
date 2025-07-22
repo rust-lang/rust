@@ -71,13 +71,9 @@ impl Builder<'_> {
     ) -> Option<gha::Group> {
         match mode {
             // depends on compiler stage, different to host compiler
-            Mode::ToolRustc => self.msg_sysroot_tool(
-                kind,
-                build_stage,
-                format_args!("tool {tool}"),
-                *host,
-                *target,
-            ),
+            Mode::ToolRustc => {
+                self.msg_rustc_tool(kind, build_stage, format_args!("tool {tool}"), *host, *target)
+            }
             // doesn't depend on compiler, same as host compiler
             _ => self.msg(kind, build_stage, format_args!("tool {tool}"), *host, *target),
         }
@@ -1324,6 +1320,10 @@ impl RustcPrivateCompilers {
         // FIXME: make 100% sure that `link_compiler` was indeed built with `build_compiler`...
         let link_compiler = builder.compiler(build_compiler.stage + 1, target);
 
+        Self { build_compiler, link_compiler }
+    }
+
+    pub fn from_build_and_link_compiler(build_compiler: Compiler, link_compiler: Compiler) -> Self {
         Self { build_compiler, link_compiler }
     }
 
