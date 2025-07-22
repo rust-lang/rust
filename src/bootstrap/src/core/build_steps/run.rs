@@ -141,7 +141,7 @@ impl Step for Miri {
 
         // Get a target sysroot for Miri.
         let miri_sysroot =
-            test::Miri::build_miri_sysroot(builder, compilers.link_compiler(), target);
+            test::Miri::build_miri_sysroot(builder, compilers.target_compiler(), target);
 
         // # Run miri.
         // Running it via `cargo run` as that figures out the right dylib path.

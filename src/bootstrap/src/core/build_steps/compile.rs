@@ -2200,7 +2200,7 @@ impl Step for Assemble {
                 continue;
             }
             builder.ensure(CodegenBackend {
-                compilers: RustcPrivateCompilers::from_build_and_link_compiler(
+                compilers: RustcPrivateCompilers::from_build_and_target_compiler(
                     build_compiler,
                     target_compiler,
                 ),

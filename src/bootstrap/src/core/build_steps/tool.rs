@@ -765,7 +765,7 @@ impl Step for Rustdoc {
             extra_features.push("jemalloc".to_string());
         }
 
-        let compilers = RustcPrivateCompilers::from_link_compiler(builder, target_compiler);
+        let compilers = RustcPrivateCompilers::from_target_compiler(builder, target_compiler);
         let tool_path = builder
             .ensure(ToolBuild {
                 build_compiler: compilers.build_compiler,
@@ -1133,7 +1133,7 @@ impl Step for RustAnalyzerProcMacroSrv {
 
         // Copy `rust-analyzer-proc-macro-srv` to `<sysroot>/libexec/`
         // so that r-a can use it.
-        let libexec_path = builder.sysroot(self.compilers.link_compiler).join("libexec");
+        let libexec_path = builder.sysroot(self.compilers.target_compiler).join("libexec");
         t!(fs::create_dir_all(&libexec_path));
         builder.copy_link(
             &tool_result.tool_path,
@@ -1294,20 +1294,20 @@ impl Step for LibcxxVersionTool {
 /// that depends on compiler internals (`rustc_private`).
 /// Their compilation looks like this:
 ///
-/// - `build_compiler` (stage N-1) builds `link_compiler` (stage N) to produce .rlibs
+/// - `build_compiler` (stage N-1) builds `target_compiler` (stage N) to produce .rlibs
 ///     - These .rlibs are copied into the sysroot of `build_compiler`
 /// - `build_compiler` (stage N-1) builds `<tool>` (stage N)
-///     - `<tool>` links to .rlibs from `link_compiler`
+///     - `<tool>` links to .rlibs from `target_compiler`
 ///
 /// Eventually, this could also be used for .rmetas and check builds, but so far we only deal with
 /// normal builds here.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct RustcPrivateCompilers {
-    /// Compiler that builds the tool and that builds `link_compiler`.
+    /// Compiler that builds the tool and that builds `target_compiler`.
     build_compiler: Compiler,
     /// Compiler to which .rlib artifacts the tool links to.
     /// The host target of this compiler corresponds to the target of the tool.
-    link_compiler: Compiler,
+    target_compiler: Compiler,
 }
 
 impl RustcPrivateCompilers {
@@ -1317,14 +1317,17 @@ impl RustcPrivateCompilers {
         let build_compiler = Self::build_compiler_from_stage(builder, stage);
 
         // This is the compiler we'll link to
-        // FIXME: make 100% sure that `link_compiler` was indeed built with `build_compiler`...
-        let link_compiler = builder.compiler(build_compiler.stage + 1, target);
+        // FIXME: make 100% sure that `target_compiler` was indeed built with `build_compiler`...
+        let target_compiler = builder.compiler(build_compiler.stage + 1, target);
 
-        Self { build_compiler, link_compiler }
+        Self { build_compiler, target_compiler }
     }
 
-    pub fn from_build_and_link_compiler(build_compiler: Compiler, link_compiler: Compiler) -> Self {
-        Self { build_compiler, link_compiler }
+    pub fn from_build_and_target_compiler(
+        build_compiler: Compiler,
+        target_compiler: Compiler,
+    ) -> Self {
+        Self { build_compiler, target_compiler }
     }
 
     /// Create rustc tool compilers from the build compiler.
@@ -1333,15 +1336,15 @@ impl RustcPrivateCompilers {
         build_compiler: Compiler,
         target: TargetSelection,
     ) -> Self {
-        let link_compiler = builder.compiler(build_compiler.stage + 1, target);
-        Self { build_compiler, link_compiler }
+        let target_compiler = builder.compiler(build_compiler.stage + 1, target);
+        Self { build_compiler, target_compiler }
     }
 
-    /// Create rustc tool compilers from the link compiler.
-    pub fn from_link_compiler(builder: &Builder<'_>, link_compiler: Compiler) -> Self {
+    /// Create rustc tool compilers from the target compiler.
+    pub fn from_target_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
         Self {
-            build_compiler: Self::build_compiler_from_stage(builder, link_compiler.stage),
-            link_compiler,
+            build_compiler: Self::build_compiler_from_stage(builder, target_compiler.stage),
+            target_compiler,
         }
     }
 
@@ -1360,13 +1363,13 @@ impl RustcPrivateCompilers {
         self.build_compiler
     }
 
-    pub fn link_compiler(&self) -> Compiler {
-        self.link_compiler
+    pub fn target_compiler(&self) -> Compiler {
+        self.target_compiler
     }
 
     /// Target of the tool being compiled
     pub fn target(&self) -> TargetSelection {
-        self.link_compiler.host
+        self.target_compiler.host
     }
 }
 
@@ -1494,7 +1497,7 @@ fn build_extended_rustc_tool(
         artifact_kind: ToolArtifactKind::Binary,
     });
 
-    let target_compiler = compilers.link_compiler;
+    let target_compiler = compilers.target_compiler;
     if let Some(add_bins_to_sysroot) = add_bins_to_sysroot
         && !add_bins_to_sysroot.is_empty()
     {

@@ -548,7 +548,7 @@ impl Step for Miri {
         // the ui tests also assume cargo-miri has been built
         builder.ensure(tool::CargoMiri::from_compilers(compilers));
 
-        let target_compiler = compilers.link_compiler();
+        let target_compiler = compilers.target_compiler();
 
         // We also need sysroots, for Miri and for the host (the latter for build scripts).
         // This is for the tests so everything is done with the target compiler.
@@ -773,7 +773,7 @@ impl Step for Clippy {
         // that is linked into the clippy being tested. `target_compiler` is the latter,
         // and it must also be used by clippy's test runner to build tests and their dependencies.
         let compilers = self.compilers;
-        let target_compiler = compilers.link_compiler();
+        let target_compiler = compilers.target_compiler();
 
         let tool_result = builder.ensure(tool::Clippy::from_compilers(compilers));
         let build_compiler = tool_result.build_compiler;
