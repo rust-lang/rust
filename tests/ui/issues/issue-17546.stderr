@@ -6,7 +6,6 @@ LL |     fn new() -> NoResult<MyEnum, String> {
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
    = note: similarly named enum `Result` defined here
-   |
 help: try using the variant's enum
    |
 LL -     fn new() -> NoResult<MyEnum, String> {
@@ -60,7 +59,6 @@ LL | fn newer() -> NoResult<foo::MyEnum, String> {
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
    = note: similarly named enum `Result` defined here
-   |
 help: try using the variant's enum
    |
 LL - fn newer() -> NoResult<foo::MyEnum, String> {

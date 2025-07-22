@@ -102,7 +102,6 @@ LL |     res.len();
   --> $SRC_DIR/core/src/option.rs:LL:COL
    |
    = note: private method defined here
-   |
 note: the method `len` exists on the type `Vec<{integer}>`
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 help: consider using `Option::expect` to unwrap the `Vec<{integer}>` value, panicking if the value is an `Option::None`

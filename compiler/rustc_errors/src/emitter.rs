@@ -1462,7 +1462,7 @@ impl HumanEmitter {
         max_line_num_len: usize,
         is_secondary: bool,
         is_cont: bool,
-    ) -> io::Result<()> {
+    ) -> io::Result<CodeWindowStatus> {
         let mut buffer = StyledBuffer::new();
 
         if !msp.has_primary_spans() && !msp.has_span_labels() && is_secondary && !self.short_message
@@ -1575,12 +1575,14 @@ impl HumanEmitter {
         }
         let mut annotated_files = FileWithAnnotatedLines::collect_annotations(self, args, msp);
         trace!("{annotated_files:#?}");
+        let mut code_window_status = CodeWindowStatus::Open;
 
         // Make sure our primary file comes first
         let primary_span = msp.primary_span().unwrap_or_default();
         let (Some(sm), false) = (self.sm.as_ref(), primary_span.is_dummy()) else {
             // If we don't have span information, emit and exit
-            return emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message);
+            return emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)
+                .map(|_| code_window_status);
         };
         let primary_lo = sm.lookup_char_pos(primary_span.lo());
         if let Ok(pos) =
@@ -1638,6 +1640,13 @@ impl HumanEmitter {
                                 buffer.prepend(line_idx, " ", Style::NoStyle);
                             }
                             line_idx += 1;
+                        }
+                        if is_cont
+                            && file_idx == annotated_files_len - 1
+                            && annotation_id == annotated_file.lines.len() - 1
+                            && !labels.is_empty()
+                        {
+                            code_window_status = CodeWindowStatus::Closed;
                         }
                         for (label, is_primary) in labels.into_iter() {
                             let style = if is_primary {
@@ -1976,7 +1985,7 @@ impl HumanEmitter {
         // final step: take our styled buffer, render it, then output it
         emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
 
-        Ok(())
+        Ok(code_window_status)
     }
 
     fn column_width(&self, code_offset: usize) -> usize {
@@ -2491,7 +2500,7 @@ impl HumanEmitter {
             !children.is_empty()
                 || suggestions.iter().any(|s| s.style != SuggestionStyle::CompletelyHidden),
         ) {
-            Ok(()) => {
+            Ok(code_window_status) => {
                 if !children.is_empty()
                     || suggestions.iter().any(|s| s.style != SuggestionStyle::CompletelyHidden)
                 {
@@ -2502,7 +2511,7 @@ impl HumanEmitter {
                         {
                             // We'll continue the vertical bar to point into the next note.
                             self.draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
-                        } else {
+                        } else if matches!(code_window_status, CodeWindowStatus::Open) {
                             // We'll close the vertical bar to visually end the code window.
                             self.draw_col_separator_end(&mut buffer, 0, max_line_num_len + 1);
                         }
@@ -3048,6 +3057,12 @@ enum DisplaySuggestion {
     Diff,
     None,
     Add,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum CodeWindowStatus {
+    Closed,
+    Open,
 }
 
 impl FileWithAnnotatedLines {
