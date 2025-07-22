@@ -176,6 +176,11 @@ mod uninit;
 ///   (even if the referent doesn't),
 ///   while variables captured by mutable reference never implement `Clone`.
 ///
+/// [`HashMap`]: ../../std/collections/struct.HashMap.html
+/// [`HashSet`]: ../../std/collections/struct.HashSet.html
+/// [`BTreeMap`]: ../../std/collections/struct.BTreeMap.html
+/// [`BTreeSet`]: ../../std/collections/struct.BTreeSet.html
+/// [`BinaryHeap`]: ../../std/collections/struct.BinaryHeap.html
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "clone"]
