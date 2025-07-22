@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: [const] Baz` is not satisfied
-  --> $DIR/trait_alias.rs:23:11
+  --> $DIR/trait_alias.rs:24:11
    |
 LL |         x.baz();
    |           ^^^
