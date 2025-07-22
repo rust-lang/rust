@@ -708,7 +708,8 @@ impl ops::Index<ops::RangeFrom<usize>> for CStr {
 }
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
-impl AsRef<CStr> for CStr {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const AsRef<CStr> for CStr {
     #[inline]
     fn as_ref(&self) -> &CStr {
         self

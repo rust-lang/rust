@@ -106,7 +106,8 @@ impl From<alloc::ffi::NulError> for Error {
 }
 
 #[stable(feature = "io_error_from_try_reserve", since = "1.78.0")]
-impl From<alloc::collections::TryReserveError> for Error {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const From<alloc::collections::TryReserveError> for Error {
     /// Converts `TryReserveError` to an error with [`ErrorKind::OutOfMemory`].
     ///
     /// `TryReserveError` won't be available as the error `source()`,
@@ -217,7 +218,8 @@ struct Custom {
 /// tests more robust. In particular, if you want to verify that your code does
 /// produce an unrecognized error kind, the robust solution is to check for all
 /// the recognized error kinds and fail in those cases.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd)]
+#[derive_const(PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "io_errorkind")]
 #[allow(deprecated)]
@@ -516,7 +518,8 @@ impl fmt::Display for ErrorKind {
 /// Intended for use for errors not exposed to the user, where allocating onto
 /// the heap (for normal construction via Error::new) is too costly.
 #[stable(feature = "io_error_from_errorkind", since = "1.14.0")]
-impl From<ErrorKind> for Error {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const From<ErrorKind> for Error {
     /// Converts an [`ErrorKind`] into an [`Error`].
     ///
     /// This conversion creates a new error with a simple representation of error kind.

@@ -473,7 +473,8 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     #[rustc_diagnostic_item = "slice_into_vec"]
-    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
+    #[rustc_const_unstable(feature = "const_convert_methods", issue = "144288")]
+    pub const fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
         unsafe {
             let len = self.len();
             let (b, alloc) = Box::into_raw_with_allocator(self);
@@ -784,16 +785,18 @@ impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> Borrow<[T]> for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, A: Allocator> const Borrow<[T]> for Vec<T, A> {
     fn borrow(&self) -> &[T] {
-        &self[..]
+        &**self
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> BorrowMut<[T]> for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, A: Allocator> const BorrowMut<[T]> for Vec<T, A> {
     fn borrow_mut(&mut self) -> &mut [T] {
-        &mut self[..]
+        &mut **self
     }
 }
 

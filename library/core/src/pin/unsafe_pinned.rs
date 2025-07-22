@@ -148,7 +148,8 @@ impl<T: Default> Default for UnsafePinned<T> {
 }
 
 #[unstable(feature = "unsafe_pinned", issue = "125735")]
-impl<T> From<T> for UnsafePinned<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const From<T> for UnsafePinned<T> {
     /// Creates a new `UnsafePinned<T>` containing the given value.
     fn from(value: T) -> Self {
         UnsafePinned::new(value)

@@ -507,7 +507,8 @@ where
 }
 
 #[unstable(feature = "error_reporter", issue = "90172")]
-impl<E> From<E> for Report<E>
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<E> const From<E> for Report<E>
 where
     E: Error,
 {

@@ -189,7 +189,8 @@ impl<T: PointeeSized> fmt::Pointer for Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: PointeeSized> From<&mut T> for Unique<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: PointeeSized> const From<&mut T> for Unique<T> {
     /// Converts a `&mut T` to a `Unique<T>`.
     ///
     /// This conversion is infallible since references cannot be null.
@@ -200,7 +201,8 @@ impl<T: PointeeSized> From<&mut T> for Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: PointeeSized> From<NonNull<T>> for Unique<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: PointeeSized> const From<NonNull<T>> for Unique<T> {
     /// Converts a `NonNull<T>` to a `Unique<T>`.
     ///
     /// This conversion is infallible since `NonNull` cannot be null.
