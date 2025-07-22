@@ -70,7 +70,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{
     self, DelegationFnSig, Feed, MainDefinition, RegisteredTools, ResolverAstLowering,
-    ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
+    ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility
 };
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::BuiltinLintDiag;
@@ -302,7 +302,11 @@ enum ResolutionError<'ra> {
     /// generic parameters must not be used inside const evaluations.
     ///
     /// This error is only emitted when using `min_const_generics`.
-    ParamInNonTrivialAnonConst { name: Symbol, param_kind: ParamKindInNonTrivialAnonConst, place: Option<AnonConstKind> },
+    ParamInNonTrivialAnonConst {
+        name: Symbol,
+        param_kind: ParamKindInNonTrivialAnonConst,
+        place: Option<AnonConstKind>,
+    },
     /// generic parameters must not be used inside enum discriminants.
     ///
     /// This error is emitted even with `generic_const_exprs`.

@@ -1372,7 +1372,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                                     param_kind:
                                                         ParamKindInNonTrivialAnonConst::Type,
                                                     place: kind,
-
                                                 }
                                             }
                                         };

@@ -33,7 +33,8 @@ use tracing::debug;
 use super::NoConstantGenericsReason;
 use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::{
-    AliasPossibility, AnonConstKind, LateResolutionVisitor, LifetimeBinderKind, LifetimeRes, LifetimeRibKind, LifetimeUseSet, QSelf, RibKind
+    AliasPossibility, AnonConstKind, LateResolutionVisitor, LifetimeBinderKind, LifetimeRes,
+    LifetimeRibKind, LifetimeUseSet, QSelf, RibKind,
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{

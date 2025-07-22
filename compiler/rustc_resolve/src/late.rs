@@ -88,11 +88,10 @@ impl IntoDiagArg for AnonConstKind {
             AnonConstKind::FieldDefaultValue => "field default value",
             AnonConstKind::InlineConst => "inline const",
             AnonConstKind::ConstArg(is_repeat_expr) => match is_repeat_expr {
-                    IsRepeatExpr::No => "array repeat expression",
-                    IsRepeatExpr::Yes => "const generic args",
-                }
+                IsRepeatExpr::No => "array repeat expression",
+                IsRepeatExpr::Yes => "const generic args",
             },
-        ))
+        }))
     }
 }
 
@@ -3009,19 +3008,26 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         f: impl FnOnce(&mut Self),
     ) {
         let f = |this: &mut Self| {
-            this.with_rib(ValueNS, RibKind::ConstantItem(may_use_generics, item, anon_const_kind), |this| {
-                this.with_rib(
-                    TypeNS,
-                    RibKind::ConstantItem(
-                        may_use_generics.force_yes_if(is_repeat == IsRepeatExpr::Yes),
-                        item,
-                        anon_const_kind,
-                    ),
-                    |this| {
-                        this.with_label_rib(RibKind::ConstantItem(may_use_generics, item, anon_const_kind), f);
-                    },
-                )
-            })
+            this.with_rib(
+                ValueNS,
+                RibKind::ConstantItem(may_use_generics, item, anon_const_kind),
+                |this| {
+                    this.with_rib(
+                        TypeNS,
+                        RibKind::ConstantItem(
+                            may_use_generics.force_yes_if(is_repeat == IsRepeatExpr::Yes),
+                            item,
+                            anon_const_kind,
+                        ),
+                        |this| {
+                            this.with_label_rib(
+                                RibKind::ConstantItem(may_use_generics, item, anon_const_kind),
+                                f,
+                            );
+                        },
+                    )
+                },
+            )
         };
 
         if let ConstantHasGenerics::No(cause) = may_use_generics {
@@ -3535,9 +3541,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     fn resolve_const_body(&mut self, expr: &'ast Expr, item: Option<(Ident, ConstantItemKind)>) {
         self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
-            this.with_constant_rib(IsRepeatExpr::No, ConstantHasGenerics::Yes, None, item, |this| {
-                this.visit_expr(expr)
-            });
+            this.with_constant_rib(
+                IsRepeatExpr::No,
+                ConstantHasGenerics::Yes,
+                None,
+                item,
+                |this| this.visit_expr(expr),
+            );
         })
     }
 
@@ -4745,11 +4755,17 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
         };
 
-        self.with_constant_rib(is_repeat_expr, may_use_generics, Some(anon_const_kind), None, |this| {
-            this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
-                resolve_expr(this);
-            });
-        });
+        self.with_constant_rib(
+            is_repeat_expr,
+            may_use_generics,
+            Some(anon_const_kind),
+            None,
+            |this| {
+                this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                    resolve_expr(this);
+                });
+            },
+        );
     }
 
     fn resolve_expr_field(&mut self, f: &'ast ExprField, e: &'ast Expr) {

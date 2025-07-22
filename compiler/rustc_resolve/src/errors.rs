@@ -387,7 +387,7 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     pub(crate) param_kind: ParamKindInNonTrivialAnonConst,
     #[subdiagnostic]
     pub(crate) help: Option<ParamInNonTrivialAnonConstHelp>,
-    pub(crate) place: AnonConstKind
+    pub(crate) place: AnonConstKind,
 }
 
 #[derive(Subdiagnostic)]
