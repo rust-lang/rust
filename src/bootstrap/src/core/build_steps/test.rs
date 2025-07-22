@@ -1113,6 +1113,12 @@ impl Step for Tidy {
             8 * std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32
         });
         cmd.arg(jobs.to_string());
+        // pass the path to the npm command used for installing js deps.
+        if let Some(npm) = &builder.config.npm {
+            cmd.arg(npm);
+        } else {
+            cmd.arg("npm");
+        }
         if builder.is_verbose() {
             cmd.arg("--verbose");
         }

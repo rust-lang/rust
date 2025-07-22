@@ -50,6 +50,7 @@ pub fn check(
     ci_info: &CiInfo,
     librustdoc_path: &Path,
     tools_path: &Path,
+    npm: &Path,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
@@ -61,6 +62,7 @@ pub fn check(
         ci_info,
         librustdoc_path,
         tools_path,
+        npm,
         bless,
         extra_checks,
         pos_args,
@@ -75,6 +77,7 @@ fn check_impl(
     ci_info: &CiInfo,
     librustdoc_path: &Path,
     tools_path: &Path,
+    npm: &Path,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
@@ -293,7 +296,7 @@ fn check_impl(
     }
 
     if js_lint || js_typecheck {
-        rustdoc_js::npm_install(root_path, outdir)?;
+        rustdoc_js::npm_install(root_path, outdir, npm)?;
     }
 
     if js_lint {
