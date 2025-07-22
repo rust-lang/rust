@@ -1635,6 +1635,7 @@ impl Step for CodegenBackend {
         let target = self.target;
         let backend = self.backend;
 
+        // FIXME: migrate to RustcPrivateCompilers
         builder.ensure(Rustc::new(compiler, target));
 
         if builder.config.keep_stage.contains(&compiler.stage) {

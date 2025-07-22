@@ -17,7 +17,9 @@ use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::get_completion_paths;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
-use crate::core::build_steps::tool::{self, COMPILETEST_ALLOW_FEATURES, SourceType, Tool};
+use crate::core::build_steps::tool::{
+    self, COMPILETEST_ALLOW_FEATURES, RustcPrivateCompilers, SourceType, Tool,
+};
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, dist, llvm};
 use crate::core::builder::{
@@ -364,8 +366,7 @@ impl Step for Cargo {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RustAnalyzer {
-    stage: u32,
-    host: TargetSelection,
+    compilers: RustcPrivateCompilers,
 }
 
 impl Step for RustAnalyzer {
@@ -378,19 +379,18 @@ impl Step for RustAnalyzer {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Self { stage: run.builder.top_stage, host: run.target });
+        run.builder.ensure(Self {
+            compilers: RustcPrivateCompilers::new(
+                run.builder,
+                run.builder.top_stage,
+                run.builder.host_target,
+            ),
+        });
     }
 
     /// Runs `cargo test` for rust-analyzer
     fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
-        let host = self.host;
-        let compiler = builder.compiler(stage, host);
-        let compiler = tool::get_tool_rustc_build_compiler(builder, compiler);
-
-        // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
-        // but we do need the standard library to be present.
-        builder.ensure(compile::Rustc::new(compiler, host));
+        let host = self.compilers.target();
 
         let workspace_path = "src/tools/rust-analyzer";
         // until the whole RA test suite runs on `i686`, we only run
@@ -398,7 +398,7 @@ impl Step for RustAnalyzer {
         let crate_path = "src/tools/rust-analyzer/crates/proc-macro-srv";
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            compiler,
+            self.compilers.build_compiler(),
             Mode::ToolRustc,
             host,
             Kind::Test,
@@ -425,8 +425,7 @@ impl Step for RustAnalyzer {
 /// Runs `cargo test` for rustfmt.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustfmt {
-    stage: u32,
-    host: TargetSelection,
+    compilers: RustcPrivateCompilers,
 }
 
 impl Step for Rustfmt {
@@ -438,36 +437,39 @@ impl Step for Rustfmt {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Rustfmt { stage: run.builder.top_stage, host: run.target });
+        run.builder.ensure(Rustfmt {
+            compilers: RustcPrivateCompilers::new(
+                run.builder,
+                run.builder.top_stage,
+                run.builder.host_target,
+            ),
+        });
     }
 
     /// Runs `cargo test` for rustfmt.
     fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
-        let host = self.host;
-        let compiler = builder.compiler(stage, host);
-
-        let tool_result = builder.ensure(tool::Rustfmt { compiler, target: self.host });
-        let compiler = tool_result.build_compiler;
+        let tool_result = builder.ensure(tool::Rustfmt::from_compilers(self.compilers));
+        let build_compiler = tool_result.build_compiler;
+        let target = self.compilers.target();
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            compiler,
+            build_compiler,
             Mode::ToolRustc,
-            host,
+            target,
             Kind::Test,
             "src/tools/rustfmt",
             SourceType::InTree,
             &[],
         );
 
-        let dir = testdir(builder, compiler.host);
+        let dir = testdir(builder, target);
         t!(fs::create_dir_all(&dir));
         cargo.env("RUSTFMT_TEST_DIR", dir);
 
         cargo.add_rustc_lib_path(builder);
 
-        run_cargo_test(cargo, &[], &[], "rustfmt", host, builder);
+        run_cargo_test(cargo, &[], &[], "rustfmt", target, builder);
     }
 }
 
@@ -542,12 +544,14 @@ impl Step for Miri {
         }
 
         // This compiler runs on the host, we'll just use it for the target.
-        let target_compiler = builder.compiler(stage, host);
+        let compilers = RustcPrivateCompilers::new(builder, stage, host);
 
         // Build our tools.
-        let miri = builder.ensure(tool::Miri { compiler: target_compiler, target: host });
+        let miri = builder.ensure(tool::Miri::from_compilers(compilers));
         // the ui tests also assume cargo-miri has been built
-        builder.ensure(tool::CargoMiri { compiler: target_compiler, target: host });
+        builder.ensure(tool::CargoMiri::from_compilers(compilers));
+
+        let target_compiler = compilers.link_compiler();
 
         // We also need sysroots, for Miri and for the host (the latter for build scripts).
         // This is for the tests so everything is done with the target compiler.
@@ -756,7 +760,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
-    host: TargetSelection,
+    compilers: RustcPrivateCompilers,
 }
 
 impl Step for Clippy {
@@ -769,23 +773,30 @@ impl Step for Clippy {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Clippy { host: run.target });
+        run.builder.ensure(Clippy {
+            compilers: RustcPrivateCompilers::new(
+                run.builder,
+                run.builder.top_stage,
+                run.builder.host_target,
+            ),
+        });
     }
 
     /// Runs `cargo test` for clippy.
     fn run(self, builder: &Builder<'_>) {
-        let stage = builder.top_stage;
-        let host = self.host;
+        let host = self.compilers.target();
+
         // We need to carefully distinguish the compiler that builds clippy, and the compiler
         // that is linked into the clippy being tested. `target_compiler` is the latter,
         // and it must also be used by clippy's test runner to build tests and their dependencies.
-        let target_compiler = builder.compiler(stage, host);
+        let compilers = self.compilers;
+        let target_compiler = compilers.link_compiler();
 
-        let tool_result = builder.ensure(tool::Clippy { compiler: target_compiler, target: host });
-        let tool_compiler = tool_result.build_compiler;
+        let tool_result = builder.ensure(tool::Clippy::from_compilers(compilers));
+        let build_compiler = tool_result.build_compiler;
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            tool_compiler,
+            build_compiler,
             Mode::ToolRustc,
             host,
             Kind::Test,
@@ -794,9 +805,10 @@ impl Step for Clippy {
             &[],
         );
 
-        cargo.env("RUSTC_TEST_SUITE", builder.rustc(tool_compiler));
-        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(tool_compiler));
-        let host_libs = builder.stage_out(tool_compiler, Mode::ToolRustc).join(builder.cargo_dir());
+        cargo.env("RUSTC_TEST_SUITE", builder.rustc(build_compiler));
+        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(build_compiler));
+        let host_libs =
+            builder.stage_out(build_compiler, Mode::ToolRustc).join(builder.cargo_dir());
         cargo.env("HOST_LIBS", host_libs);
 
         // Build the standard library that the tests can use.
@@ -826,7 +838,7 @@ impl Step for Clippy {
         let cargo = prepare_cargo_test(cargo, &[], &[], host, builder);
 
         let _guard =
-            builder.msg_sysroot_tool(Kind::Test, tool_compiler.stage, "clippy", host, host);
+            builder.msg_sysroot_tool(Kind::Test, build_compiler.stage, "clippy", host, host);
 
         // Clippy reports errors if it blessed the outputs
         if cargo.allow_failure().run(builder) {

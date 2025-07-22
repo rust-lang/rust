@@ -1160,17 +1160,18 @@ impl Build {
     fn msg_sysroot_tool(
         &self,
         action: impl Into<Kind>,
-        stage: u32,
+        build_stage: u32,
         what: impl Display,
         host: TargetSelection,
         target: TargetSelection,
     ) -> Option<gha::Group> {
         let action = action.into().description();
         let msg = |fmt| format!("{action} {what} {fmt}");
+
         let msg = if host == target {
-            msg(format_args!("(stage{stage} -> stage{}, {target})", stage + 1))
+            msg(format_args!("(stage{build_stage} -> stage{}, {target})", build_stage + 1))
         } else {
-            msg(format_args!("(stage{stage}:{host} -> stage{}:{target})", stage + 1))
+            msg(format_args!("(stage{build_stage}:{host} -> stage{}:{target})", build_stage + 1))
         };
         self.group(&msg)
     }

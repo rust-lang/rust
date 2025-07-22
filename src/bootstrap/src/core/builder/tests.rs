@@ -569,36 +569,6 @@ fn test_is_builder_target() {
     }
 }
 
-#[test]
-fn test_get_tool_rustc_compiler() {
-    let mut config = configure("build", &[], &[]);
-    config.download_rustc_commit = None;
-    let build = Build::new(config);
-    let builder = Builder::new(&build);
-
-    let target_triple_1 = TargetSelection::from_user(TEST_TRIPLE_1);
-
-    let compiler = Compiler::new(2, target_triple_1);
-    let expected = Compiler::new(1, target_triple_1);
-    let actual = tool::get_tool_rustc_build_compiler(&builder, compiler);
-    assert_eq!(expected, actual);
-
-    let compiler = Compiler::new(1, target_triple_1);
-    let expected = Compiler::new(0, target_triple_1);
-    let actual = tool::get_tool_rustc_build_compiler(&builder, compiler);
-    assert_eq!(expected, actual);
-
-    let mut config = configure("build", &[], &[]);
-    config.download_rustc_commit = Some("".to_owned());
-    let build = Build::new(config);
-    let builder = Builder::new(&build);
-
-    let compiler = Compiler::new(1, target_triple_1);
-    let expected = Compiler::new(1, target_triple_1);
-    let actual = tool::get_tool_rustc_build_compiler(&builder, compiler);
-    assert_eq!(expected, actual);
-}
-
 /// When bootstrap detects a step dependency cycle (which is a bug), its panic
 /// message should show the actual steps on the stack, not just several copies
 /// of `Any { .. }`.
@@ -1097,19 +1067,19 @@ mod snapshot {
         [dist] docs <host>
         [doc] std 2 <host> crates=[]
         [dist] mingw <host>
-        [build] rustc 0 <host> -> rust-analyzer-proc-macro-srv 1 <host>
+        [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
         [dist] rustc 1 <host> -> std 1 <host>
         [dist] src <>
         [build] rustc 0 <host> -> cargo 1 <host>
-        [build] rustc 0 <host> -> rust-analyzer 1 <host>
-        [build] rustc 0 <host> -> rustfmt 1 <host>
-        [build] rustc 0 <host> -> cargo-fmt 1 <host>
-        [build] rustc 0 <host> -> clippy-driver 1 <host>
-        [build] rustc 0 <host> -> cargo-clippy 1 <host>
-        [build] rustc 0 <host> -> miri 1 <host>
-        [build] rustc 0 <host> -> cargo-miri 1 <host>
+        [build] rustc 1 <host> -> rust-analyzer 2 <host>
+        [build] rustc 1 <host> -> rustfmt 2 <host>
+        [build] rustc 1 <host> -> cargo-fmt 2 <host>
+        [build] rustc 1 <host> -> clippy-driver 2 <host>
+        [build] rustc 1 <host> -> cargo-clippy 2 <host>
+        [build] rustc 1 <host> -> miri 2 <host>
+        [build] rustc 1 <host> -> cargo-miri 2 <host>
         ");
     }
 
@@ -1290,19 +1260,19 @@ mod snapshot {
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustc 1 <host> -> WasmComponentLd 2 <target1>
         [build] rustdoc 1 <target1>
-        [build] rustc 0 <host> -> rust-analyzer-proc-macro-srv 1 <target1>
+        [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <target1>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <target1>
         [dist] rustc 1 <host> -> std 1 <target1>
         [dist] src <>
         [build] rustc 0 <host> -> cargo 1 <target1>
-        [build] rustc 0 <host> -> rust-analyzer 1 <target1>
-        [build] rustc 0 <host> -> rustfmt 1 <target1>
-        [build] rustc 0 <host> -> cargo-fmt 1 <target1>
-        [build] rustc 0 <host> -> clippy-driver 1 <target1>
-        [build] rustc 0 <host> -> cargo-clippy 1 <target1>
-        [build] rustc 0 <host> -> miri 1 <target1>
-        [build] rustc 0 <host> -> cargo-miri 1 <target1>
+        [build] rustc 1 <host> -> rust-analyzer 2 <target1>
+        [build] rustc 1 <host> -> rustfmt 2 <target1>
+        [build] rustc 1 <host> -> cargo-fmt 2 <target1>
+        [build] rustc 1 <host> -> clippy-driver 2 <target1>
+        [build] rustc 1 <host> -> cargo-clippy 2 <target1>
+        [build] rustc 1 <host> -> miri 2 <target1>
+        [build] rustc 1 <host> -> cargo-miri 2 <target1>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
         ");
     }
