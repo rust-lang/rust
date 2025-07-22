@@ -279,13 +279,6 @@ mod defaults {
             first(cache.all::<tool::ErrorIndex>()),
             &[tool::ErrorIndex { compiler: Compiler::new(1, a) }]
         );
-        // docs should be built with the stage0 compiler, not with the stage0 artifacts.
-        // recall that rustdoc is off-by-one: `stage` is the compiler rustdoc is _linked_ to,
-        // not the one it was built by.
-        assert_eq!(
-            first(cache.all::<tool::Rustdoc>()),
-            &[tool::Rustdoc { target_compiler: Compiler::new(1, a) },]
-        );
     }
 }
 
@@ -336,12 +329,6 @@ mod dist {
         assert_eq!(
             first(builder.cache.all::<tool::ErrorIndex>()),
             &[tool::ErrorIndex { compiler: Compiler::new(1, a) }]
-        );
-        // This is actually stage 1, but Rustdoc::run swaps out the compiler with
-        // stage minus 1 if --stage is not 0. Very confusing!
-        assert_eq!(
-            first(builder.cache.all::<tool::Rustdoc>()),
-            &[tool::Rustdoc { target_compiler: Compiler::new(2, a) },]
         );
     }
 }
@@ -627,7 +614,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [build] rustdoc 0 <host>
+        [build] rustdoc 1 <host>
         ");
     }
 
@@ -650,10 +637,10 @@ mod snapshot {
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 2 <host> -> std 2 <target1>
-        [build] rustdoc 1 <host>
+        [build] rustdoc 2 <host>
         [build] llvm <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
-        [build] rustdoc 1 <target1>
+        [build] rustdoc 2 <target1>
         ");
     }
 
@@ -750,7 +737,7 @@ mod snapshot {
         [build] rustc 1 <host> -> LldWrapper 2 <host>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
-        [build] rustdoc 1 <host>
+        [build] rustdoc 2 <host>
         "
         );
     }
@@ -779,7 +766,7 @@ mod snapshot {
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustc 1 <host> -> LldWrapper 2 <target1>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
-        [build] rustdoc 1 <target1>
+        [build] rustdoc 2 <target1>
         "
         );
     }
@@ -968,7 +955,7 @@ mod snapshot {
             .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustdoc 0 <host>
+        [build] rustdoc 1 <host>
         [doc] std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,std_detect,sysroot,test,unwind]
         ");
     }
@@ -1017,7 +1004,7 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustdoc 1 <host>
+        [build] rustdoc 2 <host>
         [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,std_detect,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
@@ -1059,7 +1046,7 @@ mod snapshot {
         [build] rustc 1 <host> -> LldWrapper 2 <host>
         [build] rustc 1 <host> -> WasmComponentLd 2 <host>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
-        [build] rustdoc 1 <host>
+        [build] rustdoc 2 <host>
         [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,std_detect,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
@@ -1098,7 +1085,7 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustdoc 1 <host>
+        [build] rustdoc 2 <host>
         [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,std_detect,sysroot,test,unwind]
         [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,std_detect,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
@@ -1135,7 +1122,7 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustdoc 1 <host>
+        [build] rustdoc 2 <host>
         [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,std_detect,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
@@ -1149,7 +1136,7 @@ mod snapshot {
         [dist] rustc <host>
         [build] llvm <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
-        [build] rustdoc 1 <target1>
+        [build] rustdoc 2 <target1>
         [dist] rustc <target1>
         [dist] rustc 1 <host> -> std 1 <host>
         [dist] src <>
@@ -1172,7 +1159,7 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustdoc 1 <host>
+        [build] rustdoc 2 <host>
         [doc] std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,std_detect,sysroot,test,unwind]
         [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,std_detect,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
@@ -1190,7 +1177,7 @@ mod snapshot {
         [dist] rustc <host>
         [build] llvm <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
-        [build] rustdoc 1 <target1>
+        [build] rustdoc 2 <target1>
         [dist] rustc <target1>
         [dist] rustc 1 <host> -> std 1 <host>
         [dist] rustc 1 <host> -> std 1 <target1>
@@ -1214,7 +1201,7 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustdoc 1 <host>
+        [build] rustdoc 2 <host>
         [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,std_detect,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
@@ -1246,7 +1233,7 @@ mod snapshot {
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> WasmComponentLd 2 <host>
-        [build] rustdoc 1 <host>
+        [build] rustdoc 2 <host>
         [doc] std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,std_detect,sysroot,test,unwind]
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 1 <host> -> std 1 <target1>
@@ -1259,7 +1246,7 @@ mod snapshot {
         [build] llvm <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustc 1 <host> -> WasmComponentLd 2 <target1>
-        [build] rustdoc 1 <target1>
+        [build] rustdoc 2 <target1>
         [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <target1>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <target1>
@@ -1595,7 +1582,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustdoc 0 <host>
+        [build] rustdoc 1 <host>
         [doc] std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,std,std_detect,sysroot,test,unwind]
         ");
     }
@@ -1609,7 +1596,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustdoc 0 <host>
+        [build] rustdoc 1 <host>
         [doc] std 1 <host> crates=[core]
         ");
     }
@@ -1624,7 +1611,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustdoc 0 <host>
+        [build] rustdoc 1 <host>
         [doc] std 1 <host> crates=[core]
         ");
     }
@@ -1654,7 +1641,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustdoc 0 <host>
+        [build] rustdoc 1 <host>
         [doc] std 1 <host> crates=[alloc,core]
         ");
     }
@@ -1670,7 +1657,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustdoc 0 <host>
+        [build] rustdoc 1 <host>
         [doc] std 1 <target1> crates=[alloc,core]
         ");
     }
@@ -1700,7 +1687,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [build] rustdoc 0 <host>
+        [build] rustdoc 1 <host>
         [doc] rustc 1 <host>
         ");
     }
@@ -1718,7 +1705,7 @@ mod snapshot {
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
-        [build] rustdoc 1 <host>
+        [build] rustdoc 2 <host>
         [doc] rustc 2 <host>
         ");
     }
@@ -1747,7 +1734,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [build] rustdoc 0 <host>
+        [build] rustdoc 1 <host>
         [doc] Compiletest <host>
         ");
     }
@@ -1765,7 +1752,7 @@ mod snapshot {
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
-        [build] rustdoc 1 <host>
+        [build] rustdoc 2 <host>
         [doc] Compiletest <host>
         ");
     }
