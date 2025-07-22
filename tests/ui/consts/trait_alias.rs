@@ -3,6 +3,7 @@
 //@[next_pass] compile-flags: -Znext-solver
 //@[next_fail] compile-flags: -Znext-solver
 //@[next_pass] check-pass
+//@[pass] check-pass
 
 const trait Bar {
     fn bar(&self) {}
@@ -26,6 +27,5 @@ const fn foo<T: [const] Foo>(x: &T) {
 }
 
 const _: () = foo(&());
-//[fail,pass]~^ ERROR: `(): const Foo` is not satisfied
 
 fn main() {}
