@@ -1704,11 +1704,11 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
     /// Ensure that a given step is built *only if it's supposed to be built by default*, returning
     /// its output. This will cache the step, so it's safe (and good!) to call this as often as
     /// needed to ensure that all dependencies are build.
-    pub(crate) fn ensure_if_default<T, S: Step<Output = Option<T>>>(
+    pub(crate) fn ensure_if_default<T, S: Step<Output = T>>(
         &'a self,
         step: S,
         kind: Kind,
-    ) -> S::Output {
+    ) -> Option<S::Output> {
         let desc = StepDescription::from::<S>(kind);
         let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
 
@@ -1720,7 +1720,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
         }
 
         // Only execute if it's supposed to run as default
-        if desc.default && should_run.is_really_default() { self.ensure(step) } else { None }
+        if desc.default && should_run.is_really_default() { Some(self.ensure(step)) } else { None }
     }
 
     /// Checks if any of the "should_run" paths is in the `Builder` paths.
