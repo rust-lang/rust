@@ -139,6 +139,30 @@ mod uninit;
 /// // Note: With the manual implementations the above line will compile.
 /// ```
 ///
+/// ## `Clone` and `PartialEq`/`Eq`
+/// `Clone` is intended for the duplication of objects. Consequently, when implementing
+/// both `Clone` and [`PartialEq`], the following property is expected to hold:
+/// ```text
+/// x == x -> x.clone() == x
+/// ```
+/// In other words, if an object compares equal to itself,
+/// its clone must also compare equal to the original.
+///
+/// For types that also implement [`Eq`] – for which `x == x` always holds –
+/// this implies that `x.clone() == x` must always be true.
+/// Standard library collections such as
+/// [`HashMap`], [`HashSet`], [`BTreeMap`], [`BTreeSet`] and [`BinaryHeap`]
+/// rely on their keys respecting this property for correct behavior.
+///
+/// This property is automatically satisfied when deriving both `Clone` and [`PartialEq`]
+/// using `#[derive(Clone, PartialEq)]` or when additionally deriving [`Eq`] 
+/// using `#[derive(Clone, PartialEq, Eq)]`.
+///
+/// Violating this property is a logic error. The behavior resulting from a logic error is not
+/// specified, but users of the trait must ensure that such logic errors do *not* result in
+/// undefined behavior. This means that `unsafe` code **must not** rely on the correctness of these
+/// methods.
+///
 /// ## Additional implementors
 ///
 /// In addition to the [implementors listed below][impls],
