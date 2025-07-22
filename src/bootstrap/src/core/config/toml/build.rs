@@ -247,7 +247,7 @@ impl Config {
             .or_else(|| {
                 host.map(|h| h.into_iter().map(|s| TargetSelection::from_user(&s)).collect())
             })
-            .unwrap_or_else(|| vec![self.host_target.clone()]);
+            .unwrap_or_else(|| vec![self.host_target]);
 
         self.targets = flags_target
             .map(|TargetSelectionList(list)| list)

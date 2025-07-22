@@ -619,7 +619,6 @@ impl Config {
             self.rust_randomize_layout = randomize_layout.unwrap_or_default();
             self.llvm_tools_enabled = llvm_tools.unwrap_or(true);
 
-            self.llvm_enzyme = self.channel == "dev" || self.channel == "nightly";
             self.rustc_default_linker = default_linker;
             self.musl_root = musl_root.map(PathBuf::from);
             self.save_toolstates = save_toolstates.map(PathBuf::from);

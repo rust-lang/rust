@@ -718,7 +718,7 @@ impl Config {
         config.in_tree_llvm_info = config.git_info(false, &config.src.join("src/llvm-project"));
         config.in_tree_gcc_info = config.git_info(false, &config.src.join("src/gcc"));
 
-        toml.rust.as_ref().map(|rust| {
+        if let Some(rust) = toml.rust.as_ref() {
             // FIXME(#133381): alt rustc builds currently do *not* have rustc debug assertions
             // enabled. We should not download a CI alt rustc if we need rustc to have debug
             // assertions (e.g. for crashes test suite). This can be changed once something like
@@ -749,7 +749,7 @@ impl Config {
                 debug_assertions_requested,
                 config.llvm_assertions,
             );
-        });
+        };
 
         if !is_user_configured_rust_channel && config.rust_info.is_from_tarball() {
             config.channel = ci_channel.into();
@@ -795,9 +795,14 @@ impl Config {
                 .collect::<Vec<PathBuf>>(),
         );
 
+        // Though we are applying it here, but the enzyme from llvm should get preference.
+        config.llvm_enzyme =
+            config.llvm_enzyme || config.channel == "dev" || config.channel == "nightly";
+
         config.apply_install_config(toml.install);
         config.apply_gcc_config(toml.gcc);
         config.apply_dist_config(toml.dist);
+        config.apply_llvm_config(toml.llvm);
 
         config.apply_build_config(
             toml.build,
@@ -809,7 +814,6 @@ impl Config {
         );
         config.apply_target_config(toml.target);
         config.apply_rust_config(toml.rust, flags_warnings);
-        config.apply_llvm_config(toml.llvm);
 
         if config.llvm_from_ci {
             let triple = &config.host_target.triple;
