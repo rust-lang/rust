@@ -4226,6 +4226,7 @@ impl fmt::Display for Safety {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable, Decodable, HashStable_Generic)]
 #[derive(Default)]
 pub enum Constness {
+    Comptime,
     Const,
     #[default]
     NotConst,
@@ -4234,6 +4235,7 @@ pub enum Constness {
 impl fmt::Display for Constness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match *self {
+            Self::Comptime => "comptime",
             Self::Const => "const",
             Self::NotConst => "non-const",
         })

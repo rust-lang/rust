@@ -435,6 +435,7 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
                 .map(|field| ty::TraitRef::new(tcx, destruct_def_id, [field.ty(tcx, args)]))
                 .collect();
             match adt_def.destructor(tcx).map(|dtor| tcx.constness(dtor.did)) {
+                Some(hir::Constness::Comptime) => todo!("FIXME(comptime)"),
                 // `Drop` impl exists, but it's not const. Type cannot be `[const] Destruct`.
                 Some(hir::Constness::NotConst) => return Err(EvaluationFailure::NoSolution),
                 // `Drop` impl exists, and it's const. Require `Ty: [const] Drop` to hold.
@@ -530,6 +531,8 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
     };
 
     match tcx.constness(def) {
+        // FIXME(comptime)
+        hir::Constness::Comptime => Err(EvaluationFailure::NoSolution),
         hir::Constness::Const => Ok(tcx
             .const_conditions(def)
             .instantiate(tcx, args)

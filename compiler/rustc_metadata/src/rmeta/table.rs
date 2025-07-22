@@ -200,6 +200,7 @@ fixed_size_enum! {
     hir::Constness {
         ( NotConst )
         ( Const    )
+        ( Comptime )
     }
 }
 
