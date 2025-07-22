@@ -32,14 +32,12 @@ where
     if T::IS_ZST {
         // Sorting has no meaningful behavior on zero-sized types. Do nothing.
     } else if index == len - 1 {
-        // Find max element and place it in the last position of the array. We're free to use
-        // `unwrap()` here because we checked that `v` is not empty.
-        let max_idx = max_index(v, &mut is_less).unwrap();
+        // Find max element and place it in the last position of the array.
+        let max_idx = max_index(v, is_less);
         v.swap(max_idx, index);
     } else if index == 0 {
-        // Find min element and place it in the first position of the array. We're free to use
-        // `unwrap()` here because we checked that `v` is not empty.
-        let min_idx = min_index(v, &mut is_less).unwrap();
+        // Find min element and place it in the first position of the array.
+        let min_idx = min_index(v, is_less);
         v.swap(min_idx, index);
     } else {
         cfg_select! {
@@ -146,22 +144,20 @@ fn partition_at_index_loop<'a, T, F>(
 
 /// Helper function that returns the index of the minimum element in the slice using the given
 /// comparator function
-fn min_index<T, F: FnMut(&T, &T) -> bool>(slice: &[T], is_less: &mut F) -> Option<usize> {
+fn min_index<T, F: FnMut(&T, &T) -> bool>(slice: &[T], mut is_less: F) -> usize {
     slice
         .iter()
         .enumerate()
         .reduce(|acc, t| if is_less(t.1, acc.1) { t } else { acc })
-        .map(|(i, _)| i)
+        // returning `Option<usize>` makes LLVM forget it's an index from enumerate()
+        .unwrap()
+        .0
 }
 
 /// Helper function that returns the index of the maximum element in the slice using the given
 /// comparator function
-fn max_index<T, F: FnMut(&T, &T) -> bool>(slice: &[T], is_less: &mut F) -> Option<usize> {
-    slice
-        .iter()
-        .enumerate()
-        .reduce(|acc, t| if is_less(acc.1, t.1) { t } else { acc })
-        .map(|(i, _)| i)
+fn max_index<T, F: FnMut(&T, &T) -> bool>(slice: &[T], mut is_less: F) -> usize {
+    min_index(slice, |a, b| is_less(b, a))
 }
 
 /// Selection algorithm to select the k-th element from the slice in guaranteed O(n) time.
@@ -188,13 +184,13 @@ fn median_of_medians<T, F: FnMut(&T, &T) -> bool>(mut v: &mut [T], is_less: &mut
         if k == v.len() - 1 {
             // Find max element and place it in the last position of the array. We're free to use
             // `unwrap()` here because we know v must not be empty.
-            let max_idx = max_index(v, is_less).unwrap();
+            let max_idx = max_index(v, is_less);
             v.swap(max_idx, k);
             return;
         } else if k == 0 {
             // Find min element and place it in the first position of the array. We're free to use
             // `unwrap()` here because we know v must not be empty.
-            let min_idx = min_index(v, is_less).unwrap();
+            let min_idx = min_index(v, is_less);
             v.swap(min_idx, k);
             return;
         }
