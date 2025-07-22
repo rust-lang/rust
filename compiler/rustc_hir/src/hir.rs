@@ -4238,11 +4238,13 @@ pub enum Constness {
     #[default]
     Const,
     NotConst,
+    Comptime,
 }
 
 impl fmt::Display for Constness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match *self {
+            Self::Comptime => "comptime",
             Self::Const => "const",
             Self::NotConst => "non-const",
         })
