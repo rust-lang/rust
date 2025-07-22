@@ -915,3 +915,21 @@ pub const fn downcast_trait<
         None => None,
     }
 }
+#[allow(missing_docs)]
+#[must_use]
+#[unstable(feature = "downcast_trait", issue = "69420")]
+pub const fn downcast_trait_mut<
+    T: Any + 'static,
+    U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
+>(
+    t: &mut T,
+) -> Option<&mut U> {
+    let vtable: Option<ptr::DynMetadata<U>> = const { intrinsics::vtable_for::<T, U>() };
+    match vtable {
+        Some(dyn_metadata) => {
+            let pointer = ptr::from_raw_parts_mut(t, dyn_metadata);
+            Some(unsafe { &mut *pointer })
+        }
+        None => None,
+    }
+}
