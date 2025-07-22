@@ -3410,6 +3410,20 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn do_not_recommend_impl(self, def_id: DefId) -> bool {
         self.get_diagnostic_attr(def_id, sym::do_not_recommend).is_some()
     }
+
+    /// Whether this def is one of the special bin crate entrypoint functions that must have a
+    /// monomorphization and also not be internalized in the bin crate.
+    pub fn is_entrypoint(self, def_id: DefId) -> bool {
+        if self.is_lang_item(def_id, LangItem::Start) {
+            return true;
+        }
+        if let Some((entry_def_id, _)) = self.entry_fn(())
+            && entry_def_id == def_id
+        {
+            return true;
+        }
+        false
+    }
 }
 
 /// Parameter attributes that can only be determined by examining the body of a function instead
