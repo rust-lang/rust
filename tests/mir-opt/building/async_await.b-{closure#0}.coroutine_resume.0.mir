@@ -1,4 +1,4 @@
-// MIR for `b::{closure#0}` 0 coroutine_resume
+// MIR for `b` 0 coroutine_resume
 /* coroutine_layout = CoroutineLayout {
     field_tys: {
         _0: CoroutineSavedTy {
@@ -57,7 +57,7 @@
     },
 } */
 
-fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) -> Poll<()> {
+fn b(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) -> Poll<()> {
     debug _task_context => _38;
     let mut _0: std::task::Poll<()>;
     let _3: ();
