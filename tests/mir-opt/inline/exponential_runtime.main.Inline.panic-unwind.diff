@@ -56,7 +56,7 @@
 +         StorageLive(_17);
 +         StorageLive(_18);
 +         StorageLive(_19);
-+         _17 = <() as A>::call() -> [return: bb12, unwind continue];
++         _17 = <() as A>::call() -> [return: bb12, unwind unreachable];
       }
   
       bb1: {
@@ -124,11 +124,11 @@
 +     }
 + 
 +     bb12: {
-+         _18 = <() as A>::call() -> [return: bb13, unwind continue];
++         _18 = <() as A>::call() -> [return: bb13, unwind unreachable];
 +     }
 + 
 +     bb13: {
-+         _19 = <() as A>::call() -> [return: bb11, unwind continue];
++         _19 = <() as A>::call() -> [return: bb11, unwind unreachable];
       }
   }
   

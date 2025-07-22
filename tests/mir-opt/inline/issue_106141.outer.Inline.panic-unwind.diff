@@ -20,7 +20,7 @@
 +         StorageLive(_1);
 +         StorageLive(_2);
 +         _1 = const inner::promoted[0];
-+         _0 = index() -> [return: bb1, unwind continue];
++         _0 = index() -> [return: bb1, unwind unreachable];
       }
   
       bb1: {

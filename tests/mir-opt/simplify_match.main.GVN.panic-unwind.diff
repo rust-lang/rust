@@ -23,7 +23,7 @@
       }
   
       bb1: {
-          _0 = noop() -> [return: bb2, unwind continue];
+          _0 = noop() -> [return: bb2, unwind unreachable];
       }
   
       bb2: {

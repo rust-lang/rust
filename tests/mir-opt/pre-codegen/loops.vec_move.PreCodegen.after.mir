@@ -19,7 +19,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
 
     bb0: {
         StorageLive(_2);
-        _2 = <Vec<impl Sized> as IntoIterator>::into_iter(move _1) -> [return: bb1, unwind continue];
+        _2 = <Vec<impl Sized> as IntoIterator>::into_iter(move _1) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
@@ -31,12 +31,12 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     bb2: {
         StorageLive(_5);
         _4 = &mut _3;
-        _5 = <std::vec::IntoIter<impl Sized> as Iterator>::next(move _4) -> [return: bb3, unwind: bb9];
+        _5 = <std::vec::IntoIter<impl Sized> as Iterator>::next(move _4) -> [return: bb3, unwind unreachable];
     }
 
     bb3: {
         _6 = discriminant(_5);
-        switchInt(move _6) -> [0: bb4, 1: bb6, otherwise: bb8];
+        switchInt(move _6) -> [0: bb4, 1: bb6, otherwise: bb10];
     }
 
     bb4: {
@@ -52,7 +52,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
 
     bb6: {
         _7 = move ((_5 as Some).0: impl Sized);
-        _8 = opaque::<impl Sized>(move _7) -> [return: bb7, unwind: bb9];
+        _8 = opaque::<impl Sized>(move _7) -> [return: bb7, unwind: bb8];
     }
 
     bb7: {
@@ -60,15 +60,15 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         goto -> bb2;
     }
 
-    bb8: {
-        unreachable;
+    bb8 (cleanup): {
+        drop(_3) -> [return: bb9, unwind terminate(cleanup)];
     }
 
     bb9 (cleanup): {
-        drop(_3) -> [return: bb10, unwind terminate(cleanup)];
+        resume;
     }
 
-    bb10 (cleanup): {
-        resume;
+    bb10: {
+        unreachable;
     }
 }
