@@ -886,6 +886,14 @@ impl Step for Cargo {
             artifact_kind: ToolArtifactKind::Binary,
         })
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        // FIXME: fix staging logic
+        Some(
+            StepMetadata::build("cargo", self.target)
+                .built_by(self.compiler.with_stage(self.compiler.stage - 1)),
+        )
+    }
 }
 
 /// Represents a built LldWrapper, the `lld-wrapper` tool itself, and a directory
@@ -1104,6 +1112,14 @@ impl Step for RustAnalyzer {
             cargo_args: Vec::new(),
             artifact_kind: ToolArtifactKind::Binary,
         })
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        // FIXME: fix staging logic
+        Some(
+            StepMetadata::build("rust-analyzer", self.target)
+                .built_by(self.compiler.with_stage(self.compiler.stage - 1)),
+        )
     }
 }
 
