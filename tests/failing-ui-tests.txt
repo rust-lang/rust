@@ -81,3 +81,6 @@ tests/ui/coroutine/panic-drops.rs
 tests/ui/coroutine/panic-safe.rs
 tests/ui/process/nofile-limit.rs
 tests/ui/simd/intrinsic/generic-arithmetic-pass.rs
+tests/ui/linking/no-gc-encapsulation-symbols.rs
+tests/ui/panics/unwind-force-no-unwind-tables.rs
+tests/ui/attributes/fn-align-dyn.rs
