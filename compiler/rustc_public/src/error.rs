@@ -1,5 +1,5 @@
 //! When things go wrong, we need some error handling.
-//! There are a few different types of errors in StableMIR:
+//! There are a few different types of errors in rustc_public:
 //!
 //! - [CompilerError]: This represents errors that can be raised when invoking the compiler.
 //! - [Error]: Generic error that represents the reason why a request that could not be fulfilled.
@@ -7,7 +7,7 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::{fmt, io};
 
-use rustc_public_bridge::bridge::SmirError;
+use rustc_public_bridge::bridge;
 
 macro_rules! error {
      ($fmt: literal $(,)?) => { Error(format!($fmt)) };
@@ -32,7 +32,7 @@ pub enum CompilerError<T> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Error(pub(crate) String);
 
-impl SmirError for Error {
+impl bridge::Error for Error {
     fn new(msg: String) -> Self {
         Self(msg)
     }

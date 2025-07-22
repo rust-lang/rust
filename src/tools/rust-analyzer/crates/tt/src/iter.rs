@@ -217,6 +217,17 @@ pub enum TtElement<'a, S> {
     Subtree(&'a Subtree<S>, TtIter<'a, S>),
 }
 
+impl<S: Copy + fmt::Debug> fmt::Debug for TtElement<'_, S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Leaf(leaf) => f.debug_tuple("Leaf").field(leaf).finish(),
+            Self::Subtree(subtree, inner) => {
+                f.debug_tuple("Subtree").field(subtree).field(inner).finish()
+            }
+        }
+    }
+}
+
 impl<S: Copy> TtElement<'_, S> {
     #[inline]
     pub fn first_span(&self) -> S {
