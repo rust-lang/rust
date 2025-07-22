@@ -366,6 +366,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let new_type = type_kind_to_gcc_type(new_kind);
         let new_type = self.context.new_c_type(new_type);
         let lhs = self.context.new_cast(self.location, lhs, new_type);
+        let rhs = self.context.new_cast(self.location, rhs, new_type);
         let overflow = self.overflow_call(intrinsic, &[lhs, rhs, res], None);
         (res.dereference(self.location).to_rvalue(), overflow)
     }
