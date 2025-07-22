@@ -88,8 +88,8 @@ impl IntoDiagArg for AnonConstKind {
             AnonConstKind::FieldDefaultValue => "field default value",
             AnonConstKind::InlineConst => "inline const",
             AnonConstKind::ConstArg(is_repeat_expr) => match is_repeat_expr {
-                IsRepeatExpr::No => "array repeat expression",
-                IsRepeatExpr::Yes => "const generic args",
+                IsRepeatExpr::No => "const generic args",
+                IsRepeatExpr::Yes => "array repeat expression",
             },
         }))
     }
