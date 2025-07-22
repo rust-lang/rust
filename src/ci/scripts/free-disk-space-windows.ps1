@@ -21,9 +21,10 @@ foreach ($dir in $dirs) {
 }
 
 foreach ($job in Get-Job) {
-    Wait-Job $job
-    # Print if any, any.
-    Write-Output "::warning file=$PSCommandPath::$($job.Error)"
+    Wait-Job $job > $null
+    if ($job.Error) {
+        Write-Output "::warning file=$PSCommandPath::$($job.Error)"
+    }
     Remove-Job $job
 }
 
