@@ -170,9 +170,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 if a_type.is_vector() {
                     // Vector types need to be bitcast.
                     // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
-                    b = self.context.new_bitcast(self.location, b, a.get_type());
+                    b = self.context.new_bitcast(self.location, b, a_type);
                 } else {
-                    b = self.context.new_cast(self.location, b, a.get_type());
+                    b = self.context.new_cast(self.location, b, a_type);
                 }
             }
             self.context.new_binary_op(self.location, operation, a_type, a, b)
@@ -219,13 +219,22 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         operation_name: &str,
         signed: bool,
         a: RValue<'gcc>,
-        b: RValue<'gcc>,
+        mut b: RValue<'gcc>,
     ) -> RValue<'gcc> {
         let a_type = a.get_type();
         let b_type = b.get_type();
         if (self.is_native_int_type_or_bool(a_type) && self.is_native_int_type_or_bool(b_type))
             || (a_type.is_vector() && b_type.is_vector())
         {
+            if !a_type.is_compatible_with(b_type) {
+                if a_type.is_vector() {
+                    // Vector types need to be bitcast.
+                    // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
+                    b = self.context.new_bitcast(self.location, b, a_type);
+                } else {
+                    b = self.context.new_cast(self.location, b, a_type);
+                }
+            }
             self.context.new_binary_op(self.location, operation, a_type, a, b)
         } else {
             debug_assert!(a_type.dyncast_array().is_some());
@@ -626,7 +635,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         }
     }
 
-    pub fn gcc_xor(&self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+    pub fn gcc_xor(&self, a: RValue<'gcc>, mut b: RValue<'gcc>) -> RValue<'gcc> {
         let a_type = a.get_type();
         let b_type = b.get_type();
         if a_type.is_vector() && b_type.is_vector() {
@@ -634,6 +643,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             a ^ b
         } else if self.is_native_int_type_or_bool(a_type) && self.is_native_int_type_or_bool(b_type)
         {
+            if !a_type.is_compatible_with(b_type) {
+                b = self.context.new_cast(self.location, b, a_type);
+            }
             a ^ b
         } else {
             self.concat_low_high_rvalues(
