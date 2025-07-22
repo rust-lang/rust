@@ -41,18 +41,15 @@ impl<'tcx> MirPass<'tcx> for ImpossiblePredicates {
         tracing::trace!(def_id = ?body.source.def_id());
         let predicates = tcx.predicates_of(body.source.def_id()).instantiate_identity(tcx);
         tracing::trace!(?predicates);
-        let predicates: Vec<_> = predicates
-            .predicates
-            .into_iter()
-            .filter(|p| {
-                !p.has_type_flags(
-                    // Only consider global clauses to simplify.
-                    TypeFlags::HAS_FREE_LOCAL_NAMES
-                    // Clauses that refer to unevaluated constants as they cause cycles.
-                    | TypeFlags::HAS_CT_PROJECTION,
-                )
-            })
-            .collect();
+        let predicates = predicates.predicates.into_iter().filter(|p| {
+            !p.has_type_flags(
+                // Only consider global clauses to simplify.
+                TypeFlags::HAS_FREE_LOCAL_NAMES
+                // Clauses that refer to unevaluated constants as they cause cycles.
+                | TypeFlags::HAS_CT_PROJECTION,
+            )
+        });
+        let predicates: Vec<_> = traits::elaborate(tcx, predicates).collect();
         tracing::trace!(?predicates);
         if predicates.references_error() || traits::impossible_predicates(tcx, predicates) {
             trace!("found unsatisfiable predicates");
