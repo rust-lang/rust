@@ -12,18 +12,18 @@
 use std::ops::ControlFlow::{self, Break, Continue};
 use std::ptr::NonNull;
 
-// CHECK-LABEL: @option_nop_match_32({{.+}} %0, {{.+}} %1)
+// CHECK-LABEL: @option_nop_match_32({{.+}} %x.0, {{.+}} %x.1)
 #[no_mangle]
 pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
-    // CHECK-NEXT: [[TRUNC:%.*]] = trunc nuw i32 %0 to i1
+    // CHECK-NEXT: [[TRUNC:%.*]] = trunc nuw i32 %x.0 to i1
 
-    // NINETEEN-NEXT: [[SELECT:%.*]] = select i1 [[TRUNC]], i32 %0, i32 0
+    // NINETEEN-NEXT: [[SELECT:%.*]] = select i1 [[TRUNC]], i32 %x.0, i32 0
     // NINETEEN-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } poison, i32 [[SELECT]], 0
-    // NINETEEN-NEXT: [[REG3:%.*]] = insertvalue { i32, i32 } [[REG2]], i32 %1, 1
+    // NINETEEN-NEXT: [[REG3:%.*]] = insertvalue { i32, i32 } [[REG2]], i32 %x.1, 1
 
-    // TWENTY-NEXT: [[SELECT:%.*]] = select i1 [[TRUNC]], i32 %1, i32 undef
-    // TWENTY-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } poison, i32 %0, 0
+    // TWENTY-NEXT: [[SELECT:%.*]] = select i1 [[TRUNC]], i32 %x.1, i32 undef
+    // TWENTY-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } poison, i32 %x.0, 0
     // TWENTY-NEXT: [[REG3:%.*]] = insertvalue { i32, i32 } [[REG2]], i32 [[SELECT]], 1
 
     // CHECK-NEXT: ret { i32, i32 } [[REG3]]
@@ -33,12 +33,12 @@ pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
     }
 }
 
-// CHECK-LABEL: @option_nop_traits_32({{.+}} %0, {{.+}} %1)
+// CHECK-LABEL: @option_nop_traits_32({{.+}} %x.0, {{.+}} %x.1)
 #[no_mangle]
 pub fn option_nop_traits_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
-    // TWENTY-NEXT: %[[IS_SOME:.+]] = trunc nuw i32 %0 to i1
-    // TWENTY-NEXT: select i1 %[[IS_SOME]], i32 %1, i32 undef
+    // TWENTY-NEXT: %[[IS_SOME:.+]] = trunc nuw i32 %x.0 to i1
+    // TWENTY-NEXT: select i1 %[[IS_SOME]], i32 %x.1, i32 undef
     // CHECK-NEXT: insertvalue { i32, i32 }
     // CHECK-NEXT: insertvalue { i32, i32 }
     // CHECK-NEXT: ret { i32, i32 }
@@ -91,18 +91,18 @@ pub fn control_flow_nop_traits_32(x: ControlFlow<i32, u32>) -> ControlFlow<i32, 
     try { x? }
 }
 
-// CHECK-LABEL: @option_nop_match_64({{.+}} %0, {{.+}} %1)
+// CHECK-LABEL: @option_nop_match_64({{.+}} %x.0, {{.+}} %x.1)
 #[no_mangle]
 pub fn option_nop_match_64(x: Option<u64>) -> Option<u64> {
     // CHECK: start:
-    // CHECK-NEXT: [[TRUNC:%.*]] = trunc nuw i64 %0 to i1
+    // CHECK-NEXT: [[TRUNC:%.*]] = trunc nuw i64 %x.0 to i1
 
-    // NINETEEN-NEXT: [[SELECT:%.*]] = select i1 [[TRUNC]], i64 %0, i64 0
+    // NINETEEN-NEXT: [[SELECT:%.*]] = select i1 [[TRUNC]], i64 %x.0, i64 0
     // NINETEEN-NEXT: [[REG2:%.*]] = insertvalue { i64, i64 } poison, i64 [[SELECT]], 0
-    // NINETEEN-NEXT: [[REG3:%.*]] = insertvalue { i64, i64 } [[REG2]], i64 %1, 1
+    // NINETEEN-NEXT: [[REG3:%.*]] = insertvalue { i64, i64 } [[REG2]], i64 %x.1, 1
 
-    // TWENTY-NEXT: [[SELECT:%.*]] = select i1 [[TRUNC]], i64 %1, i64 undef
-    // TWENTY-NEXT: [[REG2:%.*]] = insertvalue { i64, i64 } poison, i64 %0, 0
+    // TWENTY-NEXT: [[SELECT:%.*]] = select i1 [[TRUNC]], i64 %x.1, i64 undef
+    // TWENTY-NEXT: [[REG2:%.*]] = insertvalue { i64, i64 } poison, i64 %x.0, 0
     // TWENTY-NEXT: [[REG3:%.*]] = insertvalue { i64, i64 } [[REG2]], i64 [[SELECT]], 1
 
     // CHECK-NEXT: ret { i64, i64 } [[REG3]]
@@ -112,12 +112,12 @@ pub fn option_nop_match_64(x: Option<u64>) -> Option<u64> {
     }
 }
 
-// CHECK-LABEL: @option_nop_traits_64({{.+}} %0, {{.+}} %1)
+// CHECK-LABEL: @option_nop_traits_64({{.+}} %x.0, {{.+}} %x.1)
 #[no_mangle]
 pub fn option_nop_traits_64(x: Option<u64>) -> Option<u64> {
     // CHECK: start:
-    // TWENTY-NEXT: %[[TRUNC:[0-9]+]] = trunc nuw i64 %0 to i1
-    // TWENTY-NEXT: %[[SEL:\.[0-9]+]] = select i1 %[[TRUNC]], i64 %1, i64 undef
+    // TWENTY-NEXT: %[[TRUNC:.+]] = trunc nuw i64 %x.0 to i1
+    // TWENTY-NEXT: %[[SEL:.+]] = select i1 %[[TRUNC]], i64 %x.1, i64 undef
     // CHECK-NEXT: insertvalue { i64, i64 }
     // CHECK-NEXT: insertvalue { i64, i64 }
     // CHECK-NEXT: ret { i64, i64 }

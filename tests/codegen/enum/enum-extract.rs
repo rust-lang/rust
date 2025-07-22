@@ -16,28 +16,20 @@ use std::mem::MaybeUninit;
 use std::num::NonZero;
 use std::ptr::NonNull;
 
-// This doesn't actually end up in an SSA value because `extract_field`
-// doesn't know how to do the equivalent of `!noundef` without a load.
 #[no_mangle]
 fn use_option_u32(x: Option<u32>) -> u32 {
     // CHECK-LABEL: @use_option_u32
-    // OPT-SAME: (i32 noundef range(i32 0, 2) %0, i32 %1)
+    // OPT-SAME: (i32 noundef range(i32 0, 2) %x.0, i32 %x.1)
 
     // CHECK-NOT: alloca
-    // CHECK: %x = alloca [8 x i8]
-    // CHECK-NOT: alloca
-    // CHECK: %[[X0:.+]] = load i32, ptr %x
-    // CHECK: %[[DISCR:.+]] = zext i32 %[[X0]] to i64
+    // CHECK: %[[DISCR:.+]] = zext i32 %x.0 to i64
     // CHECK: %[[IS_SOME:.+]] = trunc nuw i64 %[[DISCR]] to i1
     // OPT: %[[LIKELY:.+]] = call i1 @llvm.expect.i1(i1 %[[IS_SOME]], i1 true)
     // OPT: br i1 %[[LIKELY]], label %[[BLOCK:.+]],
     // DBG: br i1 %[[IS_SOME]], label %[[BLOCK:.+]],
 
     // CHECK: [[BLOCK]]:
-    // CHECK: %[[X1P:.+]] = getelementptr inbounds i8, ptr %x, i64 4
-    // CHECK: %[[X1:.+]] = load i32, ptr %[[X1P]]
-    // OPT-SAME: !noundef
-    // CHECK: ret i32 %[[X1]]
+    // CHECK: ret i32 %x.1
 
     if let Some(val) = x { val } else { unreachable!() }
 }

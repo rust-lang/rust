@@ -1,13 +1,12 @@
 //! An analysis to determine which locals require allocas and
 //! which do not.
 
-use rustc_abi as abi;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, DefLocation, Location, TerminatorKind, traversal};
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{bug, span_bug};
 use tracing::debug;
 
@@ -135,74 +134,6 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
                 self.visit_local(place_ref.local, mut_projection, location);
                 return;
             }
-
-            // Scan through to ensure the only projections are those which
-            // `FunctionCx::maybe_codegen_consume_direct` can handle.
-            let base_ty = self.fx.monomorphized_place_ty(mir::PlaceRef::from(place_ref.local));
-            let mut layout = self.fx.cx.layout_of(base_ty);
-            for elem in place_ref.projection {
-                if layout.is_zst() {
-                    // Any further projections must still be ZSTs, so we're good.
-                    break;
-                }
-
-                #[track_caller]
-                fn compatible_projection(src: TyAndLayout<'_>, tgt: TyAndLayout<'_>) -> bool {
-                    fn compatible_initness(a: abi::Scalar, b: abi::Scalar) -> bool {
-                        !a.is_uninit_valid() || b.is_uninit_valid()
-                    }
-
-                    use abi::BackendRepr::*;
-                    match (src.backend_repr, tgt.backend_repr) {
-                        _ if tgt.is_zst() => true,
-                        (Scalar(a), Scalar(b))
-                        | (SimdVector { element: a, .. }, SimdVector { element: b, .. }) => {
-                            compatible_initness(a, b)
-                        }
-                        (ScalarPair(a0, a1), Scalar(b)) => {
-                            compatible_initness(a0, b) && compatible_initness(a1, b)
-                        }
-                        (ScalarPair(a0, a1), ScalarPair(b0, b1)) => {
-                            compatible_initness(a0, b0) && compatible_initness(a1, b1)
-                        }
-                        _ => bug!("Mismatched layouts in analysis\nsrc: {src:?}\ntgt: {tgt:?}"),
-                    }
-                }
-
-                match *elem {
-                    mir::PlaceElem::Field(fidx, ..) => {
-                        let field_layout = layout.field(self.fx.cx, fidx.as_usize());
-                        if compatible_projection(layout, field_layout) {
-                            layout = field_layout;
-                            continue;
-                        }
-                    }
-                    mir::PlaceElem::Downcast(_, vidx) => {
-                        let variant_layout = layout.for_variant(self.fx.cx, vidx);
-                        if compatible_projection(layout, variant_layout) {
-                            layout = variant_layout;
-                            continue;
-                        }
-                    }
-
-                    mir::PlaceElem::Index(..)
-                    | mir::PlaceElem::ConstantIndex { .. }
-                    | mir::PlaceElem::Subslice { .. }
-                    | mir::PlaceElem::OpaqueCast(..)
-                    | mir::PlaceElem::UnwrapUnsafeBinder(..)
-                    | mir::PlaceElem::Subtype(..) => {}
-
-                    mir::PlaceElem::Deref => bug!("Deref after first position"),
-                }
-
-                // If the above didn't `continue`, we can't handle the projection.
-                self.locals[place_ref.local] = LocalKind::Memory;
-                return;
-            }
-            debug_assert!(
-                !self.fx.cx.is_backend_ref(layout),
-                "Post-projection {place_ref:?} layout should be non-Ref, but it's {layout:?}",
-            );
         }
 
         // Even with supported projections, we still need to have `visit_local`

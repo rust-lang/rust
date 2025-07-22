@@ -44,8 +44,8 @@ pub fn test(x: Option<u32>) {
         _ => path_a(),
     }
 
-    // CHECK-LABEL: @test({{.+}} %0, {{.+}} %1)
-    // CHECK: switch i32 %1, label %bb1 [
+    // CHECK-LABEL: @test({{.+}} %x.0, {{.+}} %x.1)
+    // CHECK: switch i32 %x.1, label %bb1 [
     // CHECK: i32 0, label %bb6
     // CHECK: i32 1, label %bb5
     // CHECK: i32 2, label %bb4
@@ -75,8 +75,8 @@ pub fn test2(x: Option<u32>) {
         }
     }
 
-    // CHECK-LABEL: @test2({{.+}} %0, {{.+}} %1)
-    // CHECK: switch i32 %1, label %bb1 [
+    // CHECK-LABEL: @test2({{.+}} %x.0, {{.+}} %x.1)
+    // CHECK: switch i32 %x.1, label %bb1 [
     // CHECK: i32 10, label %bb5
     // CHECK: i32 11, label %bb4
     // CHECK: i32 13, label %bb3

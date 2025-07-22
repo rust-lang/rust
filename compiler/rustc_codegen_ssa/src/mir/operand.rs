@@ -371,7 +371,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             self.val
         } else if field.size == layout.size {
             debug_assert_eq!(offset.bytes(), 0);
-            if downcast_variant.is_some() {
+            if downcast_variant.is_some() || self.layout.ty.is_union() {
                 fx.codegen_transmute_operand(bx, *self, field)
             } else {
                 self.val
