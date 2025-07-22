@@ -4,12 +4,15 @@
 
 // cSpell:words cmpti divti modti mulodi muloti udivti umodti
 
-use gccjit::{BinaryOp, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp};
+use gccjit::{
+    BinaryOp, CType, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp,
+};
 use rustc_abi::{CanonAbi, Endian, ExternAbi};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, BuilderMethods, OverflowOp};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::callconv::{ArgAbi, ArgAttributes, FnAbi, PassMode};
+use rustc_type_ir::{Interner, TyKind};
 
 use crate::builder::{Builder, ToGccComp};
 use crate::common::{SignType, TypeReflection};
@@ -351,6 +354,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             // TODO(antoyo): is it correct to use rhs type instead of the parameter typ?
             .new_local(self.location, rhs.get_type(), "binopResult")
             .get_address(self.location);
+        let new_type = type_kind_to_gcc_type(new_kind);
+        let new_type = self.context.new_c_type(new_type);
+        let lhs = self.context.new_cast(self.location, lhs, new_type);
         let overflow = self.overflow_call(intrinsic, &[lhs, rhs, res], None);
         (res.dereference(self.location).to_rvalue(), overflow)
     }
@@ -1040,5 +1046,27 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             self.context.new_rvalue_from_long(native_int_type, last),
         ];
         self.context.new_array_constructor(None, typ, &values)
+    }
+}
+
+fn type_kind_to_gcc_type<I: Interner>(kind: TyKind<I>) -> CType {
+    use rustc_middle::ty::IntTy::*;
+    use rustc_middle::ty::UintTy::*;
+    use rustc_middle::ty::{Int, Uint};
+
+    match kind {
+        Int(I8) => CType::Int8t,
+        Int(I16) => CType::Int16t,
+        Int(I32) => CType::Int32t,
+        Int(I64) => CType::Int64t,
+        Int(I128) => CType::Int128t,
+
+        Uint(U8) => CType::UInt8t,
+        Uint(U16) => CType::UInt16t,
+        Uint(U32) => CType::UInt32t,
+        Uint(U64) => CType::UInt64t,
+        Uint(U128) => CType::UInt128t,
+
+        _ => unimplemented!("Kind: {:?}", kind),
     }
 }
