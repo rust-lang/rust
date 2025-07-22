@@ -330,3 +330,6 @@ metadata_wasm_import_form =
 
 metadata_whole_archive_needs_static =
     linking modifier `whole-archive` is only compatible with `static` linking kind
+
+metadata_raw_dylib_malformed =
+    link name must be well-formed if link kind is `raw-dylib`
