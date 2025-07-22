@@ -1674,6 +1674,101 @@ mod snapshot {
         [doc] std 1 <target1> crates=[alloc,core]
         ");
     }
+
+    #[test]
+    fn doc_compiler_stage_0() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("compiler")
+                .stage(0)
+                .render_steps(), @r"
+        [build] rustdoc 0 <host>
+        [build] llvm <host>
+        [doc] rustc 0 <host>
+        ");
+    }
+
+    #[test]
+    fn doc_compiler_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("compiler")
+                .stage(1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] rustc 1 <host>
+        ");
+    }
+
+    #[test]
+    fn doc_compiler_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("compiler")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustdoc 1 <host>
+        [doc] rustc 2 <host>
+        ");
+    }
+
+    #[test]
+    fn doc_compiletest_stage_0() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("src/tools/compiletest")
+                .stage(0)
+                .render_steps(), @r"
+        [build] rustdoc 0 <host>
+        [doc] Compiletest <host>
+        ");
+    }
+
+    #[test]
+    fn doc_compiletest_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("src/tools/compiletest")
+                .stage(1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 0 <host>
+        [doc] Compiletest <host>
+        ");
+    }
+
+    #[test]
+    fn doc_compiletest_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("src/tools/compiletest")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustdoc 1 <host>
+        [doc] Compiletest <host>
+        ");
+    }
 }
 
 struct ExecutedSteps {

@@ -901,6 +901,10 @@ impl Step for Rustc {
             builder.open_in_browser(index);
         }
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::doc("rustc", self.target).stage(self.stage))
+    }
 }
 
 macro_rules! tool_doc {
@@ -1017,6 +1021,10 @@ macro_rules! tool_doc {
                         assert!(out.join(&*dir_name).read_dir().unwrap().next().is_some());
                     })?
                 }
+            }
+
+            fn metadata(&self) -> Option<StepMetadata> {
+                Some(StepMetadata::doc(stringify!($tool), self.target))
             }
         }
     }
