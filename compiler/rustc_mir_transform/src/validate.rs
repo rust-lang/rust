@@ -721,6 +721,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
 
+                        if adt_def.repr().simd() {
+                            self.fail(
+                                location,
+                                format!(
+                                    "Projecting into SIMD type {adt_def:?} is banned by MCP#838"
+                                ),
+                            );
+                        }
+
                         let var = parent_ty.variant_index.unwrap_or(FIRST_VARIANT);
                         let Some(field) = adt_def.variant(var).fields.get(f) else {
                             fail_out_of_bounds(self, location);

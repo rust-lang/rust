@@ -32,8 +32,6 @@ use crate::ptr::NonNull;
 )]
 #[doc(hidden)]
 #[repr(transparent)]
-// Lang item used experimentally by Miri to define the semantics of `Unique`.
-#[lang = "ptr_unique"]
 pub struct Unique<T: PointeeSized> {
     pointer: NonNull<T>,
     // NOTE: this marker has no consequences for variance, but is necessary

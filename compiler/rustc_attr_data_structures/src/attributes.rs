@@ -234,6 +234,7 @@ pub enum CfgEntry {
 pub enum AttributeKind {
     // tidy-alphabetical-start
     /// Represents `#[align(N)]`.
+    // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     Align { align: Align, span: Span },
 
     /// Represents `#[rustc_allow_const_fn_unstable]`.

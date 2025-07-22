@@ -1,7 +1,5 @@
 #![warn(clippy::strlen_on_c_strings)]
 #![allow(dead_code, clippy::manual_c_str_literals)]
-#![feature(rustc_private)]
-extern crate libc;
 
 #[allow(unused)]
 use libc::strlen;

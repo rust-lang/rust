@@ -567,6 +567,7 @@ pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
 ///
 /// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
 // FIXME: migrate remaining uses to `generate_trait_impl`
+#[allow(dead_code)]
 pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &str) -> String {
     generate_impl_text_inner(adt, Some(trait_text), true, code)
 }

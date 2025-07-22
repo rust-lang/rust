@@ -1,11 +1,11 @@
 //@ run-pass
 #![feature(repr_simd, core_intrinsics)]
 
-use std::intrinsics::simd::{simd_masked_load, simd_masked_store};
+#[path = "../../auxiliary/minisimd.rs"]
+mod minisimd;
+use minisimd::*;
 
-#[derive(Copy, Clone)]
-#[repr(simd)]
-struct Simd<T, const N: usize>([T; N]);
+use std::intrinsics::simd::{simd_masked_load, simd_masked_store};
 
 fn main() {
     unsafe {
@@ -15,7 +15,7 @@ fn main() {
         let b: Simd<u8, 4> =
             simd_masked_load(Simd::<i8, 4>([-1, 0, -1, -1]), b_src.as_ptr(), b_default);
 
-        assert_eq!(&b.0, &[4, 9, 6, 7]);
+        assert_eq!(b.as_array(), &[4, 9, 6, 7]);
 
         let mut output = [u8::MAX; 5];
 

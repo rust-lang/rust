@@ -48,7 +48,6 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     let mut res = vec![];
     let mut visited_comments = FxHashSet::default();
     let mut visited_nodes = FxHashSet::default();
-    let mut merged_fn_bodies = FxHashSet::default();
 
     // regions can be nested, here is a LIFO buffer
     let mut region_starts: Vec<TextSize> = vec![];
@@ -73,7 +72,7 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                                 continue;
                             }
 
-                            if let Some(body) = fn_node.body() {
+                            if fn_node.body().is_some() {
                                 res.push(Fold {
                                     range: TextRange::new(
                                         node.text_range().start(),
@@ -81,7 +80,6 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                                     ),
                                     kind: FoldKind::Function,
                                 });
-                                merged_fn_bodies.insert(body.syntax().text_range());
                                 continue;
                             }
                         }
