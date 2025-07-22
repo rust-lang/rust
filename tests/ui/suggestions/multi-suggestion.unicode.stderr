@@ -34,7 +34,7 @@ LL │         wtf: Some(Box(U {
 note: constructor is not visible here due to private fields
    ╭▸ $SRC_DIR/alloc/src/boxed.rs:LL:COL
    │
-   ╰ note: private field
+   ├ note: private field
    │
    ╰ note: private field
 help: you might have meant to use an associated function to build this type
