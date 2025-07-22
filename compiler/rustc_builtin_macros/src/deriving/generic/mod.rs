@@ -826,21 +826,25 @@ impl<'a> TraitDef<'a> {
             )
         }
 
-        let opt_trait_ref = Some(trait_ref);
-
         cx.item(
             self.span,
             attrs,
-            ast::ItemKind::Impl(Box::new(ast::Impl {
-                safety: ast::Safety::Default,
-                polarity: ast::ImplPolarity::Positive,
-                defaultness: ast::Defaultness::Final,
-                constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
+            ast::ItemKind::Impl(ast::Impl {
                 generics: trait_generics,
-                of_trait: opt_trait_ref,
+                of_trait: Some(Box::new(ast::TraitImplHeader {
+                    safety: ast::Safety::Default,
+                    polarity: ast::ImplPolarity::Positive,
+                    defaultness: ast::Defaultness::Final,
+                    constness: if self.is_const {
+                        ast::Const::Yes(DUMMY_SP)
+                    } else {
+                        ast::Const::No
+                    },
+                    trait_ref,
+                })),
                 self_ty: self_type,
                 items: methods.into_iter().chain(associated_types).collect(),
-            })),
+            }),
         )
     }
 
