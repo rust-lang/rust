@@ -2566,6 +2566,7 @@ impl<'a> State<'a> {
         match s {
             hir::Constness::NotConst => {}
             hir::Constness::Const => self.word_nbsp("const"),
+            hir::Constness::Comptime => { /* printed as an attribute */ }
         }
     }
 
