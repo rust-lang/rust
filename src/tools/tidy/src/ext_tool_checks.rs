@@ -25,6 +25,8 @@ use std::{fmt, fs, io};
 
 use crate::CiInfo;
 
+mod rustdoc_js;
+
 const MIN_PY_REV: (u32, u32) = (3, 9);
 const MIN_PY_REV_STR: &str = "≥3.9";
 
@@ -46,12 +48,23 @@ pub fn check(
     root_path: &Path,
     outdir: &Path,
     ci_info: &CiInfo,
+    librustdoc_path: &Path,
+    tools_path: &Path,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
     bad: &mut bool,
 ) {
-    if let Err(e) = check_impl(root_path, outdir, ci_info, bless, extra_checks, pos_args) {
+    if let Err(e) = check_impl(
+        root_path,
+        outdir,
+        ci_info,
+        librustdoc_path,
+        tools_path,
+        bless,
+        extra_checks,
+        pos_args,
+    ) {
         tidy_error!(bad, "{e}");
     }
 }
@@ -60,6 +73,8 @@ fn check_impl(
     root_path: &Path,
     outdir: &Path,
     ci_info: &CiInfo,
+    librustdoc_path: &Path,
+    tools_path: &Path,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
@@ -108,6 +123,8 @@ fn check_impl(
     let shell_lint = extra_check!(Shell, Lint);
     let cpp_fmt = extra_check!(Cpp, Fmt);
     let spellcheck = extra_check!(Spellcheck, None);
+    let js_lint = extra_check!(Js, Lint);
+    let js_typecheck = extra_check!(Js, Typecheck);
 
     let mut py_path = None;
 
@@ -273,6 +290,19 @@ fn check_impl(
             eprintln!("spellcheck files");
         }
         spellcheck_runner(&args)?;
+    }
+
+    if js_lint || js_typecheck {
+        rustdoc_js::npm_install(root_path, outdir)?;
+    }
+
+    if js_lint {
+        rustdoc_js::lint(outdir, librustdoc_path, tools_path)?;
+        rustdoc_js::es_check(outdir, librustdoc_path)?;
+    }
+
+    if js_typecheck {
+        rustdoc_js::typecheck(outdir, librustdoc_path)?;
     }
 
     Ok(())
@@ -697,6 +727,7 @@ impl ExtraCheckArg {
             ExtraCheckLang::Py => ".py",
             ExtraCheckLang::Cpp => ".cpp",
             ExtraCheckLang::Shell => ".sh",
+            ExtraCheckLang::Js => ".js",
             ExtraCheckLang::Spellcheck => {
                 return !crate::files_modified(ci_info, |s| {
                     SPELLCHECK_DIRS.iter().any(|dir| Path::new(s).starts_with(dir))
@@ -717,6 +748,7 @@ impl ExtraCheckArg {
             ExtraCheckLang::Cpp => &[Fmt],
             ExtraCheckLang::Shell => &[Lint],
             ExtraCheckLang::Spellcheck => &[],
+            ExtraCheckLang::Js => &[Lint, Typecheck],
         };
         supported_kinds.contains(&kind)
     }
@@ -757,6 +789,7 @@ enum ExtraCheckLang {
     Shell,
     Cpp,
     Spellcheck,
+    Js,
 }
 
 impl FromStr for ExtraCheckLang {
@@ -768,6 +801,7 @@ impl FromStr for ExtraCheckLang {
             "shell" => Self::Shell,
             "cpp" => Self::Cpp,
             "spellcheck" => Self::Spellcheck,
+            "js" => Self::Js,
             _ => return Err(ExtraCheckParseError::UnknownLang(s.to_string())),
         })
     }
@@ -777,6 +811,7 @@ impl FromStr for ExtraCheckLang {
 enum ExtraCheckKind {
     Lint,
     Fmt,
+    Typecheck,
     /// Never parsed, but used as a placeholder for
     /// langs that never have a specific kind.
     None,
@@ -789,6 +824,7 @@ impl FromStr for ExtraCheckKind {
         Ok(match s {
             "lint" => Self::Lint,
             "fmt" => Self::Fmt,
+            "typecheck" => Self::Typecheck,
             _ => return Err(ExtraCheckParseError::UnknownKind(s.to_string())),
         })
     }
