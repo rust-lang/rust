@@ -242,7 +242,7 @@ where
         let timeout = duration.map_or(raw::WAIT_NO, |duration| {
             cmp::min((u64::MAX - 1) as u128, duration.as_nanos()) as u64
         });
-        match wait(event_mask, timeout) {
+        match wait_ex(event_mask, timeout, 0..=10) {
             Ok(eventset) => {
                 if event_mask == 0 {
                     rtabort!("expected wait() to return Err, found Ok.");
