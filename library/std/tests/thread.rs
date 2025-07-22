@@ -19,6 +19,16 @@ fn sleep_very_long() {
 }
 
 #[test]
+fn sleep() {
+    let now = Instant::now();
+    let period = Duration::from_millis(100);
+    thread::sleep(period);
+
+    let elapsed = now.elapsed();
+    assert!(elapsed >= period);
+}
+
+#[test]
 fn sleep_until() {
     let now = Instant::now();
     let period = Duration::from_millis(100);
