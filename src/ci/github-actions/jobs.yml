@@ -35,17 +35,6 @@ runners:
     free_disk: true
     <<: *base-job
 
-  # NOTE: windows-2025 has less disk space available than windows-2022,
-  # because the D drive is missing.
-  - &job-windows-25
-    os: windows-2025
-    free_disk: true
-    <<: *base-job
-
-  - &job-windows-8c
-    os: windows-2022-8core-32gb
-    <<: *base-job
-
   - &job-windows-25-8c
     os: windows-2025-8core-32gb
     <<: *base-job
