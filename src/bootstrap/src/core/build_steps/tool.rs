@@ -681,15 +681,21 @@ impl Step for RemoteTestServer {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
+/// Represents `Rustdoc` that either comes from the external stage0 sysroot or that is built
+/// locally.
+/// Rustdoc is special, because it both essentially corresponds to a `Compiler` (that can be
+/// externally provided), but also to a `ToolRustc` tool.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Rustdoc {
-    /// This should only ever be 0 or 2.
-    /// We sometimes want to reference the "bootstrap" rustdoc, which is why this option is here.
+    /// If the stage of `target_compiler` is `0`, then rustdoc is externally provided.
+    /// Otherwise it is built locally.
     pub target_compiler: Compiler,
 }
 
 impl Step for Rustdoc {
-    type Output = ToolBuildResult;
+    /// Path to the built rustdoc binary.
+    type Output = PathBuf;
+
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -703,21 +709,20 @@ impl Step for Rustdoc {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
         let target_compiler = self.target_compiler;
         let target = target_compiler.host;
 
+        // If stage is 0, we use a prebuilt rustdoc from stage0
         if target_compiler.stage == 0 {
             if !target_compiler.is_snapshot(builder) {
                 panic!("rustdoc in stage 0 must be snapshot rustdoc");
             }
 
-            return ToolBuildResult {
-                tool_path: builder.initial_rustdoc.clone(),
-                build_compiler: target_compiler,
-            };
+            return builder.initial_rustdoc.clone();
         }
 
+        // If stage is higher, we build rustdoc instead
         let bin_rustdoc = || {
             let sysroot = builder.sysroot(target_compiler);
             let bindir = sysroot.join("bin");
@@ -729,10 +734,7 @@ impl Step for Rustdoc {
 
         // If CI rustc is enabled and we haven't modified the rustdoc sources,
         // use the precompiled rustdoc from CI rustc's sysroot to speed up bootstrapping.
-        if builder.download_rustc()
-            && target_compiler.stage > 0
-            && builder.rust_info().is_managed_git_subrepository()
-        {
+        if builder.download_rustc() && builder.rust_info().is_managed_git_subrepository() {
             let files_to_track = &["src/librustdoc", "src/tools/rustdoc", "src/rustdoc-json-types"];
 
             // Check if unchanged
@@ -745,8 +747,7 @@ impl Step for Rustdoc {
 
                 let bin_rustdoc = bin_rustdoc();
                 builder.copy_link(&precompiled_rustdoc, &bin_rustdoc, FileType::Executable);
-
-                return ToolBuildResult { tool_path: bin_rustdoc, build_compiler: target_compiler };
+                return bin_rustdoc;
             }
         }
 
@@ -762,45 +763,39 @@ impl Step for Rustdoc {
             extra_features.push("jemalloc".to_string());
         }
 
-        let ToolBuildResult { tool_path, build_compiler } = builder.ensure(ToolBuild {
-            build_compiler: target_compiler,
-            target,
-            // Cargo adds a number of paths to the dylib search path on windows, which results in
-            // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
-            // rustdoc a different name.
-            tool: "rustdoc_tool_binary",
-            mode: Mode::ToolRustc,
-            path: "src/tools/rustdoc",
-            source_type: SourceType::InTree,
-            extra_features,
-            allow_features: "",
-            cargo_args: Vec::new(),
-            artifact_kind: ToolArtifactKind::Binary,
-        });
+        let compilers = RustcPrivateCompilers::from_link_compiler(builder, target_compiler);
+        let tool_path = builder
+            .ensure(ToolBuild {
+                build_compiler: compilers.build_compiler,
+                target,
+                // Cargo adds a number of paths to the dylib search path on windows, which results in
+                // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
+                // rustdoc a different name.
+                tool: "rustdoc_tool_binary",
+                mode: Mode::ToolRustc,
+                path: "src/tools/rustdoc",
+                source_type: SourceType::InTree,
+                extra_features,
+                allow_features: "",
+                cargo_args: Vec::new(),
+                artifact_kind: ToolArtifactKind::Binary,
+            })
+            .tool_path;
 
-        // FIXME: handle the build/target compiler split here somehow
-        // don't create a stage0-sysroot/bin directory.
-        if target_compiler.stage > 0 {
-            if builder.config.rust_debuginfo_level_tools == DebuginfoLevel::None {
-                // Due to LTO a lot of debug info from C++ dependencies such as jemalloc can make it into
-                // our final binaries
-                compile::strip_debug(builder, target, &tool_path);
-            }
-            let bin_rustdoc = bin_rustdoc();
-            builder.copy_link(&tool_path, &bin_rustdoc, FileType::Executable);
-            ToolBuildResult { tool_path: bin_rustdoc, build_compiler }
-        } else {
-            ToolBuildResult { tool_path, build_compiler }
+        if builder.config.rust_debuginfo_level_tools == DebuginfoLevel::None {
+            // Due to LTO a lot of debug info from C++ dependencies such as jemalloc can make it into
+            // our final binaries
+            compile::strip_debug(builder, target, &tool_path);
         }
+        let bin_rustdoc = bin_rustdoc();
+        builder.copy_link(&tool_path, &bin_rustdoc, FileType::Executable);
+        bin_rustdoc
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
             StepMetadata::build("rustdoc", self.target_compiler.host)
-                // rustdoc is ToolRustc, so stage N rustdoc is built by stage N-1 rustc
-                // FIXME: make this stage deduction automatic somehow
-                // FIXME: log the compiler that actually built ToolRustc steps
-                .stage(self.target_compiler.stage.saturating_sub(1)),
+                .stage(self.target_compiler.stage),
         )
     }
 }
@@ -1317,18 +1312,11 @@ impl RustcPrivateCompilers {
     /// Create compilers for a `rustc_private` tool with the given `stage` and for the given
     /// `target`.
     pub fn new(builder: &Builder<'_>, stage: u32, target: TargetSelection) -> Self {
-        assert!(stage > 0);
-
-        let build_compiler = if builder.download_rustc() && stage == 1 {
-            // We shouldn't drop to stage0 compiler when using CI rustc.
-            builder.compiler(1, builder.config.host_target)
-        } else {
-            builder.compiler(stage - 1, builder.config.host_target)
-        };
+        let build_compiler = Self::build_compiler_from_stage(builder, stage);
 
         // This is the compiler we'll link to
         // FIXME: make 100% sure that `link_compiler` was indeed built with `build_compiler`...
-        let link_compiler = builder.compiler(stage, target);
+        let link_compiler = builder.compiler(build_compiler.stage + 1, target);
 
         Self { build_compiler, link_compiler }
     }
@@ -1341,6 +1329,25 @@ impl RustcPrivateCompilers {
     ) -> Self {
         let link_compiler = builder.compiler(build_compiler.stage + 1, target);
         Self { build_compiler, link_compiler }
+    }
+
+    /// Create rustc tool compilers from the link compiler.
+    pub fn from_link_compiler(builder: &Builder<'_>, link_compiler: Compiler) -> Self {
+        Self {
+            build_compiler: Self::build_compiler_from_stage(builder, link_compiler.stage),
+            link_compiler,
+        }
+    }
+
+    fn build_compiler_from_stage(builder: &Builder<'_>, stage: u32) -> Compiler {
+        assert!(stage > 0);
+
+        if builder.download_rustc() && stage == 1 {
+            // We shouldn't drop to stage0 compiler when using CI rustc.
+            builder.compiler(1, builder.config.host_target)
+        } else {
+            builder.compiler(stage - 1, builder.config.host_target)
+        }
     }
 
     pub fn build_compiler(&self) -> Compiler {

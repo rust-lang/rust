@@ -1540,7 +1540,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
     /// It can be either a stage0 rustdoc or a locally built rustdoc that *links* to
     /// `target_compiler`.
     pub fn rustdoc_for_compiler(&self, target_compiler: Compiler) -> PathBuf {
-        self.ensure(tool::Rustdoc { target_compiler }).tool_path
+        self.ensure(tool::Rustdoc { target_compiler })
     }
 
     pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
