@@ -358,6 +358,9 @@
 //@ revisions: powerpc64_unknown_linux_gnu
 //@ [powerpc64_unknown_linux_gnu] compile-flags: --target powerpc64-unknown-linux-gnu
 //@ [powerpc64_unknown_linux_gnu] needs-llvm-components: powerpc
+//@ revisions: powerpc64_unknown_linux_gnuelfv2
+//@ [powerpc64_unknown_linux_gnuelfv2] compile-flags: --target powerpc64-unknown-linux-gnuelfv2
+//@ [powerpc64_unknown_linux_gnuelfv2] needs-llvm-components: powerpc
 //@ revisions: powerpc64_unknown_linux_musl
 //@ [powerpc64_unknown_linux_musl] compile-flags: --target powerpc64-unknown-linux-musl
 //@ [powerpc64_unknown_linux_musl] needs-llvm-components: powerpc
