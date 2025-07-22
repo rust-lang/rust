@@ -1706,6 +1706,13 @@ impl Step for CodegenBackend {
         let codegen_backend = codegen_backend.to_str().unwrap();
         t!(stamp.add_stamp(codegen_backend).write());
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::build(&format!("rustc_codegen_{}", self.backend), self.target)
+                .built_by(self.compiler),
+        )
+    }
 }
 
 /// Creates the `codegen-backends` folder for a compiler that's about to be
