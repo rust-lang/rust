@@ -158,7 +158,6 @@ fn add_missing_impl_members_inner(
             &target_scope,
         );
 
-        let mut editor = edit.make_editor(impl_def.syntax());
         if let Some(cap) = ctx.config.snippet_cap {
             let mut placeholder = None;
             if let DefaultMethods::No = mode {
@@ -172,13 +171,11 @@ fn add_missing_impl_members_inner(
                     ) && let Some(func_body) = func.body()
                     {
                         ted::replace(func_body.syntax(), body.syntax());
-                    } else {
-                        if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
-                        {
-                            if m.syntax().text() == "todo!()" {
-                                placeholder = Some(m);
-                            }
-                        }
+                    } else if let Some(m) =
+                        func.syntax().descendants().find_map(ast::MacroCall::cast)
+                        && m.syntax().text() == "todo!()"
+                    {
+                        placeholder = Some(m);
                     }
                 }
             }
