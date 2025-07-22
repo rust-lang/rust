@@ -6,7 +6,7 @@ use rustc_errors::{
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
-use crate::late::PatternSource;
+use crate::late::{PatternSource, AnonConstKind};
 use crate::{Res, fluent_generated as fluent};
 
 #[derive(Diagnostic)]
@@ -387,6 +387,7 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     pub(crate) param_kind: ParamKindInNonTrivialAnonConst,
     #[subdiagnostic]
     pub(crate) help: Option<ParamInNonTrivialAnonConstHelp>,
+    pub(crate) place: AnonConstKind
 }
 
 #[derive(Subdiagnostic)]
