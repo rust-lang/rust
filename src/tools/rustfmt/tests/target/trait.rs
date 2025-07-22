@@ -218,3 +218,5 @@ trait Visible {
     pub fn f();
     pub fn g() {}
 }
+
+trait Foomp = Hash;
