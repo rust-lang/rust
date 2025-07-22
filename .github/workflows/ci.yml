@@ -109,6 +109,12 @@ jobs:
             echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           fi
 
+      # Always print disk usage, even for jobs that don't free up disk space.
+      - name: print disk usage
+        run: |
+          echo "disk usage:"
+          df -h
+
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
 
@@ -117,7 +123,7 @@ jobs:
         with:
           fetch-depth: 2
 
-      # Free up disk space on Linux by removing preinstalled components that
+      # Free up disk space on Linux and Windows by removing preinstalled components that
       # we do not need. We do this to enable some of the less resource
       # intensive jobs to run on free runners, which however also have
       # less disk space.
