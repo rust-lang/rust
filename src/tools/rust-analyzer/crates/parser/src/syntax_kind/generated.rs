@@ -185,7 +185,6 @@ pub enum SyntaxKind {
     BREAK_EXPR,
     CALL_EXPR,
     CAST_EXPR,
-    CLOSURE_BINDER,
     CLOSURE_EXPR,
     CONST,
     CONST_ARG,
@@ -203,6 +202,7 @@ pub enum SyntaxKind {
     FN_PTR_TYPE,
     FORMAT_ARGS_ARG,
     FORMAT_ARGS_EXPR,
+    FOR_BINDER,
     FOR_EXPR,
     FOR_TYPE,
     GENERIC_ARG_LIST,
@@ -358,7 +358,6 @@ impl SyntaxKind {
             | BREAK_EXPR
             | CALL_EXPR
             | CAST_EXPR
-            | CLOSURE_BINDER
             | CLOSURE_EXPR
             | CONST
             | CONST_ARG
@@ -376,6 +375,7 @@ impl SyntaxKind {
             | FN_PTR_TYPE
             | FORMAT_ARGS_ARG
             | FORMAT_ARGS_EXPR
+            | FOR_BINDER
             | FOR_EXPR
             | FOR_TYPE
             | GENERIC_ARG_LIST
