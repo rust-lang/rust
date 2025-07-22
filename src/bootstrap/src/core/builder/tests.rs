@@ -642,6 +642,7 @@ mod snapshot {
     };
     use crate::core::builder::{Builder, Kind, StepDescription, StepMetadata};
     use crate::core::config::TargetSelection;
+    use crate::core::config::toml::rust::with_lld_opt_in_targets;
     use crate::utils::cache::Cache;
     use crate::utils::helpers::get_host_target;
     use crate::utils::tests::{ConfigBuilder, TestCtx};
@@ -1650,6 +1651,21 @@ mod snapshot {
         [build] rustdoc 0 <host>
         [doc] std 1 <host> crates=[core]
         ");
+    }
+
+    #[test]
+    fn test_lld_opt_in() {
+        with_lld_opt_in_targets(vec![host_target()], || {
+            let ctx = TestCtx::new();
+            insta::assert_snapshot!(
+                ctx.config("build")
+                    .path("compiler")
+                    .render_steps(), @r"
+            [build] llvm <host>
+            [build] rustc 0 <host> -> rustc 1 <host>
+            [build] rustc 0 <host> -> LldWrapper 1 <host>
+            ");
+        });
     }
 
     #[test]
