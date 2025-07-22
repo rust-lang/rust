@@ -1,4 +1,4 @@
-use rustc_middle::mir::{self, NonDivergingIntrinsic, StmtDebugInfo};
+use rustc_middle::mir::{self, NonDivergingIntrinsic, StmtDebugInfo, StmtDebugInfos};
 use rustc_middle::{bug, span_bug};
 use tracing::instrument;
 
@@ -165,9 +165,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub(crate) fn codegen_stmt_debuginfos(
         &mut self,
         bx: &mut Bx,
-        debuginfos: &[StmtDebugInfo<'tcx>],
+        debuginfos: &StmtDebugInfos<'tcx>,
     ) {
-        for debuginfo in debuginfos {
+        for debuginfo in debuginfos.iter() {
             self.codegen_stmt_debuginfo(bx, debuginfo);
         }
     }

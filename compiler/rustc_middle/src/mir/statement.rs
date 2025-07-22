@@ -1,5 +1,7 @@
 //! Functionality for statements, operands, places, and things that appear in them.
 
+use std::ops;
+
 use tracing::{debug, instrument};
 
 use super::interpret::GlobalAlloc;
@@ -16,7 +18,7 @@ pub struct Statement<'tcx> {
     pub source_info: SourceInfo,
     pub kind: StatementKind<'tcx>,
     /// Some debuginfos appearing before the primary statement.
-    pub debuginfos: Vec<StmtDebugInfo<'tcx>>,
+    pub debuginfos: StmtDebugInfos<'tcx>,
 }
 
 impl<'tcx> Statement<'tcx> {
@@ -36,7 +38,7 @@ impl<'tcx> Statement<'tcx> {
     }
 
     pub fn new(source_info: SourceInfo, kind: StatementKind<'tcx>) -> Self {
-        Statement { source_info, kind, debuginfos: Vec::new() }
+        Statement { source_info, kind, debuginfos: StmtDebugInfos::default() }
     }
 }
 
@@ -959,6 +961,68 @@ impl RawPtrKind {
             RawPtrKind::Const => "const",
             RawPtrKind::FakeForPtrMetadata => "const (fake)",
         }
+    }
+}
+
+#[derive(Default, Debug, Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+pub struct StmtDebugInfos<'tcx>(Vec<StmtDebugInfo<'tcx>>);
+
+impl<'tcx> StmtDebugInfos<'tcx> {
+    pub fn push(&mut self, debuginfo: StmtDebugInfo<'tcx>) {
+        self.0.push(debuginfo);
+    }
+
+    pub fn drop_debuginfo(&mut self) {
+        self.0.clear();
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn prepend(&mut self, debuginfos: &mut Self) {
+        if debuginfos.is_empty() {
+            return;
+        };
+        debuginfos.0.append(self);
+        std::mem::swap(debuginfos, self);
+    }
+
+    pub fn append(&mut self, debuginfos: &mut Self) {
+        if debuginfos.is_empty() {
+            return;
+        };
+        self.0.append(debuginfos);
+    }
+
+    pub fn extend(&mut self, debuginfos: &Self) {
+        if debuginfos.is_empty() {
+            return;
+        };
+        self.0.extend_from_slice(debuginfos);
+    }
+
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&StmtDebugInfo<'tcx>) -> bool,
+    {
+        self.0.retain(f);
+    }
+}
+
+impl<'tcx> ops::Deref for StmtDebugInfos<'tcx> {
+    type Target = Vec<StmtDebugInfo<'tcx>>;
+
+    #[inline]
+    fn deref(&self) -> &Vec<StmtDebugInfo<'tcx>> {
+        &self.0
+    }
+}
+
+impl<'tcx> ops::DerefMut for StmtDebugInfos<'tcx> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Vec<StmtDebugInfo<'tcx>> {
+        &mut self.0
     }
 }
 

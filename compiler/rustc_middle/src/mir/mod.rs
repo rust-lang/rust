@@ -4,8 +4,8 @@
 
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Formatter};
+use std::iter;
 use std::ops::{Index, IndexMut};
-use std::{iter, mem};
 
 pub use basic_blocks::{BasicBlocks, SwitchTargetValue};
 use either::Either;
@@ -1344,7 +1344,7 @@ pub struct BasicBlockData<'tcx> {
 
     /// All debuginfos happen before the statement.
     /// Put debuginfos here when the last statement is eliminated.
-    pub after_last_stmt_debuginfos: Vec<StmtDebugInfo<'tcx>>,
+    pub after_last_stmt_debuginfos: StmtDebugInfos<'tcx>,
 
     /// Terminator for this block.
     ///
@@ -1375,7 +1375,7 @@ impl<'tcx> BasicBlockData<'tcx> {
     ) -> BasicBlockData<'tcx> {
         BasicBlockData {
             statements,
-            after_last_stmt_debuginfos: Vec::new(),
+            after_last_stmt_debuginfos: StmtDebugInfos::default(),
             terminator,
             is_cleanup,
         }
@@ -1420,26 +1420,17 @@ impl<'tcx> BasicBlockData<'tcx> {
     {
         // Place debuginfos into the next retained statement,
         // this `debuginfos` variable is used to cache debuginfos between two retained statements.
-        let mut debuginfos = Vec::new();
+        let mut debuginfos = StmtDebugInfos::default();
         self.statements.retain_mut(|stmt| {
             let retain = f(stmt);
             if retain {
-                if !debuginfos.is_empty() {
-                    if !stmt.debuginfos.is_empty() {
-                        debuginfos.append(&mut stmt.debuginfos);
-                    }
-                    mem::swap(&mut debuginfos, &mut stmt.debuginfos);
-                }
+                stmt.debuginfos.prepend(&mut debuginfos);
             } else {
-                if !stmt.debuginfos.is_empty() {
-                    debuginfos.append(&mut stmt.debuginfos);
-                }
+                debuginfos.append(&mut stmt.debuginfos);
             }
             retain
         });
-        if !debuginfos.is_empty() {
-            self.after_last_stmt_debuginfos.append(&mut debuginfos);
-        }
+        self.after_last_stmt_debuginfos.prepend(&mut debuginfos);
     }
 
     pub fn strip_nops(&mut self) {
@@ -1447,9 +1438,9 @@ impl<'tcx> BasicBlockData<'tcx> {
     }
 
     pub fn drop_debuginfo(&mut self) {
-        self.after_last_stmt_debuginfos = Vec::new();
+        self.after_last_stmt_debuginfos.drop_debuginfo();
         for stmt in self.statements.iter_mut() {
-            stmt.debuginfos = Vec::new();
+            stmt.debuginfos.drop_debuginfo();
         }
     }
 }
