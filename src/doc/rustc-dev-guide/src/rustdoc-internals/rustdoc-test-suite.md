@@ -20,7 +20,7 @@ Internally, [`compiletest`] invokes the supplementary checker script [`htmldocck
 
 Directives to HtmlDocCk are assertions that place constraints on the generated HTML.
 They look similar to those given to `compiletest` in that they take the form of `//@` comments
-but ultimately, they are completey distinct and processed by different programs.
+but ultimately, they are completely distinct and processed by different programs.
 
 [XPath] is used to query parts of the HTML document tree.
 

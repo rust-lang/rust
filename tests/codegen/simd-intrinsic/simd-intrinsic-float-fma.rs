@@ -4,23 +4,11 @@
 #![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
 
+#[path = "../../auxiliary/minisimd.rs"]
+mod minisimd;
+use minisimd::*;
+
 use std::intrinsics::simd::simd_fma;
-
-#[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f32x2(pub [f32; 2]);
-
-#[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f32x4(pub [f32; 4]);
-
-#[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f32x8(pub [f32; 8]);
-
-#[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f32x16(pub [f32; 16]);
 
 // CHECK-LABEL: @fma_32x2
 #[no_mangle]
@@ -49,18 +37,6 @@ pub unsafe fn fma_32x16(a: f32x16, b: f32x16, c: f32x16) -> f32x16 {
     // CHECK: call <16 x float> @llvm.fma.v16f32
     simd_fma(a, b, c)
 }
-
-#[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f64x2(pub [f64; 2]);
-
-#[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f64x4(pub [f64; 4]);
-
-#[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f64x8(pub [f64; 8]);
 
 // CHECK-LABEL: @fma_64x4
 #[no_mangle]
