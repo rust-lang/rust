@@ -1,15 +1,5 @@
-error: inherent impls cannot be const
-  --> $DIR/span-bug-issue-121418.rs:6:12
-   |
-LL | impl const dyn T {
-   |      ----- ^^^^^ inherent impl for this type
-   |      |
-   |      const because of this
-   |
-   = note: only trait implementations may be annotated with `const`
-
 error[E0277]: the size for values of type `(dyn T + 'static)` cannot be known at compilation time
-  --> $DIR/span-bug-issue-121418.rs:8:27
+  --> $DIR/span-bug-issue-121418.rs:7:27
    |
 LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
    |                           ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -20,7 +10,7 @@ note: required because it appears within the type `std::sync::Mutex<(dyn T + 'st
    = note: the return type of a function must have a statically known size
 
 error[E0308]: mismatched types
-  --> $DIR/span-bug-issue-121418.rs:8:27
+  --> $DIR/span-bug-issue-121418.rs:7:27
    |
 LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
    |                  ---      ^^^^^^^^^^^^^^^^^^^^^^^ expected `Mutex<dyn T>`, found `()`
@@ -30,7 +20,7 @@ LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
    = note: expected struct `std::sync::Mutex<(dyn T + 'static)>`
            found unit type `()`
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

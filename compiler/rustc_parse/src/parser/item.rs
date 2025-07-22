@@ -691,7 +691,7 @@ impl<'a> Parser<'a> {
                     error("default", "default", def_span).emit();
                 }
                 if let Const::Yes(span) = constness {
-                    error("const", "const", span).emit();
+                    self.psess.gated_spans.gate(sym::const_trait_impl, span);
                 }
                 (None, self_ty)
             }

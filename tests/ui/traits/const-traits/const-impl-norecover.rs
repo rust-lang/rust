@@ -2,9 +2,12 @@
 
 struct Foo;
 
-const impl Foo { //~ ERROR: inherent impls cannot be const
+const impl Foo {
     fn bar() {}
 }
+
+const _: () = Foo::bar();
+//~^ ERROR: cannot call non-const associated function `Foo::bar` in constants
 
 fn main() {
      // shouldn't error here because we shouldn't have been able to recover above
