@@ -828,6 +828,7 @@ impl<'tcx> LateContext<'tcx> {
 
             fn path_append(
                 &mut self,
+                _def_id: DefId,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 disambiguated_data: &DisambiguatedDefPathData,
             ) -> Result<(), PrintError> {

@@ -660,7 +660,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             true => {}
         }
         callers.pop();
-        self.path_append(|_| Ok(()), &DisambiguatedDefPathData { data, disambiguator: 0 })?;
+        self.path_append(def_id, |_| Ok(()), &DisambiguatedDefPathData { data, disambiguator: 0 })?;
         Ok(true)
     }
 
@@ -1352,6 +1352,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         self.path_generic_args(
             |cx| {
                 cx.path_append(
+                    alias_ty.def_id,
                     |cx| cx.path_qualified(alias_ty.self_ty(), None),
                     &def_key.disambiguated_data,
                 )
@@ -2408,6 +2409,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 
     fn path_append(
         &mut self,
+        def_id: DefId,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<(), PrintError> {
@@ -2415,6 +2417,15 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 
         // Skip `::{{extern}}` blocks and `::{{constructor}}` on tuple/unit structs.
         if let DefPathData::ForeignMod | DefPathData::Ctor = disambiguated_data.data {
+            return Ok(());
+        }
+        if let DefPathData::Closure = disambiguated_data.data
+            && let Some(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async,
+                hir::CoroutineSource::Fn,
+            )) = self.tcx.coroutine_kind(def_id)
+        {
+            // Skip the implicit closure in `async_function::{closure#0}`.
             return Ok(());
         }
 

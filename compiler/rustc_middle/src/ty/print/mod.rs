@@ -95,6 +95,7 @@ pub trait Printer<'tcx>: Sized {
 
     fn path_append(
         &mut self,
+        def_id: DefId,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<(), PrintError>;
@@ -186,6 +187,7 @@ pub trait Printer<'tcx>: Sized {
                 }
 
                 self.path_append(
+                    def_id,
                     |cx: &mut Self| {
                         if trait_qualify_parent {
                             let trait_ref = ty::TraitRef::new(
