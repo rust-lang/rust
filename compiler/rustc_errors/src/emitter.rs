@@ -1671,23 +1671,27 @@ impl HumanEmitter {
                         {
                             code_window_status = CodeWindowStatus::Closed;
                         }
-                        for (label, is_primary) in labels.into_iter() {
+                        let labels_len = labels.len();
+                        for (label_idx, (label, is_primary)) in labels.into_iter().enumerate() {
                             let style = if is_primary {
                                 Style::LabelPrimary
                             } else {
                                 Style::LabelSecondary
                             };
-                            let pipe = self.col_separator();
-                            buffer.prepend(line_idx, &format!(" {pipe}"), Style::LineNumber);
-                            for _ in 0..max_line_num_len {
-                                buffer.prepend(line_idx, " ", Style::NoStyle);
-                            }
+                            self.draw_col_separator_no_space(
+                                &mut buffer,
+                                line_idx,
+                                max_line_num_len + 1,
+                            );
                             line_idx += 1;
-                            let chr = self.note_separator();
-                            buffer.append(line_idx, &format!(" {chr} note: "), style);
-                            for _ in 0..max_line_num_len {
-                                buffer.prepend(line_idx, " ", Style::NoStyle);
-                            }
+                            self.draw_note_separator(
+                                &mut buffer,
+                                line_idx,
+                                max_line_num_len + 1,
+                                label_idx != labels_len - 1,
+                            );
+                            buffer.append(line_idx, "note", Style::MainHeaderMsg);
+                            buffer.append(line_idx, ": ", Style::NoStyle);
                             buffer.append(line_idx, label, style);
                             line_idx += 1;
                         }
@@ -2863,10 +2867,11 @@ impl HumanEmitter {
         }
     }
 
-    fn note_separator(&self) -> char {
+    fn note_separator(&self, is_cont: bool) -> &'static str {
         match self.theme {
-            OutputTheme::Ascii => '=',
-            OutputTheme::Unicode => '╰',
+            OutputTheme::Ascii => "= ",
+            OutputTheme::Unicode if is_cont => "├ ",
+            OutputTheme::Unicode => "╰ ",
         }
     }
 
@@ -2979,11 +2984,7 @@ impl HumanEmitter {
         col: usize,
         is_cont: bool,
     ) {
-        let chr = match self.theme {
-            OutputTheme::Ascii => "= ",
-            OutputTheme::Unicode if is_cont => "├ ",
-            OutputTheme::Unicode => "╰ ",
-        };
+        let chr = self.note_separator(is_cont);
         buffer.puts(line, col, chr, Style::LineNumber);
     }
 
