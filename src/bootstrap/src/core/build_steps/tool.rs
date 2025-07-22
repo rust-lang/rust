@@ -1130,7 +1130,8 @@ pub struct RustAnalyzerProcMacroSrv {
 }
 
 impl Step for RustAnalyzerProcMacroSrv {
-    type Output = Option<ToolBuildResult>;
+    type Output = ToolBuildResult;
+
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -1152,7 +1153,7 @@ impl Step for RustAnalyzerProcMacroSrv {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<ToolBuildResult> {
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
         let tool_result = builder.ensure(ToolBuild {
             build_compiler: self.compiler,
             target: self.target,
@@ -1176,7 +1177,7 @@ impl Step for RustAnalyzerProcMacroSrv {
             FileType::Executable,
         );
 
-        Some(tool_result)
+        tool_result
     }
 }
 
