@@ -2666,7 +2666,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Whether the trait impl is marked const. This does not consider stability or feature gates.
     pub fn is_const_trait_impl(self, def_id: DefId) -> bool {
         self.def_kind(def_id) == DefKind::Impl { of_trait: true }
-            && self.impl_trait_header(def_id).constness == hir::Constness::Const
+            && matches!(
+                self.impl_trait_header(def_id).constness,
+                hir::Constness::Const { always: false }
+            )
     }
 
     pub fn is_sdylib_interface_build(self) -> bool {

@@ -1840,7 +1840,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_constness(&mut self, c: Const) -> hir::Constness {
         match c {
-            Const::Yes(_) => hir::Constness::Const,
+            Const::Yes(_) => hir::Constness::Const { always: false },
             Const::No => hir::Constness::NotConst,
         }
     }

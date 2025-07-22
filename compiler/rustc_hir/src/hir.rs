@@ -4632,17 +4632,24 @@ impl fmt::Display for Safety {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable, Decodable, StableHash)]
-#[derive(Default)]
 pub enum Constness {
-    #[default]
-    Const,
+    Const { always: bool },
     NotConst,
+}
+
+/// This impl exists as an optimization so that metadata deserialization can
+/// store the value directly and not have to encode it wrapped in another `Option`.
+impl Default for Constness {
+    fn default() -> Self {
+        Self::Const { always: false }
+    }
 }
 
 impl fmt::Display for Constness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match *self {
-            Self::Const => "const",
+            Self::Const { always: true } => "comptime",
+            Self::Const { always: false } => "const",
             Self::NotConst => "non-const",
         })
     }
@@ -4697,7 +4704,7 @@ impl FnHeader {
     }
 
     pub fn is_const(&self) -> bool {
-        matches!(self.constness, Constness::Const)
+        matches!(self.constness, Constness::Const { .. })
     }
 
     pub fn is_unsafe(&self) -> bool {

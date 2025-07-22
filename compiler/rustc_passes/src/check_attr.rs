@@ -544,7 +544,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if target == (Target::Impl { of_trait: true }) {
             match item.unwrap() {
                 ItemLike::Item(it) => match it.expect_impl().constness {
-                    Constness::Const => {
+                    Constness::Const { .. } => {
                         let item_span = self.tcx.hir_span(hir_id);
                         self.tcx.emit_node_span_lint(
                             MISPLACED_DIAGNOSTIC_ATTRIBUTES,
