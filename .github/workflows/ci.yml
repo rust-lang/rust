@@ -131,7 +131,6 @@ jobs:
         run: src/ci/scripts/free-disk-space.sh
         if: matrix.free_disk
 
-      - name: early exit
       - run: exit 1
 
       # Rust Log Analyzer can't currently detect the PR number of a GitHub
