@@ -2440,8 +2440,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
             }
         }
 
-        let verbose = self.should_print_verbose();
-        write!(self, "{}", disambiguated_data.as_sym(verbose))?;
+        self.append_disambiguated_data(def_id, &disambiguated_data)?;
 
         self.empty_path = false;
 
@@ -2668,6 +2667,163 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
         p!("'_");
 
+        Ok(())
+    }
+
+    fn append_disambiguated_data(
+        &mut self,
+        def_id: DefId,
+        disambiguated_data: &DisambiguatedDefPathData,
+    ) -> Result<(), PrintError> {
+        let verbose = self.should_print_verbose();
+
+        let find_param = |args: &[hir::Expr<'_>], hir_id: hir::HirId| -> Option<usize> {
+            args.iter().enumerate().find(|(_, e)| e.hir_id == hir_id).map(|(i, _)| i)
+        };
+        let param_name = |this: &mut Self, def_id: DefId, i: usize| -> Result<(), PrintError> {
+            if let Some(def_id) = def_id.as_local()
+                && let Some(body_id) = this.tcx.hir_node_by_def_id(def_id).body_id()
+                && let Some(Some(ident)) = this.tcx.hir_body_param_idents(body_id).skip(i).next()
+                && ident.name != kw::Underscore
+            {
+                write!(this, "{ident}")
+            } else {
+                write!(this, "{i}")
+            }
+        };
+
+        // Similar to `DisambiguatedData::as_sym`, but leverages access to `TyCtxt` to have nicer
+        // output for non-items like closures.
+        match disambiguated_data.data.name() {
+            DefPathDataName::Named(name) => {
+                if verbose && disambiguated_data.disambiguator != 0 {
+                    write!(self, "{name}#{}", disambiguated_data.disambiguator)?;
+                } else {
+                    write!(self, "{name}")?;
+                }
+            }
+            DefPathDataName::Anon { namespace } => match disambiguated_data.data {
+                DefPathData::AnonAssocTy(method) => {
+                    write!(self, "{method}::{{{namespace}#{}}}", disambiguated_data.disambiguator)?;
+                }
+                DefPathData::Closure if let Some(id) = def_id.as_local() => {
+                    write!(self, "{{")?;
+                    let closure = self.tcx.hir_node_by_def_id(id).expect_expr();
+                    // For closures in the local crate, we look at where the closure comes from in
+                    // order to give them a locally reasonable name:
+                    //   - closures assigned to binding `let a`, `{a}`
+                    //   - closures passed directly as arguments in function call,
+                    //     `{function_name#parameter_name_or_position}`
+                    //   - closures passed directly as arguments in method call,
+                    //     `{Trait::method#parameter_name_or_position}`
+                    //   - closures assigned to statics or consts, the item's name
+                    //   - closures returned from functions, methods and closures, `{return}`
+                    match self.tcx.parent_hir_node(closure.hir_id) {
+                        // `let`-binding
+                        hir::Node::LetStmt(stmt) if let Some(ident) = stmt.pat.simple_ident() => {
+                            write!(self, "{ident}")?
+                        }
+                        // Fn call
+                        hir::Node::Expr(expr)
+                            if let hir::ExprKind::Call(callee, args) = expr.kind
+                                && let hir::ExprKind::Path(qpath) = callee.kind
+                                && let hir::QPath::Resolved(_, path) = qpath
+                                && let hir::def::Res::Def(
+                                    hir::def::DefKind::Fn | hir::def::DefKind::AssocFn,
+                                    fn_id,
+                                ) = path.res
+                                && let Some(i) = find_param(args, closure.hir_id) =>
+                        {
+                            let fn_name = self.tcx.item_name(fn_id);
+                            write!(self, "{fn_name}#")?;
+                            param_name(self, fn_id, i)?;
+                        }
+                        hir::Node::Expr(expr)
+                            if let hir::ExprKind::Call(callee, args) = expr.kind
+                                && let hir::ExprKind::Path(qpath) = callee.kind
+                                && let hir::QPath::TypeRelative(ty, segment) = qpath
+                                && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) =
+                                    ty.kind
+                                && let hir::def::Res::Def(_, id) = path.res
+                                && let Some(i) = find_param(args, closure.hir_id) =>
+                        {
+                            let parent = self.tcx.item_name(id);
+                            write!(self, "{parent}::{}#{i}", segment.ident)?
+                        }
+                        // Method call
+                        hir::Node::Expr(expr)
+                            if let hir::ExprKind::MethodCall(segment, _callee, args, _) =
+                                expr.kind
+                                && let hir::def::Res::Def(_, id) = segment.res
+                                && let Some(i) = find_param(args, closure.hir_id) =>
+                        {
+                            let parent = self.tcx.parent(id);
+                            let parent = self.tcx.item_name(parent);
+                            write!(self, "{parent}::{}#", segment.ident)?;
+                            param_name(self, id, i)?;
+                        }
+                        hir::Node::Expr(expr)
+                            if let hir::ExprKind::MethodCall(segment, _callee, args, _) =
+                                expr.kind
+                                && let Some(i) = find_param(args, closure.hir_id) =>
+                        {
+                            write!(self, "_::{}#{i}", segment.ident)?;
+                        }
+                        // Explicit `return`
+                        hir::Node::Expr(expr) if let hir::ExprKind::Ret(_) = expr.kind => {
+                            write!(self, "return")?
+                        }
+                        // Explicit `return`
+                        hir::Node::Stmt(hir::Stmt {
+                            kind: hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr),
+                            ..
+                        }) if let hir::ExprKind::Ret(_) = expr.kind => write!(self, "return")?,
+                        // fn return value
+                        hir::Node::Block(block)
+                            if let Some(expr) = block.expr
+                                && expr.hir_id == closure.hir_id
+                                && let hir::Node::Expr(block) =
+                                    self.tcx.parent_hir_node(block.hir_id)
+                                && let hir::Node::Item(_)
+                                | hir::Node::TraitItem(_)
+                                | hir::Node::ImplItem(_)
+                                | hir::Node::Expr(hir::Expr {
+                                    kind: hir::ExprKind::Closure(..),
+                                    ..
+                                }) = self.tcx.parent_hir_node(block.hir_id) =>
+                        {
+                            write!(self, "return")?
+                        }
+                        // closure return value
+                        hir::Node::Expr(expr)
+                            if let hir::ExprKind::Closure(c) = expr.kind
+                                && self.tcx.hir_body(c.body).value.hir_id == closure.hir_id =>
+                        {
+                            write!(self, "return")?
+                        }
+                        // `asm!()`
+                        hir::Node::Expr(expr) if let hir::ExprKind::InlineAsm(_) = expr.kind => {
+                            write!(self, "asm {namespace}#{}", disambiguated_data.disambiguator)?
+                        }
+                        // `static` or `const`
+                        hir::Node::Item(item)
+                            if let hir::ItemKind::Static(_, ident, ..)
+                            | hir::ItemKind::Const(ident, ..) = item.kind =>
+                        {
+                            write!(self, "{ident}")?
+                        }
+                        hir::Node::TraitItem(_) | hir::Node::ImplItem(_)
+                            if disambiguated_data.disambiguator == 0 =>
+                        {
+                            write!(self, "{{{namespace}}}")?
+                        }
+                        _ => write!(self, "{namespace}#{}", disambiguated_data.disambiguator)?,
+                    };
+                    write!(self, "}}")?;
+                }
+                _ => write!(self, "{{{namespace}#{}}}", disambiguated_data.disambiguator)?,
+            },
+        }
         Ok(())
     }
 }

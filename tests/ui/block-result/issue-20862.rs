@@ -1,3 +1,4 @@
+//@ compile-flags: -Z span_free_formats
 fn foo(x: i32) {
     |y| x + y
 //~^ ERROR: mismatched types

@@ -4,7 +4,7 @@ note: external requirements
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^
    |
-   = note: defining type: no_region::<'?1, T>::{closure#0} with closure args [
+   = note: defining type: no_region::<'?1, T>::{with_signature#op} with closure args [
                i32,
                extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '?2)>,
                (),
@@ -42,7 +42,7 @@ note: external requirements
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^
    |
-   = note: defining type: correct_region::<'?1, T>::{closure#0} with closure args [
+   = note: defining type: correct_region::<'?1, T>::{with_signature#op} with closure args [
                i32,
                extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '?2)>,
                (),
@@ -66,7 +66,7 @@ note: external requirements
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^
    |
-   = note: defining type: wrong_region::<'?1, '?2, T>::{closure#0} with closure args [
+   = note: defining type: wrong_region::<'?1, '?2, T>::{with_signature#op} with closure args [
                i32,
                extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '?3)>,
                (),
@@ -104,7 +104,7 @@ note: external requirements
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^
    |
-   = note: defining type: outlives_region::<'?1, '?2, T>::{closure#0} with closure args [
+   = note: defining type: outlives_region::<'?1, '?2, T>::{with_signature#op} with closure args [
                i32,
                extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '?3)>,
                (),

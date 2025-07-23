@@ -463,7 +463,7 @@ fn closures(_1: bool, _2: bool) -> {closure@$DIR/operands.rs:47:5: 47:19} {
         return;
     }
 }
-fn closures::{closure#0}(_1: {closure@$DIR/operands.rs:47:5: 47:19}, _2: bool) -> bool {
+fn closures::{return}(_1: {closure@$DIR/operands.rs:47:5: 47:19}, _2: bool) -> bool {
     let mut _0: bool;
     let mut _3: bool;
     let mut _4: bool;

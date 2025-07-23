@@ -1,3 +1,4 @@
+//@ compile-flags: -Z span_free_formats
 #[derive(Debug)]
 enum MyError {
     MainError

@@ -86,7 +86,7 @@ LL |     || g()
    |
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
-note: the above error was encountered while instantiating `fn in_closure::{closure#0}`
+note: the above error was encountered while instantiating `fn in_closure::{return}`
   --> $DIR/simd-abi-checks-avx.rs:81:9
    |
 LL |         in_closure()();

@@ -1,5 +1,5 @@
 warning: this function depends on never type fallback being `()`
-  --> $DIR/fallback-closure-ret.rs:21:1
+  --> $DIR/fallback-closure-ret.rs:22:1
    |
 LL | fn main() {
    | ^^^^^^^^^
@@ -8,7 +8,7 @@ LL | fn main() {
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Bar` will fail
-  --> $DIR/fallback-closure-ret.rs:24:5
+  --> $DIR/fallback-closure-ret.rs:25:5
    |
 LL |     foo(|| panic!());
    |     ^^^^^^^^^^^^^^^^
@@ -22,7 +22,7 @@ warning: 1 warning emitted
 
 Future incompatibility report: Future breakage diagnostic:
 warning: this function depends on never type fallback being `()`
-  --> $DIR/fallback-closure-ret.rs:21:1
+  --> $DIR/fallback-closure-ret.rs:22:1
    |
 LL | fn main() {
    | ^^^^^^^^^
@@ -31,7 +31,7 @@ LL | fn main() {
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Bar` will fail
-  --> $DIR/fallback-closure-ret.rs:24:5
+  --> $DIR/fallback-closure-ret.rs:25:5
    |
 LL |     foo(|| panic!());
    |     ^^^^^^^^^^^^^^^^

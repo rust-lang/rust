@@ -1,3 +1,4 @@
+//@ compile-flags: -Z span_free_formats
 #![feature(type_alias_impl_trait)]
 
 type Closure = impl FnOnce();

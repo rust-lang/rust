@@ -2,7 +2,7 @@
 // outlive `'static`. In this case, we don't get any errors, and in fact
 // we don't even propagate constraints from the closures to the callers.
 
-//@ compile-flags:-Zverbose-internals
+//@ compile-flags:-Zverbose-internals -Z span_free_formats
 //@ check-pass
 
 #![allow(warnings)]

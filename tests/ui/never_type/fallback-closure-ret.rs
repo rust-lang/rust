@@ -9,6 +9,7 @@
 //
 //@ revisions: nofallback fallback
 //@ check-pass
+//@ compile-flags: -Z span_free_formats
 
 #![cfg_attr(fallback, feature(never_type_fallback))]
 

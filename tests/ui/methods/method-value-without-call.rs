@@ -1,4 +1,5 @@
 //! Test taking a method value without parentheses
+//@ compile-flags: -Z span_free_formats
 
 struct Point {
     x: isize,
