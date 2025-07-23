@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 
 use rustc_abi::{Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size};
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
+use rustc_codegen_ssa::codegen_attrs::autodiff_attrs;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -12,7 +13,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir};
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
@@ -21,7 +22,7 @@ use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
-use crate::builder::autodiff::generate_enzyme_call;
+use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::context::CodegenCx;
 use crate::llvm::{self, Metadata};
 use crate::type_::Type;
@@ -1156,14 +1157,14 @@ fn codegen_enzyme_autodiff<'ll, 'tcx>(
         Instance::try_resolve(tcx, bx.cx.typing_env(), *diff_id, diff_args).unwrap().unwrap();
     let diff_symbol = symbol_name_for_instance_in_crate(tcx, fn_diff.clone(), LOCAL_CRATE);
 
-    // TODO(Sa4dUs): Store autodiff items in a single pass and just get them here
-    // in a O(1) step
-    let diff_attrs = tcx
-        .collect_and_partition_mono_items(())
-        .autodiff_items
-        .iter()
-        .find(|item| item.target == diff_symbol);
-    let Some(diff_attrs) = diff_attrs else { bug!("could not find autodiff attrs") };
+    let diff_attrs = autodiff_attrs(tcx, fn_diff.def_id());
+    let Some(mut diff_attrs) = diff_attrs else { bug!("could not find autodiff attrs") };
+
+    adjust_activity_to_abi(
+        tcx,
+        fn_source.ty(tcx, TypingEnv::fully_monomorphized()),
+        &mut diff_attrs.input_activity,
+    );
 
     // Build body
     generate_enzyme_call(
@@ -1173,7 +1174,7 @@ fn codegen_enzyme_autodiff<'ll, 'tcx>(
         &diff_symbol,
         llret_ty,
         &val_arr,
-        diff_attrs.attrs.clone(),
+        diff_attrs.clone(),
         result,
     );
 }
