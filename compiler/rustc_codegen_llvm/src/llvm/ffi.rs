@@ -2676,12 +2676,18 @@ unsafe extern "C" {
 
     // ========== ENZYME AUTODIFF FFI FUNCTIONS ==========
 
+    #[cfg(llvm_enzyme)]
     // Enzyme Type Tree Functions (minimal set for TypeTree support)
     pub(crate) fn EnzymeNewTypeTree() -> CTypeTreeRef;
+    #[cfg(llvm_enzyme)]
     pub(crate) fn EnzymeFreeTypeTree(CTT: CTypeTreeRef);
+    #[cfg(llvm_enzyme)]
     pub(crate) fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef;
+    #[cfg(llvm_enzyme)]
     pub(crate) fn EnzymeNewTypeTreeTR(arg1: CTypeTreeRef) -> CTypeTreeRef;
+    #[cfg(llvm_enzyme)]
     pub(crate) fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef);
+    #[cfg(llvm_enzyme)]
     pub(crate) fn EnzymeTypeTreeShiftIndiciesEq(
         arg1: CTypeTreeRef,
         data_layout: *const c_char,
@@ -2689,7 +2695,9 @@ unsafe extern "C" {
         max_size: i64,
         add_offset: u64,
     );
+    #[cfg(llvm_enzyme)]
     pub(crate) fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
+    #[cfg(llvm_enzyme)]
     pub(crate) fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
 }
 
@@ -2697,6 +2705,7 @@ unsafe extern "C" {
 
 // Type Tree Support for Autodiff
 
+#[cfg(llvm_enzyme)]
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub(crate) enum CConcreteType {
@@ -2709,8 +2718,10 @@ pub(crate) enum CConcreteType {
     DT_Unknown = 6,
 }
 
+#[cfg(llvm_enzyme)]
 pub(crate) type CTypeTreeRef = *mut EnzymeTypeTree;
 
+#[cfg(llvm_enzyme)]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct EnzymeTypeTree {
@@ -2718,10 +2729,12 @@ pub(crate) struct EnzymeTypeTree {
 }
 
 // TypeTree wrapper for Rust-side type safety and memory management
+#[cfg(llvm_enzyme)]
 pub(crate) struct TypeTree {
     pub(crate) inner: CTypeTreeRef,
 }
 
+#[cfg(llvm_enzyme)]
 impl TypeTree {
     pub(crate) fn new() -> TypeTree {
         let inner = unsafe { EnzymeNewTypeTree() };
@@ -2765,6 +2778,7 @@ impl TypeTree {
     }
 }
 
+#[cfg(llvm_enzyme)]
 impl Clone for TypeTree {
     fn clone(&self) -> Self {
         let inner = unsafe { EnzymeNewTypeTreeTR(self.inner) };
@@ -2772,6 +2786,7 @@ impl Clone for TypeTree {
     }
 }
 
+#[cfg(llvm_enzyme)]
 impl std::fmt::Display for TypeTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let ptr = unsafe { EnzymeTypeTreeToString(self.inner) };
@@ -2788,12 +2803,14 @@ impl std::fmt::Display for TypeTree {
     }
 }
 
+#[cfg(llvm_enzyme)]
 impl std::fmt::Debug for TypeTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         <Self as std::fmt::Display>::fmt(self, f)
     }
 }
 
+#[cfg(llvm_enzyme)]
 impl Drop for TypeTree {
     fn drop(&mut self) {
         unsafe { EnzymeFreeTypeTree(self.inner) }
