@@ -159,20 +159,22 @@ jobs:
         run: cargo install -f rustup-toolchain-install-master
       - name: Push changes to a branch and create PR
         run: |
+          # Make it easier to see what happens.
+          set -x
           # Temporarily disable early exit to examine the status code of rustc-josh-sync
           set +e
           rustc-josh-sync pull
           exitcode=$?
           set -e
 
-          # If there were no changes to pull, rustc-josh-sync returns status code 2
-          # In that case skip the rest of the job
+          # If there were no changes to pull, rustc-josh-sync returns status code 2.
+          # In that case, skip the rest of the job.
           if [ $exitcode -eq 2 ]; then
             echo "Nothing changed in rustc, skipping PR"
             exit 0
           elif [ $exitcode -ne 0 ]; then
             # If return code was not 0 or 2, rustc-josh-sync actually failed
-            echo "rustc-josh-sync failed"
+            echo "error: rustc-josh-sync failed"
             exit ${exitcode}
           fi
 
@@ -187,8 +189,6 @@ jobs:
           gh pr create -B master --title 'Automatic Rustup' --body 'Please close and re-open this PR to trigger CI, then enable auto-merge.'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ZULIP_BOT_EMAIL: ${{ secrets.ZULIP_BOT_EMAIL }}
-          ZULIP_API_TOKEN: ${{ secrets.ZULIP_API_TOKEN }}
 
   cron-fail-notify:
     name: cronjob failure notification
