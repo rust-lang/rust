@@ -6,6 +6,8 @@ use core::num::fmt::{Formatted, Part};
 use std::mem::MaybeUninit;
 use std::{fmt, str};
 
+use crate::num::{ldexp_f16, ldexp_f32, ldexp_f64};
+
 mod estimator;
 mod strategy {
     mod dragon;
@@ -73,24 +75,6 @@ macro_rules! try_fixed {
                       expected = (str::from_utf8($expected).unwrap(), $expectedk),
                       $($key = $val),*);
     })
-}
-
-#[cfg(target_has_reliable_f16)]
-fn ldexp_f16(a: f16, b: i32) -> f16 {
-    ldexp_f64(a as f64, b) as f16
-}
-
-fn ldexp_f32(a: f32, b: i32) -> f32 {
-    ldexp_f64(a as f64, b) as f32
-}
-
-fn ldexp_f64(a: f64, b: i32) -> f64 {
-    unsafe extern "C" {
-        fn ldexp(x: f64, n: i32) -> f64;
-    }
-    // SAFETY: assuming a correct `ldexp` has been supplied, the given arguments cannot possibly
-    // cause undefined behavior
-    unsafe { ldexp(a, b) }
 }
 
 fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16)
