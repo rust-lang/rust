@@ -2646,7 +2646,8 @@ pub unsafe fn vtable_align(ptr: *const ()) -> usize;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn vtable_for<T: 'static, U: ?Sized + 'static>() -> Option<ptr::DynMetadata<U>>;
+pub const fn vtable_for<T, U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized>()
+-> Option<ptr::DynMetadata<U>>;
 
 /// The size of a type in bytes.
 ///
