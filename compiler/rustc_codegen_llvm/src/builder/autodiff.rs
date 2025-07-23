@@ -3,8 +3,8 @@ use std::ptr;
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
-use rustc_middle::{bug, ty};
 use rustc_middle::ty::{PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
+use rustc_middle::{bug, ty};
 use tracing::debug;
 
 use crate::builder::{Builder, PlaceRef, UNNAMED};

@@ -16,9 +16,9 @@ mod llvm_enzyme {
     use rustc_ast::tokenstream::*;
     use rustc_ast::visit::AssocCtxt::*;
     use rustc_ast::{
-        self as ast, AngleBracketedArg, AngleBracketedArgs, AssocItemKind, BindingMode, FnRetTy,
-        FnSig, GenericArg, GenericArgs, Generics, ItemKind, MetaItemInner, PatKind, Path,
-        PathSegment, TyKind, Visibility,
+        self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemKind, BindingMode,
+        FnRetTy, FnSig, GenericArg, GenericArgs, GenericParamKind, Generics, ItemKind,
+        MetaItemInner, PatKind, Path, PathSegment, TyKind, Visibility,
     };
     use rustc_expand::base::{Annotatable, ExtCtxt};
     use rustc_span::{Ident, Span, Symbol, kw, sym};
@@ -554,10 +554,18 @@ mod llvm_enzyme {
         let generic_args = generics
             .params
             .iter()
-            .map(|p| {
-                let path = ast::Path::from_ident(p.ident);
-                let ty = ecx.ty_path(path);
-                AngleBracketedArg::Arg(GenericArg::Type(ty))
+            .filter_map(|p| match &p.kind {
+                GenericParamKind::Type { .. } => {
+                    let path = ast::Path::from_ident(p.ident);
+                    let ty = ecx.ty_path(path);
+                    Some(AngleBracketedArg::Arg(GenericArg::Type(ty)))
+                }
+                GenericParamKind::Const { .. } => {
+                    let expr = ecx.expr_path(ast::Path::from_ident(p.ident));
+                    let anon_const = AnonConst { id: ast::DUMMY_NODE_ID, value: expr };
+                    Some(AngleBracketedArg::Arg(GenericArg::Const(anon_const)))
+                }
+                GenericParamKind::Lifetime { .. } => None,
             })
             .collect::<ThinVec<_>>();
 

@@ -17,6 +17,7 @@ use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
+use rustc_target::callconv::PassMode;
 use rustc_target::spec::PanicStrategy;
 use tracing::debug;
 
@@ -1136,8 +1137,6 @@ fn codegen_enzyme_autodiff<'ll, 'tcx>(
     let ret_ty = sig.output();
     let llret_ty = bx.layout_of(ret_ty).llvm_type(bx);
 
-    let val_arr: Vec<&'ll Value> = get_args_from_tuple(bx, args[2]);
-
     // Get source, diff, and attrs
     let (source_id, source_args) = match fn_args.into_type_list(tcx)[0].kind() {
         ty::FnDef(def_id, source_params) => (def_id, source_params),
@@ -1155,6 +1154,7 @@ fn codegen_enzyme_autodiff<'ll, 'tcx>(
     };
     let fn_diff =
         Instance::try_resolve(tcx, bx.cx.typing_env(), *diff_id, diff_args).unwrap().unwrap();
+    let val_arr: Vec<&'ll Value> = get_args_from_tuple(bx, args[2], fn_diff);
     let diff_symbol = symbol_name_for_instance_in_crate(tcx, fn_diff.clone(), LOCAL_CRATE);
 
     let diff_attrs = autodiff_attrs(tcx, fn_diff.def_id());
@@ -1181,39 +1181,51 @@ fn codegen_enzyme_autodiff<'ll, 'tcx>(
 
 fn get_args_from_tuple<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    op: OperandRef<'tcx, &'ll Value>,
+    tuple_op: OperandRef<'tcx, &'ll Value>,
+    fn_instance: Instance<'tcx>,
 ) -> Vec<&'ll Value> {
-    match op.val {
-        OperandValue::Ref(ref place_value) => {
-            let mut ret_arr = vec![];
-            let tuple_place = PlaceRef { val: *place_value, layout: op.layout };
+    let cx = bx.cx;
+    let fn_abi = cx.fn_abi_of_instance(fn_instance, ty::List::empty());
 
-            for i in 0..tuple_place.layout.layout.0.fields.count() {
-                let field_place = tuple_place.project_field(bx, i);
-                let field_layout = tuple_place.layout.field(bx, i);
-                let field_ty = field_layout.ty;
-                let llvm_ty = field_layout.llvm_type(bx.cx);
+    match tuple_op.val {
+        OperandValue::Immediate(val) => vec![val],
+        OperandValue::Pair(v1, v2) => vec![v1, v2],
+        OperandValue::Ref(ptr) => {
+            let tuple_place = PlaceRef { val: ptr, layout: tuple_op.layout };
 
-                let field_val = bx.load(llvm_ty, field_place.val.llval, field_place.val.align);
+            let mut result = Vec::with_capacity(fn_abi.args.len());
+            let mut tuple_index = 0;
 
-                match field_ty.kind() {
-                    ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), ty::Slice(_)) => {
-                        let ptr = bx.extract_value(field_val, 0);
-                        let len = bx.extract_value(field_val, 1);
-                        ret_arr.push(ptr);
-                        ret_arr.push(len);
+            for arg in &fn_abi.args {
+                match arg.mode {
+                    PassMode::Ignore => {}
+                    PassMode::Direct(_) | PassMode::Cast { .. } => {
+                        let field = tuple_place.project_field(bx, tuple_index);
+                        let llvm_ty = field.layout.llvm_type(bx.cx);
+                        let val = bx.load(llvm_ty, field.val.llval, field.val.align);
+                        result.push(val);
+                        tuple_index += 1;
                     }
-                    _ => {
-                        ret_arr.push(field_val);
+                    PassMode::Pair(_, _) => {
+                        let field = tuple_place.project_field(bx, tuple_index);
+                        let llvm_ty = field.layout.llvm_type(bx.cx);
+                        let pair_val = bx.load(llvm_ty, field.val.llval, field.val.align);
+                        result.push(bx.extract_value(pair_val, 0));
+                        result.push(bx.extract_value(pair_val, 1));
+                        tuple_index += 1;
+                    }
+                    PassMode::Indirect { .. } => {
+                        let field = tuple_place.project_field(bx, tuple_index);
+                        result.push(field.val.llval);
+                        tuple_index += 1;
                     }
                 }
             }
 
-            ret_arr
+            result
         }
-        OperandValue::Pair(v1, v2) => vec![v1, v2],
-        OperandValue::Immediate(v) => vec![v],
-        OperandValue::ZeroSized => bug!("unexpected `ZeroSized` arg"),
+
+        OperandValue::ZeroSized => bug!("unexpected ZeroSized argument in get_args_from_tuple"),
     }
 }
 
