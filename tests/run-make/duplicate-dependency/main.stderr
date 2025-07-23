@@ -11,7 +11,7 @@ help: item with same name found
    |
 LL | pub struct Foo;
    | ^^^^^^^^^^^^^^
-   = note: perhaps two different versions of crate `foo` are being used?
+   = note: there are multiple different versions of crate `foo` in the dependency graph
    = note: required for `Bar` to implement `Into<re_export_foo::foo::Foo>`
 note: required by a bound in `into_foo`
   --> $DIR/re-export-foo.rs:3:25
