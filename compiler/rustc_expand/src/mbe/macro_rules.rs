@@ -128,12 +128,20 @@ pub(super) struct MacroRule {
     rhs: mbe::TokenTree,
 }
 
-struct MacroRulesMacroExpander {
+pub struct MacroRulesMacroExpander {
     node_id: NodeId,
     name: Ident,
     span: Span,
     transparency: Transparency,
     rules: Vec<MacroRule>,
+}
+
+impl MacroRulesMacroExpander {
+    pub fn get_unused_rule(&self, rule_i: usize) -> Option<(&Ident, Span)> {
+        // If the rhs contains an invocation like `compile_error!`, don't report it as unused.
+        let rule = &self.rules[rule_i];
+        if has_compile_error_macro(&rule.rhs) { None } else { Some((&self.name, rule.lhs_span)) }
+    }
 }
 
 impl TTMacroExpander for MacroRulesMacroExpander {
@@ -153,12 +161,6 @@ impl TTMacroExpander for MacroRulesMacroExpander {
             input,
             &self.rules,
         ))
-    }
-
-    fn get_unused_rule(&self, rule_i: usize) -> Option<(&Ident, Span)> {
-        // If the rhs contains an invocation like `compile_error!`, don't report it as unused.
-        let rule = &self.rules[rule_i];
-        if has_compile_error_macro(&rule.rhs) { None } else { Some((&self.name, rule.lhs_span)) }
     }
 }
 
