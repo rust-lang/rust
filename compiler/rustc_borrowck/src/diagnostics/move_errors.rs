@@ -303,10 +303,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 
     fn has_ambiguous_copy(&mut self, ty: Ty<'tcx>) -> bool {
-        let Some(copy_trait_def) = self.infcx.tcx.lang_items().copy_trait() else { return false };
-        // This is only going to be ambiguous if there are incoherent impls, because otherwise
-        // ambiguity should never happen in MIR.
-        self.infcx.type_implements_trait(copy_trait_def, [ty], self.infcx.param_env).may_apply()
+        let Some(copy_def_id) = self.infcx.tcx.lang_items().copy_trait() else { return false };
+
+        // Avoid bogus move errors because of an incoherent `Copy` impl.
+        self.infcx.type_implements_trait(copy_def_id, [ty], self.infcx.param_env).may_apply()
+            && self.infcx.tcx.coherent_trait(copy_def_id).is_err()
     }
 
     fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'infcx> {

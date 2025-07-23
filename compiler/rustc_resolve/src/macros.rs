@@ -5,11 +5,9 @@ use std::cell::Cell;
 use std::mem;
 use std::sync::Arc;
 
-use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, Crate, NodeId, attr};
 use rustc_ast_pretty::pprust;
-use rustc_attr_data_structures::StabilityLevel;
-use rustc_data_structures::intern::Interned;
+use rustc_attr_data_structures::{CfgEntry, StabilityLevel, StrippedCfgItem};
 use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
@@ -22,10 +20,10 @@ use rustc_expand::expand::{
 use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
-use rustc_middle::ty::{RegisteredTools, TyCtxt, Visibility};
+use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
-    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
     UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
 use rustc_session::parse::feature_err;
@@ -43,7 +41,7 @@ use crate::imports::Import;
 use crate::{
     BindingKey, DeriveData, Determinacy, Finalize, InvocationParent, MacroData, ModuleKind,
     ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult, ResolutionError,
-    Resolver, ScopeSet, Segment, ToNameBinding, Used,
+    Resolver, ScopeSet, Segment, Used,
 };
 
 type Res = def::Res<NodeId>;
@@ -80,7 +78,7 @@ pub(crate) enum MacroRulesScope<'ra> {
 /// This helps to avoid uncontrollable growth of `macro_rules!` scope chains,
 /// which usually grow linearly with the number of macro invocations
 /// in a module (including derives) and hurt performance.
-pub(crate) type MacroRulesScopeRef<'ra> = Interned<'ra, Cell<MacroRulesScope<'ra>>>;
+pub(crate) type MacroRulesScopeRef<'ra> = &'ra Cell<MacroRulesScope<'ra>>;
 
 /// Macro namespace is separated into two sub-namespaces, one for bang macros and
 /// one for attribute-like macros (attributes, derives).
@@ -172,7 +170,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         self.invocation_parents[&id].parent_def
     }
 
-    fn resolve_dollar_crates(&mut self) {
+    fn resolve_dollar_crates(&self) {
         hygiene::update_dollar_crate_names(|ctxt| {
             let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));
             match self.resolve_crate_root(ident).kind {
@@ -354,8 +352,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             if unused_arms.is_empty() {
                 continue;
             }
-            let def_id = self.local_def_id(node_id).to_def_id();
-            let m = &self.macro_map[&def_id];
+            let def_id = self.local_def_id(node_id);
+            let m = &self.local_macro_map[&def_id];
             let SyntaxExtensionKind::LegacyBang(ref ext) = m.ext.kind else {
                 continue;
             };
@@ -438,8 +436,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             .iter()
             .map(|(_, ident)| {
                 let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
-                let binding = (res, Visibility::<DefId>::Public, ident.span, expn_id)
-                    .to_name_binding(self.arenas);
+                let binding = self.arenas.new_pub_res_binding(res, ident.span, expn_id);
                 (*ident, binding)
             })
             .collect();
@@ -486,8 +483,18 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         self.proc_macros.push(self.local_def_id(id))
     }
 
-    fn append_stripped_cfg_item(&mut self, parent_node: NodeId, ident: Ident, cfg: ast::MetaItem) {
-        self.stripped_cfg_items.push(StrippedCfgItem { parent_module: parent_node, ident, cfg });
+    fn append_stripped_cfg_item(
+        &mut self,
+        parent_node: NodeId,
+        ident: Ident,
+        cfg: CfgEntry,
+        cfg_span: Span,
+    ) {
+        self.stripped_cfg_items.push(StrippedCfgItem {
+            parent_module: parent_node,
+            ident,
+            cfg: (cfg, cfg_span),
+        });
     }
 
     fn registered_tools(&self) -> &RegisteredTools {
@@ -690,7 +697,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             );
 
             self.tcx.sess.psess.buffer_lint(
-                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
                 attribute.span(),
                 node_id,
                 BuiltinLintDiag::UnknownDiagnosticAttribute { span: attribute.span(), typo_name },
@@ -828,7 +835,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn finalize_macro_resolutions(&mut self, krate: &Crate) {
-        let check_consistency = |this: &mut Self,
+        let check_consistency = |this: &Self,
                                  path: &[Segment],
                                  span,
                                  kind: MacroKind,
@@ -1132,7 +1139,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    pub(crate) fn check_reserved_macro_name(&mut self, ident: Ident, res: Res) {
+    pub(crate) fn check_reserved_macro_name(&self, ident: Ident, res: Res) {
         // Reserve some names that are not quite covered by the general check
         // performed on `Resolver::builtin_attrs`.
         if ident.name == sym::cfg || ident.name == sym::cfg_attr {
@@ -1148,7 +1155,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ///
     /// Possibly replace its expander to a pre-defined one for built-in macros.
     pub(crate) fn compile_macro(
-        &mut self,
+        &self,
         macro_def: &ast::MacroDef,
         ident: Ident,
         attrs: &[rustc_hir::Attribute],

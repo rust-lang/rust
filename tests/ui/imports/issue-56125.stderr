@@ -18,7 +18,7 @@ LL +     use ::issue_56125::issue_56125;
 LL -     use empty::issue_56125;
 LL +     use ::issue_56125::last_segment::issue_56125;
    |
-     and 1 other candidate
+   = and 1 other candidate
 
 error[E0659]: `issue_56125` is ambiguous
   --> $DIR/issue-56125.rs:6:9

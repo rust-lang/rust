@@ -6,12 +6,12 @@
 
 // Check that these function definitions only emit warnings, not errors
 fn arg<T: ?Send>(_: T) {}
-//~^ ERROR: relaxing a default bound only does something for `?Sized`
+//~^ ERROR: bound modifier `?` can only be applied to `Sized`
 fn ref_arg<T: ?Send>(_: &T) {}
-//~^ ERROR: relaxing a default bound only does something for `?Sized`
+//~^ ERROR: bound modifier `?` can only be applied to `Sized`
 fn ret() -> impl Iterator<Item = ()> + ?Send { std::iter::empty() }
-//~^ ERROR: relaxing a default bound only does something for `?Sized`
-//~| ERROR: relaxing a default bound only does something for `?Sized`
+//~^ ERROR: bound modifier `?` can only be applied to `Sized`
+//~| ERROR: bound modifier `?` can only be applied to `Sized`
 
 // Check that there's no `?Sized` relaxation!
 fn main() {

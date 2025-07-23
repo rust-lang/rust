@@ -529,7 +529,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // process any deferred resolutions.
         let deferred_call_resolutions = self.remove_deferred_call_resolutions(closure_def_id);
         for deferred_call_resolution in deferred_call_resolutions {
-            deferred_call_resolution.resolve(self);
+            deferred_call_resolution.resolve(&mut FnCtxt::new(
+                self,
+                self.param_env,
+                closure_def_id,
+            ));
         }
     }
 

@@ -258,7 +258,7 @@ jobs:
   # Check that the generated files agree with the checked-in versions.
   check-stdarch-gen:
     needs: [style]
-    name: Check stdarch-gen-{arm, loongarch} output 
+    name: Check stdarch-gen-{arm, loongarch} output
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -277,22 +277,11 @@ jobs:
         cargo run --bin=stdarch-gen-loongarch --release -- crates/stdarch-gen-loongarch/lasx.spec
         git diff --exit-code
 
-  build-std-detect:
-    needs: [style]
-    name: Build std_detect
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Install Rust
-      run: rustup update nightly && rustup default nightly
-    - run: ./ci/build-std-detect.sh
-
   conclusion:
     needs:
       - docs
       - verify
       - test
-      - build-std-detect
       - check-stdarch-gen
     runs-on: ubuntu-latest
     # We need to ensure this job does *not* get skipped if its dependencies fail,

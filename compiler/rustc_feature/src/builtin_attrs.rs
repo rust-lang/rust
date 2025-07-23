@@ -490,7 +490,8 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(no_link, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(repr, Normal, template!(List: "C"), DuplicatesOk, EncodeCrossCrate::No),
-    gated!(align, Normal, template!(List: "alignment"), DuplicatesOk, EncodeCrossCrate::No, fn_align, experimental!(align)),
+    // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
+    gated!(rustc_align, Normal, template!(List: "alignment"), DuplicatesOk, EncodeCrossCrate::No, fn_align, experimental!(rustc_align)),
     ungated!(unsafe(Edition2024) export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
     ungated!(unsafe(Edition2024) link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
     ungated!(unsafe(Edition2024) no_mangle, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
@@ -614,6 +615,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // RFC 2632
+    // FIXME(const_trait_impl) remove this
     gated!(
         const_trait, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No, const_trait_impl,
         "`const_trait` is a temporary placeholder for marking a trait that is suitable for `const` \
@@ -682,6 +684,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         unstable, Normal,
         template!(List: r#"feature = "name", reason = "...", issue = "N""#), DuplicatesOk,
         EncodeCrossCrate::Yes
+    ),
+    ungated!(
+        unstable_feature_bound, Normal, template!(Word, List: "feat1, feat2, ..."),
+        DuplicatesOk, EncodeCrossCrate::No,
     ),
     ungated!(
         rustc_const_unstable, Normal, template!(List: r#"feature = "name""#),

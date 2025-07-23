@@ -7,7 +7,7 @@ LL |     message = "first message",
 LL |     message = "second message",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ `message` is already declared here
    |
-   = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
+   = note: `#[warn(malformed_diagnostic_attributes)]` on by default
 
 warning: `label` is ignored due to previous definition of `label`
   --> $DIR/report_warning_on_duplicated_options.rs:11:5

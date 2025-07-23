@@ -111,9 +111,51 @@ fn mp_u256_add() {
         let y = random_u256(&mut rng);
         assign_bigint(&mut bx, x);
         assign_bigint(&mut by, y);
-        let actual = x + y;
+        let actual = if u256::MAX - x >= y {
+            x + y
+        } else {
+            // otherwise (u256::MAX - x) < y, so the wrapped result is
+            // (x + y) - (u256::MAX + 1) == y - (u256::MAX - x) - 1
+            y - (u256::MAX - x) - 1_u128.widen()
+        };
         bx += &by;
         check_one(|| hexu(x), || Some(hexu(y)), actual, &mut bx);
+    }
+}
+
+#[test]
+fn mp_u256_sub() {
+    let mut rng = ChaCha8Rng::from_seed(*SEED);
+    let mut bx = BigInt::new();
+    let mut by = BigInt::new();
+
+    for _ in 0..bigint_fuzz_iteration_count() {
+        let x = random_u256(&mut rng);
+        let y = random_u256(&mut rng);
+        assign_bigint(&mut bx, x);
+        assign_bigint(&mut by, y);
+
+        // since the operators (may) panic on overflow,
+        // we should test something that doesn't
+        let actual = if x >= y { x - y } else { y - x };
+        bx -= &by;
+        bx.abs_mut();
+        check_one(|| hexu(x), || Some(hexu(y)), actual, &mut bx);
+    }
+}
+
+#[test]
+fn mp_u256_shl() {
+    let mut rng = ChaCha8Rng::from_seed(*SEED);
+    let mut bx = BigInt::new();
+
+    for _ in 0..bigint_fuzz_iteration_count() {
+        let x = random_u256(&mut rng);
+        let shift: u32 = rng.random_range(0..256);
+        assign_bigint(&mut bx, x);
+        let actual = x << shift;
+        bx <<= shift;
+        check_one(|| hexu(x), || Some(shift.to_string()), actual, &mut bx);
     }
 }
 
@@ -124,7 +166,7 @@ fn mp_u256_shr() {
 
     for _ in 0..bigint_fuzz_iteration_count() {
         let x = random_u256(&mut rng);
-        let shift: u32 = rng.random_range(0..255);
+        let shift: u32 = rng.random_range(0..256);
         assign_bigint(&mut bx, x);
         let actual = x >> shift;
         bx >>= shift;

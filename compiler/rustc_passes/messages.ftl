@@ -14,11 +14,15 @@ passes_abi_of =
     fn_abi_of({$fn_name}) = {$fn_abi}
 
 passes_align_attr_application =
-    `#[align(...)]` should be applied to a function item
+    `#[rustc_align(...)]` should be applied to a function item
     .label = not a function item
 
+passes_align_on_fields =
+    attribute should be applied to a function or method
+    .warn = {-passes_previously_accepted}
+
 passes_align_should_be_repr_align =
-    `#[align(...)]` is not supported on {$item} items
+    `#[rustc_align(...)]` is not supported on {$item} items
     .suggestion = use `#[repr(align(...))]` instead
 
 passes_allow_incoherent_impl =
@@ -556,7 +560,8 @@ passes_only_has_effect_on =
     `#[{$attr_name}]` only has an effect on {$target_name ->
         [function] functions
         [module] modules
-        [implementation_block] implementation blocks
+        [trait_implementation_block] trait implementation blocks
+        [inherent_implementation_block] inherent implementation blocks
         *[unspecified] (unspecified--this is a compiler bug)
     }
 
@@ -600,7 +605,7 @@ passes_repr_align_greater_than_target_max =
 
 passes_repr_align_should_be_align =
     `#[repr(align(...))]` is not supported on {$item} items
-    .help = use `#[align(...)]` instead
+    .help = use `#[rustc_align(...)]` instead
 
 passes_repr_conflicting =
     conflicting representation hints
@@ -663,6 +668,10 @@ passes_rustc_std_internal_symbol =
     attribute should be applied to functions or statics
     .label = not a function or static
 
+passes_rustc_unstable_feature_bound =
+    attribute should be applied to `impl` or free function outside of any `impl` or trait
+    .label = not an `impl` or free function
+
 passes_should_be_applied_to_fn =
     attribute should be applied to a function definition
     .label = {$on_crate ->
@@ -700,7 +709,7 @@ passes_trait_impl_const_stability_mismatch_trait_unstable = ...but the trait is 
 
 passes_trait_impl_const_stable =
     trait implementations cannot be const stable yet
-    .note = see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+    .note = see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
 
 passes_transparent_incompatible =
     transparent {$target} cannot have other repr hints
@@ -776,7 +785,7 @@ passes_unused_capture_maybe_capture_ref = value captured by `{$name}` is never r
     .help = did you mean to capture by reference instead?
 
 passes_unused_default_method_body_const_note =
-    `default_method_body_is_const` has been replaced with `#[const_trait]` on traits
+    `default_method_body_is_const` has been replaced with `const` on traits
 
 passes_unused_duplicate =
     unused attribute

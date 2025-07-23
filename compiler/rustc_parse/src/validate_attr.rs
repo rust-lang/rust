@@ -4,9 +4,9 @@ use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
     self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, NodeId,
-    Safety,
+    Path, Safety,
 };
-use rustc_errors::{Applicability, FatalError, PResult};
+use rustc_errors::{Applicability, DiagCtxtHandle, FatalError, PResult};
 use rustc_feature::{AttributeSafety, AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
 use rustc_session::errors::report_lit_error;
 use rustc_session::lint::BuiltinLintDiag;
@@ -247,14 +247,12 @@ pub fn check_attribute_safety(
 
 // Called by `check_builtin_meta_item` and code that manually denies
 // `unsafe(...)` in `cfg`
-pub fn deny_builtin_meta_unsafety(psess: &ParseSess, meta: &MetaItem) {
+pub fn deny_builtin_meta_unsafety(diag: DiagCtxtHandle<'_>, unsafety: Safety, name: &Path) {
     // This only supports denying unsafety right now - making builtin attributes
     // support unsafety will requite us to thread the actual `Attribute` through
     // for the nice diagnostics.
-    if let Safety::Unsafe(unsafe_span) = meta.unsafety {
-        psess
-            .dcx()
-            .emit_err(errors::InvalidAttrUnsafe { span: unsafe_span, name: meta.path.clone() });
+    if let Safety::Unsafe(unsafe_span) = unsafety {
+        diag.emit_err(errors::InvalidAttrUnsafe { span: unsafe_span, name: name.clone() });
     }
 }
 
@@ -271,6 +269,10 @@ pub fn check_builtin_meta_item(
         if matches!(
             name,
             sym::inline
+                | sym::export_stable
+                | sym::ffi_const
+                | sym::ffi_pure
+                | sym::rustc_std_internal_symbol
                 | sym::may_dangle
                 | sym::rustc_as_ptr
                 | sym::rustc_pub_transparent
@@ -279,27 +281,46 @@ pub fn check_builtin_meta_item(
                 | sym::rustc_confusables
                 | sym::rustc_skip_during_method_dispatch
                 | sym::rustc_pass_by_value
+                | sym::rustc_deny_explicit_impl
+                | sym::rustc_do_not_implement_via_object
+                | sym::rustc_coinductive
+                | sym::const_trait
+                | sym::rustc_specialization_trait
+                | sym::rustc_unsafe_specialization_marker
+                | sym::rustc_allow_incoherent_impl
+                | sym::rustc_coherence_is_core
+                | sym::marker
+                | sym::fundamental
+                | sym::rustc_paren_sugar
+                | sym::type_const
                 | sym::repr
-                | sym::align
+                // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres
+                // ambiguity
+                | sym::rustc_align
                 | sym::deprecated
                 | sym::optimize
+                | sym::pointee
                 | sym::cold
                 | sym::target_feature
                 | sym::rustc_allow_const_fn_unstable
                 | sym::naked
                 | sym::no_mangle
                 | sym::non_exhaustive
+                | sym::omit_gdb_pretty_printer_section
                 | sym::path
                 | sym::ignore
                 | sym::must_use
                 | sym::track_caller
                 | sym::link_name
+                | sym::link_ordinal
                 | sym::export_name
                 | sym::rustc_macro_transparency
                 | sym::link_section
                 | sym::rustc_layout_scalar_valid_range_start
                 | sym::rustc_layout_scalar_valid_range_end
                 | sym::no_implicit_prelude
+                | sym::automatically_derived
+                | sym::coverage
         ) {
             return;
         }
@@ -307,7 +328,7 @@ pub fn check_builtin_meta_item(
     }
 
     if deny_unsafety {
-        deny_builtin_meta_unsafety(psess, meta);
+        deny_builtin_meta_unsafety(psess.dcx(), meta.unsafety, &meta.path);
     }
 }
 

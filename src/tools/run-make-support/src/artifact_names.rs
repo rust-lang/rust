@@ -2,7 +2,7 @@
 //! libraries which are target-dependent.
 
 use crate::target;
-use crate::targets::is_msvc;
+use crate::targets::is_windows_msvc;
 
 /// Construct the static library name based on the target.
 #[track_caller]
@@ -10,7 +10,7 @@ use crate::targets::is_msvc;
 pub fn static_lib_name(name: &str) -> String {
     assert!(!name.contains(char::is_whitespace), "static library name cannot contain whitespace");
 
-    if is_msvc() { format!("{name}.lib") } else { format!("lib{name}.a") }
+    if is_windows_msvc() { format!("{name}.lib") } else { format!("lib{name}.a") }
 }
 
 /// Construct the dynamic library name based on the target.
@@ -45,7 +45,7 @@ pub fn dynamic_lib_extension() -> &'static str {
 #[track_caller]
 #[must_use]
 pub fn msvc_import_dynamic_lib_name(name: &str) -> String {
-    assert!(is_msvc(), "this function is exclusive to MSVC");
+    assert!(is_windows_msvc(), "this function is exclusive to MSVC");
     assert!(!name.contains(char::is_whitespace), "import library name cannot contain whitespace");
 
     format!("{name}.dll.lib")

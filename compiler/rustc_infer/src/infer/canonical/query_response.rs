@@ -13,7 +13,6 @@ use std::iter;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::bug;
-use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable};
 use tracing::{debug, instrument};
 
@@ -23,7 +22,9 @@ use crate::infer::canonical::{
     QueryRegionConstraints, QueryResponse,
 };
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult, SubregionOrigin};
+use crate::infer::{
+    DefineOpaqueTypes, InferCtxt, InferOk, InferResult, SubregionOrigin, TypeOutlivesConstraint,
+};
 use crate::traits::query::NoSolution;
 use crate::traits::{ObligationCause, PredicateObligations, ScrubbedTraitError, TraitEngine};
 
@@ -115,14 +116,14 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         let region_obligations = self.take_registered_region_obligations();
+        let region_assumptions = self.take_registered_region_assumptions();
         debug!(?region_obligations);
         let region_constraints = self.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
                 tcx,
-                region_obligations
-                    .iter()
-                    .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())),
+                region_obligations,
                 region_constraints,
+                region_assumptions,
             )
         });
         debug!(?region_constraints);
@@ -172,6 +173,11 @@ impl<'tcx> InferCtxt<'tcx> {
         for (predicate, _category) in &query_response.value.region_constraints.outlives {
             let predicate = instantiate_value(self.tcx, &result_args, *predicate);
             self.register_outlives_constraint(predicate, cause);
+        }
+
+        for assumption in &query_response.value.region_constraints.assumptions {
+            let assumption = instantiate_value(self.tcx, &result_args, *assumption);
+            self.register_region_assumption(assumption);
         }
 
         let user_result: R =
@@ -295,6 +301,18 @@ impl<'tcx> InferCtxt<'tcx> {
                 let ty::OutlivesPredicate(k1, r2) = r_c.0;
                 if k1 != r2.into() { Some(r_c) } else { None }
             }),
+        );
+
+        // FIXME(higher_ranked_auto): Optimize this to instantiate all assumptions
+        // at once, rather than calling `instantiate_value` repeatedly which may
+        // create more universes.
+        output_query_region_constraints.assumptions.extend(
+            query_response
+                .value
+                .region_constraints
+                .assumptions
+                .iter()
+                .map(|&r_c| instantiate_value(self.tcx, &result_args, r_c)),
         );
 
         let user_result: R =
@@ -570,8 +588,9 @@ impl<'tcx> InferCtxt<'tcx> {
 /// creates query region constraints.
 pub fn make_query_region_constraints<'tcx>(
     tcx: TyCtxt<'tcx>,
-    outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>, ConstraintCategory<'tcx>)>,
+    outlives_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
+    assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
 ) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData { constraints, verifys } = region_constraints;
 
@@ -599,10 +618,13 @@ pub fn make_query_region_constraints<'tcx>(
             };
             (constraint, origin.to_constraint_category())
         })
-        .chain(outlives_obligations.map(|(ty, r, constraint_category)| {
-            (ty::OutlivesPredicate(ty.into(), r), constraint_category)
+        .chain(outlives_obligations.into_iter().map(|obl| {
+            (
+                ty::OutlivesPredicate(obl.sup_type.into(), obl.sub_region),
+                obl.origin.to_constraint_category(),
+            )
         }))
         .collect();
 
-    QueryRegionConstraints { outlives }
+    QueryRegionConstraints { outlives, assumptions }
 }

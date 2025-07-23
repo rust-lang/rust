@@ -1,4 +1,4 @@
-use rustc_attr_data_structures::{AttributeKind, OptimizeAttr, UsedBy};
+use rustc_attr_data_structures::{AttributeKind, CoverageStatus, OptimizeAttr, UsedBy};
 use rustc_feature::{AttributeTemplate, template};
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
@@ -15,7 +15,7 @@ pub(crate) struct OptimizeParser;
 
 impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     const PATH: &[Symbol] = &[sym::optimize];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(List: "size|speed|none");
 
@@ -52,11 +52,50 @@ impl<S: Stage> NoArgsAttributeParser<S> for ColdParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::Cold;
 }
 
+pub(crate) struct CoverageParser;
+
+impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
+    const PATH: &[Symbol] = &[sym::coverage];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::off, sym::on]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let Some(args) = args.list() else {
+            cx.expected_specific_argument_and_list(cx.attr_span, vec!["on", "off"]);
+            return None;
+        };
+
+        let Some(arg) = args.single() else {
+            cx.expected_single_argument(args.span);
+            return None;
+        };
+
+        let fail_incorrect_argument = |span| cx.expected_specific_argument(span, vec!["on", "off"]);
+
+        let Some(arg) = arg.meta_item() else {
+            fail_incorrect_argument(args.span);
+            return None;
+        };
+
+        let status = match arg.path().word_sym() {
+            Some(sym::off) => CoverageStatus::Off,
+            Some(sym::on) => CoverageStatus::On,
+            None | Some(_) => {
+                fail_incorrect_argument(arg.span());
+                return None;
+            }
+        };
+
+        Some(AttributeKind::Coverage(cx.attr_span, status))
+    }
+}
+
 pub(crate) struct ExportNameParser;
 
 impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
     const PATH: &[rustc_span::Symbol] = &[sym::export_name];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
@@ -138,7 +177,8 @@ impl<S: Stage> AttributeParser<S> for NakedParser {
             sym::instruction_set,
             sym::repr,
             sym::rustc_std_internal_symbol,
-            sym::align,
+            // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
+            sym::rustc_align,
             // obviously compatible with self
             sym::naked,
             // documentation
@@ -333,4 +373,12 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
         }
         features
     }
+}
+
+pub(crate) struct OmitGdbPrettyPrinterSectionParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for OmitGdbPrettyPrinterSectionParser {
+    const PATH: &[Symbol] = &[sym::omit_gdb_pretty_printer_section];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::OmitGdbPrettyPrinterSection;
 }

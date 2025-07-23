@@ -93,14 +93,14 @@ fn check_redundant_explicit_link<'md>(
         if let Event::Start(Tag::Link { link_type, dest_url, .. }) = event {
             let link_data = collect_link_data(&mut offset_iter);
 
-            if let Some(resolvable_link) = link_data.resolvable_link.as_ref() {
-                if &link_data.display_link.replace('`', "") != resolvable_link {
-                    // Skips if display link does not match to actual
-                    // resolvable link, usually happens if display link
-                    // has several segments, e.g.
-                    // [this is just an `Option`](Option)
-                    continue;
-                }
+            if let Some(resolvable_link) = link_data.resolvable_link.as_ref()
+                && &link_data.display_link.replace('`', "") != resolvable_link
+            {
+                // Skips if display link does not match to actual
+                // resolvable link, usually happens if display link
+                // has several segments, e.g.
+                // [this is just an `Option`](Option)
+                continue;
             }
 
             let explicit_link = dest_url.to_string();

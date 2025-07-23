@@ -217,6 +217,10 @@ impl AttributeExt for Attribute {
             _ => None,
         }
     }
+
+    fn is_automatically_derived_attr(&self) -> bool {
+        self.has_name(sym::automatically_derived)
+    }
 }
 
 impl Attribute {
@@ -810,6 +814,7 @@ pub trait AttributeExt: Debug {
             .iter()
             .any(|kind| self.has_name(*kind))
     }
+    fn is_automatically_derived_attr(&self) -> bool;
 
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
     /// * `///doc` returns `Some(("doc", CommentKind::Line))`.

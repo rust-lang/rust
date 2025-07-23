@@ -1,10 +1,10 @@
-error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: bound modifier `?` can only be applied to `Sized`
   --> $DIR/default-bound.rs:16:21
    |
 LL | fn neg_metasized<T: ?MetaSized>() {}
    |                     ^^^^^^^^^^
 
-error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: bound modifier `?` can only be applied to `Sized`
   --> $DIR/default-bound.rs:22:24
    |
 LL | fn neg_pointeesized<T: ?PointeeSized>() { }

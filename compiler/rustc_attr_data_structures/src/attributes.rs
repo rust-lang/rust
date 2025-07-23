@@ -3,7 +3,7 @@ use rustc_ast::token::CommentKind;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::hygiene::Transparency;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 use thin_vec::ThinVec;
 
 use crate::{DefaultBodyStability, PartialConstStability, PrintAttribute, RustcVersion, Stability};
@@ -69,6 +69,7 @@ pub enum ReprAttr {
     ReprAlign(Align),
 }
 pub use ReprAttr::*;
+use rustc_span::def_id::DefId;
 
 pub enum TransparencyError {
     UnknownTransparency(Symbol, Span),
@@ -109,6 +110,22 @@ pub enum DeprecatedSince {
     Err,
 }
 
+#[derive(
+    Copy,
+    Debug,
+    Eq,
+    PartialEq,
+    Encodable,
+    Decodable,
+    Clone,
+    HashStable_Generic,
+    PrintAttribute
+)]
+pub enum CoverageStatus {
+    On,
+    Off,
+}
+
 impl Deprecation {
     /// Whether an item marked with #[deprecated(since = "X")] is currently
     /// deprecated (i.e., whether X is not greater than the current rustc
@@ -138,6 +155,30 @@ impl Deprecation {
 pub enum UsedBy {
     Compiler,
     Linker,
+}
+
+#[derive(Debug, Clone, Encodable, Decodable, HashStable_Generic)]
+pub struct StrippedCfgItem<ModId = DefId> {
+    pub parent_module: ModId,
+    pub ident: Ident,
+    pub cfg: (CfgEntry, Span),
+}
+
+impl<ModId> StrippedCfgItem<ModId> {
+    pub fn map_mod_id<New>(self, f: impl FnOnce(ModId) -> New) -> StrippedCfgItem<New> {
+        StrippedCfgItem { parent_module: f(self.parent_module), ident: self.ident, cfg: self.cfg }
+    }
+}
+
+#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum CfgEntry {
+    All(ThinVec<CfgEntry>, Span),
+    Any(ThinVec<CfgEntry>, Span),
+    Not(Box<CfgEntry>, Span),
+    Bool(bool, Span),
+    NameValue { name: Symbol, name_span: Span, value: Option<(Symbol, Span)>, span: Span },
+    Version(Option<RustcVersion>, Span),
 }
 
 /// Represents parsed *built-in* inert attributes.
@@ -193,10 +234,14 @@ pub enum UsedBy {
 pub enum AttributeKind {
     // tidy-alphabetical-start
     /// Represents `#[align(N)]`.
+    // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     Align { align: Align, span: Span },
 
     /// Represents `#[rustc_allow_const_fn_unstable]`.
     AllowConstFnUnstable(ThinVec<Symbol>, Span),
+
+    /// Represents `#[rustc_allow_incoherent_impl]`.
+    AllowIncoherentImpl(Span),
 
     /// Represents `#[allow_internal_unstable]`.
     AllowInternalUnstable(ThinVec<(Symbol, Span)>, Span),
@@ -204,12 +249,21 @@ pub enum AttributeKind {
     /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
     AsPtr(Span),
 
+    /// Represents `#[automatically_derived]`
+    AutomaticallyDerived(Span),
+
     /// Represents `#[rustc_default_body_unstable]`.
     BodyStability {
         stability: DefaultBodyStability,
         /// Span of the `#[rustc_default_body_unstable(...)]` attribute
         span: Span,
     },
+
+    /// Represents `#[rustc_coherence_is_core]`.
+    CoherenceIsCore,
+
+    /// Represents `#[rustc_coinductive]`.
+    Coinductive(Span),
 
     /// Represents `#[cold]`.
     Cold(Span),
@@ -234,11 +288,26 @@ pub enum AttributeKind {
     /// Represents `#[rustc_const_stable_indirect]`.
     ConstStabilityIndirect,
 
+    /// Represents `#[const_trait]`.
+    ConstTrait(Span),
+
+    /// Represents `#[coverage]`.
+    Coverage(Span, CoverageStatus),
+
+    ///Represents `#[rustc_deny_explicit_impl]`.
+    DenyExplicitImpl(Span),
+
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
     Deprecation { deprecation: Deprecation, span: Span },
 
+    /// Represents `#[rustc_do_not_implement_via_object]`.
+    DoNotImplementViaObject(Span),
+
     /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
+
+    /// Represents `#[rustc_dummy]`.
+    Dummy,
 
     /// Represents [`#[export_name]`](https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute).
     ExportName {
@@ -247,6 +316,18 @@ pub enum AttributeKind {
         name: Symbol,
         span: Span,
     },
+
+    /// Represents `#[export_stable]`.
+    ExportStable,
+
+    /// Represents `#[ffi_const]`.
+    FfiConst(Span),
+
+    /// Represents `#[ffi_pure]`.
+    FfiPure(Span),
+
+    /// Represents `#[fundamental]`.
+    Fundamental,
 
     /// Represents `#[ignore]`
     Ignore {
@@ -261,6 +342,9 @@ pub enum AttributeKind {
     /// Represents `#[link_name]`.
     LinkName { name: Symbol, span: Span },
 
+    /// Represents `#[link_ordinal]`.
+    LinkOrdinal { ordinal: u16, span: Span },
+
     /// Represents [`#[link_section]`](https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute)
     LinkSection { name: Symbol, span: Span },
 
@@ -269,6 +353,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
+
+    /// Represents `#[marker]`.
+    Marker(Span),
 
     /// Represents [`#[may_dangle]`](https://std-dev-guide.rust-lang.org/tricky/may-dangle.html).
     MayDangle(Span),
@@ -292,14 +379,23 @@ pub enum AttributeKind {
     /// Represents `#[non_exhaustive]`
     NonExhaustive(Span),
 
+    /// Represents `#[omit_gdb_pretty_printer_section]`
+    OmitGdbPrettyPrinterSection,
+
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
+
+    /// Represents `#[rustc_paren_sugar]`.
+    ParenSugar(Span),
 
     /// Represents `#[rustc_pass_by_value]` (used by the `rustc_pass_by_value` lint).
     PassByValue(Span),
 
     /// Represents `#[path]`
     Path(Symbol, Span),
+
+    /// Represents `#[pointee]`
+    Pointee(Span),
 
     /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
     PubTransparent(Span),
@@ -319,6 +415,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_skip_during_method_dispatch]`.
     SkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },
 
+    /// Represents `#[rustc_specialization_trait]`.
+    SpecializationTrait(Span),
+
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
     Stability {
         stability: Stability,
@@ -326,11 +425,23 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[rustc_std_internal_symbol]`.
+    StdInternalSymbol(Span),
+
     /// Represents `#[target_feature(enable = "...")]`
     TargetFeature(ThinVec<(Symbol, Span)>, Span),
 
     /// Represents `#[track_caller]`
     TrackCaller(Span),
+
+    /// Represents `#[type_const]`.
+    TypeConst(Span),
+
+    /// Represents `#[rustc_unsafe_specialization_marker]`.
+    UnsafeSpecializationMarker(Span),
+
+    /// Represents `#[unstable_feature_bound]`.
+    UnstableFeatureBound(ThinVec<(Symbol, Span)>),
 
     /// Represents `#[used]`
     Used { used_by: UsedBy, span: Span },

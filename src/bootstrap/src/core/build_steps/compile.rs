@@ -19,7 +19,7 @@ use serde_derive::Deserialize;
 use tracing::{instrument, span};
 
 use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
-use crate::core::build_steps::tool::SourceType;
+use crate::core::build_steps::tool::{SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
 use crate::core::builder::{
@@ -449,26 +449,24 @@ fn copy_self_contained_objects(
     target_deps
 }
 
-/// Resolves standard library crates for `Std::run_make` for any build kind (like check, build, clippy, etc.).
+/// Resolves standard library crates for `Std::run_make` for any build kind (like check, doc,
+/// build, clippy, etc.).
 pub fn std_crates_for_run_make(run: &RunConfig<'_>) -> Vec<String> {
-    // FIXME: Extend builder tests to cover the `crates` field of `Std` instances.
-    if cfg!(test) {
-        return vec![];
-    }
+    let mut crates = run.make_run_crates(builder::Alias::Library);
 
-    let has_alias = run.paths.iter().any(|set| set.assert_single_path().path.ends_with("library"));
+    // For no_std targets, we only want to check core and alloc
+    // Regardless of core/alloc being selected explicitly or via the "library" default alias,
+    // we only want to keep these two crates.
+    // The set of no_std crates should be kept in sync with what `Builder::std_cargo` does.
+    // Note: an alternative design would be to return an enum from this function (Default vs Subset)
+    // of crates. However, several steps currently pass `-p <package>` even if all crates are
+    // selected, because Cargo behaves differently in that case. To keep that behavior without
+    // making further changes, we pre-filter the no-std crates here.
     let target_is_no_std = run.builder.no_std(run.target).unwrap_or(false);
-
-    // For no_std targets, do not add any additional crates to the compilation other than what `compile::std_cargo` already adds for no_std targets.
     if target_is_no_std {
-        vec![]
+        crates.retain(|c| c == "core" || c == "alloc");
     }
-    // If the paths include "library", build the entire standard library.
-    else if has_alias {
-        run.make_run_crates(builder::Alias::Library)
-    } else {
-        run.cargo_crates_in_set()
-    }
+    crates
 }
 
 /// Tries to find LLVM's `compiler-rt` source directory, for building `library/profiler_builtins`.
@@ -1318,15 +1316,10 @@ pub fn rustc_cargo(
         cargo.env("RUSTC_WRAPPER", ccache);
     }
 
-    rustc_cargo_env(builder, cargo, target, build_compiler.stage);
+    rustc_cargo_env(builder, cargo, target);
 }
 
-pub fn rustc_cargo_env(
-    builder: &Builder<'_>,
-    cargo: &mut Cargo,
-    target: TargetSelection,
-    build_stage: u32,
-) {
+pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo
@@ -1369,9 +1362,7 @@ pub fn rustc_cargo_env(
     }
 
     // Enable rustc's env var for `rust-lld` when requested.
-    if builder.config.lld_enabled
-        && (builder.config.channel == "dev" || builder.config.channel == "nightly")
-    {
+    if builder.config.lld_enabled {
         cargo.env("CFG_USE_SELF_CONTAINED_LINKER", "1");
     }
 
@@ -1383,18 +1374,24 @@ pub fn rustc_cargo_env(
         cargo.rustflag("--cfg=llvm_enzyme");
     }
 
-    // Note that this is disabled if LLVM itself is disabled or we're in a check
-    // build. If we are in a check build we still go ahead here presuming we've
-    // detected that LLVM is already built and good to go which helps prevent
-    // busting caches (e.g. like #71152).
+    // These conditionals represent a tension between three forces:
+    // - For non-check builds, we need to define some LLVM-related environment
+    //   variables, requiring LLVM to have been built.
+    // - For check builds, we want to avoid building LLVM if possible.
+    // - Check builds and non-check builds should have the same environment if
+    //   possible, to avoid unnecessary rebuilds due to cache-busting.
+    //
+    // Therefore we try to avoid building LLVM for check builds, but only if
+    // building LLVM would be expensive. If "building" LLVM is cheap
+    // (i.e. it's already built or is downloadable), we prefer to maintain a
+    // consistent environment between check and non-check builds.
     if builder.config.llvm_enabled(target) {
-        let building_is_expensive =
+        let building_llvm_is_expensive =
             crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target, false)
                 .should_build();
-        // `top_stage == stage` might be false for `check --stage 1`, if we are building the stage 1 compiler
-        let can_skip_build = builder.kind == Kind::Check && builder.top_stage == build_stage;
-        let should_skip_build = building_is_expensive && can_skip_build;
-        if !should_skip_build {
+
+        let skip_llvm = (builder.kind == Kind::Check) && building_llvm_is_expensive;
+        if !skip_llvm {
             rustc_llvm_env(builder, cargo, target)
         }
     }
@@ -1411,6 +1408,9 @@ pub fn rustc_cargo_env(
 
 /// Pass down configuration from the LLVM build into the build of
 /// rustc_llvm and rustc_codegen_llvm.
+///
+/// Note that this has the side-effect of _building LLVM_, which is sometimes
+/// unwanted (e.g. for check builds).
 fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     if builder.config.is_rust_llvm(target) {
         cargo.env("LLVM_RUSTLLVM", "1");
@@ -1669,7 +1669,7 @@ impl Step for CodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
-        rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
+        rustc_cargo_env(builder, &mut cargo, target);
 
         // Ideally, we'd have a separate step for the individual codegen backends,
         // like we have in tests (test::CodegenGCC) but that would require a lot of restructuring.
@@ -2054,19 +2054,26 @@ impl Step for Assemble {
             }
         }
 
-        let maybe_install_llvm_bitcode_linker = |compiler| {
+        let maybe_install_llvm_bitcode_linker = || {
             if builder.config.llvm_bitcode_linker_enabled {
                 trace!("llvm-bitcode-linker enabled, installing");
-                let llvm_bitcode_linker =
-                    builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
-                        compiler,
-                        target: target_compiler.host,
-                        extra_features: vec![],
-                    });
+                let llvm_bitcode_linker = builder.ensure(
+                    crate::core::build_steps::tool::LlvmBitcodeLinker::from_target_compiler(
+                        builder,
+                        target_compiler,
+                    ),
+                );
+
+                // Copy the llvm-bitcode-linker to the self-contained binary directory
+                let bindir_self_contained = builder
+                    .sysroot(target_compiler)
+                    .join(format!("lib/rustlib/{}/bin/self-contained", target_compiler.host));
                 let tool_exe = exe("llvm-bitcode-linker", target_compiler.host);
+
+                t!(fs::create_dir_all(&bindir_self_contained));
                 builder.copy_link(
                     &llvm_bitcode_linker.tool_path,
-                    &libdir_bin.join(tool_exe),
+                    &bindir_self_contained.join(tool_exe),
                     FileType::Executable,
                 );
             }
@@ -2087,9 +2094,9 @@ impl Step for Assemble {
                 builder.info(&format!("Creating a sysroot for stage{stage} compiler (use `rustup toolchain link 'name' build/host/stage{stage}`)", stage = target_compiler.stage));
             }
 
-            let mut precompiled_compiler = target_compiler;
-            precompiled_compiler.forced_compiler(true);
-            maybe_install_llvm_bitcode_linker(precompiled_compiler);
+            // FIXME: this is incomplete, we do not copy a bunch of other stuff to the downloaded
+            // sysroot...
+            maybe_install_llvm_bitcode_linker();
 
             return target_compiler;
         }
@@ -2254,10 +2261,12 @@ impl Step for Assemble {
         copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
 
         if builder.config.lld_enabled {
-            builder.ensure(crate::core::build_steps::tool::LldWrapper {
-                build_compiler,
-                target_compiler,
-            });
+            let lld_wrapper =
+                builder.ensure(crate::core::build_steps::tool::LldWrapper::for_use_by_compiler(
+                    builder,
+                    target_compiler,
+                ));
+            copy_lld_artifacts(builder, lld_wrapper, target_compiler);
         }
 
         if builder.config.llvm_enabled(target_compiler.host) && builder.config.llvm_tools_enabled {
@@ -2282,15 +2291,14 @@ impl Step for Assemble {
         }
 
         // In addition to `rust-lld` also install `wasm-component-ld` when
-        // LLD is enabled. This is a relatively small binary that primarily
-        // delegates to the `rust-lld` binary for linking and then runs
-        // logic to create the final binary. This is used by the
-        // `wasm32-wasip2` target of Rust.
+        // is enabled. This is used by the `wasm32-wasip2` target of Rust.
         if builder.tool_enabled("wasm-component-ld") {
-            let wasm_component = builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
-                compiler: build_compiler,
-                target: target_compiler.host,
-            });
+            let wasm_component = builder.ensure(
+                crate::core::build_steps::tool::WasmComponentLd::for_use_by_compiler(
+                    builder,
+                    target_compiler,
+                ),
+            );
             builder.copy_link(
                 &wasm_component.tool_path,
                 &libdir_bin.join(wasm_component.tool_path.file_name().unwrap()),
@@ -2298,7 +2306,7 @@ impl Step for Assemble {
             );
         }
 
-        maybe_install_llvm_bitcode_linker(target_compiler);
+        maybe_install_llvm_bitcode_linker();
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
         // so that it can be found when the newly built `rustc` is run.
@@ -2398,10 +2406,10 @@ pub fn run_cargo(
                 keep = true;
             } else if rlib_only_metadata {
                 if filename.contains("jemalloc_sys")
-                    || filename.contains("rustc_smir")
-                    || filename.contains("stable_mir")
+                    || filename.contains("rustc_public_bridge")
+                    || filename.contains("rustc_public")
                 {
-                    // jemalloc_sys and rustc_smir are not linked into librustc_driver.so,
+                    // jemalloc_sys and rustc_public_bridge are not linked into librustc_driver.so,
                     // so we need to distribute them as rlib to be able to use them.
                     keep |= filename.ends_with(".rlib");
                 } else {
@@ -2572,7 +2580,7 @@ pub fn stream_cargo(
     }
 
     // Make sure Cargo actually succeeded after we read all of its stdout.
-    let status = t!(streaming_command.wait());
+    let status = t!(streaming_command.wait(&builder.config.exec_ctx));
     if builder.is_verbose() && !status.success() {
         eprintln!(
             "command did not execute successfully: {cmd:?}\n\

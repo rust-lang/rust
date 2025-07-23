@@ -169,13 +169,19 @@ pub type CompileTimeInterpCx<'tcx> = InterpCx<'tcx, CompileTimeMachine<'tcx>>;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MemoryKind {
-    Heap,
+    Heap {
+        /// Indicates whether `make_global` was called on this allocation.
+        /// If this is `true`, the allocation must be immutable.
+        was_made_global: bool,
+    },
 }
 
 impl fmt::Display for MemoryKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MemoryKind::Heap => write!(f, "heap allocation"),
+            MemoryKind::Heap { was_made_global } => {
+                write!(f, "heap allocation{}", if *was_made_global { " (made global)" } else { "" })
+            }
         }
     }
 }
@@ -184,7 +190,7 @@ impl interpret::MayLeak for MemoryKind {
     #[inline(always)]
     fn may_leak(self) -> bool {
         match self {
-            MemoryKind::Heap => false,
+            MemoryKind::Heap { was_made_global } => was_made_global,
         }
     }
 }
@@ -273,23 +279,15 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
     fn guaranteed_cmp(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, u8> {
         interp_ok(match (a, b) {
             // Comparisons between integers are always known.
-            (Scalar::Int { .. }, Scalar::Int { .. }) => {
-                if a == b {
-                    1
-                } else {
-                    0
-                }
-            }
-            // Comparisons of abstract pointers with null pointers are known if the pointer
-            // is in bounds, because if they are in bounds, the pointer can't be null.
-            // Inequality with integers other than null can never be known for sure.
-            (Scalar::Int(int), ptr @ Scalar::Ptr(..))
-            | (ptr @ Scalar::Ptr(..), Scalar::Int(int))
+            (Scalar::Int(a), Scalar::Int(b)) => (a == b) as u8,
+            // Comparisons of null with an arbitrary scalar can be known if `scalar_may_be_null`
+            // indicates that the scalar can definitely *not* be null.
+            (Scalar::Int(int), ptr) | (ptr, Scalar::Int(int))
                 if int.is_null() && !self.scalar_may_be_null(ptr)? =>
             {
                 0
             }
-            // Equality with integers can never be known for sure.
+            // Other ways of comparing integers and pointers can never be known for sure.
             (Scalar::Int { .. }, Scalar::Ptr(..)) | (Scalar::Ptr(..), Scalar::Int { .. }) => 2,
             // FIXME: return a `1` for when both sides are the same pointer, *except* that
             // some things (like functions and vtables) do not have stable addresses
@@ -313,8 +311,6 @@ impl<'tcx> CompileTimeMachine<'tcx> {
 
 impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     compile_time_machine!(<'tcx>);
-
-    type MemoryKind = MemoryKind;
 
     const PANIC_ON_ALLOC_FAIL: bool = false; // will be raised as a proper error
 
@@ -359,8 +355,8 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         if let ty::InstanceKind::Item(def) = instance.def {
             // Execution might have wandered off into other crates, so we cannot do a stability-
             // sensitive check here. But we can at least rule out functions that are not const at
-            // all. That said, we have to allow calling functions inside a trait marked with
-            // #[const_trait]. These *are* const-checked!
+            // all. That said, we have to allow calling functions inside a `const trait`. These
+            // *are* const-checked!
             if !ecx.tcx.is_const_fn(def) || ecx.tcx.has_attr(def, sym::rustc_do_not_const_check) {
                 // We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
@@ -420,7 +416,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let ptr = ecx.allocate_ptr(
                     Size::from_bytes(size),
                     align,
-                    interpret::MemoryKind::Machine(MemoryKind::Heap),
+                    interpret::MemoryKind::Machine(MemoryKind::Heap { was_made_global: false }),
                     AllocInit::Uninit,
                 )?;
                 ecx.write_pointer(ptr, dest)?;
@@ -453,10 +449,17 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     ecx.deallocate_ptr(
                         ptr,
                         Some((size, align)),
-                        interpret::MemoryKind::Machine(MemoryKind::Heap),
+                        interpret::MemoryKind::Machine(MemoryKind::Heap { was_made_global: false }),
                     )?;
                 }
             }
+
+            sym::const_make_global => {
+                let ptr = ecx.read_pointer(&args[0])?;
+                ecx.make_const_heap_ptr_global(ptr)?;
+                ecx.write_pointer(ptr, dest)?;
+            }
+
             // The intrinsic represents whether the value is known to the optimizer (LLVM).
             // We're not doing any optimizations here, so there is no optimizer that could know the value.
             // (We know the value here in the machine of course, but this is the runtime of that code,

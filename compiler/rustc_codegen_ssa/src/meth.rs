@@ -139,7 +139,8 @@ pub(crate) fn load_vtable<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         && bx.cx().sess().lto() == Lto::Fat
     {
         if let Some(trait_ref) = dyn_trait_in_self(bx.tcx(), ty) {
-            let typeid = bx.typeid_metadata(typeid_for_trait_ref(bx.tcx(), trait_ref)).unwrap();
+            let typeid =
+                bx.typeid_metadata(typeid_for_trait_ref(bx.tcx(), trait_ref).as_bytes()).unwrap();
             let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
             return func;
         } else if nonnull {

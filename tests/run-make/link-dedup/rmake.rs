@@ -9,7 +9,7 @@
 
 use std::fmt::Write;
 
-use run_make_support::{is_msvc, rustc, target};
+use run_make_support::{is_windows_msvc, rustc, target};
 
 fn main() {
     rustc().input("depa.rs").run();
@@ -32,7 +32,7 @@ fn main() {
 fn needle_from_libs(libs: &[&str]) -> String {
     let mut needle = String::new();
     for lib in libs {
-        if is_msvc() {
+        if is_windows_msvc() {
             needle.write_fmt(format_args!(r#""{lib}.lib" "#)).unwrap();
         } else if target().contains("wasm") {
             needle.write_fmt(format_args!(r#""-l" "{lib}" "#)).unwrap();

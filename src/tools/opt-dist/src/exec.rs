@@ -99,7 +99,7 @@ pub struct Bootstrap {
 
 impl Bootstrap {
     pub fn build(env: &Environment) -> Self {
-        let metrics_path = env.build_root().join("build").join("metrics.json");
+        let metrics_path = env.build_root().join("metrics.json");
         let cmd = cmd(&[
             env.python_binary(),
             env.checkout_path().join("x.py").as_str(),
@@ -119,7 +119,7 @@ impl Bootstrap {
     }
 
     pub fn dist(env: &Environment, dist_args: &[String]) -> Self {
-        let metrics_path = env.build_root().join("build").join("metrics.json");
+        let metrics_path = env.build_root().join("metrics.json");
         let args = dist_args.iter().map(|arg| arg.as_str()).collect::<Vec<_>>();
         let cmd = cmd(&args).env("RUST_BACKTRACE", "full");
         let mut cmd = add_shared_x_flags(env, cmd);
@@ -139,8 +139,10 @@ impl Bootstrap {
         self
     }
 
-    pub fn llvm_pgo_optimize(mut self, profile: &LlvmPGOProfile) -> Self {
-        self.cmd = self.cmd.arg("--llvm-profile-use").arg(profile.0.as_str());
+    pub fn llvm_pgo_optimize(mut self, profile: Option<&LlvmPGOProfile>) -> Self {
+        if let Some(prof) = profile {
+            self.cmd = self.cmd.arg("--llvm-profile-use").arg(prof.0.as_str());
+        }
         self
     }
 
@@ -174,8 +176,10 @@ impl Bootstrap {
         self
     }
 
-    pub fn with_bolt_profile(mut self, profile: BoltProfile) -> Self {
-        self.cmd = self.cmd.arg("--reproducible-artifact").arg(profile.0.as_str());
+    pub fn with_bolt_profile(mut self, profile: Option<BoltProfile>) -> Self {
+        if let Some(prof) = profile {
+            self.cmd = self.cmd.arg("--reproducible-artifact").arg(prof.0.as_str());
+        }
         self
     }
 

@@ -156,6 +156,7 @@ define_symbols! {
     cfg_attr,
     cfg_eval,
     cfg,
+    cfg_select,
     char,
     clone,
     Clone,

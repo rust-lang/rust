@@ -198,9 +198,6 @@ impl Command {
     }
 
     fn toolchain(flags: Vec<String>) -> Result<()> {
-        // Make sure rustup-toolchain-install-master is installed.
-        which::which("rustup-toolchain-install-master")
-            .context("Please install rustup-toolchain-install-master by running 'cargo install rustup-toolchain-install-master'")?;
         let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
         let new_commit = sh.read_file("rust-version")?.trim().to_owned();
@@ -227,7 +224,9 @@ impl Command {
         // Install and setup new toolchain.
         cmd!(sh, "rustup toolchain uninstall miri").run()?;
 
-        cmd!(sh, "rustup-toolchain-install-master -n miri -c cargo -c rust-src -c rustc-dev -c llvm-tools -c rustfmt -c clippy {flags...} -- {new_commit}").run()?;
+        cmd!(sh, "rustup-toolchain-install-master -n miri -c cargo -c rust-src -c rustc-dev -c llvm-tools -c rustfmt -c clippy {flags...} -- {new_commit}")
+            .run()
+            .context("Failed to run rustup-toolchain-install-master. If it is not installed, run 'cargo install rustup-toolchain-install-master'.")?;
         cmd!(sh, "rustup override set miri").run()?;
         // Cleanup.
         cmd!(sh, "cargo clean").run()?;
@@ -702,7 +701,6 @@ impl Command {
         let mut early_flags = Vec::<OsString>::new();
 
         // In `dep` mode, the target is already passed via `MIRI_TEST_TARGET`
-        #[expect(clippy::collapsible_if)] // we need to wait until this is stable
         if !dep {
             if let Some(target) = &target {
                 early_flags.push("--target".into());
@@ -735,7 +733,6 @@ impl Command {
         // Add Miri flags
         let mut cmd = cmd.args(&miri_flags).args(&early_flags).args(&flags);
         // For `--dep` we also need to set the target in the env var.
-        #[expect(clippy::collapsible_if)] // we need to wait until this is stable
         if dep {
             if let Some(target) = &target {
                 cmd = cmd.env("MIRI_TEST_TARGET", target);

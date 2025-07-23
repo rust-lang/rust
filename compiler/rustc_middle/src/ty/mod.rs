@@ -25,10 +25,9 @@ pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
 use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
-use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
-use rustc_attr_data_structures::AttributeKind;
+use rustc_attr_data_structures::{AttributeKind, StrippedCfgItem, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -89,7 +88,7 @@ pub use self::opaque_types::OpaqueTypeKey;
 pub use self::parameterized::ParameterizedOverTcx;
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
-    AliasTerm, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
+    AliasTerm, ArgOutlivesPredicate, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
     ExistentialPredicateStableCmpExt, ExistentialProjection, ExistentialTraitRef,
     HostEffectPredicate, NormalizesTo, OutlivesPredicate, PolyCoercePredicate,
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
@@ -1590,7 +1589,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Look up the name of a definition across crates. This does not look at HIR.
-    pub fn opt_item_name(self, def_id: DefId) -> Option<Symbol> {
+    pub fn opt_item_name(self, def_id: impl IntoQueryParam<DefId>) -> Option<Symbol> {
+        let def_id = def_id.into_query_param();
         if let Some(cnum) = def_id.as_crate_root() {
             Some(self.crate_name(cnum))
         } else {
@@ -1610,7 +1610,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// [`opt_item_name`] instead.
     ///
     /// [`opt_item_name`]: Self::opt_item_name
-    pub fn item_name(self, id: DefId) -> Symbol {
+    pub fn item_name(self, id: impl IntoQueryParam<DefId>) -> Symbol {
+        let id = id.into_query_param();
         self.opt_item_name(id).unwrap_or_else(|| {
             bug!("item_name: no name for {:?}", self.def_path(id));
         })
@@ -1619,7 +1620,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Look up the name and span of a definition.
     ///
     /// See [`item_name`][Self::item_name] for more information.
-    pub fn opt_item_ident(self, def_id: DefId) -> Option<Ident> {
+    pub fn opt_item_ident(self, def_id: impl IntoQueryParam<DefId>) -> Option<Ident> {
+        let def_id = def_id.into_query_param();
         let def = self.opt_item_name(def_id)?;
         let span = self
             .def_ident_span(def_id)
@@ -1630,7 +1632,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Look up the name and span of a definition.
     ///
     /// See [`item_name`][Self::item_name] for more information.
-    pub fn item_ident(self, def_id: DefId) -> Ident {
+    pub fn item_ident(self, def_id: impl IntoQueryParam<DefId>) -> Ident {
+        let def_id = def_id.into_query_param();
         self.opt_item_ident(def_id).unwrap_or_else(|| {
             bug!("item_ident: no name for {:?}", self.def_path(def_id));
         })
@@ -1782,21 +1785,18 @@ impl<'tcx> TyCtxt<'tcx> {
         did: impl Into<DefId>,
         attr: Symbol,
     ) -> impl Iterator<Item = &'tcx hir::Attribute> {
-        self.get_all_attrs(did).filter(move |a: &&hir::Attribute| a.has_name(attr))
+        self.get_all_attrs(did).iter().filter(move |a: &&hir::Attribute| a.has_name(attr))
     }
 
     /// Gets all attributes.
     ///
     /// To see if an item has a specific attribute, you should use [`rustc_attr_data_structures::find_attr!`] so you can use matching.
-    pub fn get_all_attrs(
-        self,
-        did: impl Into<DefId>,
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
+    pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [hir::Attribute] {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {
-            self.hir_attrs(self.local_def_id_to_hir_id(did)).iter()
+            self.hir_attrs(self.local_def_id_to_hir_id(did))
         } else {
-            self.attrs_for_def(did).iter()
+            self.attrs_for_def(did)
         }
     }
 
@@ -2034,7 +2034,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Check if the given `DefId` is `#\[automatically_derived\]`.
     pub fn is_automatically_derived(self, def_id: DefId) -> bool {
-        self.has_attr(def_id, sym::automatically_derived)
+        find_attr!(self.get_all_attrs(def_id), AttributeKind::AutomaticallyDerived(..))
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`

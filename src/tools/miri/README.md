@@ -286,11 +286,6 @@ environment variable. We first document the most relevant and most commonly used
   specific circumstances, but Miri's behavior will also be more stable across versions and targets.
   This is equivalent to `-Zmiri-fixed-schedule -Zmiri-compare-exchange-weak-failure-rate=0.0
   -Zmiri-address-reuse-cross-thread-rate=0.0 -Zmiri-disable-weak-memory-emulation`.
-* `-Zmiri-deterministic-floats` makes Miri's floating-point behavior fully deterministic. This means
-  that operations will always return the preferred NaN, imprecise operations will not have any
-  random error applied to them, and `min`/`max` as "maybe fused" multiply-add all behave
-  deterministically. Note that Miri still uses host floats for some operations, so behavior can
-  still differ depending on the host target and setup.
 * `-Zmiri-disable-isolation` disables host isolation. As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
@@ -324,6 +319,8 @@ environment variable. We first document the most relevant and most commonly used
   Can be used without a value; in that case the range defaults to `0..64`.
 * `-Zmiri-many-seeds-keep-going` tells Miri to really try all the seeds in the given range, even if
   a failing seed has already been found. This is useful to determine which fraction of seeds fails.
+* `-Zmiri-no-extra-rounding-error` stops Miri from adding extra rounding errors to float operations
+  that do not have a guaranteed precision.
 * `-Zmiri-num-cpus` states the number of available CPUs to be reported by miri. By default, the
   number of available CPUs is `1`. Note that this flag does not affect how miri handles threads in
   any way.
@@ -342,9 +339,9 @@ environment variable. We first document the most relevant and most commonly used
   is enabled (the default), this is also used to emulate system entropy. The default seed is 0. You
   can increase test coverage by running Miri multiple times with different seeds.
 * `-Zmiri-strict-provenance` enables [strict
-  provenance](https://github.com/rust-lang/rust/issues/95228) checking in Miri. This means that
-  casting an integer to a pointer will stop execution because the provenance of the pointer
-  cannot be determined.
+  provenance](https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance) checking in
+  Miri. This means that casting an integer to a pointer will stop execution because the provenance
+  of the pointer cannot be determined.
 * `-Zmiri-symbolic-alignment-check` makes the alignment check more strict.  By default, alignment is
   checked by casting the pointer to an integer, and making sure that is a multiple of the alignment.
   This can lead to cases where a program passes the alignment check by pure chance, because things
@@ -376,6 +373,12 @@ to Miri failing to detect cases of undefined behavior in a program.
   will always fail and `0.0` means it will never fail. Note that setting it to
   `1.0` will likely cause hangs, since it means programs using
   `compare_exchange_weak` cannot make progress.
+* `-Zmiri-deterministic-floats` makes Miri's floating-point behavior fully deterministic. This means
+  that operations will always return the preferred NaN, imprecise operations will not have any
+  random error applied to them, and `min`/`max` and "maybe fused" multiply-add all behave
+  deterministically. Note that Miri still uses host floats for some operations, so behavior can
+  still differ depending on the host target and setup. See `-Zmiri-no-extra-rounding-error` for
+  a flag that specifically only disables the random error.
 * `-Zmiri-disable-alignment-check` disables checking pointer alignment, so you
   can focus on other failures, but it means Miri can miss bugs in your program.
   Using this flag is **unsound**.

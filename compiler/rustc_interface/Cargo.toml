@@ -56,5 +56,6 @@ rustc_abi = { path = "../rustc_abi" }
 
 [features]
 # tidy-alphabetical-start
+check_only = ['rustc_codegen_llvm?/check_only']
 llvm = ['dep:rustc_codegen_llvm']
 # tidy-alphabetical-end

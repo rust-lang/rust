@@ -2,16 +2,16 @@
 
 #![feature(repr_simd, core_intrinsics)]
 
-#[repr(simd)]
-#[derive(Copy, Clone, Debug)]
-pub struct Char3(pub [i8; 3]);
+#[path = "../../auxiliary/minisimd.rs"]
+mod minisimd;
+use minisimd::*;
 
-#[repr(simd)]
-#[derive(Copy, Clone, Debug)]
-pub struct Short3(pub [i16; 3]);
+pub type Char3 = Simd<i8, 3>;
+
+pub type Short3 = Simd<i16, 3>;
 
 fn main() {
-    let cast: Short3 = unsafe { std::intrinsics::simd::simd_cast(Char3([10, -3, -9])) };
+    let cast: Short3 = unsafe { std::intrinsics::simd::simd_cast(Char3::from_array([10, -3, -9])) };
 
     println!("{:?}", cast);
 }

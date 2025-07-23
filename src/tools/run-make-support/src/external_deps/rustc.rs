@@ -6,7 +6,7 @@ use crate::command::Command;
 use crate::env::env_var;
 use crate::path_helpers::cwd;
 use crate::util::set_host_compiler_dylib_path;
-use crate::{is_aix, is_darwin, is_msvc, is_windows, target, uname};
+use crate::{is_aix, is_darwin, is_windows, is_windows_msvc, target, uname};
 
 /// Construct a new `rustc` invocation. This will automatically set the library
 /// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.
@@ -52,12 +52,19 @@ impl Rustc {
     // `rustc` invocation constructor methods
 
     /// Construct a new `rustc` invocation. This will automatically set the library
-    /// search path as `-L cwd()` and also the compilation target.
+    /// search path as `-L cwd()`, configure the compilation target and enable
+    /// dynamic linkage by default on musl hosts.
     /// Use [`bare_rustc`] to avoid this.
     #[track_caller]
     pub fn new() -> Self {
         let mut cmd = setup_common();
         cmd.arg("-L").arg(cwd());
+
+        // FIXME: On musl hosts, we currently default to static linkage, while
+        // for running run-make tests, we rely on dynamic linkage by default
+        if std::env::var("IS_MUSL_HOST").is_ok_and(|i| i == "1") {
+            cmd.arg("-Ctarget-feature=-crt-static");
+        }
 
         // Automatically default to cross-compilation
         Self { cmd, target: Some(target()) }
@@ -377,7 +384,7 @@ impl Rustc {
             // So we end up with the following hack: we link use static:-bundle to only
             // link the parts of libstdc++ that we actually use, which doesn't include
             // the dependency on the pthreads DLL.
-            if !is_msvc() {
+            if !is_windows_msvc() {
                 self.cmd.arg("-lstatic:-bundle=stdc++");
             };
         } else if is_darwin() {

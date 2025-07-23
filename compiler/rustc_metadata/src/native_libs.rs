@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use rustc_abi::ExternAbi;
 use rustc_ast::CRATE_NODE_ID;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_attr_parsing as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::query::LocalCrate;
@@ -496,14 +497,9 @@ impl<'tcx> Collector<'tcx> {
                 }
                 _ => {
                     for &child_item in foreign_items {
-                        if self.tcx.def_kind(child_item).has_codegen_attrs()
-                            && self.tcx.codegen_fn_attrs(child_item).link_ordinal.is_some()
+                        if let Some(span) = find_attr!(self.tcx.get_all_attrs(child_item), AttributeKind::LinkOrdinal {span, ..} => *span)
                         {
-                            let link_ordinal_attr =
-                                self.tcx.get_attr(child_item, sym::link_ordinal).unwrap();
-                            sess.dcx().emit_err(errors::LinkOrdinalRawDylib {
-                                span: link_ordinal_attr.span(),
-                            });
+                            sess.dcx().emit_err(errors::LinkOrdinalRawDylib { span });
                         }
                     }
 

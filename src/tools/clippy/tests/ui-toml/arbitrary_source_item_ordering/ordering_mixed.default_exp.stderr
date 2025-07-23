@@ -136,13 +136,13 @@ error: incorrect ordering of trait items (defined order: [Const, Type, Fn])
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:155:5
    |
 LL |     const A: bool;
-   |     ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
    |
 note: should be placed before `SomeType`
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:153:5
    |
 LL |     type SomeType;
-   |     ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
 
 error: incorrect ordering of items (must be alphabetically ordered)
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:171:11
@@ -172,13 +172,13 @@ error: incorrect ordering of impl items (defined order: [Const, Type, Fn])
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:189:5
    |
 LL |     const A: bool = false;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
    |
 note: should be placed before `SomeType`
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:187:5
    |
 LL |     type SomeType = ();
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
 
 error: aborting due to 15 previous errors
 

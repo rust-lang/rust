@@ -77,7 +77,7 @@ This end result is incorrect as we had two separate binders introducing their ow
 
 While in theory we could make this work it would be quite involved and more complex than the current setup, we would have to:
 - "rewrite" bound variables to have a higher `DebruijnIndex` whenever instantiating a `Binder`/`EarlyBinder` with a `Bound` ty/const/region 
-- When inferring an inference variable to a bound var, if that bound var is from a binder enterred after creating the infer var, we would have to lower the `DebruijnIndex` of the var.
+- When inferring an inference variable to a bound var, if that bound var is from a binder entered after creating the infer var, we would have to lower the `DebruijnIndex` of the var.
 - Separately track what binder an inference variable was created inside of, also what the innermost binder it can name parameters from (currently we only have to track the latter)
 - When resolving inference variables rewrite any bound variables according to the current binder depth of the infcx
 - Maybe more (while writing this list items kept getting added so it seems naive to think this is exhaustive)

@@ -19,6 +19,8 @@ links = "compiler-rt"
 bench = false
 doctest = false
 test = false
+# make sure this crate isn't included in public standard library docs
+doc = false
 
 [dependencies]
 core = { path = "../../core", optional = true }

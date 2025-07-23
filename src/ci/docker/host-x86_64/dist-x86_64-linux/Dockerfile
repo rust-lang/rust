@@ -96,12 +96,10 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.lto=thin \
       --set rust.codegen-units=1
 
-ARG SCRIPT_ARG
-
 COPY host-x86_64/dist-x86_64-linux/dist.sh /scripts/
 COPY host-x86_64/dist-x86_64-linux/dist-alt.sh /scripts/
 
-ENV SCRIPT /scripts/${SCRIPT_ARG}
+ENV SCRIPT "Must specify DOCKER_SCRIPT for this image"
 
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang
 

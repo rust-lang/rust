@@ -84,8 +84,7 @@ mod issue14871 {
         const ONE: Self;
     }
 
-    #[const_trait]
-    pub trait NumberConstants {
+    pub const trait NumberConstants {
         fn constant(value: usize) -> Self;
     }
 

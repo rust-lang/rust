@@ -17,12 +17,10 @@ impl<'a> const Drop for S<'a> {
 }
 
 const fn a<T: [const] Destruct>(_: T) {}
-//FIXME ~^ ERROR destructor of
 
 const fn b() -> u8 {
     let mut c = 0;
     let _ = S(&mut c);
-    //FIXME ~^ ERROR destructor of
     a(S(&mut c));
     c
 }

@@ -30,7 +30,7 @@ pub type AllocState = Stacks;
 #[derive(Clone, Debug)]
 pub struct Stacks {
     // Even reading memory can have effects on the stack, so we need a `RefCell` here.
-    stacks: RangeMap<Stack>,
+    stacks: DedupRangeMap<Stack>,
     /// Stores past operations on this allocation
     history: AllocHistory,
     /// The set of tags that have been exposed inside this allocation.
@@ -468,7 +468,7 @@ impl<'tcx> Stacks {
         let stack = Stack::new(item);
 
         Stacks {
-            stacks: RangeMap::new(size, stack),
+            stacks: DedupRangeMap::new(size, stack),
             history: AllocHistory::new(id, item, machine),
             exposed_tags: FxHashSet::default(),
         }
@@ -650,7 +650,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                         dcx.log_protector();
                     }
                 },
-                AllocKind::Function | AllocKind::VTable | AllocKind::Dead => {
+                AllocKind::Function | AllocKind::VTable | AllocKind::TypeId | AllocKind::Dead => {
                     // No stacked borrows on these allocations.
                 }
             }
@@ -1021,7 +1021,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id:?}");
                 alloc_extra.borrow_tracker_sb().borrow_mut().exposed_tags.insert(tag);
             }
-            AllocKind::Function | AllocKind::VTable | AllocKind::Dead => {
+            AllocKind::Function | AllocKind::VTable | AllocKind::TypeId | AllocKind::Dead => {
                 // No stacked borrows on these allocations.
             }
         }

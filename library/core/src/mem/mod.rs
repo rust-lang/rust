@@ -36,7 +36,7 @@ pub use crate::intrinsics::transmute;
 /// * If you want to leak memory, see [`Box::leak`].
 /// * If you want to obtain a raw pointer to the memory, see [`Box::into_raw`].
 /// * If you want to dispose of a value properly, running its destructor, see
-/// [`mem::drop`].
+///   [`mem::drop`].
 ///
 /// # Safety
 ///
@@ -151,7 +151,7 @@ pub const fn forget<T>(t: T) {
 ///
 /// While Rust does not permit unsized locals since its removal in [#111942] it is
 /// still possible to call functions with unsized values from a function argument
-/// or in-place construction.
+/// or place expression.
 ///
 /// ```rust
 /// #![feature(unsized_fn_params, forget_unsized)]

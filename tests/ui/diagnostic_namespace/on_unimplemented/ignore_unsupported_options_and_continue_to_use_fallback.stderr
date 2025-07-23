@@ -5,7 +5,7 @@ LL |     if(Self = "()"),
    |     ^^^^^^^^^^^^^^^ invalid option found here
    |
    = help: only `message`, `note` and `label` are allowed as options
-   = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
+   = note: `#[warn(malformed_diagnostic_attributes)]` on by default
 
 warning: `message` is ignored due to previous definition of `message`
   --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:10:32

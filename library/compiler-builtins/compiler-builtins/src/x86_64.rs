@@ -2,7 +2,7 @@
 
 use core::intrinsics;
 
-// NOTE These functions are implemented using assembly because they using a custom
+// NOTE These functions are implemented using assembly because they use a custom
 // calling convention which can't be implemented using a normal Rust function
 
 // NOTE These functions are never mangled as they are not tested against compiler-rt
@@ -17,7 +17,7 @@ intrinsics! {
         ),
         not(feature = "no-asm")
     ))]
-    pub unsafe extern "C" fn ___chkstk_ms() {
+    pub unsafe extern "custom" fn ___chkstk_ms() {
         core::arch::naked_asm!(
             "push   %rcx",
             "push   %rax",

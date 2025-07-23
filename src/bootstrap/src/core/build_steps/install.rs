@@ -287,7 +287,7 @@ install!((self, builder, _config),
         }
     };
     LlvmBitcodeLinker, alias = "llvm-bitcode-linker", Self::should_build(_config), only_hosts: true, {
-        if let Some(tarball) = builder.ensure(dist::LlvmBitcodeLinker { compiler: self.compiler, target: self.target }) {
+        if let Some(tarball) = builder.ensure(dist::LlvmBitcodeLinker { build_compiler: self.compiler, target: self.target }) {
             install_sh(builder, "llvm-bitcode-linker", self.compiler.stage, Some(self.target), &tarball);
         } else {
             builder.info(

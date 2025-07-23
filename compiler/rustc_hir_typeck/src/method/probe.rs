@@ -921,6 +921,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 | ty::ClauseKind::ConstArgHasType(_, _)
                 | ty::ClauseKind::WellFormed(_)
                 | ty::ClauseKind::ConstEvaluatable(_)
+                | ty::ClauseKind::UnstableFeature(_)
                 | ty::ClauseKind::HostEffect(..) => None,
             }
         });
@@ -1649,7 +1650,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
             }
 
-            let sources = candidates.iter().map(|p| self.candidate_source(p, self_ty)).collect();
+            let sources =
+                applicable_candidates.iter().map(|p| self.candidate_source(p.0, self_ty)).collect();
             return Some(Err(MethodError::Ambiguity(sources)));
         }
 

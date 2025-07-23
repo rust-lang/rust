@@ -36,5 +36,25 @@ LL |         let _ = two + &three;
    |                       |
    |                       help: use the right value directly: `three`
 
-error: aborting due to 4 previous errors
+error: needlessly taken reference of both operands
+  --> tests/ui/op_ref.rs:125:8
+   |
+LL |     if &x == &mac!(1) {}
+   |        ^^^^^^^^^^^^^^
+   |
+help: use the values directly
+   |
+LL -     if &x == &mac!(1) {}
+LL +     if x == mac!(1) {}
+   |
+
+error: taken reference of right operand
+  --> tests/ui/op_ref.rs:144:13
+   |
+LL |     let z = x & &mac!(y);
+   |             ^^^^--------
+   |                 |
+   |                 help: use the right value directly: `mac!(y)`
+
+error: aborting due to 6 previous errors
 

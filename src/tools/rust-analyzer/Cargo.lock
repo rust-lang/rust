@@ -154,6 +154,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "cargo-util-schemas"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7dc1a6f7b5651af85774ae5a34b4e8be397d9cf4bc063b7e6dbd99a841837830"
+dependencies = [
+ "semver",
+ "serde",
+ "serde-untagged",
+ "serde-value",
+ "thiserror 2.0.12",
+ "toml",
+ "unicode-xid",
+ "url",
+]
+
+[[package]]
 name = "cargo_metadata"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -161,7 +177,22 @@ checksum = "4f7835cfc6135093070e95eb2b53e5d9b5c403dc3a6be6040ee026270aa82502"
 dependencies = [
  "camino",
  "cargo-platform",
- "cargo-util-schemas",
+ "cargo-util-schemas 0.2.0",
+ "semver",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "cargo_metadata"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5cfca2aaa699835ba88faf58a06342a314a950d2b9686165e038286c30316868"
+dependencies = [
+ "camino",
+ "cargo-platform",
+ "cargo-util-schemas 0.8.2",
  "semver",
  "serde",
  "serde_json",
@@ -1190,13 +1221,16 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 name = "lsp-server"
 version = "0.7.8"
 dependencies = [
+ "anyhow",
  "crossbeam-channel",
  "ctrlc",
  "log",
  "lsp-types",
+ "rustc-hash 2.1.1",
  "serde",
  "serde_derive",
  "serde_json",
+ "toolchain",
 ]
 
 [[package]]
@@ -1234,7 +1268,7 @@ dependencies = [
  "expect-test",
  "intern",
  "parser",
- "ra-ap-rustc_lexer",
+ "ra-ap-rustc_lexer 0.122.0",
  "rustc-hash 2.1.1",
  "smallvec",
  "span",
@@ -1470,8 +1504,8 @@ dependencies = [
  "drop_bomb",
  "edition",
  "expect-test",
- "ra-ap-rustc_lexer",
- "rustc-literal-escaper 0.0.4",
+ "ra-ap-rustc_lexer 0.122.0",
+ "rustc-literal-escaper",
  "stdx",
  "tracing",
 ]
@@ -1580,7 +1614,7 @@ dependencies = [
  "object",
  "paths",
  "proc-macro-test",
- "ra-ap-rustc_lexer",
+ "ra-ap-rustc_lexer 0.122.0",
  "span",
  "syntax-bridge",
  "tt",
@@ -1599,7 +1633,7 @@ dependencies = [
 name = "proc-macro-test"
 version = "0.0.0"
 dependencies = [
- "cargo_metadata",
+ "cargo_metadata 0.20.0",
 ]
 
 [[package]]
@@ -1640,7 +1674,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "base-db",
- "cargo_metadata",
+ "cargo_metadata 0.21.0",
  "cfg",
  "expect-test",
  "intern",
@@ -1722,9 +1756,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_abi"
-version = "0.116.0"
+version = "0.122.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a967e3a9cd3e38b543f503978e0eccee461e3aea3f7b10e944959bff41dbe612"
+checksum = "fb01e1fec578003c85481c1cad4ff8cd8195b07c2dc85ae3f716108507ae15d5"
 dependencies = [
  "bitflags 2.9.1",
  "ra-ap-rustc_hashes",
@@ -1734,18 +1768,18 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_hashes"
-version = "0.116.0"
+version = "0.122.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ea4c755ecbbffa5743c251344f484ebe571ec7bc5b36d80b2a8ae775d1a7a40"
+checksum = "e0ec056e72a472ffef8761ce96ece6c626eb07368c09d0105b6df30d27d07673"
 dependencies = [
  "rustc-stable-hash",
 ]
 
 [[package]]
 name = "ra-ap-rustc_index"
-version = "0.116.0"
+version = "0.122.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aca7ad7cf911538c619caa2162339fe98637e9e46f11bb0484ef96735df4d64a"
+checksum = "0fcdd1001db0295e59052e9f53aeda588bbe81e362534f4687d41bd44777b5a7"
 dependencies = [
  "ra-ap-rustc_index_macros",
  "smallvec",
@@ -1753,9 +1787,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_index_macros"
-version = "0.116.0"
+version = "0.122.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8767ba551c9355bc3031be072cc4bb0381106e5e7cd275e72b7a8c76051c4070"
+checksum = "728d64dd98e25530b32e3f7c7c1e844e52722b269360daa1cdeba9dff9727a26"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1764,9 +1798,20 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_lexer"
-version = "0.116.0"
+version = "0.121.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6101374afb267e6c27e4e2eb0b1352e9f3504c1a8f716f619cd39244e2ed92ab"
+checksum = "22944e31fb91e9b3e75bcbc91e37d958b8c0825a6160927f2856831d2ce83b36"
+dependencies = [
+ "memchr",
+ "unicode-properties",
+ "unicode-xid",
+]
+
+[[package]]
+name = "ra-ap-rustc_lexer"
+version = "0.122.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "415f0821f512608d825b3215489a6a6a2c18ed9f0045953d514e7ec23d4b90ab"
 dependencies = [
  "memchr",
  "unicode-properties",
@@ -1775,19 +1820,19 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_parse_format"
-version = "0.116.0"
+version = "0.121.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecd88a19f00da4f43e6727d5013444cbc399804b5046dfa2bbcd28ebed3970ce"
+checksum = "81057891bc2063ad9e353f29462fbc47a0f5072560af34428ae9313aaa5e9d97"
 dependencies = [
- "ra-ap-rustc_lexer",
- "rustc-literal-escaper 0.0.2",
+ "ra-ap-rustc_lexer 0.121.0",
+ "rustc-literal-escaper",
 ]
 
 [[package]]
 name = "ra-ap-rustc_pattern_analysis"
-version = "0.116.0"
+version = "0.122.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb332dd32d7850a799862533b1c021e6062558861a4ad57817bf522499fbb892"
+checksum = "4657fcfdfe06e2a02ec8180d4e7c95aecf4811ba50367e363d1a2300b7623284"
 dependencies = [
  "ra-ap-rustc_index",
  "rustc-hash 2.1.1",
@@ -1855,7 +1900,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "base64",
- "cargo_metadata",
+ "cargo_metadata 0.21.0",
  "cfg",
  "crossbeam-channel",
  "dirs",
@@ -1931,12 +1976,6 @@ name = "rustc-hash"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
-
-[[package]]
-name = "rustc-literal-escaper"
-version = "0.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0041b6238913c41fe704213a4a9329e2f685a156d1781998128b4149c230ad04"
 
 [[package]]
 name = "rustc-literal-escaper"
@@ -2231,7 +2270,7 @@ dependencies = [
  "rayon",
  "rowan",
  "rustc-hash 2.1.1",
- "rustc-literal-escaper 0.0.4",
+ "rustc-literal-escaper",
  "rustc_apfloat",
  "smol_str",
  "stdx",
@@ -2553,7 +2592,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "intern",
- "ra-ap-rustc_lexer",
+ "ra-ap-rustc_lexer 0.122.0",
  "stdx",
  "text-size",
 ]

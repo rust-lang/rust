@@ -22,6 +22,7 @@ use crate::delegate::SolverDelegate;
 use crate::placeholder::BoundVarReplacer;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
+use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
     CanonicalInput, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluation, GoalEvaluationKind,
     GoalSource, GoalStalledOn, HasChanged, NestedNormalizationGoals, NoSolution, QueryInput,
@@ -549,6 +550,9 @@ where
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                     self.compute_const_arg_has_type_goal(Goal { param_env, predicate: (ct, ty) })
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
+                    self.compute_unstable_feature_goal(param_env, symbol)
                 }
                 ty::PredicateKind::Subtype(predicate) => {
                     self.compute_subtype_goal(Goal { param_env, predicate })
@@ -1176,6 +1180,14 @@ where
         universes: &mut Vec<Option<ty::UniverseIndex>>,
     ) -> T {
         BoundVarReplacer::replace_bound_vars(&**self.delegate, universes, t).0
+    }
+
+    pub(super) fn may_use_unstable_feature(
+        &self,
+        param_env: I::ParamEnv,
+        symbol: I::Symbol,
+    ) -> bool {
+        may_use_unstable_feature(&**self.delegate, param_env, symbol)
     }
 }
 

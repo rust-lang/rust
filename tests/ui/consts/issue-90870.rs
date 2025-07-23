@@ -3,9 +3,9 @@
 #![allow(dead_code)]
 
 const fn f(a: &u8, b: &u8) -> bool {
-    //~^ HELP: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-    //~| HELP: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-    //~| HELP: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+    //~^ HELP: add `#![feature(const_cmp)]` to the crate attributes to enable
+    //~| HELP: add `#![feature(const_cmp)]` to the crate attributes to enable
+    //~| HELP: add `#![feature(const_cmp)]` to the crate attributes to enable
     a == b
     //~^ ERROR: cannot call conditionally-const operator in constant functions
     //~| ERROR: `PartialEq` is not yet stable as a const trait

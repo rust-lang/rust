@@ -106,6 +106,7 @@ pub trait Interner:
     type ParamTy: ParamLike;
     type BoundTy: BoundVarLike<Self>;
     type PlaceholderTy: PlaceholderLike<Self, Bound = Self::BoundTy>;
+    type Symbol: Copy + Hash + PartialEq + Eq + Debug;
 
     // Things stored inside of tys
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;
@@ -144,6 +145,13 @@ pub trait Interner:
     type LateParamRegion: Copy + Debug + Hash + Eq;
     type BoundRegion: BoundVarLike<Self>;
     type PlaceholderRegion: PlaceholderLike<Self, Bound = Self::BoundRegion>;
+
+    type RegionAssumptions: Copy
+        + Debug
+        + Hash
+        + Eq
+        + SliceLike<Item = ty::OutlivesPredicate<Self, Self::GenericArg>>
+        + TypeFoldable<Self>;
 
     // Predicates
     type ParamEnv: ParamEnv<Self>;

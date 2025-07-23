@@ -647,6 +647,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     | ty::PredicateKind::ConstEquate { .. }
                     // Ambiguous predicates should never error
                     | ty::PredicateKind::Ambiguous
+                    // We never return Err when proving UnstableFeature goal.
+                    | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature{ .. })
                     | ty::PredicateKind::NormalizesTo { .. }
                     | ty::PredicateKind::AliasRelate { .. }
                     | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType { .. }) => {
@@ -1933,7 +1935,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     StringPart::highlighted("multiple different versions".to_string()),
                     StringPart::normal(" of crate `".to_string()),
                     StringPart::highlighted(format!("{crate_name}")),
-                    StringPart::normal("` in the dependency graph\n".to_string()),
+                    StringPart::normal("` in the dependency graph".to_string()),
                 ],
             );
             if points_at_type {
