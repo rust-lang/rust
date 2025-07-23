@@ -297,14 +297,14 @@ You can also directly run Miri on a Rust source file:
 
 ## Advanced topic: Syncing with the rustc repo
 
-We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit changes between the
+We use the [`josh-sync`](https://github.com/rust-lang/josh-sync) tool to transmit changes between the
 rustc and Miri repositories. You can install it as follows:
 
 ```sh
-cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
+cargo install --locked --git https://github.com/rust-lang/josh-sync
 ```
 
-Josh will automatically be started and stopped by `./miri`.
+The commands below will automatically install and manage the [Josh](https://github.com/josh-project/josh) proxy that performs the actual work.
 
 ### Importing changes from the rustc repo
 
@@ -312,10 +312,12 @@ Josh will automatically be started and stopped by `./miri`.
 
 We assume we start on an up-to-date master branch in the Miri repo.
 
+1) First, create a branch for the pull, e.g. `git checkout -b rustup`
+2) Then run the following:
 ```sh
 # Fetch and merge rustc side of the history. Takes ca 5 min the first time.
 # This will also update the `rustc-version` file.
-./miri rustc-pull
+rustc-josh-sync pull
 # Update local toolchain and apply formatting.
 ./miri toolchain && ./miri fmt
 git commit -am "rustup"
@@ -328,12 +330,12 @@ needed.
 
 ### Exporting changes to the rustc repo
 
-We will use the josh proxy to push to your fork of rustc. Run the following in the Miri repo,
+We will use the `josh-sync` tool to push to your fork of rustc. Run the following in the Miri repo,
 assuming we are on an up-to-date master branch:
 
 ```sh
 # Push the Miri changes to your rustc fork (substitute your github handle for YOUR_NAME).
-./miri rustc-push YOUR_NAME miri
+rustc-josh-sync push miri YOUR_NAME
 ```
 
 This will create a new branch called `miri` in your fork, and the output should include a link that
