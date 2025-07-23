@@ -285,6 +285,9 @@ pub fn check_builtin_meta_item(
                 | sym::rustc_do_not_implement_via_object
                 | sym::rustc_coinductive
                 | sym::const_trait
+                | sym::stable
+                | sym::unstable
+                | sym::rustc_allowed_through_unstable_modules
                 | sym::rustc_specialization_trait
                 | sym::rustc_unsafe_specialization_marker
                 | sym::rustc_allow_incoherent_impl
