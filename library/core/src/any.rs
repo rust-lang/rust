@@ -910,6 +910,8 @@ pub const fn downcast_trait<
     match vtable {
         Some(dyn_metadata) => {
             let pointer = ptr::from_raw_parts(t, dyn_metadata);
+            // SAFETY: `t` is a reference to a type, so we know it is valid.
+            // `dyn_metadata` is a vtable for T, implementing the trait of `U`.
             Some(unsafe { &*pointer })
         }
         None => None,
