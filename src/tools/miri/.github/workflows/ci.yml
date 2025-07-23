@@ -147,27 +147,40 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 256 # get a bit more of the history
-      - name: install josh-proxy
-        run: cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
+      - name: install josh-sync
+        run: cargo +stable install --locked --git https://github.com/rust-lang/josh-sync
       - name: setup bot git name and email
         run: |
           git config --global user.name 'The Miri Cronjob Bot'
           git config --global user.email 'miri@cron.bot'
       - name: Install nightly toolchain
         run: rustup toolchain install nightly --profile minimal
-      - name: get changes from rustc
-        run: ./miri rustc-pull
       - name: Install rustup-toolchain-install-master
         run: cargo install -f rustup-toolchain-install-master
-      - name: format changes (if any)
-        run: |
-          ./miri toolchain
-          ./miri fmt --check || (./miri fmt && git commit -am "fmt")
       - name: Push changes to a branch and create PR
         run: |
-          # `git diff --exit-code` "succeeds" if the diff is empty.
-          if git diff --exit-code HEAD^; then echo "Nothing changed in rustc, skipping PR"; exit 0; fi
-          # The diff is non-empty, create a PR.
+          # Temporarily disable early exit to examine the status code of rustc-josh-sync
+          set +e
+          rustc-josh-sync pull
+          exitcode=$?
+          set -e
+
+          # If there were no changes to pull, rustc-josh-sync returns status code 2
+          # In that case skip the rest of the job
+          if [ $exitcode -eq 2 ]; then
+            echo "Nothing changed in rustc, skipping PR"
+            exit 0
+          elif [ $exitcode -ne 0 ]; then
+            # If return code was not 0 or 2, rustc-josh-sync actually failed
+            echo "rustc-josh-sync failed"
+            exit ${exitcode}
+          fi
+
+          # Format changes
+          ./miri toolchain
+          ./miri fmt --check || (./miri fmt && git commit -am "fmt")
+
+          # Create a PR
           BRANCH="rustup-$(date -u +%Y-%m-%d)"
           git switch -c $BRANCH
           git push -u origin $BRANCH
