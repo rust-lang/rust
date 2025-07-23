@@ -170,7 +170,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let type_impls_trait = preds.iter().all(|pred| {
                     let trait_ref = ty::TraitRef::new(tcx, pred.def_id(), [tp_ty]);
-                    let pred: ty::Predicate<'tcx> = trait_ref.upcast(tcx);
 
                     let ocx = ObligationCtxt::new(&infcx);
                     ocx.register_obligation(Obligation::new(
