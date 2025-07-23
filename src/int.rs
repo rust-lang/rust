@@ -494,11 +494,27 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let lhs_low = self.context.new_cast(self.location, self.low(lhs), unsigned_type);
             let rhs_low = self.context.new_cast(self.location, self.low(rhs), unsigned_type);
 
+            let mut lhs_high = self.high(lhs);
+            let mut rhs_high = self.high(rhs);
+
+            match op {
+                IntPredicate::IntUGT
+                | IntPredicate::IntUGE
+                | IntPredicate::IntULT
+                | IntPredicate::IntULE => {
+                    lhs_high = self.context.new_cast(self.location, lhs_high, unsigned_type);
+                    rhs_high = self.context.new_cast(self.location, rhs_high, unsigned_type);
+                }
+                // TODO(antoyo): we probably need to handle signed comparison for unsigned
+                // integers.
+                _ => (),
+            }
+
             let condition = self.context.new_comparison(
                 self.location,
                 ComparisonOp::LessThan,
-                self.high(lhs),
-                self.high(rhs),
+                lhs_high,
+                rhs_high,
             );
             self.llbb().end_with_conditional(self.location, condition, block1, block2);
 
@@ -512,8 +528,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let condition = self.context.new_comparison(
                 self.location,
                 ComparisonOp::GreaterThan,
-                self.high(lhs),
-                self.high(rhs),
+                lhs_high,
+                rhs_high,
             );
             block2.end_with_conditional(self.location, condition, block3, block4);
 
