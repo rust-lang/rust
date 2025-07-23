@@ -1,6 +1,6 @@
 CHECK: test_memcpy - {[-1]:Float@double} |{[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Float@double, [-1,16]:Float@double, [-1,24]:Float@double, [-1,32]:Float@double, [-1,40]:Float@double, [-1,48]:Float@double, [-1,56]:Float@double}:{}
 
-CHECK-DAG: call void @llvm.memcpy{{.*}}!enzyme_type
+CHECK-DAG: ptr %{{[0-9]+}}: {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Float@double, [-1,16]:Float@double, [-1,24]:Float@double, [-1,32]:Float@double, [-1,40]:Float@double, [-1,48]:Float@double, [-1,56]:Float@double}
 
 CHECK-DAG: load double{{.*}}: {[-1]:Float@double}
 
