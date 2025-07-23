@@ -180,7 +180,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             _ => {
-                assert!(self.rvalue_creates_operand(rvalue));
                 let temp = self.codegen_rvalue_operand(bx, rvalue);
                 temp.val.store(bx, dest);
             }
@@ -218,11 +217,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     /// Transmutes an `OperandValue` to another `OperandValue`.
     ///
-    /// This is supported only for cases where [`Self::rvalue_creates_operand`]
-    /// returns `true`, and will ICE otherwise. (In particular, anything that
-    /// would need to `alloca` in order to return a `PlaceValue` will ICE,
-    /// expecting those to go via [`Self::codegen_transmute`] instead where
-    /// the destination place is already allocated.)
+    /// This is supported for all cases where the `cast` type is SSA,
+    /// but for non-ZSTs with [`abi::BackendRepr::Memory`] it ICEs.
     pub(crate) fn codegen_transmute_operand(
         &mut self,
         bx: &mut Bx,
@@ -379,8 +375,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         rvalue: &mir::Rvalue<'tcx>,
     ) -> OperandRef<'tcx, Bx::Value> {
-        assert!(self.rvalue_creates_operand(rvalue), "cannot codegen {rvalue:?} to operand",);
-
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref source, mir_cast_ty) => {
                 let operand = self.codegen_operand(bx, source);
@@ -706,8 +700,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let ty = self.monomorphize(ty);
                 let layout = self.cx.layout_of(ty);
 
-                // `rvalue_creates_operand` has arranged that we only get here if
-                // we can build the aggregate immediate from the field immediates.
                 let mut builder = OperandRefBuilder::new(layout);
                 for (field_idx, field) in fields.iter_enumerated() {
                     let op = self.codegen_operand(bx, field);
@@ -1007,38 +999,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         OperandValue::Pair(val, of)
-    }
-
-    /// Returns `true` if the `rvalue` can be computed into an [`OperandRef`],
-    /// rather than needing a full `PlaceRef` for the assignment destination.
-    ///
-    /// This is used by the [`super::analyze`] code to decide which MIR locals
-    /// can stay as SSA values (as opposed to generating `alloca` slots for them).
-    /// As such, some paths here return `true` even where the specific rvalue
-    /// will not actually take the operand path because the result type is such
-    /// that it always gets an `alloca`, but where it's not worth re-checking the
-    /// layout in this code when the right thing will happen anyway.
-    pub(crate) fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
-        match *rvalue {
-            mir::Rvalue::Ref(..) |
-            mir::Rvalue::CopyForDeref(..) |
-            mir::Rvalue::RawPtr(..) |
-            mir::Rvalue::Len(..) |
-            mir::Rvalue::Cast(..) | // (*)
-            mir::Rvalue::ShallowInitBox(..) | // (*)
-            mir::Rvalue::BinaryOp(..) |
-            mir::Rvalue::UnaryOp(..) |
-            mir::Rvalue::Discriminant(..) |
-            mir::Rvalue::NullaryOp(..) |
-            mir::Rvalue::ThreadLocalRef(_) |
-            mir::Rvalue::Use(..) |
-            mir::Rvalue::Repeat(..) | // (*)
-            mir::Rvalue::Aggregate(..) | // (*)
-            mir::Rvalue::WrapUnsafeBinder(..) => // (*)
-                true,
-        }
-
-        // (*) this is only true if the type is suitable
     }
 }
 

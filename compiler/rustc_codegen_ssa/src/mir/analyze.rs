@@ -170,11 +170,6 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
 
         if let Some(local) = place.as_local() {
             self.define(local, DefLocation::Assignment(location));
-            if self.locals[local] != LocalKind::Memory {
-                if !self.fx.rvalue_creates_operand(rvalue) {
-                    self.locals[local] = LocalKind::Memory;
-                }
-            }
         } else {
             self.visit_place(place, PlaceContext::MutatingUse(MutatingUseContext::Store), location);
         }
