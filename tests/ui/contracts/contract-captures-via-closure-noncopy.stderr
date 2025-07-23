@@ -7,18 +7,17 @@ LL | #![feature(contracts)]
    = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0277]: the trait bound `Baz: std::marker::Copy` is not satisfied in `{closure@$DIR/contract-captures-via-closure-noncopy.rs:12:42: 12:57}`
+error[E0277]: the trait bound `Baz: std::marker::Copy` is not satisfied in `doubler::{closure#1}`
   --> $DIR/contract-captures-via-closure-noncopy.rs:12:1
    |
 LL | #[core::contracts::ensures({let old = x; move |ret:&Baz| ret.baz == old.baz*2 })]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------------------------------^^^^
    | |                                        |
-   | |                                        within this `{closure@$DIR/contract-captures-via-closure-noncopy.rs:12:42: 12:57}`
-   | |                                        this tail expression is of type `{closure@contract-captures-via-closure-noncopy.rs:12:42}`
-   | unsatisfied trait bound
+   | |                                        within this `doubler::{closure#1}`
+   | |                                        this tail expression is of type `doubler::{closure#1}`
+   | within `doubler::{closure#1}`, the trait `std::marker::Copy` is not implemented for `Baz`
    | required by a bound introduced by this call
    |
-   = help: within `{closure@$DIR/contract-captures-via-closure-noncopy.rs:12:42: 12:57}`, the trait `std::marker::Copy` is not implemented for `Baz`
 note: required because it's used within this closure
   --> $DIR/contract-captures-via-closure-noncopy.rs:12:42
    |

@@ -1,4 +1,4 @@
-error[E0271]: expected `{async closure@dont-suggest-boxing-async-closure-body.rs:9:9}` to return `Box<_>`, but it returns `{async closure body@$DIR/dont-suggest-boxing-async-closure-body.rs:9:23: 9:25}`
+error[E0271]: expected `{async closure@main::{closure foo#x}}` to return `Box<_>`, but it returns `{async closure body@$DIR/dont-suggest-boxing-async-closure-body.rs:9:23: 9:25}`
   --> $DIR/dont-suggest-boxing-async-closure-body.rs:9:9
    |
 LL |     foo(async move || {});
@@ -18,12 +18,12 @@ error[E0308]: mismatched types
   --> $DIR/dont-suggest-boxing-async-closure-body.rs:11:9
    |
 LL |     bar(async move || {});
-   |     --- ^^^^^^^^^^^^^^^^ expected `Box<dyn FnOnce() -> _>`, found `{async closure@dont-suggest-boxing-async-closure-body.rs:11:9}`
+   |     --- ^^^^^^^^^^^^^^^^ expected `Box<dyn FnOnce() -> _>`, found `{async closure@main::{closure bar#x}}`
    |     |
    |     arguments to this function are incorrect
    |
    = note: expected struct `Box<(dyn FnOnce() -> _ + 'static)>`
-             found closure `{async closure@$DIR/dont-suggest-boxing-async-closure-body.rs:11:9: 11:22}`
+             found closure `{async closure@main::{closure bar#x}}`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 note: function defined here
   --> $DIR/dont-suggest-boxing-async-closure-body.rs:6:4

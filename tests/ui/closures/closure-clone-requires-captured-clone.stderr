@@ -1,11 +1,11 @@
-error[E0277]: the trait bound `NonClone: Clone` is not satisfied in `{closure@$DIR/closure-clone-requires-captured-clone.rs:13:19: 13:26}`
+error[E0277]: the trait bound `NonClone: Clone` is not satisfied in `main::{closure closure}`
   --> $DIR/closure-clone-requires-captured-clone.rs:17:13
    |
 LL |     let closure = move || {
-   |                   ------- within this `{closure@$DIR/closure-clone-requires-captured-clone.rs:13:19: 13:26}`
+   |                   ------- within this `main::{closure closure}`
 ...
 LL |     closure.clone();
-   |             ^^^^^ within `{closure@$DIR/closure-clone-requires-captured-clone.rs:13:19: 13:26}`, the trait `Clone` is not implemented for `NonClone`
+   |             ^^^^^ within `main::{closure closure}`, the trait `Clone` is not implemented for `NonClone`
    |
 note: required because it's used within this closure
   --> $DIR/closure-clone-requires-captured-clone.rs:13:19

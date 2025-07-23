@@ -8,7 +8,7 @@ LL |     const move || {
    = help: add `#![feature(const_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0277]: the trait bound `{closure@$DIR/ice-112822-expected-type-for-param.rs:5:5: 5:18}: [const] Fn()` is not satisfied
+error[E0277]: the trait bound `test::{returned closure}: [const] Fn()` is not satisfied
   --> $DIR/ice-112822-expected-type-for-param.rs:3:20
    |
 LL | const fn test() -> impl [const] Fn() {

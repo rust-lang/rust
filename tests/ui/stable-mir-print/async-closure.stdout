@@ -3,7 +3,7 @@
 fn foo() -> () {
     let mut _0: ();
     let  _1: i32;
-    let  _2: {async closure@$DIR/async-closure.rs:9:13: 9:21};
+    let  _2: {async closure@foo::{closure x}};
     let mut _3: &i32;
     debug y => _1;
     debug x => _2;
@@ -21,7 +21,7 @@ fn foo() -> () {
         return;
     }
 }
-fn foo::{closure x}(_1: &{async closure@$DIR/async-closure.rs:9:13: 9:21}) -> {async closure body@$DIR/async-closure.rs:9:22: 11:6} {
+fn foo::{closure x}(_1: &{async closure@foo::{closure x}}) -> {async closure body@$DIR/async-closure.rs:9:22: 11:6} {
     let mut _0: {async closure body@$DIR/async-closure.rs:9:22: 11:6};
     let mut _2: &i32;
     let mut _3: &i32;

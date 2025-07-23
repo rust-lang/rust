@@ -11,7 +11,7 @@ LL |         AnyOption::<_>::NONE => {}
    |
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
-error: constant of non-structural type `Option<{closure@$DIR/non-structural-match-types.rs:15:16: 15:18}>` in a pattern
+error: constant of non-structural type `Option<defines::{closure#0}>` in a pattern
   --> $DIR/non-structural-match-types.rs:16:9
    |
 LL | impl<T> AnyOption<T> {

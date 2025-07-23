@@ -2,7 +2,7 @@ error[E0382]: use of moved value: `f`
   --> $DIR/generator_capture_.rs:21:17
    |
 LL |     let f = {
-   |         - move occurs because `f` has type `{gen closure@$DIR/generator_capture_.rs:10:17: 10:24}`, which does not implement the `Copy` trait
+   |         - move occurs because `f` has type `{gen closure@main::{closure#0}}`, which does not implement the `Copy` trait
 ...
 LL |     let mut i = f();
    |                 --- `f` moved due to this call

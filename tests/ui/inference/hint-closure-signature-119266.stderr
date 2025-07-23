@@ -10,7 +10,7 @@ LL |     let x: fn(i32) = x;
    |            expected due to this
    |
    = note: expected fn pointer `fn(i32)`
-                 found closure `{closure@$DIR/hint-closure-signature-119266.rs:2:13: 2:64}`
+                 found closure `main::{closure x}`
    = note: closure has signature: `fn(u8, (usize, u32), fn() -> char) -> String`
 
 error: aborting due to 1 previous error

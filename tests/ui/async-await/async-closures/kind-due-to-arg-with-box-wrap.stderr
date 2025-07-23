@@ -9,7 +9,7 @@ LL |         takes_asyncfn(Box::new(async || self.an_async_fn().await));
    |         |             the requirement to implement `AsyncFn` derives from here
    |         required by a bound introduced by this call
    |
-   = note: required for `Box<{async closure@$DIR/kind-due-to-arg-with-box-wrap.rs:13:32: 13:40}>` to implement `AsyncFn()`
+   = note: required for `Box<{async closure@Test::uses_takes_asyncfn::{closure Box::new#0}}>` to implement `AsyncFn()`
 note: required by a bound in `takes_asyncfn`
   --> $DIR/kind-due-to-arg-with-box-wrap.rs:18:32
    |

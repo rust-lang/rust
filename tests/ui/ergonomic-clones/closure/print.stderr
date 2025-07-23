@@ -2,7 +2,7 @@ error[E0382]: use of moved value: `c`
   --> $DIR/print.rs:20:5
    |
 LL |     let c = to_fn_once(use || {
-   |         - move occurs because `c` has type `{closure@$DIR/print.rs:15:24: 15:30}`, which does not implement the `Copy` trait
+   |         - move occurs because `c` has type `f<T>::{closure to_fn_once#f}`, which does not implement the `Copy` trait
 ...
 LL |     c();
    |     --- `c` moved due to this call

@@ -10,7 +10,7 @@ LL |         let _ = foo.into();
    |                 --- closure is `AsyncFnOnce` because it moves the variable `foo` out of its environment
 LL |     };
 LL |     inner_fn
-   |     -------- return type was inferred to be `{async closure@$DIR/kind-due-to-rpit.rs:7:20: 7:33}` here
+   |     -------- return type was inferred to be `{async closure@repro<impl Into<bool>>::{closure inner_fn}}` here
 
 error: aborting due to 1 previous error
 

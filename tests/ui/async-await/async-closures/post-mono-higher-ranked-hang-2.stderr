@@ -1,4 +1,4 @@
-error: reached the recursion limit while instantiating `recur::<{async closure@$DIR/post-mono-higher-ranked-hang-2.rs:13:24: 13:32}>`
+error: reached the recursion limit while instantiating `recur::<{async closure@recur<{async closure@recur<{async closure@recur<{async closure@recur<{async closure@recur<...>::{closure Box::pin#0}::{closure#0}}>::{closure Box::pin#0}::{closure#0}}>::{closure Box::pin#0}::{closure#0}}>::{closure Box::pin#0}::{closure#0}}>::{closure Box::pin#0}::{closure#0}}>`
   --> $DIR/post-mono-higher-ranked-hang-2.rs:13:17
    |
 LL |           let _ = recur(&async || {
@@ -13,6 +13,7 @@ note: `recur` defined here
    |
 LL | fn recur<'l>(closure: &'l impl AsyncFn()) -> Pin<Box<dyn Future<Output = ()> + 'l>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: the full type name has been written to '$TEST_BUILD_DIR/post-mono-higher-ranked-hang-2.long-type.txt'
 
 error: aborting due to 1 previous error
 

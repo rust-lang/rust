@@ -20,7 +20,7 @@ LL | |         for x in 5..10 {
 LL | |             yield x * 2;
 LL | |         }
 LL | |     } }
-   | |_____- return type was inferred to be `{gen closure@$DIR/generator_returned_from_fn.rs:33:13: 33:20}` here
+   | |_____- return type was inferred to be `{gen closure@capture_move::{returned closure}}` here
 
 error[E0700]: hidden type for `impl FnOnce() -> impl Iterator<Item = u32>` captures lifetime that does not appear in bounds
   --> $DIR/generator_returned_from_fn.rs:42:13
@@ -28,7 +28,7 @@ error[E0700]: hidden type for `impl FnOnce() -> impl Iterator<Item = u32>` captu
 LL |   fn capture_move_once(a: &u32) -> impl FnOnce() -> impl Iterator<Item = u32> {
    |                           ----     ------------------------------------------ opaque type defined here
    |                           |
-   |                           hidden type `{gen closure@$DIR/generator_returned_from_fn.rs:42:13: 42:20}` captures the anonymous lifetime defined here
+   |                           hidden type `{gen closure@capture_move_once::{returned closure}}` captures the anonymous lifetime defined here
 LL |       iter! { move || {
    |  _____________^
 LL | |

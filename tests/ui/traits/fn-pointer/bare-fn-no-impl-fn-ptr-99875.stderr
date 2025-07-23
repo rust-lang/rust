@@ -16,15 +16,14 @@ help: the trait `Trait` is implemented for fn pointer `fn(Argument) -> Return`, 
 LL |     takes(function as fn(Argument) -> Return);
    |                    +++++++++++++++++++++++++
 
-error[E0277]: the trait bound `{closure@$DIR/bare-fn-no-impl-fn-ptr-99875.rs:16:11: 16:34}: Trait` is not satisfied
+error[E0277]: the trait bound `main::{closure takes#0}: Trait` is not satisfied
   --> $DIR/bare-fn-no-impl-fn-ptr-99875.rs:16:11
    |
 LL |     takes(|_: Argument| -> Return { todo!() });
-   |     ----- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |     ----- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for closure `main::{closure takes#0}`
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Trait` is not implemented for closure `{closure@$DIR/bare-fn-no-impl-fn-ptr-99875.rs:16:11: 16:34}`
    = help: the trait `Trait` is implemented for fn pointer `fn(Argument) -> Return`
 note: required by a bound in `takes`
   --> $DIR/bare-fn-no-impl-fn-ptr-99875.rs:11:18

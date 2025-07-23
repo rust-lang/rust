@@ -6,7 +6,7 @@ LL |       (|| {})(|| {
 LL | |
 LL | |         let b = 1;
 LL | |     });
-   | |_____- unexpected argument of type `{closure@$DIR/wrong_argument_ice-4.rs:2:13: 2:15}`
+   | |_____- unexpected argument of type `main::{closure#1}`
    |
 note: closure defined here
   --> $DIR/wrong_argument_ice-4.rs:2:6

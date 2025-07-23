@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `{gen closure@$DIR/iter-macro-not-async-closure-simplified.rs:21:21: 21:28}: AsyncFnOnce()` is not satisfied
+error[E0277]: the trait bound `{gen closure@main::{closure f}}: AsyncFnOnce()` is not satisfied
   --> $DIR/iter-macro-not-async-closure-simplified.rs:27:21
    |
 LL |     call_async_once(f);
-   |     --------------- ^ the trait `AsyncFnOnce()` is not implemented for `{gen closure@$DIR/iter-macro-not-async-closure-simplified.rs:21:21: 21:28}`
+   |     --------------- ^ the trait `AsyncFnOnce()` is not implemented for `{gen closure@main::{closure f}}`
    |     |
    |     required by a bound introduced by this call
    |

@@ -454,8 +454,8 @@ fn more_operands::{constant#0}() -> usize {
         return;
     }
 }
-fn closures(_1: bool, _2: bool) -> {closure@$DIR/operands.rs:47:5: 47:19} {
-    let mut _0: {closure@$DIR/operands.rs:47:5: 47:19};
+fn closures(_1: bool, _2: bool) -> closures::{returned closure} {
+    let mut _0: closures::{returned closure};
     debug x => _1;
     debug z => _2;
     bb0: {
@@ -463,7 +463,7 @@ fn closures(_1: bool, _2: bool) -> {closure@$DIR/operands.rs:47:5: 47:19} {
         return;
     }
 }
-fn closures::{returned closure}(_1: {closure@$DIR/operands.rs:47:5: 47:19}, _2: bool) -> bool {
+fn closures::{returned closure}(_1: closures::{returned closure}, _2: bool) -> bool {
     let mut _0: bool;
     let mut _3: bool;
     let mut _4: bool;

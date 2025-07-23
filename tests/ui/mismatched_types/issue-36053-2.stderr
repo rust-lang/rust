@@ -15,7 +15,7 @@ help: consider adjusting the signature so it borrows its argument
 LL |     once::<&str>("str").fuse().filter(|a: &&str| true).count();
    |                                           +
 
-error[E0599]: the method `count` exists for struct `Filter<Fuse<std::iter::Once<&str>>, {closure@$DIR/issue-36053-2.rs:7:39: 7:48}>`, but its trait bounds were not satisfied
+error[E0599]: the method `count` exists for struct `Filter<Fuse<std::iter::Once<&str>>, main::{closure _::filter#0}>`, but its trait bounds were not satisfied
   --> $DIR/issue-36053-2.rs:7:55
    |
 LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
@@ -24,12 +24,12 @@ LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
    |                                       doesn't satisfy `<_ as FnOnce<(&&str,)>>::Output = bool` or `_: FnMut<(&&str,)>`
    |
    = note: the following trait bounds were not satisfied:
-           `<{closure@$DIR/issue-36053-2.rs:7:39: 7:48} as FnOnce<(&&str,)>>::Output = bool`
-           which is required by `Filter<Fuse<std::iter::Once<&str>>, {closure@$DIR/issue-36053-2.rs:7:39: 7:48}>: Iterator`
-           `{closure@$DIR/issue-36053-2.rs:7:39: 7:48}: FnMut<(&&str,)>`
-           which is required by `Filter<Fuse<std::iter::Once<&str>>, {closure@$DIR/issue-36053-2.rs:7:39: 7:48}>: Iterator`
-           `Filter<Fuse<std::iter::Once<&str>>, {closure@$DIR/issue-36053-2.rs:7:39: 7:48}>: Iterator`
-           which is required by `&mut Filter<Fuse<std::iter::Once<&str>>, {closure@$DIR/issue-36053-2.rs:7:39: 7:48}>: Iterator`
+           `<main::{closure _::filter#0} as FnOnce<(&&str,)>>::Output = bool`
+           which is required by `Filter<Fuse<std::iter::Once<&str>>, main::{closure _::filter#0}>: Iterator`
+           `main::{closure _::filter#0}: FnMut<(&&str,)>`
+           which is required by `Filter<Fuse<std::iter::Once<&str>>, main::{closure _::filter#0}>: Iterator`
+           `Filter<Fuse<std::iter::Once<&str>>, main::{closure _::filter#0}>: Iterator`
+           which is required by `&mut Filter<Fuse<std::iter::Once<&str>>, main::{closure _::filter#0}>: Iterator`
 
 error: aborting due to 2 previous errors
 

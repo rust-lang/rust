@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `{closure@$DIR/call.rs:7:14: 7:22}: [const] Fn()` is not satisfied
+error[E0277]: the trait bound `_::{closure#0}: [const] Fn()` is not satisfied
   --> $DIR/call.rs:7:13
    |
 LL |     assert!((const || true)());

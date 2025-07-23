@@ -17,15 +17,15 @@ help: use parentheses to call this function
 LL |     bar(foo());
    |            ++
 
-error[E0277]: `{async closure@$DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:10:25: 10:33}` is not a future
+error[E0277]: `{async closure@main::{closure async_closure}}` is not a future
   --> $DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:11:9
    |
 LL |     bar(async_closure);
-   |     --- ^^^^^^^^^^^^^ `{async closure@$DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:10:25: 10:33}` is not a future
+   |     --- ^^^^^^^^^^^^^ `{async closure@main::{closure async_closure}}` is not a future
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Future` is not implemented for `{async closure@$DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:10:25: 10:33}`
+   = help: the trait `Future` is not implemented for `{async closure@main::{closure async_closure}}`
 note: required by a bound in `bar`
   --> $DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:6:16
    |

@@ -1641,6 +1641,7 @@ impl<'test> TestCx<'test> {
                 rustc.arg("-Zui-testing");
                 rustc.arg("-Zdeduplicate-diagnostics=no");
                 rustc.arg("-Zwrite-long-types-to-disk=no");
+                rustc.arg("-Zspan_free_formats=yes");
                 // FIXME: use this for other modes too, for perf?
                 rustc.arg("-Cstrip=debuginfo");
             }

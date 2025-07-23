@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `{closure@$DIR/const-eval-select-bad.rs:7:27: 7:29}: const FnOnce()` is not satisfied
+error[E0277]: the trait bound `not_fn_items::{closure const_eval_select#1}: const FnOnce()` is not satisfied
   --> $DIR/const-eval-select-bad.rs:7:27
    |
 LL |     const_eval_select((), || {}, || {});

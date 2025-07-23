@@ -1,4 +1,4 @@
-error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/hrtb-doesnt-borrow-self-2.rs:109:30: 109:37}>`, but its trait bounds were not satisfied
+error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, variant2::{closure _::filterx#0}>`, but its trait bounds were not satisfied
   --> $DIR/hrtb-doesnt-borrow-self-2.rs:110:24
    |
 LL | pub struct Filter<S, F> {
@@ -8,9 +8,9 @@ LL |     let count = filter.countx();
    |                        ^^^^^^ method cannot be called due to unsatisfied trait bounds
    |
 note: the following trait bounds were not satisfied:
-      `&'a mut &Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/hrtb-doesnt-borrow-self-2.rs:109:30: 109:37}>: Stream`
-      `&'a mut &mut Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/hrtb-doesnt-borrow-self-2.rs:109:30: 109:37}>: Stream`
-      `&'a mut Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/hrtb-doesnt-borrow-self-2.rs:109:30: 109:37}>: Stream`
+      `&'a mut &Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, variant2::{closure _::filterx#0}>: Stream`
+      `&'a mut &mut Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, variant2::{closure _::filterx#0}>: Stream`
+      `&'a mut Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, variant2::{closure _::filterx#0}>: Stream`
   --> $DIR/hrtb-doesnt-borrow-self-2.rs:96:50
    |
 LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}

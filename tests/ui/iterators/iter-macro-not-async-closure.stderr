@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `{gen closure@$DIR/iter-macro-not-async-closure.rs:19:21: 19:28}: AsyncFnOnce()` is not satisfied
+error[E0277]: the trait bound `{gen closure@main::{closure f}}: AsyncFnOnce()` is not satisfied
   --> $DIR/iter-macro-not-async-closure.rs:25:34
    |
 LL |     let x = pin!(call_async_once(f));
-   |                  --------------- ^ the trait `AsyncFnOnce()` is not implemented for `{gen closure@$DIR/iter-macro-not-async-closure.rs:19:21: 19:28}`
+   |                  --------------- ^ the trait `AsyncFnOnce()` is not implemented for `{gen closure@main::{closure f}}`
    |                  |
    |                  required by a bound introduced by this call
    |
@@ -12,11 +12,11 @@ note: required by a bound in `call_async_once`
 LL | async fn call_async_once(f: impl AsyncFnOnce()) {
    |                                  ^^^^^^^^^^^^^ required by this bound in `call_async_once`
 
-error[E0277]: the trait bound `{gen closure@$DIR/iter-macro-not-async-closure.rs:19:21: 19:28}: AsyncFnOnce()` is not satisfied
+error[E0277]: the trait bound `{gen closure@main::{closure f}}: AsyncFnOnce()` is not satisfied
   --> $DIR/iter-macro-not-async-closure.rs:25:18
    |
 LL |     let x = pin!(call_async_once(f));
-   |                  ^^^^^^^^^^^^^^^^^^ the trait `AsyncFnOnce()` is not implemented for `{gen closure@$DIR/iter-macro-not-async-closure.rs:19:21: 19:28}`
+   |                  ^^^^^^^^^^^^^^^^^^ the trait `AsyncFnOnce()` is not implemented for `{gen closure@main::{closure f}}`
    |
 note: required by a bound in `call_async_once`
   --> $DIR/iter-macro-not-async-closure.rs:14:34
@@ -24,11 +24,11 @@ note: required by a bound in `call_async_once`
 LL | async fn call_async_once(f: impl AsyncFnOnce()) {
    |                                  ^^^^^^^^^^^^^ required by this bound in `call_async_once`
 
-error[E0277]: the trait bound `{gen closure@$DIR/iter-macro-not-async-closure.rs:19:21: 19:28}: AsyncFnOnce()` is not satisfied
+error[E0277]: the trait bound `{gen closure@main::{closure f}}: AsyncFnOnce()` is not satisfied
   --> $DIR/iter-macro-not-async-closure.rs:25:13
    |
 LL |     let x = pin!(call_async_once(f));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `AsyncFnOnce()` is not implemented for `{gen closure@$DIR/iter-macro-not-async-closure.rs:19:21: 19:28}`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `AsyncFnOnce()` is not implemented for `{gen closure@main::{closure f}}`
    |
 note: required by a bound in `call_async_once`
   --> $DIR/iter-macro-not-async-closure.rs:14:34
@@ -37,11 +37,11 @@ LL | async fn call_async_once(f: impl AsyncFnOnce()) {
    |                                  ^^^^^^^^^^^^^ required by this bound in `call_async_once`
    = note: this error originates in the macro `pin` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `{gen closure@$DIR/iter-macro-not-async-closure.rs:19:21: 19:28}: AsyncFnOnce()` is not satisfied
+error[E0277]: the trait bound `{gen closure@main::{closure f}}: AsyncFnOnce()` is not satisfied
   --> $DIR/iter-macro-not-async-closure.rs:25:13
    |
 LL |     let x = pin!(call_async_once(f));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `AsyncFnOnce()` is not implemented for `{gen closure@$DIR/iter-macro-not-async-closure.rs:19:21: 19:28}`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `AsyncFnOnce()` is not implemented for `{gen closure@main::{closure f}}`
    |
 note: required by a bound in `call_async_once`
   --> $DIR/iter-macro-not-async-closure.rs:14:34
@@ -50,11 +50,11 @@ LL | async fn call_async_once(f: impl AsyncFnOnce()) {
    |                                  ^^^^^^^^^^^^^ required by this bound in `call_async_once`
    = note: this error originates in the macro `pin` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `{gen closure@$DIR/iter-macro-not-async-closure.rs:19:21: 19:28}: AsyncFnOnce()` is not satisfied
+error[E0277]: the trait bound `{gen closure@main::{closure f}}: AsyncFnOnce()` is not satisfied
   --> $DIR/iter-macro-not-async-closure.rs:30:5
    |
 LL |     x.poll(&mut Context::from_waker(Waker::noop()));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `AsyncFnOnce()` is not implemented for `{gen closure@$DIR/iter-macro-not-async-closure.rs:19:21: 19:28}`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `AsyncFnOnce()` is not implemented for `{gen closure@main::{closure f}}`
    |
 note: required by a bound in `call_async_once`
   --> $DIR/iter-macro-not-async-closure.rs:14:34

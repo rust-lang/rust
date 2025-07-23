@@ -4,7 +4,7 @@ error[E0080]: evaluation panicked: explicit panic
 LL | const _CONST: &[u8] = &f(&[], |_| {});
    |                        ^^^^^^^^^^^^^^ evaluation of `_CONST` failed inside this call
    |
-note: inside `f::<{closure@$DIR/issue-81899.rs:6:31: 6:34}>`
+note: inside `f::<_CONST::{closure f#1}>`
   --> $DIR/issue-81899.rs:13:5
    |
 LL |     panic!()

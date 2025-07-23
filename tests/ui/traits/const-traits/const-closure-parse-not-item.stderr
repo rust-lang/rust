@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `{closure@$DIR/const-closure-parse-not-item.rs:8:5: 8:18}: [const] Fn()` is not satisfied
+error[E0277]: the trait bound `test::{returned closure}: [const] Fn()` is not satisfied
   --> $DIR/const-closure-parse-not-item.rs:7:20
    |
 LL | const fn test() -> impl [const] Fn() {

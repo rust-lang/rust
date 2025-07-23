@@ -2,7 +2,7 @@ error[E0308]: arguments to this function are incorrect
   --> $DIR/coerce-in-may-coerce.rs:17:5
    |
 LL |     arg_error((), || ());
-   |     ^^^^^^^^^ --  ----- expected `()`, found `{closure@$DIR/coerce-in-may-coerce.rs:17:19: 17:21}`
+   |     ^^^^^^^^^ --  ----- expected `()`, found `main::{closure arg_error#y}`
    |               |
    |               expected `<fn() as Mirror>::Assoc`, found `()`
    |

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `{closure@$DIR/non-const-op-const-closure-non-const-outer.rs:13:6: 13:14}: [const] Fn()` is not satisfied
+error[E0277]: the trait bound `main::{closure#0}: [const] Fn()` is not satisfied
   --> $DIR/non-const-op-const-closure-non-const-outer.rs:13:5
    |
 LL |     (const || { (()).foo() })();

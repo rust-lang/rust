@@ -16,15 +16,14 @@ help: use parentheses to call this function
 LL |     check(main());
    |               ++
 
-error[E0277]: `{closure@$DIR/const_param_ty_bad.rs:8:11: 8:13}` can't be used as a const parameter type
+error[E0277]: `main::{closure check#0}` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:8:11
    |
 LL |     check(|| {});
-   |     ----- ^^^^^ unsatisfied trait bound
+   |     ----- ^^^^^ the trait `UnsizedConstParamTy` is not implemented for closure `main::{closure check#0}`
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `UnsizedConstParamTy` is not implemented for closure `{closure@$DIR/const_param_ty_bad.rs:8:11: 8:13}`
 note: required by a bound in `check`
   --> $DIR/const_param_ty_bad.rs:4:18
    |
