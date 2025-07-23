@@ -4212,7 +4212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
         item_def_id: DefId,
         hir_id: hir::HirId,
-        rcvr_ty: Option<Ty<'_>>,
+        rcvr_ty: Option<Ty<'tcx>>,
     ) -> bool {
         let hir_id = self.tcx.parent_hir_id(hir_id);
         let Some(traits) = self.tcx.in_scope_traits(hir_id) else { return false };
@@ -4223,49 +4223,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !self.tcx.is_trait(trait_def_id) {
             return false;
         }
-        let krate = self.tcx.crate_name(trait_def_id.krate);
-        let name = self.tcx.item_name(trait_def_id);
-        let candidates: Vec<_> = traits
-            .iter()
-            .filter(|c| {
-                c.def_id.krate != trait_def_id.krate
-                    && self.tcx.crate_name(c.def_id.krate) == krate
-                    && self.tcx.item_name(c.def_id) == name
-            })
-            .map(|c| (c.def_id, c.import_ids.get(0).cloned()))
-            .collect();
-        if candidates.is_empty() {
+        let hir::Node::Expr(rcvr) = self.tcx.hir_node(hir_id) else {
             return false;
-        }
-        let item_span = self.tcx.def_span(item_def_id);
-        let msg = format!(
-            "there are multiple different versions of crate `{krate}` in the dependency graph",
-        );
-        let trait_span = self.tcx.def_span(trait_def_id);
-        let mut multi_span: MultiSpan = trait_span.into();
-        multi_span.push_span_label(trait_span, "this is the trait that is needed".to_string());
-        let descr = self.tcx.associated_item(item_def_id).descr();
-        let rcvr_ty =
-            rcvr_ty.map(|t| format!("`{t}`")).unwrap_or_else(|| "the receiver".to_string());
-        multi_span
-            .push_span_label(item_span, format!("the {descr} is available for {rcvr_ty} here"));
-        for (def_id, import_def_id) in candidates {
-            if let Some(import_def_id) = import_def_id {
-                multi_span.push_span_label(
-                    self.tcx.def_span(import_def_id),
-                    format!(
-                        "`{name}` imported here doesn't correspond to the right version of crate \
-                         `{krate}`",
-                    ),
-                );
-            }
-            multi_span.push_span_label(
-                self.tcx.def_span(def_id),
-                "this is the trait that was imported".to_string(),
-            );
-        }
-        err.span_note(multi_span, msg);
-        true
+        };
+        let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, rcvr_ty.into_iter());
+        let trait_pred = ty::Binder::dummy(ty::TraitPredicate {
+            trait_ref,
+            polarity: ty::PredicatePolarity::Positive,
+        });
+        let obligation = Obligation::new(self.tcx, self.misc(rcvr.span), self.param_env, trait_ref);
+        self.err_ctxt().note_different_trait_with_same_name(err, &obligation, trait_pred)
     }
 
     /// issue #102320, for `unwrap_or` with closure as argument, suggest `unwrap_or_else`
