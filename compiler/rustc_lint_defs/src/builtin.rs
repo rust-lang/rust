@@ -2838,7 +2838,7 @@ declare_lint! {
     /// [issue #79813]: https://github.com/rust-lang/rust/issues/79813
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
-    Warn,
+    Deny,
     "trailing semicolon in macro body used as expression",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseError,
