@@ -326,6 +326,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcClean(..) => (),
             AttributeKind::RustcCoherenceIsCore => (),
             AttributeKind::RustcCoinductive => (),
+            AttributeKind::RustcComptime(_) => (),
             AttributeKind::RustcConfusables { .. } => (),
             AttributeKind::RustcConstStability { .. } => (),
             AttributeKind::RustcConstStableIndirect => (),

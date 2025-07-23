@@ -1,0 +1,18 @@
+error[E0463]: can't find crate for `std`
+   |
+   = note: the `x86_64-unknown-linux-gnu` target may not support the standard library
+   = note: `std` is required by `<unknown>` because it does not declare `#![no_std]`
+   = help: consider building the standard library from source with `cargo build -Zbuild-std`
+
+error: cannot resolve a prelude import
+
+error: `#[panic_handler]` function required, but not found
+
+error: unwinding panics are not supported without std
+   |
+   = help: using nightly cargo, use -Zbuild-std with panic="abort" to avoid unwinding
+   = note: since the core library is usually precompiled with panic="unwind", rebuilding your crate with panic="abort" may not be enough to fix the problem
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0463`.
