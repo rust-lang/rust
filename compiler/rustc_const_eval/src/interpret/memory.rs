@@ -1000,7 +1000,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
     ) -> InterpResult<'tcx, (Ty<'tcx>, u64)> {
         let (alloc_id, offset, _meta) = self.ptr_get_alloc_id(ptr, 0)?;
-        let GlobalAlloc::TypeId { ty } = self.tcx.global_alloc(alloc_id) else {
+        let Some(GlobalAlloc::TypeId { ty }) = self.tcx.try_get_global_alloc(alloc_id) else {
             throw_ub_format!("invalid `TypeId` value: not all bytes carry type id metadata")
         };
         interp_ok((ty, offset.bytes()))
