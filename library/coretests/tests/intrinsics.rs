@@ -198,7 +198,6 @@ fn carrying_mul_add_fallback_i128() {
 }
 
 #[test]
-#[allow(dead_code)]
 fn test_vtable_for() {
     #[derive(Debug)]
     struct A {}
