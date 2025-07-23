@@ -50,6 +50,11 @@ ast_lowering_clobber_abi_not_supported =
 
 ast_lowering_closure_cannot_be_static = closures cannot be static
 
+ast_lowering_const_comptime_fn = a function cannot be both `comptime` and `const`
+    .suggestion = remove the `const`
+    .label = `comptime` because of this
+    .note = `const` implies the function can be called at runtime, too
+
 ast_lowering_coroutine_too_many_parameters =
     too many parameters for a coroutine (expected 0 or 1 parameters)
 

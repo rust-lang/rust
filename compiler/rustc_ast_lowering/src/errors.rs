@@ -4,6 +4,16 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
 #[derive(Diagnostic)]
+#[diag(ast_lowering_const_comptime_fn)]
+pub(crate) struct ConstComptimeFn {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "")]
+    pub span: Span,
+    #[label]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_lowering_generic_type_with_parentheses, code = E0214)]
 pub(crate) struct GenericTypeWithParentheses {
     #[primary_span]

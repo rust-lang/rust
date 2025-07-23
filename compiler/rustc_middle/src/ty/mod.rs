@@ -2138,7 +2138,10 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(
             self.def_kind(def_id),
             DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Closure
-        ) && self.constness(def_id) == hir::Constness::Const
+        ) && match self.constness(def_id) {
+            hir::Constness::Comptime | hir::Constness::Const => true,
+            hir::Constness::NotConst => false,
+        }
     }
 
     /// Whether this item is conditionally constant for the purposes of the

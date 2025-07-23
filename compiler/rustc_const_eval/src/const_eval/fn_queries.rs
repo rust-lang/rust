@@ -32,6 +32,7 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Constness {
         }) => {
             match sig.header.constness {
                 Constness::Const => Constness::Const,
+                Constness::Comptime => Constness::Comptime,
                 // inherent impl could be const
                 Constness::NotConst => tcx.constness(tcx.local_parent(def_id)),
             }
